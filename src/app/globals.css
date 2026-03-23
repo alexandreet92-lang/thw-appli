@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root, .light {
+  --bg:          #f0f4f8;
+  --bg-alt:      #e6ecf3;
+  --bg-card:     #ffffff;
+  --bg-card2:    #f7fafc;
+  --bg-hover:    #eef5fa;
+  --border:      rgba(0,0,0,0.07);
+  --border-mid:  rgba(0,0,0,0.12);
+  --text:        #0d1117;
+  --text-mid:    rgba(13,17,23,0.65);
+  --text-dim:    rgba(13,17,23,0.40);
+  --nav-bg:      #ffffff;
+  --nav-border:  rgba(0,0,0,0.07);
+  --shadow:      0 2px 16px rgba(0,100,150,0.08), 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 4px 20px rgba(0,100,200,0.05);
+  --input-bg:    #f0f6f9;
+}
+
+.dark {
+  --bg:          #070b0f;
+  --bg-alt:      #0c1118;
+  --bg-card:     rgba(255,255,255,0.035);
+  --bg-card2:    rgba(255,255,255,0.025);
+  --bg-hover:    rgba(255,255,255,0.055);
+  --border:      rgba(255,255,255,0.07);
+  --border-mid:  rgba(255,255,255,0.12);
+  --text:        #eef2f7;
+  --text-mid:    rgba(238,242,247,0.65);
+  --text-dim:    rgba(238,242,247,0.38);
+  --nav-bg:      rgba(8,12,18,0.95);
+  --nav-border:  rgba(255,255,255,0.06);
+  --shadow:      0 2px 20px rgba(0,0,0,0.4);
+  --shadow-card: 0 1px 1px rgba(0,0,0,0.3);
+  --input-bg:    rgba(255,255,255,0.05);
+}
+
+* { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 4px; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+html, body { height: 100%; -webkit-font-smoothing: antialiased; }
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  transition: background-color 0.5s ease, color 0.3s ease;
+}
+
+.light .bg-atmosphere {
+  background:
+    radial-gradient(ellipse 55% 40% at 15% 55%, rgba(0,200,224,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 50% at 85% 20%, rgba(91,111,255,0.05) 0%, transparent 70%);
+}
+
+.dark .bg-atmosphere {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(0,200,224,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 20%, rgba(91,111,255,0.06) 0%, transparent 70%);
+}
+
+.bg-atmosphere { pointer-events: none; position: fixed; inset: 0; z-index: 0; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: fadeUp 0.3s ease forwards; }

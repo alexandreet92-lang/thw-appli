@@ -1,39 +1,26 @@
-"use client";
+import type { Metadata } from 'next'
+import './globals.css'
+import { Sidebar } from '@/src/components/shared/Sidebar'
 
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
-import ScrollToTop from "@/components/ScrollToTop";
-import { Inter } from "next/font/google";
-import "../styles/index.css";
-
-const inter = Inter({ subsets: ["latin"] });
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html suppressHydrationWarning lang="en">
-      {/*
-        <head /> will contain the components returned by the nearest parent
-        head.js. Find out more at https://beta.nextjs.org/docs/api-reference/file-conventions/head
-      */}
-      <head />
-
-      <body className={`bg-[#FCFCFC] dark:bg-black ${inter.className}`}>
-        <Providers>
-          <div className="isolate">
-            <Header />
-            {children}
-            <Footer />
-          </div>
-          <ScrollToTop />
-        </Providers>
-      </body>
-    </html>
-  );
+export const metadata: Metadata = {
+  title: 'THW Coaching',
+  description: 'Application de coaching sportif premium',
 }
 
-import { Providers } from "./providers";
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="fr">
+      <body>
+        <div className="flex h-screen overflow-hidden bg-[var(--bg)]">
+          <div className="bg-atmosphere" aria-hidden="true" />
+          <Sidebar />
+          <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden relative z-10">
+            <div className="page-enter">
+              {children}
+            </div>
+          </main>
+        </div>
+      </body>
+    </html>
+  )
+}

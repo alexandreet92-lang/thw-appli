@@ -12,8 +12,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" className="light">
       <body style={{ margin: 0, background: 'var(--bg)', height: '100vh', overflow: 'hidden' }}>
         <div className="bg-atmosphere" aria-hidden="true" />
-        
-        {/* Desktop layout */}
+
+        {/* Desktop */}
         <div
           className="hidden md:flex"
           style={{ height: '100vh', overflow: 'hidden' }}
@@ -21,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <main style={{
             flex: 1,
+            minWidth: 0,
             height: '100vh',
             overflowY: 'auto',
             overflowX: 'hidden',
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
         </div>
 
-        {/* Mobile layout */}
+        {/* Mobile */}
         <div
           className="flex flex-col md:hidden"
           style={{ height: '100vh', overflow: 'hidden' }}
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <main style={{
             flex: 1,
+            minWidth: 0,
             overflowY: 'auto',
             overflowX: 'hidden',
             position: 'relative',
@@ -50,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
         </div>
+
       </body>
     </html>
   )

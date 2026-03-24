@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const dateStr = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 
   return (
-    <div className="p-8">
+<div className="p-4 md:p-8 pt-[72px] md:pt-8">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-7">

@@ -5,21 +5,23 @@
 @tailwind utilities;
 
 :root, .light {
-  --bg:          #f0f4f8;
-  --bg-alt:      #e6ecf3;
+  --bg:          #eef2f7;
+  --bg-alt:      #e4eaf2;
   --bg-card:     #ffffff;
-  --bg-card2:    #f7fafc;
+  --bg-card2:    #f8fafc;
   --bg-hover:    #eef5fa;
-  --border:      rgba(0,0,0,0.08);
-  --border-mid:  rgba(0,0,0,0.14);
+  --border:      rgba(0,0,0,0.07);
+  --border-mid:  rgba(0,0,0,0.12);
   --text:        #0d1117;
-  --text-mid:    rgba(13,17,23,0.65);
-  --text-dim:    rgba(13,17,23,0.40);
+  --text-mid:    rgba(13,17,23,0.60);
+  --text-dim:    rgba(13,17,23,0.38);
   --nav-bg:      #ffffff;
-  --nav-border:  rgba(0,0,0,0.08);
-  --shadow:      0 2px 16px rgba(0,100,150,0.08), 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,100,200,0.06);
+  --nav-border:  rgba(0,0,0,0.07);
+  --shadow:      0 4px 24px rgba(0,100,150,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-card: 0 2px 12px rgba(0,80,160,0.07), 0 1px 3px rgba(0,0,0,0.05);
   --input-bg:    #f0f6f9;
+  --nav-w:       220px;
+  --nav-w-mobile: 0px;
 }
 
 .dark {
@@ -45,7 +47,6 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-
 *::-webkit-scrollbar { width: 4px; }
 *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
@@ -60,7 +61,6 @@ body {
   transition: background-color 0.5s ease, color 0.3s ease;
 }
 
-/* Atmospheric glow */
 .bg-atmosphere {
   pointer-events: none;
   position: fixed;
@@ -70,8 +70,8 @@ body {
 
 .light .bg-atmosphere {
   background:
-    radial-gradient(ellipse 55% 40% at 15% 55%, rgba(0,200,224,0.05) 0%, transparent 70%),
-    radial-gradient(ellipse 45% 50% at 85% 20%, rgba(91,111,255,0.04) 0%, transparent 70%);
+    radial-gradient(ellipse 55% 40% at 15% 55%, rgba(0,200,224,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 50% at 85% 20%, rgba(91,111,255,0.03) 0%, transparent 70%);
 }
 
 .dark .bg-atmosphere {
@@ -84,9 +84,4 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 .page-enter { animation: fadeUp 0.3s ease forwards; }
-
-/* Force font display */
-.font-display { font-family: 'Syne', sans-serif !important; }
-.font-mono    { font-family: 'DM Mono', monospace !important; }

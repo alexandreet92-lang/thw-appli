@@ -17,10 +17,10 @@ const WEEK_BARS = [
 ]
 
 const SESSIONS = [
-  { sport: '🚴', name: 'Sweet Spot — 2×20min',  meta: 'Hier · 1h45 · 247W NP · 122 TSS' },
-  { sport: '🏃', name: 'Endurance fondamentale', meta: "Sam · 1h20 · 4'42/km · 68 TSS"   },
-  { sport: '🏊', name: 'Technique + 6×100m',     meta: "Ven · 55min · 1'28/100m · 45 TSS"},
-  { sport: '🏋️', name: 'Hyrox Simulation',       meta: 'Jeu · 1h05 · 890m Ski Erg · 88 TSS'},
+  { sport: '🚴', name: 'Sweet Spot — 2×20min',  meta: 'Hier · 1h45 · 247W · 122 TSS' },
+  { sport: '🏃', name: 'Endurance fondamentale', meta: "Sam · 1h20 · 4'42/km · 68 TSS" },
+  { sport: '🏊', name: 'Technique + 6×100m',     meta: "Ven · 55min · 1'28/100m · 45 TSS" },
+  { sport: '🏋️', name: 'Hyrox Simulation',       meta: 'Jeu · 1h05 · 890m Ski Erg · 88 TSS' },
 ]
 
 const RECOVERY = {
@@ -29,8 +29,8 @@ const RECOVERY = {
 }
 
 function ReadinessRing({ score }: { score: number }) {
-  const r   = 35
-  const c   = 2 * Math.PI * r
+  const r = 35
+  const c = 2 * Math.PI * r
   const off = c - (score / 100) * c
   return (
     <div className="relative w-[88px] h-[88px] flex-shrink-0">
@@ -40,7 +40,7 @@ function ReadinessRing({ score }: { score: number }) {
           strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off}/>
         <defs>
           <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="#00c8e0"/>
+            <stop offset="0%" stopColor="#00c8e0"/>
             <stop offset="100%" stopColor="#5b6fff"/>
           </linearGradient>
         </defs>
@@ -70,19 +70,21 @@ function ProgressBar({ label, value, pct, color }: {
 }
 
 export default function DashboardPage() {
-  const now     = new Date()
+  const now = new Date()
   const weekDay = now.toLocaleDateString('fr-FR', { weekday: 'long' })
   const dateStr = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 
   return (
     <div className="p-8">
+
+      {/* Header */}
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1 className="font-display text-[27px] font-bold tracking-[-0.03em] capitalize">
             Bonjour, Thomas 👋
           </h1>
           <p className="text-[12.5px] text-[var(--text-dim)] mt-1">
-            <span className="capitalize">{weekDay}</span> {dateStr} · Semaine 12
+            <span className="capitalize">{weekDay}</span> {dateStr} · Semaine 12 · Phase de construction
             <span className="text-brand font-medium ml-2">· {formatTime(now)}</span>
           </p>
         </div>
@@ -102,6 +104,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* KPIs */}
       <div className="grid grid-cols-4 gap-3.5 mb-5">
         <StatCard label="CTL · Forme" value={LOAD.ctl} unit="pts" variant="brand"
           sub={<span className="text-brand">↑ +3 cette semaine</span>}/>
@@ -113,12 +116,25 @@ export default function DashboardPage() {
           sub={<span className="text-brand">↑ +1.2h vs S11</span>}/>
       </div>
 
+      {/* Charge + Readiness */}
       <div className="grid grid-cols-[2fr_1fr] gap-3.5 mb-5">
         <Card>
           <div className="flex items-center justify-between mb-3.5">
             <h2 className="font-display text-[13.5px] font-semibold text-[var(--text-mid)]">
               Charge hebdomadaire — 8 semaines
             </h2>
+            <div className="flex gap-1.5">
+              {['TSS', 'Volume', 'RPE'].map((t, i) => (
+                <span key={t} className={cn(
+                  'text-[11px] px-2.5 py-1 rounded-tag border cursor-pointer transition-all',
+                  i === 0
+                    ? 'bg-[rgba(0,200,224,0.10)] border-[rgba(0,200,224,0.25)] text-brand'
+                    : 'bg-[var(--bg-card2)] border-[var(--border)] text-[var(--text-dim)] hover:text-brand hover:border-brand'
+                )}>
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
           <div className="flex items-end gap-1.5 h-20">
             {WEEK_BARS.map((b) => (
@@ -127,16 +143,16 @@ export default function DashboardPage() {
                   className="w-full rounded-t-[4px] hover:brightness-125 transition-all"
                   style={{
                     height: `${b.pct}%`,
-                    background:
-                      b.type === 'current'
-                        ? 'linear-gradient(180deg,rgba(0,200,224,0.85),rgba(0,200,224,0.30))'
-                        : b.type === 'recovery'
-                          ? 'linear-gradient(180deg,rgba(0,200,224,0.55),rgba(0,200,224,0.18))'
-                          : 'linear-gradient(180deg,rgba(91,111,255,0.60),rgba(91,111,255,0.20))',
+                    background: b.type === 'current'
+                      ? 'linear-gradient(180deg,rgba(0,200,224,0.85),rgba(0,200,224,0.30))'
+                      : b.type === 'recovery'
+                        ? 'linear-gradient(180deg,rgba(0,200,224,0.55),rgba(0,200,224,0.18))'
+                        : 'linear-gradient(180deg,rgba(91,111,255,0.60),rgba(91,111,255,0.20))',
                     border: b.type === 'current' ? '1px solid rgba(0,200,224,0.4)' : 'none',
                   }}
                 />
-                <span className={cn('text-[10px] font-mono', b.type === 'current' ? 'text-brand' : 'text-[var(--text-dim)]')}>
+                <span className={cn('text-[10px] font-mono',
+                  b.type === 'current' ? 'text-brand' : 'text-[var(--text-dim)]')}>
                   {b.label}
                 </span>
               </div>
@@ -176,8 +192,8 @@ export default function DashboardPage() {
               <ReadinessRing score={RECOVERY.score} />
               <div className="flex-1">
                 <ProgressBar label="Sommeil" value={RECOVERY.sleep} pct={RECOVERY.sleepPct} color="bg-[#5b6fff]"/>
-                <ProgressBar label="HRV"     value={RECOVERY.hrv}   pct={RECOVERY.hrvPct}   color="bg-brand"/>
-                <ProgressBar label="FC repos" value={RECOVERY.hr}   pct={RECOVERY.hrPct}    color="bg-[#00e5ff]"/>
+                <ProgressBar label="HRV" value={RECOVERY.hrv} pct={RECOVERY.hrvPct} color="bg-brand"/>
+                <ProgressBar label="FC repos" value={RECOVERY.hr} pct={RECOVERY.hrPct} color="bg-[#00e5ff]"/>
               </div>
             </div>
             <p className="mt-3 text-[11px] text-[var(--text-dim)] flex items-center gap-2">
@@ -188,6 +204,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Séances récentes */}
       <div className="flex items-center justify-between mb-3.5">
         <h2 className="font-display text-[13.5px] font-semibold text-[var(--text-mid)]">
           Séances récentes
@@ -215,6 +232,7 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
     </div>
   )
 }

@@ -97,25 +97,41 @@ function NavLink({ href, label, icon }: { href: string; label: string; icon: Rea
   return (
     <Link
       href={href}
-      className={cn(
-        'group relative w-full h-11',
-        'flex items-center justify-center rounded-[11px]',
-        'transition-all duration-150',
-        isActive
-          ? 'bg-[rgba(0,200,224,0.10)] text-brand'
-          : 'text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'
-      )}
+      className="group relative w-full h-11 flex items-center justify-center rounded-[11px] transition-all duration-150"
+      style={{
+        background: isActive ? 'rgba(0,200,224,0.10)' : 'transparent',
+        color: isActive ? '#00c8e0' : 'var(--text-dim)',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = 'var(--bg-hover)'
+          e.currentTarget.style.color = 'var(--text)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = 'transparent'
+          e.currentTarget.style.color = 'var(--text-dim)'
+        }
+      }}
     >
       {isActive && (
-        <span className="absolute left-[-10px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-brand rounded-full shadow-brand-sm" />
+        <span
+          className="absolute top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#00c8e0] rounded-full"
+          style={{ left: '-10px', boxShadow: '0 0 8px rgba(0,200,224,0.4)' }}
+        />
       )}
       <span className="w-[18px] h-[18px]">{icon}</span>
-      <span className={cn(
-        'absolute left-[calc(100%+12px)] z-50 whitespace-nowrap',
-        'bg-[var(--bg-card)] border border-[var(--border-mid)]',
-        'text-[var(--text)] text-xs px-2.5 py-1.5 rounded-[7px] shadow-panel',
-        'opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150'
-      )}>
+      <span
+        className="absolute z-50 whitespace-nowrap text-xs px-2.5 py-1.5 rounded-[7px] opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150"
+        style={{
+          left: 'calc(100% + 12px)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-mid)',
+          color: 'var(--text)',
+          boxShadow: 'var(--shadow)',
+        }}
+      >
         {label}
       </span>
     </Link>
@@ -126,41 +142,42 @@ export function Sidebar() {
   const { mode, toggleTheme, label } = useTheme()
 
   return (
-    <aside className={cn(
-      'w-[72px] h-screen flex-shrink-0 flex flex-col items-center py-5',
-      'bg-[var(--nav-bg)] border-r border-[var(--nav-border)]',
-      'backdrop-blur-xl shadow-panel relative z-20',
-      'transition-colors duration-500'
-    )}>
+    <aside
+      className="w-[72px] h-screen flex-shrink-0 flex flex-col items-center py-5 relative z-20"
+      style={{
+        background: 'var(--nav-bg)',
+        borderRight: '1px solid var(--nav-border)',
+        boxShadow: '2px 0 12px rgba(0,0,0,0.06)',
+      }}
+    >
+      {/* Logo */}
       <Link
         href="/"
-        className={cn(
-          'w-10 h-10 rounded-[11px] mb-8 flex-shrink-0',
-          'flex items-center justify-center',
-          'font-display font-bold text-[12px] text-white tracking-tight',
-          'bg-gradient-to-br from-brand to-brand-purple shadow-brand',
-          'transition-all hover:scale-105'
-        )}
+        className="w-10 h-10 rounded-[11px] mb-8 flex-shrink-0 flex items-center justify-center text-white text-[12px] font-bold transition-all hover:scale-105"
+        style={{
+          fontFamily: 'Syne, sans-serif',
+          background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+          boxShadow: '0 0 20px rgba(0,200,224,0.3)',
+          letterSpacing: '-0.5px',
+        }}
       >
         THW
       </Link>
 
+      {/* Nav */}
       <nav className="flex flex-col gap-1 flex-1 w-full px-2.5">
         {NAV.map((item) => (
           <NavLink key={item.href} {...item} />
         ))}
       </nav>
 
+      {/* Bottom */}
       <div className="flex flex-col gap-1 w-full px-2.5">
         <button
           onClick={toggleTheme}
           title={label}
-          className={cn(
-            'group relative w-full h-11',
-            'flex items-center justify-center rounded-[11px]',
-            'text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-brand',
-            'transition-all duration-150'
-          )}
+          className="group relative w-full h-11 flex items-center justify-center rounded-[11px] transition-all duration-150"
+          style={{ color: 'var(--text-dim)' }}
         >
           {mode === 'dark' ? (
             <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
@@ -172,12 +189,16 @@ export function Sidebar() {
               <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
             </svg>
           )}
-          <span className={cn(
-            'absolute left-[calc(100%+12px)] z-50 whitespace-nowrap',
-            'bg-[var(--bg-card)] border border-[var(--border-mid)]',
-            'text-[var(--text)] text-xs px-2.5 py-1.5 rounded-[7px] shadow-panel',
-            'opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity'
-          )}>
+          <span
+            className="absolute z-50 whitespace-nowrap text-xs px-2.5 py-1.5 rounded-[7px] opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity"
+            style={{
+              left: 'calc(100% + 12px)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-mid)',
+              color: 'var(--text)',
+              boxShadow: 'var(--shadow)',
+            }}
+          >
             {label}
           </span>
         </button>

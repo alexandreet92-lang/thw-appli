@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useTheme } from '@/src/hooks/useTheme'
-import { cn } from '@/src/lib/utils'
+import { useTheme } from '../../hooks/useTheme'
+import { cn } from '../../lib/utils'
 
 const NAV = [
   {

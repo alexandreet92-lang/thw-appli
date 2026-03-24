@@ -96,8 +96,10 @@ function NavContent({ onClose }: { onClose?: () => void }) {
 
   return (
     <div style={{
-      width: '100%', height: '100%',
-      display: 'flex', flexDirection: 'column',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
       padding: '20px 12px',
       overflowY: 'auto',
     }}>
@@ -119,7 +121,7 @@ function NavContent({ onClose }: { onClose?: () => void }) {
           boxShadow: '0 0 16px rgba(0,200,224,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'Syne, sans-serif', fontWeight: 800,
-          fontSize: '11px', color: '#fff', letterSpacing: '-0.3px',
+          fontSize: '11px', color: '#fff',
         }}>
           THW
         </div>
@@ -136,7 +138,7 @@ function NavContent({ onClose }: { onClose?: () => void }) {
         </div>
       </Link>
 
-      {/* Nav */}
+      {/* Nav items */}
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {NAV.map((item) => {
           const isActive = pathname === item.href
@@ -220,7 +222,7 @@ export function Sidebar() {
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
-  // Swipe to open/close
+  // Swipe gauche→droite pour ouvrir, droite→gauche pour fermer
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX
@@ -231,18 +233,19 @@ export function Sidebar() {
       const dx = e.changedTouches[0].clientX - touchStartX.current
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
 
-      // Swipe right from left edge → open
-      if (dx > 60 && dy < 80 && touchStartX.current < 30) {
+      // Swipe droite depuis bord gauche → ouvre
+      if (dx > 60 && dy < 100 && touchStartX.current < 40) {
         setMobileOpen(true)
       }
-      // Swipe left → close
-      if (dx < -60 && dy < 80) {
+      // Swipe gauche → ferme
+      if (dx < -60 && dy < 100) {
         setMobileOpen(false)
       }
     }
 
-    document.addEventListener('touchstart', handleTouchStart)
-    document.addEventListener('touchend', handleTouchEnd)
+    document.addEventListener('touchstart', handleTouchStart, { passive: true })
+    document.addEventListener('touchend', handleTouchEnd, { passive: true })
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart)
       document.removeEventListener('touchend', handleTouchEnd)
@@ -251,9 +254,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* ══════════════════════════════
-          DESKTOP — sidebar fixe visible
-      ══════════════════════════════ */}
+      {/* ══ DESKTOP — toujours visible, jamais fermable ══ */}
       <aside
         className="hidden md:flex flex-col flex-shrink-0"
         style={{
@@ -269,15 +270,14 @@ export function Sidebar() {
         <NavContent />
       </aside>
 
-      {/* ══════════════════════════════
-          MOBILE — barre du haut
-      ══════════════════════════════ */}
+      {/* ══ MOBILE — barre fixe en haut ══ */}
       <div
         className="md:hidden"
         style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-          height: '56px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          position: 'fixed', top: 0, left: 0, right: 0,
+          zIndex: 50, height: '56px',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between',
           padding: '0 16px',
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
@@ -289,7 +289,8 @@ export function Sidebar() {
             width: '32px', height: '32px', borderRadius: '9px',
             background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '11px', color: '#fff',
+            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontSize: '11px', color: '#fff',
             boxShadow: '0 0 12px rgba(0,200,224,0.3)',
           }}>
             THW
@@ -302,15 +303,14 @@ export function Sidebar() {
           </span>
         </Link>
 
+        {/* Bouton hamburger */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: '9px',
-            padding: '7px',
-            cursor: 'pointer',
-            color: 'var(--text)',
+            borderRadius: '9px', padding: '7px',
+            cursor: 'pointer', color: 'var(--text)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -326,12 +326,9 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* ══════════════════════════════
-          MOBILE — drawer overlay
-      ══════════════════════════════ */}
+      {/* ══ MOBILE — drawer avec overlay ══ */}
       {mobileOpen && (
         <>
-          {/* Overlay */}
           <div
             className="md:hidden"
             onClick={() => setMobileOpen(false)}
@@ -341,7 +338,6 @@ export function Sidebar() {
               backdropFilter: 'blur(2px)',
             }}
           />
-          {/* Drawer */}
           <div
             className="md:hidden"
             style={{
@@ -349,7 +345,7 @@ export function Sidebar() {
               width: '260px', zIndex: 50,
               background: 'var(--nav-bg)',
               boxShadow: '4px 0 32px rgba(0,0,0,0.15)',
-              animation: 'slideIn 0.25s ease',
+              animation: 'slideIn 0.22s ease',
             }}
           >
             <NavContent onClose={() => setMobileOpen(false)} />
@@ -357,15 +353,10 @@ export function Sidebar() {
         </>
       )}
 
-      {/* ══════════════════════════════
-          MOBILE — spacer pour la topbar
-      ══════════════════════════════ */}
-      <div className="md:hidden" style={{ height: '56px', width: '100%', flexShrink: 0 }} />
-
       <style>{`
         @keyframes slideIn {
-          from { transform: translateX(-100%); }
-          to   { transform: translateX(0); }
+          from { transform: translateX(-100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
         }
       `}</style>
     </>

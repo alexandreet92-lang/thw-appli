@@ -9,16 +9,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body>
-        <div className="flex h-screen overflow-hidden bg-[var(--bg)]">
-          <div className="bg-atmosphere" aria-hidden="true" />
-          <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden relative z-10">
-            <div className="page-enter">
-              {children}
-            </div>
-          </main>
-        </div>
+      <body className="bg-[var(--bg)] text-[var(--text)]">
+        {children}
       </body>
     </html>
   )
 }
+   

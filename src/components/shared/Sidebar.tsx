@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const NAV = [
   {
@@ -43,7 +43,8 @@ const NAV = [
     label: 'Données',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <path d="M3 3v18h18"/><path d="M7 16l4-6 4 4 4-8"/>
+        <path d="M3 3v18h18"/>
+        <path d="M7 16l4-6 4 4 4-8"/>
       </svg>
     ),
   },
@@ -71,7 +72,8 @@ const NAV = [
     label: 'Performance',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 8v4l3 3"/>
       </svg>
     ),
   },
@@ -88,26 +90,26 @@ const NAV = [
   },
 ]
 
-export function Sidebar() {
+function NavContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const { mode, toggleTheme, label } = useTheme()
-  const [mobileOpen, setMobileOpen] = useState(false)
 
-  const SidebarContent = () => (
+  return (
     <div style={{
       width: '100%', height: '100%',
       display: 'flex', flexDirection: 'column',
       padding: '20px 12px',
+      overflowY: 'auto',
     }}>
       {/* Logo */}
       <Link
         href="/"
-        onClick={() => setMobileOpen(false)}
+        onClick={onClose}
         style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '10px 12px', borderRadius: '12px',
-          marginBottom: '24px', textDecoration: 'none',
-          background: 'linear-gradient(135deg, rgba(0,200,224,0.12), rgba(91,111,255,0.08))',
+          marginBottom: '28px', textDecoration: 'none',
+          background: 'linear-gradient(135deg, rgba(0,200,224,0.10), rgba(91,111,255,0.07))',
           border: '1px solid rgba(0,200,224,0.15)',
         }}
       >
@@ -117,27 +119,32 @@ export function Sidebar() {
           boxShadow: '0 0 16px rgba(0,200,224,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'Syne, sans-serif', fontWeight: 800,
-          fontSize: '12px', color: '#fff', letterSpacing: '-0.3px',
+          fontSize: '11px', color: '#fff', letterSpacing: '-0.3px',
         }}>
           THW
         </div>
         <div>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--text)' }}>
+          <div style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            fontSize: '14px', color: 'var(--text)', lineHeight: 1.2,
+          }}>
             THW Coaching
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Coach · Athlète</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '1px' }}>
+            Coach · Athlète
+          </div>
         </div>
       </Link>
 
-      {/* Nav items */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      {/* Nav */}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {NAV.map((item) => {
           const isActive = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={onClose}
               style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '10px 12px', borderRadius: '11px',
@@ -145,11 +152,14 @@ export function Sidebar() {
                 background: isActive ? 'rgba(0,200,224,0.10)' : 'transparent',
                 color: isActive ? '#00c8e0' : 'var(--text-mid)',
                 fontFamily: 'DM Sans, sans-serif',
-                fontSize: '13.5px', fontWeight: isActive ? 600 : 400,
+                fontSize: '13.5px',
+                fontWeight: isActive ? 600 : 400,
                 borderLeft: isActive ? '3px solid #00c8e0' : '3px solid transparent',
               }}
             >
-              <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.7 }}>{item.icon}</span>
+              <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.65 }}>
+                {item.icon}
+              </span>
               {item.label}
             </Link>
           )
@@ -157,7 +167,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingTop: '8px' }}>
         <button
           onClick={toggleTheme}
           style={{
@@ -166,7 +176,6 @@ export function Sidebar() {
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: '13.5px',
             fontFamily: 'DM Sans, sans-serif', width: '100%', textAlign: 'left',
-            transition: 'all 0.15s',
           }}
         >
           {mode === 'dark' ? (
@@ -184,14 +193,15 @@ export function Sidebar() {
 
         <Link
           href="/profile"
-          onClick={() => setMobileOpen(false)}
+          onClick={onClose}
           style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: '10px 12px', borderRadius: '11px',
-            textDecoration: 'none', transition: 'all 0.15s',
+            textDecoration: 'none',
             background: pathname === '/profile' ? 'rgba(0,200,224,0.10)' : 'transparent',
             color: pathname === '/profile' ? '#00c8e0' : 'var(--text-mid)',
             fontSize: '13.5px', fontFamily: 'DM Sans, sans-serif',
+            borderLeft: pathname === '/profile' ? '3px solid #00c8e0' : '3px solid transparent',
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
@@ -203,92 +213,161 @@ export function Sidebar() {
       </div>
     </div>
   )
+}
+
+export function Sidebar() {
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+
+  // Swipe to open/close
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX
+      touchStartY.current = e.touches[0].clientY
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchStartX.current
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
+
+      // Swipe right from left edge → open
+      if (dx > 60 && dy < 80 && touchStartX.current < 30) {
+        setMobileOpen(true)
+      }
+      // Swipe left → close
+      if (dx < -60 && dy < 80) {
+        setMobileOpen(false)
+      }
+    }
+
+    document.addEventListener('touchstart', handleTouchStart)
+    document.addEventListener('touchend', handleTouchEnd)
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [])
 
   return (
     <>
-      {/* ── DESKTOP sidebar ── */}
+      {/* ══════════════════════════════
+          DESKTOP — sidebar fixe visible
+      ══════════════════════════════ */}
       <aside
-        className="hidden md:flex flex-col flex-shrink-0 h-screen relative z-20"
+        className="hidden md:flex flex-col flex-shrink-0"
         style={{
           width: '220px',
+          height: '100vh',
           background: 'var(--nav-bg)',
           borderRight: '1px solid var(--nav-border)',
           boxShadow: '2px 0 16px rgba(0,0,0,0.06)',
+          position: 'relative',
+          zIndex: 20,
         }}
       >
-        <SidebarContent />
+        <NavContent />
       </aside>
 
-      {/* ── MOBILE top bar ── */}
+      {/* ══════════════════════════════
+          MOBILE — barre du haut
+      ══════════════════════════════ */}
       <div
-        className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4"
+        className="md:hidden"
         style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
           height: '56px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px',
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
           boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
         }}
       >
-        <Link
-          href="/"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none',
-          }}
-        >
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
           <div style={{
             width: '32px', height: '32px', borderRadius: '9px',
             background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '11px', color: '#fff',
+            boxShadow: '0 0 12px rgba(0,200,224,0.3)',
           }}>
             THW
           </div>
-          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '15px', color: 'var(--text)' }}>
+          <span style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            fontSize: '15px', color: 'var(--text)',
+          }}>
             THW Coaching
           </span>
         </Link>
+
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--text)', padding: '8px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '9px',
+            padding: '7px',
+            cursor: 'pointer',
+            color: 'var(--text)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           {mobileOpen ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M3 12h18M3 6h18M3 18h18"/>
             </svg>
           )}
         </button>
       </div>
 
-      {/* ── MOBILE drawer ── */}
+      {/* ══════════════════════════════
+          MOBILE — drawer overlay
+      ══════════════════════════════ */}
       {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-40"
-          onClick={() => setMobileOpen(false)}
-          style={{ background: 'rgba(0,0,0,0.3)' }}
-        >
+        <>
+          {/* Overlay */}
           <div
+            className="md:hidden"
+            onClick={() => setMobileOpen(false)}
             style={{
-              position: 'absolute', top: 0, left: 0, bottom: 0,
-              width: '260px',
-              background: 'var(--nav-bg)',
-              boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
+              position: 'fixed', inset: 0, zIndex: 40,
+              background: 'rgba(0,0,0,0.35)',
+              backdropFilter: 'blur(2px)',
             }}
-            onClick={(e) => e.stopPropagation()}
+          />
+          {/* Drawer */}
+          <div
+            className="md:hidden"
+            style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0,
+              width: '260px', zIndex: 50,
+              background: 'var(--nav-bg)',
+              boxShadow: '4px 0 32px rgba(0,0,0,0.15)',
+              animation: 'slideIn 0.25s ease',
+            }}
           >
-            <SidebarContent />
+            <NavContent onClose={() => setMobileOpen(false)} />
           </div>
-        </div>
+        </>
       )}
 
-      {/* ── MOBILE spacer ── */}
-      <div className="md:hidden" style={{ height: '56px', flexShrink: 0 }} />
+      {/* ══════════════════════════════
+          MOBILE — spacer pour la topbar
+      ══════════════════════════════ */}
+      <div className="md:hidden" style={{ height: '56px', width: '100%', flexShrink: 0 }} />
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(-100%); }
+          to   { transform: translateX(0); }
+        }
+      `}</style>
     </>
   )
 }

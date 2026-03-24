@@ -10,13 +10,21 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className="light">
-      <body>
-        <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
+      <body style={{ margin: 0, background: 'var(--bg)' }}>
+        <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
           <div className="bg-atmosphere" aria-hidden="true" />
           <Sidebar />
           <main
-            className="flex-1 overflow-y-auto overflow-x-hidden relative z-10"
-            style={{ background: 'var(--bg)' }}
+            id="main-content"
+            style={{
+              flex: 1,
+              height: '100vh',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              position: 'relative',
+              zIndex: 10,
+              background: 'var(--bg)',
+            }}
           >
             {children}
           </main>

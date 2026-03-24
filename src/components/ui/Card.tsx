@@ -1,4 +1,4 @@
-import { cn } from '@/src/lib/utils'
+import { cn } from '@/lib/utils'
 
 type ColorVariant = 'brand' | 'blue' | 'red' | 'orange' | 'green' | 'default'
 

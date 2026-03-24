@@ -1,7 +1,7 @@
-import { Card, StatCard } from '../components/ui/Card'
-import { Button } from '../components/ui/Button'
-import { Badge } from '../components/ui/Badge'
-import { cn, formatTime, getTSBColor, getReadinessLabel } from '../lib/utils'
+import { Card, StatCard } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { cn, formatTime, getTSBColor, getReadinessLabel } from '@/lib/utils'
 
 const LOAD = { ctl: 84, atl: 91, tsb: -7, volume: 12.4 }
 

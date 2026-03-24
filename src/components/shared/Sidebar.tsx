@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useTheme } from '../../hooks/useTheme'
-import { cn } from '../../lib/utils'
+import { useTheme } from '@/hooks/useTheme'
+import { cn } from '@/lib/utils'
 
 const NAV = [
   {
-    href: '/dashboard',
+    href: '/',
     label: 'Dashboard',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
@@ -92,7 +92,7 @@ const NAV = [
 
 function NavLink({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) {
   const pathname = usePathname()
-  const isActive = pathname === href || pathname.startsWith(href + '/')
+  const isActive = pathname === href
 
   return (
     <Link
@@ -133,7 +133,7 @@ export function Sidebar() {
       'transition-colors duration-500'
     )}>
       <Link
-        href="/dashboard"
+        href="/"
         className={cn(
           'w-10 h-10 rounded-[11px] mb-8 flex-shrink-0',
           'flex items-center justify-center',

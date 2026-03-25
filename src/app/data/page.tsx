@@ -50,63 +50,284 @@ const INITIAL_MEALS:MealSection[]=[
 
 const INITIAL_CHAT:ChatMessage[]=[{
   id:'0',role:'ai',
-  content:'👋 Bonjour ! Je suis ton assistant nutrition IA.\n\nUtilise les sections ci-dessus pour enregistrer tes repas — je calcule les valeurs nutritionnelles précises via une analyse IA réelle.\n\nTu peux aussi me poser des questions sur ta nutrition.',
+  content:'👋 Bonjour ! Je suis ton assistant nutrition.\n\nUtilise les sections ci-dessus pour ajouter tes repas. Je calcule les valeurs nutritionnelles précises à partir d\'une base de données détaillée.\n\nTu peux aussi me poser des questions sur ta nutrition.',
   timestamp:'09:00',
 }]
 
 const SAVED_MEALS_INIT:SavedMeal[]=[
   {id:'sm1',name:'Petit-dej endurance',totalCal:520,entries:[
     {id:'se1',name:'Porridge avoine + myrtilles',cal:320,p:10,g:58,l:6},
-    {id:'se2',name:'Yaourt grec 0%',cal:100,p:17,g:6,l:0},
+    {id:'se2',name:'Yaourt grec 0%',cal:97,p:17,g:6,l:0},
+  ]},
+  {id:'sm2',name:'Récup post-séance',totalCal:460,entries:[
+    {id:'se3',name:'Shake whey + lait 250ml',cal:270,p:30,g:20,l:6},
+    {id:'se4',name:'Banane',cal:89,p:1,g:23,l:0},
+    {id:'se5',name:'Amandes 20g',cal:116,p:4,g:4,l:10},
   ]},
 ]
 
 const AI_CHAT_RESPONSES=[
-  '💡 Pour optimiser ta récupération, vise 1.8-2g de protéines par kg de poids corporel par jour. Avec 75kg, ça fait ~135-150g minimum.',
-  '⚡ Les glucides sont ton carburant principal en endurance. Les jours Hard, vise 6-8g/kg soit 450-600g. Les jours Low, tu peux réduire à 4-5g/kg.',
-  '🔍 L\'hydratation est souvent négligée. Vise 35-40ml/kg/jour + 500ml par heure de sport.',
-  '📊 Ton apport calorique semble adapté à ta charge. Continue sur cette lancée les jours d\'entraînement.',
-  '🏃 Avant une séance longue (+2h), charge en glucides la veille : pâtes, riz, patate douce. Évite les fibres 2h avant l\'effort.',
+  '💡 Pour optimiser ta récupération, vise 1.8-2g de protéines par kg. Avec 75kg → 135-150g minimum par jour.',
+  '⚡ Les glucides sont ton carburant principal. Jours Hard : 6-8g/kg (450-600g). Jours Low : 4-5g/kg.',
+  '🔍 Hydratation : vise 35-40ml/kg/jour + 500ml par heure de sport.',
+  '📊 Avant une séance longue (+2h), charge en glucides la veille. Évite les fibres 2h avant l\'effort.',
+  '🏃 Post-séance dans les 30min : 20-30g protéines + glucides rapides pour optimiser la récupération.',
 ]
 
-function uid():string{return `${Date.now()}_${Math.random().toString(36).slice(2)}`}
-function nowTime():string{return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}
-function formatH(h:number):string{const hh=Math.floor(h),mm=Math.round((h-hh)*60);return mm>0?`${hh}h${String(mm).padStart(2,'0')}`:`${hh}h`}
-function totalMacros(meals:MealSection[]){const all=meals.flatMap(m=>m.entries);return{cal:all.reduce((s,e)=>s+e.cal,0),p:all.reduce((s,e)=>s+e.p,0),g:all.reduce((s,e)=>s+e.g,0),l:all.reduce((s,e)=>s+e.l,0)}}
+// ── Base nutritionnelle précise ───────────────────
+interface NutrientPer100 { cal: number; p: number; g: number; l: number }
 
-// ── Analyse IA réelle ─────────────────────────────
-async function analyzeFood(text:string):Promise<FoodEntry> {
-  try {
-    const response=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{
-          role:'user',
-          content:`Tu es un expert en nutrition sportive. Analyse ce repas et calcule les valeurs nutritionnelles PRÉCISES.
+const NUTRIENT_DB: Record<string, NutrientPer100> = {
+  // Œufs (par unité ~60g)
+  'oeuf':              {cal:155,p:13,g:1, l:11},
+  'oeuf au plat':      {cal:155,p:13,g:1, l:11},
+  'oeuf brouille':     {cal:149,p:10,g:2, l:11},
+  'oeuf dur':          {cal:155,p:13,g:1, l:11},
+  'oeuf poche':        {cal:143,p:13,g:1, l:10},
+  // Laitages
+  'yaourt grec nature':{cal:97, p:9, g:4, l:5},
+  'yaourt grec':       {cal:97, p:9, g:4, l:5},
+  'yaourt nature':     {cal:59, p:4, g:7, l:2},
+  'yaourt':            {cal:59, p:4, g:7, l:2},
+  'fromage blanc':     {cal:80, p:8, g:5, l:3},
+  'lait entier':       {cal:61, p:3, g:5, l:3},
+  'lait demi ecreme':  {cal:46, p:3, g:5, l:2},
+  'lait ecreme':       {cal:34, p:3, g:5, l:0},
+  'lait':              {cal:46, p:3, g:5, l:2},
+  'creme fraiche':     {cal:300,p:2, g:3, l:30},
+  'fromage':           {cal:350,p:25,g:1, l:28},
+  'beurre':            {cal:717,p:1, g:0, l:81},
+  // Fruits
+  'banane':            {cal:89, p:1, g:23,l:0},
+  'pomme':             {cal:52, p:0, g:14,l:0},
+  'poire':             {cal:57, p:0, g:15,l:0},
+  'orange':            {cal:47, p:1, g:12,l:0},
+  'mandarine':         {cal:53, p:1, g:13,l:0},
+  'kiwi':              {cal:61, p:1, g:15,l:1},
+  'fraise':            {cal:32, p:1, g:8, l:0},
+  'myrtille':          {cal:57, p:1, g:14,l:0},
+  'framboise':         {cal:52, p:1, g:12,l:1},
+  'raisin':            {cal:67, p:1, g:17,l:0},
+  'ananas':            {cal:50, p:1, g:13,l:0},
+  'mangue':            {cal:60, p:1, g:15,l:0},
+  'peche':             {cal:39, p:1, g:10,l:0},
+  'abricot':           {cal:48, p:1, g:11,l:0},
+  'avocat':            {cal:160,p:2, g:9, l:15},
+  'tomate cerise':     {cal:18, p:1, g:4, l:0},
+  'tomate':            {cal:18, p:1, g:4, l:0},
+  // Céréales / féculents
+  'flocons avoine':    {cal:379,p:13,g:68,l:7},
+  'avoine':            {cal:379,p:13,g:68,l:7},
+  'porridge':          {cal:71, p:3, g:12,l:2},
+  'riz blanc':         {cal:130,p:3, g:28,l:0},
+  'riz complet':       {cal:111,p:3, g:23,l:1},
+  'riz':               {cal:130,p:3, g:28,l:0},
+  'pates blanches':    {cal:157,p:6, g:31,l:1},
+  'pates completes':   {cal:124,p:5, g:24,l:1},
+  'pates':             {cal:157,p:6, g:31,l:1},
+  'pain blanc':        {cal:265,p:9, g:49,l:3},
+  'pain complet':      {cal:247,p:9, g:46,l:3},
+  'pain':              {cal:265,p:9, g:49,l:3},
+  'baguette':          {cal:269,p:9, g:53,l:2},
+  'quinoa':            {cal:120,p:4, g:22,l:2},
+  'boulgour':          {cal:83, p:3, g:19,l:0},
+  'patate douce':      {cal:86, p:2, g:20,l:0},
+  'pomme de terre':    {cal:77, p:2, g:17,l:0},
+  'lentilles':         {cal:116,p:9, g:20,l:0},
+  'pois chiches':      {cal:164,p:9, g:27,l:3},
+  'haricots rouges':   {cal:127,p:9, g:23,l:1},
+  // Viandes / poissons
+  'poulet':            {cal:165,p:31,g:0, l:4},
+  'blanc de poulet':   {cal:110,p:23,g:0, l:2},
+  'cuisses poulet':    {cal:177,p:25,g:0, l:9},
+  'dinde':             {cal:135,p:29,g:0, l:1},
+  'boeuf hache':       {cal:254,p:17,g:0, l:20},
+  'steak boeuf':       {cal:217,p:26,g:0, l:12},
+  'saumon':            {cal:208,p:20,g:0, l:13},
+  'thon naturel':      {cal:116,p:26,g:0, l:1},
+  'thon':              {cal:116,p:26,g:0, l:1},
+  'cabillaud':         {cal:82, p:18,g:0, l:1},
+  'crevettes':         {cal:99, p:24,g:0, l:1},
+  'jambon blanc':      {cal:107,p:16,g:2, l:4},
+  'jambon':            {cal:107,p:16,g:2, l:4},
+  // Protéines / compléments
+  'whey':              {cal:400,p:83,g:10,l:7},
+  'proteine whey':     {cal:400,p:83,g:10,l:7},
+  // Légumes
+  'brocoli':           {cal:34, p:3, g:7, l:0},
+  'epinard':           {cal:23, p:3, g:4, l:0},
+  'courgette':         {cal:17, p:1, g:3, l:0},
+  'poivron':           {cal:31, p:1, g:6, l:0},
+  'carotte':           {cal:41, p:1, g:10,l:0},
+  'concombre':         {cal:15, p:1, g:4, l:0},
+  'salade':            {cal:15, p:1, g:3, l:0},
+  'oignon':            {cal:40, p:1, g:9, l:0},
+  'ail':               {cal:149,p:6, g:33,l:1},
+  'champignon':        {cal:22, p:3, g:3, l:0},
+  'haricots verts':    {cal:31, p:2, g:7, l:0},
+  'petit pois':        {cal:81, p:5, g:14,l:1},
+  // Matières grasses
+  'huile olive':       {cal:884,p:0, g:0, l:100},
+  'huile':             {cal:884,p:0, g:0, l:100},
+  'amande':            {cal:579,p:21,g:22,l:50},
+  'noix':              {cal:654,p:15,g:14,l:65},
+  'noix de cajou':     {cal:553,p:18,g:30,l:44},
+  'pistache':          {cal:562,p:20,g:28,l:45},
+  'cacahuete':         {cal:567,p:26,g:16,l:49},
+  'beurre de cacahuete':{cal:588,p:25,g:20,l:50},
+  // Sucres / condiments
+  'miel':              {cal:304,p:0, g:82,l:0},
+  'confiture':         {cal:250,p:1, g:62,l:0},
+  'nutella':           {cal:539,p:6, g:58,l:31},
+  'chocolat noir':     {cal:546,p:5, g:60,l:31},
+  'chocolat au lait':  {cal:535,p:8, g:59,l:30},
+  'sucre':             {cal:400,p:0, g:100,l:0},
+  // Céréales marques connues (pour 100g)
+  'bjorg crousti chocolat': {cal:390,p:8, g:67,l:10},
+  'granola':           {cal:471,p:10,g:64,l:20},
+  'muesli':            {cal:370,p:10,g:62,l:8},
+  'corn flakes':       {cal:357,p:7, g:84,l:1},
+  'special k':         {cal:370,p:16,g:70,l:2},
+  // Boissons
+  'cafe':              {cal:2,  p:0, g:0, l:0},
+  'the':               {cal:1,  p:0, g:0, l:0},
+  'jus orange':        {cal:45, p:1, g:10,l:0},
+  'jus pomme':         {cal:46, p:0, g:11,l:0},
+  'eau':               {cal:0,  p:0, g:0, l:0},
+  // Sauces / divers
+  'ketchup':           {cal:101,p:1, g:25,l:0},
+  'mayonnaise':        {cal:680,p:1, g:3, l:75},
+  'moutarde':          {cal:66, p:4, g:6, l:4},
+  'sauce soja':        {cal:53, p:8, g:5, l:1},
+  'vinaigrette':       {cal:450,p:1, g:5, l:47},
+}
 
-Repas : "${text}"
+// Quantités par défaut pour certains aliments (en grammes)
+const DEFAULT_QTY: Record<string, number> = {
+  'oeuf': 60, 'oeuf au plat': 60, 'oeuf brouille': 60, 'oeuf dur': 60, 'oeuf poche': 60,
+  'banane': 120, 'pomme': 150, 'poire': 150, 'orange': 150, 'kiwi': 80, 'avocat': 100,
+  'yaourt grec': 125, 'yaourt grec nature': 125, 'yaourt nature': 125, 'yaourt': 125, 'fromage blanc': 100,
+  'cafe': 200, 'the': 200, 'lait': 200, 'jus orange': 200,
+  'pain': 50, 'pain blanc': 50, 'pain complet': 50, 'baguette': 50,
+  'whey': 30, 'proteine whey': 30,
+  'beurre': 10, 'huile': 10, 'huile olive': 10, 'miel': 21,
+  'amande': 30, 'noix': 30, 'cacahuete': 30,
+  'granola': 60, 'muesli': 60, 'corn flakes': 40, 'special k': 40,
+  'bjorg crousti chocolat': 50,
+  'chocolat noir': 30, 'chocolat au lait': 30,
+}
 
-Règles importantes :
-- Utilise les valeurs nutritionnelles réelles de chaque aliment
-- Pour les marques mentionnées (Bjorg, Danone, etc.), utilise leurs valeurs exactes si tu les connais
-- Si pas de quantité précisée, utilise une portion standard réaliste (ex: 1 œuf = 60g, 1 banane = 120g, 1 yaourt = 125g)
-- Calcule le TOTAL de tous les aliments mentionnés
-- Sois précis
+function normalizeText(t: string): string {
+  return t.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[éèêë]/g,'e').replace(/[àâ]/g,'a').replace(/[ùû]/g,'u')
+    .replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ç]/g,'c')
+    .replace(/œ/g,'oe').replace(/æ/g,'ae')
+}
 
-Réponds UNIQUEMENT avec ce JSON, rien d'autre, pas de markdown :
-{"name":"description courte","cal":730,"p":33,"g":92,"l":18,"detail":"3 œufs 210kcal + yaourt 90kcal + etc"}`
-        }]
-      })
+function extractNumber(text: string): number | null {
+  const m = text.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|ml|cl|dl|kg|l)?/)
+  if (m) return parseFloat(m[1].replace(',','.'))
+  return null
+}
+
+function parseQuantity(text: string, foodKey: string): { qty: number; unit: string } {
+  const norm = normalizeText(text)
+  // Cherche "X tasse", "X verre", "X cuillere", "X cs", "X cc"
+  const tasse  = norm.match(/(\d+(?:[.,]\d+)?)\s*(?:tasse|bol)/)
+  const verre  = norm.match(/(\d+(?:[.,]\d+)?)\s*verre/)
+  const csoupe = norm.match(/(\d+(?:[.,]\d+)?)\s*(?:cuillere[s]?\s*(?:a|de)?\s*soupe|c\.?s\.?|cs\b)/)
+  const ccafe  = norm.match(/(\d+(?:[.,]\d+)?)\s*(?:cuillere[s]?\s*(?:a|de)?\s*cafe|c\.?c\.?|cc\b)/)
+  const grams  = norm.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramme)/)
+  const ml     = norm.match(/(\d+(?:[.,]\d+)?)\s*(?:ml|cl|dl|l)/)
+  const unit   = norm.match(/(\d+(?:[.,]\d+)?)\s*(?:unite|tranche|portion|piece)/)
+  const number = norm.match(/^(\d+(?:[.,]\d+)?)\s/)
+
+  if (grams)  return { qty: parseFloat(grams[1].replace(',','.')),   unit: 'g' }
+  if (ml) {
+    const v = parseFloat(ml[1].replace(',','.'))
+    const u = norm.includes('cl') ? 'cl' : norm.includes('dl') ? 'dl' : norm.includes('l') && !norm.includes('ml') ? 'L' : 'ml'
+    const factor = u==='cl'?10 : u==='dl'?100 : u==='L'?1000 : 1
+    return { qty: v * factor, unit: 'ml' }
+  }
+  if (csoupe) return { qty: parseFloat(csoupe[1].replace(',','.'))*15, unit: 'g' }
+  if (ccafe)  return { qty: parseFloat(ccafe[1].replace(',','.'))*5,  unit: 'g' }
+  if (tasse)  return { qty: parseFloat(tasse[1].replace(',','.'))*250, unit: 'ml' }
+  if (verre)  return { qty: parseFloat(verre[1].replace(',','.'))*200, unit: 'ml' }
+  if (unit)   return { qty: parseFloat(unit[1].replace(',','.')) * (DEFAULT_QTY[foodKey]??100), unit: 'g' }
+  if (number) return { qty: parseFloat(number[1].replace(',','.')) * (DEFAULT_QTY[foodKey]??100), unit: 'g' }
+  return { qty: DEFAULT_QTY[foodKey] ?? 100, unit: 'g' }
+}
+
+function findFood(segment: string): { key: string; nutrient: NutrientPer100 } | null {
+  const norm = normalizeText(segment)
+  // Tri par longueur décroissante pour matcher d'abord les termes les plus longs
+  const keys = Object.keys(NUTRIENT_DB).sort((a,b) => b.length - a.length)
+  for (const key of keys) {
+    if (norm.includes(normalizeText(key))) {
+      return { key, nutrient: NUTRIENT_DB[key] }
+    }
+  }
+  return null
+}
+
+interface ParsedItem { name: string; grams: number; cal: number; p: number; g: number; l: number }
+
+function analyzeFood(text: string): FoodEntry {
+  // Split par virgule, "et", "+", retour à la ligne
+  const segments = text.split(/[,\n+]|(?:\bet\b)/).map(s => s.trim()).filter(s => s.length > 1)
+
+  const items: ParsedItem[] = []
+  const notFound: string[] = []
+
+  for (const seg of segments) {
+    const found = findFood(seg)
+    if (!found) {
+      notFound.push(seg)
+      continue
+    }
+    const { key, nutrient } = found
+    const { qty } = parseQuantity(seg, key)
+    const factor = qty / 100
+
+    items.push({
+      name: seg.trim(),
+      grams: qty,
+      cal: Math.round(nutrient.cal * factor),
+      p:   Math.round(nutrient.p   * factor),
+      g:   Math.round(nutrient.g   * factor),
+      l:   Math.round(nutrient.l   * factor),
     })
-    const data=await response.json()
-    const raw=data.content[0].text.replace(/```json|```/g,'').trim()
-    const parsed=JSON.parse(raw)
-    return{id:uid(),name:parsed.name||text,cal:parsed.cal||0,p:parsed.p||0,g:parsed.g||0,l:parsed.l||0,detail:parsed.detail}
-  } catch(e) {
-    return{id:uid(),name:text,cal:0,p:0,g:0,l:0,detail:'Erreur d\'analyse'}
+  }
+
+  // Si rien trouvé du tout, estimation basique
+  if (items.length === 0) {
+    return {
+      id: uid(),
+      name: text,
+      cal: 300, p: 15, g: 35, l: 10,
+      detail: `⚠️ Aliments non reconnus (${notFound.join(', ')}). Valeurs estimées — précise les quantités pour plus de précision.`,
+    }
+  }
+
+  const total = items.reduce((acc, i) => ({
+    cal: acc.cal + i.cal,
+    p:   acc.p   + i.p,
+    g:   acc.g   + i.g,
+    l:   acc.l   + i.l,
+  }), { cal:0, p:0, g:0, l:0 })
+
+  const detailParts = items.map(i => `${i.name} → ${i.cal}kcal`)
+  const detail = detailParts.join(' · ') + (notFound.length ? ` · ⚠️ Non reconnus: ${notFound.join(', ')}` : '')
+
+  return {
+    id: uid(),
+    name: segments.length === 1 ? segments[0] : `${segments[0]}${segments.length > 1 ? ` + ${segments.length - 1} autres` : ''}`,
+    cal: total.cal,
+    p:   total.p,
+    g:   total.g,
+    l:   total.l,
+    detail,
   }
 }
 
@@ -114,13 +335,18 @@ function calcBMR(w:number,h:number,a:number,s:'m'|'f'):number{return s==='m'?10*
 function generatePlan(q:QuestionnaireData):NutriPlan{
   const bmr=calcBMR(q.weight,q.height,q.age,q.sex)
   const af={low:1.2,moderate:1.55,high:1.9}[q.activity]
-  const tdee=bmr*af+q.trainingH*8*60/7
+  const tdee=bmr*af+(q.trainingH*8*60/7)
   const base=q.goal==='loss'?tdee*0.85:q.goal==='gain'?tdee*1.10:tdee
   const protein=Math.round(q.weight*(q.goal==='performance'?2.0:1.8))
   const fat=Math.round(q.weight*1.1)
   const carbs=Math.round((base-protein*4-fat*9)/4)
   return{calories:Math.round(base),protein,carbs,fat,byDay:{low:{cal:Math.round(base*0.85),p:protein,g:Math.round(carbs*0.70),l:fat},mid:{cal:Math.round(base),p:protein,g:carbs,l:fat},hard:{cal:Math.round(base*1.15),p:protein,g:Math.round(carbs*1.25),l:fat}}}
 }
+
+function uid():string{return `${Date.now()}_${Math.random().toString(36).slice(2)}`}
+function nowTime():string{return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}
+function formatH(h:number):string{const hh=Math.floor(h),mm=Math.round((h-hh)*60);return mm>0?`${hh}h${String(mm).padStart(2,'0')}`:`${hh}h`}
+function totalMacros(meals:MealSection[]){const all=meals.flatMap(m=>m.entries);return{cal:all.reduce((s,e)=>s+e.cal,0),p:all.reduce((s,e)=>s+e.p,0),g:all.reduce((s,e)=>s+e.g,0),l:all.reduce((s,e)=>s+e.l,0)}}
 
 // ── UI atoms ──────────────────────────────────────
 function StatBox({label,value,color}:{label:string;value:string|number;color?:string}){
@@ -427,7 +653,6 @@ function NutritionTab(){
   const [savedMeals,setSavedMeals]=useState<SavedMeal[]>(SAVED_MEALS_INIT)
   const [activeMealLog,setActiveMealLog]=useState<MealType|null>(null)
   const [mealInput,setMealInput]=useState('')
-  const [mealLoading,setMealLoading]=useState(false)
   const [saveModal,setSaveModal]=useState<{mealType:MealType}|null>(null)
   const [saveName,setSaveName]=useState('')
   const [qData,setQData]=useState<QuestionnaireData>(DEFAULT_Q)
@@ -455,26 +680,17 @@ function NutritionTab(){
     },900)
   }
 
-  // ── Analyse IA réelle ──────────────────────────
-  async function logMeal(mealType:MealType){
+  function logMeal(mealType:MealType){
     if(!mealInput.trim()) return
-    const inputCopy=mealInput
-    setMealLoading(true)
-    setMealInput('')
-
-    // Message "en cours" dans le chat
-    const loadingId=uid()
-    const loadingMsg:ChatMessage={id:loadingId,role:'ai',content:'⏳ Analyse nutritionnelle en cours…',timestamp:nowTime()}
-    setChat(p=>[...p,loadingMsg])
-
-    const entry=await analyzeFood(inputCopy)
+    const entry = analyzeFood(mealInput)
     setMeals(p=>p.map(m=>m.type===mealType?{...m,entries:[...m.entries,entry]}:m))
-
     const secLabel=INITIAL_MEALS.find(m=>m.type===mealType)?.label||''
-    const aiContent=`📝 Ajouté à **${secLabel}**\n\n✅ ${entry.name}\n\n**${entry.cal} kcal** · ${entry.p}g protéines · ${entry.g}g glucides · ${entry.l}g lipides${entry.detail?`\n\n💡 ${entry.detail}`:''}`
-    setChat(p=>p.map(m=>m.id===loadingId?{...m,content:aiContent}:m))
-    setActiveMealLog(null)
-    setMealLoading(false)
+    const feedback = entry.cal>0
+      ? `✅ Ajouté à **${secLabel}**\n\n**${entry.cal} kcal** · ${entry.p}g protéines · ${entry.g}g glucides · ${entry.l}g lipides\n\n${entry.detail?`💡 ${entry.detail}`:''}`
+      : `⚠️ Aliments non reconnus dans "${mealInput}". Essaie de décrire plus simplement (ex: "3 oeufs", "100g riz", "1 banane").`
+    const am:ChatMessage={id:uid(),role:'ai',content:feedback,timestamp:nowTime()}
+    setChat(p=>[...p,am])
+    setMealInput(''); setActiveMealLog(null)
   }
 
   function removeEntry(mealType:MealType,id:string){
@@ -585,8 +801,6 @@ function NutritionTab(){
 
   return(
     <div style={{display:'flex',flexDirection:'column',gap:14}}>
-
-      {/* Bilan jour */}
       <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:20,boxShadow:'var(--shadow-card)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap' as const,gap:8}}>
           <h2 style={{fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0}}>Bilan du jour</h2>
@@ -617,7 +831,6 @@ function NutritionTab(){
         </div>
       </div>
 
-      {/* Sections repas */}
       {meals.map(section=>{
         const secTot={cal:section.entries.reduce((s,e)=>s+e.cal,0),p:section.entries.reduce((s,e)=>s+e.p,0),g:section.entries.reduce((s,e)=>s+e.g,0),l:section.entries.reduce((s,e)=>s+e.l,0)}
         const isLog=activeMealLog===section.type
@@ -650,7 +863,7 @@ function NutritionTab(){
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{fontSize:12,fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{e.name}</p>
                       <p style={{fontSize:10,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace'}}>{e.cal}kcal · {e.p}g P · {e.g}g G · {e.l}g L</p>
-                      {e.detail&&<p style={{fontSize:10,color:'var(--text-dim)',margin:'1px 0 0',fontStyle:'italic' as const}}>{e.detail}</p>}
+                      {e.detail&&<p style={{fontSize:10,color:'var(--text-dim)',margin:'1px 0 0',fontStyle:'italic' as const,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{e.detail}</p>}
                     </div>
                     <button onClick={()=>removeEntry(section.type,e.id)} style={{background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:14,padding:'2px 4px',flexShrink:0}}>✕</button>
                   </div>
@@ -660,17 +873,20 @@ function NutritionTab(){
             {isLog&&(
               <div style={{padding:'12px 16px',borderTop:'1px solid var(--border)',background:'var(--bg-card2)'}}>
                 <p style={{fontSize:11,color:'var(--text-dim)',marginBottom:6}}>
-                  Décris ce que tu as mangé — <strong style={{color:'#00c8e0'}}>l'IA calcule les macros précisément</strong>
+                  Décris ce que tu as mangé — sépare les aliments par des virgules
+                </p>
+                <p style={{fontSize:10,color:'#00c8e0',marginBottom:8}}>
+                  Ex: "3 oeufs au plat, 1 yaourt grec, 2 cuilleres miel, 1 banane, 50g bjorg crousti chocolat"
                 </p>
                 <div style={{display:'flex',gap:8}}>
                   <textarea value={mealInput} onChange={e=>setMealInput(e.target.value)}
                     onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();logMeal(section.type)} }}
-                    placeholder="Ex: 3 œufs au plat, 1 yaourt grec, 2 cuillères de miel, 1 banane, 50g céréales Bjorg crousti chocolat…"
+                    placeholder="3 oeufs au plat, 1 yaourt grec nature, 2 cuilleres a soupe de miel, 1 banane, 50g cereales…"
                     rows={2}
                     style={{flex:1,padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontSize:13,outline:'none',resize:'none' as const}}/>
-                  <button onClick={()=>logMeal(section.type)} disabled={mealLoading||!mealInput.trim()}
-                    style={{padding:'8px 14px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',alignSelf:'flex-end',opacity:mealLoading||!mealInput.trim()?0.5:1}}>
-                    {mealLoading?'⏳':'→ IA'}
+                  <button onClick={()=>logMeal(section.type)} disabled={!mealInput.trim()}
+                    style={{padding:'8px 14px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',alignSelf:'flex-end',opacity:!mealInput.trim()?0.5:1}}>
+                    → Analyser
                   </button>
                 </div>
                 {savedMeals.length>0&&(
@@ -692,11 +908,10 @@ function NutritionTab(){
         )
       })}
 
-      {/* Chat IA */}
       <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)'}}>
         <div style={{padding:'13px 16px',borderBottom:'1px solid var(--border)'}}>
           <h2 style={{fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0}}>🤖 Assistant IA Nutrition</h2>
-          <p style={{fontSize:11,color:'var(--text-dim)',margin:'2px 0 0'}}>Questions sur ta nutrition, tes objectifs, tes besoins — discussion libre</p>
+          <p style={{fontSize:11,color:'var(--text-dim)',margin:'2px 0 0'}}>Questions sur ta nutrition, tes objectifs, tes besoins</p>
         </div>
         <div ref={chatRef} style={{height:220,overflowY:'auto',padding:'12px 14px',display:'flex',flexDirection:'column',gap:7}}>
           {chat.map(m=>(
@@ -750,7 +965,6 @@ function NutritionTab(){
         </div>
       </div>
 
-      {/* ── Plan nutritionnel modal ── */}
       {plusMode==='plan'&&(
         <div onClick={()=>setPlusMode(null)} style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:480,width:'100%',maxHeight:'92vh',overflowY:'auto'}}>
@@ -762,8 +976,7 @@ function NutritionTab(){
               <div>
                 <div style={{padding:'14px 16px',borderRadius:12,background:'rgba(0,200,224,0.07)',border:'1px solid rgba(0,200,224,0.15)',marginBottom:16}}>
                   <p style={{fontSize:13,color:'var(--text-mid)',lineHeight:1.7,margin:0}}>
-                    👋 Je vais créer un plan <strong>100% personnalisé</strong> basé sur ton profil, ta charge d'entraînement et tes objectifs.<br/><br/>
-                    Pour calculer tes besoins précis j'ai besoin de quelques informations. <strong>2 minutes</strong> suffisent.
+                    👋 Je vais créer un plan <strong>100% personnalisé</strong> basé sur ton profil, ta charge d'entraînement et tes objectifs. 2 minutes suffisent.
                   </p>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:16}}>
@@ -829,7 +1042,6 @@ function NutritionTab(){
         </div>
       )}
 
-      {/* Repas enregistrés modal */}
       {plusMode==='saved'&&(
         <div onClick={()=>setPlusMode(null)} style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:440,width:'100%',maxHeight:'80vh',overflowY:'auto'}}>
@@ -861,7 +1073,6 @@ function NutritionTab(){
         </div>
       )}
 
-      {/* Save meal modal */}
       {saveModal&&(
         <div onClick={()=>setSaveModal(null)} style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:380,width:'100%'}}>

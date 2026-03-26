@@ -477,7 +477,7 @@ function RecordsTab() {
 
   function hyroxSimTotal(): string {
     let total = 0
-    HYROX_STATIONS.forEach(s => { total += parseTimeSec(HYROX_REC.stations[s] || '0:00') - (simDeltas[s] || 0) })
+    HYROX_STATIONS.forEach(s => { total += parseTimeSec((HYROX_REC.stations as Record<string,string>)[s] || '0:00') - (simDeltas[s] || 0) })
     HYROX_REC.runs.forEach((r, i) => { total += parseTimeSec(r) - (simDeltas['run'+i] || 0) })
     total += parseTimeSec(HYROX_REC.roxzone)
     const m = Math.floor(total/60), s = total%60

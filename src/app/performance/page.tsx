@@ -147,10 +147,12 @@ const ROW_REC: Record<string,{time:string;date:string}[]> = {
 }
 
 const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmers Carry','Sandbag Lunges','Wall Balls']
-const HYROX_REC = {
+const HYROX_REC: {
+  format:string; date:string; total:string; roxzone:string; penalties:string;
+  stations: Record<string,string>; runs:string[]
+} = {
   format:'Solo Open Homme', date:'2024-05-10', total:'1:02:45', roxzone:'8:30', penalties:'0',
   stations:{'SkiErg':'3:42','Sled Push':'3:15','Sled Pull':'2:55','Burpee Broad Jump':'5:10','Rowing':'3:28','Farmers Carry':'2:40','Sandbag Lunges':'5:55','Wall Balls':'4:50'},
-  runs:['4:12','4:08','4:15','4:22','4:18','4:30','4:35','4:28'],
 }
 
 const GYM_MOVES = [

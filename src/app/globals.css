@@ -22,6 +22,9 @@
   --input-bg:    #f0f6f9;
   --nav-w:       220px;
   --nav-w-mobile: 0px;
+  --gty-bg:      #111111;
+  --gty-text:    #ffffff;
+  --gty-border:  rgba(0,0,0,0.2);
 }
 
 .dark {
@@ -40,6 +43,9 @@
   --shadow:      0 2px 20px rgba(0,0,0,0.5);
   --shadow-card: 0 1px 1px rgba(0,0,0,0.3);
   --input-bg:    rgba(255,255,255,0.05);
+  --gty-bg:      #111111;
+  --gty-text:    #ffffff;
+  --gty-border:  rgba(255,255,255,0.15);
 }
 
 * {

@@ -1089,8 +1089,8 @@ function RaceYearTab() {
                       <p style={{fontFamily:'Syne,sans-serif',fontSize:past?13:18,fontWeight:800,color:past?'var(--text-dim)':level==='gty'?'var(--gty-text)':cfg.color,margin:0,lineHeight:1}}>{past?'✓':days}</p>
                       <p style={{fontSize:8,color:'var(--text-dim)',margin:0}}>{past?'Passée':'jours'}</p>
                     </div>
-                    <div style={{flex:1,minWidth:0}} onClick={()=>setDetailModal(r)} style={{cursor:'pointer',flex:1,minWidth:0}}>
-                      <p style={{fontSize:12,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{r.name}</p>
+                    <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setDetailModal(r)}>
+                    <p style={{fontSize:12,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{r.name}</p>
                       <p style={{fontSize:10,color:'var(--text-dim)',margin:'2px 0 0'}}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} · {SPORT_EMOJI[r.sport]}</p>
                       {r.goal&&<p style={{fontSize:9,color:'var(--text-mid)',margin:'1px 0 0'}}>🎯 {r.goal}</p>}
                     </div>

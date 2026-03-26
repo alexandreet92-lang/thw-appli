@@ -610,7 +610,7 @@ function RecordsTab() {
                 <div key={s} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.05)', border:'1px solid rgba(239,68,68,0.12)' }}>
                   <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', width:17, flexShrink:0 }}>{i+1}</span>
                   <span style={{ flex:1, fontSize:11 }}>{s}</span>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, color:'#ef4444' }}>{HYROX_REC.stations[s]}</span>
+                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, color:'#ef4444' }}>{(HYROX_REC.stations as Record<string,string>)[s]}</span>
                 </div>
               ))}
             </div>

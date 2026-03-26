@@ -404,7 +404,7 @@ function SessionDetailContent({session,onClose,onSave,onValidate,onDelete}:{sess
                 </div>)})}
               </div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap' as const,marginTop:6}}>
-                {Array.from(new Set(session.blocks.map(b=>b.zone))).sort().map(z=>(<span key={z} style={{display:'inline-flex',alignItems:'center',gap:3,fontSize:9,color:ZONE_COLORS[z-1]}}><span style={{width:7,height:7,borderRadius:2,background:ZONE_COLORS[z-1],display:'inline-block'}}/>{ZONE_LABELS[z-1]||`Z${z}`}</span>))}
+                {Array.from(new Set(session.blocks.map(b=>b.zone))).sort().map(z=>(<span key={z} style={{display:'inline-flex',alignItems:'center',gap:3,fontSize:9,color:ZONE_COLORS[z-1]}}><span style={{width:7,height:7,borderRadius:2,background:ZONE_COLORS[z-1],display:'inline-block'}}/>Z{z}</span>))}
               </div>
             </div>
           ):<p style={{fontSize:12,color:'var(--text-dim)',textAlign:'center' as const,padding:'16px 0'}}>Aucun bloc — va sur Modifier pour en ajouter.</p>}

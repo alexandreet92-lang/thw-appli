@@ -1,7 +1,6 @@
 'use client'
 
-import dynamic from 'next/dynamic'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type InjuryType = 'douleur' | 'gene' | 'blessure'
 type PainType   = 'musculaire' | 'articulaire' | 'tendineuse'
@@ -97,8 +96,6 @@ export const MUSCLE_ZONES: MuscleZone[] = [
   { id:'tib_r',    label:'Tibia droit',             group:'calves',     position:[0.10,0.22,0.07],  scale:[0.06,0.14,0.06], minZoom:'mid',   color:'#5080b0' },
   { id:'ank_l',    label:'Cheville gauche',         group:'calves',     position:[-0.09,0.07,0],    scale:[0.07,0.05,0.07], minZoom:'mid',   color:'#6090b8' },
   { id:'ank_r',    label:'Cheville droite',         group:'calves',     position:[0.09,0.07,0],     scale:[0.07,0.05,0.07], minZoom:'mid',   color:'#6090b8' },
-  { id:'far_l',    label:'Avant-bras gauche',       group:'arms',       position:[-0.25,1.06,0],    scale:[0.06,0.10,0.06], minZoom:'mid',   color:'#4070b0' },
-  { id:'far_r',    label:'Avant-bras droit',        group:'arms',       position:[0.25,1.06,0],     scale:[0.06,0.10,0.06], minZoom:'mid',   color:'#4070b0' },
   { id:'add_l',    label:'Adducteurs gauches',      group:'quads',      position:[-0.07,0.62,0.03], scale:[0.05,0.16,0.06], minZoom:'close', color:'#2860a8' },
   { id:'add_r',    label:'Adducteurs droits',       group:'quads',      position:[0.07,0.62,0.03],  scale:[0.05,0.16,0.06], minZoom:'close', color:'#2860a8' },
   { id:'ach_l',    label:'Tendon Achille gauche',   group:'calves',     position:[-0.09,0.12,-0.07],scale:[0.04,0.08,0.04], minZoom:'close', color:'#7098c0' },
@@ -137,18 +134,57 @@ const MOCK_INJURIES: Injury[] = [
   },
 ]
 
-const Body3DCanvas = dynamic(() => import('./Body3DCanvas'), {
-  ssr: false,
-  loading: () => (
-    <div style={{ width:'100%', height:'100%', minHeight:520, display:'flex', alignItems:'center', justifyContent:'center', background:'#040810', borderRadius:18 }}>
-      <div style={{ textAlign:'center' as const }}>
-        <div style={{ width:40, height:40, border:'3px solid rgba(0,200,224,0.3)', borderTop:'3px solid #00c8e0', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 1s linear infinite' }}/>
-        <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, fontFamily:'DM Sans,sans-serif', margin:0 }}>Chargement 3D...</p>
+// Lazy load the 3D canvas only in browser
+function LazyCanvas({ injuries, hovered, zoomLevel, onHover, onZoneClick, onZoomChange }: {
+  injuries: Injury[]
+  hovered: string | null
+  zoomLevel: ZoomLevel
+  onHover: (id: string | null) => void
+  onZoneClick: (zone: MuscleZone) => void
+  onZoomChange: (z: ZoomLevel) => void
+}) {
+  const [Canvas3D, setCanvas3D] = useState<React.ComponentType<{
+    injuries: Injury[]
+    hovered: string | null
+    zoomLevel: ZoomLevel
+    onHover: (id: string | null) => void
+    onZoneClick: (zone: MuscleZone) => void
+    onZoomChange: (z: ZoomLevel) => void
+    muscleZones: MuscleZone[]
+  }> | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    import('./Body3DCanvas').then(mod => {
+      setCanvas3D(() => mod.default)
+    })
+  }, [])
+
+  if (!mounted || !Canvas3D) {
+    return (
+      <div style={{ width:'100%', height:'100%', minHeight:520, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' as const }}>
+          <div style={{ width:40, height:40, border:'3px solid rgba(0,200,224,0.3)', borderTop:'3px solid #00c8e0', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 1s linear infinite' }}/>
+          <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, fontFamily:'DM Sans,sans-serif', margin:0 }}>Chargement 3D...</p>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
       </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  ),
-})
+    )
+  }
+
+  return (
+    <Canvas3D
+      injuries={injuries}
+      hovered={hovered}
+      zoomLevel={zoomLevel}
+      onHover={onHover}
+      onZoneClick={onZoneClick}
+      onZoomChange={onZoomChange}
+      muscleZones={MUSCLE_ZONES}
+    />
+  )
+}
 
 function AddInjuryModal({ zone, onClose, onSave }: { zone:MuscleZone; onClose:()=>void; onSave:(i:Injury)=>void }) {
   const [type,      setType]      = useState<InjuryType>('douleur')
@@ -353,14 +389,13 @@ export default function BlessuresPage() {
               {zoomLevel==='far'?'Gros muscles':zoomLevel==='mid'?'Muscles specifiques':'Muscles profonds'}
             </span>
           </div>
-          <Body3DCanvas
+          <LazyCanvas
             injuries={injuries}
             hovered={hovered}
             zoomLevel={zoomLevel}
             onHover={setHovered}
             onZoneClick={handleZoneClick}
             onZoomChange={setZoomLevel}
-            muscleZones={MUSCLE_ZONES}
           />
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:11, overflowY:'auto', maxHeight:580 }}>

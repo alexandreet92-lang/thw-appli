@@ -78,6 +78,16 @@ const NAV = [
     ),
   },
   {
+    href: '/injuries',
+    label: 'Blessures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+        <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+        <path d="M12 8v4M12 16h.01"/>
+      </svg>
+    ),
+  },
+  {
     href: '/athletes',
     label: 'Athlètes',
     icon: (
@@ -222,7 +232,6 @@ export function Sidebar() {
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
-  // Swipe gauche→droite pour ouvrir, droite→gauche pour fermer
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX
@@ -233,11 +242,9 @@ export function Sidebar() {
       const dx = e.changedTouches[0].clientX - touchStartX.current
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
 
-      // Swipe droite depuis bord gauche → ouvre
       if (dx > 60 && dy < 100 && touchStartX.current < 40) {
         setMobileOpen(true)
       }
-      // Swipe gauche → ferme
       if (dx < -60 && dy < 100) {
         setMobileOpen(false)
       }
@@ -254,7 +261,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* ══ DESKTOP — toujours visible, jamais fermable ══ */}
+      {/* Desktop */}
       <aside
         className="hidden md:flex flex-col flex-shrink-0"
         style={{
@@ -270,7 +277,7 @@ export function Sidebar() {
         <NavContent />
       </aside>
 
-      {/* ══ MOBILE — barre fixe en haut ══ */}
+      {/* Mobile top bar */}
       <div
         className="md:hidden"
         style={{
@@ -303,7 +310,6 @@ export function Sidebar() {
           </span>
         </Link>
 
-        {/* Bouton hamburger */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           style={{
@@ -326,7 +332,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* ══ MOBILE — drawer avec overlay ══ */}
+      {/* Mobile drawer */}
       {mobileOpen && (
         <>
           <div

@@ -1,43 +1,14 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Environment, ContactShadows, Html } from '@react-three/drei'
+import { OrbitControls, ContactShadows, Html } from '@react-three/drei'
 import * as THREE from 'three'
+import type { Injury, MuscleZone } from './page'
+import { iColor } from './page'
 
 type ZoomLevel = 'far' | 'mid' | 'close'
 type Status = 'actif' | 'amelioration' | 'gueri'
-
-interface MuscleZone {
-  id: string
-  label: string
-  group: string
-  position: [number, number, number]
-  scale: [number, number, number]
-  minZoom: ZoomLevel
-  color: string
-}
-
-interface Injury {
-  id: string
-  zoneId: string
-  zoneLabel: string
-  status: Status
-  intensity: number
-  type: string
-  painType: string
-  context: string
-  date: string
-  comment: string
-  history: { date: string; intensity: number; note: string }[]
-  aiAnalysis: string
-}
-
-function iColor(v: number): string {
-  if (v <= 3) return '#22c55e'
-  if (v <= 6) return '#ffb340'
-  return '#ef4444'
-}
 
 function MuscleMesh({ zone, injuries, hovered, zoomLevel, onHover, onClick }: {
   zone: MuscleZone
@@ -51,12 +22,9 @@ function MuscleMesh({ zone, injuries, hovered, zoomLevel, onHover, onClick }: {
   const inj = injuries.find(i => i.zoneId === zone.id && i.status !== 'gueri')
   const isHov = hovered === zone.id
   const hasInj = !!inj
-
   const zoomOrder: ZoomLevel[] = ['far', 'mid', 'close']
   const isVisible = zoomOrder.indexOf(zoomLevel) >= zoomOrder.indexOf(zone.minZoom)
-
-  const baseColor = new THREE.Color(zone.color)
-  const injColor = hasInj ? new THREE.Color(iColor(inj!.intensity)) : baseColor
+  const injColor = hasInj ? new THREE.Color(iColor(inj!.intensity)) : new THREE.Color(zone.color)
   const emissiveColor = isHov ? new THREE.Color('#00c8e0') : hasInj ? new THREE.Color(iColor(inj!.intensity)) : new THREE.Color(zone.color).multiplyScalar(0.3)
 
   useFrame(() => {
@@ -64,8 +32,7 @@ function MuscleMesh({ zone, injuries, hovered, zoomLevel, onHover, onClick }: {
     const mat = meshRef.current.material as THREE.MeshStandardMaterial
     const targetOp = isVisible ? (isHov ? 0.95 : hasInj ? 0.80 : 0.65) : 0
     mat.opacity = THREE.MathUtils.lerp(mat.opacity, targetOp, 0.08)
-    const targetEmi = isHov ? 0.5 : hasInj ? 0.3 : 0.05
-    mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetEmi, 0.1)
+    mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, isHov ? 0.5 : hasInj ? 0.3 : 0.05, 0.1)
     if (hasInj) {
       const pulse = 1 + Math.sin(Date.now() * 0.003) * 0.04
       meshRef.current.scale.setScalar(pulse)
@@ -86,29 +53,11 @@ function MuscleMesh({ zone, injuries, hovered, zoomLevel, onHover, onClick }: {
       castShadow
     >
       <capsuleGeometry args={[Math.min(zone.scale[0], zone.scale[2]) * 0.95, zone.scale[1] * 1.6, 8, 16]}/>
-      <meshStandardMaterial
-        color={injColor}
-        emissive={emissiveColor}
-        emissiveIntensity={0.05}
-        roughness={0.45}
-        metalness={0.15}
-        transparent
-        opacity={0}
-      />
+      <meshStandardMaterial color={injColor} emissive={emissiveColor} emissiveIntensity={0.05} roughness={0.45} metalness={0.15} transparent opacity={0}/>
       {(isHov || hasInj) && (
         <Html position={[0, zone.scale[1] + 0.08, 0]} distanceFactor={8} style={{ pointerEvents:'none' }}>
-          <div style={{
-            background:'rgba(4,8,16,0.92)',
-            border:`1px solid ${hasInj ? iColor(inj!.intensity) : 'rgba(0,200,224,0.5)'}`,
-            borderRadius:8, padding:'4px 10px',
-            fontSize:10, fontWeight:600,
-            color: hasInj ? iColor(inj!.intensity) : '#00c8e0',
-            whiteSpace:'nowrap', backdropFilter:'blur(8px)',
-            fontFamily:'DM Sans,sans-serif',
-            transform:'translateY(-8px)',
-          }}>
-            {zone.label}
-            {hasInj && <span style={{ marginLeft:6, opacity:0.8 }}>{inj!.intensity}/10</span>}
+          <div style={{ background:'rgba(4,8,16,0.92)', border:`1px solid ${hasInj?iColor(inj!.intensity):'rgba(0,200,224,0.5)'}`, borderRadius:8, padding:'4px 10px', fontSize:10, fontWeight:600, color:hasInj?iColor(inj!.intensity):'#00c8e0', whiteSpace:'nowrap', backdropFilter:'blur(8px)', fontFamily:'DM Sans,sans-serif', transform:'translateY(-8px)' }}>
+            {zone.label}{hasInj&&<span style={{ marginLeft:6, opacity:0.8 }}>{inj!.intensity}/10</span>}
           </div>
         </Html>
       )}
@@ -153,13 +102,8 @@ function CameraTracker({ onZoomChange }: { onZoomChange: (z: ZoomLevel) => void 
   const lastZoom = useRef<ZoomLevel>('far')
   useFrame(() => {
     const dist = camera.position.length()
-    let zoom: ZoomLevel = 'far'
-    if (dist < 2.2) zoom = 'close'
-    else if (dist < 3.5) zoom = 'mid'
-    if (zoom !== lastZoom.current) {
-      lastZoom.current = zoom
-      onZoomChange(zoom)
-    }
+    const zoom: ZoomLevel = dist < 2.2 ? 'close' : dist < 3.5 ? 'mid' : 'far'
+    if (zoom !== lastZoom.current) { lastZoom.current = zoom; onZoomChange(zoom) }
   })
   return null
 }
@@ -176,49 +120,23 @@ interface Props {
 
 export default function Body3DCanvas({ injuries, hovered, zoomLevel, onHover, onZoneClick, onZoomChange, muscleZones }: Props) {
   return (
-    <Canvas
-      camera={{ position:[0,0.8,4.0], fov:40 }}
-      shadows
-      gl={{ antialias:true, alpha:false, powerPreference:'high-performance' }}
-      style={{ width:'100%', height:'100%', minHeight:520 }}
-    >
+    <Canvas camera={{ position:[0,0.8,4.0], fov:40 }} shadows gl={{ antialias:true, alpha:false }} style={{ width:'100%', height:'100%', minHeight:520 }}>
       <color attach="background" args={['#040810']}/>
       <fog attach="fog" args={['#040810', 8, 18]}/>
-      <ambientLight intensity={0.5}/>
-      <directionalLight position={[3,5,3]} intensity={1.4} castShadow shadow-mapSize={[2048,2048]}/>
+      <ambientLight intensity={0.6}/>
+      <directionalLight position={[3,5,3]} intensity={1.4} castShadow/>
       <directionalLight position={[-3,3,-2]} intensity={0.5} color="#80b0ff"/>
       <pointLight position={[0,3,2]} intensity={0.8} color="#00c8e0" distance={8}/>
       <pointLight position={[0,0,-3]} intensity={0.3} color="#4060a0" distance={6}/>
-      <Environment preset="night"/>
       <CameraTracker onZoomChange={onZoomChange}/>
       <group position={[0,-0.1,0]}>
         <HumanBody/>
-        {muscleZones.map(zone => (
-          <MuscleMesh
-            key={zone.id}
-            zone={zone}
-            injuries={injuries}
-            hovered={hovered}
-            zoomLevel={zoomLevel}
-            onHover={onHover}
-            onClick={onZoneClick}
-          />
+        {muscleZones.map(zone=>(
+          <MuscleMesh key={zone.id} zone={zone} injuries={injuries} hovered={hovered} zoomLevel={zoomLevel} onHover={onHover} onClick={onZoneClick}/>
         ))}
       </group>
       <ContactShadows position={[0,-2.0,0]} opacity={0.4} scale={4} blur={3} far={3}/>
-      <OrbitControls
-        enablePan={false}
-        enableZoom={true}
-        enableRotate={true}
-        minDistance={1.4}
-        maxDistance={5.5}
-        minPolarAngle={0.2}
-        maxPolarAngle={2.5}
-        dampingFactor={0.06}
-        enableDamping
-        rotateSpeed={0.6}
-        zoomSpeed={0.8}
-      />
+      <OrbitControls enablePan={false} enableZoom={true} enableRotate={true} minDistance={1.4} maxDistance={5.5} minPolarAngle={0.2} maxPolarAngle={2.5} dampingFactor={0.06} enableDamping rotateSpeed={0.6} zoomSpeed={0.8}/>
     </Canvas>
   )
 }

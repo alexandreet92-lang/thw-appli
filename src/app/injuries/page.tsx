@@ -3,14 +3,13 @@
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 
-// ── Types ──────────────────────────────────────────
 type InjuryType = 'douleur' | 'gene' | 'blessure'
 type PainType   = 'musculaire' | 'articulaire' | 'tendineuse'
 type Context    = 'entrainement' | 'repos' | 'progressif' | 'soudain'
 type Status     = 'actif' | 'amelioration' | 'gueri'
 type ZoomLevel  = 'far' | 'mid' | 'close'
 
-interface MuscleZone {
+export interface MuscleZone {
   id: string
   label: string
   group: string
@@ -20,7 +19,7 @@ interface MuscleZone {
   color: string
 }
 
-interface Injury {
+export interface Injury {
   id: string
   zoneId: string
   zoneLabel: string
@@ -35,13 +34,13 @@ interface Injury {
   aiAnalysis: string
 }
 
-const STATUS_CFG: Record<Status, { label: string; color: string; bg: string }> = {
+export const STATUS_CFG: Record<Status, { label: string; color: string; bg: string }> = {
   actif:        { label: 'Actif',           color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
   amelioration: { label: 'En amelioration', color: '#ffb340', bg: 'rgba(255,179,64,0.12)' },
   gueri:        { label: 'Gueri',           color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
 }
 
-function iColor(v: number): string {
+export function iColor(v: number): string {
   if (v <= 3) return '#22c55e'
   if (v <= 6) return '#ffb340'
   return '#ef4444'
@@ -66,52 +65,50 @@ function genAI(zone: string, type: InjuryType, intensity: number, context: Conte
   return `CAUSE\n${ctx[context]}\n\nRECOMMANDATION\n${reco}\n\nALERTE\n${alert}`
 }
 
-const MUSCLE_ZONES: MuscleZone[] = [
-  { id:'head',     label:'Tete / Cou',               group:'head',        position:[0, 1.72, 0],       scale:[0.14,0.16,0.14], minZoom:'far',   color:'#7090b0' },
-  { id:'chest',    label:'Pectoraux',                 group:'chest',       position:[0, 1.32, 0.09],    scale:[0.22,0.12,0.08], minZoom:'far',   color:'#5080a0' },
-  { id:'uback',    label:'Haut du dos',               group:'back',        position:[0, 1.35,-0.09],    scale:[0.22,0.14,0.08], minZoom:'far',   color:'#4870a0' },
-  { id:'lback',    label:'Lombaires',                 group:'back',        position:[0, 1.10,-0.08],    scale:[0.16,0.10,0.08], minZoom:'far',   color:'#3d6090' },
-  { id:'sho_l',    label:'Epaule gauche',             group:'shoulders',   position:[-0.22,1.46,0],     scale:[0.10,0.10,0.10], minZoom:'far',   color:'#5888b0' },
-  { id:'sho_r',    label:'Epaule droite',             group:'shoulders',   position:[0.22, 1.46,0],     scale:[0.10,0.10,0.10], minZoom:'far',   color:'#5888b0' },
-  { id:'core',     label:'Abdominaux / Core',          group:'core',        position:[0, 1.15, 0.09],    scale:[0.18,0.14,0.08], minZoom:'far',   color:'#4878a8' },
-  { id:'glu_l',    label:'Fessier gauche',            group:'glutes',      position:[-0.11,0.88,-0.10], scale:[0.12,0.12,0.10], minZoom:'far',   color:'#4070a0' },
-  { id:'glu_r',    label:'Fessier droit',             group:'glutes',      position:[0.11, 0.88,-0.10], scale:[0.12,0.12,0.10], minZoom:'far',   color:'#4070a0' },
-  { id:'qua_l',    label:'Quadriceps gauche',         group:'quads',       position:[-0.11,0.60, 0.07], scale:[0.10,0.18,0.09], minZoom:'far',   color:'#3868a0' },
-  { id:'qua_r',    label:'Quadriceps droit',          group:'quads',       position:[0.11, 0.60, 0.07], scale:[0.10,0.18,0.09], minZoom:'far',   color:'#3868a0' },
-  { id:'ham_l',    label:'Ischio-jambier gauche',     group:'hamstrings',  position:[-0.11,0.60,-0.09], scale:[0.09,0.18,0.08], minZoom:'far',   color:'#3060a0' },
-  { id:'ham_r',    label:'Ischio-jambier droit',      group:'hamstrings',  position:[0.11, 0.60,-0.09], scale:[0.09,0.18,0.08], minZoom:'far',   color:'#3060a0' },
-  { id:'cal_l',    label:'Mollet gauche',             group:'calves',      position:[-0.10,0.22,-0.07], scale:[0.08,0.14,0.08], minZoom:'far',   color:'#2858a0' },
-  { id:'cal_r',    label:'Mollet droit',              group:'calves',      position:[0.10, 0.22,-0.07], scale:[0.08,0.14,0.08], minZoom:'far',   color:'#2858a0' },
-  { id:'kne_l',    label:'Genou gauche',              group:'knees',       position:[-0.10,0.40, 0.06], scale:[0.08,0.07,0.08], minZoom:'far',   color:'#6090b8' },
-  { id:'kne_r',    label:'Genou droit',               group:'knees',       position:[0.10, 0.40, 0.06], scale:[0.08,0.07,0.08], minZoom:'far',   color:'#6090b8' },
-  { id:'bic_l',    label:'Biceps gauche',             group:'arms',        position:[-0.24,1.24, 0.02], scale:[0.07,0.12,0.07], minZoom:'far',   color:'#5080b0' },
-  { id:'bic_r',    label:'Biceps droit',              group:'arms',        position:[0.24, 1.24, 0.02], scale:[0.07,0.12,0.07], minZoom:'far',   color:'#5080b0' },
-  { id:'tri_l',    label:'Triceps gauche',            group:'arms',        position:[-0.24,1.22,-0.04], scale:[0.07,0.12,0.06], minZoom:'far',   color:'#4878b0' },
-  { id:'tri_r',    label:'Triceps droit',             group:'arms',        position:[0.24, 1.22,-0.04], scale:[0.07,0.12,0.06], minZoom:'far',   color:'#4878b0' },
-  { id:'trap_l',   label:'Trapeze gauche',            group:'back',        position:[-0.14,1.50,-0.06], scale:[0.08,0.10,0.07], minZoom:'mid',   color:'#3870a8' },
-  { id:'trap_r',   label:'Trapeze droit',             group:'back',        position:[0.14, 1.50,-0.06], scale:[0.08,0.10,0.07], minZoom:'mid',   color:'#3870a8' },
-  { id:'delt_l',   label:'Deltoide gauche',           group:'shoulders',   position:[-0.22,1.46,0.05],  scale:[0.06,0.07,0.06], minZoom:'mid',   color:'#6898c0' },
-  { id:'delt_r',   label:'Deltoide droit',            group:'shoulders',   position:[0.22, 1.46,0.05],  scale:[0.06,0.07,0.06], minZoom:'mid',   color:'#6898c0' },
-  { id:'hip_l',    label:'Hanche / Psoas gauche',     group:'core',        position:[-0.12,0.92, 0.04], scale:[0.09,0.09,0.08], minZoom:'mid',   color:'#3868a8' },
-  { id:'hip_r',    label:'Hanche / Psoas droit',      group:'core',        position:[0.12, 0.92, 0.04], scale:[0.09,0.09,0.08], minZoom:'mid',   color:'#3868a8' },
-  { id:'tib_l',    label:'Tibia gauche',              group:'calves',      position:[-0.10,0.22, 0.07], scale:[0.06,0.14,0.06], minZoom:'mid',   color:'#5080b0' },
-  { id:'tib_r',    label:'Tibia droit',               group:'calves',      position:[0.10, 0.22, 0.07], scale:[0.06,0.14,0.06], minZoom:'mid',   color:'#5080b0' },
-  { id:'ank_l',    label:'Cheville gauche',           group:'calves',      position:[-0.09,0.07, 0],    scale:[0.07,0.05,0.07], minZoom:'mid',   color:'#6090b8' },
-  { id:'ank_r',    label:'Cheville droite',           group:'calves',      position:[0.09, 0.07, 0],    scale:[0.07,0.05,0.07], minZoom:'mid',   color:'#6090b8' },
-  { id:'far_l',    label:'Avant-bras gauche',         group:'arms',        position:[-0.25,1.06, 0],    scale:[0.06,0.10,0.06], minZoom:'mid',   color:'#4070b0' },
-  { id:'far_r',    label:'Avant-bras droit',          group:'arms',        position:[0.25, 1.06, 0],    scale:[0.06,0.10,0.06], minZoom:'mid',   color:'#4070b0' },
-  { id:'add_l',    label:'Adducteurs gauches',        group:'quads',       position:[-0.07,0.62, 0.03], scale:[0.05,0.16,0.06], minZoom:'close', color:'#2860a8' },
-  { id:'add_r',    label:'Adducteurs droits',         group:'quads',       position:[0.07, 0.62, 0.03], scale:[0.05,0.16,0.06], minZoom:'close', color:'#2860a8' },
-  { id:'ach_l',    label:'Tendon Achille gauche',     group:'calves',      position:[-0.09,0.12,-0.07], scale:[0.04,0.08,0.04], minZoom:'close', color:'#7098c0' },
-  { id:'ach_r',    label:'Tendon Achille droit',      group:'calves',      position:[0.09, 0.12,-0.07], scale:[0.04,0.08,0.04], minZoom:'close', color:'#7098c0' },
-  { id:'pec_l',    label:'Pec gauche chef sternal',   group:'chest',       position:[-0.09,1.30,0.10],  scale:[0.09,0.09,0.06], minZoom:'close', color:'#4878b0' },
-  { id:'pec_r',    label:'Pec droit chef sternal',    group:'chest',       position:[0.09, 1.30,0.10],  scale:[0.09,0.09,0.06], minZoom:'close', color:'#4878b0' },
-  { id:'obl_l',    label:'Oblique gauche',            group:'core',        position:[-0.09,1.12,0.08],  scale:[0.06,0.10,0.05], minZoom:'close', color:'#3060a8' },
-  { id:'obl_r',    label:'Oblique droit',             group:'core',        position:[0.09, 1.12,0.08],  scale:[0.06,0.10,0.05], minZoom:'close', color:'#3060a8' },
-  { id:'rotcuf_l', label:'Coiffe rotateurs gauche',   group:'shoulders',   position:[-0.22,1.44,-0.05], scale:[0.07,0.07,0.06], minZoom:'close', color:'#5888c0' },
-  { id:'rotcuf_r', label:'Coiffe rotateurs droit',    group:'shoulders',   position:[0.22, 1.44,-0.05], scale:[0.07,0.07,0.06], minZoom:'close', color:'#5888c0' },
-  { id:'it_l',     label:'Bandelette IT gauche',      group:'quads',       position:[-0.13,0.50, 0.04], scale:[0.04,0.20,0.04], minZoom:'close', color:'#2858a8' },
-  { id:'it_r',     label:'Bandelette IT droit',       group:'quads',       position:[0.13, 0.50, 0.04], scale:[0.04,0.20,0.04], minZoom:'close', color:'#2858a8' },
+export const MUSCLE_ZONES: MuscleZone[] = [
+  { id:'head',     label:'Tete / Cou',             group:'head',       position:[0,1.72,0],        scale:[0.14,0.16,0.14], minZoom:'far',   color:'#7090b0' },
+  { id:'chest',    label:'Pectoraux',               group:'chest',      position:[0,1.32,0.09],     scale:[0.22,0.12,0.08], minZoom:'far',   color:'#5080a0' },
+  { id:'uback',    label:'Haut du dos',             group:'back',       position:[0,1.35,-0.09],    scale:[0.22,0.14,0.08], minZoom:'far',   color:'#4870a0' },
+  { id:'lback',    label:'Lombaires',               group:'back',       position:[0,1.10,-0.08],    scale:[0.16,0.10,0.08], minZoom:'far',   color:'#3d6090' },
+  { id:'sho_l',    label:'Epaule gauche',           group:'shoulders',  position:[-0.22,1.46,0],    scale:[0.10,0.10,0.10], minZoom:'far',   color:'#5888b0' },
+  { id:'sho_r',    label:'Epaule droite',           group:'shoulders',  position:[0.22,1.46,0],     scale:[0.10,0.10,0.10], minZoom:'far',   color:'#5888b0' },
+  { id:'core',     label:'Abdominaux',              group:'core',       position:[0,1.15,0.09],     scale:[0.18,0.14,0.08], minZoom:'far',   color:'#4878a8' },
+  { id:'glu_l',    label:'Fessier gauche',          group:'glutes',     position:[-0.11,0.88,-0.10],scale:[0.12,0.12,0.10], minZoom:'far',   color:'#4070a0' },
+  { id:'glu_r',    label:'Fessier droit',           group:'glutes',     position:[0.11,0.88,-0.10], scale:[0.12,0.12,0.10], minZoom:'far',   color:'#4070a0' },
+  { id:'qua_l',    label:'Quadriceps gauche',       group:'quads',      position:[-0.11,0.60,0.07], scale:[0.10,0.18,0.09], minZoom:'far',   color:'#3868a0' },
+  { id:'qua_r',    label:'Quadriceps droit',        group:'quads',      position:[0.11,0.60,0.07],  scale:[0.10,0.18,0.09], minZoom:'far',   color:'#3868a0' },
+  { id:'ham_l',    label:'Ischio-jambier gauche',   group:'hamstrings', position:[-0.11,0.60,-0.09],scale:[0.09,0.18,0.08], minZoom:'far',   color:'#3060a0' },
+  { id:'ham_r',    label:'Ischio-jambier droit',    group:'hamstrings', position:[0.11,0.60,-0.09], scale:[0.09,0.18,0.08], minZoom:'far',   color:'#3060a0' },
+  { id:'cal_l',    label:'Mollet gauche',           group:'calves',     position:[-0.10,0.22,-0.07],scale:[0.08,0.14,0.08], minZoom:'far',   color:'#2858a0' },
+  { id:'cal_r',    label:'Mollet droit',            group:'calves',     position:[0.10,0.22,-0.07], scale:[0.08,0.14,0.08], minZoom:'far',   color:'#2858a0' },
+  { id:'kne_l',    label:'Genou gauche',            group:'knees',      position:[-0.10,0.40,0.06], scale:[0.08,0.07,0.08], minZoom:'far',   color:'#6090b8' },
+  { id:'kne_r',    label:'Genou droit',             group:'knees',      position:[0.10,0.40,0.06],  scale:[0.08,0.07,0.08], minZoom:'far',   color:'#6090b8' },
+  { id:'bic_l',    label:'Biceps gauche',           group:'arms',       position:[-0.24,1.24,0.02], scale:[0.07,0.12,0.07], minZoom:'far',   color:'#5080b0' },
+  { id:'bic_r',    label:'Biceps droit',            group:'arms',       position:[0.24,1.24,0.02],  scale:[0.07,0.12,0.07], minZoom:'far',   color:'#5080b0' },
+  { id:'tri_l',    label:'Triceps gauche',          group:'arms',       position:[-0.24,1.22,-0.04],scale:[0.07,0.12,0.06], minZoom:'far',   color:'#4878b0' },
+  { id:'tri_r',    label:'Triceps droit',           group:'arms',       position:[0.24,1.22,-0.04], scale:[0.07,0.12,0.06], minZoom:'far',   color:'#4878b0' },
+  { id:'trap_l',   label:'Trapeze gauche',          group:'back',       position:[-0.14,1.50,-0.06],scale:[0.08,0.10,0.07], minZoom:'mid',   color:'#3870a8' },
+  { id:'trap_r',   label:'Trapeze droit',           group:'back',       position:[0.14,1.50,-0.06], scale:[0.08,0.10,0.07], minZoom:'mid',   color:'#3870a8' },
+  { id:'delt_l',   label:'Deltoide gauche',         group:'shoulders',  position:[-0.22,1.46,0.05], scale:[0.06,0.07,0.06], minZoom:'mid',   color:'#6898c0' },
+  { id:'delt_r',   label:'Deltoide droit',          group:'shoulders',  position:[0.22,1.46,0.05],  scale:[0.06,0.07,0.06], minZoom:'mid',   color:'#6898c0' },
+  { id:'hip_l',    label:'Psoas gauche',            group:'core',       position:[-0.12,0.92,0.04], scale:[0.09,0.09,0.08], minZoom:'mid',   color:'#3868a8' },
+  { id:'hip_r',    label:'Psoas droit',             group:'core',       position:[0.12,0.92,0.04],  scale:[0.09,0.09,0.08], minZoom:'mid',   color:'#3868a8' },
+  { id:'tib_l',    label:'Tibia gauche',            group:'calves',     position:[-0.10,0.22,0.07], scale:[0.06,0.14,0.06], minZoom:'mid',   color:'#5080b0' },
+  { id:'tib_r',    label:'Tibia droit',             group:'calves',     position:[0.10,0.22,0.07],  scale:[0.06,0.14,0.06], minZoom:'mid',   color:'#5080b0' },
+  { id:'ank_l',    label:'Cheville gauche',         group:'calves',     position:[-0.09,0.07,0],    scale:[0.07,0.05,0.07], minZoom:'mid',   color:'#6090b8' },
+  { id:'ank_r',    label:'Cheville droite',         group:'calves',     position:[0.09,0.07,0],     scale:[0.07,0.05,0.07], minZoom:'mid',   color:'#6090b8' },
+  { id:'far_l',    label:'Avant-bras gauche',       group:'arms',       position:[-0.25,1.06,0],    scale:[0.06,0.10,0.06], minZoom:'mid',   color:'#4070b0' },
+  { id:'far_r',    label:'Avant-bras droit',        group:'arms',       position:[0.25,1.06,0],     scale:[0.06,0.10,0.06], minZoom:'mid',   color:'#4070b0' },
+  { id:'add_l',    label:'Adducteurs gauches',      group:'quads',      position:[-0.07,0.62,0.03], scale:[0.05,0.16,0.06], minZoom:'close', color:'#2860a8' },
+  { id:'add_r',    label:'Adducteurs droits',       group:'quads',      position:[0.07,0.62,0.03],  scale:[0.05,0.16,0.06], minZoom:'close', color:'#2860a8' },
+  { id:'ach_l',    label:'Tendon Achille gauche',   group:'calves',     position:[-0.09,0.12,-0.07],scale:[0.04,0.08,0.04], minZoom:'close', color:'#7098c0' },
+  { id:'ach_r',    label:'Tendon Achille droit',    group:'calves',     position:[0.09,0.12,-0.07], scale:[0.04,0.08,0.04], minZoom:'close', color:'#7098c0' },
+  { id:'obl_l',    label:'Oblique gauche',          group:'core',       position:[-0.09,1.12,0.08], scale:[0.06,0.10,0.05], minZoom:'close', color:'#3060a8' },
+  { id:'obl_r',    label:'Oblique droit',           group:'core',       position:[0.09,1.12,0.08],  scale:[0.06,0.10,0.05], minZoom:'close', color:'#3060a8' },
+  { id:'rotcuf_l', label:'Coiffe rotateurs gauche', group:'shoulders',  position:[-0.22,1.44,-0.05],scale:[0.07,0.07,0.06], minZoom:'close', color:'#5888c0' },
+  { id:'rotcuf_r', label:'Coiffe rotateurs droit',  group:'shoulders',  position:[0.22,1.44,-0.05], scale:[0.07,0.07,0.06], minZoom:'close', color:'#5888c0' },
+  { id:'it_l',     label:'Bandelette IT gauche',    group:'quads',      position:[-0.13,0.50,0.04], scale:[0.04,0.20,0.04], minZoom:'close', color:'#2858a8' },
+  { id:'it_r',     label:'Bandelette IT droit',     group:'quads',      position:[0.13,0.50,0.04],  scale:[0.04,0.20,0.04], minZoom:'close', color:'#2858a8' },
 ]
 
 const MOCK_INJURIES: Injury[] = [
@@ -140,22 +137,20 @@ const MOCK_INJURIES: Injury[] = [
   },
 ]
 
-// ── Dynamic import of 3D canvas (no SSR) ───────────
 const Body3DCanvas = dynamic(() => import('./Body3DCanvas'), {
   ssr: false,
   loading: () => (
     <div style={{ width:'100%', height:'100%', minHeight:520, display:'flex', alignItems:'center', justifyContent:'center', background:'#040810', borderRadius:18 }}>
       <div style={{ textAlign:'center' as const }}>
         <div style={{ width:40, height:40, border:'3px solid rgba(0,200,224,0.3)', borderTop:'3px solid #00c8e0', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 1s linear infinite' }}/>
-        <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, fontFamily:'DM Sans,sans-serif' }}>Chargement du corps 3D...</p>
+        <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, fontFamily:'DM Sans,sans-serif', margin:0 }}>Chargement 3D...</p>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   ),
 })
 
-// ── Add Injury Modal ───────────────────────────────
-function AddInjuryModal({ zone, onClose, onSave }: { zone: MuscleZone; onClose: ()=>void; onSave: (i: Injury)=>void }) {
+function AddInjuryModal({ zone, onClose, onSave }: { zone:MuscleZone; onClose:()=>void; onSave:(i:Injury)=>void }) {
   const [type,      setType]      = useState<InjuryType>('douleur')
   const [painType,  setPainType]  = useState<PainType>('musculaire')
   const [intensity, setIntensity] = useState(5)
@@ -165,13 +160,7 @@ function AddInjuryModal({ zone, onClose, onSave }: { zone: MuscleZone; onClose: 
   const c = iColor(intensity)
 
   function save() {
-    onSave({
-      id: uid(), zoneId: zone.id, zoneLabel: zone.label,
-      type, painType, intensity, context, date, comment,
-      status: 'actif',
-      history: [{ date, intensity, note: 'Premier enregistrement' }],
-      aiAnalysis: genAI(zone.label, type, intensity, context),
-    })
+    onSave({ id:uid(), zoneId:zone.id, zoneLabel:zone.label, type, painType, intensity, context, date, comment, status:'actif', history:[{date,intensity,note:'Premier enregistrement'}], aiAnalysis:genAI(zone.label,type,intensity,context) })
     onClose()
   }
 
@@ -218,20 +207,18 @@ function AddInjuryModal({ zone, onClose, onSave }: { zone: MuscleZone; onClose: 
           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', marginBottom:6 }}>Commentaire</p>
           <textarea value={comment} onChange={e=>setComment(e.target.value)} rows={2} placeholder="Description..." style={{ width:'100%', padding:'8px 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif' }}/>
         </div>
-        <button onClick={save} style={{ width:'100%', padding:13, borderRadius:12, background:'linear-gradient(135deg,#ef4444,#f97316)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>
-          Enregistrer + Analyse IA
-        </button>
+        <button onClick={save} style={{ width:'100%', padding:13, borderRadius:12, background:'linear-gradient(135deg,#ef4444,#f97316)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>Enregistrer + Analyse IA</button>
       </div>
     </div>
   )
 }
 
-// ── Injury Panel ───────────────────────────────────
 function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=>void; onUpdate:(i:Injury)=>void }) {
-  const [status, setStatus] = useState<Status>(injury.status)
+  const [status,  setStatus]  = useState<Status>(injury.status)
   const [newNote, setNewNote] = useState('')
-  const [newInt, setNewInt] = useState(injury.intensity)
+  const [newInt,  setNewInt]  = useState(injury.intensity)
   const c = iColor(injury.intensity)
+  const cfg = STATUS_CFG[status]
 
   function addEntry() {
     if (!newNote.trim()) return
@@ -244,7 +231,7 @@ function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
         <div>
           <div style={{ display:'flex', gap:6, marginBottom:5 }}>
-            <span style={{ padding:'2px 8px', borderRadius:20, background:STATUS_CFG[status].bg, color:STATUS_CFG[status].color, fontSize:10, fontWeight:700 }}>{STATUS_CFG[status].label}</span>
+            <span style={{ padding:'2px 8px', borderRadius:20, background:cfg.bg, color:cfg.color, fontSize:10, fontWeight:700 }}>{cfg.label}</span>
             <span style={{ padding:'2px 8px', borderRadius:20, background:'rgba(239,68,68,0.10)', color:'#ef4444', fontSize:10, fontWeight:600 }}>{injury.type}</span>
           </div>
           <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>{injury.zoneLabel}</h3>
@@ -264,13 +251,12 @@ function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=
       <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:11, padding:'11px 13px' }}>
         <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 7px' }}>Evolution</p>
         <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:44 }}>
-          {injury.history.map((h,i)=>{
-            const hc=iColor(h.intensity)
-            return <div key={i} title={`${h.date}: ${h.intensity}/10`} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+          {injury.history.map((h,i)=>{ const hc=iColor(h.intensity); return (
+            <div key={i} title={`${h.date}: ${h.intensity}/10`} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
               <div style={{ width:'100%', height:`${(h.intensity/10)*44}px`, background:`linear-gradient(180deg,${hc}cc,${hc}44)`, borderRadius:'3px 3px 0 0', minHeight:2 }}/>
               <span style={{ fontSize:7, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{h.date.slice(5)}</span>
             </div>
-          })}
+          )})}
         </div>
       </div>
       <div style={{ padding:'11px 13px', borderRadius:11, background:'rgba(0,200,224,0.06)', border:'1px solid rgba(0,200,224,0.18)' }}>
@@ -278,10 +264,9 @@ function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=
         <p style={{ fontSize:11, color:'var(--text-mid)', lineHeight:1.65, margin:0, whiteSpace:'pre-line' as const }}>{injury.aiAnalysis}</p>
       </div>
       <div style={{ display:'flex', gap:6 }}>
-        {(['actif','amelioration','gueri'] as Status[]).map(s=>{
-          const sc=STATUS_CFG[s]
-          return <button key={s} onClick={()=>setStatus(s)} style={{ flex:1, padding:'7px', borderRadius:9, border:'1px solid', cursor:'pointer', borderColor:status===s?sc.color:'var(--border)', background:status===s?sc.bg:'var(--bg-card2)', color:status===s?sc.color:'var(--text-mid)', fontSize:10, fontWeight:status===s?600:400 }}>{sc.label}</button>
-        })}
+        {(['actif','amelioration','gueri'] as Status[]).map(s=>{ const sc=STATUS_CFG[s]; return (
+          <button key={s} onClick={()=>setStatus(s)} style={{ flex:1, padding:'7px', borderRadius:9, border:'1px solid', cursor:'pointer', borderColor:status===s?sc.color:'var(--border)', background:status===s?sc.bg:'var(--bg-card2)', color:status===s?sc.color:'var(--text-mid)', fontSize:10, fontWeight:status===s?600:400 }}>{sc.label}</button>
+        )})}
       </div>
       <div>
         <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:7 }}>
@@ -299,9 +284,6 @@ function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=
   )
 }
 
-// ════════════════════════════════════════════════
-// PAGE
-// ════════════════════════════════════════════════
 export default function BlessuresPage() {
   const [injuries,    setInjuries]    = useState<Injury[]>(MOCK_INJURIES)
   const [hovered,     setHovered]     = useState<string|null>(null)
@@ -321,7 +303,7 @@ export default function BlessuresPage() {
   }[globalStatus]
 
   function handleZoneClick(zone: MuscleZone) {
-    const existing = injuries.find(i=>i.zoneId===zone.id && i.status!=='gueri')
+    const existing = injuries.find(i=>i.zoneId===zone.id&&i.status!=='gueri')
     if (existing) setSelectedInj(existing)
     else setAddModal(zone)
   }
@@ -329,31 +311,21 @@ export default function BlessuresPage() {
   function handleAdd(inj: Injury) { setInjuries(p=>[...p,inj]); setSelectedInj(inj) }
   function handleUpdate(u: Injury) { setInjuries(p=>p.map(i=>i.id===u.id?u:i)); setSelectedInj(u) }
 
-  const zoomLabels: Record<ZoomLevel,string> = {
-    far:   'Vue globale',
-    mid:   'Vue detaillee',
-    close: 'Vue precise',
-  }
+  const zoomLabels: Record<ZoomLevel,string> = { far:'Vue globale', mid:'Vue detaillee', close:'Vue precise' }
 
   return (
     <div style={{ padding:'20px 24px', maxWidth:'100%', display:'flex', flexDirection:'column', gap:14 }}>
-      {addModal && <AddInjuryModal zone={addModal} onClose={()=>setAddModal(null)} onSave={handleAdd}/>}
-
+      {addModal&&<AddInjuryModal zone={addModal} onClose={()=>setAddModal(null)} onSave={handleAdd}/>}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' as const, gap:10 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Blessures</h1>
-          <p style={{ fontSize:12, color:'var(--text-dim)', margin:'3px 0 0' }}>Corps 3D · Drag pour tourner · Scroll pour zoomer</p>
+          <p style={{ fontSize:12, color:'var(--text-dim)', margin:'3px 0 0' }}>Corps 3D · Drag tourner · Scroll zoomer</p>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <span style={{ padding:'4px 10px', borderRadius:20, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:10, fontWeight:600 }}>
-            {zoomLabels[zoomLevel]}
-          </span>
-          <span style={{ padding:'5px 12px', borderRadius:20, background:globalCfg.bg, border:`1px solid ${globalCfg.color}55`, color:globalCfg.color, fontSize:11, fontWeight:700 }}>
-            {globalCfg.label}
-          </span>
+          <span style={{ padding:'4px 10px', borderRadius:20, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:10, fontWeight:600 }}>{zoomLabels[zoomLevel]}</span>
+          <span style={{ padding:'5px 12px', borderRadius:20, background:globalCfg.bg, border:`1px solid ${globalCfg.color}55`, color:globalCfg.color, fontSize:11, fontWeight:700 }}>{globalCfg.label}</span>
         </div>
       </div>
-
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
         {[
           { label:'Actives',      value:active.length,    color:'#ef4444' },
@@ -366,7 +338,6 @@ export default function BlessuresPage() {
           </div>
         ))}
       </div>
-
       <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:14, minHeight:520 }} className="md:grid-cols-[1fr_320px]">
         <div style={{ background:'#040810', borderRadius:18, overflow:'hidden', position:'relative', minHeight:520, boxShadow:'0 8px 40px rgba(0,0,0,0.6)' }}>
           <div style={{ position:'absolute', top:14, left:14, zIndex:10 }}>
@@ -392,7 +363,6 @@ export default function BlessuresPage() {
             muscleZones={MUSCLE_ZONES}
           />
         </div>
-
         <div style={{ display:'flex', flexDirection:'column', gap:11, overflowY:'auto', maxHeight:580 }}>
           {selectedInj?(
             <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:16, boxShadow:'var(--shadow-card)' }}>
@@ -416,38 +386,32 @@ export default function BlessuresPage() {
               </div>
             </div>
           )}
-
           {[...active,...improving].length>0&&(
             <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:14, boxShadow:'var(--shadow-card)' }}>
               <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, margin:'0 0 9px' }}>Blessures en cours</h3>
               <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                {[...active,...improving].map(inj=>{
-                  const c=iColor(inj.intensity)
-                  const cfg=STATUS_CFG[inj.status]
-                  return(
-                    <div key={inj.id} onClick={()=>setSelectedInj(inj)} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 10px', borderRadius:9, background:'var(--bg-card2)', borderLeft:`3px solid ${c}`, cursor:'pointer' }}>
-                      <div style={{ width:28,height:28,borderRadius:7,background:`${c}22`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                        <span style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:800,color:c }}>{inj.intensity}</span>
-                      </div>
-                      <div style={{ flex:1,minWidth:0 }}>
-                        <p style={{ fontSize:11,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{inj.zoneLabel}</p>
-                        <p style={{ fontSize:9,color:'var(--text-dim)',margin:'1px 0 0' }}>{inj.type} · {inj.painType}</p>
-                      </div>
-                      <span style={{ fontSize:8,padding:'2px 6px',borderRadius:20,background:cfg.bg,color:cfg.color,fontWeight:700,flexShrink:0 }}>{cfg.label}</span>
+                {[...active,...improving].map(inj=>{ const c=iColor(inj.intensity); const cfg=STATUS_CFG[inj.status]; return (
+                  <div key={inj.id} onClick={()=>setSelectedInj(inj)} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 10px', borderRadius:9, background:'var(--bg-card2)', borderLeft:`3px solid ${c}`, cursor:'pointer' }}>
+                    <div style={{ width:28,height:28,borderRadius:7,background:`${c}22`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                      <span style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:800,color:c }}>{inj.intensity}</span>
                     </div>
-                  )
-                })}
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <p style={{ fontSize:11,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{inj.zoneLabel}</p>
+                      <p style={{ fontSize:9,color:'var(--text-dim)',margin:'1px 0 0' }}>{inj.type} · {inj.painType}</p>
+                    </div>
+                    <span style={{ fontSize:8,padding:'2px 6px',borderRadius:20,background:cfg.bg,color:cfg.color,fontWeight:700,flexShrink:0 }}>{cfg.label}</span>
+                  </div>
+                )})}
               </div>
             </div>
           )}
-
           <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:13, boxShadow:'var(--shadow-card)' }}>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Legende</p>
             {[
               { c:'#4878b0', label:'Muscles visibles' },
-              { c:'#22c55e', label:'Legere (1-3)' },
-              { c:'#ffb340', label:'Moderee (4-6)' },
-              { c:'#ef4444', label:'Severe (7-10)' },
+              { c:'#22c55e', label:'Legere 1-3' },
+              { c:'#ffb340', label:'Moderee 4-6' },
+              { c:'#ef4444', label:'Severe 7-10' },
             ].map(x=>(
               <div key={x.label} style={{ display:'flex',alignItems:'center',gap:7,marginBottom:5 }}>
                 <div style={{ width:9,height:9,borderRadius:'50%',background:x.c,flexShrink:0,boxShadow:`0 0 5px ${x.c}` }}/>

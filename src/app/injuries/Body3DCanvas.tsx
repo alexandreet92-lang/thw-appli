@@ -26,7 +26,11 @@ interface Injury {
   intensity: number
   type: string
   painType: string
-  [key: string]: unknown
+  context: string
+  date: string
+  comment: string
+  history: { date: string; intensity: number; note: string }[]
+  aiAnalysis: string
 }
 
 function iColor(v: number): string {

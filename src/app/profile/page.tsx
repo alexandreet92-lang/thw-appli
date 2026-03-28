@@ -1,53 +1,158 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 // ── Types ─────────────────────────────────────────
 type ProfileTab = 'profil' | 'zones' | 'records'
-type SportType  = 'run' | 'bike' | 'swim' | 'rowing' | 'hyrox' | 'triathlon' | 'trail'
-type SubPlan    = 'trial' | 'premium' | 'pro'
+type SportType  = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox' | 'triathlon' | 'trail'
+type SubPlan    = 'trial' | 'premium' | 'pro' | 'expert'
+type ZoneSport  = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox_row' | 'hyrox_ski'
 
-// ── Sport config ──────────────────────────────────
-const SPORT_EMOJI: Record<string,string> = {
-  run:'🏃', bike:'🚴', swim:'🏊', rowing:'🚣', hyrox:'🏋️', triathlon:'🔱', trail:'⛰️', gym:'💪'
-}
-const SPORT_LABEL: Record<string,string> = {
-  run:'Running', bike:'Cyclisme', swim:'Natation', rowing:'Aviron', hyrox:'Hyrox', triathlon:'Triathlon', trail:'Trail', gym:'Musculation'
-}
-const SPORT_COLOR: Record<string,string> = {
-  run:'#22c55e', bike:'#3b82f6', swim:'#38bdf8', rowing:'#14b8a6', hyrox:'#ef4444', triathlon:'#a855f7', trail:'#f97316', gym:'#ffb340'
-}
-
+// ── Helpers ───────────────────────────────────────
 function uid() { return `${Date.now()}_${Math.random().toString(36).slice(2)}` }
+function today() { return new Date().toISOString().split('T')[0] }
 
 function sinceDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const months = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth()
-  const y = Math.floor(months / 12), m = months % 12
-  if (y === 0) return `${m} mois`
-  if (m === 0) return `${y} an${y > 1 ? 's' : ''}`
-  return `${y} an${y > 1 ? 's' : ''} ${m} mois`
+  const d = new Date(dateStr), now = new Date()
+  const months = (now.getFullYear()-d.getFullYear())*12+now.getMonth()-d.getMonth()
+  const y = Math.floor(months/12), m = months%12
+  if (y===0) return `${m} mois`
+  if (m===0) return `${y} an${y>1?'s':''}`
+  return `${y} an${y>1?'s':''} ${m} mois`
 }
 
-// ── Card wrapper ──────────────────────────────────
+// ── Sport config ──────────────────────────────────
+const SPORT_LABEL: Record<string,string> = {
+  run:'Running', bike:'Cyclisme', swim:'Natation', rowing:'Aviron',
+  hyrox:'Hyrox', triathlon:'Triathlon', trail:'Trail', gym:'Musculation'
+}
+const SPORT_COLOR: Record<string,string> = {
+  run:'#22c55e', bike:'#3b82f6', swim:'#38bdf8', rowing:'#14b8a6',
+  hyrox:'#ef4444', triathlon:'#a855f7', trail:'#f97316', gym:'#ffb340'
+}
+
+// ── Zone colors ───────────────────────────────────
+const Z_COLORS = ['#60a5fa','#34d399','#fbbf24','#f97316','#ef4444']
+const Z_NAMES  = ['Z1','Z2','Z3','Z4','Z5']
+const Z_LABELS = ['Récup','Aérobie','Tempo','Seuil','VO2max']
+
+// ── App logos (SVG inline) ─────────────────────────
+function AppLogo({ id, size=28 }: { id: string; size?: number }) {
+  const logos: Record<string,React.ReactNode> = {
+    strava: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116z" fill="#FC4C02"/>
+        <path d="M11.214 13.828l2.084-4.116 2.089 4.116h3.066L13.298 3.656l-5.15 10.172h3.066z" fill="#FC4C02"/>
+      </svg>
+    ),
+    apple_health: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="5" fill="#FF2D55"/>
+        <path d="M12 6c.5-1.5 2-2.5 3.5-2 1.5.5 2 2 1.5 3.5L12 18 7 7.5C6.5 6 7 4.5 8.5 4c1.5-.5 3 .5 3.5 2z" fill="white"/>
+      </svg>
+    ),
+    google_fit: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="12" fill="#4285F4"/>
+        <path d="M12 6l1.5 3h3l-2.5 2 1 3-3-2-3 2 1-3-2.5-2h3z" fill="white"/>
+      </svg>
+    ),
+    withings: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="12" fill="#00B5D8"/>
+        <text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">W</text>
+      </svg>
+    ),
+    fitbit: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="12" fill="#00B0B9"/>
+        <circle cx="12" cy="8" r="1.5" fill="white"/>
+        <circle cx="12" cy="12" r="2" fill="white"/>
+        <circle cx="12" cy="16.5" r="1.5" fill="white"/>
+        <circle cx="7.5" cy="10" r="1.5" fill="white"/>
+        <circle cx="16.5" cy="10" r="1.5" fill="white"/>
+        <circle cx="7.5" cy="14" r="1.5" fill="white"/>
+        <circle cx="16.5" cy="14" r="1.5" fill="white"/>
+      </svg>
+    ),
+    hrv4training: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="5" fill="#E53E3E"/>
+        <path d="M3 12h3l2-6 4 12 2-6h7" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    elite_hrv: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="5" fill="#2D3748"/>
+        <path d="M4 12h3l2-5 4 10 2-5h5" stroke="#68D391" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      </svg>
+    ),
+    oura: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="12" fill="#1A1A2E"/>
+        <circle cx="12" cy="12" r="5" stroke="#C4A35A" strokeWidth="2" fill="none"/>
+        <circle cx="12" cy="12" r="2" fill="#C4A35A"/>
+      </svg>
+    ),
+    myfitnesspal: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="5" fill="#00B3E6"/>
+        <text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">MFP</text>
+      </svg>
+    ),
+    cronometer: (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="12" fill="#F5A623"/>
+        <text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">C</text>
+      </svg>
+    ),
+  }
+  return <>{logos[id] || <div style={{ width:size, height:size, borderRadius:6, background:'var(--border)' }}/>}</>
+}
+
+// ── Shared components ─────────────────────────────
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:20, boxShadow:'var(--shadow-card)', ...style }}>
+    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:20, boxShadow:'var(--shadow-card)', marginBottom:12, ...style }}>
       {children}
     </div>
   )
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', margin:'0 0 14px' }}>{children}</h3>
+  return <p style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 14px' }}>{children}</p>
 }
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!value)} style={{ width:40, height:22, borderRadius:11, background:value?'#00c8e0':'var(--border)', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-      <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?21:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/>
+    <button onClick={() => onChange(!value)} style={{ width:38, height:21, borderRadius:11, background:value?'#00c8e0':'rgba(120,120,140,0.3)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+      <div style={{ width:15, height:15, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/>
     </button>
+  )
+}
+
+// ── Info tooltip ──────────────────────────────────
+function InfoModal({ title, content, onClose }: { title: string; content: React.ReactNode; onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
+        </div>
+        <div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div>
+      </div>
+    </div>
+  )
+}
+
+function HelpBtn({ title, content }: { title: string; content: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button onClick={()=>setOpen(true)} style={{ width:16, height:16, borderRadius:'50%', background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:9, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, verticalAlign:'middle' }}>?</button>
+      {open && <InfoModal title={title} content={content} onClose={()=>setOpen(false)}/>}
+    </>
   )
 }
 
@@ -55,192 +160,300 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 // BLOC 1 — PROFIL
 // ════════════════════════════════════════════════
 function ProfilBloc() {
-  const [name,   setName]   = useState('Alexandre')
-  const [age,    setAge]    = useState(31)
-  const [height, setHeight] = useState(178)
-  const [weight, setWeight] = useState(75)
-  const [email,  setEmail]  = useState('alexandre@thw.fr')
-  const [editing, setEditing] = useState(false)
+  const [name,   setName]   = useState('')
+  const [age,    setAge]    = useState<number|string>('')
+  const [height, setHeight] = useState<number|string>('')
+  const [weight, setWeight] = useState<number|string>('')
+  const [email,  setEmail]  = useState('')
+  const [bio,    setBio]    = useState('')
+  const [editing, setEditing] = useState(true)
+  const [photo,   setPhoto]   = useState<string|null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  const [sports, setSports] = useState([
-    { id:'1', sport:'run',    since:'2018-03-01' },
-    { id:'2', sport:'bike',   since:'2020-06-15' },
-    { id:'3', sport:'swim',   since:'2021-01-10' },
-    { id:'4', sport:'hyrox',  since:'2023-09-01' },
-  ])
+  const [sports, setSports] = useState<{id:string;sport:string;since:string}[]>([])
   const [newSport, setNewSport] = useState('run')
-  const [newSince, setNewSince] = useState('2020-01-01')
+  const [newSince, setNewSince] = useState('')
 
-  const [plan] = useState<SubPlan>('trial')
-  const [trialDays] = useState(9)
+  // Abonnement
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [planExpanded, setPlanExpanded] = useState(false)
+  const trialDays = 14
+  const trialLeft = 9
 
+  // Connexions
   const [connections, setConnections] = useState([
-    { id:'strava',  label:'Strava',  connected:true,  lastSync:'2025-03-27' },
-    { id:'garmin',  label:'Garmin',  connected:false, lastSync:'' },
-    { id:'polar',   label:'Polar',   connected:false, lastSync:'' },
-    { id:'zwift',   label:'Zwift',   connected:false, lastSync:'' },
-    { id:'hrv',     label:'HRV4Training', connected:false, lastSync:'' },
+    { id:'strava',       label:'Strava',        connected:false, lastSync:'' },
+    { id:'apple_health', label:'Apple Health',  connected:false, lastSync:'' },
+    { id:'google_fit',   label:'Google Fit',    connected:false, lastSync:'' },
+    { id:'withings',     label:'Withings',      connected:false, lastSync:'' },
+    { id:'fitbit',       label:'Fitbit',        connected:false, lastSync:'' },
+    { id:'hrv4training', label:'HRV4Training',  connected:false, lastSync:'' },
+    { id:'elite_hrv',    label:'Elite HRV',     connected:false, lastSync:'' },
+    { id:'oura',         label:'Oura',          connected:false, lastSync:'' },
+    { id:'myfitnesspal', label:'MyFitnessPal',  connected:false, lastSync:'' },
+    { id:'cronometer',   label:'Cronometer',    connected:false, lastSync:'' },
   ])
 
+  // Notifications
   const [notifs, setNotifs] = useState({
-    globalOn:     true,
-    morningProg:  true, morningTime:'07:00',
-    sessionRemind:true, sessionMin:30,
-    hrv:          true,
-    fatigue:      true,
-    sleep:        false,
-    meals:        true,
-    updates:      true,
-    weekSummary:  true,
-    monthSummary: true,
+    globalOn:true, morningProg:true, sessionRemind:true,
+    hrv:true, fatigue:true, sleep:false, meals:true,
+    updates:true, weekSummary:true, monthSummary:false,
   })
 
+  // Sommeil
   const [sleepActive, setSleepActive] = useState(false)
   const [sleepStart,  setSleepStart]  = useState<Date|null>(null)
   const [sleepDur,    setSleepDur]    = useState<string|null>(null)
+  const [sleepInfo,   setSleepInfo]   = useState(false)
+
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const r = new FileReader()
+    r.onload = ev => setPhoto(ev.target?.result as string)
+    r.readAsDataURL(f)
+  }
 
   function toggleSleep() {
-    if (!sleepActive) {
-      setSleepActive(true)
-      setSleepStart(new Date())
-      setSleepDur(null)
-    } else {
-      const dur = sleepStart ? Math.round((Date.now() - sleepStart.getTime()) / 60000) : 0
+    if (!sleepActive) { setSleepActive(true); setSleepStart(new Date()); setSleepDur(null) }
+    else {
+      const dur = sleepStart ? Math.round((Date.now()-sleepStart.getTime())/60000) : 0
       setSleepDur(`${Math.floor(dur/60)}h${String(dur%60).padStart(2,'0')}`)
       setSleepActive(false)
     }
   }
 
-  const planCfg: Record<SubPlan,{label:string;color:string;bg:string;price:string}> = {
-    trial:   { label:'Essai gratuit', color:'#ffb340', bg:'rgba(255,179,64,0.12)', price:'14 jours' },
-    premium: { label:'Premium',       color:'#00c8e0', bg:'rgba(0,200,224,0.12)', price:'15€/mois · 129€/an' },
-    pro:     { label:'Pro',           color:'#a855f7', bg:'rgba(168,85,247,0.12)', price:'29€/mois · 199€/an' },
-  }
-  const pc = planCfg[plan]
+  const imc = height && weight ? (Number(weight)/((Number(height)/100)**2)).toFixed(1) : '—'
+
+  const PLAN_FEATURES = [
+    'Suivi des entrainements complet',
+    'Zones personnalisees',
+    'Analyse recuperation',
+    'Blessures & historique',
+    'Acces web + mobile',
+  ]
+
+  const PLANS = [
+    { id:'premium', label:'Premium', monthly:'15€/mois', annual:'129€/an', save:'28%', color:'#00c8e0', features:['Toutes les fonctionnalites de base','Connexions apps externes (5)','Export PDF','Historique 1 an'] },
+    { id:'pro',     label:'Pro',     monthly:'29€/mois', annual:'199€/an', save:'43%', color:'#a855f7', features:['Tout Premium','Connexions illimitees','Coach IA avance','Analyses biomechaniques','Historique illimite'] },
+    { id:'expert',  label:'Expert',  monthly:'49€/mois', annual:'349€/an', save:'41%', color:'#f97316', features:['Tout Pro','Multi-athletes (equipe)','Dashboard coach','API acces','Support prioritaire'] },
+  ]
+
+  const NOTIF_SECTIONS = [
+    { label:'Entrainement', items:[
+      { key:'morningProg',   label:'Programme du matin',  help:'Recevez votre programme de la journee chaque matin a l\'heure choisie.' },
+      { key:'sessionRemind', label:'Rappel de seance',    help:'Notification 15 ou 30 min avant votre seance planifiee.' },
+    ]},
+    { label:'Recuperation', items:[
+      { key:'hrv',     label:'Rappel HRV',    help:'Rappel quotidien pour effectuer votre mesure HRV (variabilite de la frequence cardiaque) au reveil.' },
+      { key:'fatigue', label:'Alerte fatigue', help:'Notification lorsque votre niveau de fatigue cumule depasse un seuil defini.' },
+      { key:'sleep',   label:'Suivi sommeil',  help:'Rappel pour demarrer le chronometre de sommeil le soir.' },
+    ]},
+    { label:'Nutrition', items:[
+      { key:'meals', label:'Rappels repas', help:'Notifications aux heures de repas personnalisees pour suivre votre nutrition.' },
+    ]},
+    { label:'Resumes', items:[
+      { key:'weekSummary',  label:'Resume semaine', help:'Bilan hebdomadaire automatique : volume, charge, recuperation.' },
+      { key:'monthSummary', label:'Resume mois',    help:'Synthese mensuelle de votre progression et de vos statistiques cles.' },
+    ]},
+  ]
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+    <div style={{ display:'flex', flexDirection:'column' }}>
 
-      {/* Infos principales */}
+      {/* Photo + infos principales */}
       <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <SectionTitle>Profil</SectionTitle>
-          <button onClick={()=>setEditing(!editing)} style={{ padding:'5px 12px', borderRadius:9, background:editing?'linear-gradient(135deg,#00c8e0,#5b6fff)':'var(--bg-card2)', border:`1px solid ${editing?'transparent':'var(--border)'}`, color:editing?'#fff':'var(--text-mid)', fontSize:11, cursor:'pointer', fontWeight:600 }}>
+          <button onClick={()=>setEditing(!editing)} style={{ padding:'5px 12px', borderRadius:8, background:editing?'linear-gradient(135deg,#00c8e0,#5b6fff)':'var(--bg-card2)', border:'1px solid var(--border)', color:editing?'#fff':'var(--text-mid)', fontSize:11, cursor:'pointer', fontWeight:600 }}>
             {editing ? 'Sauvegarder' : 'Modifier'}
           </button>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:18 }}>
-          <div style={{ width:64, height:64, borderRadius:16, background:'linear-gradient(135deg,rgba(0,200,224,0.2),rgba(91,111,255,0.2))', border:'2px solid rgba(0,200,224,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0, cursor:'pointer', position:'relative', overflow:'hidden' }}>
-            👤
-            <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(0,0,0,0.4)', fontSize:9, color:'#fff', textAlign:'center', padding:'2px 0' }}>Photo</div>
+
+        <div style={{ display:'flex', alignItems:'flex-start', gap:16, marginBottom:18 }}>
+          <div
+            onClick={()=>fileRef.current?.click()}
+            style={{ width:68, height:68, borderRadius:16, background:'var(--bg-card2)', border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', position:'relative' }}>
+            {photo ? (
+              <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+            ) : (
+              <div style={{ textAlign:'center' as const }}>
+                <div style={{ fontSize:22, marginBottom:2 }}>📷</div>
+                <p style={{ fontSize:8, color:'var(--text-dim)', margin:0 }}>Photo</p>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
           </div>
           <div style={{ flex:1 }}>
             {editing ? (
-              <input value={name} onChange={e=>setName(e.target.value)} style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', color:'var(--text)', outline:'none', width:'100%', marginBottom:6 }}/>
+              <>
+                <input value={name} onChange={e=>setName(e.target.value)} placeholder="Nom / Prénom" style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', width:'100%', marginBottom:6 }}/>
+                <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" style={{ fontSize:12, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', width:'100%' }}/>
+              </>
             ) : (
-              <p style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:'0 0 4px' }}>{name}</p>
+              <>
+                <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, margin:'0 0 3px' }}>{name||'—'}</p>
+                <p style={{ fontSize:12, color:'var(--text-dim)', margin:0 }}>{email||'—'}</p>
+              </>
             )}
-            <p style={{ fontSize:12, color:'var(--text-dim)', margin:0 }}>{email}</p>
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="md:grid-cols-4">
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8, marginBottom:14 }}>
           {[
-            { label:'Age', value:age, unit:'ans', key:'age', min:10, max:100 },
-            { label:'Taille', value:height, unit:'cm', key:'height', min:140, max:220 },
-            { label:'Poids', value:weight, unit:'kg', key:'weight', min:30, max:200 },
-          ].map(f => (
-            <div key={f.key} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:11, padding:'10px 12px' }}>
-              <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{f.label}</p>
-              {editing ? (
-                <input type="number" value={f.value} min={f.min} max={f.max} onChange={e => {
-                  const v = parseInt(e.target.value)||0
-                  if (f.key==='age') setAge(v)
-                  else if (f.key==='height') setHeight(v)
-                  else setWeight(v)
-                }} style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, background:'transparent', border:'none', color:'#00c8e0', outline:'none', width:'100%' }}/>
+            { label:'Âge',    val:age,    set:setAge,    unit:'ans', ph:'ex: 28' },
+            { label:'Taille', val:height, set:setHeight, unit:'cm',  ph:'ex: 178' },
+            { label:'Poids',  val:weight, set:setWeight, unit:'kg',  ph:'ex: 72' },
+            { label:'IMC',    val:imc,    set:()=>{},    unit:'',    ph:'', readonly:true },
+          ].map(f=>(
+            <div key={f.label} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:11, padding:'10px 12px' }}>
+              <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{f.label}</p>
+              {editing && !f.readonly ? (
+                <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                  <input type="number" value={f.val} onChange={e=>f.set(e.target.value as any)} placeholder={f.ph} style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, background:'transparent', border:'none', color:'#00c8e0', outline:'none', width:'100%' }}/>
+                  <span style={{ fontSize:11, color:'var(--text-dim)' }}>{f.unit}</span>
+                </div>
               ) : (
-                <p style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, color:'#00c8e0', margin:0 }}>{f.value} <span style={{ fontSize:12, fontWeight:400, color:'var(--text-dim)' }}>{f.unit}</span></p>
+                <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, color:'#00c8e0', margin:0 }}>{f.val||'—'} <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)' }}>{f.unit}</span></p>
               )}
             </div>
           ))}
-          <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:11, padding:'10px 12px' }}>
-            <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>IMC</p>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, color:'#22c55e', margin:0 }}>{(weight / ((height/100)**2)).toFixed(1)}</p>
-          </div>
+        </div>
+
+        {/* Bio */}
+        <div>
+          <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', marginBottom:6 }}>Bio</p>
+          <textarea
+            value={bio} onChange={e=>setBio(e.target.value)}
+            placeholder="Décris ton profil, tes objectifs, ton histoire sportive..."
+            rows={3}
+            style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.6 }}
+          />
         </div>
       </Card>
 
       {/* Sports pratiques */}
       <Card>
-        <SectionTitle>Sports pratiques</SectionTitle>
-        <div style={{ display:'flex', flexDirection:'column', gap:7, marginBottom:12 }}>
-          {sports.map(s => (
-            <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <span style={{ fontSize:18, flexShrink:0 }}>{SPORT_EMOJI[s.sport]}</span>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{SPORT_LABEL[s.sport]}</p>
-                <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Depuis {sinceDate(s.since)}</p>
+        <SectionTitle>Sports pratiqués</SectionTitle>
+        {sports.length === 0 && (
+          <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', margin:'0 0 12px', textAlign:'center' as const }}>Aucun sport ajouté — ajoutez vos disciplines</p>
+        )}
+        {sports.length > 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12 }}>
+            {sports.map(s=>(
+              <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'#888', flexShrink:0 }}/>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:12, fontWeight:600, margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
+                  {s.since && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Depuis {sinceDate(s.since)}</p>}
+                </div>
+                <button onClick={()=>setSports(p=>p.filter(x=>x.id!==s.id))} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:13 }}>✕</button>
               </div>
-              <button onClick={()=>setSports(p=>p.filter(x=>x.id!==s.id))} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:14 }}>✕</button>
-            </div>
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ flex:1, padding:'7px 10px', borderRadius:9, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}>
-            {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{SPORT_EMOJI[k]} {v}</option>)}
+            ))}
+          </div>
+        )}
+        <div style={{ display:'flex', gap:7, flexWrap:'wrap' as const }}>
+          <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ flex:1, minWidth:100, padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}>
+            {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
           </select>
-          <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'7px 10px', borderRadius:9, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
-          <button onClick={()=>setSports(p=>[...p,{id:uid(),sport:newSport,since:newSince}])} style={{ padding:'7px 14px', borderRadius:9, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+ Ajouter</button>
+          <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
+          <button onClick={()=>{if(newSport)setSports(p=>[...p,{id:uid(),sport:newSport,since:newSince}])}} style={{ padding:'7px 14px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
         </div>
       </Card>
 
       {/* Abonnement */}
       <Card>
         <SectionTitle>Abonnement</SectionTitle>
-        <div style={{ padding:'14px 16px', borderRadius:12, background:pc.bg, border:`1px solid ${pc.color}44`, marginBottom:14, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-          <div>
-            <span style={{ padding:'3px 10px', borderRadius:20, background:pc.bg, border:`1px solid ${pc.color}`, color:pc.color, fontSize:11, fontWeight:700 }}>{pc.label}</span>
-            <p style={{ fontSize:12, color:'var(--text-mid)', margin:'6px 0 0' }}>{pc.price}</p>
-            {plan === 'trial' && <p style={{ fontSize:11, color:'#ffb340', margin:'4px 0 0', fontWeight:600 }}>{trialDays} jours restants</p>}
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button style={{ padding:'7px 14px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:11, cursor:'pointer' }}>Gerer</button>
-            {plan !== 'pro' && <button style={{ padding:'7px 14px', borderRadius:9, background:'linear-gradient(135deg,#a855f7,#5b6fff)', border:'none', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>Upgrade</button>}
-          </div>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
-          {[
-            { name:'Premium', price:'15€/mois', annual:'129€/an', color:'#00c8e0' },
-            { name:'Pro',     price:'29€/mois', annual:'199€/an', color:'#a855f7' },
-          ].map(p => (
-            <div key={p.name} style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <p style={{ fontSize:13, fontWeight:600, color:p.color, margin:'0 0 4px' }}>{p.name}</p>
-              <p style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)', margin:0 }}>{p.price}</p>
-              <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{p.annual}</p>
+        <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(255,179,64,0.08)', border:'1px solid rgba(255,179,64,0.25)', marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                <span style={{ padding:'2px 9px', borderRadius:20, background:'rgba(255,179,64,0.15)', border:'1px solid rgba(255,179,64,0.4)', color:'#ffb340', fontSize:11, fontWeight:700 }}>Essai gratuit</span>
+                <span style={{ fontSize:11, color:'var(--text-dim)' }}>{trialLeft}/{trialDays} jours restants</span>
+              </div>
+              <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Version Premium — accès complet pendant l'essai</p>
             </div>
-          ))}
+            <div style={{ display:'flex', gap:7, alignItems:'center' }}>
+              <button onClick={()=>setPlanExpanded(!planExpanded)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:16, transform:planExpanded?'rotate(180deg)':'rotate(0deg)', transition:'transform 0.2s' }}>▾</button>
+              <button onClick={()=>setUpgradeOpen(true)} style={{ padding:'7px 14px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>Upgrade</button>
+            </div>
+          </div>
+          {planExpanded && (
+            <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid rgba(255,179,64,0.2)' }}>
+              <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', margin:'0 0 8px' }}>Inclus dans votre essai :</p>
+              {PLAN_FEATURES.map((f,i)=>(
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:7, marginBottom:5 }}>
+                  <span style={{ color:'#22c55e', fontSize:11 }}>✓</span>
+                  <span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+        <div style={{ height:5, borderRadius:999, background:'var(--border)', overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999, transition:'width 0.5s' }}/>
+        </div>
+        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'5px 0 0', textAlign:'right' as const }}>{trialLeft} jours restants</p>
+
+        {/* Upgrade modal */}
+        {upgradeOpen && (
+          <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0 }}>Choisir un abonnement</h3>
+                <button onClick={()=>setUpgradeOpen(false)} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {PLANS.map(p=>(
+                  <div key={p.id} style={{ padding:'16px', borderRadius:14, background:'var(--bg-card2)', border:`1px solid ${p.color}44` }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                      <span style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
+                      <div style={{ textAlign:'right' as const }}>
+                        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
+                        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save} vs mensuel</span></p>
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
+                      {p.features.map((f,i)=>(
+                        <div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}>
+                          <span style={{ color:p.color, fontSize:11 }}>✓</span>
+                          <span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                      Choisir {p.label}
+                    </button>
+                    <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>Paiement sécurisé via Stripe</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Connexions */}
       <Card>
         <SectionTitle>Connexions externes</SectionTitle>
         <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-          {connections.map(c => (
-            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <div style={{ width:36, height:36, borderRadius:9, background:c.connected?'rgba(34,197,94,0.15)':'var(--bg-card)', border:`1px solid ${c.connected?'rgba(34,197,94,0.3)':'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>
-                {c.id==='strava'?'🚴':c.id==='garmin'?'⌚':c.id==='polar'?'❤️':c.id==='zwift'?'🎮':'📊'}
-              </div>
+          {connections.map(c=>(
+            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ flexShrink:0 }}><AppLogo id={c.id} size={28}/></div>
               <div style={{ flex:1 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                  <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{c.label}</p>
-                  <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:c.connected?'rgba(34,197,94,0.15)':'rgba(156,163,175,0.15)', color:c.connected?'#22c55e':'#9ca3af', fontWeight:600 }}>{c.connected?'Connecte':'Non connecte'}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <p style={{ fontSize:12, fontWeight:600, margin:0 }}>{c.label}</p>
+                  <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:c.connected?'rgba(34,197,94,0.12)':'rgba(120,120,140,0.12)', color:c.connected?'#22c55e':'#9ca3af', fontWeight:600 }}>
+                    {c.connected ? 'Connecté' : 'Non connecté'}
+                  </span>
                 </div>
                 {c.connected && c.lastSync && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Sync : {c.lastSync}</p>}
               </div>
-              <button onClick={()=>setConnections(p=>p.map(x=>x.id===c.id?{...x,connected:!x.connected,lastSync:x.connected?'':new Date().toISOString().split('T')[0]}:x))}
-                style={{ padding:'5px 11px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.10)':'rgba(0,200,224,0.10)', border:`1px solid ${c.connected?'rgba(239,68,68,0.25)':'rgba(0,200,224,0.25)'}`, color:c.connected?'#ef4444':'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                {c.connected ? 'Deconnecter' : 'Connecter'}
+              <button
+                onClick={()=>setConnections(p=>p.map(x=>x.id===c.id?{...x,connected:!x.connected,lastSync:x.connected?'':new Date().toISOString().split('T')[0]}:x))}
+                style={{ padding:'5px 11px', borderRadius:7, background:c.connected?'rgba(239,68,68,0.08)':'rgba(0,200,224,0.08)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'rgba(0,200,224,0.2)'}`, color:c.connected?'#ef4444':'#00c8e0', fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                {c.connected ? 'Déconnecter' : 'Connecter'}
               </button>
             </div>
           ))}
@@ -252,39 +465,23 @@ function ProfilBloc() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
           <SectionTitle>Notifications</SectionTitle>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:11, color:'var(--text-dim)' }}>Tout</span>
+            <span style={{ fontSize:11, color:'var(--text-dim)' }}>Tout activer</span>
             <Toggle value={notifs.globalOn} onChange={v=>setNotifs(p=>({...p,globalOn:v}))}/>
           </div>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:10, opacity:notifs.globalOn?1:0.4, pointerEvents:notifs.globalOn?'auto':'none' }}>
-          {[
-            { label:'Entrainement', items:[
-              { key:'morningProg', label:'Programme du matin' },
-              { key:'sessionRemind', label:'Rappel seance' },
-            ]},
-            { label:'Recuperation', items:[
-              { key:'hrv', label:'Rappel HRV' },
-              { key:'fatigue', label:'Fatigue' },
-              { key:'sleep', label:'Sommeil' },
-            ]},
-            { label:'Nutrition', items:[
-              { key:'meals', label:'Repas' },
-            ]},
-            { label:'Resumes', items:[
-              { key:'weekSummary', label:'Resume semaine' },
-              { key:'monthSummary', label:'Resume mois' },
-            ]},
-          ].map(section => (
+        <div style={{ display:'flex', flexDirection:'column', gap:8, opacity:notifs.globalOn?1:0.4, pointerEvents:notifs.globalOn?'auto':'none', transition:'opacity 0.2s' }}>
+          {NOTIF_SECTIONS.map(section=>(
             <div key={section.label} style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.06em', margin:'0 0 10px' }}>{section.label}</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {section.items.map(item => (
-                  <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>{section.label}</p>
+              {section.items.map(item=>(
+                <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <span style={{ fontSize:12, color:'var(--text)' }}>{item.label}</span>
-                    <Toggle value={(notifs as any)[item.key]} onChange={v=>setNotifs(p=>({...p,[item.key]:v}))}/>
+                    <HelpBtn title={item.label} content={<p style={{ margin:0 }}>{item.help}</p>}/>
                   </div>
-                ))}
-              </div>
+                  <Toggle value={(notifs as any)[item.key]} onChange={v=>setNotifs(p=>({...p,[item.key]:v}))}/>
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -292,22 +489,24 @@ function ProfilBloc() {
 
       {/* Sommeil */}
       <Card>
-        <SectionTitle>Suivi sommeil</SectionTitle>
-        <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' as const }}>
-          <button onClick={toggleSleep}
-            style={{ padding:'12px 24px', borderRadius:12, background:sleepActive?'linear-gradient(135deg,#a855f7,#5b6fff)':'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
-            {sleepActive ? '⏹ Arreter le sommeil' : '🌙 Lancer le sommeil'}
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+          <SectionTitle>Suivi sommeil</SectionTitle>
+          <HelpBtn title="Suivi sommeil" content={<><p>Le suivi sommeil vous permet d'enregistrer vos nuits simplement.</p><p>1. Appuyez sur <strong>Lancer</strong> au moment de vous coucher.</p><p>2. Appuyez sur <strong>Arrêter</strong> au réveil.</p><p>La durée est automatiquement enregistrée dans votre historique de récupération.</p></>}/>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' as const }}>
+          <button onClick={toggleSleep} style={{ padding:'11px 22px', borderRadius:11, background:sleepActive?'linear-gradient(135deg,#a855f7,#5b6fff)':'linear-gradient(135deg,#1e293b,#334155)', border:`1px solid ${sleepActive?'rgba(168,85,247,0.4)':'var(--border)'}`, color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+            {sleepActive ? '⏹ Arrêter' : '🌙 Lancer le sommeil'}
           </button>
           {sleepActive && sleepStart && (
-            <div style={{ padding:'10px 14px', borderRadius:11, background:'rgba(168,85,247,0.10)', border:'1px solid rgba(168,85,247,0.25)' }}>
-              <p style={{ fontSize:11, color:'#a855f7', margin:'0 0 2px', fontWeight:600 }}>Sommeil en cours</p>
-              <p style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)', margin:0 }}>Debut : {sleepStart.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</p>
+            <div style={{ padding:'9px 13px', borderRadius:10, background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.2)' }}>
+              <p style={{ fontSize:11, color:'#a855f7', margin:'0 0 1px', fontWeight:600 }}>En cours</p>
+              <p style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)', margin:0 }}>{sleepStart.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</p>
             </div>
           )}
           {sleepDur && (
-            <div style={{ padding:'10px 14px', borderRadius:11, background:'rgba(34,197,94,0.10)', border:'1px solid rgba(34,197,94,0.25)' }}>
-              <p style={{ fontSize:11, color:'#22c55e', margin:'0 0 2px', fontWeight:600 }}>Derniere nuit</p>
-              <p style={{ fontSize:14, fontFamily:'Syne,sans-serif', fontWeight:700, color:'#22c55e', margin:0 }}>{sleepDur}</p>
+            <div style={{ padding:'9px 13px', borderRadius:10, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)' }}>
+              <p style={{ fontSize:11, color:'#22c55e', margin:'0 0 1px', fontWeight:600 }}>Dernière nuit</p>
+              <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:'#22c55e', margin:0 }}>{sleepDur}</p>
             </div>
           )}
         </div>
@@ -320,118 +519,189 @@ function ProfilBloc() {
 // BLOC 2 — ZONES
 // ════════════════════════════════════════════════
 function ZonesBloc() {
-  const [sport,      setSport]      = useState('run')
-  const [calcMode,   setCalcMode]   = useState(false)
-  const [testVal,    setTestVal]    = useState('')
+  const [sport,     setSport]     = useState<ZoneSport>('bike')
+  const [calcMode,  setCalcMode]  = useState(false)
+  const [testVal,   setTestVal]   = useState('')
+  const [infoOpen,  setInfoOpen]  = useState(false)
 
-  const ZONES_CONFIG: Record<string,{label:string;unit:string;testLabel:string;testUnit:string;calcFn:(v:number)=>string[]}> = {
-    bike: {
-      label:'Velo (puissance)', unit:'W', testLabel:'Test 20 min (puissance moyenne)', testUnit:'W',
-      calcFn:(w)=>{ const ftp=Math.round(w*0.95); return [`< ${Math.round(ftp*0.55)}W`,`${Math.round(ftp*0.56)}-${Math.round(ftp*0.75)}W`,`${Math.round(ftp*0.76)}-${Math.round(ftp*0.87)}W`,`${Math.round(ftp*0.88)}-${Math.round(ftp*1.05)}W`,`> ${Math.round(ftp*1.06)}W`] }
-    },
-    run: {
-      label:'Running (allure)', unit:'/km', testLabel:'Record 10km', testUnit:'min:sec',
-      calcFn:(sec)=>{ const t=sec/10; const s=(v:number)=>`${Math.floor(v/60)}:${String(Math.round(v%60)).padStart(2,'0')}`; return [`> ${s(t*1.25)}/km`,`${s(t*1.11)}-${s(t*1.25)}/km`,`${s(t*1.01)}-${s(t*1.10)}/km`,`${s(t*0.91)}-${s(t*1.00)}/km`,`< ${s(t*0.90)}/km`] }
-    },
-    swim: {
-      label:'Natation (/100m)', unit:'/100m', testLabel:'Record 400m', testUnit:'min:sec',
-      calcFn:(sec)=>{ const css=sec/4; const s=(v:number)=>`${Math.floor(v/60)}:${String(Math.round(v%60)).padStart(2,'0')}`; return [`> ${s(css*1.35)}/100m`,`${s(css*1.16)}-${s(css*1.34)}/100m`,`${s(css*1.06)}-${s(css*1.15)}/100m`,`${s(css*0.98)}-${s(css*1.05)}/100m`,`< ${s(css*0.97)}/100m`] }
-    },
-    rowing: {
-      label:'Aviron (/500m)', unit:'/500m', testLabel:'Record 2000m', testUnit:'min:sec',
-      calcFn:(sec)=>{ const base=sec/4; const s=(v:number)=>`${Math.floor(v/60)}:${String(Math.round(v%60)).padStart(2,'0')}`; return [`> ${s(base*1.25)}/500m`,`${s(base*1.10)}-${s(base*1.25)}/500m`,`${s(base*1.02)}-${s(base*1.09)}/500m`,`${s(base*0.95)}-${s(base*1.01)}/500m`,`< ${s(base*0.94)}/500m`] }
-    },
-    hyrox: {
-      label:'Hyrox', unit:'allure', testLabel:'2000m Rowing (split)', testUnit:'min:sec',
-      calcFn:(_)=>['Echauffement / Recup','Endurance basse','Rythme course','Rythme competition','Max effort']
-    },
-  }
+  const SPORT_TABS: {id:ZoneSport; label:string}[] = [
+    {id:'bike',    label:'Cyclisme'},
+    {id:'run',     label:'Running'},
+    {id:'swim',    label:'Natation'},
+    {id:'rowing',  label:'Aviron'},
+    {id:'hyrox_row', label:'Hyrox — Rowing'},
+    {id:'hyrox_ski', label:'Hyrox — SkiErg'},
+  ]
 
-  const Z_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
-  const Z_LABELS = ['Z1 — Recup','Z2 — Aerobie','Z3 — Tempo','Z4 — Seuil','Z5 — VO2max']
+  type ZoneData = { zones: string[]; sl1: string; sl2: string; ftp?: string; runCompromised?: string }
 
-  const [manualZones, setManualZones] = useState<Record<string,string[]>>({
-    bike:  ['<166W','166-226W','227-262W','263-316W','>317W'],
-    run:   ['>5:10/km','4:35-5:10/km','4:11-4:34/km','3:47-4:10/km','<3:46/km'],
-    swim:  ['>1:58/100m','1:42-1:57/100m','1:33-1:41/100m','1:27-1:32/100m','<1:26/100m'],
-    rowing:['>2:05/500m','1:50-2:04/500m','1:45-1:49/500m','1:38-1:44/500m','<1:37/500m'],
-    hyrox: ['Echauffement','Endurance','Tempo','Competition','Max'],
+  const defaultZone: ZoneData = { zones:['','','','',''], sl1:'', sl2:'' }
+
+  const [zoneData, setZoneData] = useState<Record<ZoneSport, ZoneData>>({
+    bike:      { zones:['','','','',''], sl1:'', sl2:'', ftp:'' },
+    run:       { zones:['','','','',''], sl1:'', sl2:'' },
+    swim:      { zones:['','','','',''], sl1:'', sl2:'' },
+    rowing:    { zones:['','','','',''], sl1:'', sl2:'' },
+    hyrox_row: { zones:['','','','',''], sl1:'', sl2:'' },
+    hyrox_ski: { zones:['','','','',''], sl1:'', sl2:'', runCompromised:'' },
   })
 
-  const [calcResult, setCalcResult] = useState<string[]|null>(null)
+  const current = zoneData[sport]
+
+  function update(patch: Partial<ZoneData>) {
+    setZoneData(p=>({...p,[sport]:{...p[sport],...patch}}))
+  }
+
+  function updateZone(i: number, val: string) {
+    const z = [...current.zones]; z[i]=val; update({zones:z})
+  }
+
+  const UNIT: Record<ZoneSport,string> = {
+    bike:'W', run:'/km', swim:'/100m', rowing:'/500m', hyrox_row:'/500m', hyrox_ski:'/500m'
+  }
+  const TEST_LABEL: Record<ZoneSport,string> = {
+    bike:'Test 20 min — puissance moyenne (W)', run:'Record 10km (min:sec)',
+    swim:'Record 400m (min:sec)', rowing:'Record 2000m (min:sec)',
+    hyrox_row:'2000m Rowing — split /500m', hyrox_ski:'2000m SkiErg — split /500m'
+  }
 
   function parseTime(val: string): number {
     const p = val.split(':').map(Number)
-    return p.length === 2 ? p[0]*60+p[1] : parseFloat(val)||0
+    return p.length===2?p[0]*60+p[1]:parseFloat(val)||0
   }
 
   function calculate() {
-    const cfg = ZONES_CONFIG[sport]
-    if (!cfg) return
     const v = parseTime(testVal)
     if (!v) return
-    const zones = cfg.calcFn(v)
-    setCalcResult(zones)
-    setManualZones(p=>({...p,[sport]:zones}))
+    let zones: string[] = []
+    let sl1='', sl2='', ftp=''
+    if (sport==='bike') {
+      const f = Math.round(v*0.95)
+      ftp = `${f}W`
+      sl1 = `${Math.round(f*0.75)}W`
+      sl2 = `${Math.round(f*0.87)}W`
+      zones = [`<${Math.round(f*0.55)}W`,`${Math.round(f*0.56)}-${Math.round(f*0.75)}W`,`${Math.round(f*0.76)}-${Math.round(f*0.87)}W`,`${Math.round(f*0.88)}-${Math.round(f*1.05)}W`,`>${Math.round(f*1.06)}W`]
+    } else {
+      const base = sport==='run' ? v/10 : v/4
+      const s=(x:number)=>`${Math.floor(x/60)}:${String(Math.round(x%60)).padStart(2,'0')}`
+      sl1 = s(base*1.10)+UNIT[sport]
+      sl2 = s(base*1.01)+UNIT[sport]
+      zones = [`>${s(base*1.25)}${UNIT[sport]}`,`${s(base*1.11)}-${s(base*1.25)}${UNIT[sport]}`,`${s(base*1.02)}-${s(base*1.10)}${UNIT[sport]}`,`${s(base*0.92)}-${s(base*1.01)}${UNIT[sport]}`,`<${s(base*0.91)}${UNIT[sport]}`]
+    }
+    update({zones, sl1, sl2, ...(sport==='bike'?{ftp}:{})})
   }
 
-  const cfg = ZONES_CONFIG[sport]
-  const zones = manualZones[sport] || ['','','','','']
+  const ZONE_WIDTHS = [18,22,20,22,18] // % width relative
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+    <div style={{ display:'flex', flexDirection:'column' }}>
       <Card>
+        {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
-          <SectionTitle>Zones d'entrainement</SectionTitle>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <SectionTitle>Zones d'entraînement</SectionTitle>
+            <HelpBtn title="SL1, SL2 et FTP" content={
+              <>
+                <p><strong>SL1 (Seuil Lactate 1)</strong> — aussi appelé SV1 (Seuil Ventilatoire 1). C'est l'intensité à partir de laquelle la lactate commence à s'accumuler légèrement. Correspond à la fin de la Z2 / début Z3.</p>
+                <p><strong>SL2 (Seuil Lactate 2)</strong> — aussi appelé SV2 ou seuil anaérobie. Au-dessus, l'effort devient non-maintenable longtemps. Correspond à la fin Z3 / début Z4.</p>
+                <p><strong>FTP (Functional Threshold Power)</strong> — uniquement en cyclisme. Puissance maximale maintenable 60 min. Base de calcul de toutes les zones vélo.</p>
+              </>
+            }/>
+          </div>
           <div style={{ display:'flex', gap:6 }}>
-            <button onClick={()=>setCalcMode(false)} style={{ padding:'5px 12px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:!calcMode?'#00c8e0':'var(--border)', background:!calcMode?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:!calcMode?'#00c8e0':'var(--text-mid)', fontWeight:!calcMode?600:400 }}>Manuel</button>
-            <button onClick={()=>setCalcMode(true)} style={{ padding:'5px 12px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:calcMode?'#00c8e0':'var(--border)', background:calcMode?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:calcMode?'#00c8e0':'var(--text-mid)', fontWeight:calcMode?600:400 }}>Calculateur</button>
+            <button onClick={()=>setCalcMode(false)} style={{ padding:'5px 11px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:!calcMode?'#00c8e0':'var(--border)', background:!calcMode?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:!calcMode?'#00c8e0':'var(--text-mid)', fontWeight:!calcMode?600:400 }}>Manuel</button>
+            <button onClick={()=>setCalcMode(true)} style={{ padding:'5px 11px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:calcMode?'#00c8e0':'var(--border)', background:calcMode?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:calcMode?'#00c8e0':'var(--text-mid)', fontWeight:calcMode?600:400 }}>Calculateur</button>
           </div>
         </div>
 
         {/* Sport tabs */}
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 }}>
-          {Object.keys(ZONES_CONFIG).map(s=>(
-            <button key={s} onClick={()=>{setSport(s);setCalcResult(null)}}
-              style={{ padding:'5px 11px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:sport===s?SPORT_COLOR[s]:'var(--border)', background:sport===s?`${SPORT_COLOR[s]}22`:'var(--bg-card2)', color:sport===s?SPORT_COLOR[s]:'var(--text-mid)', fontWeight:sport===s?600:400 }}>
-              {SPORT_EMOJI[s]} {SPORT_LABEL[s]}
-            </button>
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:18 }}>
+          {SPORT_TABS.map(t=>(
+            <button key={t.id} onClick={()=>setSport(t.id)} style={{ padding:'5px 11px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:sport===t.id?'#00c8e0':'var(--border)', background:sport===t.id?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:sport===t.id?'#00c8e0':'var(--text-mid)', fontWeight:sport===t.id?600:400 }}>{t.label}</button>
           ))}
         </div>
 
         {/* Calculateur */}
-        {calcMode && cfg && (
-          <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(0,200,224,0.06)', border:'1px solid rgba(0,200,224,0.18)', marginBottom:16 }}>
-            <p style={{ fontSize:12, fontWeight:600, color:'#00c8e0', margin:'0 0 10px' }}>{cfg.testLabel}</p>
-            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-              <input value={testVal} onChange={e=>setTestVal(e.target.value)} placeholder={cfg.testUnit==='W'?'ex: 320':'ex: 37:20'} style={{ flex:1, padding:'8px 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13, outline:'none' }}/>
-              <span style={{ fontSize:11, color:'var(--text-dim)' }}>{cfg.testUnit}</span>
-              <button onClick={calculate} style={{ padding:'8px 16px', borderRadius:9, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>Calculer</button>
+        {calcMode && (
+          <div style={{ padding:'13px 15px', borderRadius:11, background:'rgba(0,200,224,0.05)', border:'1px solid rgba(0,200,224,0.15)', marginBottom:18 }}>
+            <p style={{ fontSize:12, fontWeight:600, color:'#00c8e0', margin:'0 0 9px' }}>{TEST_LABEL[sport]}</p>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <input value={testVal} onChange={e=>setTestVal(e.target.value)} placeholder={sport==='bike'?'ex: 320':'ex: 37:20'} style={{ flex:1, minWidth:120, padding:'7px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13, outline:'none' }}/>
+              <button onClick={calculate} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>Calculer</button>
             </div>
-            {calcResult && <p style={{ fontSize:11, color:'#22c55e', margin:'8px 0 0' }}>Zones calculees et sauvegardees</p>}
           </div>
         )}
 
-        {/* Zones */}
-        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-          {Z_LABELS.map((label,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ width:28, height:28, borderRadius:7, background:`${Z_COLORS[i]}22`, border:`1px solid ${Z_COLORS[i]}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:Z_COLORS[i], flexShrink:0 }}>Z{i+1}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                  <span style={{ fontSize:11, color:'var(--text-mid)' }}>{label}</span>
-                  {!calcMode ? (
-                    <input value={zones[i]||''} onChange={e=>{const z=[...zones];z[i]=e.target.value;setManualZones(p=>({...p,[sport]:z}))}} style={{ fontFamily:'DM Mono,monospace', fontSize:11, fontWeight:600, color:Z_COLORS[i], background:'transparent', border:'none', outline:'none', textAlign:'right', width:140 }}/>
-                  ) : (
-                    <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:Z_COLORS[i], fontWeight:600 }}>{zones[i]||'—'}</span>
-                  )}
-                </div>
-                <div style={{ height:5, borderRadius:999, background:`${Z_COLORS[i]}22` }}>
-                  <div style={{ height:'100%', width:`${20+i*16}%`, background:Z_COLORS[i], opacity:0.7, borderRadius:999 }}/>
-                </div>
+        {/* Zone blocks */}
+        <div style={{ position:'relative', marginBottom:32 }}>
+          {/* SL markers */}
+          <div style={{ display:'flex', gap:3, marginBottom:8 }}>
+            {Z_COLORS.map((c,i)=>(
+              <div key={i} style={{ flex:1, height:44, borderRadius:8, background:`${c}22`, border:`1px solid ${c}55`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:c }}>Z{i+1}</span>
               </div>
+            ))}
+          </div>
+
+          {/* SL1 bubble between Z2 and Z3 */}
+          <div style={{ position:'absolute', top:-14, left:'calc(40% - 24px)', zIndex:10 }}>
+            <div style={{ background:'var(--bg-card)', border:'2px solid #34d399', borderRadius:20, padding:'2px 8px', fontSize:10, fontWeight:700, color:'#34d399', whiteSpace:'nowrap', position:'relative' }}>
+              SL1
+              <div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'7px solid #34d399' }}/>
             </div>
-          ))}
+          </div>
+
+          {/* SL2 bubble between Z3 and Z4 */}
+          <div style={{ position:'absolute', top:-14, left:'calc(60% - 24px)', zIndex:10 }}>
+            <div style={{ background:'var(--bg-card)', border:'2px solid #f97316', borderRadius:20, padding:'2px 8px', fontSize:10, fontWeight:700, color:'#f97316', whiteSpace:'nowrap', position:'relative' }}>
+              SL2
+              <div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'7px solid #f97316' }}/>
+            </div>
+          </div>
+
+          {/* Zone value inputs */}
+          <div style={{ display:'flex', gap:3 }}>
+            {Z_COLORS.map((c,i)=>(
+              <div key={i} style={{ flex:1 }}>
+                <p style={{ fontSize:8, fontWeight:600, color:'var(--text-dim)', textAlign:'center', margin:'0 0 3px', textTransform:'uppercase', letterSpacing:'0.05em' }}>{Z_LABELS[i]}</p>
+                <input
+                  value={current.zones[i]||''}
+                  onChange={e=>updateZone(i,e.target.value)}
+                  placeholder={UNIT[sport]}
+                  style={{ width:'100%', padding:'5px 4px', borderRadius:7, border:`1px solid ${c}44`, background:'var(--input-bg)', color:c, fontFamily:'DM Mono,monospace', fontSize:10, fontWeight:600, outline:'none', textAlign:'center' }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* FTP + SL values */}
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {sport==='bike' && (
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <span style={{ fontSize:11, color:'var(--text-dim)', minWidth:40 }}>FTP</span>
+              <input value={current.ftp||''} onChange={e=>update({ftp:e.target.value})} placeholder="ex: 280W" style={{ flex:1, padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:600, outline:'none' }}/>
+            </div>
+          )}
+          <div style={{ display:'flex', gap:8 }}>
+            <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, padding:'9px 13px', borderRadius:10, background:'rgba(52,211,153,0.07)', border:'1px solid rgba(52,211,153,0.2)' }}>
+              <span style={{ fontSize:11, color:'#34d399', fontWeight:600, minWidth:30 }}>SL1</span>
+              <input value={current.sl1||''} onChange={e=>update({sl1:e.target.value})} placeholder={`ex: 230${UNIT[sport]}`} style={{ flex:1, padding:'4px 8px', borderRadius:7, border:'1px solid rgba(52,211,153,0.25)', background:'var(--input-bg)', color:'#34d399', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, outline:'none' }}/>
+            </div>
+            <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, padding:'9px 13px', borderRadius:10, background:'rgba(249,115,22,0.07)', border:'1px solid rgba(249,115,22,0.2)' }}>
+              <span style={{ fontSize:11, color:'#f97316', fontWeight:600, minWidth:30 }}>SL2</span>
+              <input value={current.sl2||''} onChange={e=>update({sl2:e.target.value})} placeholder={`ex: 265${UNIT[sport]}`} style={{ flex:1, padding:'4px 8px', borderRadius:7, border:'1px solid rgba(249,115,22,0.25)', background:'var(--input-bg)', color:'#f97316', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, outline:'none' }}/>
+            </div>
+          </div>
+          {(sport==='hyrox_ski'||sport==='hyrox_row') && (
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:140 }}>
+                <span style={{ fontSize:11, color:'var(--text-dim)' }}>Run Compromised</span>
+                <HelpBtn title="Run Compromised" content={<p>L'allure Run Compromised est l'allure de course spécifique à Hyrox — courir entre des stations de musculation. Elle est toujours plus lente que votre allure de course normal en raison de la fatigue accumulée. Objectif : définir l'allure cible pour les runs inter-stations.</p>}/>
+              </div>
+              <input value={current.runCompromised||''} onChange={e=>update({runCompromised:e.target.value})} placeholder="ex: 4:30/km" style={{ flex:1, padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, outline:'none' }}/>
+            </div>
+          )}
         </div>
       </Card>
     </div>
@@ -439,122 +709,128 @@ function ZonesBloc() {
 }
 
 // ════════════════════════════════════════════════
-// BLOC 3 — RECORDS & PALMARES
+// BLOC 3 — RECORDS
 // ════════════════════════════════════════════════
 interface RecordEntry {
-  id: string; distance: string; time: string; date: string; year: string; race: string; type: 'entrainement'|'competition'
-  pace?: string; elevation?: string; splits?: { swim?:string; bike?:string; run?:string }
+  id: string; distance: string; perf: string; date: string; year: string; race: string
+  type: 'entrainement'|'competition'; pace?: string
+  elevation?: string; splits?: {swim?:string;bike?:string;run?:string}
+  stationTimes?: Record<string,string>
 }
-interface PalmEntry { id: string; race: string; year: string; rank: string; time: string; category: string }
+interface PalmEntry { id:string; race:string; year:string; rank:string; time:string; category:string; stationTimes?:Record<string,string> }
 
-const BIKE_DISTS = ['Pmax','10s','30s','1min','3min','5min','8min','10min','12min','20min','30min','1h','2h','3h','4h','5h','6h']
-const RUN_DISTS  = ['1500m','5km','10km','Semi-marathon','Marathon','50km','100km']
-const TRAIL_DISTS= ['20km','30km','50km','80km','100km','Ultra (100km+)']
-const TRI_DISTS  = ['XS','S (Sprint)','M (Standard)','70.3 / L','Ironman / XL']
-const SWIM_DISTS = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
-const ROW_DISTS  = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
-const HYROX_CATS = ['Open Solo','Pro Solo']
-
+const BIKE_DISTS  = ['Pmax','10s','30s','1min','3min','5min','8min','10min','12min','20min','30min','1h','2h','3h','4h','5h','6h']
+const RUN_DISTS   = ['1500m','5km','10km','Semi-marathon','Marathon','50km','100km']
+const TRAIL_DISTS = ['20km','30km','50km','80km','100km','Ultra (100km+)']
+const TRI_DISTS   = ['XS','S (Sprint)','M (Standard)','70.3 / L','Ironman / XL']
+const SWIM_DISTS  = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
+const ROW_DISTS   = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
+const HYROX_CATS  = ['Open Solo','Pro Solo']
+const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmer Carry','Sandbag Lunges','Wall Balls']
 const RUN_KM: Record<string,number> = {'1500m':1.5,'5km':5,'10km':10,'Semi-marathon':21.1,'Marathon':42.195,'50km':50,'100km':100}
 
 function calcPace(distKm: number, timeStr: string): string {
   const p = timeStr.split(':').map(Number)
-  const s = p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+(p[1]||0)
+  const s = p.length===3?p[0]*3600+p[1]*60+p[2]:p.length===2?p[0]*60+p[1]:parseFloat(timeStr)||0
   if (!s||!distKm) return ''
-  const sPerKm = s/distKm
-  return `${Math.floor(sPerKm/60)}:${String(Math.round(sPerKm%60)).padStart(2,'0')}/km`
+  const spk = s/distKm
+  return `${Math.floor(spk/60)}:${String(Math.round(spk%60)).padStart(2,'0')}/km`
 }
 
 function RecordsBloc() {
-  const [sport, setSport] = useState<SportType>('bike')
-  const [records, setRecords] = useState<Record<string,RecordEntry[]>>({})
+  const [sport,    setSport]    = useState<SportType>('bike')
+  const [records,  setRecords]  = useState<Record<string,RecordEntry[]>>({})
   const [palmares, setPalmares] = useState<Record<string,PalmEntry[]>>({})
   const [addModal, setAddModal] = useState<{dist:string}|null>(null)
   const [addPalm,  setAddPalm]  = useState(false)
-  const [sortYear, setSortYear] = useState('all')
+  const [yearFilter, setYearFilter] = useState('all')
+
+  const SPORT_TABS: {id:SportType;label:string}[] = [
+    {id:'bike','label':'Cyclisme'},
+    {id:'run','label':'Running'},
+    {id:'trail','label':'Trail'},
+    {id:'triathlon','label':'Triathlon'},
+    {id:'swim','label':'Natation'},
+    {id:'rowing','label':'Aviron'},
+    {id:'hyrox','label':'Hyrox'},
+  ]
 
   const SPORT_DISTS: Record<string,string[]> = {
     bike:BIKE_DISTS, run:RUN_DISTS, trail:TRAIL_DISTS, triathlon:TRI_DISTS, swim:SWIM_DISTS, rowing:ROW_DISTS, hyrox:HYROX_CATS
   }
 
-  const dists = SPORT_DISTS[sport] || []
+  const dists = SPORT_DISTS[sport]||[]
+  const isBike = sport==='bike'
 
   function getRecords(dist: string): RecordEntry[] {
-    return (records[`${sport}_${dist}`]||[]).filter(r => sortYear==='all'||r.year===sortYear).sort((a,b)=>a.time.localeCompare(b.time))
+    return (records[`${sport}_${dist}`]||[])
+      .filter(r=>yearFilter==='all'||r.year===yearFilter)
+      .sort((a,b)=>isBike?(parseInt(b.perf)||0)-(parseInt(a.perf)||0):a.perf.localeCompare(b.perf))
   }
 
-  function getPalmares(): PalmEntry[] {
-    return palmares[sport]||[]
+  function addRecord(dist: string, e: RecordEntry) {
+    const k=`${sport}_${dist}`
+    setRecords(p=>({...p,[k]:[...(p[k]||[]),e]}))
   }
 
-  function addRecord(dist: string, entry: RecordEntry) {
-    const key = `${sport}_${dist}`
-    setRecords(p=>({...p,[key]:[...(p[key]||[]),entry]}))
+  function addPalmEntry(e: PalmEntry) {
+    setPalmares(p=>({...p,[sport]:[...(p[sport]||[]),e]}))
   }
 
-  function addPalmEntry(entry: PalmEntry) {
-    setPalmares(p=>({...p,[sport]:[...(p[sport]||[]),entry]}))
-  }
-
-  function sportCount(sp: string): number {
-    return Object.keys(records).filter(k=>k.startsWith(sp+'_')).reduce((s,k)=>s+(records[k]?.length||0),0)
-  }
-
-  const SPORT_TABS: [SportType,string][] = [['bike','🚴 Velo'],['run','🏃 Running'],['trail','⛰️ Trail'],['triathlon','🔱 Triathlon'],['swim','🏊 Natation'],['rowing','🚣 Aviron'],['hyrox','🏋️ Hyrox']]
+  const YEARS = ['all','2025','2024','2023','2022','2021','2020']
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      {/* Sport tabs */}
-      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-        {SPORT_TABS.map(([s,l])=>(
-          <button key={s} onClick={()=>setSport(s)}
-            style={{ padding:'7px 12px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:sport===s?SPORT_COLOR[s]:'var(--border)', background:sport===s?`${SPORT_COLOR[s]}22`:'var(--bg-card)', color:sport===s?SPORT_COLOR[s]:'var(--text-mid)', fontWeight:sport===s?600:400 }}>
-            {l}{sportCount(s)>0&&<span style={{ marginLeft:5, fontSize:9, padding:'1px 5px', borderRadius:20, background:`${SPORT_COLOR[s]}33`, fontWeight:700 }}>{sportCount(s)}</span>}
+    <div style={{ display:'flex', flexDirection:'column' }}>
+      {/* Sport selector */}
+      <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:12 }}>
+        {SPORT_TABS.map(t=>(
+          <button key={t.id} onClick={()=>setSport(t.id)}
+            style={{ padding:'7px 12px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:sport===t.id?SPORT_COLOR[t.id]:'var(--border)', background:sport===t.id?`${SPORT_COLOR[t.id]}18`:'var(--bg-card)', color:sport===t.id?SPORT_COLOR[t.id]:'var(--text-mid)', fontWeight:sport===t.id?700:400 }}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Filtres */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-        <div style={{ display:'flex', gap:6 }}>
-          {['all','2024','2023','2022','2021'].map(y=>(
-            <button key={y} onClick={()=>setSortYear(y)} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', cursor:'pointer', fontSize:10, borderColor:sortYear===y?'#00c8e0':'var(--border)', background:sortYear===y?'rgba(0,200,224,0.10)':'var(--bg-card)', color:sortYear===y?'#00c8e0':'var(--text-dim)', fontWeight:sortYear===y?600:400 }}>{y==='all'?'Tout':y}</button>
-          ))}
-        </div>
-        <button onClick={()=>setAddPalm(true)} style={{ padding:'6px 12px', borderRadius:9, background:'rgba(168,85,247,0.10)', border:'1px solid rgba(168,85,247,0.25)', color:'#a855f7', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ Palmares</button>
+      {/* Year filter */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:600 }}>Année :</span>
+        <select value={yearFilter} onChange={e=>setYearFilter(e.target.value)} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none', cursor:'pointer' }}>
+          {YEARS.map(y=><option key={y} value={y}>{y==='all'?'Toutes':y}</option>)}
+        </select>
+        <button onClick={()=>setAddPalm(true)} style={{ marginLeft:'auto', padding:'6px 12px', borderRadius:8, background:'rgba(168,85,247,0.10)', border:'1px solid rgba(168,85,247,0.25)', color:'#a855f7', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ Palmarès</button>
       </div>
 
-      {/* Records par distance */}
+      {/* Records */}
       <Card>
         <SectionTitle>Records — {SPORT_LABEL[sport]||sport}</SectionTitle>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {dists.map(dist => {
+        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+          {dists.map(dist=>{
             const recs = getRecords(dist)
             const best = recs[0]
             return (
-              <div key={dist} style={{ padding:'10px 13px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div key={dist} style={{ padding:'10px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:11, fontWeight:600, color:'var(--text-mid)', minWidth:80, flexShrink:0 }}>{dist}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color:'var(--text-mid)', minWidth:76, flexShrink:0 }}>{dist}</span>
                   {best ? (
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#00c8e0' }}>{best.time}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#00c8e0' }}>{best.perf}{isBike?'W':''}</span>
                         {best.pace && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{best.pace}</span>}
-                        <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:best.type==='competition'?'rgba(0,200,224,0.15)':'rgba(34,197,94,0.15)', color:best.type==='competition'?'#00c8e0':'#22c55e', fontWeight:700 }}>{best.type}</span>
+                        <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:best.type==='competition'?'rgba(0,200,224,0.12)':'rgba(34,197,94,0.12)', color:best.type==='competition'?'#00c8e0':'#22c55e', fontWeight:700 }}>{best.type}</span>
                       </div>
-                      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{best.race} · {best.date}</p>
+                      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{best.race}{best.race&&best.date?' · ':''}{best.date}</p>
                     </div>
                   ) : (
                     <span style={{ flex:1, fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>Aucun record</span>
                   )}
-                  <button onClick={()=>setAddModal({dist})} style={{ padding:'4px 9px', borderRadius:7, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>+</button>
+                  <button onClick={()=>setAddModal({dist})} style={{ padding:'4px 9px', borderRadius:7, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>+</button>
                 </div>
-                {recs.length > 1 && (
+                {recs.length>1 && (
                   <div style={{ marginTop:7, paddingTop:7, borderTop:'1px solid var(--border)' }}>
-                    {recs.slice(1).map(r => (
-                      <div key={r.id} style={{ display:'flex', gap:10, padding:'3px 0' }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:'var(--text-mid)' }}>{r.time}</span>
-                        <span style={{ fontSize:10, color:'var(--text-dim)' }}>{r.race} · {r.date}</span>
+                    {recs.slice(1).map(r=>(
+                      <div key={r.id} style={{ display:'flex', gap:10, padding:'2px 0' }}>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{r.perf}{isBike?'W':''}</span>
+                        <span style={{ fontSize:10, color:'var(--text-dim)' }}>{r.race}{r.race&&r.date?' · ':''}{r.date}</span>
                       </div>
                     ))}
                   </div>
@@ -567,128 +843,106 @@ function RecordsBloc() {
 
       {/* Palmares */}
       <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <SectionTitle>Palmares — {SPORT_LABEL[sport]||sport}</SectionTitle>
-          <button onClick={()=>setAddPalm(true)} style={{ padding:'5px 11px', borderRadius:8, background:'rgba(168,85,247,0.10)', border:'1px solid rgba(168,85,247,0.25)', color:'#a855f7', fontSize:11, cursor:'pointer', fontWeight:600 }}>+ Ajouter</button>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <SectionTitle>Palmarès — {SPORT_LABEL[sport]||sport}</SectionTitle>
+          <button onClick={()=>setAddPalm(true)} style={{ padding:'5px 11px', borderRadius:8, background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.2)', color:'#a855f7', fontSize:11, cursor:'pointer', fontWeight:600 }}>+ Ajouter</button>
         </div>
-        {getPalmares().length === 0 ? (
-          <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', textAlign:'center', padding:'12px 0' }}>Aucune entree — ajoutez vos podiums et classements</p>
+        {(palmares[sport]||[]).length===0 ? (
+          <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', textAlign:'center', padding:'10px 0', margin:0 }}>Aucune entrée — ajoutez vos podiums</p>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-            {getPalmares().map(p => (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {(palmares[sport]||[]).filter(p=>yearFilter==='all'||p.year===yearFilter).map(p=>(
               <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(168,85,247,0.15)', border:'1px solid rgba(168,85,247,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:800, color:'#a855f7' }}>#{p.rank}</span>
+                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:800, color:'#a855f7' }}>#{p.rank.split('/')[0]}</span>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:12, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.race}</p>
                   <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.year} · {p.category} · {p.time}</p>
                 </div>
+                {p.stationTimes && (
+                  <button onClick={()=>{}} style={{ padding:'3px 7px', borderRadius:6, background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.2)', color:'#a855f7', fontSize:9, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Stations</button>
+                )}
               </div>
             ))}
           </div>
         )}
       </Card>
 
-      {/* Volume stats */}
-      <Card>
-        <SectionTitle>Volume de participation</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }} className="md:grid-cols-3">
-          {SPORT_TABS.map(([s,l])=>{
-            const count = sportCount(s)
-            if (!count) return null
-            return (
-              <div key={s} style={{ padding:'10px 13px', borderRadius:10, background:'var(--bg-card2)', border:`1px solid ${SPORT_COLOR[s]}33` }}>
-                <p style={{ fontSize:11, color:SPORT_COLOR[s], fontWeight:600, margin:'0 0 3px' }}>{l}</p>
-                <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:SPORT_COLOR[s], margin:0 }}>{count}</p>
-                <p style={{ fontSize:9, color:'var(--text-dim)', margin:'1px 0 0' }}>performances enregistrees</p>
-              </div>
-            )
-          })}
-          {Object.values(records).every(r=>r.length===0) && (
-            <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', gridColumn:'1/-1', textAlign:'center', padding:'8px 0' }}>Ajoutez vos records pour voir les statistiques</p>
-          )}
-        </div>
-      </Card>
-
-      {/* Add Record Modal */}
+      {/* Add record modal */}
       {addModal && (
-        <AddRecordModal
-          dist={addModal.dist}
-          sport={sport}
-          onClose={()=>setAddModal(null)}
-          onSave={(e)=>{ addRecord(addModal.dist,e); setAddModal(null) }}
-        />
+        <AddRecordModal dist={addModal.dist} sport={sport} onClose={()=>setAddModal(null)} onSave={e=>{addRecord(addModal.dist,e);setAddModal(null)}}/>
       )}
 
-      {/* Add Palmares Modal */}
+      {/* Add palmares modal */}
       {addPalm && (
-        <AddPalmaresModal
-          onClose={()=>setAddPalm(false)}
-          onSave={(e)=>{ addPalmEntry(e); setAddPalm(false) }}
-        />
+        <AddPalmaresModal sport={sport} onClose={()=>setAddPalm(false)} onSave={e=>{addPalmEntry(e);setAddPalm(false)}}/>
       )}
     </div>
   )
 }
 
 function AddRecordModal({ dist, sport, onClose, onSave }: { dist:string; sport:SportType; onClose:()=>void; onSave:(e:RecordEntry)=>void }) {
-  const [time,  setTime]  = useState('')
-  const [date,  setDate]  = useState(new Date().toISOString().split('T')[0])
-  const [year,  setYear]  = useState('2025')
-  const [race,  setRace]  = useState('')
-  const [type,  setType]  = useState<'entrainement'|'competition'>('competition')
-  const [elev,  setElev]  = useState('')
+  const [perf, setPerf] = useState('')
+  const [date, setDate] = useState(today())
+  const [year, setYear] = useState('2025')
+  const [race, setRace] = useState('')
+  const [type, setType] = useState<'entrainement'|'competition'>('competition')
+  const [elev, setElev] = useState('')
   const [swimT, setSwimT] = useState('')
   const [bikeT, setBikeT] = useState('')
   const [runT,  setRunT]  = useState('')
-
+  const isBike = sport==='bike'
   const distKm = RUN_KM[dist]
-  const pace = (sport==='run'||sport==='trail') && distKm && time ? calcPace(distKm,time) : ''
+  const pace = (sport==='run'||sport==='trail') && distKm && perf ? calcPace(distKm,perf) : ''
 
   function save() {
-    onSave({
-      id:uid(), distance:dist, time, date, year, race:race||dist, type,
-      pace:pace||undefined, elevation:elev||undefined,
-      splits:(sport==='triathlon'&&(swimT||bikeT||runT))?{swim:swimT,bike:bikeT,run:runT}:undefined
-    })
+    onSave({ id:uid(), distance:dist, perf, date, year, race:race||dist, type, pace:pace||undefined, elevation:elev||undefined, splits:(sport==='triathlon'&&(swimT||bikeT||runT))?{swim:swimT,bike:bikeT,run:runT}:undefined })
   }
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:22, maxWidth:440, width:'100%', maxHeight:'90vh', overflowY:'auto' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Nouveau record — {dist}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>x</button>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Record — {dist}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', cursor:'pointer', color:'var(--text-dim)', fontSize:15 }}>×</button>
         </div>
-        <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+        <div style={{ display:'flex', gap:7, marginBottom:12 }}>
           {(['competition','entrainement'] as const).map(t=>(
-            <button key={t} onClick={()=>setType(t)} style={{ flex:1, padding:'7px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, fontWeight:type===t?600:400, borderColor:type===t?'#00c8e0':'var(--border)', background:type===t?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:type===t?'#00c8e0':'var(--text-mid)' }}>{t}</button>
+            <button key={t} onClick={()=>setType(t)} style={{ flex:1, padding:'7px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, fontWeight:type===t?600:400, borderColor:type===t?'#00c8e0':'var(--border)', background:type===t?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:type===t?'#00c8e0':'var(--text-mid)' }}>{t}</button>
           ))}
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:12 }}>
           {[
-            { label:'Temps', value:time, set:setTime, placeholder:sport==='bike'?'320':'1:24:30', mono:true },
-            { label:'Date',  value:date, set:setDate, type:'date' },
-            { label:'Annee', value:year, set:setYear, placeholder:'2025' },
-            { label:'Course / lieu', value:race, set:setRace, placeholder:`ex: ${dist}` },
+            { label:isBike?'Puissance (W)':'Performance', value:perf, set:setPerf, ph:isBike?'ex: 380':'ex: 1:24:30', mono:true },
+            { label:'Date', value:date, set:setDate, type:'date' },
+            { label:'Année', value:year, set:setYear, ph:'2025' },
+            { label:'Course / lieu', value:race, set:setRace, ph:`ex: ${dist}` },
           ].map(f=>(
             <div key={f.label}>
               <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.label}</p>
-              <input type={f.type||'text'} value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.placeholder} style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:f.mono?'DM Mono,monospace':'inherit', fontSize:12, outline:'none' }}/>
+              <input type={f.type||'text'} value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{ width:'100%', padding:'7px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:f.mono?'DM Mono,monospace':'inherit', fontSize:12, outline:'none' }}/>
             </div>
           ))}
         </div>
-        {pace && <div style={{ padding:'8px 12px', borderRadius:9, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', marginBottom:12 }}><p style={{ fontSize:12, color:'#22c55e', margin:0, fontFamily:'DM Mono,monospace', fontWeight:700 }}>Allure : {pace}</p></div>}
-        {sport==='trail' && <div style={{ marginBottom:12 }}><p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>Denivele (D+)</p><input value={elev} onChange={e=>setElev(e.target.value)} placeholder="ex: 2400m" style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}/></div>}
+        {pace && <div style={{ padding:'7px 11px', borderRadius:8, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', marginBottom:10 }}><p style={{ fontSize:12, color:'#22c55e', margin:0, fontFamily:'DM Mono,monospace', fontWeight:600 }}>Allure : {pace}</p></div>}
+        {sport==='trail' && (
+          <div style={{ marginBottom:10 }}>
+            <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>Dénivelé (D+)</p>
+            <input value={elev} onChange={e=>setElev(e.target.value)} placeholder="ex: 2400m" style={{ width:'100%', padding:'7px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}/>
+          </div>
+        )}
         {sport==='triathlon' && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:12 }}>
-            {[{l:'Natation',v:swimT,s:setSwimT},{l:'Velo',v:bikeT,s:setBikeT},{l:'Course',v:runT,s:setRunT}].map(f=>(
-              <div key={f.l}><p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.l}</p><input value={f.v} onChange={e=>f.s(e.target.value)} placeholder="0:00:00" style={{ width:'100%', padding:'7px 8px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/></div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:10 }}>
+            {[{l:'Natation',v:swimT,s:setSwimT},{l:'Vélo',v:bikeT,s:setBikeT},{l:'Course',v:runT,s:setRunT}].map(f=>(
+              <div key={f.l}>
+                <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.l}</p>
+                <input value={f.v} onChange={e=>f.s(e.target.value)} placeholder="0:00:00" style={{ width:'100%', padding:'6px 7px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/>
+              </div>
             ))}
           </div>
         )}
-        <div style={{ display:'flex', gap:8, marginTop:4 }}>
+        <div style={{ display:'flex', gap:8 }}>
           <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:12, cursor:'pointer' }}>Annuler</button>
           <button onClick={save} style={{ flex:2, padding:10, borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12, cursor:'pointer' }}>Enregistrer</button>
         </div>
@@ -697,37 +951,75 @@ function AddRecordModal({ dist, sport, onClose, onSave }: { dist:string; sport:S
   )
 }
 
-function AddPalmaresModal({ onClose, onSave }: { onClose:()=>void; onSave:(e:PalmEntry)=>void }) {
+function AddPalmaresModal({ sport, onClose, onSave }: { sport:SportType; onClose:()=>void; onSave:(e:PalmEntry)=>void }) {
   const [race,     setRace]     = useState('')
   const [year,     setYear]     = useState('2025')
   const [rank,     setRank]     = useState('')
   const [time,     setTime]     = useState('')
   const [category, setCategory] = useState('Open')
+  const [showStations, setShowStations] = useState(false)
+  const [stationTimes, setStationTimes] = useState<Record<string,string>>({})
+  const [runTime, setRunTime] = useState('')
+  const isHyrox = sport==='hyrox'
+
+  function setST(key: string, val: string) {
+    setStationTimes(p=>({...p,[key]:val}))
+  }
+
+  function save() {
+    onSave({ id:uid(), race, year, rank, time, category, stationTimes:isHyrox&&showStations?{...stationTimes,run:runTime}:undefined })
+  }
 
   return (
-    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:22, maxWidth:380, width:'100%' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Ajouter au palmares</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>x</button>
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:22, maxWidth:420, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Palmarès — {SPORT_LABEL[sport]||sport}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', cursor:'pointer', color:'var(--text-dim)', fontSize:15 }}>×</button>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:9, marginBottom:14 }}>
           {[
-            { label:'Nom de la course', value:race, set:setRace, placeholder:'ex: Ironman Nice' },
-            { label:'Annee', value:year, set:setYear, placeholder:'2025' },
-            { label:'Classement', value:rank, set:setRank, placeholder:'ex: 12 ou 12/450' },
-            { label:'Temps', value:time, set:setTime, placeholder:'ex: 9:45:00', mono:true },
-            { label:'Categorie', value:category, set:setCategory, placeholder:'Open / Pro / AG...' },
+            { label:'Nom de la course', value:race, set:setRace, ph:'ex: Ironman Nice' },
+            { label:'Année', value:year, set:setYear, ph:'2025' },
+            { label:'Classement', value:rank, set:setRank, ph:'ex: 12 ou 12/450' },
+            { label:'Temps total', value:time, set:setTime, ph:'ex: 9:45:00', mono:true },
+            { label:'Catégorie', value:category, set:setCategory, ph:'Open / Pro / AG...' },
           ].map(f=>(
             <div key={f.label}>
               <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.label}</p>
-              <input value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.placeholder} style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:f.mono?'DM Mono,monospace':'inherit', fontSize:12, outline:'none' }}/>
+              <input value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{ width:'100%', padding:'7px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:(f as any).mono?'DM Mono,monospace':'inherit', fontSize:12, outline:'none' }}/>
             </div>
           ))}
         </div>
+
+        {/* Hyrox stations */}
+        {isHyrox && (
+          <div style={{ marginBottom:14 }}>
+            <button onClick={()=>setShowStations(!showStations)} style={{ padding:'7px 13px', borderRadius:9, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', color:'#ef4444', fontSize:11, fontWeight:600, cursor:'pointer', marginBottom:showStations?10:0, display:'flex', alignItems:'center', gap:6 }}>
+              {showStations?'▾':'▸'} Temps stations
+            </button>
+            {showStations && (
+              <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                  {HYROX_STATIONS.map((s,i)=>(
+                    <div key={s}>
+                      <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:3 }}>Station {i+1} — {s}</p>
+                      <input value={stationTimes[s]||''} onChange={e=>setST(s,e.target.value)} placeholder="ex: 1:45" style={{ width:'100%', padding:'5px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:9 }}>
+                  <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:3 }}>Run compromised (total)</p>
+                  <input value={runTime} onChange={e=>setRunTime(e.target.value)} placeholder="ex: 32:10" style={{ width:'100%', padding:'5px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:12, cursor:'pointer' }}>Annuler</button>
-          <button onClick={()=>onSave({id:uid(),race,year,rank,time,category})} style={{ flex:2, padding:10, borderRadius:10, background:'linear-gradient(135deg,#a855f7,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12, cursor:'pointer' }}>Enregistrer</button>
+          <button onClick={save} style={{ flex:2, padding:10, borderRadius:10, background:'linear-gradient(135deg,#a855f7,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12, cursor:'pointer' }}>Enregistrer</button>
         </div>
       </div>
     </div>
@@ -740,42 +1032,31 @@ function AddPalmaresModal({ onClose, onSave }: { onClose:()=>void; onSave:(e:Pal
 export default function ProfilePage() {
   const [tab, setTab] = useState<ProfileTab>('profil')
 
-  const TABS: { id:ProfileTab; label:string; short:string; color:string; bg:string }[] = [
-    { id:'profil',  label:'Profil',           short:'Profil',  color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
-    { id:'zones',   label:'Zones',            short:'Zones',   color:'#f97316', bg:'rgba(249,115,22,0.10)' },
-    { id:'records', label:'Records & Palmares', short:'Records', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
+  const TABS = [
+    { id:'profil'  as ProfileTab, label:'Profil',             color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
+    { id:'zones'   as ProfileTab, label:'Zones',              color:'#f97316', bg:'rgba(249,115,22,0.10)' },
+    { id:'records' as ProfileTab, label:'Records & Palmarès', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
   ]
 
   return (
     <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
       <div style={{ marginBottom:20 }}>
         <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Mon Profil</h1>
-        <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records</p>
+        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records</p>
       </div>
 
-      {/* Desktop tabs */}
-      <div className="hidden md:flex" style={{ gap:8, marginBottom:20 }}>
+      <div style={{ display:'flex', gap:7, marginBottom:20, flexWrap:'wrap' }}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
-            style={{ flex:1, padding:'11px 16px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:tab===t.id?t.color:'var(--border)', background:tab===t.id?t.bg:'var(--bg-card)', color:tab===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:tab===t.id?700:400, boxShadow:tab===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s' }}>
+            style={{ flex:1, minWidth:100, padding:'11px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:tab===t.id?t.color:'var(--border)', background:tab===t.id?t.bg:'var(--bg-card)', color:tab===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:tab===t.id?700:400, boxShadow:'var(--shadow-card)', transition:'all 0.15s' }}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Mobile tabs */}
-      <div className="md:hidden" style={{ display:'flex', gap:5, marginBottom:16 }}>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)}
-            style={{ flex:1, padding:'8px 4px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:tab===t.id?t.color:'var(--border)', background:tab===t.id?t.bg:'var(--bg-card)', color:tab===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:tab===t.id?700:400, transition:'all 0.15s' }}>
-            {t.short}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'profil'  && <ProfilBloc/>}
-      {tab === 'zones'   && <ZonesBloc/>}
-      {tab === 'records' && <RecordsBloc/>}
+      {tab==='profil'  && <ProfilBloc/>}
+      {tab==='zones'   && <ZonesBloc/>}
+      {tab==='records' && <RecordsBloc/>}
     </div>
   )
 }

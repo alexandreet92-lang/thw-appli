@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -841,7 +842,7 @@ function AddPalmaresModal({ sport, onClose, onSave }: { sport:SportType; onClose
 // ════════════════════════════════════════════════
 // PAGE
 // ════════════════════════════════════════════════
-export default function ProfilePage() {
+function ProfileContent() {
   const [tab, setTab] = useState<ProfileTab>('profil')
   const TABS = [
     { id:'profil'  as ProfileTab, label:'Profil',             color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
@@ -861,5 +862,13 @@ export default function ProfilePage() {
       {tab==='zones'   && <ZonesBloc/>}
       {tab==='records' && <RecordsBloc/>}
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div style={{ padding:'24px 28px' }}><div style={{ height:40, borderRadius:8, background:'var(--border)', marginBottom:12 }}/></div>}>
+      <ProfileContent/>
+    </Suspense>
   )
 }

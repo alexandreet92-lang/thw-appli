@@ -170,5 +170,5 @@ export async function getConnectedProviders(userId: string): Promise<string[]> {
     .select('provider')
     .eq('user_id', userId)
     .eq('is_active', true)
-  return (data ?? []).map(r => r.provider)
+return (data ?? []).map((r: { provider: string }) => r.provider)
 }

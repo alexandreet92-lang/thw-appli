@@ -6,11 +6,10 @@ import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const { provider } = params
+  const { provider } = await params
 
-  // Auth : soit session cookie, soit header interne
   let userId: string | null = null
 
   const internalUserId = req.headers.get('x-user-id')
@@ -26,7 +25,6 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Log la sync
   const supabase = createServiceClient()
   const { data: log } = await supabase
     .from('sync_logs')
@@ -53,7 +51,6 @@ export async function POST(
         return NextResponse.json({ error: `Provider ${provider} not supported yet` }, { status: 400 })
     }
 
-    // Met à jour le log
     if (log?.id) {
       await supabase
         .from('sync_logs')
@@ -76,8 +73,10 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
+  const { provider } = await params
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -87,7 +86,7 @@ export async function GET(
     .from('activities')
     .select('*')
     .eq('user_id', user.id)
-    .eq('provider', params.provider)
+    .eq('provider', provider)
     .order('started_at', { ascending: false })
     .limit(50)
 

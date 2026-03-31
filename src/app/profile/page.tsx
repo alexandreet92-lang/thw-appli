@@ -257,9 +257,13 @@ function useAthleteSports() {
 function useTrainingZones() {
   const supabase = createClient()
   const empty = (sport: ZoneSport): ZoneData => ({ zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' })
-  const [zoneData, setZoneData] = useState<Record<ZoneSport, ZoneData>>({
-    bike:'bike' as any, run:'run' as any, swim:'swim' as any,
-    rowing:'rowing' as any, hyrox_row:'hyrox_row' as any, hyrox_ski:'hyrox_ski' as any,
+ const [zoneData, setZoneData] = useState<Record<ZoneSport, ZoneData>>({
+    bike:      { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
+    run:       { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
+    swim:      { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
+    rowing:    { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
+    hyrox_row: { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
+    hyrox_ski: { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
   })
   const [saving, setSaving] = useState(false)
 

@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   const rawState = searchParams.get('state') ?? ''
   const error    = searchParams.get('error')
 
-  // State format: "provider:uuid"
   const [provider, state] = rawState.split(':') as [OAuthProvider, string]
 
   if (error) {
@@ -23,7 +22,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${BASE_URL}/profile?oauth=error&provider=${provider}`)
   }
 
-  // Vérifie le state CSRF
   const cookieStore = await cookies()
   const savedState  = cookieStore.get(`oauth_state_${provider}`)?.value
   if (!savedState || savedState !== state) {
@@ -31,7 +29,6 @@ export async function GET(req: NextRequest) {
   }
   cookieStore.delete(`oauth_state_${provider}`)
 
-  // Récupère l'user
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) {
@@ -41,10 +38,8 @@ export async function GET(req: NextRequest) {
   try {
     const cfg    = OAUTH_CONFIG[provider]
     const tokens = await exchangeCode(provider, cfg, code)
-
     await saveTokens(user.id, provider, tokens)
 
-    // Sync initiale en arrière-plan (fire & forget)
     fetch(`${BASE_URL}/api/sync/${provider}`, {
       method:  'POST',
       headers: { 'x-user-id': user.id },
@@ -63,7 +58,6 @@ async function exchangeCode(
   code: string
 ): Promise<{ access_token: string; refresh_token?: string; expires_at?: number; provider_user_id?: string; scope?: string; provider_data?: Record<string, unknown> }> {
 
-  // Withings : API non-standard
   if (provider === 'withings') {
     const params = new URLSearchParams({
       action:        'requesttoken',
@@ -85,7 +79,6 @@ async function exchangeCode(
     }
   }
 
-  // Standard OAuth2 (Strava, Wahoo, Polar)
   const params = new URLSearchParams({
     grant_type:    'authorization_code',
     client_id:     cfg.clientId,
@@ -97,7 +90,6 @@ async function exchangeCode(
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`)
   const json = await res.json()
 
-  // Extraction provider_user_id selon le provider
   const providerUserId =
     provider === 'strava' ? String(json.athlete?.id ?? '') :
     provider === 'wahoo'  ? String(json.user?.id   ?? '') :

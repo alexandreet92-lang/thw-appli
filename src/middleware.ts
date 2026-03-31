@@ -10,10 +10,10 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
+        setAll: (cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) => {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
           })
         },
       },
@@ -22,7 +22,6 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Pages protégées — redirige vers /login si pas connecté
   const protectedPaths = ['/profile', '/planning', '/performance', '/recovery', '/injuries', '/data', '/sessions', '/athletes', '/nutrition']
   const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
@@ -30,7 +29,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Si déjà connecté et va sur /login → redirige vers /profile
   if (request.nextUrl.pathname === '/login' && user) {
     return NextResponse.redirect(new URL('/profile', request.url))
   }

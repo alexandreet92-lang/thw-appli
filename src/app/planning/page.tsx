@@ -1137,21 +1137,38 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
   const [form,setForm]=useState<Race>({...race})
   const cfg  = RACE_CONFIG[race.level]
   const days = daysUntil(race.date)
-  const speed = form.validationData?.vKm&&form.validationData?.vTime ? `${(parseFloat(form.validationData.vKm)/(parseFloat(form.validationData.vTime)/60)).toFixed(1)} km/h` : '—'
+  const vd   = form.validationData ?? {}
+  const speed = vd.vKm&&vd.vTime ? `${(parseFloat(vd.vKm)/(parseFloat(vd.vTime)/60)).toFixed(1)} km/h` : '—'
+  function setVd(patch:Record<string,any>) { setForm(f=>({...f,validationData:{...f.validationData,...patch}})) }
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:480,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+
+        {/* Header */}
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14 }}>
           <div>
-            <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}><span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{cfg.emoji} {cfg.label}</span></div>
+            <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
+              <span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{cfg.emoji} {cfg.label}</span>
+              {race.hyroxCategory && <span style={{ fontSize:9,color:'var(--text-dim)' }}>{race.hyroxCategory} · {race.hyroxLevel} · {race.hyroxGender}</span>}
+            </div>
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{race.name}</h3>
             <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{SPORT_EMOJI[race.sport as SportType]} · {new Date(race.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+            {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>📏 {race.runDistance} — {RUN_KM[race.runDistance]}km</p>}
+            {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>🔱 {race.triDistance} · 🏊{TRI_SWIM[race.triDistance]} 🚴{TRI_BIKE[race.triDistance]} 🏃{TRI_RUN[race.triDistance]}</p>}
           </div>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
+
+        {/* Tabs */}
         <div style={{ display:'flex',gap:5,marginBottom:14 }}>
-          {(['detail','validate'] as const).map(t=><button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===t?SPORT_BORDER[race.sport as SportType]:'var(--border)',background:tab===t?SPORT_BG[race.sport as SportType]:'var(--bg-card2)',color:tab===t?SPORT_BORDER[race.sport as SportType]:'var(--text-mid)',fontSize:11,fontWeight:tab===t?600:400,cursor:'pointer' }}>{t==='detail'?'📊 Détail':'✅ Valider'}</button>)}
+          {(['detail','validate'] as const).map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===t?SPORT_BORDER[race.sport as SportType]:'var(--border)',background:tab===t?SPORT_BG[race.sport as SportType]:'var(--bg-card2)',color:tab===t?SPORT_BORDER[race.sport as SportType]:'var(--text-mid)',fontSize:11,fontWeight:tab===t?600:400,cursor:'pointer' }}>
+              {t==='detail'?'📊 Détail':'✅ Valider résultats'}
+            </button>
+          ))}
         </div>
+
+        {/* DETAIL */}
         {tab==='detail' && (
           <div>
             <div style={{ padding:'10px 14px',borderRadius:11,background:days>0?cfg.bg:'var(--bg-card2)',border:`1px solid ${days>0?cfg.border+'44':'var(--border)'}`,marginBottom:12,display:'flex',alignItems:'center',gap:12 }}>
@@ -1159,8 +1176,27 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
                 <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,color:days>0?race.level==='gty'?'var(--gty-text)':cfg.color:'var(--text-dim)',margin:0,lineHeight:1 }}>{days>0?days:'✓'}</p>
                 <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{days>0?'jours':'Passée'}</p>
               </div>
-              <div>{race.goal && <p style={{ fontSize:13,fontWeight:600,margin:'0 0 3px' }}>🎯 {race.goal}</p>}{race.goalSwimTime && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>🏊 {race.goalSwimTime}</p>}{race.goalBikeTime && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>🚴 {race.goalBikeTime}</p>}{race.goalRunTime && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>🏃 {race.goalRunTime}</p>}</div>
+              <div>
+                {race.goal        && <p style={{ fontSize:13,fontWeight:600,margin:'0 0 3px' }}>🎯 {race.goal}</p>}
+                {race.goalTime    && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>⏱ Objectif : {race.goalTime}</p>}
+                {race.goalSwimTime&& <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>🏊 Natation : {race.goalSwimTime}</p>}
+                {race.goalBikeTime&& <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>🚴 Vélo : {race.goalBikeTime}</p>}
+                {race.goalRunTime && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'1px 0' }}>🏃 Run : {race.goalRunTime}</p>}
+                {race.strategy   && <p style={{ fontSize:11,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.5 }}>{race.strategy}</p>}
+              </div>
             </div>
+            {/* Résultats déjà validés */}
+            {race.validated && vd.vTime && (
+              <div style={{ padding:'10px 14px',borderRadius:11,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)',marginBottom:12 }}>
+                <p style={{ fontSize:11,fontWeight:700,color:'#00c8e0',margin:'0 0 6px' }}>✓ Résultats validés</p>
+                {vd.vTime      && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>⏱ Temps : {vd.vTime}</p>}
+                {vd.vKm        && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>📏 Distance : {vd.vKm} km</p>}
+                {vd.vSpeed     && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>⚡ Vitesse : {vd.vSpeed}</p>}
+                {vd.vElevation && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>⛰ Dénivelé : {vd.vElevation}m</p>}
+                {/* Triathlon splits */}
+                {vd.vSwimTime  && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>🏊 {vd.vSwimTime} · 🚴 {vd.vBikeTime} · 🏃 {vd.vRunTime}</p>}
+              </div>
+            )}
             <div style={{ display:'flex',gap:7 }}>
               <button onClick={()=>onDelete(race.id)} style={{ padding:'8px 11px',borderRadius:9,background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:11,cursor:'pointer' }}>Supprimer</button>
               <button onClick={onEdit} style={{ padding:'8px 11px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>✏️ Modifier</button>
@@ -1168,13 +1204,71 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
             </div>
           </div>
         )}
+
+        {/* VALIDATE */}
         {tab==='validate' && (
           <div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:12 }}>
-              <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Temps total</p><input value={form.validationData?.vTime??''} onChange={e=>setForm({...form,validationData:{...form.validationData,vTime:e.target.value}})} placeholder="85min ou 1:25:00" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-              <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Distance (km)</p><input value={form.validationData?.vKm??''} onChange={e=>setForm({...form,validationData:{...form.validationData,vKm:e.target.value}})} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-            </div>
-            <button onClick={()=>onValidate({...form,validated:true,validationData:{...form.validationData,vSpeed:speed}})} style={{ width:'100%',padding:11,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[race.sport as SportType]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>✓ Valider les résultats</button>
+            {/* HYROX */}
+            {race.sport==='hyrox' && (
+              <div>
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:14 }}>
+                  <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Temps total</p><input value={vd.vTime??''} onChange={e=>setVd({vTime:e.target.value})} placeholder="58:45" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                  <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>FC moyenne</p><input value={vd.vHrAvg??''} onChange={e=>setVd({vHrAvg:e.target.value})} placeholder="168bpm" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                </div>
+                <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'#ef4444',marginBottom:7 }}>Stations</p>
+                <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:12 }}>
+                  {HYROX_STATIONS.map((station,i)=>(
+                    <div key={station} style={{ display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.15)' }}>
+                      <span style={{ fontSize:9,fontWeight:600,color:'#ef4444',width:18,flexShrink:0 }}>{i+1}</span>
+                      <span style={{ flex:1,fontSize:11 }}>{station}</span>
+                      <input value={(vd.vStations??{})[station]??''} onChange={e=>setVd({vStations:{...(vd.vStations??{}),[station]:e.target.value}})} placeholder="ex: 1:45" style={{ width:70,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'#ef4444',marginBottom:7 }}>Runs (8×1km)</p>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:12 }}>
+                  {Array.from({length:8},(_,i)=>(
+                    <div key={i}>
+                      <p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Run {i+1}</p>
+                      <input value={(vd.vRuns??[])[i]??''} onChange={e=>{ const runs=[...(vd.vRuns??Array(8).fill(''))]; runs[i]=e.target.value; setVd({vRuns:runs}) }} placeholder="4:20" style={{ width:'100%',padding:'5px 7px',borderRadius:6,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginBottom:12 }}>
+                  <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Roxzone</p>
+                  <input value={vd.vRoxzone??''} onChange={e=>setVd({vRoxzone:e.target.value})} placeholder="8:30" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+                </div>
+              </div>
+            )}
+
+            {/* TRIATHLON */}
+            {race.sport==='triathlon' && (
+              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:14 }}>
+                {[{l:'🏊 Natation',k:'vSwimTime',p:'32:00'},{l:'🚴 Vélo',k:'vBikeTime',p:'2h25:00'},{l:'🏃 Run',k:'vRunTime',p:'1h35:00'},{l:'⏱ Total',k:'vTime',p:'4h40:00'},{l:'T1',k:'vT1',p:'2:30'},{l:'T2',k:'vT2',p:'1:45'}].map(x=>(
+                  <div key={x.k}>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{x.l}</p>
+                    <input value={vd[x.k]??''} onChange={e=>setVd({[x.k]:e.target.value})} placeholder={x.p} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* AUTRES SPORTS */}
+            {!['hyrox','triathlon'].includes(race.sport) && (
+              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:14 }}>
+                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Temps (min ou h:mm)</p><input value={vd.vTime??''} onChange={e=>setVd({vTime:e.target.value})} placeholder="85" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Distance (km)</p><input value={vd.vKm??''} onChange={e=>setVd({vKm:e.target.value})} placeholder={race.runDistance?String(RUN_KM[race.runDistance??'']||''):''} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>Dénivelé (m)</p><input value={vd.vElevation??''} onChange={e=>setVd({vElevation:e.target.value})} placeholder="0" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                {vd.vTime&&vd.vKm&&(
+                  <div style={{ padding:'7px 9px',borderRadius:8,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)' }}>
+                    <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Vitesse auto</p>
+                    <p style={{ fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'#00c8e0',margin:0 }}>{speed}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button onClick={()=>onValidate({...form,validated:true,validationData:{...vd,vSpeed:speed}})} style={{ width:'100%',padding:11,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[race.sport as SportType]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',marginTop:4 }}>✓ Valider les résultats</button>
           </div>
         )}
       </div>

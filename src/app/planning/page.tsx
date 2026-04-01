@@ -809,8 +809,8 @@ function WeekTab({ trainingWeek }: { trainingWeek:WeekDay[] }) {
   const [editModal, setEditModal] = useState<WeekTask|null>(null)
   const [mobileDayOffset, setMobileDayOffset] = useState(0)
   const [mobileView, setMobileView] = useState<'3days'|'today'>('3days')
+  const [desktopView, setDesktopView] = useState<'week'|'today'>('week')
 
-  // Today index
   const todayDow = new Date().getDay()
   const todayIdx = todayDow===0 ? 6 : todayDow-1
 
@@ -829,10 +829,13 @@ function WeekTab({ trainingWeek }: { trainingWeek:WeekDay[] }) {
   function updateTask(t:WeekTask) { setTasks(p=>p.map(x=>x.id===t.id?t:x)); setEditModal(null) }
   function deleteTask(id:string) { setTasks(p=>p.filter(x=>x.id!==id)); setEditModal(null) }
 
-  // Mobile: which days to show
   const mobileVisibleDays = mobileView==='today'
     ? [todayIdx]
     : [mobileDayOffset, mobileDayOffset+1, mobileDayOffset+2].filter(i=>i<7)
+
+  const desktopVisibleDays = desktopView==='today'
+    ? [todayIdx]
+    : [0,1,2,3,4,5,6]
 
   const dayLabels = trainingWeek.map(d=>`${d.day} ${d.date}`)
 
@@ -851,16 +854,28 @@ function WeekTab({ trainingWeek }: { trainingWeek:WeekDay[] }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      {/* Mobile controls */}
-      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-        {/* View toggle mobile */}
-        <div style={{ display:'flex', gap:5, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:10, padding:4 }}>
+
+      {/* ── CONTROLES ── */}
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between' }}>
+
+        {/* Mobile view switch */}
+        <div style={{ display:'flex', gap:1, background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:10, padding:3 }}>
           {([['today','Aujourd\'hui'],['3days','3 jours']] as ['today'|'3days',string][]).map(([v,l]) => (
-            <button key={v} onClick={()=>setMobileView(v)} style={{ padding:'5px 10px', borderRadius:7, border:'none', cursor:'pointer', fontSize:11, background:mobileView===v?'var(--bg-card2)':'transparent', color:mobileView===v?'var(--text)':'var(--text-dim)', fontWeight:mobileView===v?600:400 }}>{l}</button>
+            <button key={v} onClick={()=>setMobileView(v)} style={{ padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:11, background:mobileView===v?'var(--bg-card)':'transparent', color:mobileView===v?'var(--text)':'var(--text-dim)', fontWeight:mobileView===v?600:400, boxShadow:mobileView===v?'0 1px 3px rgba(0,0,0,0.1)':'none' }}>{l}</button>
           ))}
         </div>
-        {/* Desktop label */}
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+
+        {/* Desktop view switch — masqué sur mobile */}
+        <div style={{ display:'none' }} className="md-flex" id="desktop-view-switch">
+          <div style={{ display:'flex', gap:1, background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:10, padding:3 }}>
+            {([['today','Aujourd\'hui'],['week','Semaine']] as ['today'|'week',string][]).map(([v,l]) => (
+              <button key={v} onClick={()=>setDesktopView(v)} style={{ padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:11, background:desktopView===v?'var(--bg-card)':'transparent', color:desktopView===v?'var(--text)':'var(--text-dim)', fontWeight:desktopView===v?600:400, boxShadow:desktopView===v?'0 1px 3px rgba(0,0,0,0.1)':'none' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Légende */}
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
           {Object.entries(TASK_CONFIG).map(([type,cfg]) => (
             <span key={type} style={{ padding:'2px 8px', borderRadius:20, background:cfg.bg, border:`1px solid ${cfg.color}44`, fontSize:9, color:cfg.color, fontWeight:600 }}>{cfg.label}</span>
           ))}
@@ -876,60 +891,75 @@ function WeekTab({ trainingWeek }: { trainingWeek:WeekDay[] }) {
         </div>
       )}
 
-      {/* Calendar grid */}
+      {/* ── GRILLE CALENDRIER ── */}
       <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', boxShadow:'var(--shadow-card)' }}>
-        {/* MOBILE headers */}
-        <div style={{ display:'grid', gridTemplateColumns:`44px repeat(${mobileVisibleDays.length},1fr)`, borderBottom:'1px solid var(--border)', background:'var(--bg-card2)' }} className="md:hidden">
+
+        {/* === MOBILE HEADERS === */}
+        <div style={{ display:'grid', gridTemplateColumns:`44px repeat(${mobileVisibleDays.length},1fr)`, borderBottom:'1px solid var(--border)', background:'var(--bg-card2)' }}>
           <div/>
           {mobileVisibleDays.map(dayIdx => { const load=dayLoad(dayIdx); return (
-            <div key={dayIdx} style={{ padding:'7px 4px', textAlign:'center' as const, borderLeft:'1px solid var(--border)' }}>
-              <p style={{ fontSize:9, color:'var(--text-dim)', textTransform:'uppercase' as const, margin:'0 0 1px' }}>{trainingWeek[dayIdx]?.day}</p>
+            <div key={dayIdx} style={{ padding:'7px 4px', textAlign:'center', borderLeft:'1px solid var(--border)' }}>
+              <p style={{ fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', margin:'0 0 1px' }}>{trainingWeek[dayIdx]?.day}</p>
               <p style={{ fontSize:13, fontWeight:700, margin:'0 0 3px' }}>{trainingWeek[dayIdx]?.date}</p>
               <span style={{ padding:'1px 5px', borderRadius:20, background:load.bg, border:`1px solid ${load.border}`, color:load.color, fontSize:8, fontWeight:700 }}>{load.label}</span>
             </div>
           )})}
         </div>
 
-        {/* DESKTOP headers — 7 jours */}
-        <div style={{ display:'grid', gridTemplateColumns:'44px repeat(7,1fr)', borderBottom:'1px solid var(--border)', background:'var(--bg-card2)' }} className="hidden md:grid">
+        {/* Time rows — MOBILE */}
+        <div style={{ overflowY:'auto', maxHeight:'60vh' }}>
+          {HOURS.map(hour => (
+            <div key={hour} style={{ display:'grid', gridTemplateColumns:`44px repeat(${mobileVisibleDays.length},1fr)`, borderBottom:'1px solid var(--border)', minHeight:52 }}>
+              <div style={{ padding:'3px 5px', display:'flex', alignItems:'flex-start', justifyContent:'flex-end' }}>
+                <span style={{ fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-dim)', marginTop:2 }}>{String(hour).padStart(2,'0')}h</span>
+              </div>
+              {mobileVisibleDays.map(dayIdx => (
+                <div key={dayIdx} onClick={()=>setTaskModal({dayIndex:dayIdx,startHour:hour})}
+                  style={{ borderLeft:'1px solid var(--border)', padding:'2px 3px', cursor:'pointer', minHeight:52 }}>
+                  {getTasksForDay(dayIdx).filter(t=>t.startHour===hour).map(t=>taskCell(t))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── DESKTOP GRILLE (CSS trick) ── */}
+      <style>{`
+        @media (min-width: 768px) {
+          #desktop-calendar-mobile { display: none !important; }
+          #desktop-calendar-full { display: block !important; }
+          #desktop-view-switch { display: flex !important; }
+        }
+        @media (max-width: 767px) {
+          #desktop-calendar-full { display: none !important; }
+        }
+      `}</style>
+
+      {/* Desktop calendar */}
+      <div id="desktop-calendar-full" style={{ display:'none', background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', boxShadow:'var(--shadow-card)' }}>
+        <div style={{ display:'grid', gridTemplateColumns:`44px repeat(${desktopVisibleDays.length},1fr)`, borderBottom:'1px solid var(--border)', background:'var(--bg-card2)' }}>
           <div/>
-          {trainingWeek.map((d,dayIdx) => { const load=dayLoad(dayIdx); return (
-            <div key={dayIdx} style={{ padding:'7px 5px', textAlign:'center' as const, borderLeft:'1px solid var(--border)' }}>
-              <p style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase' as const, margin:'0 0 1px' }}>{d.day}</p>
-              <p style={{ fontSize:13, fontWeight:700, margin:'0 0 3px' }}>{d.date}</p>
-              <span style={{ padding:'1px 5px', borderRadius:20, background:load.bg, border:`1px solid ${load.border}`, color:load.color, fontSize:8, fontWeight:700 }}>{load.label}</span>
+          {desktopVisibleDays.map(dayIdx => { const load=dayLoad(dayIdx); return (
+            <div key={dayIdx} style={{ padding:'8px 5px', textAlign:'center', borderLeft:'1px solid var(--border)' }}>
+              <p style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase', margin:'0 0 1px' }}>{trainingWeek[dayIdx]?.day}</p>
+              <p style={{ fontSize:14, fontWeight:700, margin:'0 0 3px' }}>{trainingWeek[dayIdx]?.date}</p>
+              <span style={{ padding:'2px 7px', borderRadius:20, background:load.bg, border:`1px solid ${load.border}`, color:load.color, fontSize:9, fontWeight:700 }}>{load.label}</span>
             </div>
           )})}
         </div>
-
-        {/* Time rows */}
-        <div style={{ overflowY:'auto', maxHeight:'58vh' }}>
+        <div style={{ overflowY:'auto', maxHeight:'65vh' }}>
           {HOURS.map(hour => (
-            <div key={hour}>
-              {/* MOBILE rows */}
-              <div style={{ display:'grid', gridTemplateColumns:`44px repeat(${mobileVisibleDays.length},1fr)`, borderBottom:'1px solid var(--border)', minHeight:48 }} className="md:hidden">
-                <div style={{ padding:'3px 5px', display:'flex', alignItems:'flex-start', justifyContent:'flex-end' }}>
-                  <span style={{ fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-dim)', marginTop:2 }}>{String(hour).padStart(2,'0')}h</span>
-                </div>
-                {mobileVisibleDays.map(dayIdx => (
-                  <div key={dayIdx} onClick={()=>setTaskModal({dayIndex:dayIdx,startHour:hour})}
-                    style={{ borderLeft:'1px solid var(--border)', padding:'2px 3px', cursor:'pointer', minHeight:48 }}>
-                    {getTasksForDay(dayIdx).filter(t=>t.startHour===hour).map(t=>taskCell(t))}
-                  </div>
-                ))}
+            <div key={hour} style={{ display:'grid', gridTemplateColumns:`44px repeat(${desktopVisibleDays.length},1fr)`, borderBottom:'1px solid var(--border)', minHeight:52 }}>
+              <div style={{ padding:'3px 5px', display:'flex', alignItems:'flex-start', justifyContent:'flex-end' }}>
+                <span style={{ fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-dim)', marginTop:2 }}>{String(hour).padStart(2,'0')}h</span>
               </div>
-              {/* DESKTOP rows — 7 jours */}
-              <div style={{ display:'grid', gridTemplateColumns:'44px repeat(7,1fr)', borderBottom:'1px solid var(--border)', minHeight:48 }} className="hidden md:grid">
-                <div style={{ padding:'3px 5px', display:'flex', alignItems:'flex-start', justifyContent:'flex-end' }}>
-                  <span style={{ fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-dim)', marginTop:2 }}>{String(hour).padStart(2,'0')}h</span>
+              {desktopVisibleDays.map(dayIdx => (
+                <div key={dayIdx} onClick={()=>setTaskModal({dayIndex:dayIdx,startHour:hour})}
+                  style={{ borderLeft:'1px solid var(--border)', padding:'2px 4px', cursor:'pointer', minHeight:52 }}>
+                  {getTasksForDay(dayIdx).filter(t=>t.startHour===hour).map(t=>taskCell(t))}
                 </div>
-                {trainingWeek.map((_,dayIdx) => (
-                  <div key={dayIdx} onClick={()=>setTaskModal({dayIndex:dayIdx,startHour:hour})}
-                    style={{ borderLeft:'1px solid var(--border)', padding:'2px 3px', cursor:'pointer', minHeight:48 }}>
-                    {getTasksForDay(dayIdx).filter(t=>t.startHour===hour).map(t=>taskCell(t))}
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           ))}
         </div>

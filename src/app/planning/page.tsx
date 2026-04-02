@@ -962,8 +962,8 @@ function RaceYearTab() {
                       <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{new Date(r.date).getDate()} {MONTH_SHORT[mi]}</p>
                     </div>
                   </div>
-                ) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Aucune course</p>}
-              </div>
+                 ) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Aucune course</p>}
+                </div>
             )})}
           </div>
         </div>

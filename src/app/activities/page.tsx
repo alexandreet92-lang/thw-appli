@@ -1156,7 +1156,15 @@ function ActivityDetail({ activity: initial, onClose, onUpdate }: {
             {/* Speed (bike — grey, no zones) */}
             {isBike && activity.avg_speed_ms && (
               <Card>
-                <Sparkline data={slicedHr.map((_,i)=>25+10*Math.sin(i/9)+3*Math.random())} color="#9ca3af" height={48} label="Vitesse" unit=" km/h" selection={sel} onSelect={setSel}/>
+                <Sparkline
+                  data={slicedHr.map((_: number, i: number) => 25 + 10 * Math.sin(i / 9) + 3 * Math.random())}
+                  color="#9ca3af"
+                  height={48}
+                  label="Vitesse"
+                  unit=" km/h"
+                  selection={sel}
+                  onSelect={setSel}
+                />
               </Card>
             )}
 

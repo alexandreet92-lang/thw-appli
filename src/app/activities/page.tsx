@@ -1045,8 +1045,8 @@ function ActivityDetail({ activity: initial, onClose, onUpdate }: {
             )}
 
             {/* Elevation */}
-            {(isRun||isBike||sport==='trail_run') && (activity.elevation_gain_m ?? 0) > 0 && (
-              <Card>
+            {(isRun||isBike) && (activity.elevation_gain_m ?? 0) > 0 && (
+            <Card>
                 <ElevationProfile data={elevStream} selection={sel} onSelect={setSel}/>
                 {sel && <button onClick={()=>setSel(null)} style={{ marginTop:8, fontSize:10, color:'#00c8e0', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Réinitialiser la sélection</button>}
               </Card>

@@ -924,12 +924,19 @@ function ActivityDetail({ activity: initial, onClose, onUpdate }: {
   const cadStream   = useMemo(() => activity.raw_data?.cadStream   ?? Array.from({length:120},(_,i)=>Math.round((isBike?88:175)+8*Math.sin(i/7)+3*Math.random())), [activity, isBike])
 
   // Zone time distribution (from hrStream)
-  const hrZoneTimes = useMemo(() => {
-    const times = [0,0,0,0,0]
-    hrStream.forEach(v => { times[getZoneIdx(v, zones.hr)]++ })
+   const hrZoneTimes = useMemo(() => {
+    const times = [0, 0, 0, 0, 0]
+
+    hrStream.forEach((v: number) => {
+      times[getZoneIdx(v, zones.hr)]++
+    })
+
     const total = hrStream.length || 1
-    return times.map(t => Math.round((t/total) * ((activity.moving_time_s??3600)/60)))
-  }, [hrStream, activity.moving_time_s])
+
+    return times.map((t: number) =>
+      Math.round((t / total) * ((activity.moving_time_s ?? 3600) / 60))
+    )
+  }, [hrStream, activity.moving_time_s, zones.hr])
 
   // Selectable data range
   const slicedHr    = sel ? hrStream.slice(    Math.round(sel[0]/120*hrStream.length),    Math.round(sel[1]/120*hrStream.length))    : hrStream

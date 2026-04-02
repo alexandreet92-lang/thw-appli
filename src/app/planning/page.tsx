@@ -954,7 +954,7 @@ function RaceYearTab() {
             {MONTHS.map((month,mi)=>{ const mr=getRacesForMonth(mi); return (
               <div key={mi} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:12,padding:12,boxShadow:'var(--shadow-card)',cursor:'pointer' }} onClick={()=>{setCurrentMonth(mi);setCalView('month')}}>
                 <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 7px',color:mr.length>0?'var(--text)':'var(--text-dim)' }}>{MONTH_SHORT[mi]}</p>
-                {mr.length>0 ? mr.sort((a,b)=>new Date(a.date).getDate()-new Date(b.date).getDate()).map(r=>{ const cfg=RACE_CONFIG[r.level]; return (
+{mr.length>0 ? mr.sort((a,b)=>new Date(a.date).getDate()-new Date(b.date).getDate()).map(r=>{ const cfg=RACE_CONFIG[r.level]; return (
                   <div key={r.id} onClick={e=>{e.stopPropagation();setDetailModal(r)}} style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer',marginBottom:4 }}>
                     <span style={{ fontSize:9 }}>{cfg.emoji}</span>
                     <div style={{ flex:1,minWidth:0 }}>
@@ -962,7 +962,7 @@ function RaceYearTab() {
                       <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{new Date(r.date).getDate()} {MONTH_SHORT[mi]}</p>
                     </div>
                   </div>
-                 ) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Aucune course</p>}
+                )}) : (<p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Aucune course</p>)}
                 </div>
             )})}
           </div>

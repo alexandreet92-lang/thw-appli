@@ -926,7 +926,7 @@ function ActivityDetail({ activity: initial, onClose, onUpdate }: {
   // Zone time distribution (from hrStream)
   const hrZoneTimes = useMemo(() => {
     const times = [0,0,0,0,0]
-    hrStream.forEach(v => { times[getZoneIdx(v, zones.hr)]++ })
+    hrStream.forEach((v: number) => { times[getZoneIdx(v, zones.hr)]++ })
     const total = hrStream.length || 1
     return times.map(t => Math.round((t/total) * ((activity.moving_time_s??3600)/60)))
   }, [hrStream, activity.moving_time_s])

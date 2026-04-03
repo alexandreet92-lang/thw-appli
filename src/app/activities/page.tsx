@@ -301,7 +301,7 @@ function useActivities() {
       is_race: r.is_race ?? false, trainer: r.trainer ?? false,
       provider: r.provider ?? 'manual', status: (r.status as ActivityStatus) ?? 'imported',
       notes: r.notes, raw_data: r.raw_data ?? {},
-      streams: r.raw_data?.streams,
+      streams: r.streams ?? r.raw_data?.streams,
       gymExercises: r.raw_data?.gymExercises,
       hyroxStations: r.raw_data?.hyroxStations,
       hyroxRuns: r.raw_data?.hyroxRuns,

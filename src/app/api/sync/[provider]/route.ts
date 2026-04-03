@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { syncStravaActivities } from '@/lib/sync/strava'
+import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 
 export async function POST(
@@ -41,9 +41,15 @@ export async function POST(
     let count = 0
 
     switch (provider) {
-      case 'strava':
-        count = await syncStravaActivities(userId)
+      case 'strava': {
+        const streamsOnly = req.nextUrl.searchParams.get('streams') === 'true'
+        if (streamsOnly) {
+          count = await syncMissingStreams(userId, 20)
+        } else {
+          count = await syncStravaActivities(userId)
+        }
         break
+      }
       case 'wahoo':
         count = await syncWahooWorkouts(userId)
         break

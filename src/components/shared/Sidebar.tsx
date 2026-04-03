@@ -29,12 +29,11 @@ const NAV = [
     ),
   },
   {
-    href: '/sessions',
-    label: 'Session Builder',
+    href: '/activities',
+    label: 'Activités',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
     ),
   },
@@ -45,25 +44,6 @@ const NAV = [
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
         <path d="M3 3v18h18"/>
         <path d="M7 16l4-6 4 4 4-8"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/nutrition',
-    label: 'Nutrition',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <path d="M12 2a7 7 0 017 7c0 5-7 13-7 13S5 14 5 9a7 7 0 017-7z"/>
-        <circle cx="12" cy="9" r="2.5"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/recovery',
-    label: 'Récupération',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/>
       </svg>
     ),
   },
@@ -187,7 +167,7 @@ function NavContent({ onClose }: { onClose?: () => void }) {
             padding: '10px 12px', borderRadius: '11px',
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: '13.5px',
-            fontFamily: 'DM Sans, sans-serif', width: '100%', textAlign: 'left',
+            fontFamily: 'DM Sans, sans-serif', width: '100%', textAlign: 'left' as const,
           }}
         >
           {mode === 'dark' ? (
@@ -229,30 +209,25 @@ function NavContent({ onClose }: { onClose?: () => void }) {
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
+  const drawerRef = useRef<HTMLDivElement>(null)
 
+  // Mobile: swipe to open/close
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX
       touchStartY.current = e.touches[0].clientY
     }
-
     const handleTouchEnd = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - touchStartX.current
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
-
-      if (dx > 60 && dy < 100 && touchStartX.current < 40) {
-        setMobileOpen(true)
-      }
-      if (dx < -60 && dy < 100) {
-        setMobileOpen(false)
-      }
+      if (dx > 60 && dy < 100 && touchStartX.current < 40) setMobileOpen(true)
+      if (dx < -60 && dy < 100) setMobileOpen(false)
     }
-
     document.addEventListener('touchstart', handleTouchStart, { passive: true })
     document.addEventListener('touchend', handleTouchEnd, { passive: true })
-
     return () => {
       document.removeEventListener('touchstart', handleTouchStart)
       document.removeEventListener('touchend', handleTouchEnd)
@@ -261,21 +236,82 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop */}
-      <aside
-        className="hidden md:flex flex-col flex-shrink-0"
+      {/* ── DESKTOP ── */}
+
+      {/* Hover trigger zone — 3 lignes à gauche */}
+      <div
+        className="hidden md:flex"
+        onMouseEnter={() => setDesktopOpen(true)}
         style={{
-          width: '220px',
-          height: '100vh',
-          background: 'var(--nav-bg)',
-          borderRight: '1px solid var(--nav-border)',
-          boxShadow: '2px 0 16px rgba(0,0,0,0.06)',
-          position: 'relative',
-          zIndex: 20,
+          position: 'fixed',
+          top: 0, left: 0, bottom: 0,
+          width: desktopOpen ? '0' : '28px',
+          zIndex: 30,
+          cursor: 'pointer',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
-      >
-        <NavContent />
-      </aside>
+      />
+
+      {/* Desktop burger button — visible quand sidebar fermée */}
+      {!desktopOpen && (
+        <button
+          className="hidden md:flex"
+          onMouseEnter={() => setDesktopOpen(true)}
+          style={{
+            position: 'fixed',
+            top: '18px', left: '14px',
+            zIndex: 40,
+            width: '36px', height: '36px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+            transition: 'opacity 0.2s',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+          </svg>
+        </button>
+      )}
+
+      {/* Desktop sidebar — s'ouvre au survol */}
+      {desktopOpen && (
+        <>
+          {/* Overlay transparent pour fermer */}
+          <div
+            className="hidden md:block"
+            onMouseLeave={() => setDesktopOpen(false)}
+            style={{
+              position: 'fixed', inset: 0,
+              zIndex: 25,
+            }}
+          />
+          <aside
+            className="hidden md:flex flex-col"
+            onMouseLeave={() => setDesktopOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, bottom: 0,
+              width: '220px',
+              zIndex: 35,
+              background: 'var(--nav-bg)',
+              borderRight: '1px solid var(--nav-border)',
+              boxShadow: '4px 0 32px rgba(0,0,0,0.15)',
+              animation: 'slideIn 0.18s ease',
+            }}
+          >
+            <NavContent />
+          </aside>
+        </>
+      )}
+
+      {/* ── MOBILE ── */}
 
       {/* Mobile top bar */}
       <div
@@ -291,25 +327,7 @@ export function Sidebar() {
           boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
         }}
       >
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '9px',
-            background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
-            fontSize: '11px', color: '#fff',
-            boxShadow: '0 0 12px rgba(0,200,224,0.3)',
-          }}>
-            THW
-          </div>
-          <span style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            fontSize: '15px', color: 'var(--text)',
-          }}>
-            THW Coaching
-          </span>
-        </Link>
-
+        {/* Burger à gauche */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           style={{
@@ -330,6 +348,29 @@ export function Sidebar() {
             </svg>
           )}
         </button>
+
+        {/* Logo centré */}
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '9px',
+            background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontSize: '11px', color: '#fff',
+            boxShadow: '0 0 12px rgba(0,200,224,0.3)',
+          }}>
+            THW
+          </div>
+          <span style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            fontSize: '15px', color: 'var(--text)',
+          }}>
+            THW Coaching
+          </span>
+        </Link>
+
+        {/* Placeholder droite pour équilibrer */}
+        <div style={{ width: '36px' }} />
       </div>
 
       {/* Mobile drawer */}
@@ -345,6 +386,7 @@ export function Sidebar() {
             }}
           />
           <div
+            ref={drawerRef}
             className="md:hidden"
             style={{
               position: 'fixed', top: 0, left: 0, bottom: 0,
@@ -352,6 +394,9 @@ export function Sidebar() {
               background: 'var(--nav-bg)',
               boxShadow: '4px 0 32px rgba(0,0,0,0.15)',
               animation: 'slideIn 0.22s ease',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch' as any,
+              touchAction: 'pan-y',
             }}
           >
             <NavContent onClose={() => setMobileOpen(false)} />

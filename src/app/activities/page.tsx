@@ -1030,6 +1030,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const [hyroxR,setHyroxR]=useState<string[]>(initial.hyroxRuns??[])
   const [saving,setSaving]=useState(false)
   const [activity,setActivity]=useState(initial)
+  const [streamsLoading,setStreamsLoading]=useState(false)
   const [sleepQ,setSleepQ]=useState(0)
   const [fatigueQ,setFatigueQ]=useState(0)
   const [hasPain,setHasPain]=useState(false)
@@ -1040,6 +1041,18 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const zones=defaultZones()
   const intervals=useMemo(()=>detectIntervals(activity),[activity])
   const analysis=useMemo(()=>generateAnalysis(activity),[activity])
+
+  // Lazy-load Strava streams when opening Charts tab
+  useEffect(()=>{
+    if(tab!=='charts') return
+    if(activity.streams&&Object.keys(activity.streams).length>0) return
+    if(activity.provider!=='strava') return
+    setStreamsLoading(true)
+    fetch(`/api/strava/streams?activity_id=${activity.id}`)
+      .then(r=>r.json())
+      .then(data=>{if(data.streams) setActivity(prev=>({...prev,streams:data.streams}))})
+      .finally(()=>setStreamsLoading(false))
+  },[tab,activity.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const sport=activity.sport
   const isBike=sport==='bike'||sport==='virtual_bike'
   const isRun=sport==='run'||sport==='trail_run'
@@ -1259,7 +1272,11 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
         {/* ═══ CHARTS ═══ */}
         {tab==='charts'&&(
           <div style={{background:'var(--bg)'}}>
-            <SyncCharts activity={activity}/>
+            {streamsLoading?(
+              <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement des courbes…</div>
+            ):(
+              <SyncCharts activity={activity}/>
+            )}
           </div>
         )}
 

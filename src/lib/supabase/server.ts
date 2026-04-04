@@ -22,6 +22,9 @@ export async function createClient() {
   )
 }
 
+// Alias pour compatibilité avec nos routes API
+export const createPublicClient = createClient
+
 export function createServiceClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

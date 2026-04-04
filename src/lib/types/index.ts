@@ -26,8 +26,6 @@ export interface Athlete {
   sport_focus: Sport[]
   ftp_watts?: number
   lthr_bpm?: number
-  css_pace?: string
-  run_threshold_pace?: string
   created_at: string
   updated_at: string
 }
@@ -38,14 +36,10 @@ export interface Session {
   date: string
   sport: Sport
   title: string
-  description?: string
   status: SessionStatus
   planned_tss?: number
   actual_tss?: number
-  planned_duration_min?: number
-  actual_duration_min?: number
   rpe?: number
-  notes?: string
   blocks?: SessionBlock[]
 }
 
@@ -58,16 +52,6 @@ export interface SessionBlock {
   zone?: number
   target_pace?: string
   target_watts?: number
-  target_hr_bpm?: number
-  notes?: string
-}
-
-export interface TrainingLoad {
-  date: string
-  ctl: number
-  atl: number
-  tsb: number
-  tss: number
 }
 
 export interface RecoveryLog {
@@ -77,41 +61,8 @@ export interface RecoveryLog {
   hrv_ms?: number
   resting_hr_bpm?: number
   sleep_hours?: number
-  sleep_quality?: number
   fatigue_score?: number
-  stress_score?: number
-  muscle_soreness?: number
-  motivation?: number
   readiness_score?: number
-}
-
-export interface NutritionLog {
-  id: string
-  athlete_id: string
-  date: string
-  meal_type: MealType
-  raw_input?: string
-  parsed_foods?: FoodItem[]
-  calories: number
-  protein_g: number
-  carbs_g: number
-  fat_g: number
-  fiber_g?: number
-  sodium_mg?: number
-  potassium_mg?: number
-  magnesium_mg?: number
-  calcium_mg?: number
-  iron_mg?: number
-  created_at: string
-}
-
-export interface FoodItem {
-  name: string
-  quantity_g: number
-  calories: number
-  protein_g: number
-  carbs_g: number
-  fat_g: number
 }
 
 export interface ChatMessage {

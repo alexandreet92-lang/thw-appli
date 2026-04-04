@@ -1,9 +1,9 @@
-import { cn } from '@/src/lib/utils'
+import { cn } from '@/lib/utils'
 
 type ColorVariant = 'brand' | 'blue' | 'red' | 'orange' | 'green' | 'default'
 
 const topBarColors: Record<ColorVariant, string> = {
-  brand:   'from-brand to-transparent',
+  brand:   'from-[#00c8e0] to-transparent',
   blue:    'from-[#5b6fff] to-transparent',
   red:     'from-[#ff5f5f] to-transparent',
   orange:  'from-[#ffb340] to-transparent',
@@ -12,7 +12,7 @@ const topBarColors: Record<ColorVariant, string> = {
 }
 
 const valueColors: Record<ColorVariant, string> = {
-  brand:   'text-brand',
+  brand:   'text-[#00c8e0]',
   blue:    'text-[#5b6fff]',
   red:     'text-[#ff5f5f]',
   orange:  'text-[#ffb340]',
@@ -30,17 +30,20 @@ export function Card({ variant, noPadding, children, className, ...props }: Card
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-card border transition-all duration-200',
-        'bg-[var(--bg-card)] border-[var(--border)] shadow-card',
-        'hover:border-[var(--border-mid)] hover:shadow-panel',
+        'relative overflow-hidden rounded-[16px] transition-all duration-200',
         !noPadding && 'p-5',
         className
       )}
+      style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-card)',
+      }}
       {...props}
     >
       {variant && variant !== 'default' && (
         <div className={cn(
-          'absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r rounded-t-card',
+          'absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r',
           topBarColors[variant]
         )} />
       )}
@@ -61,19 +64,39 @@ interface StatCardProps {
 export function StatCard({ label, value, unit, sub, variant = 'default', className }: StatCardProps) {
   return (
     <Card variant={variant} className={className}>
-      <p className="text-[11px] font-medium tracking-[0.08em] uppercase text-[var(--text-dim)] mb-2.5">
+      <p
+        className="text-[11px] font-medium mb-2.5"
+        style={{
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--text-dim)',
+          fontFamily: 'DM Sans, sans-serif',
+        }}
+      >
         {label}
       </p>
-      <p className={cn('font-display text-[30px] font-bold tracking-[-0.04em] leading-none', valueColors[variant])}>
+      <p
+        className={cn('text-[30px] font-bold leading-none', valueColors[variant])}
+        style={{
+          fontFamily: 'Syne, sans-serif',
+          letterSpacing: '-0.04em',
+        }}
+      >
         {value}
         {unit && (
-          <span className="text-[13px] font-normal text-[var(--text-dim)] ml-1 tracking-normal">
+          <span
+            className="text-[13px] font-normal ml-1"
+            style={{ color: 'var(--text-dim)', letterSpacing: 'normal' }}
+          >
             {unit}
           </span>
         )}
       </p>
       {sub && (
-        <div className="text-[12px] text-[var(--text-dim)] mt-2 flex items-center gap-1">
+        <div
+          className="text-[12px] mt-2 flex items-center gap-1"
+          style={{ color: 'var(--text-dim)' }}
+        >
           {sub}
         </div>
       )}

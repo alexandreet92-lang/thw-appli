@@ -540,7 +540,8 @@ function XAxis({xData,sport,totalS}:{xData:number[];sport:SportType;totalS:numbe
   if(!xData.length)return null
   const isDistX=(xData[xData.length-1]??0)>1000
   const isBike=sport==='bike'||sport==='virtual_bike'
-  const distStep=isBike?5000:2000
+  const distStep=isBike?5000:2000 // 5km bike, 2km run
+  const timeStep=isBike?600:300   // 10min bike, 5min run
   const totalDist=xData[xData.length-1]??0
   const ticks:number[]=[]
   if(isDistX){
@@ -628,6 +629,7 @@ function SelectionPanel({tracks,xData,selection,sport,zones,totalS,onClose}:{
   return(
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)',overflowY:'auto',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:16,paddingTop:48}}>
       <div style={{background:'var(--bg-card)',borderRadius:16,border:'1px solid var(--border)',width:'100%',maxWidth:580,maxHeight:'90vh',overflowY:'auto'}}>
+        {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--bg-card)',zIndex:1}}>
           <div>
             <p style={{fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0}}>Analyse de la sélection</p>
@@ -637,6 +639,8 @@ function SelectionPanel({tracks,xData,selection,sport,zones,totalS,onClose}:{
         </div>
 
         <div style={{padding:'16px 18px',display:'flex',flexDirection:'column',gap:14}}>
+
+          {/* HR */}
           {hrTrack&&(
             <div>
               <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'#ef4444',margin:'0 0 8px'}}>Fréquence cardiaque</p>
@@ -669,6 +673,7 @@ function SelectionPanel({tracks,xData,selection,sport,zones,totalS,onClose}:{
             </div>
           )}
 
+          {/* Running */}
           {isRun&&paceTrack&&(
             <div>
               <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'#22c55e',margin:'0 0 8px'}}>Allure</p>
@@ -701,6 +706,7 @@ function SelectionPanel({tracks,xData,selection,sport,zones,totalS,onClose}:{
             </div>
           )}
 
+          {/* Bike */}
           {isBike&&powerTrack&&(
             <div>
               <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'#3b82f6',margin:'0 0 8px'}}>Puissance</p>
@@ -736,6 +742,7 @@ function SelectionPanel({tracks,xData,selection,sport,zones,totalS,onClose}:{
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
@@ -816,6 +823,7 @@ function SyncCharts({activity}:{activity:Activity}) {
 
   return(
     <div style={{background:'var(--bg)',fontFamily:'DM Sans,sans-serif'}}>
+      {/* Header bar */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 80px 10px',background:'var(--bg-card)',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
         <div style={{display:'flex',gap:14,alignItems:'center'}}>
           {tracks.map(t=>(
@@ -839,18 +847,23 @@ function SyncCharts({activity}:{activity:Activity}) {
         )}
       </div>
 
+      {/* Cursor bar */}
       <CursorBar tracks={tracks} cursorPct={cursorPct} xData={xData}/>
 
+      {/* Altitude */}
       {smoothedStreams.altitude?.length&&(
         <AltitudeTrack data={smoothedStreams.altitude} xData={xData} cursorPct={cursorPct} selection={selection} onCursorMove={onCursorMove} onSelectStart={onSelectStart} onSelectMove={onSelectMove} onSelectEnd={onSelectEnd} laps={laps.length>1?laps:undefined}/>
       )}
 
+      {/* Metric tracks */}
       <div style={{background:'var(--bg-card)'}}>
         {tracks.map(t=><ChartTrack key={t.id} track={t} {...trackProps}/>)}
       </div>
 
+      {/* X-axis */}
       <XAxis xData={xData} sport={activity.sport} totalS={activity.moving_time_s??0}/>
 
+      {/* Selection panel */}
       {showSelPanel&&selection&&(selection.endPct-selection.startPct)>0.02&&(
         <SelectionPanel tracks={tracks} xData={xData} selection={selection} sport={activity.sport} zones={zones} totalS={activity.moving_time_s??0} onClose={()=>setShowSelPanel(false)}/>
       )}
@@ -859,7 +872,7 @@ function SyncCharts({activity}:{activity:Activity}) {
 }
 
 // ══════════════════════════════════════════════════════════
-// HR ZONE BARS
+// HR ZONE BARS (vertical format)
 // ══════════════════════════════════════════════════════════
 function HrZoneBars({hrStream,zones,totalS}:{hrStream:number[];zones:Zone[];totalS:number}) {
   const times=zoneTimes(hrStream,zones,totalS)
@@ -1017,7 +1030,6 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const [hyroxR,setHyroxR]=useState<string[]>(initial.hyroxRuns??[])
   const [saving,setSaving]=useState(false)
   const [activity,setActivity]=useState(initial)
-  const [streamsLoading,setStreamsLoading]=useState(false)
   const [sleepQ,setSleepQ]=useState(0)
   const [fatigueQ,setFatigueQ]=useState(0)
   const [hasPain,setHasPain]=useState(false)
@@ -1028,19 +1040,6 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const zones=defaultZones()
   const intervals=useMemo(()=>detectIntervals(activity),[activity])
   const analysis=useMemo(()=>generateAnalysis(activity),[activity])
-
-  // ── Lazy-load des streams Strava à l'ouverture de l'onglet Courbes ──
-  useEffect(()=>{
-    if(tab!=='charts') return
-    if(activity.streams&&Object.keys(activity.streams).length>0) return
-    if(activity.provider!=='strava') return
-    setStreamsLoading(true)
-    fetch(`/api/strava/streams?activity_id=${activity.id}`)
-      .then(r=>r.json())
-      .then(data=>{ if(data.streams) setActivity(prev=>({...prev,streams:data.streams})) })
-      .finally(()=>setStreamsLoading(false))
-  },[tab,activity.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
   const sport=activity.sport
   const isBike=sport==='bike'||sport==='virtual_bike'
   const isRun=sport==='run'||sport==='trail_run'
@@ -1051,14 +1050,19 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const date=new Date(activity.started_at)
   const streams=activity.streams??{}
 
+  // VAP (Grade Adjusted Pace)
   const vap=activity.avg_pace_s_km&&activity.elevation_gain_m&&activity.distance_m
     ?activity.avg_pace_s_km*(1-(activity.elevation_gain_m/activity.distance_m)*0.035):null
 
+  // Zone times
   const hrZoneTimes=useMemo(()=>
     streams.heartrate?.length?zoneTimes(streams.heartrate,zones.hr,activity.moving_time_s??3600):[0,0,0,0,0]
   ,[streams.heartrate,activity.moving_time_s])
 
+  // TSS color
   const tssColor=!activity.tss?'#9ca3af':activity.tss>150?'#ef4444':activity.tss>80?'#f97316':'#3b82f6'
+
+  // RPE label & color
   const rpeLabel=feeling>0?(RPE_LABELS[Math.round(feeling)]??'—'):'Non renseigné'
   const rpeColor=feeling===0?'var(--text-dim)':feeling<=2?'#22c55e':feeling<=4?'#86efac':feeling<=6?'#ffb340':feeling<=8?'#f97316':'#ef4444'
 
@@ -1114,6 +1118,8 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
         {/* ═══ OVERVIEW ═══ */}
         {tab==='overview'&&(
           <div style={{padding:'20px'}}>
+
+            {/* HERO SECTION */}
             <div style={{padding:'20px',borderRadius:14,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12,boxShadow:'var(--shadow-card)'}}>
               <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
                 <span style={{fontSize:22}}>{SPORT_EMOJI[sport]}</span>
@@ -1153,7 +1159,9 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             </div>
 
+            {/* METRIC CARDS */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,marginBottom:12}}>
+              {/* Run specific */}
               {isRun&&vap&&(
                 <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
                   <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>VAP</p>
@@ -1167,6 +1175,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
                   <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#9ca3af',margin:0}}>{Math.round(activity.avg_cadence)} <span style={{fontSize:11,fontWeight:400}}>spm</span></p>
                 </div>
               )}
+              {/* Bike specific */}
               {isBike&&activity.avg_watts&&(
                 <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
                   <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Puissance moy.</p>
@@ -1180,6 +1189,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
                   <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#9ca3af',margin:0}}>{Math.round(activity.avg_cadence)} <span style={{fontSize:11,fontWeight:400}}>rpm</span></p>
                 </div>
               )}
+              {/* Common */}
               {activity.avg_hr&&activity.avg_hr>0&&(
                 <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:`1px solid rgba(239,68,68,0.2)`}}>
                   <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>FC moy.</p>
@@ -1202,6 +1212,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               )}
             </div>
 
+            {/* ANALYSIS */}
             <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
                 <div style={{width:24,height:24,borderRadius:7,background:`${SPORT_COLOR[sport]}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}>💡</div>
@@ -1214,6 +1225,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             </div>
 
+            {/* HR ZONES — vertical */}
             {(isRun||isBike)&&activity.avg_hr&&streams.heartrate?.length&&(
               <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
                 <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Répartition zones FC</p>
@@ -1221,6 +1233,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             )}
 
+            {/* Notes */}
             {(notes||activity.userNotes)&&(
               <div style={{padding:'12px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
                 <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 7px'}}>Notes</p>
@@ -1228,6 +1241,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             )}
 
+            {/* Swim */}
             {isSwim&&(
               <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
                 <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Natation</p>
@@ -1245,13 +1259,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
         {/* ═══ CHARTS ═══ */}
         {tab==='charts'&&(
           <div style={{background:'var(--bg)'}}>
-            {streamsLoading?(
-              <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>
-                Chargement des courbes…
-              </div>
-            ):(
-              <SyncCharts activity={activity}/>
-            )}
+            <SyncCharts activity={activity}/>
           </div>
         )}
 
@@ -1283,6 +1291,8 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
         {/* ═══ ENRICH ═══ */}
         {tab==='enrich'&&(
           <div style={{padding:'20px'}}>
+
+            {/* RPE */}
             <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
               <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Effort perçu (RPE)</p>
               <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
@@ -1297,6 +1307,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             </div>
 
+            {/* Notes */}
             <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
               <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 10px'}}>Notes</p>
               <div style={{display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:10}}>
@@ -1309,6 +1320,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Sensations, fatigue, douleur, météo, nutrition, points à améliorer…" rows={4} style={{width:'100%',padding:'10px 13px',borderRadius:10,border:'1px solid var(--border)',background:'rgba(255,255,255,0.03)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,lineHeight:1.65}}/>
             </div>
 
+            {/* Wellbeing */}
             <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
               <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Bien-être</p>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
@@ -1335,6 +1347,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             </div>
 
+            {/* Feedback structuré */}
             <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
               <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Feedback structuré</p>
               <div style={{display:'flex',flexDirection:'column',gap:9}}>
@@ -1351,6 +1364,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             </div>
 
+            {/* Sport-specific */}
             {isGym&&(
               <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
                 <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Exercices</p>
@@ -1364,6 +1378,7 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
               </div>
             )}
 
+            {/* Save button */}
             <button onClick={save} disabled={saving} style={{width:'100%',padding:'14px',borderRadius:12,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,cursor:saving?'not-allowed':'pointer',opacity:saving?0.7:1,boxShadow:'0 4px 20px rgba(0,200,224,0.25)',transition:'opacity 0.15s'}}>
               {saving?'Sauvegarde...':'Sauvegarder'}
             </button>
@@ -1389,4 +1404,126 @@ function ActivityListCard({activity,onClick}:{activity:Activity;onClick:()=>void
         {SPORT_EMOJI[sport]}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{display:'flex',alignItems:'center',
+        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+          <p style={{fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{activity.title}</p>
+          {activity.is_race&&<span style={{fontSize:8,padding:'1px 5px',borderRadius:20,background:'rgba(239,68,68,0.08)',color:'#ef4444',fontWeight:700,flexShrink:0,border:'1px solid rgba(239,68,68,0.2)'}}>COMPÉT</span>}
+        </div>
+        <p style={{fontSize:10,color:'var(--text-dim)',margin:'0 0 5px'}}>
+          {date.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})} · {date.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}
+        </p>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap' as const}}>
+          {activity.moving_time_s&&activity.moving_time_s>0&&<span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',fontWeight:600}}>{fmtDur(activity.moving_time_s)}</span>}
+          {activity.distance_m&&activity.distance_m>0&&<span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:SPORT_COLOR[sport],fontWeight:600}}>{fmtDist(activity.distance_m)}</span>}
+          {isRun&&activity.avg_pace_s_km&&activity.avg_pace_s_km>0&&<span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',fontWeight:600}}>{fmtPace(activity.avg_pace_s_km)}</span>}
+          {isBike&&activity.avg_watts&&activity.avg_watts>0&&<span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',fontWeight:600}}>{Math.round(activity.avg_watts)}W</span>}
+          {activity.avg_hr&&activity.avg_hr>0&&<span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:'#ef4444',fontWeight:600}}>{Math.round(activity.avg_hr)} bpm</span>}
+          {activity.tss&&activity.tss>0&&<span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:'#5b6fff',fontWeight:600}}>{Math.round(activity.tss)} TSS</span>}
+        </div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
+        <span style={{fontSize:8,padding:'2px 6px',borderRadius:20,background:statusCfg.bg,border:`1px solid ${statusCfg.color}28`,color:statusCfg.color,fontWeight:700}}>{statusCfg.label}</span>
+        <span style={{color:'var(--text-dim)',fontSize:15}}>›</span>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════
+// MAIN PAGE
+// ══════════════════════════════════════════════════════════
+export default function ActivitiesPage() {
+  const {activities,loading,total,page,load,updateActivity}=useActivities()
+  const [selected,setSelected]=useState<Activity|null>(null)
+  const [filterSport,setFilterSport]=useState<FilterSport>('all')
+  const [filterStatus,setFilterStatus]=useState<FilterStatus>('all')
+  const [filterType,setFilterType]=useState<FilterType>('all')
+  const [search,setSearch]=useState('')
+
+  const filtered=useMemo(()=>activities.filter(a=>{
+    if(filterSport!=='all'&&a.sport!==filterSport)return false
+    if(filterStatus!=='all'&&a.status!==filterStatus)return false
+    if(filterType==='competition'&&!a.is_race)return false
+    if(filterType==='training'&&a.is_race)return false
+    if(search&&!a.title.toLowerCase().includes(search.toLowerCase()))return false
+    return true
+  }),[activities,filterSport,filterStatus,filterType,search])
+
+  const now=new Date()
+  const thisMonth=activities.filter(a=>{const d=new Date(a.started_at);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()})
+  const availableSports=Array.from(new Set(activities.map(a=>a.sport)))
+
+  if(selected)return(
+    <ActivityDetail activity={selected} onClose={()=>setSelected(null)} onUpdate={upd=>{updateActivity(upd.id,upd);setSelected(upd)}}/>
+  )
+
+  return(
+    <div style={{padding:'22px 20px',maxWidth:'100%'}}>
+      <div style={{marginBottom:16}}>
+        <h1 style={{fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0}}>Activités</h1>
+        <p style={{fontSize:12,color:'var(--text-dim)',margin:'4px 0 0'}}>{total>0?`${total} activité${total>1?'s':''}`:' Connectez vos apps pour importer vos séances'}</p>
+      </div>
+
+      {/* Monthly stats */}
+      {thisMonth.length>0&&(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+          {[
+            {l:'Ce mois',v:String(thisMonth.length),c:'#00c8e0'},
+            {l:'Volume',v:`${(thisMonth.reduce((s,a)=>s+(a.moving_time_s??0),0)/3600).toFixed(1)}h`,c:'#ffb340'},
+            {l:'TSS',v:String(Math.round(thisMonth.reduce((s,a)=>s+(a.tss??0),0))),c:'#5b6fff'},
+          ].map(x=>(
+            <div key={x.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+              <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>{x.l}</p>
+              <p style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:x.c,margin:0}}>{x.v}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Search */}
+      <div style={{position:'relative',marginBottom:10}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
+          style={{width:'100%',padding:'9px 14px 9px 36px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:13,outline:'none'}}/>
+        <span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'var(--text-dim)'}}>🔍</span>
+        {search&&<button onClick={()=>setSearch('')} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:17}}>×</button>}
+      </div>
+
+      {/* Filters */}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap' as const,marginBottom:16}}>
+        <select value={filterSport} onChange={e=>setFilterSport(e.target.value as FilterSport)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+          <option value="all">Tous les sports</option>
+          {availableSports.map(s=><option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
+        </select>
+        <select value={filterType} onChange={e=>setFilterType(e.target.value as FilterType)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+          <option value="all">Entraînement + Compétition</option>
+          <option value="training">Entraînement</option>
+          <option value="competition">Compétition</option>
+        </select>
+        <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value as FilterStatus)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+          <option value="all">Tous les statuts</option>
+          <option value="imported">Importée</option>
+          <option value="completed">Complétée</option>
+          <option value="validated">Validée</option>
+        </select>
+      </div>
+
+      {/* List */}
+      {loading&&activities.length===0?(
+        <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement...</div>
+      ):filtered.length===0?(
+        <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
+          <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune activité</p>
+          <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>{search?`Aucun résultat pour "${search}".`:'Connectez Strava, Wahoo ou Polar dans votre profil.'}</p>
+        </div>
+      ):(
+        <div>
+          {filtered.map(a=><ActivityListCard key={a.id} activity={a} onClick={()=>setSelected(a)}/>)}
+          {activities.length<total&&(
+            <button onClick={()=>load(page+1,filterSport!=='all'?filterSport:undefined)} style={{width:'100%',padding:'11px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:6}}>
+              Charger plus — {total-activities.length} restante{total-activities.length>1?'s':''}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

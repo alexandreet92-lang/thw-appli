@@ -315,11 +315,12 @@ interface TrackDef {
 
 // Single track renderer
 function ChartTrack({
-  track, xData, cursorPct, selection, onCursorMove, onSelectStart, onSelectMove, onSelectEnd,
+  track, xData, cursorPct, selection, onCursorMove, onSelectStart, onSelectMove, onSelectEnd, laps,
 }:{
   track:TrackDef; xData:number[]; cursorPct:number;
   selection:ChartSel|null; onCursorMove:(p:number)=>void;
   onSelectStart:(p:number)=>void; onSelectMove:(p:number)=>void; onSelectEnd:()=>void;
+  laps?:IntervalBlock[];
 }) {
   const svgRef=useRef<SVGSVGElement>(null)
   const dragging=useRef(false)
@@ -428,11 +429,17 @@ function ChartTrack({
           {selX1!==null&&selX2!==null&&(
             <rect x={Math.min(selX1,selX2)} y={0} width={Math.abs(selX2-selX1)} height={H} fill="rgba(0,200,224,0.08)" stroke="#00c8e0" strokeWidth="0.8"/>
           )}
+          {/* Lap markers */}
+          {laps&&laps.length>1&&laps.map((lap,i)=>{
+            if(lap.startIdx<=0)return null
+            const x=(lap.startIdx/n)*W
+            return <line key={i} x1={x} y1={0} x2={x} y2={H} stroke="rgba(0,200,224,0.20)" strokeWidth="1" strokeDasharray="2,4"/>
+          })}
           {/* Cursor */}
           {curX!==null&&curX>=0&&(
             <>
-              <line x1={curX} y1={0} x2={curX} y2={H} stroke="rgba(255,255,255,0.5)" strokeWidth="1"/>
-              {curVal&&<circle cx={curX} cy={toY(curVal)} r="3" fill={track.color} stroke="var(--bg)" strokeWidth="1.5"/>}
+              <line x1={curX} y1={0} x2={curX} y2={H} stroke="rgba(255,255,255,0.85)" strokeWidth="1.5"/>
+              {curVal&&<circle cx={curX} cy={toY(curVal)} r="3.5" fill={track.color} stroke="var(--bg)" strokeWidth="1.5"/>}
             </>
           )}
         </svg>
@@ -450,7 +457,7 @@ function ChartTrack({
   )
 }
 
-// Altitude track (special area style)
+// Altitude track — gray filled area, taller, visually separated
 function AltitudeTrack({data,xData,cursorPct,selection,onCursorMove,onSelectStart,onSelectMove,onSelectEnd,laps}:{
   data:number[];xData:number[];cursorPct:number;selection:ChartSel|null;
   onCursorMove:(p:number)=>void;onSelectStart:(p:number)=>void;onSelectMove:(p:number)=>void;onSelectEnd:()=>void;
@@ -458,9 +465,9 @@ function AltitudeTrack({data,xData,cursorPct,selection,onCursorMove,onSelectStar
 }) {
   const svgRef=useRef<SVGSVGElement>(null)
   const dragging=useRef(false)
-  const W=1000,H=80
+  const W=1000,H=120
   if(!data.length)return null
-  const dMin=minV(data),dMax=maxV(data),span=dMax-dMin||1,pad=span*0.12
+  const dMin=minV(data),dMax=maxV(data),span=dMax-dMin||1,pad=span*0.15
   function toY(v:number):number{return H-((v-(dMin-pad))/(span+2*pad))*(H-4)-2}
   const n=data.length
   const pts=data.map((v,i)=>`${((i/(n-1))*W).toFixed(1)},${toY(v).toFixed(1)}`).join(' ')
@@ -471,6 +478,7 @@ function AltitudeTrack({data,xData,cursorPct,selection,onCursorMove,onSelectStar
   const curIdx=cursorPct>=0?Math.min(Math.round(cursorPct*(n-1)),n-1):null
   const curElev=curIdx!==null?data[curIdx]:null
   const curSlope=curIdx!==null&&xData.length?calcSlope(data,xData,curIdx):null
+  const ALT_COLOR='#94a3b8'
 
   function getPct(e:React.MouseEvent|React.TouchEvent):number{
     if(!svgRef.current)return 0
@@ -480,18 +488,23 @@ function AltitudeTrack({data,xData,cursorPct,selection,onCursorMove,onSelectStar
   }
 
   return(
-    <div style={{borderBottom:'1px solid rgba(255,255,255,0.06)',background:'var(--bg-card)'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'5px 8px 3px 80px'}}>
-        <span style={{fontSize:9,fontWeight:700,color:'#8b5cf6',textTransform:'uppercase' as const,letterSpacing:'0.09em'}}>Altitude</span>
-        <div style={{display:'flex',gap:12}}>
-          <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace'}}>min {Math.round(dMin)}m</span>
-          <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace'}}>max {Math.round(dMax)}m</span>
+    <div style={{borderBottom:'3px solid rgba(255,255,255,0.04)',background:'rgba(0,0,0,0.15)'}}>
+      {/* Row header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 8px 4px 80px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:7}}>
+          <div style={{width:14,height:2,borderRadius:1,background:ALT_COLOR}}/>
+          <span style={{fontSize:9,fontWeight:700,color:ALT_COLOR,textTransform:'uppercase' as const,letterSpacing:'0.09em'}}>Altitude</span>
+        </div>
+        <div style={{display:'flex',gap:14}}>
+          <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace'}}>▼ {Math.round(dMin)}m</span>
+          <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace'}}>▲ {Math.round(dMax)}m</span>
+          <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace'}}>Δ {Math.round(dMax-dMin)}m</span>
         </div>
       </div>
       <div style={{display:'flex'}}>
         <div style={{width:78,flexShrink:0,height:H,position:'relative'}}>
           {[dMin,(dMin+dMax)/2,dMax].map((v,i)=>(
-            <span key={i} style={{position:'absolute',right:6,fontSize:8,fontFamily:'DM Mono,monospace',color:'var(--text-dim)',transform:'translateY(-50%)',top:`${((H-toY(v))/H)*100}%`}}>{Math.round(v)}</span>
+            <span key={i} style={{position:'absolute',right:6,fontSize:8,fontFamily:'DM Mono,monospace',color:'rgba(148,163,184,0.5)',transform:'translateY(-50%)',top:`${((H-toY(v))/H)*100}%`}}>{Math.round(v)}</span>
           ))}
         </div>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
@@ -507,64 +520,108 @@ function AltitudeTrack({data,xData,cursorPct,selection,onCursorMove,onSelectStar
         >
           <defs>
             <linearGradient id="altFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25"/>
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.03"/>
+              <stop offset="0%" stopColor={ALT_COLOR} stopOpacity="0.40"/>
+              <stop offset="60%" stopColor={ALT_COLOR} stopOpacity="0.12"/>
+              <stop offset="100%" stopColor={ALT_COLOR} stopOpacity="0.02"/>
             </linearGradient>
           </defs>
+          {/* Subtle horizontal grid */}
+          {[0.33,0.66].map((f,i)=>(
+            <line key={i} x1="0" y1={f*H} x2={W} y2={f*H} stroke="rgba(255,255,255,0.03)" strokeWidth="0.5"/>
+          ))}
           <path d={fillPath} fill="url(#altFill)"/>
-          <polyline points={pts} fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinejoin="round"/>
-          {/* Lap overlays */}
-          {laps&&laps.map((lap,i)=>{
-            const x1=(lap.startIdx/n)*W, x2=(lap.endIdx/n)*W
-            if(x2<=x1)return null
-            return <rect key={i} x={x1} y={0} width={x2-x1} height={H} fill="rgba(0,200,224,0.05)" stroke="rgba(0,200,224,0.2)" strokeWidth="0.5"/>
+          <polyline points={pts} fill="none" stroke={ALT_COLOR} strokeWidth="2" strokeLinejoin="round" opacity="0.8"/>
+          {/* Lap tick marks with numbers */}
+          {laps&&laps.length>1&&laps.map((lap,i)=>{
+            if(lap.startIdx<=0)return null
+            const x=(lap.startIdx/n)*W
+            return(
+              <g key={i}>
+                <line x1={x} y1={0} x2={x} y2={H} stroke="rgba(0,200,224,0.3)" strokeWidth="1" strokeDasharray="3,4"/>
+                <rect x={x-8} y={H-16} width={16} height={14} rx="3" fill="rgba(0,200,224,0.15)" stroke="rgba(0,200,224,0.3)" strokeWidth="0.5"/>
+                <text x={x} y={H-5} textAnchor="middle" fontSize="7" fill="#00c8e0" fontFamily="DM Mono,monospace" fontWeight="700">{lap.index}</text>
+              </g>
+            )
           })}
           {selX1!==null&&selX2!==null&&(
             <rect x={Math.min(selX1,selX2)} y={0} width={Math.abs(selX2-selX1)} height={H} fill="rgba(0,200,224,0.10)" stroke="#00c8e0" strokeWidth="1"/>
           )}
           {curX!==null&&curX>=0&&(
-            <line x1={curX} y1={0} x2={curX} y2={H} stroke="rgba(255,255,255,0.5)" strokeWidth="1"/>
+            <line x1={curX} y1={0} x2={curX} y2={H} stroke="rgba(255,255,255,0.85)" strokeWidth="1.5"/>
           )}
         </svg>
-        <div style={{width:90,flexShrink:0,display:'flex',flexDirection:'column',alignItems:'flex-end',justifyContent:'center',padding:'0 10px',height:H,gap:2}}>
-          {curElev&&<span style={{fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:'#8b5cf6'}}>{Math.round(curElev)}<span style={{fontSize:9,fontWeight:400,color:'var(--text-dim)',marginLeft:2}}>m</span></span>}
-          {curSlope!==null&&<span style={{fontSize:9,fontFamily:'DM Mono,monospace',color:curSlope>0?'#f97316':curSlope<0?'#3b82f6':'var(--text-dim)'}}>{curSlope>0?'+':''}{curSlope.toFixed(1)}%</span>}
+        <div style={{width:90,flexShrink:0,display:'flex',flexDirection:'column',alignItems:'flex-end',justifyContent:'center',padding:'0 10px',height:H,gap:3}}>
+          {curElev&&(
+            <span style={{fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:ALT_COLOR}}>
+              {Math.round(curElev)}<span style={{fontSize:9,fontWeight:400,color:'var(--text-dim)',marginLeft:2}}>m</span>
+            </span>
+          )}
+          {curSlope!==null&&(
+            <span style={{fontSize:10,fontFamily:'DM Mono,monospace',color:curSlope>3?'#f97316':curSlope<-3?'#3b82f6':'var(--text-dim)',fontWeight:curSlope!==0?600:400}}>
+              {curSlope>0?'+':''}{curSlope.toFixed(1)}%
+            </span>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-// X-axis with distance + time markers
+// X-axis — two separate rows: distance + time
 function XAxis({xData,sport,totalS}:{xData:number[];sport:SportType;totalS:number}) {
   if(!xData.length)return null
   const isDistX=(xData[xData.length-1]??0)>1000
   const isBike=sport==='bike'||sport==='virtual_bike'
-  const distStep=isBike?5000:2000 // 5km bike, 2km run
-  const timeStep=isBike?600:300   // 10min bike, 5min run
+  const distStep=isBike?5000:2000
+  const timeStep=isBike?900:300  // 15min bike, 5min run
   const totalDist=xData[xData.length-1]??0
-  const ticks:number[]=[]
-  if(isDistX){
-    for(let d=distStep;d<totalDist;d+=distStep) ticks.push(d)
-  }
+
+  const distTicks:number[]=[]
+  if(isDistX){for(let d=distStep;d<totalDist;d+=distStep)distTicks.push(d)}
+
+  const timeTicks:number[]=[]
+  if(totalS){for(let t=timeStep;t<totalS;t+=timeStep)timeTicks.push(t)}
+
   return(
-    <div style={{display:'flex',position:'relative',height:32,background:'var(--bg-card)',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
-      <div style={{width:78,flexShrink:0}}/>
-      <div style={{flex:1,position:'relative'}}>
-        {isDistX?ticks.map((d,i)=>{
-          const pct=(d/totalDist)*100
-          if(pct>98)return null
-          const timeAtDist=totalS?(d/totalDist)*totalS:0
-          return(
-            <div key={i} style={{position:'absolute',left:`${pct}%`,transform:'translateX(-50%)',top:4,display:'flex',flexDirection:'column',alignItems:'center',gap:1}}>
-              <div style={{width:1,height:4,background:'rgba(255,255,255,0.1)'}}/>
-              <span style={{fontSize:8,fontFamily:'DM Mono,monospace',color:'var(--text-dim)',whiteSpace:'nowrap' as const}}>{(d/1000).toFixed(0)}km</span>
-              {timeAtDist>0&&<span style={{fontSize:7,fontFamily:'DM Mono,monospace',color:'rgba(255,255,255,0.2)',whiteSpace:'nowrap' as const}}>{fmtDur(timeAtDist)}</span>}
-            </div>
-          )
-        }):<></>}
-      </div>
-      <div style={{width:90,flexShrink:0}}/>
+    <div style={{background:'var(--bg-card)',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+      {/* Distance row */}
+      {isDistX&&distTicks.length>0&&(
+        <div style={{display:'flex',position:'relative',height:22}}>
+          <div style={{width:78,flexShrink:0}}/>
+          <div style={{flex:1,position:'relative'}}>
+            {distTicks.map((d,i)=>{
+              const pct=(d/totalDist)*100
+              if(pct>98)return null
+              return(
+                <div key={i} style={{position:'absolute',left:`${pct}%`,transform:'translateX(-50%)',top:3,display:'flex',flexDirection:'column',alignItems:'center',gap:1}}>
+                  <div style={{width:1,height:4,background:'rgba(255,255,255,0.15)'}}/>
+                  <span style={{fontSize:8,fontFamily:'DM Mono,monospace',color:'rgba(255,255,255,0.4)',whiteSpace:'nowrap' as const}}>{(d/1000).toFixed(0)} km</span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{width:90,flexShrink:0}}/>
+        </div>
+      )}
+      {/* Time row */}
+      {totalS>0&&timeTicks.length>0&&(
+        <div style={{display:'flex',position:'relative',height:20,borderTop:'1px solid rgba(255,255,255,0.03)'}}>
+          <div style={{width:78,flexShrink:0}}/>
+          <div style={{flex:1,position:'relative'}}>
+            {timeTicks.map((t,i)=>{
+              const xPct=isDistX&&totalS?(t/totalS)*100:(t/(totalS||1))*100
+              if(xPct>98)return null
+              return(
+                <div key={i} style={{position:'absolute',left:`${xPct}%`,transform:'translateX(-50%)',top:3,display:'flex',flexDirection:'column',alignItems:'center',gap:1}}>
+                  <div style={{width:1,height:3,background:'rgba(255,255,255,0.08)'}}/>
+                  <span style={{fontSize:7,fontFamily:'DM Mono,monospace',color:'rgba(255,255,255,0.2)',whiteSpace:'nowrap' as const}}>{fmtDur(t)}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{width:90,flexShrink:0}}/>
+        </div>
+      )}
     </div>
   )
 }
@@ -626,16 +683,62 @@ function SelectionPanel({tracks,xData,selection,sport,zones,totalS,onClose}:{
   const paceZoneMins=paceTrack?zoneTimes(paceTrack.data.slice(i0,i1+1),zones.pace,durS):[0,0,0,0,0]
   const powerZoneMins=powerTrack?zoneTimes(powerTrack.data.slice(i0,i1+1),zones.power,durS):[0,0,0,0,0]
 
+  // Mini sparkline for selected segment
+  const sparkTrack=hrTrack??paceTrack??powerTrack??null
+  const sparkData=sparkTrack?sparkTrack.data.slice(i0,i1+1).filter(v=>v>0&&isFinite(v)):[]
+  const hasSparkline=sparkData.length>=4
+  const SPW=500,SPH=44
+  const spMin=hasSparkline?minV(sparkData):0,spMax=hasSparkline?maxV(sparkData):1,spSpan=spMax-spMin||1,spPad=spSpan*0.1
+  const toSpY=(v:number)=>sparkTrack?.invert
+    ?((v-(spMin-spPad))/(spSpan+2*spPad))*(SPH-2)+1
+    :(1-(v-(spMin-spPad))/(spSpan+2*spPad))*(SPH-2)+1
+  const spN=sparkData.length
+  const spPts=hasSparkline?sparkData.map((v,i)=>`${((i/(spN-1))*SPW).toFixed(1)},${toSpY(v).toFixed(1)}`).join(' '):''
+  const spFill=hasSparkline?(spPts+` L${SPW},${SPH} L0,${SPH} Z`):''
+
   return(
-    <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)',overflowY:'auto',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:16,paddingTop:48}}>
-      <div style={{background:'var(--bg-card)',borderRadius:16,border:'1px solid var(--border)',width:'100%',maxWidth:580,maxHeight:'90vh',overflowY:'auto'}}>
+    <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.75)',backdropFilter:'blur(10px)',overflowY:'auto',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:16,paddingTop:48}}>
+      <div style={{background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border)',width:'100%',maxWidth:600,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 80px rgba(0,0,0,0.5)'}}>
         {/* Header */}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--bg-card)',zIndex:1}}>
-          <div>
-            <p style={{fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0}}>Analyse de la sélection</p>
-            <p style={{fontSize:11,color:'var(--text-dim)',margin:'2px 0 0'}}>{distLabel} : {distOrTime}{durS>0?` · ${fmtDur(durS)}`:''}</p>
+        <div style={{borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--bg-card)',zIndex:1,borderRadius:'18px 18px 0 0',overflow:'hidden'}}>
+          {/* Stats row */}
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'18px 20px 12px'}}>
+            <div>
+              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 6px'}}>Portion sélectionnée</p>
+              <div style={{display:'flex',alignItems:'baseline',gap:16,flexWrap:'wrap' as const}}>
+                <div>
+                  <p style={{fontFamily:'DM Mono,monospace',fontSize:34,fontWeight:700,color:'var(--text)',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{distOrTime}</p>
+                  <p style={{fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.07em'}}>{distLabel}</p>
+                </div>
+                {durS>0&&isDistX&&(
+                  <>
+                    <span style={{color:'var(--text-dim)',fontSize:24,lineHeight:1,alignSelf:'center'}}>·</span>
+                    <div>
+                      <p style={{fontFamily:'DM Mono,monospace',fontSize:34,fontWeight:700,color:'var(--text)',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtDur(durS)}</p>
+                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.07em'}}>Durée</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            <button onClick={onClose} style={{width:32,height:32,borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0}}>✕</button>
           </div>
-          <button onClick={onClose} style={{background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:15}}>✕</button>
+          {/* Sparkline of selected segment */}
+          {hasSparkline&&sparkTrack&&(
+            <div style={{padding:'0 20px 14px'}}>
+              <svg viewBox={`0 0 ${SPW} ${SPH}`} style={{width:'100%',height:44,display:'block'}} preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sp_fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={sparkTrack.color} stopOpacity="0.25"/>
+                    <stop offset="100%" stopColor={sparkTrack.color} stopOpacity="0.02"/>
+                  </linearGradient>
+                </defs>
+                <path d={spFill} fill="url(#sp_fill)"/>
+                <polyline points={spPts} fill="none" stroke={sparkTrack.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+              </svg>
+              <p style={{fontSize:8,color:'var(--text-dim)',textAlign:'center' as const,margin:'2px 0 0',fontFamily:'DM Mono,monospace',letterSpacing:'0.05em'}}>{sparkTrack.label} — portion sélectionnée</p>
+            </div>
+          )}
         </div>
 
         <div style={{padding:'16px 18px',display:'flex',flexDirection:'column',gap:14}}>
@@ -857,7 +960,7 @@ function SyncCharts({activity}:{activity:Activity}) {
 
       {/* Metric tracks */}
       <div style={{background:'var(--bg-card)'}}>
-        {tracks.map(t=><ChartTrack key={t.id} track={t} {...trackProps}/>)}
+        {tracks.map(t=><ChartTrack key={t.id} track={t} {...trackProps} laps={laps.length>1?laps:undefined}/>)}
       </div>
 
       {/* X-axis */}
@@ -872,32 +975,44 @@ function SyncCharts({activity}:{activity:Activity}) {
 }
 
 // ══════════════════════════════════════════════════════════
-// HR ZONE BARS (vertical format)
+// HR ZONE BARS — premium linear rows
 // ══════════════════════════════════════════════════════════
 function HrZoneBars({hrStream,zones,totalS}:{hrStream:number[];zones:Zone[];totalS:number}) {
   const times=zoneTimes(hrStream,zones,totalS)
   const total=times.reduce((a,b)=>a+b,0)||1
   return(
-    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+    <div style={{borderRadius:12,overflow:'hidden',border:'1px solid rgba(255,255,255,0.06)'}}>
       {zones.map((z,i)=>{
         const pct=Math.round((times[i]/total)*100)
         return(
-          <div key={i} style={{padding:'9px 13px',borderRadius:10,background:ZONE_BG[i],border:`1px solid ${ZONE_COLORS[i]}22`}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{width:8,height:8,borderRadius:2,background:ZONE_COLORS[i],flexShrink:0,display:'inline-block'}}/>
-                <span style={{fontSize:12,fontWeight:600,color:ZONE_COLORS[i]}}>{z.label} — {ZONE_LABELS[i].split(' ').slice(1).join(' ')}</span>
+          <div key={i} style={{
+            display:'flex',alignItems:'center',gap:12,padding:'11px 14px',
+            background:i%2===0?'rgba(255,255,255,0.015)':'transparent',
+            borderBottom:i<zones.length-1?'1px solid rgba(255,255,255,0.04)':'none',
+            position:'relative' as const,
+          }}>
+            {/* Background fill indicator */}
+            <div style={{position:'absolute' as const,inset:0,width:`${pct}%`,background:`${ZONE_COLORS[i]}09`,transition:'width 0.8s ease',pointerEvents:'none'}}/>
+            {/* Dot */}
+            <div style={{width:10,height:10,borderRadius:3,background:ZONE_COLORS[i],flexShrink:0,boxShadow:`0 0 8px ${ZONE_COLORS[i]}55`}}/>
+            {/* Labels */}
+            <div style={{minWidth:110,flexShrink:0}}>
+              <div style={{display:'flex',alignItems:'baseline',gap:5}}>
+                <span style={{fontSize:12,fontWeight:700,color:ZONE_COLORS[i]}}>{z.label}</span>
+                <span style={{fontSize:10,color:'var(--text-mid)',fontWeight:500}}>{ZONE_LABELS[i].split(' ').slice(1).join(' ')}</span>
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:700,color:'var(--text)'}}>{times[i]}min</span>
-                <span style={{fontSize:10,color:'var(--text-dim)',minWidth:30,textAlign:'right' as const}}>{pct}%</span>
-              </div>
+              <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace'}}>{z.min}–{z.max<999?z.max:'∞'} bpm</span>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <div style={{flex:1,height:5,background:'rgba(255,255,255,0.05)',borderRadius:3}}>
-                <div style={{width:`${pct}%`,height:'100%',background:ZONE_COLORS[i],borderRadius:3,transition:'width 0.5s'}}/>
-              </div>
-              <span style={{fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace',minWidth:80,textAlign:'right' as const}}>{z.min}–{z.max<999?z.max:'∞'} bpm</span>
+            {/* Bar */}
+            <div style={{flex:1,height:4,background:'rgba(255,255,255,0.06)',borderRadius:2,overflow:'hidden'}}>
+              <div style={{width:`${pct}%`,height:'100%',background:ZONE_COLORS[i],borderRadius:2,transition:'width 0.8s ease'}}/>
+            </div>
+            {/* Stats */}
+            <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:'var(--text)',minWidth:32,textAlign:'right' as const}}>
+                {times[i]}<span style={{fontSize:9,fontWeight:400,color:'var(--text-dim)',marginLeft:2}}>m</span>
+              </span>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-dim)',minWidth:30,textAlign:'right' as const}}>{pct}%</span>
             </div>
           </div>
         )
@@ -1063,9 +1178,13 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const date=new Date(activity.started_at)
   const streams=activity.streams??{}
 
-  // VAP (Grade Adjusted Pace)
-  const vap=activity.avg_pace_s_km&&activity.elevation_gain_m&&activity.distance_m
-    ?activity.avg_pace_s_km*(1-(activity.elevation_gain_m/activity.distance_m)*0.035):null
+  // VAP — prioritise Strava grade_adjusted_distance if present, else estimate
+  const vapStrava=activity.raw_data?.grade_adjusted_distance&&activity.moving_time_s
+    ?(activity.moving_time_s/(activity.raw_data.grade_adjusted_distance/1000)):null
+  const vap=vapStrava??(
+    activity.avg_pace_s_km&&activity.elevation_gain_m&&activity.distance_m
+    ?activity.avg_pace_s_km*(1-(activity.elevation_gain_m/activity.distance_m)*0.035):null)
+  const vapLabel=vapStrava?'VAP Strava':'VAP estimée'
 
   // Zone times
   const hrZoneTimes=useMemo(()=>
@@ -1130,139 +1249,139 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
 
         {/* ═══ OVERVIEW ═══ */}
         {tab==='overview'&&(
-          <div style={{padding:'20px'}}>
+          <div style={{padding:'20px',display:'flex',flexDirection:'column',gap:12}}>
 
             {/* HERO SECTION */}
-            <div style={{padding:'20px',borderRadius:14,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12,boxShadow:'var(--shadow-card)'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-                <span style={{fontSize:22}}>{SPORT_EMOJI[sport]}</span>
-                <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:SPORT_COLOR[sport],margin:0}}>{SPORT_LABEL[sport]}</p>
+            <div style={{
+              padding:'22px 20px',borderRadius:16,
+              background:`linear-gradient(135deg,${SPORT_COLOR[sport]}14 0%,${SPORT_COLOR[sport]}06 60%,transparent 100%)`,
+              border:`1px solid ${SPORT_COLOR[sport]}28`,
+              position:'relative' as const,overflow:'hidden',
+            }}>
+              {/* Background accent circle */}
+              <div style={{position:'absolute' as const,top:-30,right:-30,width:160,height:160,borderRadius:'50%',background:`${SPORT_COLOR[sport]}07`,pointerEvents:'none'}}/>
+              {/* Sport label + TSS */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{width:44,height:44,borderRadius:12,background:`${SPORT_COLOR[sport]}18`,border:`1px solid ${SPORT_COLOR[sport]}30`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>
+                    {SPORT_EMOJI[sport]}
+                  </div>
+                  <div>
+                    <p style={{fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:800,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:SPORT_COLOR[sport],margin:0}}>{SPORT_LABEL[sport]}</p>
+                    {activity.is_race&&<span style={{fontSize:8,padding:'1px 7px',borderRadius:20,background:'rgba(239,68,68,0.12)',color:'#ef4444',fontWeight:700,border:'1px solid rgba(239,68,68,0.25)'}}>COMPÉTITION</span>}
+                  </div>
+                </div>
+                {activity.tss&&activity.tss>0&&(
+                  <div style={{textAlign:'right' as const}}>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 2px'}}>TSS</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:tssColor,margin:0,letterSpacing:'-0.02em',lineHeight:1}}>{Math.round(activity.tss)}</p>
+                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'2px 0 0'}}>{activity.tss>150?'Élevé':activity.tss>80?'Modéré':'Léger'}</p>
+                  </div>
+                )}
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
+              {/* Primary stats grid */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
                 {activity.moving_time_s&&activity.moving_time_s>0&&(
                   <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Durée</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'var(--text)',margin:0,letterSpacing:'-0.02em'}}>{fmtDur(activity.moving_time_s)}</p>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Durée</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'var(--text)',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtDur(activity.moving_time_s)}</p>
                   </div>
                 )}
                 {activity.distance_m&&activity.distance_m>0&&(
                   <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Distance</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:SPORT_COLOR[sport],margin:0,letterSpacing:'-0.02em'}}>{fmtDist(activity.distance_m)}</p>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Distance</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:SPORT_COLOR[sport],margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtDist(activity.distance_m)}</p>
                   </div>
                 )}
                 {(activity.elevation_gain_m??0)>0&&(
                   <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Dénivelé +</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#8b5cf6',margin:0,letterSpacing:'-0.02em'}}>{Math.round(activity.elevation_gain_m!)}m</p>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Dénivelé +</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#8b5cf6',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{Math.round(activity.elevation_gain_m!)}m</p>
                   </div>
                 )}
                 {isRun&&activity.avg_pace_s_km&&(
                   <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Allure moy.</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#22c55e',margin:0,letterSpacing:'-0.02em'}}>{fmtPace(activity.avg_pace_s_km)}</p>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Allure moy.</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#22c55e',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtPace(activity.avg_pace_s_km)}</p>
                   </div>
                 )}
                 {isBike&&activity.avg_speed_ms&&(
                   <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Vitesse moy.</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#3b82f6',margin:0,letterSpacing:'-0.02em'}}>{fmtSpeed(activity.avg_speed_ms)}</p>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Vitesse moy.</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#3b82f6',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtSpeed(activity.avg_speed_ms)}</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* METRIC CARDS */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,marginBottom:12}}>
-              {/* Run specific */}
-              {isRun&&vap&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>VAP</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#22c55e',margin:0}}>{fmtPace(vap)}</p>
-                  <p style={{fontSize:9,color:'var(--text-dim)',margin:'2px 0 0'}}>allure ajustée dénivelé</p>
-                </div>
-              )}
-              {isRun&&activity.avg_cadence&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Cadence moy.</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#9ca3af',margin:0}}>{Math.round(activity.avg_cadence)} <span style={{fontSize:11,fontWeight:400}}>spm</span></p>
-                </div>
-              )}
-              {/* Bike specific */}
-              {isBike&&activity.avg_watts&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Puissance moy.</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#3b82f6',margin:0}}>{Math.round(activity.avg_watts)} <span style={{fontSize:11,fontWeight:400}}>W</span></p>
-                  {activity.normalized_watts&&<p style={{fontSize:9,color:'var(--text-dim)',margin:'2px 0 0'}}>NP {Math.round(activity.normalized_watts)}W</p>}
-                </div>
-              )}
-              {isBike&&activity.avg_cadence&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Cadence moy.</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#9ca3af',margin:0}}>{Math.round(activity.avg_cadence)} <span style={{fontSize:11,fontWeight:400}}>rpm</span></p>
-                </div>
-              )}
-              {/* Common */}
-              {activity.avg_hr&&activity.avg_hr>0&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:`1px solid rgba(239,68,68,0.2)`}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>FC moy.</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#ef4444',margin:0}}>{Math.round(activity.avg_hr)} <span style={{fontSize:11,fontWeight:400}}>bpm</span></p>
-                  {activity.max_hr&&<p style={{fontSize:9,color:'var(--text-dim)',margin:'2px 0 0'}}>max {Math.round(activity.max_hr)} bpm</p>}
-                </div>
-              )}
-              {activity.tss&&activity.tss>0&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:`1px solid ${tssColor}22`}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>TSS</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:tssColor,margin:0}}>{Math.round(activity.tss)}</p>
-                  <p style={{fontSize:9,color:'var(--text-dim)',margin:'2px 0 0'}}>{activity.tss>150?'Charge élevée':activity.tss>80?'Charge modérée':'Charge légère'}</p>
-                </div>
-              )}
-              {activity.calories&&activity.calories>0&&(
-                <div style={{padding:'10px 12px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>Calories</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#ffb340',margin:0}}>{Math.round(activity.calories)} <span style={{fontSize:11,fontWeight:400}}>kcal</span></p>
-                </div>
-              )}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
+              {/* Helper: single metric card */}
+              {(()=>{
+                const MetCard=({label,value,sub,color,unit}:{label:string;value:string;sub?:string;color:string;unit?:string})=>(
+                  <div style={{padding:'12px 14px',borderRadius:12,background:'var(--bg-card)',borderLeft:`3px solid ${color}`,border:`1px solid var(--border)`,borderLeftColor:color}}>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>{label}</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:color,margin:0,lineHeight:1}}>
+                      {value}{unit&&<span style={{fontSize:12,fontWeight:400,color:'var(--text-dim)',marginLeft:3}}>{unit}</span>}
+                    </p>
+                    {sub&&<p style={{fontSize:9,color:'var(--text-dim)',margin:'4px 0 0'}}>{sub}</p>}
+                  </div>
+                )
+                return(<>
+                  {isRun&&vap&&<MetCard label={vapLabel} value={fmtPace(vap)} color='#22c55e' sub="allure ajustée dénivelé"/>}
+                  {isRun&&activity.avg_cadence&&<MetCard label="Cadence moy." value={String(Math.round(activity.avg_cadence))} unit="spm" color='#9ca3af'/>}
+                  {isBike&&activity.avg_watts&&<MetCard label="Puissance moy." value={String(Math.round(activity.avg_watts))} unit="W" color='#3b82f6' sub={activity.normalized_watts?`NP ${Math.round(activity.normalized_watts)}W`:undefined}/>}
+                  {isBike&&activity.avg_cadence&&<MetCard label="Cadence moy." value={String(Math.round(activity.avg_cadence))} unit="rpm" color='#9ca3af'/>}
+                  {activity.avg_hr&&activity.avg_hr>0&&<MetCard label="FC moy." value={String(Math.round(activity.avg_hr))} unit="bpm" color='#ef4444' sub={activity.max_hr?`max ${Math.round(activity.max_hr)} bpm`:undefined}/>}
+                  {activity.calories&&activity.calories>0&&<MetCard label="Calories" value={String(Math.round(activity.calories))} unit="kcal" color='#ffb340'/>}
+                </>)
+              })()}
             </div>
 
             {/* ANALYSIS */}
-            <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                <div style={{width:24,height:24,borderRadius:7,background:`${SPORT_COLOR[sport]}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}>💡</div>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:0}}>Analyse</p>
+            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                <div style={{width:28,height:28,borderRadius:8,background:`${SPORT_COLOR[sport]}18`,border:`1px solid ${SPORT_COLOR[sport]}28`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>💡</div>
+                <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Analyse de séance</p>
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {analysis.map((line,i)=>(
-                  <p key={i} style={{fontSize:12,color:'var(--text-mid)',lineHeight:1.65,margin:0,borderLeft:`2px solid ${SPORT_COLOR[sport]}`,paddingLeft:10}}>{line}</p>
+                  <div key={i} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'9px 12px',borderRadius:9,background:'rgba(255,255,255,0.02)',border:`1px solid ${SPORT_COLOR[sport]}15`}}>
+                    <span style={{width:20,height:20,borderRadius:6,background:`${SPORT_COLOR[sport]}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:SPORT_COLOR[sport],flexShrink:0,marginTop:1}}>{i+1}</span>
+                    <p style={{fontSize:12,color:'var(--text-mid)',lineHeight:1.65,margin:0}}>{line}</p>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* HR ZONES — vertical */}
+            {/* HR ZONES */}
             {(isRun||isBike)&&activity.avg_hr&&streams.heartrate?.length&&(
-              <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Répartition zones FC</p>
+              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
+                  <div style={{width:8,height:8,borderRadius:2,background:'#ef4444'}}/>
+                  <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Zones fréquence cardiaque</p>
+                </div>
                 <HrZoneBars hrStream={streams.heartrate} zones={zones.hr} totalS={activity.moving_time_s??3600}/>
               </div>
             )}
 
             {/* Notes */}
             {(notes||activity.userNotes)&&(
-              <div style={{padding:'12px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 7px'}}>Notes</p>
-                <p style={{fontSize:12,color:'var(--text-mid)',lineHeight:1.7,margin:0}}>{notes||activity.userNotes}</p>
+              <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',borderLeft:'3px solid #5b6fff'}}>
+                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 8px'}}>Notes</p>
+                <p style={{fontSize:12,color:'var(--text-mid)',lineHeight:1.75,margin:0}}>{notes||activity.userNotes}</p>
               </div>
             )}
 
             {/* Swim */}
             {isSwim&&(
-              <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
+              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
                 <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Natation</p>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
-                  {activity.distance_m&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Distance</p><p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'#38bdf8',margin:0}}>{fmtDist(activity.distance_m)}</p></div>}
-                  {activity.moving_time_s&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Durée</p><p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'var(--text)',margin:0}}>{fmtDur(activity.moving_time_s)}</p></div>}
-                  {activity.avg_pace_s_km&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Allure /100m</p><p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'#38bdf8',margin:0}}>{fmtPace(activity.avg_pace_s_km/10)}</p></div>}
-                  {activity.avg_hr&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>FC moy.</p><p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'#ef4444',margin:0}}>{Math.round(activity.avg_hr)} bpm</p></div>}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  {activity.distance_m&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Distance</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#38bdf8',margin:0}}>{fmtDist(activity.distance_m)}</p></div>}
+                  {activity.moving_time_s&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Durée</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'var(--text)',margin:0}}>{fmtDur(activity.moving_time_s)}</p></div>}
+                  {activity.avg_pace_s_km&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Allure /100m</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#38bdf8',margin:0}}>{fmtPace(activity.avg_pace_s_km/10)}</p></div>}
+                  {activity.avg_hr&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>FC moy.</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#ef4444',margin:0}}>{Math.round(activity.avg_hr)} bpm</p></div>}
                 </div>
               </div>
             )}
@@ -1307,34 +1426,55 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
 
         {/* ═══ ENRICH ═══ */}
         {tab==='enrich'&&(
-          <div style={{padding:'20px'}}>
+          <div style={{padding:'20px',display:'flex',flexDirection:'column',gap:12}}>
 
-            {/* RPE */}
-            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Effort perçu (RPE)</p>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
-                <span style={{fontSize:13,fontWeight:600,color:rpeColor}}>{rpeLabel}</span>
-                <span style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:rpeColor}}>{feeling>0?`${feeling}/10`:'—'}</span>
+            {/* RPE — premium */}
+            <div style={{padding:'20px',borderRadius:14,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:18}}>
+                <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-mid)',margin:0}}>Effort perçu (RPE)</p>
               </div>
-              <input type="range" min={1} max={10} step={0.5} value={feeling||1} onChange={e=>setFeeling(parseFloat(e.target.value))} style={{width:'100%',accentColor:rpeColor,cursor:'pointer',height:6}}/>
-              <div style={{display:'flex',justifyContent:'space-between',marginTop:6}}>
-                {['Très facile','Facile','Modéré','Difficile','Maximal'].map((l,i)=>(
-                  <span key={i} style={{fontSize:8,color:'var(--text-dim)',textAlign:'center' as const,flex:1}}>{l}</span>
+              {/* Big value display */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16,marginBottom:20}}>
+                <div style={{width:72,height:72,borderRadius:20,background:`${rpeColor}15`,border:`2px solid ${rpeColor}35`,display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:rpeColor,lineHeight:1}}>{feeling>0?feeling:'—'}</span>
+                  {feeling>0&&<span style={{fontSize:8,color:`${rpeColor}99`,marginTop:2}}>/ 10</span>}
+                </div>
+                <div>
+                  <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,color:rpeColor,margin:'0 0 3px',lineHeight:1}}>{rpeLabel}</p>
+                  <p style={{fontSize:11,color:'var(--text-dim)',margin:0}}>{feeling===0?'Faites glisser le curseur':feeling<=3?'Récupération possible dès demain':feeling<=6?'Bien dosé, récup recommandée':feeling<=8?'Séance intense, repos 24-48h':'Effort maximal — repos obligatoire'}</p>
+                </div>
+              </div>
+              {/* Gradient slider */}
+              <div style={{position:'relative' as const,marginBottom:10}}>
+                <div style={{height:8,borderRadius:4,background:'linear-gradient(to right,#22c55e,#86efac,#ffb340,#f97316,#ef4444)',marginBottom:10,position:'relative' as const}}>
+                  <div style={{position:'absolute' as const,left:`${((feeling||1)-1)/9*100}%`,top:'50%',transform:'translate(-50%,-50%)',width:18,height:18,borderRadius:'50%',background:rpeColor,border:'3px solid var(--bg)',boxShadow:`0 0 12px ${rpeColor}80`,pointerEvents:'none',transition:'left 0.1s'}}/>
+                </div>
+                <input type="range" min={1} max={10} step={0.5} value={feeling||1} onChange={e=>setFeeling(parseFloat(e.target.value))} style={{position:'absolute' as const,inset:0,width:'100%',opacity:0,cursor:'pointer',height:8,margin:0}}/>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between'}}>
+                {['1','2','3','4','5','6','7','8','9','10'].map((n,i)=>(
+                  <span key={i} style={{fontSize:8,fontFamily:'DM Mono,monospace',color:feeling>0&&Math.ceil(feeling)===i+1?rpeColor:'var(--text-dim)',fontWeight:feeling>0&&Math.ceil(feeling)===i+1?700:400,transition:'color 0.2s',minWidth:0,flex:1,textAlign:'center' as const}}>{n}</span>
                 ))}
               </div>
             </div>
 
             {/* Notes */}
-            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 10px'}}>Notes</p>
-              <div style={{display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:10}}>
+            <div style={{padding:'18px',borderRadius:14,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+              <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-mid)',margin:'0 0 12px'}}>Notes de séance</p>
+              {/* Quick tags */}
+              <div style={{display:'flex',gap:6,flexWrap:'wrap' as const,marginBottom:12}}>
                 {QUICK_TAGS.map(tag=>(
-                  <button key={tag} onClick={()=>addTag(tag)} style={{padding:'4px 10px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:10,cursor:'pointer'}}>
+                  <button key={tag} onClick={()=>addTag(tag)} style={{padding:'5px 11px',borderRadius:20,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)',color:'var(--text-mid)',fontSize:10,cursor:'pointer',transition:'all 0.15s',fontWeight:500}}>
                     {tag}
                   </button>
                 ))}
               </div>
-              <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Sensations, fatigue, douleur, météo, nutrition, points à améliorer…" rows={4} style={{width:'100%',padding:'10px 13px',borderRadius:10,border:'1px solid var(--border)',background:'rgba(255,255,255,0.03)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,lineHeight:1.65}}/>
+              <textarea
+                value={notes} onChange={e=>setNotes(e.target.value)}
+                placeholder="Sensations, fatigue, douleur, météo, nutrition, points à améliorer…"
+                rows={4}
+                style={{width:'100%',padding:'12px 14px',borderRadius:10,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.02)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,lineHeight:1.75,fontFamily:'inherit',transition:'border-color 0.2s'}}
+              />
             </div>
 
             {/* Wellbeing */}

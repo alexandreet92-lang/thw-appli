@@ -1198,6 +1198,24 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const rpeLabel=feeling>0?(RPE_LABELS[Math.round(feeling)]??'—'):'Non renseigné'
   const rpeColor=feeling===0?'var(--text-dim)':feeling<=2?'#22c55e':feeling<=4?'#86efac':feeling<=6?'#ffb340':feeling<=8?'#f97316':'#ef4444'
 
+  // ── Advanced metrics ─────────────────────────────────────
+  const vi=isBike&&activity.normalized_watts&&activity.avg_watts&&activity.avg_watts>0
+    ?activity.normalized_watts/activity.avg_watts:null
+  const ifVal=activity.tss&&activity.moving_time_s&&activity.moving_time_s>0&&isBike
+    ?Math.sqrt((activity.tss*3600)/(activity.moving_time_s*100)):null
+  const efVal=isBike&&activity.avg_watts&&activity.avg_hr&&activity.avg_hr>0
+    ?Math.round((activity.avg_watts/activity.avg_hr)*100)/100
+    :isRun&&activity.avg_speed_ms&&activity.avg_hr&&activity.avg_hr>0
+    ?Math.round((activity.avg_speed_ms*60/activity.avg_hr)*100)/100:null
+  const efLabel=isBike?'EF W/bpm':isRun?'EF m·min/bpm':null
+  const driftPct=streams.heartrate&&streams.heartrate.length>20
+    ?(()=>{
+      const hr=streams.heartrate!
+      const mid=Math.floor(hr.length/2)
+      const h1=avg(hr.slice(0,mid)),h2=avg(hr.slice(mid))
+      return h1>0?Math.round(((h2-h1)/h1)*1000)/10:null
+    })():null
+
   async function save(){
     setSaving(true)
     const upd:Activity={
@@ -1337,6 +1355,43 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
                 </>)
               })()}
             </div>
+
+            {/* ADVANCED METRICS */}
+            {(vi!==null||ifVal!==null||efVal!==null||driftPct!==null)&&(
+              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Métriques avancées</p>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
+                  {vi!==null&&(
+                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
+                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Variability Index</p>
+                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:vi<1.05?'#22c55e':vi<1.12?'#ffb340':'#ef4444',margin:0}}>{vi.toFixed(2)}</p>
+                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{vi<1.05?'Effort régulier':vi<1.12?'Légère variabilité':'Effort irrégulier'}</p>
+                    </div>
+                  )}
+                  {ifVal!==null&&(
+                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
+                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Intensity Factor</p>
+                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:ifVal<0.75?'#22c55e':ifVal<0.90?'#ffb340':'#ef4444',margin:0}}>{ifVal.toFixed(2)}</p>
+                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{ifVal<0.75?'Endurance':ifVal<0.90?'Tempo / Seuil':'Intensité haute'}</p>
+                    </div>
+                  )}
+                  {efVal!==null&&efLabel&&(
+                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
+                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>{efLabel}</p>
+                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'var(--text)',margin:0}}>{efVal.toFixed(2)}</p>
+                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>Facteur d'efficacité</p>
+                    </div>
+                  )}
+                  {driftPct!==null&&(
+                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
+                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Dérive cardiaque</p>
+                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:Math.abs(driftPct)<3?'#22c55e':Math.abs(driftPct)<7?'#ffb340':'#ef4444',margin:0}}>{driftPct>0?'+':''}{driftPct.toFixed(1)}%</p>
+                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{Math.abs(driftPct)<3?'FC stable':Math.abs(driftPct)<7?'Légère dérive':'Dérive importante'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ANALYSIS */}
             <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
@@ -1547,6 +1602,101 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
 }
 
 // ══════════════════════════════════════════════════════════
+// CALENDAR VIEW
+// ══════════════════════════════════════════════════════════
+function CalendarView({activities,onSelect,weekCount,offset,setOffset}:{
+  activities:Activity[];onSelect:(a:Activity)=>void;
+  weekCount:5|10;offset:number;setOffset:(n:number)=>void;
+}){
+  const today=new Date(); today.setHours(0,0,0,0)
+  const dow=today.getDay(); const daysToMon=dow===0?6:dow-1
+  const currentMon=new Date(today); currentMon.setDate(today.getDate()-daysToMon)
+  const startDate=new Date(currentMon)
+  startDate.setDate(currentMon.getDate()-(weekCount-1)*7+offset*weekCount*7)
+  const endDate=new Date(startDate); endDate.setDate(startDate.getDate()+weekCount*7-1)
+
+  const weeks:Date[][]=[]
+  for(let w=0;w<weekCount;w++){
+    const wk:Date[]=[]
+    for(let d=0;d<7;d++){const day=new Date(startDate);day.setDate(startDate.getDate()+w*7+d);wk.push(day)}
+    weeks.push(wk)
+  }
+
+  const byDate:Record<string,Activity[]>={}
+  activities.forEach(a=>{
+    const d=new Date(a.started_at); d.setHours(0,0,0,0)
+    const k=d.toDateString(); if(!byDate[k])byDate[k]=[]; byDate[k].push(a)
+  })
+
+  const DAY=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+  const fmt=(d:Date)=>d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})
+  const canFwd=offset<0
+
+  return(
+    <div>
+      {/* Nav bar */}
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+        <button onClick={()=>setOffset(offset-1)} style={{width:34,height:34,borderRadius:9,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text)',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>‹</button>
+        <span style={{flex:1,textAlign:'center' as const,fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-mid)'}}>{fmt(startDate)} — {fmt(endDate)}</span>
+        <button onClick={()=>setOffset(offset+1)} disabled={!canFwd} style={{width:34,height:34,borderRadius:9,background:'var(--bg-card)',border:'1px solid var(--border)',color:canFwd?'var(--text)':'var(--text-dim)',fontSize:20,cursor:canFwd?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,opacity:canFwd?1:0.3}}>›</button>
+        {offset!==0&&<button onClick={()=>setOffset(0)} style={{padding:'5px 11px',borderRadius:8,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',fontSize:10,fontWeight:600,cursor:'pointer',flexShrink:0}}>Aujourd'hui</button>}
+      </div>
+      {/* Day labels */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:4}}>
+        {DAY.map((d,i)=>(
+          <div key={d} style={{textAlign:'center' as const,fontSize:9,fontWeight:700,color:i>=5?'#5b6fff':'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.06em',padding:'4px 0'}}>{d}</div>
+        ))}
+      </div>
+      {/* Weeks */}
+      <div style={{display:'flex',flexDirection:'column' as const,gap:3}}>
+        {weeks.map((week,wi)=>{
+          const wTSS=week.reduce((s,d)=>(byDate[d.toDateString()]??[]).reduce((a,ac)=>a+(ac.tss??0),s),0)
+          const wVol=week.reduce((s,d)=>(byDate[d.toDateString()]??[]).reduce((a,ac)=>a+(ac.moving_time_s??0),s),0)
+          return(
+            <div key={wi}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3}}>
+                {week.map((day,di)=>{
+                  const isToday=day.toDateString()===today.toDateString()
+                  const isFuture=day>today
+                  const isWknd=di>=5
+                  const dayActs=byDate[day.toDateString()]??[]
+                  return(
+                    <div key={di} style={{
+                      minHeight:weekCount===5?90:66,padding:5,borderRadius:8,
+                      background:isToday?'rgba(0,200,224,0.06)':isWknd?'rgba(255,255,255,0.01)':'var(--bg-card)',
+                      border:isToday?'1px solid rgba(0,200,224,0.3)':'1px solid var(--border)',
+                      opacity:isFuture?0.38:1,
+                    }}>
+                      <div style={{fontSize:9,fontFamily:'DM Mono,monospace',color:isToday?'#00c8e0':'var(--text-dim)',fontWeight:isToday?700:400,marginBottom:3}}>{day.getDate()}</div>
+                      {dayActs.map(a=>(
+                        <div key={a.id} onClick={()=>{if(!isFuture)onSelect(a)}} style={{marginBottom:2,padding:'3px 5px',borderRadius:5,background:`${SPORT_COLOR[a.sport]}18`,border:`1px solid ${SPORT_COLOR[a.sport]}30`,cursor:'pointer'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:3}}>
+                            <span style={{fontSize:11}}>{SPORT_EMOJI[a.sport]}</span>
+                            {a.moving_time_s&&a.moving_time_s>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:9,fontWeight:700,color:'var(--text)'}}>{fmtDur(a.moving_time_s)}</span>}
+                          </div>
+                          {a.distance_m&&a.distance_m>0&&<div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:SPORT_COLOR[a.sport],marginTop:1}}>{fmtDist(a.distance_m)}</div>}
+                          {a.tss&&a.tss>0&&<div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'#5b6fff',marginTop:1}}>{Math.round(a.tss)} TSS</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+              {(wTSS>0||wVol>0)&&(
+                <div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'2px 4px 0'}}>
+                  {wVol>0&&<span style={{fontSize:8,fontFamily:'DM Mono,monospace',color:'var(--text-dim)'}}>{(wVol/3600).toFixed(1)}h</span>}
+                  {wTSS>0&&<span style={{fontSize:8,fontFamily:'DM Mono,monospace',color:'#5b6fff'}}>{Math.round(wTSS)} TSS</span>}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════
 // ACTIVITY LIST CARD
 // ══════════════════════════════════════════════════════════
 function ActivityListCard({activity,onClick}:{activity:Activity;onClick:()=>void}) {
@@ -1595,6 +1745,9 @@ export default function ActivitiesPage() {
   const [filterStatus,setFilterStatus]=useState<FilterStatus>('all')
   const [filterType,setFilterType]=useState<FilterType>('all')
   const [search,setSearch]=useState('')
+  const [viewMode,setViewMode]=useState<'list'|'calendar'>('list')
+  const [calWeekCount,setCalWeekCount]=useState<5|10>(5)
+  const [calOffset,setCalOffset]=useState(0)
 
   const filtered=useMemo(()=>activities.filter(a=>{
     if(filterSport!=='all'&&a.sport!==filterSport)return false
@@ -1615,72 +1768,112 @@ export default function ActivitiesPage() {
 
   return(
     <div style={{padding:'22px 20px',maxWidth:'100%'}}>
-      <div style={{marginBottom:16}}>
-        <h1 style={{fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0}}>Activités</h1>
-        <p style={{fontSize:12,color:'var(--text-dim)',margin:'4px 0 0'}}>{total>0?`${total} activité${total>1?'s':''}`:' Connectez vos apps pour importer vos séances'}</p>
-      </div>
 
-      {/* Monthly stats */}
-      {thisMonth.length>0&&(
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
-          {[
-            {l:'Ce mois',v:String(thisMonth.length),c:'#00c8e0'},
-            {l:'Volume',v:`${(thisMonth.reduce((s,a)=>s+(a.moving_time_s??0),0)/3600).toFixed(1)}h`,c:'#ffb340'},
-            {l:'TSS',v:String(Math.round(thisMonth.reduce((s,a)=>s+(a.tss??0),0))),c:'#5b6fff'},
-          ].map(x=>(
-            <div key={x.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-              <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>{x.l}</p>
-              <p style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:x.c,margin:0}}>{x.v}</p>
-            </div>
+      {/* Header + toggle */}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:16,gap:12}}>
+        <div>
+          <h1 style={{fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0}}>Activités</h1>
+          <p style={{fontSize:12,color:'var(--text-dim)',margin:'4px 0 0'}}>{total>0?`${total} activité${total>1?'s':''}`:' Connectez vos apps pour importer vos séances'}</p>
+        </div>
+        <div style={{display:'flex',padding:3,borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)',flexShrink:0,gap:2}}>
+          {([['list','≡ Liste'],['calendar','▦ Calendrier']] as const).map(([mode,label])=>(
+            <button key={mode} onClick={()=>setViewMode(mode)} style={{padding:'6px 13px',borderRadius:7,border:'none',background:viewMode===mode?'var(--bg-card2)':'transparent',color:viewMode===mode?'var(--text)':'var(--text-dim)',fontSize:11,fontWeight:viewMode===mode?700:400,cursor:'pointer',transition:'all 0.15s',whiteSpace:'nowrap' as const}}>
+              {label}
+            </button>
           ))}
         </div>
+      </div>
+
+      {/* ── LIST MODE ── */}
+      {viewMode==='list'&&(
+        <>
+          {/* Monthly stats */}
+          {thisMonth.length>0&&(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+              {[
+                {l:'Ce mois',v:String(thisMonth.length),c:'#00c8e0'},
+                {l:'Volume',v:`${(thisMonth.reduce((s,a)=>s+(a.moving_time_s??0),0)/3600).toFixed(1)}h`,c:'#ffb340'},
+                {l:'TSS',v:String(Math.round(thisMonth.reduce((s,a)=>s+(a.tss??0),0))),c:'#5b6fff'},
+              ].map(x=>(
+                <div key={x.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>{x.l}</p>
+                  <p style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:x.c,margin:0}}>{x.v}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Search */}
+          <div style={{position:'relative' as const,marginBottom:10}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
+              style={{width:'100%',padding:'9px 14px 9px 36px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:13,outline:'none'}}/>
+            <span style={{position:'absolute' as const,left:13,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'var(--text-dim)'}}>🔍</span>
+            {search&&<button onClick={()=>setSearch('')} style={{position:'absolute' as const,right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:17}}>×</button>}
+          </div>
+          {/* Filters */}
+          <div style={{display:'flex',gap:8,flexWrap:'wrap' as const,marginBottom:16}}>
+            <select value={filterSport} onChange={e=>setFilterSport(e.target.value as FilterSport)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+              <option value="all">Tous les sports</option>
+              {availableSports.map(s=><option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
+            </select>
+            <select value={filterType} onChange={e=>setFilterType(e.target.value as FilterType)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+              <option value="all">Entraînement + Compétition</option>
+              <option value="training">Entraînement</option>
+              <option value="competition">Compétition</option>
+            </select>
+            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value as FilterStatus)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+              <option value="all">Tous les statuts</option>
+              <option value="imported">Importée</option>
+              <option value="completed">Complétée</option>
+              <option value="validated">Validée</option>
+            </select>
+          </div>
+          {/* List */}
+          {loading&&activities.length===0?(
+            <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement...</div>
+          ):filtered.length===0?(
+            <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
+              <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune activité</p>
+              <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>{search?`Aucun résultat pour "${search}".`:'Connectez Strava, Wahoo ou Polar dans votre profil.'}</p>
+            </div>
+          ):(
+            <div>
+              {filtered.map(a=><ActivityListCard key={a.id} activity={a} onClick={()=>setSelected(a)}/>)}
+              {activities.length<total&&(
+                <button onClick={()=>load(page+1,filterSport!=='all'?filterSport:undefined)} style={{width:'100%',padding:'11px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:6}}>
+                  Charger plus — {total-activities.length} restante{total-activities.length>1?'s':''}
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Search */}
-      <div style={{position:'relative',marginBottom:10}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
-          style={{width:'100%',padding:'9px 14px 9px 36px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:13,outline:'none'}}/>
-        <span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'var(--text-dim)'}}>🔍</span>
-        {search&&<button onClick={()=>setSearch('')} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:17}}>×</button>}
-      </div>
-
-      {/* Filters */}
-      <div style={{display:'flex',gap:8,flexWrap:'wrap' as const,marginBottom:16}}>
-        <select value={filterSport} onChange={e=>setFilterSport(e.target.value as FilterSport)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
-          <option value="all">Tous les sports</option>
-          {availableSports.map(s=><option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
-        </select>
-        <select value={filterType} onChange={e=>setFilterType(e.target.value as FilterType)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
-          <option value="all">Entraînement + Compétition</option>
-          <option value="training">Entraînement</option>
-          <option value="competition">Compétition</option>
-        </select>
-        <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value as FilterStatus)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
-          <option value="all">Tous les statuts</option>
-          <option value="imported">Importée</option>
-          <option value="completed">Complétée</option>
-          <option value="validated">Validée</option>
-        </select>
-      </div>
-
-      {/* List */}
-      {loading&&activities.length===0?(
-        <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement...</div>
-      ):filtered.length===0?(
-        <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
-          <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune activité</p>
-          <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>{search?`Aucun résultat pour "${search}".`:'Connectez Strava, Wahoo ou Polar dans votre profil.'}</p>
-        </div>
-      ):(
+      {/* ── CALENDAR MODE ── */}
+      {viewMode==='calendar'&&(
         <div>
-          {filtered.map(a=><ActivityListCard key={a.id} activity={a} onClick={()=>setSelected(a)}/>)}
-          {activities.length<total&&(
-            <button onClick={()=>load(page+1,filterSport!=='all'?filterSport:undefined)} style={{width:'100%',padding:'11px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:6}}>
-              Charger plus — {total-activities.length} restante{total-activities.length>1?'s':''}
-            </button>
+          {/* Week count selector */}
+          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:14}}>
+            <span style={{fontSize:11,color:'var(--text-dim)',marginRight:2}}>Afficher</span>
+            {([5,10] as const).map(n=>(
+              <button key={n} onClick={()=>setCalWeekCount(n)} style={{padding:'4px 12px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:calWeekCount===n?'#00c8e0':'var(--border)',background:calWeekCount===n?'rgba(0,200,224,0.09)':'var(--bg-card)',color:calWeekCount===n?'#00c8e0':'var(--text-dim)',fontWeight:calWeekCount===n?700:400,transition:'all 0.15s'}}>
+                {n} semaines
+              </button>
+            ))}
+          </div>
+          {loading&&activities.length===0?(
+            <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement...</div>
+          ):(
+            <CalendarView
+              activities={activities}
+              onSelect={setSelected}
+              weekCount={calWeekCount}
+              offset={calOffset}
+              setOffset={setCalOffset}
+            />
           )}
         </div>
       )}
+
     </div>
   )
 }

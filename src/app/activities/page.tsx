@@ -55,16 +55,24 @@ interface Activity {
   moving_time_s:    number | null
   elapsed_time_s:   number | null
   elevation_gain_m: number | null
+  elevation_loss_m: number | null
   avg_speed_ms:     number | null
   max_speed_ms:     number | null
   avg_pace_s_km:    number | null
   avg_hr:           number | null
   max_hr:           number | null
+  min_hr:           number | null
   avg_watts:        number | null
+  max_watts:        number | null
   normalized_watts: number | null
   avg_cadence:      number | null
+  max_cadence:      number | null
   calories:         number | null
+  kilojoules:       number | null
   tss:              number | null
+  intensity_factor: number | null
+  suffer_score:     number | null
+  avg_temp_c:       number | null
   rpe:              number | null
   is_race:          boolean
   trainer:          boolean
@@ -72,6 +80,7 @@ interface Activity {
   status:           ActivityStatus
   notes:            string | null
   raw_data:         Record<string, any>
+  laps_data:        any[] | null   // from activities.laps column
   streams?:         StreamData | null
   gymExercises?:    GymExercise[]
   hyroxStations?:   HyroxStation[]
@@ -245,15 +254,70 @@ function generateAnalysis(a: Activity): {icon:string;title:string;detail:string;
 }
 
 function detectIntervals(a: Activity): IntervalBlock[] {
-  const laps=a.raw_data?.laps as any[]|undefined
+  // Prefer dedicated laps column, fallback to raw_data.laps
+  const laps=(a.laps_data ?? a.raw_data?.laps) as any[]|undefined
   if(!laps||laps.length<2) return []
   return laps.map((lap:any,i:number):IntervalBlock=>({
     index:i+1, label:lap.name??`Lap ${i+1}`,
     startIdx:lap.start_index??0, endIdx:lap.end_index??0,
     durationS:lap.elapsed_time??lap.moving_time??0,
-    avgHr:lap.average_heartrate??0, avgPace:lap.average_speed?Math.round(1000/lap.average_speed):0,
+    avgHr:lap.average_heartrate??0,
+    avgPace:lap.average_speed?Math.round(1000/lap.average_speed):0,
     avgWatts:lap.average_watts??0, distM:lap.distance??0,
   }))
+}
+
+// ──────────────────────────────────────────────────────────
+// Compute zones from user's training_zones DB row
+// ──────────────────────────────────────────────────────────
+function computeZonesFromDB(data: any, sport: string): TrainingZones {
+  const base = defaultZones()
+  const ftp   = data?.ftp_watts
+  const lthr  = data?.lthr
+  const tPace = data?.threshold_pace_s_km
+  const vma   = data?.vma_ms
+
+  if (ftp && (sport === 'bike' || sport === 'virtual_bike')) {
+    base.power = [
+      {label:'Z1 Récup',  color:'#9ca3af', min:0,               max:Math.round(ftp*0.55)},
+      {label:'Z2 Aérobie',color:'#3b82f6', min:Math.round(ftp*0.55), max:Math.round(ftp*0.75)},
+      {label:'Z3 Tempo',  color:'#22c55e', min:Math.round(ftp*0.75), max:Math.round(ftp*0.90)},
+      {label:'Z4 Seuil',  color:'#f97316', min:Math.round(ftp*0.90), max:Math.round(ftp*1.05)},
+      {label:'Z5 VO2max', color:'#ef4444', min:Math.round(ftp*1.05), max:9999},
+    ]
+  }
+  if (lthr) {
+    base.hr = [
+      {label:'Z1 Récup',  color:'#9ca3af', min:0,                  max:Math.round(lthr*0.81)},
+      {label:'Z2 Aérobie',color:'#3b82f6', min:Math.round(lthr*0.81), max:Math.round(lthr*0.89)},
+      {label:'Z3 Tempo',  color:'#22c55e', min:Math.round(lthr*0.89), max:Math.round(lthr*0.93)},
+      {label:'Z4 Seuil',  color:'#f97316', min:Math.round(lthr*0.93), max:Math.round(lthr*0.99)},
+      {label:'Z5 VO2max', color:'#ef4444', min:Math.round(lthr*0.99), max:9999},
+    ]
+  }
+  if (tPace && (sport === 'run' || sport === 'trail_run')) {
+    base.pace = [
+      {label:'Z1 Récup',  color:'#9ca3af', min:Math.round(tPace*1.29), max:9999},
+      {label:'Z2 Aérobie',color:'#3b82f6', min:Math.round(tPace*1.14), max:Math.round(tPace*1.29)},
+      {label:'Z3 Tempo',  color:'#22c55e', min:Math.round(tPace*1.06), max:Math.round(tPace*1.14)},
+      {label:'Z4 Seuil',  color:'#f97316', min:Math.round(tPace*0.99), max:Math.round(tPace*1.06)},
+      {label:'Z5 VO2max', color:'#ef4444', min:0,                       max:Math.round(tPace*0.99)},
+    ]
+  }
+  if (vma && (sport === 'run' || sport === 'trail_run')) {
+    // vma in m/s, derive pace zones from VMA
+    const vmaPace = Math.round(1000/vma)
+    if (!tPace) { // only if no threshold pace
+      base.pace = [
+        {label:'Z1 Récup',  color:'#9ca3af', min:Math.round(vmaPace*1.40), max:9999},
+        {label:'Z2 Aérobie',color:'#3b82f6', min:Math.round(vmaPace*1.20), max:Math.round(vmaPace*1.40)},
+        {label:'Z3 Tempo',  color:'#22c55e', min:Math.round(vmaPace*1.10), max:Math.round(vmaPace*1.20)},
+        {label:'Z4 Seuil',  color:'#f97316', min:Math.round(vmaPace*1.00), max:Math.round(vmaPace*1.10)},
+        {label:'Z5 VO2max', color:'#ef4444', min:0,                         max:Math.round(vmaPace*1.00)},
+      ]
+    }
+  }
+  return base
 }
 
 // ══════════════════════════════════════════════════════════
@@ -282,13 +346,19 @@ function useActivities() {
       title:r.title??SPORT_LABEL[(r.sport_type as SportType)]??'Activité',
       started_at:r.started_at, distance_m:r.distance_m, moving_time_s:r.moving_time_s,
       elapsed_time_s:r.elapsed_time_s, elevation_gain_m:r.elevation_gain_m,
+      elevation_loss_m:r.elevation_loss_m??r.total_descent_m??null,
       avg_speed_ms:r.avg_speed_ms, max_speed_ms:r.max_speed_ms,
-      avg_pace_s_km:r.avg_pace_s_km, avg_hr:r.avg_hr, max_hr:r.max_hr,
-      avg_watts:r.avg_watts, normalized_watts:r.normalized_watts,
-      avg_cadence:r.avg_cadence, calories:r.calories, tss:r.tss, rpe:r.rpe,
+      avg_pace_s_km:r.avg_pace_s_km, avg_hr:r.avg_hr, max_hr:r.max_hr, min_hr:r.min_hr??null,
+      avg_watts:r.avg_watts, max_watts:r.max_watts??null, normalized_watts:r.normalized_watts,
+      avg_cadence:r.avg_cadence, max_cadence:r.max_cadence??null,
+      calories:r.calories, kilojoules:r.kilojoules??null,
+      tss:r.tss, intensity_factor:r.intensity_factor??null,
+      suffer_score:r.suffer_score??null, avg_temp_c:r.avg_temp_c??null,
+      rpe:r.rpe,
       is_race:r.is_race??false, trainer:r.trainer??false,
       provider:r.provider??'manual', status:(r.status as ActivityStatus)?? 'imported',
       notes:r.notes, raw_data:r.raw_data??{},
+      laps_data: Array.isArray(r.laps)&&r.laps.length>0 ? r.laps : null,
       streams: r.streams ?? r.raw_data?.streams ?? null,
       gymExercises:r.raw_data?.gymExercises, hyroxStations:r.raw_data?.hyroxStations,
       hyroxRuns:r.raw_data?.hyroxRuns, userNotes:r.notes, feeling:r.rpe,
@@ -1343,13 +1413,35 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   const [whatWentWell,setWhatWentWell]=useState('')
   const [toImprove,setToImprove]=useState('')
   const [nextGoal,setNextGoal]=useState('')
-  const zones=defaultZones()
+  // Load user training zones from Supabase
+  // Sport-derived booleans (needed early for zone loading)
+  const sport=activity.sport
+  const isBike=sport==='bike'||sport==='virtual_bike'
+  const isRun=sport==='run'||sport==='trail_run'
+  const isSwim=sport==='swim'
+  const isGym=sport==='gym'
+  const isHyrox=sport==='hyrox'
+
+  // Load user training zones from Supabase
+  const [dbZones,setDbZones]=useState<TrainingZones|null>(null)
+  useEffect(()=>{
+    const supabase=createClient()
+    supabase.auth.getUser().then(({data:{user}})=>{
+      if(!user)return
+      const sportKey=isBike?'bike':isRun?'run':isSwim?'swim':null
+      if(!sportKey)return
+      supabase.from('training_zones').select('ftp_watts,lthr,threshold_pace_s_km,vma_ms').eq('user_id',user.id).eq('sport',sportKey).eq('is_current',true).maybeSingle()
+        .then(({data})=>{if(data)setDbZones(computeZonesFromDB(data,sport))})
+    })
+  },[sport]) // eslint-disable-line react-hooks/exhaustive-deps
+  const zones=dbZones??defaultZones()
+
   const intervals=useMemo(()=>detectIntervals(activity),[activity])
   const analysis=useMemo(()=>generateAnalysis(activity),[activity])
 
-  // Lazy-load Strava streams when opening Charts tab
+  // Lazy-load Strava streams when opening Charts or Pro tab
   useEffect(()=>{
-    if(tab!=='charts') return
+    if(tab!=='charts'&&tab!=='pro') return
     if(activity.streams&&Object.keys(activity.streams).length>0) return
     if(activity.provider!=='strava') return
     setStreamsLoading(true)
@@ -1358,12 +1450,6 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
       .then(data=>{if(data.streams) setActivity(prev=>({...prev,streams:data.streams}))})
       .finally(()=>setStreamsLoading(false))
   },[tab,activity.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const sport=activity.sport
-  const isBike=sport==='bike'||sport==='virtual_bike'
-  const isRun=sport==='run'||sport==='trail_run'
-  const isSwim=sport==='swim'
-  const isGym=sport==='gym'
-  const isHyrox=sport==='hyrox'
   const statusCfg=STATUS_CFG[activity.status]
   const date=new Date(activity.started_at)
   const streams=activity.streams??{}
@@ -1391,8 +1477,10 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
   // ── Advanced metrics ─────────────────────────────────────
   const vi=isBike&&activity.normalized_watts&&activity.avg_watts&&activity.avg_watts>0
     ?activity.normalized_watts/activity.avg_watts:null
-  const ifVal=activity.tss&&activity.moving_time_s&&activity.moving_time_s>0&&isBike
-    ?Math.sqrt((activity.tss*3600)/(activity.moving_time_s*100)):null
+  // Use Strava-computed IF if available, else compute from TSS
+  const ifVal=(activity.intensity_factor??null)??
+    (activity.tss&&activity.moving_time_s&&activity.moving_time_s>0&&isBike
+    ?Math.sqrt((activity.tss*3600)/(activity.moving_time_s*100)):null)
   const efVal=isBike&&activity.avg_watts&&activity.avg_hr&&activity.avg_hr>0
     ?Math.round((activity.avg_watts/activity.avg_hr)*100)/100
     :isRun&&activity.avg_speed_ms&&activity.avg_hr&&activity.avg_hr>0
@@ -1567,9 +1655,9 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
                   <div style={{flex:1,height:1,background:'rgba(255,255,255,0.06)'}}/>
                 </div>
               )
-              const hasPerf=(isRun&&(vap||activity.avg_cadence))||(isBike&&(activity.avg_watts||activity.avg_cadence||activity.max_speed_ms))
+              const hasPerf=(isRun&&(vap||activity.avg_cadence))||(isBike&&(activity.avg_watts||activity.avg_cadence||activity.max_speed_ms||activity.max_watts))
               const hasCardio=activity.avg_hr&&activity.avg_hr>0
-              const hasGeneral=activity.calories||activity.elapsed_time_s
+              const hasGeneral=activity.calories||activity.elapsed_time_s||activity.kilojoules||activity.avg_temp_c||activity.elevation_loss_m
               return(
                 <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
                   {/* Performance */}
@@ -1577,15 +1665,20 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
                   {isRun&&vap&&<MetCard label={vapLabel} value={fmtPace(vap)} color='#22c55e' sub="allure ajustée dénivelé"/>}
                   {isRun&&activity.avg_cadence&&activity.avg_cadence>0&&<MetCard label="Cadence" value={String(Math.round(activity.avg_cadence))} unit="spm" color='#9ca3af'/>}
                   {isBike&&activity.avg_watts&&activity.avg_watts>0&&<MetCard label="Puissance moy." value={String(Math.round(activity.avg_watts))} unit="W" color='#3b82f6' sub={activity.normalized_watts?`NP ${Math.round(activity.normalized_watts)} W`:undefined}/>}
+                  {isBike&&activity.max_watts&&activity.max_watts>0&&<MetCard label="Puissance max" value={String(Math.round(activity.max_watts))} unit="W" color='#60a5fa'/>}
                   {isBike&&activity.avg_cadence&&activity.avg_cadence>0&&<MetCard label="Cadence" value={String(Math.round(activity.avg_cadence))} unit="rpm" color='#9ca3af'/>}
                   {isBike&&activity.max_speed_ms&&activity.max_speed_ms>0&&<MetCard label="Vitesse max" value={fmtSpeed(activity.max_speed_ms)} color='#38bdf8'/>}
+                  {isBike&&activity.kilojoules&&activity.kilojoules>0&&<MetCard label="Travail" value={String(Math.round(activity.kilojoules))} unit="kJ" color='#a78bfa'/>}
                   {/* Cardio */}
                   {hasCardio&&<Divider label="Cardio"/>}
                   {activity.avg_hr&&activity.avg_hr>0&&<MetCard label="FC moyenne" value={String(Math.round(activity.avg_hr))} unit="bpm" color='#ef4444'/>}
                   {activity.max_hr&&activity.max_hr>0&&<MetCard label="FC max" value={String(Math.round(activity.max_hr))} unit="bpm" color='#f97316'/>}
+                  {activity.suffer_score&&activity.suffer_score>0&&<MetCard label="Suffer Score" value={String(activity.suffer_score)} color={activity.suffer_score>200?'#ef4444':activity.suffer_score>100?'#f97316':'#ffb340'} sub="Score Strava"/>}
                   {/* Général */}
                   {hasGeneral&&<Divider label="Général"/>}
                   {activity.calories&&activity.calories>0&&<MetCard label="Calories" value={String(Math.round(activity.calories))} unit="kcal" color='#ffb340'/>}
+                  {activity.elevation_loss_m&&activity.elevation_loss_m>0&&<MetCard label="Dénivelé −" value={`${Math.round(activity.elevation_loss_m)}m`} color='#8b5cf6'/>}
+                  {activity.avg_temp_c!==null&&activity.avg_temp_c!==undefined&&<MetCard label="Température" value={`${activity.avg_temp_c.toFixed(1)}°C`} color={activity.avg_temp_c>28?'#f97316':activity.avg_temp_c<5?'#38bdf8':'#9ca3af'}/>}
                   {activity.elapsed_time_s&&activity.elapsed_time_s>0&&activity.moving_time_s&&activity.elapsed_time_s!==activity.moving_time_s&&<MetCard label="Temps total" value={fmtDur(activity.elapsed_time_s)} color='#9ca3af' sub={`Arrêts : ${fmtDur(activity.elapsed_time_s-activity.moving_time_s)}`}/>}
                 </div>
               )
@@ -2141,6 +2234,101 @@ function BestEfforts({activity,streams}:{activity:Activity;streams:StreamData}){
 }
 
 // ══════════════════════════════════════════════════════════
+// WEEKLY LOAD CHART — TSS + Volume last N weeks
+// ══════════════════════════════════════════════════════════
+function WeeklyLoadChart({activities}:{activities:Activity[]}) {
+  const N=12 // weeks to show
+  const weekData=useMemo(()=>{
+    const today=new Date(); today.setHours(0,0,0,0)
+    const dow=today.getDay(); const toMon=dow===0?6:dow-1
+    const thisMon=new Date(today); thisMon.setDate(today.getDate()-toMon)
+    return Array.from({length:N},(_,i)=>{
+      const wStart=new Date(thisMon); wStart.setDate(thisMon.getDate()-(N-1-i)*7)
+      const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+7)
+      const acts=activities.filter(a=>{const d=new Date(a.started_at);return d>=wStart&&d<wEnd})
+      const tss=Math.round(acts.reduce((s,a)=>s+(a.tss??0),0))
+      const hrs=Math.round(acts.reduce((s,a)=>s+(a.moving_time_s??0),0)/360)/10
+      const sports=Array.from(new Set(acts.map(a=>a.sport)))
+      return{
+        label:wStart.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        tss, hrs, count:acts.length, sports,
+        isCurrent:i===N-1,
+        isPrev:i===N-2,
+      }
+    })
+  },[activities])
+
+  const hasSomething=weekData.some(w=>w.tss>0||w.hrs>0)
+  if(!hasSomething) return null
+
+  const maxTSS=Math.max(...weekData.map(w=>w.tss),1)
+  const maxHrs=Math.max(...weekData.map(w=>w.hrs),0.1)
+  const BAR=72
+  const curWeek=weekData[N-1]
+  const prevWeek=weekData[N-2]
+
+  return(
+    <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:14}}>
+      {/* Header row */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+        <div>
+          <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 2px'}}>Charge hebdomadaire — {N} semaines</p>
+          {curWeek.count>0&&<p style={{fontSize:10,color:'var(--text-mid)',margin:0}}>Cette semaine : <span style={{fontWeight:700,color:'#5b6fff'}}>{curWeek.tss} TSS</span> · <span style={{color:'#00c8e0'}}>{curWeek.hrs}h</span></p>}
+        </div>
+        <div style={{display:'flex',gap:10,flexShrink:0}}>
+          <span style={{fontSize:9,color:'rgba(91,111,255,0.85)',display:'flex',alignItems:'center',gap:3}}><span style={{width:8,height:8,background:'rgba(91,111,255,0.75)',borderRadius:2,display:'inline-block'}}/>TSS</span>
+          <span style={{fontSize:9,color:'rgba(0,200,224,0.85)',display:'flex',alignItems:'center',gap:3}}><span style={{width:8,height:8,background:'rgba(0,200,224,0.60)',borderRadius:2,display:'inline-block'}}/>Heures</span>
+        </div>
+      </div>
+      {/* Bars */}
+      <div style={{display:'grid',gridTemplateColumns:`repeat(${N},1fr)`,gap:3,alignItems:'flex-end',height:BAR+22}}>
+        {weekData.map((w,i)=>(
+          <div key={i} style={{display:'flex',flexDirection:'column' as const,alignItems:'center',gap:2,height:BAR+22,justifyContent:'flex-end'}}>
+            <div style={{display:'flex',gap:1,alignItems:'flex-end',height:BAR,width:'100%'}}>
+              <div style={{
+                width:'50%', minHeight:w.tss>0?2:0,
+                height:w.tss>0?`${Math.round((w.tss/maxTSS)*BAR)}px`:'2px',
+                background:w.isCurrent?'#5b6fff':w.isPrev?'rgba(91,111,255,0.50)':'rgba(91,111,255,0.28)',
+                borderRadius:'2px 2px 0 0',
+                borderBottom:w.tss===0?'1px solid rgba(255,255,255,0.04)':'none',
+              }}/>
+              <div style={{
+                width:'50%', minHeight:w.hrs>0?2:0,
+                height:w.hrs>0?`${Math.round((w.hrs/maxHrs)*BAR)}px`:'2px',
+                background:w.isCurrent?'#00c8e0':w.isPrev?'rgba(0,200,224,0.50)':'rgba(0,200,224,0.28)',
+                borderRadius:'2px 2px 0 0',
+                borderBottom:w.hrs===0?'1px solid rgba(255,255,255,0.04)':'none',
+              }}/>
+            </div>
+            <div style={{textAlign:'center' as const,lineHeight:1.2}}>
+              {w.tss>0&&<p style={{fontSize:7,fontFamily:'DM Mono,monospace',fontWeight:700,color:w.isCurrent?'#5b6fff':'var(--text-dim)',margin:0}}>{w.tss}</p>}
+              <p style={{fontSize:6,fontFamily:'DM Mono,monospace',color:w.isCurrent?'var(--text-mid)':'rgba(255,255,255,0.18)',margin:0,whiteSpace:'nowrap' as const}}>{w.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Trend */}
+      {prevWeek.tss>0&&curWeek.tss>0&&(
+        <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid rgba(255,255,255,0.05)',display:'flex',gap:16}}>
+          {(()=>{
+            const diff=curWeek.tss-prevWeek.tss
+            const pct=Math.round((diff/prevWeek.tss)*100)
+            const color=diff>0?'#f97316':diff<0?'#22c55e':'#9ca3af'
+            const arrow=diff>0?'↑':diff<0?'↓':'→'
+            return(
+              <>
+                <span style={{fontSize:9,color,fontWeight:600}}>{arrow} {Math.abs(pct)}% vs semaine précédente</span>
+                <span style={{fontSize:9,color:'var(--text-dim)'}}>Préc. : {prevWeek.tss} TSS · {prevWeek.hrs}h</span>
+              </>
+            )
+          })()}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════
 // CALENDAR VIEW
 // ══════════════════════════════════════════════════════════
 function CalendarView({activities,onSelect,weekCount,offset,setOffset}:{
@@ -2382,9 +2570,12 @@ export default function ActivitiesPage() {
       {/* ── LIST MODE ── */}
       {viewMode==='list'&&(
         <>
+          {/* Weekly load chart */}
+          {activities.length>0&&<WeeklyLoadChart activities={activities}/>}
+
           {/* Monthly stats */}
           {thisMonth.length>0&&(
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
               {[
                 {l:'Ce mois',v:String(thisMonth.length),c:'#00c8e0'},
                 {l:'Volume',v:`${(thisMonth.reduce((s,a)=>s+(a.moving_time_s??0),0)/3600).toFixed(1)}h`,c:'#ffb340'},

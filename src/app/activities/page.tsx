@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -1282,205 +1284,55 @@ function ZoneBars({stream,zones,totalS,formatRange}:{stream:number[];zones:Zone[
 }
 
 // ══════════════════════════════════════════════════════════
-// GYM ENRICHMENT
+// ACTIVITY MODAL — Single-scroll, no tabs
 // ══════════════════════════════════════════════════════════
-function GymEnrichment({exercises,onChange}:{exercises:GymExercise[];onChange:(e:GymExercise[])=>void}) {
-  const [section,setSection]=useState<'upper'|'lower'|'cardio'|'other'>('upper')
-  const sections=[{id:'upper' as const,label:'Haut',list:GYM_UPPER},{id:'lower' as const,label:'Bas',list:GYM_LOWER},{id:'cardio' as const,label:'Cardio',list:GYM_CARDIO},{id:'other' as const,label:'Autre',list:GYM_OTHER}]
-  const cur=sections.find(s=>s.id===section)!
-  const filtered=exercises.filter(e=>e.category===section)
-  function add(name:string){onChange([...exercises,{id:uid(),name,category:section,sets:[{reps:0,weight:0}]}])}
-  function addSet(id:string){onChange(exercises.map(e=>e.id===id?{...e,sets:[...e.sets,{reps:0,weight:0}]}:e))}
-  function dupSet(id:string,si:number){onChange(exercises.map(e=>e.id===id?{...e,sets:[...e.sets.slice(0,si+1),{...e.sets[si]},...e.sets.slice(si+1)]}:e))}
-  function updSet(id:string,si:number,field:'reps'|'weight',val:number){onChange(exercises.map(e=>e.id===id?{...e,sets:e.sets.map((s,i)=>i===si?{...s,[field]:val}:s)}:e))}
-  function delSet(id:string,si:number){onChange(exercises.map(e=>e.id===id?{...e,sets:e.sets.filter((_,i)=>i!==si)}:e))}
-  function del(id:string){onChange(exercises.filter(e=>e.id!==id))}
-  const inp={padding:'6px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none',width:'100%'}
-  return(
-    <div>
-      <div style={{display:'flex',gap:5,marginBottom:12}}>
-        {sections.map(s=>(
-          <button key={s.id} onClick={()=>setSection(s.id)} style={{padding:'5px 12px',borderRadius:9,border:'1px solid',cursor:'pointer',fontSize:11,borderColor:section===s.id?'#ffb340':'var(--border)',background:section===s.id?'rgba(255,179,64,0.10)':'var(--bg-card2)',color:section===s.id?'#ffb340':'var(--text-mid)',fontWeight:section===s.id?600:400}}>
-            {s.label} {exercises.filter(e=>e.category===s.id).length>0&&<span style={{fontSize:9,background:'#ffb340',color:'#000',borderRadius:999,padding:'0 4px',marginLeft:3}}>{exercises.filter(e=>e.category===s.id).length}</span>}
-          </button>
-        ))}
-      </div>
-      <div style={{display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:12}}>
-        {cur.list.map(name=><button key={name} onClick={()=>add(name)} style={{padding:'4px 10px',borderRadius:8,border:'1px dashed var(--border)',background:'transparent',color:'var(--text-dim)',fontSize:11,cursor:'pointer'}}>+ {name}</button>)}
-      </div>
-      {filtered.length===0&&<p style={{fontSize:12,color:'var(--text-dim)',textAlign:'center' as const,padding:'10px 0'}}>Aucun exercice dans cette section.</p>}
-      <div style={{display:'flex',flexDirection:'column',gap:10}}>
-        {filtered.map(ex=>(
-          <div key={ex.id} style={{padding:'12px 14px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-              <p style={{fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:0}}>{ex.name}</p>
-              <button onClick={()=>del(ex.id)} style={{background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:15}}>✕</button>
-            </div>
-            {section==='cardio'?(
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                <div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Durée</p><input type="text" value={ex.cardioTime??''} onChange={e=>onChange(exercises.map(x=>x.id===ex.id?{...x,cardioTime:e.target.value}:x))} placeholder="10:00" style={inp}/></div>
-                {['Rameur','SkiErg'].includes(ex.name)&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Distance (m)</p><input type="number" value={ex.cardioDist??''} onChange={e=>onChange(exercises.map(x=>x.id===ex.id?{...x,cardioDist:parseInt(e.target.value)||0}:x))} placeholder="2000" style={inp}/></div>}
-                {ex.name==='Vélo'&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Watts</p><input type="number" value={ex.cardioWatts??''} onChange={e=>onChange(exercises.map(x=>x.id===ex.id?{...x,cardioWatts:parseInt(e.target.value)||0}:x))} placeholder="200" style={inp}/></div>}
-              </div>
-            ):(
-              <div>
-                <div style={{display:'grid',gridTemplateColumns:'32px 1fr 1fr auto auto',gap:5,marginBottom:5}}>
-                  <span style={{fontSize:9,color:'var(--text-dim)',textAlign:'center' as const}}>#</span>
-                  <span style={{fontSize:9,color:'var(--text-dim)'}}>Reps</span>
-                  <span style={{fontSize:9,color:'var(--text-dim)'}}>Charge (kg)</span>
-                  <span/><span/>
-                </div>
-                {ex.sets.map((s,si)=>(
-                  <div key={si} style={{display:'grid',gridTemplateColumns:'32px 1fr 1fr auto auto',gap:5,marginBottom:5}}>
-                    <span style={{fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,margin:'auto 0',fontFamily:'DM Mono,monospace'}}>{si+1}</span>
-                    <input type="number" value={s.reps||''} onChange={e=>updSet(ex.id,si,'reps',parseInt(e.target.value)||0)} placeholder="10" style={inp}/>
-                    <input type="number" value={s.weight||''} onChange={e=>updSet(ex.id,si,'weight',parseFloat(e.target.value)||0)} placeholder="60" style={inp}/>
-                    <button onClick={()=>dupSet(ex.id,si)} style={{padding:'5px 8px',borderRadius:7,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer'}}>⎘</button>
-                    <button onClick={()=>delSet(ex.id,si)} style={{padding:'5px 8px',borderRadius:7,background:'rgba(255,95,95,0.08)',border:'1px solid rgba(255,95,95,0.2)',color:'#ff5f5f',fontSize:10,cursor:'pointer'}}>✕</button>
-                  </div>
-                ))}
-                <button onClick={()=>addSet(ex.id)} style={{marginTop:4,padding:'5px 12px',borderRadius:8,background:'rgba(0,200,224,0.07)',border:'1px dashed rgba(0,200,224,0.3)',color:'#00c8e0',fontSize:10,cursor:'pointer',width:'100%'}}>+ Série</button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ══════════════════════════════════════════════════════════
-// HYROX ENRICHMENT
-// ══════════════════════════════════════════════════════════
-function calcPaceStr(timeStr:string,distM:number):string {
-  if(!timeStr||!distM)return '—'
-  const p=timeStr.split(':').map(Number)
-  const s=p.length===2?p[0]*60+p[1]:p[0]*3600+p[1]*60+(p[2]||0)
-  if(!s)return '—'
-  const sk=s/(distM/1000)
-  return `${Math.floor(sk/60)}:${String(Math.round(sk%60)).padStart(2,'0')}/km`
-}
-
-function HyroxEnrichment({stations,runs,onChange}:{stations:HyroxStation[];runs:string[];onChange:(s:HyroxStation[],r:string[])=>void}) {
-  const [sd,setSd]=useState<HyroxStation[]>(HYROX_STATIONS.map(n=>stations.find(s=>s.name===n)??{name:n}))
-  const [rd,setRd]=useState<string[]>(runs.length===8?runs:Array(8).fill(''))
-  function upd(i:number,patch:Partial<HyroxStation>){const u=sd.map((s,idx)=>idx===i?{...s,...patch}:s);setSd(u);onChange(u,rd)}
-  function updRun(i:number,val:string){const u=[...rd];u[i]=val;setRd(u);onChange(sd,u)}
-  const inp={width:'100%',padding:'6px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none'}
-  return(
-    <div>
-      <p style={{fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 10px'}}>Stations</p>
-      <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:18}}>
-        {sd.map((s,i)=>(
-          <div key={s.name} style={{padding:'10px 13px',borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-              <div style={{width:22,height:22,borderRadius:6,background:'rgba(239,68,68,0.10)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:'#ef4444',flexShrink:0}}>{i+1}</div>
-              <p style={{fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:700,margin:0}}>{s.name}</p>
-              {(s.time||s.reps||s.distance)&&<span style={{marginLeft:'auto',fontSize:8,padding:'1px 5px',borderRadius:20,background:'rgba(34,197,94,0.10)',color:'#22c55e',fontWeight:700}}>✓</span>}
-            </div>
-            {['SkiErg','Rowing'].includes(s.name)&&(<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}><div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Temps</p><input value={s.time??''} onChange={e=>upd(i,{time:e.target.value})} placeholder="7:30" style={inp}/></div><div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Distance (m)</p><input type="number" value={s.distance??''} onChange={e=>upd(i,{distance:parseInt(e.target.value)||0})} placeholder="1000" style={inp}/></div><div style={{padding:'6px 8px',borderRadius:7,background:'rgba(0,200,224,0.07)',border:'1px solid rgba(0,200,224,0.2)'}}><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px'}}>Allure</p><p style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:700,color:'#00c8e0',margin:0}}>{s.time&&s.distance?calcPaceStr(s.time,s.distance):'—'}</p></div></div>)}
-            {['Sled Push','Sled Pull','Farmer Carry','Sandbag Lunges'].includes(s.name)&&(<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}><div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Distance (m)</p><input type="number" value={s.distance??''} onChange={e=>upd(i,{distance:parseInt(e.target.value)||0})} placeholder="25" style={inp}/></div><div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Charge (kg)</p><input type="number" value={s.weight??''} onChange={e=>upd(i,{weight:parseInt(e.target.value)||0})} placeholder="40" style={inp}/></div></div>)}
-            {s.name==='Wall Balls'&&(<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}><div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Reps</p><input type="number" value={s.reps??''} onChange={e=>upd(i,{reps:parseInt(e.target.value)||0})} placeholder="100" style={inp}/></div><div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Charge (kg)</p><input type="number" value={s.weight??''} onChange={e=>upd(i,{weight:parseInt(e.target.value)||0})} placeholder="6" style={inp}/></div></div>)}
-            {s.name==='Burpee Broad Jump'&&(<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Reps</p><input type="number" value={s.reps??''} onChange={e=>upd(i,{reps:parseInt(e.target.value)||0})} placeholder="80" style={inp}/></div>)}
-          </div>
-        ))}
-      </div>
-      <p style={{fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 10px'}}>Runs compromised (8 × 1km)</p>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
-        {rd.map((r,i)=><div key={i}><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Run {i+1}</p><input value={r} onChange={e=>updRun(i,e.target.value)} placeholder="4:30" style={inp}/></div>)}
-      </div>
-    </div>
-  )
-}
-
-// ══════════════════════════════════════════════════════════
-// ACTIVITY DETAIL
-// ══════════════════════════════════════════════════════════
-function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;onClose:()=>void;onUpdate:(a:Activity)=>void}) {
-  const [tab,setTab]=useState<DetailTab>('overview')
-  const [feeling,setFeeling]=useState(initial.feeling??0)
-  const [notes,setNotes]=useState(initial.userNotes??'')
-  const [gymExs,setGymExs]=useState<GymExercise[]>(initial.gymExercises??[])
-  const [hyroxS,setHyroxS]=useState<HyroxStation[]>(initial.hyroxStations??[])
-  const [hyroxR,setHyroxR]=useState<string[]>(initial.hyroxRuns??[])
-  const [saving,setSaving]=useState(false)
+function ActivityModal({activity:initial,onClose,onUpdate}:{activity:Activity;onClose:()=>void;onUpdate:(a:Activity)=>void}) {
   const [activity,setActivity]=useState(initial)
   const [streamsLoading,setStreamsLoading]=useState(false)
-  const [sleepQ,setSleepQ]=useState(0)
-  const [fatigueQ,setFatigueQ]=useState(0)
-  const [hasPain,setHasPain]=useState(false)
-  const [painZone,setPainZone]=useState('')
-  const [whatWentWell,setWhatWentWell]=useState('')
-  const [toImprove,setToImprove]=useState('')
-  const [nextGoal,setNextGoal]=useState('')
-  // Load user training zones from Supabase
-  // Sport-derived booleans (needed early for zone loading)
+  const [dbZones,setDbZones]=useState<TrainingZones|null>(null)
+
   const sport=activity.sport
   const isBike=sport==='bike'||sport==='virtual_bike'
   const isRun=sport==='run'||sport==='trail_run'
   const isSwim=sport==='swim'
   const isGym=sport==='gym'
-  const isHyrox=sport==='hyrox'
 
-  // Load user training zones from Supabase
-  const [dbZones,setDbZones]=useState<TrainingZones|null>(null)
   useEffect(()=>{
     const supabase=createClient()
     supabase.auth.getUser().then(({data:{user}})=>{
       if(!user)return
       const sportKey=isBike?'bike':isRun?'run':isSwim?'swim':null
       if(!sportKey)return
-      supabase.from('training_zones').select('ftp_watts,lthr,threshold_pace_s_km,vma_ms').eq('user_id',user.id).eq('sport',sportKey).eq('is_current',true).maybeSingle()
+      supabase.from('training_zones').select('ftp_watts,lthr,threshold_pace_s_km,vma_ms')
+        .eq('user_id',user.id).eq('sport',sportKey).eq('is_current',true).maybeSingle()
         .then(({data})=>{if(data)setDbZones(computeZonesFromDB(data,sport))})
     })
   },[sport]) // eslint-disable-line react-hooks/exhaustive-deps
   const zones=dbZones??defaultZones()
 
-  const intervals=useMemo(()=>detectIntervals(activity),[activity])
-  const analysis=useMemo(()=>generateAnalysis(activity),[activity])
-
-  // Lazy-load Strava streams when opening Charts or Pro tab
   useEffect(()=>{
-    if(tab!=='charts'&&tab!=='pro') return
-    if(activity.streams&&Object.keys(activity.streams).length>0) return
-    if(activity.provider!=='strava') return
+    if(activity.streams&&Object.keys(activity.streams).length>0)return
+    if(activity.provider!=='strava')return
     setStreamsLoading(true)
     fetch(`/api/strava/streams?activity_id=${activity.id}`)
       .then(r=>r.json())
-      .then(data=>{if(data.streams) setActivity(prev=>({...prev,streams:data.streams}))})
+      .then(data=>{if(data.streams)setActivity(prev=>({...prev,streams:data.streams}))})
       .finally(()=>setStreamsLoading(false))
-  },[tab,activity.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const statusCfg=STATUS_CFG[activity.status]
+  },[activity.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const intervals=useMemo(()=>detectIntervals(activity),[activity])
+  const analysis=useMemo(()=>generateAnalysis(activity),[activity])
   const date=new Date(activity.started_at)
   const streams=activity.streams??{}
+  const statusCfg=STATUS_CFG[activity.status]
+  const hasStreams=!!(streams.heartrate?.length||streams.velocity?.length||streams.watts?.length||streams.altitude?.length)
 
-  // VAP — prioritise Strava grade_adjusted_distance if present, else estimate
-  const vapStrava=activity.raw_data?.grade_adjusted_distance&&activity.moving_time_s
-    ?(activity.moving_time_s/(activity.raw_data.grade_adjusted_distance/1000)):null
-  const vap=vapStrava??(
-    activity.avg_pace_s_km&&activity.elevation_gain_m&&activity.distance_m
-    ?activity.avg_pace_s_km*(1-(activity.elevation_gain_m/activity.distance_m)*0.035):null)
-  const vapLabel=vapStrava?'VAP Strava':'VAP estimée'
-
-  // Zone times
-  const hrZoneTimes=useMemo(()=>
-    streams.heartrate?.length?zoneTimes(streams.heartrate,zones.hr,activity.moving_time_s??3600):[0,0,0,0,0]
-  ,[streams.heartrate,activity.moving_time_s])
-
-  // TSS color
-  const tssColor=!activity.tss?'#9ca3af':activity.tss>150?'#ef4444':activity.tss>80?'#f97316':'#3b82f6'
-
-  // RPE label & color
-  const rpeLabel=feeling>0?(RPE_LABELS[Math.round(feeling)]??'—'):'Non renseigné'
-  const rpeColor=feeling===0?'var(--text-dim)':feeling<=2?'#22c55e':feeling<=4?'#86efac':feeling<=6?'#ffb340':feeling<=8?'#f97316':'#ef4444'
-
-  // ── Advanced metrics ─────────────────────────────────────
+  // Advanced metrics
   const vi=isBike&&activity.normalized_watts&&activity.avg_watts&&activity.avg_watts>0
     ?activity.normalized_watts/activity.avg_watts:null
-  // Use Strava-computed IF if available, else compute from TSS
   const ifVal=(activity.intensity_factor??null)??
     (activity.tss&&activity.moving_time_s&&activity.moving_time_s>0&&isBike
-    ?Math.sqrt((activity.tss*3600)/(activity.moving_time_s*100)):null)
+      ?Math.sqrt((activity.tss*3600)/(activity.moving_time_s*100)):null)
   const efVal=isBike&&activity.avg_watts&&activity.avg_hr&&activity.avg_hr>0
     ?Math.round((activity.avg_watts/activity.avg_hr)*100)/100
     :isRun&&activity.avg_speed_ms&&activity.avg_hr&&activity.avg_hr>0
@@ -1493,20 +1345,15 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
       const h1=avg(hr.slice(0,mid)),h2=avg(hr.slice(mid))
       return h1>0?Math.round(((h2-h1)/h1)*1000)/10:null
     })():null
-
-  // TRIMP (Banister) — estimated with default hrRest=50
-  const hrRest=50
-  const hrMax=activity.max_hr??200
+  const hrRest=50,hrMax=activity.max_hr??200
   const trimp=useMemo(()=>{
     if(!activity.avg_hr||!activity.moving_time_s||activity.moving_time_s<=0)return null
     const dMin=activity.moving_time_s/60
     const hrRatio=(activity.avg_hr-hrRest)/(hrMax-hrRest)
     if(hrRatio<=0||hrRatio>=1.2)return null
-    const clampedRatio=Math.min(hrRatio,1)
-    return Math.round(dMin*clampedRatio*0.64*Math.exp(1.92*clampedRatio))
+    const r=Math.min(hrRatio,1)
+    return Math.round(dMin*r*0.64*Math.exp(1.92*r))
   },[activity.avg_hr,activity.moving_time_s,hrMax])
-
-  // Aerobic decoupling (Pa:HR) — first half vs second half avg power/pace vs HR
   const decoupling=useMemo(()=>{
     if(!streams.heartrate||streams.heartrate.length<40)return null
     const hr=streams.heartrate
@@ -1520,33 +1367,13 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
     const ef1=r1/h1,ef2=r2/h2
     return ef1>0?Math.round(((ef2-ef1)/ef1)*1000)/10:null
   },[streams,isBike])
-
-  async function save(){
-    setSaving(true)
-    const upd:Activity={
-      ...activity,userNotes:notes,feeling,rpe:feeling,gymExercises:gymExs,
-      hyroxStations:hyroxS,hyroxRuns:hyroxR,
-      status:(gymExs.length>0||hyroxS.some(s=>s.time||s.reps)||notes)?'completed':activity.status,
-      raw_data:{...activity.raw_data,gymExercises:gymExs,hyroxStations:hyroxS,hyroxRuns:hyroxR,sleepQuality:sleepQ,fatigueLevel:fatigueQ,hasPain,painZone,whatWentWell,toImprove,nextGoal},
-    }
-    onUpdate(upd); setActivity(upd); setSaving(false); setTab('overview')
-  }
-
-  function addTag(tag:string){setNotes(prev=>prev?(prev+' · '+tag):tag)}
-
-  const TABS:[DetailTab,string][]=[
-    ['overview','Vue d\'ensemble'],
-    ...(!isGym&&!isSwim?[['charts','Courbes']] as [DetailTab,string][]:[] as [DetailTab,string][]),
-    ...((isBike||isRun)&&(streams.watts?.length||streams.velocity?.length||activity.tss)?[['pro','Analyse Pro']] as [DetailTab,string][]:[] as [DetailTab,string][]),
-    ...(intervals.length>0?[['intervals','Laps']] as [DetailTab,string][]:[] as [DetailTab,string][]),
-    ['enrich',isGym?'Séance':isHyrox?'Hyrox':'Enrichir'],
-  ]
+  const tssColor=!activity.tss?'#9ca3af':activity.tss>150?'#ef4444':activity.tss>80?'#f97316':'#3b82f6'
 
   return(
     <div style={{position:'fixed',inset:0,zIndex:300,background:'var(--bg)',overflowY:'auto'}}>
       <div style={{maxWidth:1100,margin:'0 auto'}}>
 
-        {/* Header */}
+        {/* Sticky header */}
         <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px',borderBottom:'1px solid var(--border)',background:'var(--bg-card)',position:'sticky',top:0,zIndex:10}}>
           <button onClick={onClose} style={{width:36,height:36,borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:16,color:'var(--text-dim)',flexShrink:0}}>←</button>
           <div style={{flex:1,minWidth:0}}>
@@ -1562,325 +1389,153 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
           </div>
         </div>
 
-        {/* Tabs */}
-        <div style={{display:'flex',borderBottom:'1px solid var(--border)',background:'var(--bg-card)'}}>
-          {TABS.map(([id,label])=>(
-            <button key={id} onClick={()=>setTab(id)} style={{padding:'10px 18px',border:'none',cursor:'pointer',fontSize:12,fontWeight:tab===id?700:400,background:'transparent',color:tab===id?SPORT_COLOR[sport]:'var(--text-dim)',borderBottom:tab===id?`2px solid ${SPORT_COLOR[sport]}`:'2px solid transparent',transition:'all 0.15s',whiteSpace:'nowrap' as const}}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Content */}
+        <div style={{padding:'20px',display:'flex',flexDirection:'column' as const,gap:14}}>
 
-        {/* ═══ OVERVIEW ═══ */}
-        {tab==='overview'&&(
-          <div style={{padding:'20px',display:'flex',flexDirection:'column',gap:12}}>
-
-            {/* HERO SECTION */}
-            <div style={{
-              padding:'22px 20px',borderRadius:16,
-              background:`linear-gradient(135deg,${SPORT_COLOR[sport]}14 0%,${SPORT_COLOR[sport]}06 60%,transparent 100%)`,
-              border:`1px solid ${SPORT_COLOR[sport]}28`,
-              position:'relative' as const,overflow:'hidden',
-            }}>
-              {/* Background accent circle */}
-              <div style={{position:'absolute' as const,top:-30,right:-30,width:160,height:160,borderRadius:'50%',background:`${SPORT_COLOR[sport]}07`,pointerEvents:'none'}}/>
-              {/* Sport label + TSS */}
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
-                  <div style={{width:44,height:44,borderRadius:12,background:`${SPORT_COLOR[sport]}18`,border:`1px solid ${SPORT_COLOR[sport]}30`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>
-                    {SPORT_EMOJI[sport]}
-                  </div>
-                  <div>
-                    <p style={{fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:800,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:SPORT_COLOR[sport],margin:0}}>{SPORT_LABEL[sport]}</p>
-                    {activity.is_race&&<span style={{fontSize:8,padding:'1px 7px',borderRadius:20,background:'rgba(239,68,68,0.12)',color:'#ef4444',fontWeight:700,border:'1px solid rgba(239,68,68,0.25)'}}>COMPÉTITION</span>}
-                  </div>
-                </div>
-                {activity.tss&&activity.tss>0&&(
-                  <div style={{textAlign:'right' as const}}>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 2px'}}>TSS</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:tssColor,margin:0,letterSpacing:'-0.02em',lineHeight:1}}>{Math.round(activity.tss)}</p>
-                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'2px 0 0'}}>{activity.tss>150?'Élevé':activity.tss>80?'Modéré':'Léger'}</p>
-                  </div>
-                )}
-              </div>
-              {/* Primary stats grid */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
-                {activity.moving_time_s&&activity.moving_time_s>0&&(
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Durée</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'var(--text)',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtDur(activity.moving_time_s)}</p>
-                  </div>
-                )}
-                {activity.distance_m&&activity.distance_m>0&&(
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Distance</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:SPORT_COLOR[sport],margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtDist(activity.distance_m)}</p>
-                  </div>
-                )}
-                {(activity.elevation_gain_m??0)>0&&(
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Dénivelé +</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#8b5cf6',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{Math.round(activity.elevation_gain_m!)}m</p>
-                  </div>
-                )}
-                {isRun&&activity.avg_pace_s_km&&(
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Allure moy.</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#22c55e',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtPace(activity.avg_pace_s_km)}</p>
-                  </div>
-                )}
-                {isBike&&activity.avg_speed_ms&&(
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>Vitesse moy.</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#3b82f6',margin:0,letterSpacing:'-0.03em',lineHeight:1}}>{fmtSpeed(activity.avg_speed_ms)}</p>
-                  </div>
-                )}
+          {/* Hero */}
+          <div style={{
+            padding:'22px 20px',borderRadius:16,
+            background:`linear-gradient(135deg,${SPORT_COLOR[sport]}14 0%,${SPORT_COLOR[sport]}06 60%,transparent 100%)`,
+            border:`1px solid ${SPORT_COLOR[sport]}28`,
+            position:'relative' as const,overflow:'hidden',
+          }}>
+            <div style={{position:'absolute' as const,top:-30,right:-30,width:160,height:160,borderRadius:'50%',background:`${SPORT_COLOR[sport]}07`,pointerEvents:'none'}}/>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
+              <div style={{width:44,height:44,borderRadius:12,background:`${SPORT_COLOR[sport]}18`,border:`1px solid ${SPORT_COLOR[sport]}30`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{SPORT_EMOJI[sport]}</div>
+              <div>
+                <p style={{fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:800,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:SPORT_COLOR[sport],margin:0}}>{SPORT_LABEL[sport]}</p>
+                {activity.is_race&&<span style={{fontSize:8,padding:'1px 7px',borderRadius:20,background:'rgba(239,68,68,0.12)',color:'#ef4444',fontWeight:700,border:'1px solid rgba(239,68,68,0.25)'}}>COMPÉTITION</span>}
               </div>
             </div>
 
-            {/* METRIC CARDS — grouped */}
-            {(()=>{
-              const MetCard=({label,value,sub,color,unit,wide}:{label:string;value:string;sub?:string;color:string;unit?:string;wide?:boolean})=>(
-                <div style={{padding:'12px 14px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',borderTop:`2px solid ${color}`,gridColumn:wide?'1/-1':undefined}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 5px'}}>{label}</p>
-                  <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color,margin:0,lineHeight:1}}>
-                    {value}{unit&&<span style={{fontSize:11,fontWeight:400,color:'var(--text-dim)',marginLeft:3}}>{unit}</span>}
-                  </p>
-                  {sub&&<p style={{fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4}}>{sub}</p>}
-                </div>
-              )
-              const Divider=({label}:{label:string})=>(
-                <div style={{gridColumn:'1/-1',display:'flex',alignItems:'center',gap:8,marginTop:4}}>
-                  <span style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)',whiteSpace:'nowrap' as const}}>{label}</span>
-                  <div style={{flex:1,height:1,background:'rgba(255,255,255,0.06)'}}/>
-                </div>
-              )
-              const hasPerf=(isRun&&(vap||activity.avg_cadence))||(isBike&&(activity.avg_watts||activity.avg_cadence||activity.max_speed_ms||activity.max_watts))
-              const hasCardio=activity.avg_hr&&activity.avg_hr>0
-              const hasGeneral=activity.calories||activity.elapsed_time_s||activity.kilojoules||activity.avg_temp_c||activity.elevation_loss_m
-              return(
-                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
-                  {/* Performance */}
-                  {hasPerf&&<Divider label="Performance"/>}
-                  {isRun&&vap&&<MetCard label={vapLabel} value={fmtPace(vap)} color='#22c55e' sub="allure ajustée dénivelé"/>}
-                  {isRun&&activity.avg_cadence&&activity.avg_cadence>0&&<MetCard label="Cadence" value={String(Math.round(activity.avg_cadence))} unit="spm" color='#9ca3af'/>}
-                  {isBike&&activity.avg_watts&&activity.avg_watts>0&&<MetCard label="Puissance moy." value={String(Math.round(activity.avg_watts))} unit="W" color='#3b82f6' sub={activity.normalized_watts?`NP ${Math.round(activity.normalized_watts)} W`:undefined}/>}
-                  {isBike&&activity.max_watts&&activity.max_watts>0&&<MetCard label="Puissance max" value={String(Math.round(activity.max_watts))} unit="W" color='#60a5fa'/>}
-                  {isBike&&activity.avg_cadence&&activity.avg_cadence>0&&<MetCard label="Cadence" value={String(Math.round(activity.avg_cadence))} unit="rpm" color='#9ca3af'/>}
-                  {isBike&&activity.max_speed_ms&&activity.max_speed_ms>0&&<MetCard label="Vitesse max" value={fmtSpeed(activity.max_speed_ms)} color='#38bdf8'/>}
-                  {isBike&&activity.kilojoules&&activity.kilojoules>0&&<MetCard label="Travail" value={String(Math.round(activity.kilojoules))} unit="kJ" color='#a78bfa'/>}
-                  {/* Cardio */}
-                  {hasCardio&&<Divider label="Cardio"/>}
-                  {activity.avg_hr&&activity.avg_hr>0&&<MetCard label="FC moyenne" value={String(Math.round(activity.avg_hr))} unit="bpm" color='#ef4444'/>}
-                  {activity.max_hr&&activity.max_hr>0&&<MetCard label="FC max" value={String(Math.round(activity.max_hr))} unit="bpm" color='#f97316'/>}
-                  {activity.suffer_score&&activity.suffer_score>0&&<MetCard label="Suffer Score" value={String(activity.suffer_score)} color={activity.suffer_score>200?'#ef4444':activity.suffer_score>100?'#f97316':'#ffb340'} sub="Score Strava"/>}
-                  {/* Général */}
-                  {hasGeneral&&<Divider label="Général"/>}
-                  {activity.calories&&activity.calories>0&&<MetCard label="Calories" value={String(Math.round(activity.calories))} unit="kcal" color='#ffb340'/>}
-                  {activity.elevation_loss_m&&activity.elevation_loss_m>0&&<MetCard label="Dénivelé −" value={`${Math.round(activity.elevation_loss_m)}m`} color='#8b5cf6'/>}
-                  {activity.avg_temp_c!==null&&activity.avg_temp_c!==undefined&&<MetCard label="Température" value={`${activity.avg_temp_c.toFixed(1)}°C`} color={activity.avg_temp_c>28?'#f97316':activity.avg_temp_c<5?'#38bdf8':'#9ca3af'}/>}
-                  {activity.elapsed_time_s&&activity.elapsed_time_s>0&&activity.moving_time_s&&activity.elapsed_time_s!==activity.moving_time_s&&<MetCard label="Temps total" value={fmtDur(activity.elapsed_time_s)} color='#9ca3af' sub={`Arrêts : ${fmtDur(activity.elapsed_time_s-activity.moving_time_s)}`}/>}
-                </div>
-              )
-            })()}
-
-            {/* ADVANCED METRICS */}
-            {(vi!==null||ifVal!==null||efVal!==null||driftPct!==null)&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Métriques avancées</p>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
-                  {vi!==null&&(
-                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Variability Index</p>
-                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:vi<1.05?'#22c55e':vi<1.12?'#ffb340':'#ef4444',margin:0}}>{vi.toFixed(2)}</p>
-                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{vi<1.05?'Effort régulier':vi<1.12?'Légère variabilité':'Effort irrégulier'}</p>
-                    </div>
-                  )}
-                  {ifVal!==null&&(
-                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Intensity Factor</p>
-                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:ifVal<0.75?'#22c55e':ifVal<0.90?'#ffb340':'#ef4444',margin:0}}>{ifVal.toFixed(2)}</p>
-                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{ifVal<0.75?'Endurance':ifVal<0.90?'Tempo / Seuil':'Intensité haute'}</p>
-                    </div>
-                  )}
-                  {efVal!==null&&efLabel&&(
-                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>{efLabel}</p>
-                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'var(--text)',margin:0}}>{efVal.toFixed(2)}</p>
-                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>Facteur d'efficacité</p>
-                    </div>
-                  )}
-                  {driftPct!==null&&(
-                    <div style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-                      <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Dérive cardiaque</p>
-                      <p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:Math.abs(driftPct)<3?'#22c55e':Math.abs(driftPct)<7?'#ffb340':'#ef4444',margin:0}}>{driftPct>0?'+':''}{driftPct.toFixed(1)}%</p>
-                      <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{Math.abs(driftPct)<3?'FC stable':Math.abs(driftPct)<7?'Légère dérive':'Dérive importante'}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ANALYSIS */}
-            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                <div style={{width:28,height:28,borderRadius:8,background:`${SPORT_COLOR[sport]}18`,border:`1px solid ${SPORT_COLOR[sport]}28`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>💡</div>
-                <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Lecture coach</p>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:7}}>
-                {analysis.map((ins,i)=>{
-                  const borderC=ins.level==='alert'?'rgba(239,68,68,0.25)':ins.level==='warn'?'rgba(251,191,36,0.25)':`${SPORT_COLOR[sport]}20`
-                  const bgC=ins.level==='alert'?'rgba(239,68,68,0.04)':ins.level==='warn'?'rgba(251,191,36,0.04)':'rgba(255,255,255,0.02)'
-                  return(
-                    <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 12px',borderRadius:10,background:bgC,border:`1px solid ${borderC}`}}>
-                      <span style={{fontSize:16,lineHeight:1,flexShrink:0,marginTop:1}}>{ins.icon}</span>
-                      <div>
-                        <p style={{fontSize:11,fontWeight:700,color:'var(--text)',margin:'0 0 2px',lineHeight:1}}>{ins.title}</p>
-                        <p style={{fontSize:11,color:'var(--text-mid)',lineHeight:1.6,margin:0}}>{ins.detail}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+            {/* Primary metrics */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:14,marginBottom:14}}>
+              {activity.moving_time_s&&activity.moving_time_s>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>Durée</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'var(--text)',margin:0,lineHeight:1}}>{fmtDur(activity.moving_time_s)}</p></div>}
+              {activity.distance_m&&activity.distance_m>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>Distance</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:SPORT_COLOR[sport],margin:0,lineHeight:1}}>{fmtDist(activity.distance_m)}</p></div>}
+              {(activity.elevation_gain_m??0)>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>Dénivelé+</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#8b5cf6',margin:0,lineHeight:1}}>{Math.round(activity.elevation_gain_m!)}m</p></div>}
+              {isBike&&activity.avg_watts&&activity.avg_watts>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>Puissance moy.</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#3b82f6',margin:0,lineHeight:1}}>{Math.round(activity.avg_watts)}<span style={{fontSize:13,fontWeight:400,marginLeft:2}}>W</span></p></div>}
+              {isBike&&activity.normalized_watts&&activity.normalized_watts>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>NP</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#5b6fff',margin:0,lineHeight:1}}>{Math.round(activity.normalized_watts)}<span style={{fontSize:13,fontWeight:400,marginLeft:2}}>W</span></p></div>}
+              {isRun&&activity.avg_pace_s_km&&activity.avg_pace_s_km>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>Allure</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:SPORT_COLOR[sport],margin:0,lineHeight:1}}>{fmtPace(activity.avg_pace_s_km)}</p></div>}
+              {activity.avg_hr&&activity.avg_hr>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>FC moy.</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:'#ef4444',margin:0,lineHeight:1}}>{Math.round(activity.avg_hr)}<span style={{fontSize:13,fontWeight:400,marginLeft:2}}>bpm</span></p></div>}
+              {activity.tss&&activity.tss>0&&<div><p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 2px',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase' as const}}>TSS</p><p style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:tssColor,margin:0,lineHeight:1}}>{Math.round(activity.tss)}</p></div>}
             </div>
 
-            {/* HR ZONES */}
-            {(isRun||isBike)&&activity.avg_hr&&streams.heartrate?.length&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:'#ef4444'}}/>
-                  <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Zones fréquence cardiaque</p>
-                </div>
-                <HrZoneBars hrStream={streams.heartrate} zones={zones.hr} totalS={activity.moving_time_s??3600}/>
-              </div>
-            )}
-
-            {/* POWER ZONES (bike) */}
-            {isBike&&streams.watts?.length&&activity.moving_time_s&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:'#3b82f6'}}/>
-                  <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Zones puissance</p>
-                </div>
-                <ZoneBars stream={streams.watts} zones={zones.power} totalS={activity.moving_time_s} formatRange={(min,max)=>`${min}–${max<999?max:'∞'} W`}/>
-              </div>
-            )}
-
-            {/* PACE ZONES (run) */}
-            {isRun&&streams.velocity?.length&&activity.moving_time_s&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:'#22c55e'}}/>
-                  <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Zones allure</p>
-                </div>
-                <ZoneBars stream={streams.velocity.map(v=>v>0?Math.round(1000/v):0).filter(v=>v>0&&v<600)} zones={zones.pace} totalS={activity.moving_time_s} formatRange={(min,max)=>`${fmtPaceShort(min)}–${max<999?fmtPaceShort(max):'∞'}`}/>
-              </div>
-            )}
-
-            {/* Notes */}
-            {(notes||activity.userNotes)&&(
-              <div style={{padding:'14px 16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',borderLeft:'3px solid #5b6fff'}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 8px'}}>Notes</p>
-                <p style={{fontSize:12,color:'var(--text-mid)',lineHeight:1.75,margin:0}}>{notes||activity.userNotes}</p>
-              </div>
-            )}
-
-            {/* Swim */}
-            {isSwim&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Natation</p>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                  {activity.distance_m&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Distance</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#38bdf8',margin:0}}>{fmtDist(activity.distance_m)}</p></div>}
-                  {activity.moving_time_s&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Durée</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'var(--text)',margin:0}}>{fmtDur(activity.moving_time_s)}</p></div>}
-                  {activity.avg_pace_s_km&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>Allure /100m</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#38bdf8',margin:0}}>{fmtPace(activity.avg_pace_s_km/10)}</p></div>}
-                  {activity.avg_hr&&<div><p style={{fontSize:9,color:'var(--text-dim)',marginBottom:3}}>FC moy.</p><p style={{fontFamily:'DM Mono,monospace',fontSize:18,fontWeight:700,color:'#ef4444',margin:0}}>{Math.round(activity.avg_hr)} bpm</p></div>}
-                </div>
-              </div>
-            )}
+            {/* Secondary chips */}
+            <div style={{display:'flex',gap:6,flexWrap:'wrap' as const}}>
+              {activity.max_hr&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(239,68,68,0.08)',color:'#ef4444',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(239,68,68,0.20)'}}>FC max {Math.round(activity.max_hr)} bpm</span>}
+              {activity.avg_cadence&&activity.avg_cadence>0&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(236,72,153,0.08)',color:'#ec4899',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(236,72,153,0.20)'}}>{Math.round(activity.avg_cadence)} {isBike?'rpm':'spm'}</span>}
+              {activity.calories&&activity.calories>0&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(255,179,64,0.08)',color:'#ffb340',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(255,179,64,0.20)'}}>{Math.round(activity.calories)} kcal</span>}
+              {ifVal!==null&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(91,111,255,0.08)',color:'#5b6fff',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(91,111,255,0.20)'}}>IF {ifVal.toFixed(2)}</span>}
+              {activity.avg_temp_c!=null&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(251,191,36,0.08)',color:'#fbbf24',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(251,191,36,0.20)'}}>{activity.avg_temp_c}°C</span>}
+              {activity.suffer_score&&activity.suffer_score>0&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(239,68,68,0.08)',color:'#ef4444',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(239,68,68,0.20)'}}>Suffer {Math.round(activity.suffer_score)}</span>}
+              {activity.trainer&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(156,163,175,0.08)',color:'#9ca3af',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(156,163,175,0.20)'}}>Home Trainer</span>}
+              {activity.kilojoules&&activity.kilojoules>0&&<span style={{fontSize:9,padding:'3px 9px',borderRadius:20,background:'rgba(59,130,246,0.08)',color:'#3b82f6',fontFamily:'DM Mono,monospace',fontWeight:600,border:'1px solid rgba(59,130,246,0.20)'}}>{Math.round(activity.kilojoules)} kJ</span>}
+            </div>
           </div>
-        )}
 
-        {/* ═══ CHARTS ═══ */}
-        {tab==='charts'&&(
-          <div style={{background:'var(--bg)'}}>
-            {streamsLoading?(
-              <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement des courbes…</div>
-            ):(
-              <>
+          {/* Auto-analysis cards */}
+          {analysis.length>0&&(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:8}}>
+              {analysis.map((a,i)=>(
+                <div key={i} style={{padding:'12px 14px',borderRadius:12,background:'var(--bg-card)',border:`1px solid ${a.level==='alert'?'rgba(239,68,68,0.25)':a.level==='warn'?'rgba(249,115,22,0.20)':'var(--border)'}`,borderTop:`2px solid ${a.level==='alert'?'#ef4444':a.level==='warn'?'#f97316':'#22c55e'}`}}>
+                  <div style={{display:'flex',gap:7,alignItems:'flex-start'}}>
+                    <span style={{fontSize:16}}>{a.icon}</span>
+                    <div>
+                      <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,margin:'0 0 3px'}}>{a.title}</p>
+                      <p style={{fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4}}>{a.detail}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Synchronized charts */}
+          {!isGym&&(
+            <div style={{borderRadius:14,overflow:'hidden',border:'1px solid var(--border)'}}>
+              <div style={{padding:'10px 16px',background:'var(--bg-card)',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <span style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)'}}>Courbes de séance</span>
+                {streamsLoading&&<span style={{fontSize:10,color:'var(--text-dim)'}}>Chargement…</span>}
+              </div>
+              {streamsLoading?(
+                <div style={{padding:'32px',textAlign:'center' as const,color:'var(--text-dim)',fontSize:12,background:'var(--bg-card)'}}>Chargement des données de séance…</div>
+              ):(
                 <SyncCharts activity={activity}/>
-                {/* Best efforts */}
-                {(activity.streams&&(activity.streams.watts?.length||activity.streams.velocity?.length))&&(
-                  <BestEfforts activity={activity} streams={activity.streams}/>
-                )}
-                {/* Laps table inside Charts */}
-                {intervals.length>1&&(
-                  <div style={{padding:'16px 20px',borderTop:'1px solid rgba(255,255,255,0.05)'}}>
-                    <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 10px'}}>{intervals.length} laps détectés</p>
-                    <div style={{display:'flex',flexDirection:'column' as const,gap:4}}>
-                      {intervals.map((iv,i)=>(
-                        <div key={i} style={{display:'grid',gridTemplateColumns:'28px 1fr auto auto auto auto',gap:8,alignItems:'center',padding:'9px 12px',borderRadius:9,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                          <span style={{fontFamily:'DM Mono,monospace',fontSize:10,fontWeight:700,color:SPORT_COLOR[sport],textAlign:'center' as const}}>{iv.index}</span>
-                          <span style={{fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{iv.label}</span>
-                          <span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'var(--text)'}}>{fmtDur(iv.durationS)}</span>
-                          <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-mid)'}}>{fmtDist(iv.distM)}</span>
-                          {iv.avgHr>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#ef4444'}}>{Math.round(iv.avgHr)} bpm</span>}
-                          {isBike&&iv.avgWatts>0?<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#3b82f6'}}>{Math.round(iv.avgWatts)}W</span>:isRun&&iv.avgPace>0?<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#22c55e'}}>{fmtPace(iv.avgPace)}</span>:<span/>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ═══ PRO ═══ */}
-        {tab==='pro'&&(
-          <div style={{padding:'20px',display:'flex',flexDirection:'column',gap:14}}>
-
-            {/* Header */}
-            <div style={{padding:'14px 18px',borderRadius:12,background:'linear-gradient(135deg,rgba(91,111,255,0.08),rgba(0,200,224,0.05))',border:'1px solid rgba(91,111,255,0.25)'}}>
-              <p style={{fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 4px',letterSpacing:'-0.01em'}}>⚡ Analyse Pro</p>
-              <p style={{fontSize:11,color:'var(--text-dim)',margin:0,lineHeight:1.5}}>Courbes de performance, distribution de charge, métriques avancées — vue experts &amp; coachs.</p>
+              )}
             </div>
+          )}
 
-            {/* Power/Pace Curve */}
-            {isBike&&streams.watts?.length&&(
-              <PowerCurve watts={streams.watts} totalS={activity.moving_time_s??0}/>
-            )}
-            {isRun&&streams.velocity?.length&&streams.distance?.length&&(
-              <PaceCurve velocity={streams.velocity} distance={streams.distance}/>
-            )}
+          {/* Power/Pace curves + Best efforts */}
+          {(isBike||isRun)&&hasStreams&&(
+            <div style={{display:'flex',flexDirection:'column' as const,gap:10}}>
+              {isBike&&streams.watts?.length&&<PowerCurve watts={streams.watts} totalS={activity.moving_time_s??0}/>}
+              {isRun&&streams.velocity?.length&&streams.distance?.length&&<PaceCurve velocity={streams.velocity} distance={streams.distance}/>}
+              {(streams.watts?.length||streams.velocity?.length)&&<BestEfforts activity={activity} streams={streams}/>}
+            </div>
+          )}
 
-            {/* Best Efforts */}
-            {(streams.watts?.length||streams.velocity?.length)&&(
-              <BestEfforts activity={activity} streams={streams}/>
-            )}
+          {/* Zone distributions */}
+          {hasStreams&&(
+            <div style={{display:'flex',flexDirection:'column' as const,gap:10}}>
+              {streams.heartrate?.length&&activity.moving_time_s&&(
+                <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                  <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Distribution FC</p>
+                  <ZoneBars stream={streams.heartrate} zones={zones.hr} totalS={activity.moving_time_s} formatRange={(min,max)=>`${min}–${max<999?max:'∞'} bpm`}/>
+                </div>
+              )}
+              {isBike&&streams.watts?.length&&activity.moving_time_s&&(
+                <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                  <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Distribution puissance</p>
+                  <ZoneBars stream={streams.watts} zones={zones.power} totalS={activity.moving_time_s} formatRange={(min,max)=>`${min}–${max<999?max:'∞'} W`}/>
+                </div>
+              )}
+              {isRun&&streams.velocity?.length&&activity.moving_time_s&&(
+                <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                  <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Distribution allure</p>
+                  <ZoneBars stream={streams.velocity.map(v=>v>0?Math.round(1000/v):0).filter(v=>v>0&&v<600)} zones={zones.pace} totalS={activity.moving_time_s} formatRange={(min,max)=>`${fmtPaceShort(min)}–${max<999?fmtPaceShort(max):'∞'}`}/>
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Full Advanced Metrics */}
+          {/* Advanced metrics */}
+          {(vi!==null||ifVal!==null||efVal!==null||driftPct!==null||trimp!==null||decoupling!==null)&&(
             <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
               <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Métriques avancées</p>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8}}>
                 {vi!==null&&(
                   <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:`2px solid ${vi<1.05?'#22c55e':vi<1.12?'#ffb340':'#ef4444'}`}}>
-                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Variability Index (VI)</p>
+                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Variability Index</p>
                     <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:vi<1.05?'#22c55e':vi<1.12?'#ffb340':'#ef4444',margin:0}}>{vi.toFixed(2)}</p>
-                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{vi<1.05?'Effort très régulier':vi<1.12?'Légère variabilité':'Effort irrégulier'}</p>
+                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{vi<1.05?'Très régulier':vi<1.12?'Légère variabilité':'Irrégulier'}</p>
                   </div>
                 )}
                 {ifVal!==null&&(
                   <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:`2px solid ${ifVal<0.75?'#22c55e':ifVal<0.90?'#ffb340':'#ef4444'}`}}>
-                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Intensity Factor (IF)</p>
+                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Intensity Factor</p>
                     <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:ifVal<0.75?'#22c55e':ifVal<0.90?'#ffb340':'#ef4444',margin:0}}>{ifVal.toFixed(2)}</p>
-                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{ifVal<0.75?'Endurance':ifVal<0.90?'Tempo / Seuil':'Intensité haute'}</p>
+                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{ifVal<0.75?'Endurance':ifVal<0.90?'Tempo / Seuil':'Haute intensité'}</p>
                   </div>
                 )}
                 {efVal!==null&&efLabel&&(
                   <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:'2px solid #8b5cf6'}}>
                     <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>{efLabel}</p>
                     <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:'#8b5cf6',margin:0}}>{efVal.toFixed(2)}</p>
-                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>Facteur d'efficacité</p>
+                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>Efficacité aérobie</p>
+                  </div>
+                )}
+                {trimp!==null&&(
+                  <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:'2px solid #f97316'}}>
+                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>TRIMP (Banister)</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:'#f97316',margin:0}}>{trimp}</p>
+                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>Charge cardiaque</p>
+                  </div>
+                )}
+                {decoupling!==null&&(
+                  <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:`2px solid ${Math.abs(decoupling)<5?'#22c55e':Math.abs(decoupling)<10?'#ffb340':'#ef4444'}`}}>
+                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Découplage aérobie</p>
+                    <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:Math.abs(decoupling)<5?'#22c55e':Math.abs(decoupling)<10?'#ffb340':'#ef4444',margin:0}}>{decoupling>0?'+':''}{decoupling.toFixed(1)}%</p>
+                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{Math.abs(decoupling)<5?'Bonne efficacité':Math.abs(decoupling)<10?'Découplage modéré':'Découplage élevé'}</p>
                   </div>
                 )}
                 {driftPct!==null&&(
@@ -1890,277 +1545,30 @@ function ActivityDetail({activity:initial,onClose,onUpdate}:{activity:Activity;o
                     <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{Math.abs(driftPct)<3?'FC stable':Math.abs(driftPct)<7?'Légère dérive':'Dérive importante'}</p>
                   </div>
                 )}
-                {trimp!==null&&(
-                  <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:'2px solid #f97316'}}>
-                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>TRIMP (Banister)</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:'#f97316',margin:0}}>{trimp}</p>
-                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>Charge d'entraînement cardiaque</p>
-                  </div>
-                )}
-                {decoupling!==null&&(
-                  <div style={{padding:'11px 13px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',borderTop:`2px solid ${Math.abs(decoupling)<5?'#22c55e':Math.abs(decoupling)<10?'#ffb340':'#ef4444'}`}}>
-                    <p style={{fontSize:9,color:'var(--text-dim)',margin:'0 0 3px'}}>Découplage aérobie</p>
-                    <p style={{fontFamily:'DM Mono,monospace',fontSize:20,fontWeight:700,color:Math.abs(decoupling)<5?'#22c55e':Math.abs(decoupling)<10?'#ffb340':'#ef4444',margin:0}}>{decoupling>0?'+':''}{decoupling.toFixed(1)}%</p>
-                    <p style={{fontSize:8,color:'var(--text-dim)',margin:'3px 0 0'}}>{Math.abs(decoupling)<5?'Bonne efficacité aérobie':Math.abs(decoupling)<10?'Découplage modéré':'Découplage élevé'}</p>
-                  </div>
-                )}
               </div>
             </div>
+          )}
 
-            {/* Zone Distributions */}
-            {streams.heartrate?.length&&activity.moving_time_s&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:'#ef4444'}}/>
-                  <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Distribution FC</p>
-                </div>
-                <ZoneBars stream={streams.heartrate} zones={zones.hr} totalS={activity.moving_time_s} formatRange={(min,max)=>`${min}–${max<999?max:'∞'} bpm`}/>
-              </div>
-            )}
-            {isBike&&streams.watts?.length&&activity.moving_time_s&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:'#3b82f6'}}/>
-                  <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Distribution puissance</p>
-                </div>
-                <ZoneBars stream={streams.watts} zones={zones.power} totalS={activity.moving_time_s} formatRange={(min,max)=>`${min}–${max<999?max:'∞'} W`}/>
-              </div>
-            )}
-            {isRun&&streams.velocity?.length&&activity.moving_time_s&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:'#22c55e'}}/>
-                  <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-mid)',margin:0}}>Distribution allure</p>
-                </div>
-                <ZoneBars stream={streams.velocity.map(v=>v>0?Math.round(1000/v):0).filter(v=>v>0&&v<600)} zones={zones.pace} totalS={activity.moving_time_s} formatRange={(min,max)=>`${fmtPaceShort(min)}–${max<999?fmtPaceShort(max):'∞'}`}/>
-              </div>
-            )}
-
-            {/* Laps in Pro */}
-            {intervals.length>1&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>{intervals.length} laps — comparaison</p>
-                {(()=>{
-                  const perfKey=isBike?'avgWatts':isRun?'avgPace':null
-                  const allPerf=perfKey?intervals.map(iv=>isBike?iv.avgWatts:iv.avgPace).filter(v=>v>0):[]
-                  const maxPerf=allPerf.length?maxV(allPerf):1
-                  const perfColor=isBike?'#3b82f6':'#22c55e'
-                  return(
-                    <div style={{display:'flex',flexDirection:'column' as const,gap:5}}>
-                      {intervals.map((iv,i)=>{
-                        const perfVal=isBike?iv.avgWatts:isRun?iv.avgPace:0
-                        // For pace, lower is better (invert bar)
-                        const barPct=isRun&&perfVal>0?Math.round((1-(perfVal-minV(allPerf.filter(v=>v>0)))/(maxPerf-minV(allPerf.filter(v=>v>0))||1))*100):perfVal>0?Math.round((perfVal/maxPerf)*100):0
-                        return(
-                          <div key={i} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
-                            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:700,color:SPORT_COLOR[sport],minWidth:22,textAlign:'center' as const}}>{iv.index}</span>
-                              <span style={{fontSize:11,color:'var(--text-mid)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{iv.label}</span>
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'var(--text)'}}>{fmtDur(iv.durationS)}</span>
-                              {iv.distM>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{fmtDist(iv.distM)}</span>}
-                              {iv.avgHr>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#ef4444'}}>{Math.round(iv.avgHr)}</span>}
-                              {perfVal>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:perfColor}}>
-                                {isBike?`${Math.round(perfVal)}W`:fmtPaceShort(perfVal)}
-                              </span>}
-                            </div>
-                            {perfVal>0&&(
-                              <div style={{height:3,background:'rgba(255,255,255,0.05)',borderRadius:2,overflow:'hidden'}}>
-                                <div style={{width:`${barPct}%`,height:'100%',background:perfColor,borderRadius:2}}/>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ═══ INTERVALS ═══ */}
-        {tab==='intervals'&&(
-          <div style={{padding:'20px'}}>
-            {intervals.length===0?(
-              <p style={{fontSize:13,color:'var(--text-dim)',textAlign:'center' as const,padding:'24px 0'}}>Aucun lap détecté.</p>
-            ):(
-              <div>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>{intervals.length} lap{intervals.length>1?'s':''}</p>
-                {(()=>{
-                  const allPerf=intervals.map(iv=>isBike?iv.avgWatts:iv.avgPace).filter(v=>v>0)
-                  const maxPerf=allPerf.length?maxV(allPerf):1
-                  const minPerf=allPerf.length?minV(allPerf):0
-                  const perfColor=isBike?'#3b82f6':'#22c55e'
-                  return(
-                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                      {intervals.map((iv,i)=>{
-                        const perfVal=isBike?iv.avgWatts:isRun?iv.avgPace:0
-                        const barPct=isRun&&perfVal>0
-                          ?Math.round((1-(perfVal-minPerf)/(maxPerf-minPerf||1))*100)
-                          :perfVal>0?Math.round((perfVal/maxPerf)*100):0
-                        return(
-                          <div key={i} style={{padding:'12px 14px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:perfVal>0?8:0}}>
-                              <div style={{width:26,height:26,borderRadius:7,background:`${SPORT_COLOR[sport]}14`,border:`1px solid ${SPORT_COLOR[sport]}25`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                <span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:800,color:SPORT_COLOR[sport]}}>{iv.index}</span>
-                              </div>
-                              <div style={{flex:1,minWidth:0}}>
-                                <p style={{fontSize:12,fontWeight:600,color:'var(--text)',margin:'0 0 1px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{iv.label}</p>
-                                <div style={{display:'flex',gap:10}}>
-                                  <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-mid)'}}>{fmtDur(iv.durationS)}</span>
-                                  {iv.distM>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-dim)'}}>{fmtDist(iv.distM)}</span>}
-                                </div>
-                              </div>
-                              {iv.avgHr>0&&(
-                                <div style={{textAlign:'right' as const}}>
-                                  <p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 1px'}}>FC</p>
-                                  <p style={{fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'#ef4444',margin:0}}>{Math.round(iv.avgHr)}</p>
-                                </div>
-                              )}
-                              {perfVal>0&&(
-                                <div style={{textAlign:'right' as const}}>
-                                  <p style={{fontSize:8,color:'var(--text-dim)',margin:'0 0 1px'}}>{isBike?'Watts':'Allure'}</p>
-                                  <p style={{fontFamily:'DM Mono,monospace',fontSize:15,fontWeight:700,color:perfColor,margin:0}}>
-                                    {isBike?`${Math.round(perfVal)}W`:fmtPaceShort(perfVal)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            {perfVal>0&&(
-                              <div style={{height:4,background:'rgba(255,255,255,0.05)',borderRadius:2,overflow:'hidden'}}>
-                                <div style={{width:`${barPct}%`,height:'100%',background:perfColor,borderRadius:2,transition:'width 0.5s ease'}}/>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ═══ ENRICH ═══ */}
-        {tab==='enrich'&&(
-          <div style={{padding:'20px',display:'flex',flexDirection:'column',gap:12}}>
-
-            {/* RPE — premium */}
-            <div style={{padding:'20px',borderRadius:14,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:18}}>
-                <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-mid)',margin:0}}>Effort perçu (RPE)</p>
-              </div>
-              {/* Big value display */}
-              <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16,marginBottom:20}}>
-                <div style={{width:72,height:72,borderRadius:20,background:`${rpeColor}15`,border:`2px solid ${rpeColor}35`,display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  <span style={{fontFamily:'DM Mono,monospace',fontSize:26,fontWeight:700,color:rpeColor,lineHeight:1}}>{feeling>0?feeling:'—'}</span>
-                  {feeling>0&&<span style={{fontSize:8,color:`${rpeColor}99`,marginTop:2}}>/ 10</span>}
-                </div>
-                <div>
-                  <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,color:rpeColor,margin:'0 0 3px',lineHeight:1}}>{rpeLabel}</p>
-                  <p style={{fontSize:11,color:'var(--text-dim)',margin:0}}>{feeling===0?'Faites glisser le curseur':feeling<=3?'Récupération possible dès demain':feeling<=6?'Bien dosé, récup recommandée':feeling<=8?'Séance intense, repos 24-48h':'Effort maximal — repos obligatoire'}</p>
-                </div>
-              </div>
-              {/* Gradient slider */}
-              <div style={{position:'relative' as const,marginBottom:10}}>
-                <div style={{height:8,borderRadius:4,background:'linear-gradient(to right,#22c55e,#86efac,#ffb340,#f97316,#ef4444)',marginBottom:10,position:'relative' as const}}>
-                  <div style={{position:'absolute' as const,left:`${((feeling||1)-1)/9*100}%`,top:'50%',transform:'translate(-50%,-50%)',width:18,height:18,borderRadius:'50%',background:rpeColor,border:'3px solid var(--bg)',boxShadow:`0 0 12px ${rpeColor}80`,pointerEvents:'none',transition:'left 0.1s'}}/>
-                </div>
-                <input type="range" min={1} max={10} step={0.5} value={feeling||1} onChange={e=>setFeeling(parseFloat(e.target.value))} style={{position:'absolute' as const,inset:0,width:'100%',opacity:0,cursor:'pointer',height:8,margin:0}}/>
-              </div>
-              <div style={{display:'flex',justifyContent:'space-between'}}>
-                {['1','2','3','4','5','6','7','8','9','10'].map((n,i)=>(
-                  <span key={i} style={{fontSize:8,fontFamily:'DM Mono,monospace',color:feeling>0&&Math.ceil(feeling)===i+1?rpeColor:'var(--text-dim)',fontWeight:feeling>0&&Math.ceil(feeling)===i+1?700:400,transition:'color 0.2s',minWidth:0,flex:1,textAlign:'center' as const}}>{n}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div style={{padding:'18px',borderRadius:14,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-              <p style={{fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-mid)',margin:'0 0 12px'}}>Notes de séance</p>
-              {/* Quick tags */}
-              <div style={{display:'flex',gap:6,flexWrap:'wrap' as const,marginBottom:12}}>
-                {QUICK_TAGS.map(tag=>(
-                  <button key={tag} onClick={()=>addTag(tag)} style={{padding:'5px 11px',borderRadius:20,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)',color:'var(--text-mid)',fontSize:10,cursor:'pointer',transition:'all 0.15s',fontWeight:500}}>
-                    {tag}
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={notes} onChange={e=>setNotes(e.target.value)}
-                placeholder="Sensations, fatigue, douleur, météo, nutrition, points à améliorer…"
-                rows={4}
-                style={{width:'100%',padding:'12px 14px',borderRadius:10,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.02)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,lineHeight:1.75,fontFamily:'inherit',transition:'border-color 0.2s'}}
-              />
-            </div>
-
-            {/* Wellbeing */}
-            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Bien-être</p>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-                {[{label:'Qualité du sommeil',val:sleepQ,set:setSleepQ},{label:'Fatigue générale',val:fatigueQ,set:setFatigueQ}].map(f=>(
-                  <div key={f.label}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                      <span style={{fontSize:11,color:'var(--text-mid)'}}>{f.label}</span>
-                      <span style={{fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:f.val===0?'var(--text-dim)':f.val>=4?'#22c55e':f.val>=3?'#ffb340':'#ef4444'}}>{f.val>0?`${f.val}/5`:'—'}</span>
-                    </div>
-                    <div style={{display:'flex',gap:4}}>
-                      {[1,2,3,4,5].map(n=>(
-                        <button key={n} onClick={()=>f.set(n)} style={{flex:1,height:24,borderRadius:5,border:'none',cursor:'pointer',background:f.val>=n?(n>=4?'#22c55e':n>=3?'#ffb340':'#ef4444'):'var(--bg-card2)',transition:'background 0.15s'}}/>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontSize:11,color:'var(--text-mid)'}}>Douleur</span>
-                <button onClick={()=>setHasPain(!hasPain)} style={{padding:'4px 12px',borderRadius:8,border:`1px solid ${hasPain?'rgba(239,68,68,0.4)':'var(--border)'}`,background:hasPain?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hasPain?'#ef4444':'var(--text-mid)',fontSize:11,fontWeight:hasPain?600:400,cursor:'pointer'}}>
-                  {hasPain?'Oui':'Non'}
-                </button>
-                {hasPain&&<input value={painZone} onChange={e=>setPainZone(e.target.value)} placeholder="Zone (ex: genou gauche)" style={{flex:1,padding:'5px 9px',borderRadius:8,border:'1px solid rgba(239,68,68,0.3)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none'}}/>}
-              </div>
-            </div>
-
-            {/* Feedback structuré */}
-            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>Feedback structuré</p>
-              <div style={{display:'flex',flexDirection:'column',gap:9}}>
-                {[
-                  {label:'✅ Ce qui était bien',val:whatWentWell,set:setWhatWentWell,ph:'Points positifs de la séance…'},
-                  {label:'⚠️ À améliorer',val:toImprove,set:setToImprove,ph:'Points à travailler…'},
-                  {label:'🎯 Objectif prochaine séance',val:nextGoal,set:setNextGoal,ph:'Ce que je vise la prochaine fois…'},
-                ].map(f=>(
-                  <div key={f.label}>
-                    <p style={{fontSize:10,fontWeight:600,color:'var(--text-dim)',marginBottom:4}}>{f.label}</p>
-                    <textarea value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} rows={2} style={{width:'100%',padding:'8px 11px',borderRadius:9,border:'1px solid var(--border)',background:'rgba(255,255,255,0.02)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,lineHeight:1.6}}/>
+          {/* Laps */}
+          {intervals.length>1&&(
+            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 12px'}}>{intervals.length} laps</p>
+              <div style={{display:'flex',flexDirection:'column' as const,gap:4}}>
+                {intervals.map((iv,i)=>(
+                  <div key={i} style={{display:'grid',gridTemplateColumns:'28px 1fr auto auto auto auto',gap:8,alignItems:'center',padding:'9px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)'}}>
+                    <span style={{fontFamily:'DM Mono,monospace',fontSize:10,fontWeight:700,color:SPORT_COLOR[sport],textAlign:'center' as const}}>{iv.index}</span>
+                    <span style={{fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{iv.label}</span>
+                    <span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'var(--text)'}}>{fmtDur(iv.durationS)}</span>
+                    <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-mid)'}}>{fmtDist(iv.distM)}</span>
+                    {iv.avgHr>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#ef4444'}}>{Math.round(iv.avgHr)} bpm</span>}
+                    {isBike&&iv.avgWatts>0?<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#3b82f6'}}>{Math.round(iv.avgWatts)}W</span>:isRun&&iv.avgPace>0?<span style={{fontFamily:'DM Mono,monospace',fontSize:11,fontWeight:600,color:'#22c55e'}}>{fmtPace(iv.avgPace)}</span>:<span/>}
                   </div>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* Sport-specific */}
-            {isGym&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Exercices</p>
-                <GymEnrichment exercises={gymExs} onChange={setGymExs}/>
-              </div>
-            )}
-            {isHyrox&&(
-              <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:12}}>
-                <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 14px'}}>Détail Hyrox</p>
-                <HyroxEnrichment stations={hyroxS} runs={hyroxR} onChange={(s,r)=>{setHyroxS(s);setHyroxR(r)}}/>
-              </div>
-            )}
-
-            {/* Save button */}
-            <button onClick={save} disabled={saving} style={{width:'100%',padding:'14px',borderRadius:12,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,cursor:saving?'not-allowed':'pointer',opacity:saving?0.7:1,boxShadow:'0 4px 20px rgba(0,200,224,0.25)',transition:'opacity 0.15s'}}>
-              {saving?'Sauvegarde...':'Sauvegarder'}
-            </button>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )
@@ -2519,10 +1927,13 @@ function ActivityListCard({activity,onClick}:{activity:Activity;onClick:()=>void
 }
 
 // ══════════════════════════════════════════════════════════
-// MAIN PAGE
+// MAIN PAGE — Training
 // ══════════════════════════════════════════════════════════
-export default function ActivitiesPage() {
+type TrainingSection='donnees'|'analyse'|'progression'
+
+export default function TrainingPage() {
   const {activities,loading,total,page,load,updateActivity}=useActivities()
+  const [section,setSection]=useState<TrainingSection>('analyse')
   const [selected,setSelected]=useState<Activity|null>(null)
   const [filterSport,setFilterSport]=useState<FilterSport>('all')
   const [filterStatus,setFilterStatus]=useState<FilterStatus>('all')
@@ -2542,121 +1953,296 @@ export default function ActivitiesPage() {
   }),[activities,filterSport,filterStatus,filterType,search])
 
   const now=new Date()
-  const thisMonth=activities.filter(a=>{const d=new Date(a.started_at);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()})
+  const thisMonth=activities.filter(a=>{
+    const d=new Date(a.started_at)
+    return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()
+  })
   const availableSports=Array.from(new Set(activities.map(a=>a.sport)))
 
+  const sportBreakdown=useMemo(()=>{
+    const map:Record<string,{sport:SportType;count:number;hours:number;tss:number}>={}
+    activities.forEach(a=>{
+      if(!map[a.sport])map[a.sport]={sport:a.sport,count:0,hours:0,tss:0}
+      map[a.sport].count++
+      map[a.sport].hours+=(a.moving_time_s??0)/3600
+      map[a.sport].tss+=(a.tss??0)
+    })
+    return Object.values(map).sort((a,b)=>b.hours-a.hours)
+  },[activities])
+
+  const NAV:[TrainingSection,string,string][]=[
+    ['donnees','Données','📊'],
+    ['analyse','Analyse','🗓'],
+    ['progression','Progression','📈'],
+  ]
+
   if(selected)return(
-    <ActivityDetail activity={selected} onClose={()=>setSelected(null)} onUpdate={upd=>{updateActivity(upd.id,upd);setSelected(upd)}}/>
+    <ActivityModal activity={selected} onClose={()=>setSelected(null)} onUpdate={upd=>{updateActivity(upd.id,upd);setSelected(upd)}}/>
   )
 
   return(
     <div style={{padding:'22px 20px',maxWidth:'100%'}}>
 
-      {/* Header + toggle */}
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:16,gap:12}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:18,gap:12,flexWrap:'wrap' as const}}>
         <div>
-          <h1 style={{fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0}}>Activités</h1>
-          <p style={{fontSize:12,color:'var(--text-dim)',margin:'4px 0 0'}}>{total>0?`${total} activité${total>1?'s':''}`:' Connectez vos apps pour importer vos séances'}</p>
-        </div>
-        <div style={{display:'flex',padding:3,borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)',flexShrink:0,gap:2}}>
-          {([['list','≡ Liste'],['calendar','▦ Calendrier']] as const).map(([mode,label])=>(
-            <button key={mode} onClick={()=>setViewMode(mode)} style={{padding:'6px 13px',borderRadius:7,border:'none',background:viewMode===mode?'var(--bg-card2)':'transparent',color:viewMode===mode?'var(--text)':'var(--text-dim)',fontSize:11,fontWeight:viewMode===mode?700:400,cursor:'pointer',transition:'all 0.15s',whiteSpace:'nowrap' as const}}>
-              {label}
-            </button>
-          ))}
+          <h1 style={{fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,letterSpacing:'-0.03em',margin:0}}>Training</h1>
+          <p style={{fontSize:12,color:'var(--text-dim)',margin:'4px 0 0'}}>{total>0?`${total} séances · Analyse et suivi de charge`:' Connectez vos apps pour importer vos séances'}</p>
         </div>
       </div>
 
-      {/* ── LIST MODE ── */}
-      {viewMode==='list'&&(
-        <>
-          {/* Weekly load chart */}
+      {/* Section navigation */}
+      <div style={{display:'flex',gap:3,padding:3,borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)',marginBottom:20,width:'fit-content'}}>
+        {NAV.map(([id,label,icon])=>(
+          <button key={id} onClick={()=>setSection(id)} style={{
+            padding:'9px 18px',borderRadius:9,border:'none',
+            background:section===id?'rgba(0,200,224,0.12)':'transparent',
+            color:section===id?'#00c8e0':'var(--text-dim)',
+            fontSize:12,fontWeight:section===id?700:400,cursor:'pointer',
+            transition:'all 0.15s',display:'flex',alignItems:'center',gap:6,
+            boxShadow:section===id?'inset 0 0 0 1px rgba(0,200,224,0.25)':'none',
+            whiteSpace:'nowrap' as const,
+          }}>
+            <span style={{fontSize:15}}>{icon}</span><span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ════ DONNÉES ════ */}
+      {section==='donnees'&&(
+        <div style={{display:'flex',flexDirection:'column' as const,gap:16}}>
           {activities.length>0&&<WeeklyLoadChart activities={activities}/>}
 
-          {/* Monthly stats */}
           {thisMonth.length>0&&(
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
-              {[
-                {l:'Ce mois',v:String(thisMonth.length),c:'#00c8e0'},
-                {l:'Volume',v:`${(thisMonth.reduce((s,a)=>s+(a.moving_time_s??0),0)/3600).toFixed(1)}h`,c:'#ffb340'},
-                {l:'TSS',v:String(Math.round(thisMonth.reduce((s,a)=>s+(a.tss??0),0))),c:'#5b6fff'},
-              ].map(x=>(
-                <div key={x.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                  <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 3px'}}>{x.l}</p>
-                  <p style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:x.c,margin:0}}>{x.v}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Search */}
-          <div style={{position:'relative' as const,marginBottom:10}}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
-              style={{width:'100%',padding:'9px 14px 9px 36px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:13,outline:'none'}}/>
-            <span style={{position:'absolute' as const,left:13,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'var(--text-dim)'}}>🔍</span>
-            {search&&<button onClick={()=>setSearch('')} style={{position:'absolute' as const,right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:17}}>×</button>}
-          </div>
-          {/* Filters */}
-          <div style={{display:'flex',gap:8,flexWrap:'wrap' as const,marginBottom:16}}>
-            <select value={filterSport} onChange={e=>setFilterSport(e.target.value as FilterSport)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
-              <option value="all">Tous les sports</option>
-              {availableSports.map(s=><option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
-            </select>
-            <select value={filterType} onChange={e=>setFilterType(e.target.value as FilterType)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
-              <option value="all">Entraînement + Compétition</option>
-              <option value="training">Entraînement</option>
-              <option value="competition">Compétition</option>
-            </select>
-            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value as FilterStatus)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
-              <option value="all">Tous les statuts</option>
-              <option value="imported">Importée</option>
-              <option value="completed">Complétée</option>
-              <option value="validated">Validée</option>
-            </select>
-          </div>
-          {/* List */}
-          {loading&&activities.length===0?(
-            <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement...</div>
-          ):filtered.length===0?(
-            <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
-              <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune activité</p>
-              <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>{search?`Aucun résultat pour "${search}".`:'Connectez Strava, Wahoo ou Polar dans votre profil.'}</p>
-            </div>
-          ):(
             <div>
-              {filtered.map(a=><ActivityListCard key={a.id} activity={a} onClick={()=>setSelected(a)}/>)}
-              {activities.length<total&&(
-                <button onClick={()=>load(page+1,filterSport!=='all'?filterSport:undefined)} style={{width:'100%',padding:'11px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:6}}>
-                  Charger plus — {total-activities.length} restante{total-activities.length>1?'s':''}
-                </button>
-              )}
+              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)',margin:'0 0 10px'}}>
+                Ce mois — {now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}
+              </p>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+                {[
+                  {l:'Séances',v:String(thisMonth.length),c:'#00c8e0'},
+                  {l:'Volume',v:`${(thisMonth.reduce((s,a)=>s+(a.moving_time_s??0),0)/3600).toFixed(1)}h`,c:'#ffb340'},
+                  {l:'TSS total',v:String(Math.round(thisMonth.reduce((s,a)=>s+(a.tss??0),0))),c:'#5b6fff'},
+                ].map(x=>(
+                  <div key={x.l} style={{padding:'14px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                    <p style={{fontSize:9,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 4px'}}>{x.l}</p>
+                    <p style={{fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:700,color:x.c,margin:0}}>{x.v}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </>
+
+          {sportBreakdown.length>0&&(
+            <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+              <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)',margin:'0 0 14px'}}>Répartition par sport</p>
+              <div style={{display:'flex',flexDirection:'column' as const,gap:10}}>
+                {sportBreakdown.map(s=>{
+                  const maxH=Math.max(...sportBreakdown.map(x=>x.hours),0.01)
+                  const pct=(s.hours/maxH)*100
+                  return(
+                    <div key={s.sport} style={{display:'flex',alignItems:'center',gap:10}}>
+                      <span style={{fontSize:18,flexShrink:0}}>{SPORT_EMOJI[s.sport]}</span>
+                      <div style={{flex:1}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,flexWrap:'wrap' as const,gap:4}}>
+                          <span style={{fontSize:11,fontWeight:600,color:'var(--text)'}}>{SPORT_LABEL[s.sport]}</span>
+                          <div style={{display:'flex',gap:10}}>
+                            <span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{s.count} séance{s.count>1?'s':''}</span>
+                            <span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'#00c8e0',fontWeight:600}}>{s.hours.toFixed(1)}h</span>
+                            {s.tss>0&&<span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'#5b6fff'}}>{Math.round(s.tss)} TSS</span>}
+                          </div>
+                        </div>
+                        <div style={{height:5,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden'}}>
+                          <div style={{width:`${pct}%`,height:'100%',background:SPORT_COLOR[s.sport],borderRadius:3}}/>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {activities.length===0&&!loading&&(
+            <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
+              <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune donnée</p>
+              <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>Connectez Strava, Wahoo ou Polar dans votre profil pour importer vos séances.</p>
+            </div>
+          )}
+
+          {loading&&activities.length===0&&(
+            <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement…</div>
+          )}
+        </div>
       )}
 
-      {/* ── CALENDAR MODE ── */}
-      {viewMode==='calendar'&&(
-        <div>
-          {/* Week count selector */}
-          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:14}}>
-            <span style={{fontSize:11,color:'var(--text-dim)',marginRight:2}}>Afficher</span>
-            {([5,10] as const).map(n=>(
-              <button key={n} onClick={()=>setCalWeekCount(n)} style={{padding:'4px 12px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:calWeekCount===n?'#00c8e0':'var(--border)',background:calWeekCount===n?'rgba(0,200,224,0.09)':'var(--bg-card)',color:calWeekCount===n?'#00c8e0':'var(--text-dim)',fontWeight:calWeekCount===n?700:400,transition:'all 0.15s'}}>
-                {n} semaines
-              </button>
-            ))}
+      {/* ════ ANALYSE ════ */}
+      {section==='analyse'&&(
+        <div style={{display:'flex',flexDirection:'column' as const,gap:12}}>
+
+          {/* View toggle + week count */}
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' as const}}>
+            <div style={{display:'flex',padding:3,borderRadius:10,background:'var(--bg-card)',border:'1px solid var(--border)',gap:2}}>
+              {([['list','≡ Liste'],['calendar','▦ Calendrier']] as const).map(([mode,label])=>(
+                <button key={mode} onClick={()=>setViewMode(mode)} style={{padding:'6px 13px',borderRadius:7,border:'none',background:viewMode===mode?'var(--bg-card2)':'transparent',color:viewMode===mode?'var(--text)':'var(--text-dim)',fontSize:11,fontWeight:viewMode===mode?700:400,cursor:'pointer',transition:'all 0.15s',whiteSpace:'nowrap' as const}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {viewMode==='calendar'&&(
+              <div style={{display:'flex',gap:5}}>
+                {([5,10] as const).map(n=>(
+                  <button key={n} onClick={()=>setCalWeekCount(n)} style={{padding:'4px 10px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:calWeekCount===n?'#00c8e0':'var(--border)',background:calWeekCount===n?'rgba(0,200,224,0.09)':'var(--bg-card)',color:calWeekCount===n?'#00c8e0':'var(--text-dim)',fontWeight:calWeekCount===n?700:400}}>
+                    {n} sem
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {loading&&activities.length===0?(
-            <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement...</div>
-          ):(
-            <CalendarView
-              activities={activities}
-              onSelect={setSelected}
-              weekCount={calWeekCount}
-              offset={calOffset}
-              setOffset={setCalOffset}
-            />
+
+          {/* LIST MODE */}
+          {viewMode==='list'&&(
+            <>
+              <div style={{position:'relative' as const}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher une séance…"
+                  style={{width:'100%',padding:'9px 14px 9px 36px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:13,outline:'none',boxSizing:'border-box' as const}}/>
+                <span style={{position:'absolute' as const,left:13,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'var(--text-dim)'}}>🔍</span>
+                {search&&<button onClick={()=>setSearch('')} style={{position:'absolute' as const,right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:17}}>×</button>}
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap' as const}}>
+                <select value={filterSport} onChange={e=>setFilterSport(e.target.value as FilterSport)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+                  <option value="all">Tous les sports</option>
+                  {availableSports.map(s=><option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
+                </select>
+                <select value={filterType} onChange={e=>setFilterType(e.target.value as FilterType)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+                  <option value="all">Entraînement + Compétition</option>
+                  <option value="training">Entraînement</option>
+                  <option value="competition">Compétition</option>
+                </select>
+                <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value as FilterStatus)} style={{padding:'7px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none',cursor:'pointer'}}>
+                  <option value="all">Tous les statuts</option>
+                  <option value="imported">Importée</option>
+                  <option value="completed">Complétée</option>
+                  <option value="validated">Validée</option>
+                </select>
+              </div>
+              {loading&&activities.length===0?(
+                <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement…</div>
+              ):filtered.length===0?(
+                <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
+                  <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune activité</p>
+                  <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>{search?`Aucun résultat pour "${search}".`:'Synchronisez Strava depuis votre profil.'}</p>
+                </div>
+              ):(
+                <div>
+                  {filtered.map(a=><ActivityListCard key={a.id} activity={a} onClick={()=>setSelected(a)}/>)}
+                  {activities.length<total&&(
+                    <button onClick={()=>load(page+1,filterSport!=='all'?filterSport:undefined)} style={{width:'100%',padding:'11px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:6}}>
+                      Charger plus — {total-activities.length} restante{total-activities.length>1?'s':''}
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
+
+          {/* CALENDAR MODE */}
+          {viewMode==='calendar'&&(
+            loading&&activities.length===0?(
+              <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement…</div>
+            ):(
+              <CalendarView activities={activities} onSelect={a=>setSelected(a)} weekCount={calWeekCount} offset={calOffset} setOffset={setCalOffset}/>
+            )
+          )}
+        </div>
+      )}
+
+      {/* ════ PROGRESSION ════ */}
+      {section==='progression'&&(
+        <div style={{display:'flex',flexDirection:'column' as const,gap:16}}>
+          {activities.length>0&&<WeeklyLoadChart activities={activities}/>}
+
+          {(()=>{
+            const runs=activities.filter(a=>(a.sport==='run'||a.sport==='trail_run')&&(a.distance_m??0)>0&&(a.avg_pace_s_km??0)>0)
+            const bikes=activities.filter(a=>(a.sport==='bike'||a.sport==='virtual_bike')&&(a.avg_watts??0)>0)
+            const swims=activities.filter(a=>a.sport==='swim'&&(a.distance_m??0)>0)
+            return(
+              <div style={{display:'flex',flexDirection:'column' as const,gap:10}}>
+
+                {runs.length>0&&(
+                  <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                    <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)',margin:'0 0 12px'}}>Meilleures performances — Course à pied</p>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
+                      {[
+                        {l:'Allure max séance',v:fmtPace(Math.min(...runs.map(a=>a.avg_pace_s_km!).filter(p=>p>0))),c:'#22c55e'},
+                        {l:'Plus longue',v:fmtDist(Math.max(...runs.map(a=>a.distance_m??0))),c:'#22c55e'},
+                        {l:'D+ max',v:`${Math.round(Math.max(...runs.map(a=>a.elevation_gain_m??0)))}m`,c:'#8b5cf6'},
+                        {l:'Plus longue durée',v:fmtDur(Math.max(...runs.map(a=>a.moving_time_s??0))),c:'#00c8e0'},
+                      ].map(r=>(
+                        <div key={r.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:`1px solid ${r.c}20`,position:'relative' as const,overflow:'hidden'}}>
+                          <div style={{position:'absolute' as const,top:0,left:0,right:0,height:2,background:r.c,opacity:0.7}}/>
+                          <p style={{fontSize:8,color:'var(--text-dim)',margin:'4px 0 4px'}}>{r.l}</p>
+                          <p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:r.c,margin:0}}>{r.v}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {bikes.length>0&&(
+                  <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                    <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)',margin:'0 0 12px'}}>Meilleures performances — Cyclisme</p>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
+                      {(()=>{
+                        const npVals=bikes.map(a=>a.normalized_watts??0).filter(w=>w>0)
+                        return[
+                          {l:'Puissance moy. max',v:`${Math.round(Math.max(...bikes.map(a=>a.avg_watts??0)))}W`,c:'#3b82f6'},
+                          {l:'NP max',v:npVals.length?`${Math.round(Math.max(...npVals))}W`:'—',c:'#5b6fff'},
+                          {l:'Plus longue distance',v:fmtDist(Math.max(...bikes.map(a=>a.distance_m??0))),c:'#3b82f6'},
+                          {l:'Plus longue durée',v:fmtDur(Math.max(...bikes.map(a=>a.moving_time_s??0))),c:'#00c8e0'},
+                        ].map(r=>(
+                          <div key={r.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:`1px solid ${r.c}20`,position:'relative' as const,overflow:'hidden'}}>
+                            <div style={{position:'absolute' as const,top:0,left:0,right:0,height:2,background:r.c,opacity:0.7}}/>
+                            <p style={{fontSize:8,color:'var(--text-dim)',margin:'4px 0 4px'}}>{r.l}</p>
+                            <p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:r.c,margin:0}}>{r.v}</p>
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {swims.length>0&&(
+                  <div style={{padding:'16px',borderRadius:12,background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                    <p style={{fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.09em',color:'var(--text-dim)',margin:'0 0 12px'}}>Meilleures performances — Natation</p>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
+                      {[
+                        {l:'Plus longue distance',v:fmtDist(Math.max(...swims.map(a=>a.distance_m??0))),c:'#38bdf8'},
+                        {l:'Plus longue durée',v:fmtDur(Math.max(...swims.map(a=>a.moving_time_s??0))),c:'#00c8e0'},
+                      ].map(r=>(
+                        <div key={r.l} style={{padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:`1px solid ${r.c}20`,position:'relative' as const,overflow:'hidden'}}>
+                          <div style={{position:'absolute' as const,top:0,left:0,right:0,height:2,background:r.c,opacity:0.7}}/>
+                          <p style={{fontSize:8,color:'var(--text-dim)',margin:'4px 0 4px'}}>{r.l}</p>
+                          <p style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:r.c,margin:0}}>{r.v}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activities.length===0&&!loading&&(
+                  <div style={{padding:'44px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14}}>
+                    <p style={{fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'0 0 7px'}}>Aucune donnée</p>
+                    <p style={{fontSize:13,color:'var(--text-dim)',margin:0}}>Synchronisez vos activités pour voir votre progression.</p>
+                  </div>
+                )}
+
+                {loading&&activities.length===0&&(
+                  <div style={{padding:'40px 0',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13}}>Chargement…</div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 

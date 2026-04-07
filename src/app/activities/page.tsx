@@ -98,6 +98,22 @@ interface LapData {
   avg_watts?:    number | null
 }
 
+interface TrainingZoneRow {
+  sport: string
+  z1_label: string; z1_value: string
+  z2_label: string; z2_value: string
+  z3_label: string; z3_value: string
+  z4_label: string; z4_value: string
+  z5_label: string; z5_value: string
+  ftp_watts: number | null
+  lthr: number | null
+  threshold_pace_s_km: number | null
+}
+
+interface ParsedZone { label: string; color: string; min: number; max: number }
+
+interface Profile { weight_kg: number | null }
+
 // ─────────────────────────────────────────────────────────────
 // SPORT CONFIG (no emojis)
 // ─────────────────────────────────────────────────────────────
@@ -183,6 +199,59 @@ function numWeeks(filter: TimeFilter): number {
   return map[filter]
 }
 
+const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
+
+function parseZoneText(text: string): { min: number; max: number } {
+  if (!text) return { min: 0, max: Infinity }
+  const lt = text.match(/^[<＜](\d+)/)
+  if (lt) return { min: 0, max: Number(lt[1]) }
+  const gt = text.match(/^[>＞](\d+)/)
+  if (gt) return { min: Number(gt[1]), max: Infinity }
+  const range = text.match(/(\d+)\D+(\d+)/)
+  if (range) return { min: Number(range[1]), max: Number(range[2]) }
+  return { min: 0, max: Infinity }
+}
+
+function buildZones(row: TrainingZoneRow): ParsedZone[] {
+  return [
+    { label: row.z1_label, color: ZONE_COLORS[0], ...parseZoneText(row.z1_value) },
+    { label: row.z2_label, color: ZONE_COLORS[1], ...parseZoneText(row.z2_value) },
+    { label: row.z3_label, color: ZONE_COLORS[2], ...parseZoneText(row.z3_value) },
+    { label: row.z4_label, color: ZONE_COLORS[3], ...parseZoneText(row.z4_value) },
+    { label: row.z5_label, color: ZONE_COLORS[4], ...parseZoneText(row.z5_value) },
+  ]
+}
+
+function calcTimeInZones(data: number[], zones: ParsedZone[], sampleRateS = 1): number[] {
+  const counts = zones.map(() => 0)
+  for (const v of data) {
+    for (let i = 0; i < zones.length; i++) {
+      if (v >= zones[i].min && v <= zones[i].max) { counts[i]++; break }
+    }
+  }
+  return counts.map(c => c * sampleRateS)
+}
+
+function computeFitness(activities: Activity[]): { ctl: number; atl: number; tsb: number } {
+  const tssMap = new Map<string, number>()
+  for (const a of activities) {
+    if (!a.tss) continue
+    const d = a.started_at.slice(0, 10)
+    tssMap.set(d, (tssMap.get(d) ?? 0) + Number(a.tss))
+  }
+  const today = new Date()
+  let ctl = 0, atl = 0
+  const ctlK = 1 / 42, atlK = 1 / 7
+  for (let i = 90; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i)
+    const dateStr = d.toISOString().slice(0, 10)
+    const tss = tssMap.get(dateStr) ?? 0
+    ctl = ctl + (tss - ctl) * ctlK
+    atl = atl + (tss - atl) * atlK
+  }
+  return { ctl: Math.round(ctl * 10) / 10, atl: Math.round(atl * 10) / 10, tsb: Math.round((ctl - atl) * 10) / 10 }
+}
+
 // ─────────────────────────────────────────────────────────────
 // HOOK: useActivities
 // ─────────────────────────────────────────────────────────────
@@ -227,6 +296,24 @@ function useWindowWidth() {
   return w
 }
 
+function useTrainingZones() {
+  const [zones, setZones] = useState<TrainingZoneRow[]>([])
+  useEffect(() => {
+    createClient().from('training_zones').select('*').eq('is_current', true)
+      .then(({ data }) => setZones((data ?? []) as unknown as TrainingZoneRow[]))
+  }, [])
+  return zones
+}
+
+function useProfile() {
+  const [profile, setProfile] = useState<Profile>({ weight_kg: null })
+  useEffect(() => {
+    createClient().from('profiles').select('weight_kg').limit(1).single()
+      .then(({ data }) => { if (data) setProfile(data as Profile) })
+  }, [])
+  return profile
+}
+
 // ─────────────────────────────────────────────────────────────
 // SMALL COMPONENTS
 // ─────────────────────────────────────────────────────────────
@@ -262,6 +349,53 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     <div style={{ fontSize: 13, fontWeight: 600, color: T.textSub, marginBottom: 14,
       textTransform: 'uppercase', letterSpacing: 0.8 }}>
       {children}
+    </div>
+  )
+}
+
+function TooltipInfo({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 5, cursor: 'help' }}
+      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <span style={{ width: 14, height: 14, borderRadius: '50%', background: T.border, display: 'inline-flex',
+        alignItems: 'center', justifyContent: 'center', fontSize: 9, color: T.textSub, fontWeight: 700, lineHeight: 1 }}>?</span>
+      {show && (
+        <div style={{ position: 'absolute', bottom: '120%', left: '50%', transform: 'translateX(-50%)',
+          background: T.text, color: '#fff', fontSize: 11, padding: '8px 10px', borderRadius: 6,
+          width: 220, lineHeight: 1.5, zIndex: 999, pointerEvents: 'none', whiteSpace: 'pre-wrap',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+          {text}
+          <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+            border: '5px solid transparent', borderTopColor: T.text }} />
+        </div>
+      )}
+    </span>
+  )
+}
+
+function ZoneBars({ zones, timesS }: { zones: ParsedZone[]; timesS: number[] }) {
+  const total = timesS.reduce((a, b) => a + b, 0)
+  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée de zone</div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {zones.map((z, i) => {
+        const t = timesS[i] ?? 0
+        const pct = total > 0 ? (t / total) * 100 : 0
+        return (
+          <div key={z.label} style={{ display: 'grid', gridTemplateColumns: '72px 1fr 52px 40px', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 11, color: T.textSub, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: z.color, display: 'inline-block', flexShrink: 0 }} />
+              {z.label}
+            </div>
+            <div style={{ height: 7, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: z.color, borderRadius: 4, transition: 'width 0.4s' }} />
+            </div>
+            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500 }}>{fmtDur(t)}</div>
+            <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'right' }}>{pct.toFixed(0)}%</div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -322,117 +456,429 @@ function StreamLine({ data, color, label, unit, height = 48 }: {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SYNC CHARTS (crosshair, HR zone coloring, laps)
+// ─────────────────────────────────────────────────────────────
+function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
+  activity: Activity
+  hrZones?: ParsedZone[]
+  powerZones?: ParsedZone[]
+  paceZones?: ParsedZone[]
+}) {
+  const s = activity.streams
+  if (!s) return null
+
+  const isBike = ['bike','virtual_bike'].includes(activity.sport_type)
+  const isRun  = ['run','trail_run'].includes(activity.sport_type)
+
+  const time = s.time ?? []
+  const N = time.length
+  if (N < 2) return null
+
+  const totalS = time[N - 1] - time[0]
+  const [cursor, setCursor] = useState<number | null>(null)
+  const [selection, setSelection] = useState<[number,number] | null>(null)
+  const [dragStart, setDragStart] = useState<number | null>(null)
+  const [selectedLap, setSelectedLap] = useState<number | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const pct = (e.clientX - rect.left) / rect.width
+    const idx = Math.min(N - 1, Math.max(0, Math.round(pct * (N - 1))))
+    setCursor(idx)
+    if (dragStart !== null) {
+      const startIdx = Math.min(N - 1, Math.max(0, Math.round(dragStart * (N - 1))))
+      setSelection([Math.min(startIdx, idx), Math.max(startIdx, idx)])
+    }
+  }
+
+  function smooth(arr: number[], w = 5): number[] {
+    return arr.map((_, i) => {
+      const sl = arr.slice(Math.max(0, i - w), i + w + 1)
+      return sl.reduce((a, b) => a + b, 0) / sl.length
+    })
+  }
+
+  function buildPath(data: number[], H: number, pad = 4): string {
+    if (!data.length) return ''
+    const mn = Math.min(...data), mx = Math.max(...data)
+    const range = mx - mn || 1
+    const pts = data.map((v, i) => {
+      const x = (i / (N - 1)) * 1000
+      const y = H - pad - ((v - mn) / range) * (H - pad * 2)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    return `M${pts.join('L')}`
+  }
+
+  function getHrColor(hr: number, zones?: ParsedZone[]): string {
+    if (!zones) return '#ef4444'
+    for (const z of zones) if (hr >= z.min && hr <= z.max) return z.color
+    return '#ef4444'
+  }
+
+  function buildHrSegments(hrs: number[], zones?: ParsedZone[]): { d: string; color: string }[] {
+    if (!hrs.length) return []
+    const H = 60, pad = 4
+    const mn = Math.min(...hrs), mx = Math.max(...hrs)
+    const range = mx - mn || 1
+    const segments: { d: string; color: string }[] = []
+    let currentColor = getHrColor(hrs[0], zones)
+    let pts = [`${(0 / (N - 1)) * 1000},${H - pad - ((hrs[0] - mn) / range) * (H - pad * 2)}`]
+
+    for (let i = 1; i < hrs.length; i++) {
+      const color = getHrColor(hrs[i], zones)
+      const x = (i / (N - 1)) * 1000
+      const y = H - pad - ((hrs[i] - mn) / range) * (H - pad * 2)
+      if (color !== currentColor) {
+        segments.push({ d: `M${pts.join('L')}`, color: currentColor })
+        pts = [`${x},${y}`]
+        currentColor = color
+      } else {
+        pts.push(`${x},${y}`)
+      }
+    }
+    segments.push({ d: `M${pts.join('L')}`, color: currentColor })
+    return segments
+  }
+
+  const watts    = s.watts    ? smooth(s.watts)    : null
+  const velocity = s.velocity ? smooth(s.velocity) : null
+  const cadence  = s.cadence  ? smooth(s.cadence)  : null
+  const hr       = s.heartrate ? smooth(s.heartrate) : null
+  const alt      = s.altitude  ?? null
+
+  const laps = activity.laps ?? []
+
+  const selLap = selectedLap !== null ? laps[selectedLap] : null
+
+  type Track = { label: string; data: number[]; color: string; unit: string; H: number; isHr?: boolean; isAlt?: boolean }
+  const tracks: Track[] = ([
+    alt    ? { label: 'Altitude', data: alt,                     color: '#9ca3af', unit: 'm',    H: 56, isAlt: true } : null,
+    hr     ? { label: 'FC',       data: hr,                      color: '#ef4444', unit: 'bpm',  H: 60, isHr: true  } : null,
+    isBike && watts    ? { label: 'Puissance', data: watts,      color: '#7c3aed', unit: 'W',    H: 70 } : null,
+    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#7c3aed', unit: 's/km', H: 70 } : null,
+    cadence ? { label: 'Cadence', data: cadence,                 color: '#ec4899', unit: 'rpm',  H: 50 } : null,
+  ] as (Track | null)[]).filter((t): t is Track => t !== null)
+
+  if (!tracks.length) return null
+
+  const chartWidth = 1000
+  const cursorX = cursor !== null ? (cursor / (N - 1)) * chartWidth : null
+
+  return (
+    <div style={{ userSelect: 'none' }}>
+      {cursor !== null && cursorX !== null && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+          {hr     && <span style={{ fontSize: 11, color: '#ef4444' }}>FC: {Math.round(hr[cursor])} bpm</span>}
+          {isBike && watts && <span style={{ fontSize: 11, color: '#7c3aed' }}>Puissance: {Math.round(watts[cursor])} W</span>}
+          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#7c3aed' }}>Allure: {fmtPace(1000/velocity[cursor])}</span>}
+          {cadence && <span style={{ fontSize: 11, color: '#ec4899' }}>Cadence: {Math.round(cadence[cursor])} rpm</span>}
+          {alt && <span style={{ fontSize: 11, color: '#6b7280' }}>Alt: {Math.round(alt[cursor])} m</span>}
+        </div>
+      )}
+
+      {tracks.map((track, ti) => {
+        const hrSegs = track.isHr ? buildHrSegments(track.data, hrZones) : null
+        const pathD  = !track.isHr ? buildPath(track.data, track.H) : null
+        const mn = Math.min(...track.data), mx = Math.max(...track.data)
+        const range = mx - mn || 1
+
+        return (
+          <div key={track.label} style={{ marginBottom: 4, position: 'relative' }}>
+            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
+              <span>{Math.round(mn)} – {Math.round(mx)} {track.unit}</span>
+            </div>
+            <svg
+              ref={ti === 0 ? svgRef : undefined}
+              viewBox={`0 0 ${chartWidth} ${track.H}`}
+              style={{ width: '100%', height: track.H, display: 'block', cursor: 'crosshair' }}
+              preserveAspectRatio="none"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setCursor(null)}
+              onMouseDown={e => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setDragStart((e.clientX - rect.left) / rect.width)
+                setSelection(null)
+              }}
+              onMouseUp={() => setDragStart(null)}
+            >
+              {track.isAlt && pathD && (
+                <>
+                  <defs>
+                    <linearGradient id="altFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#9ca3af" stopOpacity="0.3"/>
+                      <stop offset="100%" stopColor="#9ca3af" stopOpacity="0.05"/>
+                    </linearGradient>
+                  </defs>
+                  <path d={`${pathD}L${chartWidth},${track.H}L0,${track.H}Z`} fill="url(#altFill)" />
+                </>
+              )}
+
+              {hrSegs && hrSegs.map((seg, si) => (
+                <path key={si} d={seg.d} fill="none" stroke={seg.color} strokeWidth="2" strokeLinejoin="round" />
+              ))}
+              {track.isHr && hr && (() => {
+                const mean = hr.reduce((a, b) => a + b, 0) / hr.length
+                const y = track.H - 4 - ((mean - mn) / range) * (track.H - 8)
+                return <line x1={0} y1={y} x2={chartWidth} y2={y} stroke="#ef4444" strokeWidth="1" strokeDasharray="6,4" opacity="0.5" />
+              })()}
+
+              {!track.isHr && !track.isAlt && pathD && (
+                <path d={pathD} fill="none" stroke={track.color} strokeWidth="2" strokeLinejoin="round" />
+              )}
+              {track.isAlt && pathD && (
+                <path d={pathD} fill="none" stroke="#9ca3af" strokeWidth="1.5" />
+              )}
+
+              {laps.map((lap, li) => {
+                if (!lap.start_index) return null
+                const lx = ((lap.start_index ?? 0) / (N - 1)) * chartWidth
+                return (
+                  <line key={li} x1={lx} y1={0} x2={lx} y2={track.H}
+                    stroke={T.borderMid} strokeWidth="1" strokeDasharray="3,3" />
+                )
+              })}
+
+              {selection && (() => {
+                const x1 = (selection[0] / (N - 1)) * chartWidth
+                const x2 = (selection[1] / (N - 1)) * chartWidth
+                return <rect x={x1} y={0} width={x2 - x1} height={track.H} fill={T.accent} fillOpacity="0.08" stroke={T.accent} strokeWidth="1" strokeOpacity="0.3" />
+              })()}
+
+              {cursorX !== null && (
+                <line x1={cursorX} y1={0} x2={cursorX} y2={track.H} stroke={T.text} strokeWidth="1" />
+              )}
+            </svg>
+          </div>
+        )
+      })}
+
+      {laps.length > 1 && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4 }}>Intervalles — cliquer pour détail</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {laps.map((lap, li) => (
+              <button key={li} onClick={() => setSelectedLap(selectedLap === li ? null : li)}
+                style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, cursor: 'pointer', border: `1px solid ${T.border}`,
+                  background: selectedLap === li ? T.accentBg : T.surface, color: selectedLap === li ? T.accentText : T.textSub }}>
+                #{li + 1} {fmtDur(lap.moving_time_s)}
+              </button>
+            ))}
+          </div>
+
+          {selLap && (
+            <div style={{ marginTop: 10, background: T.bg, borderRadius: 7, padding: '10px 12px', border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>
+                Intervalle #{selectedLap! + 1}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12 }}>
+                <span><span style={{ color: T.textMuted }}>Dist. </span>{fmtDist(selLap.distance_m)}</span>
+                <span><span style={{ color: T.textMuted }}>Durée </span>{fmtDur(selLap.moving_time_s)}</span>
+                {selLap.avg_hr && <span><span style={{ color: T.textMuted }}>FC </span>{Math.round(selLap.avg_hr)} bpm</span>}
+                {selLap.avg_watts && <span><span style={{ color: T.textMuted }}>Watts </span>{Math.round(selLap.avg_watts)} W</span>}
+                {selLap.avg_speed_ms && <span><span style={{ color: T.textMuted }}>Allure </span>{fmtPace((1/selLap.avg_speed_ms)*1000)}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selection && (
+        <div style={{ marginTop: 8, background: T.accentBg, borderRadius: 7, padding: '10px 12px', border: `1px solid ${T.accent}40` }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: T.accentText, marginBottom: 6 }}>
+            Sélection : {fmtDur((time[selection[1]] - time[selection[0]]))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: T.text }}>
+            {hr && <span><span style={{ color: T.textMuted }}>FC moy. </span>{Math.round(avg(hr.slice(selection[0], selection[1]+1)))} bpm</span>}
+            {isBike && watts && <span><span style={{ color: T.textMuted }}>Watts moy. </span>{Math.round(avg(watts.slice(selection[0], selection[1]+1)))} W</span>}
+            {isRun && velocity && <span><span style={{ color: T.textMuted }}>Allure moy. </span>{fmtPace(avg(velocity.slice(selection[0], selection[1]+1).map(v => v > 0 ? 1000/v : 0).filter(v => v > 0)))}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // SECTION: DONNÉES
 // ─────────────────────────────────────────────────────────────
-function SectionDonnees({ activities }: { activities: Activity[] }) {
+function SectionDonnees({ activities, zones, profile }: {
+  activities: Activity[]
+  zones: TrainingZoneRow[]
+  profile: Profile
+}) {
   const [filter, setFilter] = useState<TimeFilter>('4w')
   const cutoff = cutoffDate(filter)
   const inRange = useMemo(() =>
     activities.filter(a => !cutoff || new Date(a.started_at) >= cutoff),
-    [activities, cutoff, filter]
+    [activities, filter]
   )
 
-  // Aggregate stats
   const totalDist  = inRange.reduce((s, a) => s + (a.distance_m ?? 0), 0)
   const totalTime  = inRange.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
   const totalElev  = inRange.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
   const totalTss   = inRange.reduce((s, a) => s + (a.tss ?? 0), 0)
-  const hrVals     = inRange.filter(a => a.avg_hr).map(a => a.avg_hr!)
-  const rpeVals    = inRange.filter(a => (a.rpe ?? a.perceived_effort)).map(a => a.rpe ?? a.perceived_effort ?? 0)
+  const hrVals     = inRange.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
+  const rpeVals    = inRange.filter(a => a.rpe ?? a.perceived_effort).map(a => Number(a.rpe ?? a.perceived_effort))
   const meanHr     = hrVals.length ? Math.round(avg(hrVals)) : null
   const meanRpe    = rpeVals.length ? avg(rpeVals).toFixed(1) : null
-  const avgTss     = inRange.filter(a => a.tss).length ? Math.round(totalTss / inRange.filter(a => a.tss).length) : null
+  const tssCount   = inRange.filter(a => a.tss).length
+  const avgTss     = tssCount ? Math.round(totalTss / tssCount) : null
+  const { ctl, atl, tsb } = useMemo(() => computeFitness(activities), [activities])
 
-  // Weekly chart
   const nWeeks = numWeeks(filter)
   const weeks = useMemo(() => {
     const now = new Date()
-    const map = new Map<string, { tss: number; dist: number; time: number; count: number }>()
+    const map = new Map<string, { total: number; time: number; dist: number; count: number; sports: Map<string, number> }>()
     for (let i = nWeeks - 1; i >= 0; i--) {
       const d = new Date(now); d.setDate(d.getDate() - i * 7)
       const k = isoWeek(d)
-      if (!map.has(k)) map.set(k, { tss: 0, dist: 0, time: 0, count: 0 })
+      if (!map.has(k)) map.set(k, { total: 0, time: 0, dist: 0, count: 0, sports: new Map() })
     }
     for (const a of inRange) {
       const k = isoWeek(new Date(a.started_at))
       if (map.has(k)) {
         const w = map.get(k)!
-        w.tss  += a.tss ?? 0
-        w.dist += a.distance_m ?? 0
-        w.time += a.moving_time_s ?? 0
+        w.total += a.moving_time_s ?? 0
+        w.time  += a.moving_time_s ?? 0
+        w.dist  += a.distance_m ?? 0
         w.count++
+        const sp = a.sport_type ?? 'other'
+        w.sports.set(sp, (w.sports.get(sp) ?? 0) + (a.moving_time_s ?? 0))
       }
     }
     return Array.from(map.entries()).map(([week, v]) => ({ week, ...v }))
   }, [inRange, nWeeks])
 
-  const maxTss  = Math.max(...weeks.map(w => w.tss), 1)
-  const maxDist = Math.max(...weeks.map(w => w.dist), 1)
+  const maxTime = Math.max(...weeks.map(w => w.total), 1)
 
-  // Sport breakdown
+  const bikeZoneRow = zones.find(z => z.sport === 'bike')
+  const runZoneRow  = zones.find(z => z.sport === 'run')
+  const bikeZones   = bikeZoneRow ? buildZones(bikeZoneRow) : null
+  const runZones    = runZoneRow  ? buildZones(runZoneRow)  : null
+  const hrZoneColors: ParsedZone[] = [
+    { label: 'Z1 Récup', color: ZONE_COLORS[0], min: 0, max: 120 },
+    { label: 'Z2 Aérobie', color: ZONE_COLORS[1], min: 120, max: 150 },
+    { label: 'Z3 Tempo', color: ZONE_COLORS[2], min: 150, max: 165 },
+    { label: 'Z4 Seuil', color: ZONE_COLORS[3], min: 165, max: 180 },
+    { label: 'Z5 VO2max', color: ZONE_COLORS[4], min: 180, max: 999 },
+  ]
+
+  const bikeTimesZ = useMemo(() => {
+    if (!bikeZones) return null
+    const acc = bikeZones.map(() => 0)
+    for (const a of inRange) {
+      if (!['bike','virtual_bike'].includes(a.sport_type)) continue
+      if (!a.streams?.watts) continue
+      const t = calcTimeInZones(a.streams.watts, bikeZones)
+      t.forEach((v, i) => acc[i] += v)
+    }
+    return acc
+  }, [inRange, bikeZones])
+
+  const runTimesZ = useMemo(() => {
+    if (!runZones) return null
+    const acc = runZones.map(() => 0)
+    for (const a of inRange) {
+      if (!['run','trail_run'].includes(a.sport_type)) continue
+      if (!a.streams?.velocity) continue
+      const paces = a.streams.velocity.map(v => v > 0.5 ? (1000 / v) : 0)
+      const t = calcTimeInZones(paces, runZones)
+      t.forEach((v, i) => acc[i] += v)
+    }
+    return acc
+  }, [inRange, runZones])
+
+  const hrTimesZ = useMemo(() => {
+    const acc = hrZoneColors.map(() => 0)
+    for (const a of inRange) {
+      if (!a.streams?.heartrate) continue
+      const t = calcTimeInZones(a.streams.heartrate, hrZoneColors)
+      t.forEach((v, i) => acc[i] += v)
+    }
+    return acc
+  }, [inRange])
+
   const sportMap = new Map<string, { count: number; time: number; dist: number }>()
   for (const a of inRange) {
-    const s = a.sport_type ?? 'other'
-    if (!sportMap.has(s)) sportMap.set(s, { count: 0, time: 0, dist: 0 })
-    const e = sportMap.get(s)!
+    const sp = a.sport_type ?? 'other'
+    if (!sportMap.has(sp)) sportMap.set(sp, { count: 0, time: 0, dist: 0 })
+    const e = sportMap.get(sp)!
     e.count++; e.time += a.moving_time_s ?? 0; e.dist += a.distance_m ?? 0
   }
   const sports = Array.from(sportMap.entries()).sort((a, b) => b[1].time - a[1].time)
 
+  void profile
+
   return (
     <div>
-      {/* Time filter */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
         {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
           <Chip key={f} label={TIME_FILTER_LABEL[f]} active={filter === f} onClick={() => setFilter(f)} />
         ))}
       </div>
 
-      {/* Stats grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10, marginBottom: 24 }}>
         <StatCard label="Séances" value={inRange.length.toString()} />
         <StatCard label="Distance" value={fmtDist(totalDist)} />
         <StatCard label="Temps" value={fmtDur(totalTime)} />
-        <StatCard label="D+" value={totalElev >= 1 ? `${Math.round(totalElev)} m` : '—'} />
+        <StatCard label="D+" value={totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—'} />
         <StatCard label="TSS total" value={totalTss ? Math.round(totalTss).toString() : '—'} />
         <StatCard label="TSS / séance" value={avgTss ? avgTss.toString() : '—'} />
         <StatCard label="FC moy." value={meanHr ? `${meanHr} bpm` : '—'} />
         <StatCard label="RPE moyen" value={meanRpe ? `${meanRpe}/10` : '—'} />
       </div>
 
-      {/* Weekly chart */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <SectionTitle>Volume hebdomadaire</SectionTitle>
-          <div style={{ display: 'flex', gap: 14, fontSize: 11, color: T.textMuted }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: T.accent, display: 'inline-block' }} />
-              TSS
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#d1d5db', display: 'inline-block' }} />
-              Distance
-            </span>
-          </div>
+      {/* CTL / ATL / TSB */}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 20px', marginBottom: 16 }}>
+        <SectionTitle>Fitness</SectionTitle>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {([
+            { key: 'CTL', val: ctl, color: '#2563eb', tip: 'CTL (Chronic Training Load)\n\nCharge chronique sur 42 jours.\nMesure votre forme à long terme.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 42j.\n\nPlus c\'est élevé : meilleure forme.' },
+            { key: 'ATL', val: atl, color: '#f97316', tip: 'ATL (Acute Training Load)\n\nCharge aiguë sur 7 jours.\nMesure la fatigue récente.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 7j.\n\nPlus c\'est élevé : plus de fatigue.' },
+            { key: 'TSB', val: tsb, color: tsb >= 0 ? '#059669' : '#dc2626', tip: 'TSB (Training Stress Balance)\n\nTSB = CTL - ATL\n\nBalance forme/fatigue.\n\n> 0 : forme supérieure à la fatigue.\n< 0 : fatigue supérieure à la forme.\nIdéal compét. : entre +5 et +25.' },
+          ] as { key: string; val: number; color: string; tip: string }[]).map(({ key, val, color, tip }) => (
+            <div key={key} style={{ background: T.bg, borderRadius: T.radius, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, display: 'flex', alignItems: 'center' }}>
+                {key}<TooltipInfo text={tip} />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color }}>{val}</div>
+            </div>
+          ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
+      </div>
+
+      {/* Weekly volume chart */}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
+        <SectionTitle>Volume hebdomadaire</SectionTitle>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
           {weeks.map((w, i) => {
-            const hTss  = Math.round((w.tss / maxTss) * 96)
-            const hDist = Math.round((w.dist / maxDist) * 96)
+            const barH = Math.max(4, Math.round((w.total / maxTime) * 96))
+            const hours = w.total / 3600
             const isNow = i === weeks.length - 1
             const d = new Date(w.week)
-            const lbl = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+            const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
+
             return (
               <div key={w.week} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0 }}>
-                <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', gap: 1, height: 96, justifyContent: 'center' }}>
-                  <div
-                    title={`TSS: ${Math.round(w.tss)}`}
-                    style={{ flex: 1, height: hTss || 1, background: isNow ? T.accent : T.accentBg, borderRadius: '2px 2px 0 0', maxWidth: 14 }}
-                  />
-                  <div
-                    title={`Distance: ${fmtDist(w.dist)}`}
-                    style={{ flex: 1, height: hDist || 1, background: isNow ? T.borderMid : T.border, borderRadius: '2px 2px 0 0', maxWidth: 14 }}
-                  />
+                {hours >= 0.1 && (
+                  <div style={{ fontSize: 9, color: isNow ? T.accent : T.textMuted, fontWeight: isNow ? 700 : 400 }}>
+                    {hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`}
+                  </div>
+                )}
+                <div style={{ width: '75%', height: barH, display: 'flex', flexDirection: 'column-reverse', borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 6 }}
+                  title={`${d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})} · ${hours.toFixed(1)}h · ${w.count} séance${w.count!==1?'s':''}`}>
+                  {sportEntries.map(([sport, sportTime]) => {
+                    const col = SPORT_COLOR[sport as SportType] ?? '#94a3b8'
+                    const pct = w.total > 0 ? (sportTime / w.total) * 100 : 0
+                    return (
+                      <div key={sport} style={{ width: '100%', flexShrink: 0, background: isNow ? col : col + '80',
+                        height: `${pct}%`, transition: 'height 0.3s' }} />
+                    )
+                  })}
+                  {w.total === 0 && <div style={{ width: '100%', height: '100%', background: T.border }} />}
                 </div>
                 {(i === 0 || i % Math.max(1, Math.floor(weeks.length / 4)) === 0 || isNow) && (
                   <div style={{ fontSize: 9, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%', textAlign: 'center' }}>
@@ -443,19 +889,32 @@ function SectionDonnees({ activities }: { activities: Activity[] }) {
             )
           })}
         </div>
+        {sports.length > 1 && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+            {sports.map(([sport]) => (
+              <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: SPORT_COLOR[sport as SportType] ?? '#888', display: 'inline-block' }} />
+                {SPORT_LABEL[sport as SportType] ?? sport}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Sport breakdown */}
       {sports.length > 0 && (
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px' }}>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
           <SectionTitle>Répartition par sport</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {sports.map(([sport, v]) => {
               const col = SPORT_COLOR[sport as SportType] ?? '#888'
-              const pct = totalTime > 0 ? (v.time / totalTime) * 100 : (v.count / inRange.length) * 100
+              const pct = totalTime > 0 ? (v.time / totalTime) * 100 : 0
               return (
-                <div key={sport} style={{ display: 'grid', gridTemplateColumns: '96px 1fr 70px 60px', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontSize: 12, color: T.text, fontWeight: 500 }}>{SPORT_LABEL[sport as SportType] ?? sport}</div>
+                <div key={sport} style={{ display: 'grid', gridTemplateColumns: '96px 1fr 56px 56px', alignItems: 'center', gap: 10 }}>
+                  <div style={{ fontSize: 12, color: T.text, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: col, display: 'inline-block', flexShrink: 0 }} />
+                    {SPORT_LABEL[sport as SportType] ?? sport}
+                  </div>
                   <div style={{ height: 7, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: col, borderRadius: 4, transition: 'width 0.5s' }} />
                   </div>
@@ -467,6 +926,28 @@ function SectionDonnees({ activities }: { activities: Activity[] }) {
           </div>
         </div>
       )}
+
+      {/* Zones panels */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+        {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+            <SectionTitle>Zones puissance — Vélo</SectionTitle>
+            <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
+          </div>
+        )}
+        {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+            <SectionTitle>Zones allure — Course</SectionTitle>
+            <ZoneBars zones={runZones} timesS={runTimesZ} />
+          </div>
+        )}
+        {hrTimesZ && hrTimesZ.some(t => t > 0) && (
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+            <SectionTitle>Zones FC — Global</SectionTitle>
+            <ZoneBars zones={hrZoneColors} timesS={hrTimesZ} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -515,58 +996,61 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
 // ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
-function ActivityDetail({ a, onClose }: { a: Activity; onClose: () => void }) {
+function ActivityDetail({ a, onClose, zones, profile }: {
+  a: Activity; onClose: () => void
+  zones: TrainingZoneRow[]; profile: Profile
+}) {
   const col = SPORT_COLOR[a.sport_type] ?? T.accent
-  // Prefer stored pace from DB; fall back to computed
+  const isBike = ['bike','virtual_bike'].includes(a.sport_type)
+  const isRun  = ['run','trail_run'].includes(a.sport_type)
+  const isSwim = a.sport_type === 'swim'
+  const isGym  = a.sport_type === 'gym'
+
   const paceS = a.avg_pace_s_km
     ?? (a.moving_time_s && a.distance_m && a.distance_m > 100 ? (a.moving_time_s / a.distance_m) * 1000 : null)
-  const isRun   = ['run', 'trail_run'].includes(a.sport_type)
-  const isBike  = ['bike', 'virtual_bike'].includes(a.sport_type)
-  const isSwim  = a.sport_type === 'swim'
 
-  // Stats sections — each filtered to non-null values
-  const perf = [
-    { label: 'Distance',      v: fmtDist(a.distance_m) },
-    { label: 'Durée',         v: fmtDur(a.moving_time_s) },
-    { label: 'Allure moy.',   v: (isRun || isSwim) ? fmtPace(paceS) : null },
-    { label: 'Vitesse moy.',  v: isBike && a.avg_speed_ms ? `${(a.avg_speed_ms * 3.6).toFixed(1)} km/h` : null },
-    { label: 'D+',            v: a.elevation_gain_m ? `+${Math.round(a.elevation_gain_m)} m` : null },
-    { label: 'D-',            v: a.elevation_loss_m ? `${Math.round(a.elevation_loss_m)} m` : null },
-    { label: 'TSS',           v: a.tss ? Math.round(a.tss).toString() : null },
-    { label: 'RPE',           v: (a.rpe ?? a.perceived_effort) ? `${(a.rpe ?? a.perceived_effort)}/10` : null },
-  ].filter(s => s.v && s.v !== '—')
+  const bikeZoneRow = zones.find(z => z.sport === 'bike')
+  const runZoneRow  = zones.find(z => z.sport === 'run')
+  const bikeZones   = bikeZoneRow ? buildZones(bikeZoneRow) : null
+  const runZones    = runZoneRow  ? buildZones(runZoneRow)  : null
+  const hrZones: ParsedZone[] = [
+    { label: 'Z1', color: ZONE_COLORS[0], min: 0, max: 120 },
+    { label: 'Z2', color: ZONE_COLORS[1], min: 120, max: 150 },
+    { label: 'Z3', color: ZONE_COLORS[2], min: 150, max: 165 },
+    { label: 'Z4', color: ZONE_COLORS[3], min: 165, max: 180 },
+    { label: 'Z5', color: ZONE_COLORS[4], min: 180, max: 999 },
+  ]
 
-  const cardio = [
-    { label: 'FC moy.',       v: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : null },
-    { label: 'FC max.',       v: a.max_hr ? `${a.max_hr} bpm` : null },
-    { label: 'FC min.',       v: a.min_hr ? `${a.min_hr} bpm` : null },
-    { label: 'TRIMP',         v: a.trimp ? a.trimp.toString() : null },
-    { label: 'Découplage',    v: a.aerobic_decoupling != null ? `${Number(a.aerobic_decoupling).toFixed(1)}%` : null },
-  ].filter(s => s.v)
+  const wkg = (a.normalized_watts ?? a.avg_watts) && profile.weight_kg
+    ? ((Number(a.normalized_watts ?? a.avg_watts)) / Number(profile.weight_kg)).toFixed(2) : null
 
-  const power = [
-    { label: 'Watts moy.',    v: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null },
-    { label: 'Watts max.',    v: a.max_watts ? `${a.max_watts} W` : null },
-    { label: 'NP',            v: a.normalized_watts ? `${a.normalized_watts} W` : null },
-    { label: 'IF',            v: a.intensity_factor ? Number(a.intensity_factor).toFixed(2) : null },
-    { label: 'FTP (époque)',  v: a.ftp_at_time ? `${a.ftp_at_time} W` : null },
-    { label: 'kJ',            v: a.kilojoules ? `${Math.round(Number(a.kilojoules))} kJ` : null },
-  ].filter(s => s.v)
+  const vi = a.normalized_watts && a.avg_watts && Number(a.avg_watts) > 0
+    ? (Number(a.normalized_watts) / Number(a.avg_watts)).toFixed(2) : null
 
-  const extra = [
-    { label: 'Cadence moy.',  v: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} rpm` : null },
-    { label: 'Cadence max.',  v: a.max_cadence ? `${a.max_cadence} rpm` : null },
-    { label: 'Calories',      v: a.calories ? `${a.calories} kcal` : null },
-    { label: 'Température',   v: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))}°C` : null },
-    { label: 'Gear',          v: a.gear_name ?? null },
-    { label: 'Source',        v: a.provider ?? null },
-    { label: 'Appareil',      v: a.trainer ? 'Home trainer' : null },
-  ].filter(s => s.v)
+  const decoupling = a.aerobic_decoupling != null ? Number(a.aerobic_decoupling) : null
 
-  function StatRow({ items }: { items: { label: string; v: string | null }[] }) {
+  const powerTimesZ = useMemo(() => {
+    if (!bikeZones || !a.streams?.watts) return null
+    return calcTimeInZones(a.streams.watts, bikeZones)
+  }, [a.streams?.watts, bikeZones])
+
+  const paceTimesZ = useMemo(() => {
+    if (!runZones || !a.streams?.velocity) return null
+    const paces = a.streams.velocity.map(v => v > 0.5 ? 1000 / v : 0)
+    return calcTimeInZones(paces, runZones)
+  }, [a.streams?.velocity, runZones])
+
+  const hrTimesZ = useMemo(() => {
+    if (!a.streams?.heartrate) return null
+    return calcTimeInZones(a.streams.heartrate, hrZones)
+  }, [a.streams?.heartrate])
+
+  function StatBlock({ items }: { items: { label: string; v: string | null | undefined }[] }) {
+    const visible = items.filter(s => s.v && s.v !== '—')
+    if (!visible.length) return null
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
-        {items.map(s => (
+        {visible.map(s => (
           <div key={s.label} style={{ background: T.bg, borderRadius: 6, padding: '8px 10px' }}>
             <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2 }}>{s.label}</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{s.v}</div>
@@ -576,10 +1060,19 @@ function ActivityDetail({ a, onClose }: { a: Activity; onClose: () => void }) {
     )
   }
 
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
+        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: '14px 18px', background: T.bg, borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
             <span style={{ fontSize: 11, fontWeight: 600, background: col + '18', color: col, padding: '2px 9px', borderRadius: 12 }}>
@@ -590,79 +1083,120 @@ function ActivityDetail({ a, onClose }: { a: Activity; onClose: () => void }) {
                 Compétition
               </span>
             )}
+            {a.trainer && (
+              <span style={{ fontSize: 11, color: T.textMuted, background: T.border, padding: '2px 9px', borderRadius: 12 }}>
+                Home trainer
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 2 }}>{a.title}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 2 }}>{a.title}</div>
           <div style={{ fontSize: 12, color: T.textMuted }}>{fmtDate(a.started_at)}</div>
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18, padding: '0 2px', lineHeight: 1 }}>✕</button>
       </div>
 
-      <div style={{ padding: '14px 16px' }}>
-        {/* Altitude */}
-        {a.streams?.altitude && a.streams.altitude.length > 2 && (
-          <AltitudeLine alt={a.streams.altitude} />
+      <div style={{ padding: '16px 18px' }}>
+        {a.streams && (
+          <Section title="Courbes">
+            <SyncCharts activity={a} hrZones={hrZones} powerZones={bikeZones ?? undefined} paceZones={runZones ?? undefined} />
+          </Section>
         )}
 
-        {/* Stream charts */}
-        {a.streams?.watts && a.streams.watts.length > 2 && (
-          <StreamLine data={a.streams.watts} color="#7c3aed" label="Puissance (W)" unit="W" />
-        )}
-        {a.streams?.heartrate && a.streams.heartrate.length > 2 && (
-          <StreamLine data={a.streams.heartrate} color="#dc2626" label="FC (bpm)" unit="bpm" />
-        )}
-        {a.streams?.velocity && a.streams.velocity.length > 2 && (
-          <StreamLine data={a.streams.velocity.map(v => v * 3.6)} color="#2563eb" label="Vitesse (km/h)" unit="km/h" />
+        <Section title="Performance">
+          <StatBlock items={[
+            { label: 'Distance',      v: !isGym ? fmtDist(a.distance_m) : null },
+            { label: 'Durée',         v: fmtDur(a.moving_time_s) },
+            { label: 'Temps écoulé',  v: a.elapsed_time_s && a.elapsed_time_s !== a.moving_time_s ? fmtDur(a.elapsed_time_s) : null },
+            { label: 'Allure moy.',   v: (isRun || isSwim) ? fmtPace(paceS) : null },
+            { label: 'Vitesse moy.',  v: isBike && a.avg_speed_ms ? `${(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h` : null },
+            { label: 'D+',            v: a.elevation_gain_m ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+            { label: 'D-',            v: a.elevation_loss_m && Number(a.elevation_loss_m) > 0 ? `${Math.round(Number(a.elevation_loss_m))} m` : null },
+            { label: 'TSS',           v: a.tss ? Math.round(Number(a.tss)).toString() : null },
+            { label: 'RPE',           v: (a.rpe ?? a.perceived_effort) ? `${a.rpe ?? a.perceived_effort}/10` : null },
+          ]} />
+        </Section>
+
+        <Section title="Cardio">
+          <StatBlock items={[
+            { label: 'FC moy.',      v: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : null },
+            { label: 'FC max.',      v: a.max_hr ? `${a.max_hr} bpm` : null },
+            { label: 'FC min.',      v: a.min_hr ? `${a.min_hr} bpm` : null },
+            { label: 'TRIMP',        v: a.trimp ? a.trimp.toString() : null },
+            { label: 'Découplage Pw/FC', v: isBike && decoupling != null ? `${decoupling.toFixed(1)}%` : null },
+            { label: 'Découplage allure/FC', v: isRun && decoupling != null ? `${decoupling.toFixed(1)}%` : null },
+          ]} />
+        </Section>
+
+        {isBike && (
+          <Section title="Puissance">
+            <StatBlock items={[
+              { label: 'Watts moy.',  v: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null },
+              { label: 'Watts max.',  v: a.max_watts ? `${a.max_watts} W` : null },
+              { label: 'NP',          v: a.normalized_watts ? `${a.normalized_watts} W` : null },
+              { label: 'W/kg',        v: wkg ? `${wkg} W/kg` : null },
+              { label: 'IF',          v: a.intensity_factor ? Number(a.intensity_factor).toFixed(2) : null },
+              { label: 'FTP (époque)',v: a.ftp_at_time ? `${a.ftp_at_time} W` : null },
+              { label: 'VI',          v: vi ?? null },
+              { label: 'kJ',          v: a.kilojoules ? `${Math.round(Number(a.kilojoules))} kJ` : null },
+            ]} />
+          </Section>
         )}
 
-        {/* Stats sections */}
-        {perf.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 7 }}>Performance</div>
-            <StatRow items={perf} />
-          </div>
+        <Section title="Cadence">
+          <StatBlock items={[
+            { label: isBike ? 'Cadence moy. (RPM)' : 'Foulée moy. (SPM)', v: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} ${isBike ? 'rpm' : 'spm'}` : null },
+            { label: 'Cadence max.',  v: a.max_cadence ? `${a.max_cadence} ${isBike ? 'rpm' : 'spm'}` : null },
+          ]} />
+        </Section>
+
+        {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
+          <Section title="Zones de puissance">
+            <ZoneBars zones={bikeZones} timesS={powerTimesZ} />
+          </Section>
         )}
-        {cardio.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 7 }}>Cardio</div>
-            <StatRow items={cardio} />
-          </div>
+        {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
+          <Section title="Zones d'allure">
+            <ZoneBars zones={runZones} timesS={paceTimesZ} />
+          </Section>
         )}
-        {power.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 7 }}>Puissance</div>
-            <StatRow items={power} />
-          </div>
-        )}
-        {extra.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 7 }}>Détails</div>
-            <StatRow items={extra} />
-          </div>
+        {hrTimesZ && hrTimesZ.some(t => t > 0) && (
+          <Section title="Zones FC">
+            <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+          </Section>
         )}
 
-        {/* Notes */}
-        {a.notes && (
-          <div style={{ background: T.bg, borderRadius: 6, padding: '10px 12px', marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4 }}>Notes</div>
-            <div style={{ fontSize: 13, color: T.text, lineHeight: 1.55 }}>{a.notes}</div>
-          </div>
-        )}
+        <Section title="Energie">
+          <StatBlock items={[
+            { label: 'Calories brûlées', v: a.calories ? `${a.calories} kcal` : null },
+            { label: 'kJ',               v: a.kilojoules && !isBike ? `${Math.round(Number(a.kilojoules))} kJ` : null },
+          ]} />
+        </Section>
 
-        {/* Laps */}
-        {a.laps && a.laps.length > 1 && (
-          <div>
-            <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 7 }}>
-              Intervalles — {a.laps.length} tours
+        <Section title="Conditions et contexte">
+          <StatBlock items={[
+            { label: 'Température',  v: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))}°C` : null },
+            { label: 'Gear',         v: a.gear_name ?? null },
+            { label: 'Source',       v: a.provider ?? null },
+          ]} />
+        </Section>
+
+        {(a.notes || a.description) && (
+          <Section title="Commentaire">
+            <div style={{ background: T.bg, borderRadius: 6, padding: '10px 12px' }}>
+              <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
             </div>
-            <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+          </Section>
+        )}
+
+        {a.laps && a.laps.length > 1 && (
+          <Section title={`Intervalles — ${a.laps.length} tours`}>
+            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr style={{ color: T.textMuted, textAlign: 'left' }}>
-                    <th style={{ padding: '3px 6px 6px 0', fontWeight: 500, fontSize: 10 }}>#</th>
-                    <th style={{ padding: '3px 6px 6px', fontWeight: 500, fontSize: 10 }}>Dist.</th>
-                    <th style={{ padding: '3px 6px 6px', fontWeight: 500, fontSize: 10 }}>Durée</th>
-                    <th style={{ padding: '3px 6px 6px', fontWeight: 500, fontSize: 10 }}>Allure</th>
-                    <th style={{ padding: '3px 6px 6px', fontWeight: 500, fontSize: 10 }}>FC</th>
+                  <tr style={{ textAlign: 'left', color: T.textMuted }}>
+                    {['#','Dist.','Durée','Allure','FC','Watts'].map(h => (
+                      <th key={h} style={{ padding: '3px 8px 6px 0', fontWeight: 500, fontSize: 10 }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -670,19 +1204,130 @@ function ActivityDetail({ a, onClose }: { a: Activity; onClose: () => void }) {
                     const lp = lap.moving_time_s && lap.distance_m > 0 ? (lap.moving_time_s / lap.distance_m) * 1000 : null
                     return (
                       <tr key={i} style={{ borderTop: `1px solid ${T.border}` }}>
-                        <td style={{ padding: '5px 6px 5px 0', color: T.textMuted }}>{i + 1}</td>
-                        <td style={{ padding: '5px 6px', color: T.text }}>{fmtDist(lap.distance_m)}</td>
-                        <td style={{ padding: '5px 6px', color: T.text }}>{fmtDur(lap.moving_time_s)}</td>
-                        <td style={{ padding: '5px 6px', color: T.text }}>{fmtPace(lp)}</td>
-                        <td style={{ padding: '5px 6px', color: T.text }}>{lap.avg_hr ? `${Math.round(lap.avg_hr)} bpm` : '—'}</td>
+                        <td style={{ padding: '5px 8px 5px 0', color: T.textMuted }}>{i+1}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>{fmtDist(lap.distance_m)}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>{fmtDur(lap.moving_time_s)}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>{(isRun||isSwim) ? fmtPace(lp) : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>{lap.avg_hr ? `${Math.round(lap.avg_hr)} bpm` : '—'}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>{isBike && lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—'}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
             </div>
-          </div>
+          </Section>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// CALENDAR GRID
+// ─────────────────────────────────────────────────────────────
+function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSelect: (a: Activity) => void }) {
+  const [offset, setOffset] = useState(0)
+  const [weeks, setWeeksCount] = useState<5|10>(5)
+
+  const now = new Date()
+  const endDate = new Date(now)
+  endDate.setDate(endDate.getDate() - offset * 7)
+  const startDate = new Date(endDate)
+  startDate.setDate(startDate.getDate() - weeks * 7 + 1)
+
+  const actMap = new Map<string, Activity[]>()
+  for (const a of activities) {
+    const d = a.started_at.slice(0, 10)
+    if (!actMap.has(d)) actMap.set(d, [])
+    actMap.get(d)!.push(a)
+  }
+
+  const grid: Date[][] = []
+  let cur = getWeekStart(new Date(startDate))
+  while (cur <= endDate) {
+    const row: Date[] = []
+    for (let d = 0; d < 7; d++) {
+      row.push(new Date(cur))
+      cur = new Date(cur)
+      cur.setDate(cur.getDate() + 1)
+    }
+    grid.push(row)
+  }
+
+  const dayLabels = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {([5,10] as const).map(n => (
+            <Chip key={n} label={`${n} sem.`} active={weeks === n} onClick={() => setWeeksCount(n)} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button onClick={() => setOffset(o => o + weeks)}
+            style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12, color: T.textSub }}>
+            Précédent
+          </button>
+          {offset > 0 && (
+            <button onClick={() => setOffset(0)}
+              style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12, color: T.textSub }}>
+              {"Aujourd'hui"}
+            </button>
+          )}
+          {offset > 0 && (
+            <button onClick={() => setOffset(o => Math.max(0, o - weeks))}
+              style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12, color: T.textSub }}>
+              Suivant
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: `1px solid ${T.border}` }}>
+          {dayLabels.map(d => (
+            <div key={d} style={{ padding: '6px 8px', fontSize: 10, color: T.textMuted, textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{d}</div>
+          ))}
+        </div>
+
+        {grid.map((row, ri) => (
+          <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: ri < grid.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+            {row.map((day, di) => {
+              const dateStr = day.toISOString().slice(0, 10)
+              const dayActs = actMap.get(dateStr) ?? []
+              const isToday = dateStr === new Date().toISOString().slice(0, 10)
+              const isInFuture = day > now
+              return (
+                <div key={di} style={{
+                  borderLeft: di > 0 ? `1px solid ${T.border}` : 'none',
+                  minHeight: 64, padding: '5px 6px',
+                  background: isToday ? T.accentBg : isInFuture ? '#fafafa' : T.surface,
+                }}>
+                  <div style={{ fontSize: 11, color: isToday ? T.accent : T.textMuted, fontWeight: isToday ? 700 : 400, marginBottom: 3 }}>
+                    {day.getDate()}
+                  </div>
+                  {dayActs.slice(0, 3).map((a, ai) => {
+                    const col = SPORT_COLOR[a.sport_type] ?? '#888'
+                    return (
+                      <div key={ai} onClick={() => onSelect(a)}
+                        style={{ fontSize: 10, background: col + '18', color: col, padding: '2px 5px',
+                          borderRadius: 4, cursor: 'pointer', marginBottom: 2, overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500,
+                          border: `1px solid ${col}30` }}>
+                        {SPORT_LABEL[a.sport_type]} · {fmtDur(a.moving_time_s)}
+                      </div>
+                    )
+                  })}
+                  {dayActs.length > 3 && (
+                    <div style={{ fontSize: 9, color: T.textMuted }}>+{dayActs.length - 3}</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -691,13 +1336,16 @@ function ActivityDetail({ a, onClose }: { a: Activity; onClose: () => void }) {
 // ─────────────────────────────────────────────────────────────
 // SECTION: ANALYSE
 // ─────────────────────────────────────────────────────────────
-function SectionAnalyse({ activities }: { activities: Activity[] }) {
+function SectionAnalyse({ activities, zones, profile }: {
+  activities: Activity[]
+  zones: TrainingZoneRow[]
+  profile: Profile
+}) {
+  const [view, setView]         = useState<'list'|'calendar'>('list')
   const [selected, setSelected] = useState<Activity | null>(null)
-  const [search, setSearch]   = useState('')
-  const [sport, setSport]     = useState<'all' | SportType>('all')
-  const [raceFilter, setRaceFilter] = useState<'all' | 'race' | 'training'>('all')
-  const width = useWindowWidth()
-  const wide  = width >= 960
+  const [search, setSearch]     = useState('')
+  const [sport, setSport]       = useState<'all' | SportType>('all')
+  const [raceFilter, setRaceFilter] = useState<'all'|'race'|'training'>('all')
 
   const allSports = useMemo(() => Array.from(new Set(activities.map(a => a.sport_type))), [activities])
 
@@ -707,66 +1355,74 @@ function SectionAnalyse({ activities }: { activities: Activity[] }) {
     if (raceFilter === 'training' && a.is_race) return false
     if (search) {
       const q = search.toLowerCase()
-      if (!a.title?.toLowerCase().includes(q) && !a.sport_type?.toLowerCase().includes(q)) return false
+      if (!a.title?.toLowerCase().includes(q)) return false
     }
     return true
   }), [activities, sport, raceFilter, search])
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: selected && wide ? '1fr 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
+  if (selected) {
+    return (
       <div>
-        {/* Filters */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher…"
-            style={{
-              flex: '1 1 160px', background: T.surface, border: `1px solid ${T.border}`,
-              borderRadius: 7, padding: '7px 12px', fontSize: 12, color: T.text, outline: 'none',
-            }}
-          />
-          <select
-            value={sport} onChange={e => setSport(e.target.value as 'all' | SportType)}
-            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7, padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}
-          >
-            <option value="all">Tous les sports</option>
-            {allSports.map(s => <option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
-          </select>
-          <select
-            value={raceFilter} onChange={e => setRaceFilter(e.target.value as typeof raceFilter)}
-            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7, padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}
-          >
-            <option value="all">Tout</option>
-            <option value="training">Entraînements</option>
-            <option value="race">Compétitions</option>
-          </select>
-        </div>
+        <button
+          onClick={() => setSelected(null)}
+          style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
+            background: 'none', border: 'none', cursor: 'pointer', color: T.textSub, fontSize: 13, padding: 0 }}>
+          <span style={{ fontSize: 16 }}>←</span> Retour à la liste
+        </button>
+        <ActivityDetail a={selected} onClose={() => setSelected(null)} zones={zones} profile={profile} />
+      </div>
+    )
+  }
 
-        <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10 }}>
-          {filtered.length} activité{filtered.length !== 1 ? 's' : ''}
-        </div>
-
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
-          <div style={{ maxHeight: 560, overflowY: 'auto' }}>
-            {filtered.map(act => (
-              <ActivityRow
-                key={act.id} a={act}
-                selected={selected?.id === act.id}
-                onClick={() => setSelected(prev => prev?.id === act.id ? null : act)}
-              />
-            ))}
-            {filtered.length === 0 && (
-              <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>
-                Aucune activité
-              </div>
-            )}
-          </div>
-        </div>
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <Chip label="Liste" active={view === 'list'} onClick={() => setView('list')} />
+        <Chip label="Calendrier" active={view === 'calendar'} onClick={() => setView('calendar')} />
       </div>
 
-      {selected && (
-        <div style={wide ? { position: 'sticky', top: T.topH + 16 } : { marginTop: 12 }}>
-          <ActivityDetail a={selected} onClose={() => setSelected(null)} />
+      {view === 'calendar' && (
+        <CalendarGrid activities={activities} onSelect={setSelected} />
+      )}
+
+      {view === 'list' && (
+        <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher…"
+              style={{ flex: '1 1 160px', background: T.surface, border: `1px solid ${T.border}`,
+                borderRadius: 7, padding: '7px 12px', fontSize: 12, color: T.text, outline: 'none' }}
+            />
+            <select value={sport} onChange={e => setSport(e.target.value as 'all'|SportType)}
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
+                padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
+              <option value="all">Tous les sports</option>
+              {allSports.map(s => <option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
+            </select>
+            <select value={raceFilter} onChange={e => setRaceFilter(e.target.value as typeof raceFilter)}
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
+                padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
+              <option value="all">Tout</option>
+              <option value="training">Entraînements</option>
+              <option value="race">Compétitions</option>
+            </select>
+          </div>
+
+          <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10 }}>
+            {filtered.length} activité{filtered.length !== 1 ? 's' : ''}
+          </div>
+
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
+            <div style={{ maxHeight: 600, overflowY: 'auto' }}>
+              {filtered.map(act => (
+                <ActivityRow key={act.id} a={act} selected={false} onClick={() => setSelected(act)} />
+              ))}
+              {filtered.length === 0 && (
+                <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>Aucune activité</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -913,6 +1569,8 @@ const NAV: { id: Section; label: string; desc: string }[] = [
 // ─────────────────────────────────────────────────────────────
 export default function TrainingPage() {
   const { activities, loading, error, reload } = useActivities()
+  const zones   = useTrainingZones()
+  const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [mobileOpen, setMobileOpen] = useState(false)
   const width   = useWindowWidth()
@@ -1076,8 +1734,8 @@ export default function TrainingPage() {
           )}
 
           {/* Sections */}
-          {!loading && !error && section === 'donnees'     && <SectionDonnees activities={activities} />}
-          {!loading && !error && section === 'analyse'     && <SectionAnalyse activities={activities} />}
+          {!loading && !error && section === 'donnees'     && <SectionDonnees activities={activities} zones={zones} profile={profile} />}
+          {!loading && !error && section === 'analyse'     && <SectionAnalyse activities={activities} zones={zones} profile={profile} />}
           {!loading && !error && section === 'progression' && <SectionProgression activities={activities} />}
         </main>
       </div>

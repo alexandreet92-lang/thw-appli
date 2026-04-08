@@ -9,21 +9,27 @@ import { createClient } from '@/lib/supabase/client'
 // DESIGN TOKENS — light theme
 // ─────────────────────────────────────────────────────────────
 const T = {
-  bg:        '#f5f6f8',
-  surface:   '#ffffff',
-  border:    '#e5e7eb',
-  borderMid: '#d1d5db',
-  text:      '#111827',
-  textSub:   '#6b7280',
-  textMuted: '#9ca3af',
-  accent:    '#2563eb',
-  accentBg:  '#eff6ff',
-  accentText:'#1d4ed8',
-  sidebar:   '#ffffff',
-  sidebarW:  220,
-  topH:      52,
-  radius:    8,
-  shadow:    '0 1px 3px rgba(0,0,0,0.08)',
+  bg:          '#eef2f7',
+  bgAlt:       '#f8fafc',
+  surface:     '#ffffff',
+  border:      'rgba(0,0,0,0.07)',
+  borderMid:   'rgba(0,0,0,0.12)',
+  text:        '#0d1117',
+  textSub:     'rgba(13,17,23,0.60)',
+  textMuted:   'rgba(13,17,23,0.38)',
+  accent:      '#00c8e0',
+  accentBg:    'rgba(0,200,224,0.08)',
+  accentText:  '#0099b8',
+  sidebar:     '#ffffff',
+  sidebarW:    220,
+  topH:        52,
+  radius:      16,
+  radiusSm:    10,
+  shadow:      '0 2px 12px rgba(0,80,160,0.07), 0 1px 3px rgba(0,0,0,0.05)',
+  shadowCard:  '0 4px 24px rgba(0,100,150,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+  fontDisplay: "'Syne', sans-serif",
+  fontBody:    "'DM Sans', sans-serif",
+  fontMono:    "'DM Mono', monospace",
 } as const
 
 // ─────────────────────────────────────────────────────────────
@@ -124,8 +130,8 @@ const SPORT_LABEL: Record<SportType, string> = {
 }
 
 const SPORT_COLOR: Record<SportType, string> = {
-  run: '#2563eb', trail_run: '#7c3aed', bike: '#d97706', virtual_bike: '#ea580c',
-  swim: '#0891b2', rowing: '#059669', hyrox: '#dc2626', gym: '#6b7280', other: '#94a3b8',
+  run: '#22c55e', trail_run: '#f97316', bike: '#3b82f6', virtual_bike: '#60a5fa',
+  swim: '#38bdf8', rowing: '#14b8a6', hyrox: '#ef4444', gym: '#ffb340', other: '#94a3b8',
 }
 
 const TIME_FILTER_LABEL: Record<TimeFilter, string> = {
@@ -316,15 +322,31 @@ function useProfile() {
   return profile
 }
 
+// Reads CTL/ATL/TSB from metrics_daily if rows exist (more accurate than client-side)
+function useMetricsDaily(): { ctl: number | null; atl: number | null; tsb: number | null } {
+  const [metrics, setMetrics] = useState<{ ctl: number | null; atl: number | null; tsb: number | null }>({ ctl: null, atl: null, tsb: null })
+  useEffect(() => {
+    createClient().from('metrics_daily').select('ctl,atl,tsb,date')
+      .order('date', { ascending: false }).limit(1).single()
+      .then(({ data }) => {
+        if (data && (data as Record<string, unknown>).ctl != null) {
+          const d = data as { ctl: number; atl: number; tsb: number }
+          setMetrics({ ctl: Math.round(d.ctl * 10) / 10, atl: Math.round(d.atl * 10) / 10, tsb: Math.round(d.tsb * 10) / 10 })
+        }
+      })
+  }, [])
+  return metrics
+}
+
 // ─────────────────────────────────────────────────────────────
 // SMALL COMPONENTS
 // ─────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px' }}>
-      <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: T.textSub, marginTop: 3 }}>{sub}</div>}
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px', boxShadow: T.shadow }}>
+      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1.2, fontFamily: T.fontDisplay }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: T.textSub, marginTop: 3, fontFamily: T.fontBody }}>{sub}</div>}
     </div>
   )
 }
@@ -348,8 +370,8 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 13, fontWeight: 600, color: T.textSub, marginBottom: 14,
-      textTransform: 'uppercase', letterSpacing: 0.8 }}>
+    <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 14,
+      textTransform: 'uppercase', letterSpacing: 0.9, fontFamily: T.fontDisplay }}>
       {children}
     </div>
   )
@@ -572,11 +594,11 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   }
 
   const tracks: Track[] = ([
-    alt    ? { label: 'Altitude', data: alt, color: '#9ca3af', unit: 'm', H: 64, isAlt: true, formatY: (v: number) => `${Math.round(v)} m` } : null,
-    hr     ? { label: 'FC',       data: hr,  color: '#ef4444', unit: 'bpm', H: 64, isHr: true, formatY: (v: number) => `${Math.round(v)} bpm` } : null,
-    isBike && watts    ? { label: 'Puissance', data: watts,    color: '#7c3aed', unit: 'W',     H: 72, formatY: (v: number) => `${Math.round(v)} W` } : null,
-    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#7c3aed', unit: 's/km', H: 72, formatY: (v: number) => fmtPace(v) } : null,
-    cadence ? { label: 'Cadence', data: cadence, color: '#ec4899', unit: 'rpm', H: 48, formatY: (v: number) => `${Math.round(v)} rpm` } : null,
+    alt    ? { label: 'Altitude', data: alt, color: '#94a3b8', unit: 'm',     H: 64, isAlt: true, formatY: (v: number) => `${Math.round(v)} m` } : null,
+    hr     ? { label: 'FC',       data: hr,  color: '#ef4444', unit: 'bpm',   H: 64, isHr: true,  formatY: (v: number) => `${Math.round(v)} bpm` } : null,
+    isBike && watts    ? { label: 'Puissance', data: watts,    color: '#5b6fff', unit: 'W',     H: 72, formatY: (v: number) => `${Math.round(v)} W` } : null,
+    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#22c55e', unit: 's/km', H: 72, formatY: (v: number) => fmtPace(v) } : null,
+    cadence ? { label: 'Cadence', data: cadence, color: '#00c8e0', unit: 'rpm', H: 48, formatY: (v: number) => `${Math.round(v)} rpm` } : null,
   ] as (Track|null)[]).filter((t): t is Track => t !== null)
 
   if (!tracks.length) return null
@@ -613,13 +635,14 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     <div>
       {/* Cursor values bar */}
       {cursor !== null && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 8, flexWrap: 'wrap', minHeight: 20 }}>
-          {hr     && <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 500 }}>FC: {Math.round(hr[cursor])} bpm</span>}
-          {isBike && watts && <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 500 }}>Puissance: {Math.round(watts[cursor])} W</span>}
-          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 500 }}>Allure: {fmtPace(1000/velocity[cursor])}</span>}
-          {cadence && <span style={{ fontSize: 11, color: '#ec4899', fontWeight: 500 }}>Cadence: {Math.round(cadence[cursor])} rpm</span>}
-          {alt && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>Alt: {Math.round(alt[cursor])} m</span>}
-          <span style={{ fontSize: 11, color: T.textMuted, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 10, flexWrap: 'wrap', minHeight: 20,
+          background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
+          {hr     && <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>FC {Math.round(hr[cursor])} bpm</span>}
+          {isBike && watts && <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(watts[cursor])} W</span>}
+          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600, fontFamily: T.fontMono }}>{fmtPace(1000/velocity[cursor])}</span>}
+          {cadence && <span style={{ fontSize: 11, color: '#00c8e0', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(cadence[cursor])} rpm</span>}
+          {alt && <span style={{ fontSize: 11, color: T.textSub, fontWeight: 500, fontFamily: T.fontMono }}>{Math.round(alt[cursor])} m</span>}
+          <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 'auto', fontFamily: T.fontMono }}>
             {(() => { const t = time[cursor] - time[0]; const m = Math.floor(t/60); const sec = t%60; return `${m}:${String(sec).padStart(2,'0')}` })()}
           </span>
         </div>
@@ -872,6 +895,7 @@ function SectionDonnees({ activities, zones, profile }: {
   profile: Profile
 }) {
   const [filter, setFilter] = useState<TimeFilter>('4w')
+  const dbMetrics = useMetricsDaily()
   const cutoff = cutoffDate(filter)
   const inRange = useMemo(() =>
     activities.filter(a => !cutoff || new Date(a.started_at) >= cutoff),
@@ -888,7 +912,10 @@ function SectionDonnees({ activities, zones, profile }: {
   const meanRpe    = rpeVals.length ? avg(rpeVals).toFixed(1) : null
   const tssCount   = inRange.filter(a => a.tss).length
   const avgTss     = tssCount ? Math.round(totalTss / tssCount) : null
-  const { ctl, atl, tsb } = useMemo(() => computeFitness(activities), [activities])
+  const localMetrics = useMemo(() => computeFitness(activities), [activities])
+  const ctl = dbMetrics.ctl ?? localMetrics.ctl
+  const atl = dbMetrics.atl ?? localMetrics.atl
+  const tsb = dbMetrics.tsb ?? localMetrics.tsb
 
   const nWeeks = numWeeks(filter)
   const weeks = useMemo(() => {
@@ -998,15 +1025,15 @@ function SectionDonnees({ activities, zones, profile }: {
         <SectionTitle>Fitness</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {([
-            { key: 'CTL', val: ctl, color: '#2563eb', tip: 'CTL (Chronic Training Load)\n\nCharge chronique sur 42 jours.\nMesure votre forme à long terme.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 42j.\n\nPlus c\'est élevé : meilleure forme.' },
-            { key: 'ATL', val: atl, color: '#f97316', tip: 'ATL (Acute Training Load)\n\nCharge aiguë sur 7 jours.\nMesure la fatigue récente.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 7j.\n\nPlus c\'est élevé : plus de fatigue.' },
-            { key: 'TSB', val: tsb, color: tsb >= 0 ? '#059669' : '#dc2626', tip: 'TSB (Training Stress Balance)\n\nTSB = CTL - ATL\n\nBalance forme/fatigue.\n\n> 0 : forme supérieure à la fatigue.\n< 0 : fatigue supérieure à la forme.\nIdéal compét. : entre +5 et +25.' },
+            { key: 'CTL', val: ctl, color: '#00c8e0', tip: 'CTL (Chronic Training Load)\n\nCharge chronique sur 42 jours.\nMesure votre forme à long terme.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 42j.\n\nPlus c\'est élevé : meilleure forme.' },
+            { key: 'ATL', val: atl, color: '#ff5f5f', tip: 'ATL (Acute Training Load)\n\nCharge aiguë sur 7 jours.\nMesure la fatigue récente.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 7j.\n\nPlus c\'est élevé : plus de fatigue.' },
+            { key: 'TSB', val: tsb, color: tsb >= 0 ? '#5b6fff' : '#ff5f5f', tip: 'TSB (Training Stress Balance)\n\nTSB = CTL - ATL\n\nBalance forme/fatigue.\n\n> 0 : forme supérieure à la fatigue.\n< 0 : fatigue supérieure à la forme.\nIdéal compét. : entre +5 et +25.' },
           ] as { key: string; val: number; color: string; tip: string }[]).map(({ key, val, color, tip }) => (
-            <div key={key} style={{ background: T.bg, borderRadius: T.radius, padding: '12px 14px' }}>
-              <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4, display: 'flex', alignItems: 'center' }}>
+            <div key={key} style={{ background: T.bgAlt, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6, display: 'flex', alignItems: 'center', fontFamily: T.fontDisplay, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase' }}>
                 {key}<TooltipInfo text={tip} />
               </div>
-              <div style={{ fontSize: 24, fontWeight: 700, color }}>{val}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color, fontFamily: T.fontDisplay, lineHeight: 1 }}>{val}</div>
             </div>
           ))}
         </div>
@@ -1121,35 +1148,41 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
   const col = SPORT_COLOR[a.sport_type] ?? '#888'
   const paceS = a.avg_pace_s_km
     ?? (a.moving_time_s && a.distance_m && a.distance_m > 100 ? (a.moving_time_s / a.distance_m) * 1000 : null)
+  const isBikeRow = ['bike','virtual_bike'].includes(a.sport_type)
+  const isRunRow  = ['run','trail_run'].includes(a.sport_type)
   return (
     <div
       onClick={onClick}
       style={{
         display: 'grid', gridTemplateColumns: '3px 1fr auto',
-        gap: 10, padding: '10px 12px', borderRadius: 7,
-        cursor: 'pointer', marginBottom: 2,
+        gap: 10, padding: '11px 14px', borderRadius: 0,
+        cursor: 'pointer',
         background: selected ? T.accentBg : 'transparent',
-        border: `1px solid ${selected ? T.accent + '40' : 'transparent'}`,
+        borderBottom: `1px solid ${T.border}`,
+        borderLeft: `3px solid ${selected ? T.accent : 'transparent'}`,
         transition: 'background 0.12s',
       }}
-      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = '#f9fafb' }}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = T.bgAlt }}
       onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
     >
       <div style={{ background: col, borderRadius: 2 }} />
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: T.fontBody }}>
           {a.title}
         </div>
-        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', gap: 8 }}>
+        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{fmtDateShort(a.started_at)}</span>
-          <span style={{ color: col, fontWeight: 500 }}>{SPORT_LABEL[a.sport_type]}</span>
-          {a.is_race && <span style={{ color: '#dc2626', fontWeight: 600 }}>Compétition</span>}
+          <span style={{ color: col, fontWeight: 600, fontSize: 10, background: col + '18', padding: '1px 7px', borderRadius: 20 }}>{SPORT_LABEL[a.sport_type]}</span>
+          {a.is_race && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, background: '#ef444415', padding: '1px 7px', borderRadius: 20 }}>Compét.</span>}
+          {a.tss != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>TSS {Math.round(Number(a.tss))}</span>}
         </div>
       </div>
-      <div style={{ fontSize: 11, color: T.textSub, textAlign: 'right', flexShrink: 0 }}>
-        {a.distance_m ? <div style={{ fontWeight: 500 }}>{fmtDist(a.distance_m)}</div> : null}
-        {a.moving_time_s ? <div>{fmtDur(a.moving_time_s)}</div> : null}
-        {paceS && ['run','trail_run'].includes(a.sport_type) ? <div style={{ color: T.textMuted }}>{fmtPace(paceS)}</div> : null}
+      <div style={{ fontSize: 11, color: T.textSub, textAlign: 'right', flexShrink: 0, fontFamily: T.fontMono }}>
+        {a.distance_m ? <div style={{ fontWeight: 600, color: T.text, fontSize: 12 }}>{fmtDist(a.distance_m)}</div> : null}
+        {a.moving_time_s ? <div style={{ color: T.textSub }}>{fmtDur(a.moving_time_s)}</div> : null}
+        {paceS && isRunRow ? <div style={{ color: T.textMuted, fontSize: 10 }}>{fmtPace(paceS)}</div> : null}
+        {isBikeRow && a.avg_watts ? <div style={{ color: T.textMuted, fontSize: 10 }}>{Math.round(Number(a.avg_watts))} W</div> : null}
+        {a.avg_hr ? <div style={{ color: T.textMuted, fontSize: 10 }}>{Math.round(Number(a.avg_hr))} bpm</div> : null}
       </div>
     </div>
   )
@@ -1259,8 +1292,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
-        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
         {title}
       </div>
       {children}
@@ -1268,8 +1301,53 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   )
 
   return (
-    <div style={{ background: T.surface, borderRadius: T.radius }}>
-      <div style={{ padding: '16px 18px' }}>
+    <div style={{ background: T.surface, borderRadius: T.radius, boxShadow: T.shadowCard }}>
+      <div style={{ padding: '20px 22px' }}>
+
+        {/* ── HERO ── */}
+        <div style={{ marginBottom: 24 }}>
+          {/* Sport + Title + Date row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: col + '18', border: `2px solid ${col}40`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ width: 18, height: 18, borderRadius: 4, background: col }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {a.title}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '18', padding: '2px 9px', borderRadius: 20, fontFamily: T.fontDisplay }}>
+                  {SPORT_LABEL[a.sport_type]}
+                </span>
+                <span style={{ fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{fmtDate(a.started_at)}</span>
+                {a.is_race && <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 9px', borderRadius: 20 }}>Compétition</span>}
+                {a.trainer && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>Intérieur</span>}
+                {a.gear_name && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>{a.gear_name}</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* KPI hero strip */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Distance', value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
+              { label: 'Durée', value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+              { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+              { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null), value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
+              { label: 'TSS', value: a.tss ? Math.round(Number(a.tss)).toString() : null },
+              { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null },
+            ].filter(k => k.label && k.value).map(k => (
+              <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
+                <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* ── 5 DATA BLOCKS ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -1458,8 +1536,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         {/* ── COURBES ── */}
         {a.streams && (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
-              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Courbes
             </div>
             <SyncCharts activity={a} hrZones={hrZones} powerZones={bikeZones ?? undefined} paceZones={runZones ?? undefined} />
@@ -1471,8 +1549,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
          (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
          (hrTimesZ && hrTimesZ.some(t => t > 0)) ? (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
-              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Zones
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
@@ -1498,11 +1576,65 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           </div>
         ) : null}
 
+        {/* ── ANALYSE AUTOMATIQUE ── */}
+        {(() => {
+          const insights: { type: 'good' | 'neutral' | 'warn'; text: string }[] = []
+          if (decoupling !== null) {
+            if (decoupling < 5)        insights.push({ type: 'good',    text: `Bonne résistance aérobie — découplage FC/puissance de ${decoupling.toFixed(1)}% (< 5% : excellent)` })
+            else if (decoupling < 10)  insights.push({ type: 'neutral', text: `Légère dérive cardiaque — découplage de ${decoupling.toFixed(1)}% (normal sur les sorties longues)` })
+            else                       insights.push({ type: 'warn',    text: `Dérive cardiaque élevée — découplage de ${decoupling.toFixed(1)}% → fatigue ou base aérobie insuffisante` })
+          }
+          if (isBike && vi !== null) {
+            const viNum = parseFloat(vi)
+            if (viNum < 1.05)      insights.push({ type: 'good',    text: `Effort très régulier — variabilité de puissance VI ${vi} (idéal triathlon / endurance)` })
+            else if (viNum < 1.12) insights.push({ type: 'neutral', text: `Effort modérément variable — VI ${vi}` })
+            else                   insights.push({ type: 'neutral', text: `Effort très variable — VI ${vi} (typique des parcours accidentés)` })
+          }
+          if (isBike && a.intensity_factor) {
+            const ifNum = Number(a.intensity_factor)
+            if (ifNum < 0.75)      insights.push({ type: 'good',    text: `Sortie en zone d'endurance — IF ${ifNum.toFixed(2)} (récupération rapide prévue)` })
+            else if (ifNum < 0.85) insights.push({ type: 'neutral', text: `Sortie à allure tempo — IF ${ifNum.toFixed(2)}` })
+            else if (ifNum < 0.95) insights.push({ type: 'neutral', text: `Sortie intensive — IF ${ifNum.toFixed(2)}` })
+            else                   insights.push({ type: 'warn',    text: `Effort maximal — IF ${ifNum.toFixed(2)} → priorité à la récupération` })
+          }
+          if (isRun && a.avg_hr && paceS && paceS > 0) {
+            const ef = (1000 / paceS) / Number(a.avg_hr)
+            if (ef > 0.013)      insights.push({ type: 'good',    text: `Bonne efficacité aérobie en course — EF ${ef.toFixed(3)} m/s/bpm` })
+            else if (ef > 0.010) insights.push({ type: 'neutral', text: `Efficacité aérobie correcte — EF ${ef.toFixed(3)} m/s/bpm` })
+          }
+          if (a.suffer_score != null && Number(a.suffer_score) > 200) {
+            insights.push({ type: 'warn', text: `Score de souffrance élevé — ${a.suffer_score} (récupération recommandée avant la prochaine séance intense)` })
+          }
+          if (!insights.length) return null
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+                textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+                Analyse automatique
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {insights.map((ins, i) => {
+                  const dot = ins.type === 'good' ? '#22c55e' : ins.type === 'warn' ? '#f97316' : T.textMuted
+                  const bg  = ins.type === 'good' ? 'rgba(34,197,94,0.06)' : ins.type === 'warn' ? 'rgba(249,115,22,0.06)' : T.bgAlt
+                  const border = ins.type === 'good' ? 'rgba(34,197,94,0.2)' : ins.type === 'warn' ? 'rgba(249,115,22,0.2)' : T.border
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: bg,
+                      borderRadius: 8, padding: '10px 14px', border: `1px solid ${border}` }}>
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, marginTop: 4, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: T.text, lineHeight: 1.55, fontFamily: T.fontBody }}>{ins.text}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* ── NOTES ── */}
         {(a.notes || a.description) && (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
-              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Commentaire
             </div>
             <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
@@ -1512,8 +1644,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         {/* ── LAPS TABLE ── */}
         {a.laps && a.laps.length > 1 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
-              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Intervalles — {a.laps.length} tours
             </div>
             <div style={{ maxHeight: 200, overflowY: 'auto' }}>
@@ -1743,7 +1875,7 @@ function SectionAnalyse({ activities, zones, profile }: {
             {filtered.length} activité{filtered.length !== 1 ? 's' : ''}
           </div>
 
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden', boxShadow: T.shadow }}>
             <div style={{ maxHeight: 600, overflowY: 'auto' }}>
               {filtered.map(act => (
                 <ActivityRow key={act.id} a={act} selected={false} onClick={() => setSelected(act)} />
@@ -1908,7 +2040,7 @@ export default function TrainingPage() {
   const active  = NAV.find(n => n.id === section)!
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
 
       {/* ── TOP BAR ── */}
       <div style={{
@@ -1919,7 +2051,7 @@ export default function TrainingPage() {
         boxShadow: T.shadow,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.3 }}>Training</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.3, fontFamily: T.fontDisplay }}>Training</span>
           {!isMobile && <span style={{ fontSize: 12, color: T.textMuted }}>/ {active.label}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1945,7 +2077,7 @@ export default function TrainingPage() {
             position: 'sticky', top: T.topH, height: `calc(100vh - ${T.topH}px)`,
             overflowY: 'auto',
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.2, paddingLeft: 10, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, paddingLeft: 10, marginBottom: 10, fontFamily: T.fontDisplay }}>
               NAVIGATION
             </div>
             {NAV.map(n => {
@@ -1956,18 +2088,18 @@ export default function TrainingPage() {
                   onClick={() => setSection(n.id)}
                   style={{
                     width: '100%', textAlign: 'left', border: 'none',
-                    borderRadius: 7, padding: '9px 10px', cursor: 'pointer', marginBottom: 2,
+                    borderRadius: T.radiusSm, padding: '10px 12px', cursor: 'pointer', marginBottom: 3,
                     background: isActive ? T.accentBg : 'transparent',
                     borderLeft: `3px solid ${isActive ? T.accent : 'transparent'}`,
                     transition: 'background 0.12s',
                   }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = '#f9fafb' }}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
                   onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? T.accentText : T.text }}>
+                  <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? T.accent : T.text, fontFamily: T.fontDisplay }}>
                     {n.label}
                   </div>
-                  <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>{n.desc}</div>
+                  <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: T.fontBody }}>{n.desc}</div>
                 </button>
               )
             })}
@@ -1975,15 +2107,15 @@ export default function TrainingPage() {
             {/* Sidebar summary */}
             {!loading && activities.length > 0 && (
               <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, paddingLeft: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.2, marginBottom: 10 }}>RÉSUMÉ</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, marginBottom: 10, fontFamily: T.fontDisplay }}>RÉSUMÉ</div>
                 {[
-                  { label: 'Total',        value: activities.length },
+                  { label: 'Total',         value: activities.length },
                   { label: 'Cette semaine', value: activities.filter(a => isoWeek(new Date(a.started_at)) === isoWeek(new Date())).length },
-                  { label: 'Compétitions', value: activities.filter(a => a.is_race).length },
+                  { label: 'Compétitions',  value: activities.filter(a => a.is_race).length },
                 ].map(s => (
                   <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-                    <span style={{ color: T.textSub }}>{s.label}</span>
-                    <span style={{ color: T.text, fontWeight: 600 }}>{s.value}</span>
+                    <span style={{ color: T.textSub, fontFamily: T.fontBody }}>{s.label}</span>
+                    <span style={{ color: T.text, fontWeight: 700, fontFamily: T.fontMono }}>{s.value}</span>
                   </div>
                 ))}
               </div>
@@ -2038,8 +2170,8 @@ export default function TrainingPage() {
           {/* Page heading */}
           {!isMobile && (
             <div style={{ marginBottom: 20 }}>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: T.text }}>{active.label}</h1>
-              <p style={{ margin: '3px 0 0', fontSize: 12, color: T.textMuted }}>{active.desc}</p>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>{active.label}</h1>
+              <p style={{ margin: '3px 0 0', fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{active.desc}</p>
             </div>
           )}
 

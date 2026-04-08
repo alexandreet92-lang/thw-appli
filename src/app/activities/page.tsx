@@ -108,6 +108,7 @@ interface TrainingZoneRow {
   ftp_watts: number | null
   lthr: number | null
   threshold_pace_s_km: number | null
+  vma_ms?: number | null
 }
 
 interface ParsedZone { label: string; color: string; min: number; max: number }
@@ -135,12 +136,13 @@ const TIME_FILTER_LABEL: Record<TimeFilter, string> = {
 // UTILS
 // ─────────────────────────────────────────────────────────────
 function fmtDur(s: number | null | undefined): string {
-  if (!s) return '—'
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
+  if (!s || s <= 0) return '—'
+  const h   = Math.floor(s / 3600)
+  const m   = Math.floor((s % 3600) / 60)
   const sec = Math.floor(s % 60)
   if (h > 0) return `${h}h${String(m).padStart(2, '0')}`
-  return `${m}:${String(sec).padStart(2, '0')}`
+  if (sec > 0) return `${m}min${String(sec).padStart(2, '0')}`
+  return `${m}min`
 }
 
 function fmtDist(m: number | null | undefined): string {
@@ -474,22 +476,41 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   const N = time.length
   if (N < 2) return null
 
-  const totalS = time[N - 1] - time[0]
-  const [cursor, setCursor] = useState<number | null>(null)
-  const [selection, setSelection] = useState<[number,number] | null>(null)
-  const [dragStart, setDragStart] = useState<number | null>(null)
-  const [selectedLap, setSelectedLap] = useState<number | null>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
+  const [cursorPct, setCursorPct] = useState<number | null>(null)
+  const [selection, setSelection]  = useState<[number,number] | null>(null)
+  const [dragStartPct, setDragStartPct] = useState<number | null>(null)
+  const [selectedLap, setSelectedLap]   = useState<number | null>(null)
+  const [showSelModal, setShowSelModal]  = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const pct = (e.clientX - rect.left) / rect.width
-    const idx = Math.min(N - 1, Math.max(0, Math.round(pct * (N - 1))))
-    setCursor(idx)
-    if (dragStart !== null) {
-      const startIdx = Math.min(N - 1, Math.max(0, Math.round(dragStart * (N - 1))))
-      setSelection([Math.min(startIdx, idx), Math.max(startIdx, idx)])
+  const cursor = cursorPct !== null ? Math.min(N-1, Math.max(0, Math.round(cursorPct * (N-1)))) : null
+
+  function getPct(clientX: number, el: Element): number {
+    const rect = el.getBoundingClientRect()
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+  }
+
+  function handleMove(clientX: number) {
+    if (!containerRef.current) return
+    const pct = getPct(clientX, containerRef.current)
+    setCursorPct(pct)
+    if (dragStartPct !== null) {
+      const i1 = Math.round(dragStartPct * (N-1))
+      const i2 = Math.round(pct * (N-1))
+      setSelection([Math.min(i1,i2), Math.max(i1,i2)])
     }
+  }
+
+  function handleDown(clientX: number) {
+    if (!containerRef.current) return
+    setDragStartPct(getPct(clientX, containerRef.current))
+    setSelection(null)
+    setShowSelModal(false)
+  }
+
+  function handleUp() {
+    setDragStartPct(null)
+    if (selection && selection[1] - selection[0] > 5) setShowSelModal(true)
   }
 
   function smooth(arr: number[], w = 5): number[] {
@@ -499,7 +520,19 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     })
   }
 
-  function buildPath(data: number[], H: number, pad = 4): string {
+  function buildFillPath(data: number[], H: number, pad = 4): string {
+    if (!data.length) return ''
+    const mn = Math.min(...data), mx = Math.max(...data)
+    const range = mx - mn || 1
+    const pts = data.map((v, i) => {
+      const x = (i / (N - 1)) * 1000
+      const y = H - pad - ((v - mn) / range) * (H - pad * 2)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    return `M0,${H}L${pts.join('L')}L${1000},${H}Z`
+  }
+
+  function buildLinePath(data: number[], H: number, pad = 4): string {
     if (!data.length) return ''
     const mn = Math.min(...data), mx = Math.max(...data)
     const range = mx - mn || 1
@@ -514,186 +547,315 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   function getHrColor(hr: number, zones?: ParsedZone[]): string {
     if (!zones) return '#ef4444'
     for (const z of zones) if (hr >= z.min && hr <= z.max) return z.color
-    return '#ef4444'
+    return ZONE_COLORS[4]
   }
 
-  function buildHrSegments(hrs: number[], zones?: ParsedZone[]): { d: string; color: string }[] {
-    if (!hrs.length) return []
-    const H = 60, pad = 4
-    const mn = Math.min(...hrs), mx = Math.max(...hrs)
-    const range = mx - mn || 1
-    const segments: { d: string; color: string }[] = []
-    let currentColor = getHrColor(hrs[0], zones)
-    let pts = [`${(0 / (N - 1)) * 1000},${H - pad - ((hrs[0] - mn) / range) * (H - pad * 2)}`]
-
-    for (let i = 1; i < hrs.length; i++) {
-      const color = getHrColor(hrs[i], zones)
-      const x = (i / (N - 1)) * 1000
-      const y = H - pad - ((hrs[i] - mn) / range) * (H - pad * 2)
-      if (color !== currentColor) {
-        segments.push({ d: `M${pts.join('L')}`, color: currentColor })
-        pts = [`${x},${y}`]
-        currentColor = color
-      } else {
-        pts.push(`${x},${y}`)
-      }
-    }
-    segments.push({ d: `M${pts.join('L')}`, color: currentColor })
-    return segments
+  function getIntensityColor(val: number, max: number): string {
+    const pct = max > 0 ? val / max : 0
+    if (pct < 0.6) return ZONE_COLORS[0]
+    if (pct < 0.7) return ZONE_COLORS[1]
+    if (pct < 0.8) return ZONE_COLORS[2]
+    if (pct < 0.9) return ZONE_COLORS[3]
+    return ZONE_COLORS[4]
   }
 
-  const watts    = s.watts    ? smooth(s.watts)    : null
-  const velocity = s.velocity ? smooth(s.velocity) : null
-  const cadence  = s.cadence  ? smooth(s.cadence)  : null
-  const hr       = s.heartrate ? smooth(s.heartrate) : null
+  const watts    = s.watts     ? smooth(s.watts)    : null
+  const velocity = s.velocity  ? smooth(s.velocity) : null
+  const cadence  = s.cadence   ? smooth(s.cadence)  : null
+  const hr       = s.heartrate ? smooth(s.heartrate): null
   const alt      = s.altitude  ?? null
+  const laps     = activity.laps ?? []
 
-  const laps = activity.laps ?? []
+  type Track = {
+    label: string; data: number[]; color: string; unit: string; H: number
+    isHr?: boolean; isAlt?: boolean; formatY?: (v: number) => string
+  }
 
-  const selLap = selectedLap !== null ? laps[selectedLap] : null
-
-  type Track = { label: string; data: number[]; color: string; unit: string; H: number; isHr?: boolean; isAlt?: boolean }
   const tracks: Track[] = ([
-    alt    ? { label: 'Altitude', data: alt,                     color: '#9ca3af', unit: 'm',    H: 56, isAlt: true } : null,
-    hr     ? { label: 'FC',       data: hr,                      color: '#ef4444', unit: 'bpm',  H: 60, isHr: true  } : null,
-    isBike && watts    ? { label: 'Puissance', data: watts,      color: '#7c3aed', unit: 'W',    H: 70 } : null,
-    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#7c3aed', unit: 's/km', H: 70 } : null,
-    cadence ? { label: 'Cadence', data: cadence,                 color: '#ec4899', unit: 'rpm',  H: 50 } : null,
-  ] as (Track | null)[]).filter((t): t is Track => t !== null)
+    alt    ? { label: 'Altitude', data: alt, color: '#9ca3af', unit: 'm', H: 64, isAlt: true, formatY: (v: number) => `${Math.round(v)} m` } : null,
+    hr     ? { label: 'FC',       data: hr,  color: '#ef4444', unit: 'bpm', H: 64, isHr: true, formatY: (v: number) => `${Math.round(v)} bpm` } : null,
+    isBike && watts    ? { label: 'Puissance', data: watts,    color: '#7c3aed', unit: 'W',     H: 72, formatY: (v: number) => `${Math.round(v)} W` } : null,
+    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#7c3aed', unit: 's/km', H: 72, formatY: (v: number) => fmtPace(v) } : null,
+    cadence ? { label: 'Cadence', data: cadence, color: '#ec4899', unit: 'rpm', H: 48, formatY: (v: number) => `${Math.round(v)} rpm` } : null,
+  ] as (Track|null)[]).filter((t): t is Track => t !== null)
 
   if (!tracks.length) return null
 
-  const chartWidth = 1000
-  const cursorX = cursor !== null ? (cursor / (N - 1)) * chartWidth : null
+  // Max intensity for lap coloring
+  const maxIntensity = watts ? Math.max(...watts) : hr ? Math.max(...hr) : 1
+
+  // Selection stats
+  const selStats = selection ? (() => {
+    const [i1, i2] = selection
+    const dur = time[i2] - time[i1]
+    const sliceDist = s.distance ? s.distance[i2] - s.distance[i1] : null
+    const hrSlice = hr ? hr.slice(i1, i2+1) : null
+    const wSlice  = watts ? watts.slice(i1, i2+1) : null
+    const vSlice  = velocity ? velocity.slice(i1, i2+1).filter(v => v > 0) : null
+    const altSlice = alt ? alt.slice(i1, i2+1) : null
+    const dPlus  = altSlice ? altSlice.reduce((acc, v, idx) => idx > 0 && v > altSlice[idx-1] ? acc + (v - altSlice[idx-1]) : acc, 0) : null
+    const cadSlice = cadence ? cadence.slice(i1, i2+1) : null
+    return {
+      dur,
+      dist: sliceDist,
+      hrMoy: hrSlice ? Math.round(avg(hrSlice)) : null,
+      hrMax: hrSlice ? Math.round(Math.max(...hrSlice)) : null,
+      watts: wSlice ? Math.round(avg(wSlice)) : null,
+      pace:  vSlice && vSlice.length ? avg(vSlice.map(v => 1000/v)) : null,
+      dPlus: dPlus ? Math.round(dPlus) : null,
+      cad:   cadSlice ? Math.round(avg(cadSlice)) : null,
+    }
+  })() : null
+
+  const selLap = selectedLap !== null && laps[selectedLap] ? laps[selectedLap] : null
 
   return (
-    <div style={{ userSelect: 'none' }}>
-      {cursor !== null && cursorX !== null && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
-          {hr     && <span style={{ fontSize: 11, color: '#ef4444' }}>FC: {Math.round(hr[cursor])} bpm</span>}
-          {isBike && watts && <span style={{ fontSize: 11, color: '#7c3aed' }}>Puissance: {Math.round(watts[cursor])} W</span>}
-          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#7c3aed' }}>Allure: {fmtPace(1000/velocity[cursor])}</span>}
-          {cadence && <span style={{ fontSize: 11, color: '#ec4899' }}>Cadence: {Math.round(cadence[cursor])} rpm</span>}
-          {alt && <span style={{ fontSize: 11, color: '#6b7280' }}>Alt: {Math.round(alt[cursor])} m</span>}
+    <div>
+      {/* Cursor values bar */}
+      {cursor !== null && (
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, flexWrap: 'wrap', minHeight: 20 }}>
+          {hr     && <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 500 }}>FC: {Math.round(hr[cursor])} bpm</span>}
+          {isBike && watts && <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 500 }}>Puissance: {Math.round(watts[cursor])} W</span>}
+          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 500 }}>Allure: {fmtPace(1000/velocity[cursor])}</span>}
+          {cadence && <span style={{ fontSize: 11, color: '#ec4899', fontWeight: 500 }}>Cadence: {Math.round(cadence[cursor])} rpm</span>}
+          {alt && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>Alt: {Math.round(alt[cursor])} m</span>}
+          <span style={{ fontSize: 11, color: T.textMuted, marginLeft: 'auto' }}>
+            {(() => { const t = time[cursor] - time[0]; const m = Math.floor(t/60); const sec = t%60; return `${m}:${String(sec).padStart(2,'0')}` })()}
+          </span>
         </div>
       )}
 
-      {tracks.map((track, ti) => {
-        const hrSegs = track.isHr ? buildHrSegments(track.data, hrZones) : null
-        const pathD  = !track.isHr ? buildPath(track.data, track.H) : null
-        const mn = Math.min(...track.data), mx = Math.max(...track.data)
-        const range = mx - mn || 1
+      {/* Chart container — mouse + touch tracking on this div */}
+      <div
+        ref={containerRef}
+        style={{ position: 'relative', userSelect: 'none', cursor: 'crosshair' }}
+        onMouseMove={e => handleMove(e.clientX)}
+        onMouseLeave={() => setCursorPct(null)}
+        onMouseDown={e => handleDown(e.clientX)}
+        onMouseUp={handleUp}
+        onTouchStart={e => { e.preventDefault(); handleDown(e.touches[0].clientX) }}
+        onTouchMove={e => { e.preventDefault(); handleMove(e.touches[0].clientX) }}
+        onTouchEnd={handleUp}
+      >
+        {/* Continuous vertical cursor line as overlay div */}
+        {cursorPct !== null && (
+          <div style={{
+            position: 'absolute', top: 0, bottom: 0, left: `${cursorPct * 100}%`,
+            width: 1, background: T.text, pointerEvents: 'none', zIndex: 10,
+          }} />
+        )}
 
-        return (
-          <div key={track.label} style={{ marginBottom: 4, position: 'relative' }}>
-            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
-              <span>{Math.round(mn)} – {Math.round(mx)} {track.unit}</span>
+        {/* Selection overlay */}
+        {selection && (() => {
+          const x1 = (selection[0] / (N-1)) * 100
+          const x2 = (selection[1] / (N-1)) * 100
+          return (
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0,
+              left: `${x1}%`, width: `${x2-x1}%`,
+              background: T.accent, opacity: 0.08, pointerEvents: 'none', zIndex: 9,
+            }} />
+          )
+        })()}
+
+        {/* Tracks */}
+        {tracks.map((track) => {
+          const mn = Math.min(...track.data), mx = Math.max(...track.data)
+          const range = mx - mn || 1
+          const fillPath = buildFillPath(track.data, track.H)
+          const linePath = buildLinePath(track.data, track.H)
+
+          // Cursor y position for horizontal line
+          const cursorY = cursor !== null
+            ? track.H - 4 - ((track.data[cursor] - mn) / range) * (track.H - 8)
+            : null
+
+          return (
+            <div key={track.label} style={{ marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
+                <span>{track.formatY ? `${track.formatY(mn)} – ${track.formatY(mx)}` : `${Math.round(mn)} – ${Math.round(mx)} ${track.unit}`}</span>
+              </div>
+              <svg
+                viewBox={`0 0 1000 ${track.H}`}
+                style={{ width: '100%', height: track.H, display: 'block', overflow: 'visible' }}
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id={`fill-${track.label}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={track.color} stopOpacity="0.3"/>
+                    <stop offset="100%" stopColor={track.color} stopOpacity="0.03"/>
+                  </linearGradient>
+                </defs>
+
+                {/* Lap rectangles on altitude track */}
+                {track.isAlt && laps.map((lap, li) => {
+                  const si = lap.start_index ?? 0
+                  const ei = lap.end_index ?? (li < laps.length - 1 ? (laps[li+1].start_index ?? N-1) : N-1)
+                  const lx1 = (si / (N-1)) * 1000
+                  const lx2 = (ei / (N-1)) * 1000
+                  const lapIntensity = lap.avg_watts ?? lap.avg_hr ?? 0
+                  const lapColor = getIntensityColor(Number(lapIntensity), maxIntensity)
+                  const barH = 12
+                  return (
+                    <rect key={li}
+                      x={lx1} y={track.H - barH} width={Math.max(2, lx2 - lx1)} height={barH}
+                      fill={lapColor} fillOpacity="0.7"
+                      onClick={() => setSelectedLap(selectedLap === li ? null : li)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  )
+                })}
+
+                {/* HR segments (zone-colored line) */}
+                {track.isHr && hr && (() => {
+                  const segments: { x1: number; x2: number; color: string; y1: number; y2: number }[] = []
+                  for (let i = 1; i < hr.length; i++) {
+                    const sx1 = ((i-1) / (N-1)) * 1000
+                    const sx2 = (i / (N-1)) * 1000
+                    const sy1 = track.H - 4 - ((hr[i-1] - mn) / range) * (track.H - 8)
+                    const sy2 = track.H - 4 - ((hr[i] - mn) / range) * (track.H - 8)
+                    segments.push({ x1: sx1, x2: sx2, color: getHrColor(hr[i], hrZones), y1: sy1, y2: sy2 })
+                  }
+                  return (
+                    <>
+                      {/* Fill under HR line */}
+                      <path d={fillPath} fill={`url(#fill-${track.label})`} />
+                      {/* Colored line segments */}
+                      {segments.map((seg, si) => (
+                        <line key={si} x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+                          stroke={seg.color} strokeWidth="2" />
+                      ))}
+                      {/* Average dashed line */}
+                      {(() => {
+                        const mean = hr.reduce((a, b) => a + b, 0) / hr.length
+                        const y = track.H - 4 - ((mean - mn) / range) * (track.H - 8)
+                        return <line x1={0} y1={y} x2={1000} y2={y} stroke="#ef4444" strokeWidth="1" strokeDasharray="6,4" opacity="0.4" />
+                      })()}
+                    </>
+                  )
+                })()}
+
+                {/* Other tracks — filled area */}
+                {!track.isHr && (
+                  <>
+                    <path d={fillPath} fill={`url(#fill-${track.label})`} />
+                    <path d={linePath} fill="none" stroke={track.color} strokeWidth="2" strokeLinejoin="round" />
+                  </>
+                )}
+
+                {/* Horizontal crosshair line */}
+                {cursorY !== null && (
+                  <line x1={0} y1={cursorY} x2={1000} y2={cursorY} stroke={T.text} strokeWidth="0.8" strokeDasharray="4,3" opacity="0.6" />
+                )}
+              </svg>
             </div>
-            <svg
-              ref={ti === 0 ? svgRef : undefined}
-              viewBox={`0 0 ${chartWidth} ${track.H}`}
-              style={{ width: '100%', height: track.H, display: 'block', cursor: 'crosshair' }}
-              preserveAspectRatio="none"
-              onMouseMove={handleMouseMove}
-              onMouseLeave={() => setCursor(null)}
-              onMouseDown={e => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                setDragStart((e.clientX - rect.left) / rect.width)
-                setSelection(null)
-              }}
-              onMouseUp={() => setDragStart(null)}
-            >
-              {track.isAlt && pathD && (
-                <>
-                  <defs>
-                    <linearGradient id="altFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#9ca3af" stopOpacity="0.3"/>
-                      <stop offset="100%" stopColor="#9ca3af" stopOpacity="0.05"/>
-                    </linearGradient>
-                  </defs>
-                  <path d={`${pathD}L${chartWidth},${track.H}L0,${track.H}Z`} fill="url(#altFill)" />
-                </>
-              )}
+          )
+        })}
+      </div>
 
-              {hrSegs && hrSegs.map((seg, si) => (
-                <path key={si} d={seg.d} fill="none" stroke={seg.color} strokeWidth="2" strokeLinejoin="round" />
-              ))}
-              {track.isHr && hr && (() => {
-                const mean = hr.reduce((a, b) => a + b, 0) / hr.length
-                const y = track.H - 4 - ((mean - mn) / range) * (track.H - 8)
-                return <line x1={0} y1={y} x2={chartWidth} y2={y} stroke="#ef4444" strokeWidth="1" strokeDasharray="6,4" opacity="0.5" />
-              })()}
-
-              {!track.isHr && !track.isAlt && pathD && (
-                <path d={pathD} fill="none" stroke={track.color} strokeWidth="2" strokeLinejoin="round" />
-              )}
-              {track.isAlt && pathD && (
-                <path d={pathD} fill="none" stroke="#9ca3af" strokeWidth="1.5" />
-              )}
-
-              {laps.map((lap, li) => {
-                if (!lap.start_index) return null
-                const lx = ((lap.start_index ?? 0) / (N - 1)) * chartWidth
-                return (
-                  <line key={li} x1={lx} y1={0} x2={lx} y2={track.H}
-                    stroke={T.borderMid} strokeWidth="1" strokeDasharray="3,3" />
-                )
-              })}
-
-              {selection && (() => {
-                const x1 = (selection[0] / (N - 1)) * chartWidth
-                const x2 = (selection[1] / (N - 1)) * chartWidth
-                return <rect x={x1} y={0} width={x2 - x1} height={track.H} fill={T.accent} fillOpacity="0.08" stroke={T.accent} strokeWidth="1" strokeOpacity="0.3" />
-              })()}
-
-              {cursorX !== null && (
-                <line x1={cursorX} y1={0} x2={cursorX} y2={track.H} stroke={T.text} strokeWidth="1" />
-              )}
-            </svg>
-          </div>
-        )
-      })}
-
+      {/* Laps row */}
       {laps.length > 1 && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4 }}>Intervalles — cliquer pour détail</div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 5 }}>Intervalles</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {laps.map((lap, li) => (
-              <button key={li} onClick={() => setSelectedLap(selectedLap === li ? null : li)}
-                style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, cursor: 'pointer', border: `1px solid ${T.border}`,
-                  background: selectedLap === li ? T.accentBg : T.surface, color: selectedLap === li ? T.accentText : T.textSub }}>
-                #{li + 1} {fmtDur(lap.moving_time_s)}
-              </button>
-            ))}
+            {laps.map((lap, li) => {
+              const lapIntensity = lap.avg_watts ?? lap.avg_hr ?? 0
+              const col = getIntensityColor(Number(lapIntensity), maxIntensity)
+              return (
+                <button key={li} onClick={() => setSelectedLap(selectedLap === li ? null : li)}
+                  style={{ fontSize: 11, padding: '3px 9px', borderRadius: 4, cursor: 'pointer',
+                    border: `1px solid ${selectedLap === li ? col : T.border}`,
+                    background: selectedLap === li ? col + '20' : T.surface,
+                    color: selectedLap === li ? col : T.textSub }}>
+                  #{li+1} · {fmtDur(lap.moving_time_s)}
+                </button>
+              )
+            })}
           </div>
 
           {selLap && (
-            <div style={{ marginTop: 10, background: T.bg, borderRadius: 7, padding: '10px 12px', border: `1px solid ${T.border}` }}>
+            <div style={{ marginTop: 10, background: T.bg, borderRadius: 7, padding: '12px 14px', border: `1px solid ${T.border}` }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>
                 Intervalle #{selectedLap! + 1}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12 }}>
-                <span><span style={{ color: T.textMuted }}>Dist. </span>{fmtDist(selLap.distance_m)}</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12 }}>
+                {selLap.distance_m > 0 && <span><span style={{ color: T.textMuted }}>Dist. </span>{fmtDist(selLap.distance_m)}</span>}
                 <span><span style={{ color: T.textMuted }}>Durée </span>{fmtDur(selLap.moving_time_s)}</span>
-                {selLap.avg_hr && <span><span style={{ color: T.textMuted }}>FC </span>{Math.round(selLap.avg_hr)} bpm</span>}
-                {selLap.avg_watts && <span><span style={{ color: T.textMuted }}>Watts </span>{Math.round(selLap.avg_watts)} W</span>}
-                {selLap.avg_speed_ms && <span><span style={{ color: T.textMuted }}>Allure </span>{fmtPace((1/selLap.avg_speed_ms)*1000)}</span>}
+                {selLap.avg_hr != null && <span><span style={{ color: T.textMuted }}>FC moy. </span>{Math.round(selLap.avg_hr)} bpm</span>}
+                {selLap.avg_watts != null && isBike && <span><span style={{ color: T.textMuted }}>Watts </span>{Math.round(selLap.avg_watts)} W</span>}
+                {selLap.avg_speed_ms != null && !isBike && <span><span style={{ color: T.textMuted }}>Allure </span>{fmtPace((1/selLap.avg_speed_ms)*1000)}</span>}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {selection && (
-        <div style={{ marginTop: 8, background: T.accentBg, borderRadius: 7, padding: '10px 12px', border: `1px solid ${T.accent}40` }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: T.accentText, marginBottom: 6 }}>
-            Sélection : {fmtDur((time[selection[1]] - time[selection[0]]))}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: T.text }}>
-            {hr && <span><span style={{ color: T.textMuted }}>FC moy. </span>{Math.round(avg(hr.slice(selection[0], selection[1]+1)))} bpm</span>}
-            {isBike && watts && <span><span style={{ color: T.textMuted }}>Watts moy. </span>{Math.round(avg(watts.slice(selection[0], selection[1]+1)))} W</span>}
-            {isRun && velocity && <span><span style={{ color: T.textMuted }}>Allure moy. </span>{fmtPace(avg(velocity.slice(selection[0], selection[1]+1).map(v => v > 0 ? 1000/v : 0).filter(v => v > 0)))}</span>}
+      {/* Selection modal */}
+      {showSelModal && selStats && selection && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 500,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+          onClick={() => setShowSelModal(false)}
+        >
+          <div style={{ background: T.surface, borderRadius: 12, padding: '24px 28px', minWidth: 280, maxWidth: 380,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
+                Sélection — {fmtDur(selStats.dur)}
+              </div>
+              <button onClick={() => setShowSelModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18 }}>
+                ✕
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+              {selStats.dist != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>Distance</span>
+                  <span style={{ fontWeight: 600 }}>{fmtDist(selStats.dist)}</span>
+                </div>
+              )}
+              {selStats.hrMoy != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>FC moyenne</span>
+                  <span style={{ fontWeight: 600 }}>{selStats.hrMoy} bpm</span>
+                </div>
+              )}
+              {selStats.hrMax != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>FC max.</span>
+                  <span style={{ fontWeight: 600 }}>{selStats.hrMax} bpm</span>
+                </div>
+              )}
+              {selStats.watts != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>Watts moy.</span>
+                  <span style={{ fontWeight: 600 }}>{selStats.watts} W</span>
+                </div>
+              )}
+              {selStats.pace != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>Allure moy.</span>
+                  <span style={{ fontWeight: 600 }}>{fmtPace(selStats.pace)}</span>
+                </div>
+              )}
+              {selStats.dPlus != null && selStats.dPlus > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>D+</span>
+                  <span style={{ fontWeight: 600 }}>+{selStats.dPlus} m</span>
+                </div>
+              )}
+              {selStats.cad != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: T.textMuted }}>Cadence moy.</span>
+                  <span style={{ fontWeight: 600 }}>{selStats.cad} rpm</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -863,9 +1025,9 @@ function SectionDonnees({ activities, zones, profile }: {
 
             return (
               <div key={w.week} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0 }}>
-                {hours >= 0.1 && (
+                {w.time > 60 && (
                   <div style={{ fontSize: 9, color: isNow ? T.accent : T.textMuted, fontWeight: isNow ? 700 : 400 }}>
-                    {hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`}
+                    {fmtDur(w.time)}
                   </div>
                 )}
                 <div style={{ width: '75%', height: barH, display: 'flex', flexDirection: 'column-reverse', borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 6 }}
@@ -1029,6 +1191,41 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
   const decoupling = a.aerobic_decoupling != null ? Number(a.aerobic_decoupling) : null
 
+  // Freewheeling (coasting): cadence == 0 while velocity > 0.5 m/s
+  const freewheelS = useMemo(() => {
+    if (!isBike || !a.streams?.cadence || !a.streams?.velocity) return null
+    let coasting = 0
+    const cad = a.streams.cadence, vel = a.streams.velocity
+    const len = Math.min(cad.length, vel.length)
+    for (let i = 0; i < len; i++) {
+      if (vel[i] > 0.5 && cad[i] === 0) coasting++
+    }
+    return coasting // seconds (1 sample = 1s)
+  }, [a.streams?.cadence, a.streams?.velocity, isBike])
+
+  const freewheelPct = freewheelS && a.moving_time_s
+    ? ((freewheelS / a.moving_time_s) * 100).toFixed(1) : null
+
+  // Max altitude from streams
+  const maxAlt = a.streams?.altitude?.length ? Math.round(Math.max(...a.streams.altitude)) : null
+  const avgAlt = a.streams?.altitude?.length
+    ? Math.round(a.streams.altitude.reduce((s, v) => s + v, 0) / a.streams.altitude.length) : null
+
+  // % FTP
+  const pctFtp = a.avg_watts && a.ftp_at_time
+    ? Math.round((Number(a.avg_watts) / a.ftp_at_time) * 100) : null
+
+  // Pw/FC effectiveness
+  const pwHr = a.avg_watts && a.avg_hr
+    ? (Number(a.avg_watts) / Number(a.avg_hr)).toFixed(2) : null
+
+  // VAP from zone row
+  const runZoneRowLocal = zones.find(z => z.sport === 'run')
+  const vap = runZoneRowLocal?.vma_ms
+    ? `${(Number(runZoneRowLocal.vma_ms) * 3.6).toFixed(1)} km/h` : null
+
+  const sensation = a.perceived_effort ?? a.suffer_score
+
   const powerTimesZ = useMemo(() => {
     if (!bikeZones || !a.streams?.watts) return null
     return calcTimeInZones(a.streams.watts, bikeZones)
@@ -1071,130 +1268,259 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   )
 
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 18px', background: T.bg, borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, background: col + '18', color: col, padding: '2px 9px', borderRadius: 12 }}>
-              {SPORT_LABEL[a.sport_type]}
-            </span>
-            {a.is_race && (
-              <span style={{ fontSize: 11, fontWeight: 600, background: '#fef2f2', color: '#dc2626', padding: '2px 9px', borderRadius: 12 }}>
-                Compétition
-              </span>
+    <div style={{ background: T.surface, borderRadius: T.radius }}>
+      <div style={{ padding: '16px 18px' }}>
+
+        {/* ── 5 DATA BLOCKS ── */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 20, flexWrap: 'wrap' }}>
+
+          {/* BLOC 1 — Volume */}
+          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+            {!isGym && a.distance_m != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Distance</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtDist(a.distance_m)}</span>
+              </div>
             )}
-            {a.trainer && (
-              <span style={{ fontSize: 11, color: T.textMuted, background: T.border, padding: '2px 9px', borderRadius: 12 }}>
-                Home trainer
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: T.textMuted }}>Durée</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtDur(a.moving_time_s)}</span>
+            </div>
+            {isBike && a.avg_speed_ms != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h</span>
+              </div>
+            )}
+            {(isRun || isSwim) && paceS != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Allure moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtPace(paceS)}</span>
+              </div>
+            )}
+            {isBike && freewheelS != null && freewheelS > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtDur(freewheelS)} ({freewheelPct}%)</span>
+              </div>
             )}
           </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 2 }}>{a.title}</div>
-          <div style={{ fontSize: 12, color: T.textMuted }}>{fmtDate(a.started_at)}</div>
+
+          {/* BLOC 2 — Charge / ressenti */}
+          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+            {sensation != null && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{sensation}/10</span>
+                </div>
+                <div style={{ height: 4, background: T.border, borderRadius: 2 }}>
+                  <div style={{ width: `${(Number(sensation) / 10) * 100}%`, height: '100%', borderRadius: 2,
+                    background: Number(sensation) <= 3 ? ZONE_COLORS[1] : Number(sensation) <= 6 ? ZONE_COLORS[2] : Number(sensation) <= 8 ? ZONE_COLORS[3] : ZONE_COLORS[4] }} />
+                </div>
+              </div>
+            )}
+            {a.rpe != null && a.rpe !== sensation && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: 12, color: T.textMuted }}>RPE</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Number(a.rpe).toFixed(1)}/10</span>
+                </div>
+                <div style={{ height: 4, background: T.border, borderRadius: 2 }}>
+                  <div style={{ width: `${(Number(a.rpe) / 10) * 100}%`, height: '100%', borderRadius: 2,
+                    background: Number(a.rpe) <= 3 ? ZONE_COLORS[1] : Number(a.rpe) <= 6 ? ZONE_COLORS[2] : Number(a.rpe) <= 8 ? ZONE_COLORS[3] : ZONE_COLORS[4] }} />
+                </div>
+              </div>
+            )}
+            {a.tss != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
+                  TSS<TooltipInfo text={'TSS (Training Stress Score)\n\nMesure la charge d\'une séance.\n\nTSS = (durée × NP × IF)² / FTP²\n\n< 150 → récupération rapide\n150–300 → fatigant\n> 300 → très éprouvant'} />
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.tss))}</span>
+              </div>
+            )}
+          </div>
+
+          {/* BLOC 3 — Sport-specific */}
+          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+            {isBike && (
+              <>
+                {a.avg_watts != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Watts moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
+                      {Math.round(Number(a.avg_watts))} W{pctFtp ? ` (${pctFtp}% FTP)` : ''}
+                    </span>
+                  </div>
+                )}
+                {a.normalized_watts != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>NP</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{a.normalized_watts} W</span>
+                  </div>
+                )}
+                {vi != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Variabilité (VI)</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vi}</span>
+                  </div>
+                )}
+                {pwHr != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Pw/FC</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{pwHr}</span>
+                  </div>
+                )}
+                {a.avg_cadence != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_cadence))} rpm</span>
+                  </div>
+                )}
+              </>
+            )}
+            {isRun && (
+              <>
+                {vap != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>VAP</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vap}</span>
+                  </div>
+                )}
+                {a.avg_cadence != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_cadence))} spm</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* BLOC 4 — Cardio */}
+          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+            {a.avg_hr != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_hr))} bpm</span>
+              </div>
+            )}
+            {a.max_hr != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>FC max.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{a.max_hr} bpm</span>
+              </div>
+            )}
+            {a.aerobic_decoupling != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Number(a.aerobic_decoupling).toFixed(1)}%</span>
+              </div>
+            )}
+          </div>
+
+          {/* BLOC 5 — Contexte */}
+          <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
+            {a.elevation_gain_m != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
+              </div>
+            )}
+            {maxAlt != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{maxAlt} m</span>
+              </div>
+            )}
+            {avgAlt != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{avgAlt} m</span>
+              </div>
+            )}
+            {a.avg_temp_c != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Température</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_temp_c))}°C</span>
+              </div>
+            )}
+            {a.calories != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{a.calories} kcal</span>
+              </div>
+            )}
+          </div>
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18, padding: '0 2px', lineHeight: 1 }}>✕</button>
-      </div>
 
-      <div style={{ padding: '16px 18px' }}>
+        {/* ── COURBES ── */}
         {a.streams && (
-          <Section title="Courbes">
-            <SyncCharts activity={a} hrZones={hrZones} powerZones={bikeZones ?? undefined} paceZones={runZones ?? undefined} />
-          </Section>
-        )}
-
-        <Section title="Performance">
-          <StatBlock items={[
-            { label: 'Distance',      v: !isGym ? fmtDist(a.distance_m) : null },
-            { label: 'Durée',         v: fmtDur(a.moving_time_s) },
-            { label: 'Temps écoulé',  v: a.elapsed_time_s && a.elapsed_time_s !== a.moving_time_s ? fmtDur(a.elapsed_time_s) : null },
-            { label: 'Allure moy.',   v: (isRun || isSwim) ? fmtPace(paceS) : null },
-            { label: 'Vitesse moy.',  v: isBike && a.avg_speed_ms ? `${(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h` : null },
-            { label: 'D+',            v: a.elevation_gain_m ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-            { label: 'D-',            v: a.elevation_loss_m && Number(a.elevation_loss_m) > 0 ? `${Math.round(Number(a.elevation_loss_m))} m` : null },
-            { label: 'TSS',           v: a.tss ? Math.round(Number(a.tss)).toString() : null },
-            { label: 'RPE',           v: (a.rpe ?? a.perceived_effort) ? `${a.rpe ?? a.perceived_effort}/10` : null },
-          ]} />
-        </Section>
-
-        <Section title="Cardio">
-          <StatBlock items={[
-            { label: 'FC moy.',      v: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : null },
-            { label: 'FC max.',      v: a.max_hr ? `${a.max_hr} bpm` : null },
-            { label: 'FC min.',      v: a.min_hr ? `${a.min_hr} bpm` : null },
-            { label: 'TRIMP',        v: a.trimp ? a.trimp.toString() : null },
-            { label: 'Découplage Pw/FC', v: isBike && decoupling != null ? `${decoupling.toFixed(1)}%` : null },
-            { label: 'Découplage allure/FC', v: isRun && decoupling != null ? `${decoupling.toFixed(1)}%` : null },
-          ]} />
-        </Section>
-
-        {isBike && (
-          <Section title="Puissance">
-            <StatBlock items={[
-              { label: 'Watts moy.',  v: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null },
-              { label: 'Watts max.',  v: a.max_watts ? `${a.max_watts} W` : null },
-              { label: 'NP',          v: a.normalized_watts ? `${a.normalized_watts} W` : null },
-              { label: 'W/kg',        v: wkg ? `${wkg} W/kg` : null },
-              { label: 'IF',          v: a.intensity_factor ? Number(a.intensity_factor).toFixed(2) : null },
-              { label: 'FTP (époque)',v: a.ftp_at_time ? `${a.ftp_at_time} W` : null },
-              { label: 'VI',          v: vi ?? null },
-              { label: 'kJ',          v: a.kilojoules ? `${Math.round(Number(a.kilojoules))} kJ` : null },
-            ]} />
-          </Section>
-        )}
-
-        <Section title="Cadence">
-          <StatBlock items={[
-            { label: isBike ? 'Cadence moy. (RPM)' : 'Foulée moy. (SPM)', v: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} ${isBike ? 'rpm' : 'spm'}` : null },
-            { label: 'Cadence max.',  v: a.max_cadence ? `${a.max_cadence} ${isBike ? 'rpm' : 'spm'}` : null },
-          ]} />
-        </Section>
-
-        {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-          <Section title="Zones de puissance">
-            <ZoneBars zones={bikeZones} timesS={powerTimesZ} />
-          </Section>
-        )}
-        {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-          <Section title="Zones d'allure">
-            <ZoneBars zones={runZones} timesS={paceTimesZ} />
-          </Section>
-        )}
-        {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-          <Section title="Zones FC">
-            <ZoneBars zones={hrZones} timesS={hrTimesZ} />
-          </Section>
-        )}
-
-        <Section title="Energie">
-          <StatBlock items={[
-            { label: 'Calories brûlées', v: a.calories ? `${a.calories} kcal` : null },
-            { label: 'kJ',               v: a.kilojoules && !isBike ? `${Math.round(Number(a.kilojoules))} kJ` : null },
-          ]} />
-        </Section>
-
-        <Section title="Conditions et contexte">
-          <StatBlock items={[
-            { label: 'Température',  v: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))}°C` : null },
-            { label: 'Gear',         v: a.gear_name ?? null },
-            { label: 'Source',       v: a.provider ?? null },
-          ]} />
-        </Section>
-
-        {(a.notes || a.description) && (
-          <Section title="Commentaire">
-            <div style={{ background: T.bg, borderRadius: 6, padding: '10px 12px' }}>
-              <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
+              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+              Courbes
             </div>
-          </Section>
+            <SyncCharts activity={a} hrZones={hrZones} powerZones={bikeZones ?? undefined} paceZones={runZones ?? undefined} />
+          </div>
         )}
 
+        {/* ── ZONES ── */}
+        {(isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
+         (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
+         (hrTimesZ && hrTimesZ.some(t => t > 0)) ? (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
+              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+              Zones
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+              {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
+                <div style={{ flex: '1 1 200px' }}>
+                  <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Puissance</div>
+                  <ZoneBars zones={bikeZones} timesS={powerTimesZ} />
+                </div>
+              )}
+              {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
+                <div style={{ flex: '1 1 200px' }}>
+                  <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Allure</div>
+                  <ZoneBars zones={runZones} timesS={paceTimesZ} />
+                </div>
+              )}
+              {hrTimesZ && hrTimesZ.some(t => t > 0) && (
+                <div style={{ flex: '1 1 200px' }}>
+                  <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Fréquence cardiaque</div>
+                  <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* ── NOTES ── */}
+        {(a.notes || a.description) && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
+              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+              Commentaire
+            </div>
+            <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
+          </div>
+        )}
+
+        {/* ── LAPS TABLE ── */}
         {a.laps && a.laps.length > 1 && (
-          <Section title={`Intervalles — ${a.laps.length} tours`}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: 0.7,
+              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5 }}>
+              Intervalles — {a.laps.length} tours
+            </div>
             <div style={{ maxHeight: 200, overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ textAlign: 'left', color: T.textMuted }}>
-                    {['#','Dist.','Durée','Allure','FC','Watts'].map(h => (
+                    {['#','Dist.','Durée', isBike ? 'Watts' : 'Allure', 'FC'].map(h => (
                       <th key={h} style={{ padding: '3px 8px 6px 0', fontWeight: 500, fontSize: 10 }}>{h}</th>
                     ))}
                   </tr>
@@ -1205,18 +1531,22 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                     return (
                       <tr key={i} style={{ borderTop: `1px solid ${T.border}` }}>
                         <td style={{ padding: '5px 8px 5px 0', color: T.textMuted }}>{i+1}</td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>{fmtDist(lap.distance_m)}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>{!isGym ? fmtDist(lap.distance_m) : '—'}</td>
                         <td style={{ padding: '5px 8px 5px 0' }}>{fmtDur(lap.moving_time_s)}</td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>{(isRun||isSwim) ? fmtPace(lp) : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'}</td>
+                        <td style={{ padding: '5px 8px 5px 0' }}>
+                          {isBike
+                            ? (lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—')
+                            : (isRun||isSwim) ? fmtPace(lp)
+                            : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'}
+                        </td>
                         <td style={{ padding: '5px 8px 5px 0' }}>{lap.avg_hr ? `${Math.round(lap.avg_hr)} bpm` : '—'}</td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>{isBike && lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—'}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
             </div>
-          </Section>
+          </div>
         )}
       </div>
     </div>

@@ -52,6 +52,7 @@ interface Activity {
   max_hr:           number | null
   min_hr:           number | null
   avg_speed_ms:     number | null
+  max_speed_ms:     number | null
   avg_pace_s_km:    number | null
   avg_watts:        number | null
   max_watts:        number | null
@@ -83,14 +84,15 @@ interface Activity {
 }
 
 interface StreamData {
-  time?:      number[]
-  distance?:  number[]
-  altitude?:  number[]
-  heartrate?: number[]
-  velocity?:  number[]
-  watts?:     number[]
-  cadence?:   number[]
-  temp?:      number[]
+  time?:        number[]
+  distance?:    number[]
+  altitude?:    number[]
+  heartrate?:   number[]
+  velocity?:    number[]
+  watts?:       number[]
+  cadence?:     number[]
+  temp?:        number[]
+  latlng?:      number[][]
 }
 
 interface LapData {
@@ -119,7 +121,7 @@ interface TrainingZoneRow {
 
 interface ParsedZone { label: string; color: string; min: number; max: number }
 
-interface Profile { weight_kg: number | null }
+interface Profile { weight_kg: number | null; birth_date: string | null }
 
 // ─────────────────────────────────────────────────────────────
 // SPORT CONFIG (no emojis)
@@ -314,12 +316,19 @@ function useTrainingZones() {
 }
 
 function useProfile() {
-  const [profile, setProfile] = useState<Profile>({ weight_kg: null })
+  const [profile, setProfile] = useState<Profile>({ weight_kg: null, birth_date: null })
   useEffect(() => {
-    createClient().from('profiles').select('weight_kg').limit(1).single()
+    createClient().from('profiles').select('weight_kg,birth_date').limit(1).single()
       .then(({ data }) => { if (data) setProfile(data as Profile) })
   }, [])
   return profile
+}
+
+// Estimated max HR: use 220 - age if birth_date is known, else 190 as default
+function estimateMaxHr(birth_date: string | null): number {
+  if (!birth_date) return 190
+  const age = new Date().getFullYear() - new Date(birth_date).getFullYear()
+  return Math.max(160, 220 - age)
 }
 
 // Reads CTL/ATL/TSB from metrics_daily if rows exist (more accurate than client-side)
@@ -480,6 +489,420 @@ function StreamLine({ data, color, label, unit, height = 48 }: {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SHARED: Mini crosshair chart (standalone SVG with hover)
+// ─────────────────────────────────────────────────────────────
+function useCrosshairSvg(
+  svgRef: React.RefObject<SVGSVGElement | null>,
+  N: number
+): { idx: number | null; pct: number | null; onMove: (e: React.MouseEvent | React.TouchEvent) => void; onLeave: () => void } {
+  const [idx, setIdx] = useState<number | null>(null)
+  const [pct, setPct] = useState<number | null>(null)
+  function getIdx(clientX: number) {
+    if (!svgRef.current) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const p = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    setPct(p)
+    setIdx(Math.min(N - 1, Math.max(0, Math.round(p * (N - 1)))))
+  }
+  function onMove(e: React.MouseEvent | React.TouchEvent) {
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
+    getIdx(clientX)
+  }
+  function onLeave() { setIdx(null); setPct(null) }
+  return { idx, pct, onMove, onLeave }
+}
+
+// ─────────────────────────────────────────────────────────────
+// POWER CURVE CHART — vélo uniquement
+// ─────────────────────────────────────────────────────────────
+function PowerCurveChart({ watts }: { watts: number[] }) {
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const N = watts.length
+  if (N < 60) return null
+
+  // Compute MMP using prefix sums (O(N) per duration)
+  const DURATIONS = [5,10,30,60,120,180,300,480,600,720,1200,1800,2700,3600,7200,10800]
+    .filter(d => d <= N)
+
+  const prefix = useMemo(() => {
+    const p = new Array(N + 1).fill(0)
+    for (let i = 0; i < N; i++) p[i + 1] = p[i] + watts[i]
+    return p
+  }, [watts, N])
+
+  const mmp = useMemo(() => DURATIONS.map(d => {
+    let max = 0
+    for (let i = 0; i <= N - d; i++) {
+      const avg = (prefix[i + d] - prefix[i]) / d
+      if (avg > max) max = avg
+    }
+    return Math.round(max)
+  }), [prefix, N, DURATIONS])
+
+  const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
+
+  const W = 1000, H = 80, pad = 6
+  const minV = Math.min(...mmp) * 0.9
+  const maxV = Math.max(...mmp) * 1.05
+  const range = maxV - minV || 1
+
+  const pts = mmp.map((v, i) => {
+    const x = DURATIONS.length > 1 ? (i / (DURATIONS.length - 1)) * W : W / 2
+    const y = H - pad - ((v - minV) / range) * (H - pad * 2)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const fillPath = `M0,${H}L${pts.join('L')}L${W},${H}Z`
+  const linePath = `M${pts.join('L')}`
+
+  function fmtDuration(s: number): string {
+    if (s < 60)   return `${s}s`
+    if (s < 3600) return `${s / 60}'`
+    return `${s / 3600}h`
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+        Courbe de puissance (MMP)
+      </div>
+
+      {/* Hover bar */}
+      {idx !== null && (
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[idx]} W</span>
+          <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontMono }}>{fmtDuration(DURATIONS[idx])}</span>
+          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[idx] / (watts.reduce((a,b)=>a+b,0)/N)).toFixed(2)}× moy.</span>
+        </div>
+      )}
+
+      <div style={{ position: 'relative', cursor: 'crosshair' }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
+          preserveAspectRatio="none"
+          onMouseMove={onMove} onMouseLeave={onLeave}
+          onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
+          <defs>
+            <linearGradient id="mmpFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#5b6fff" stopOpacity="0.3"/>
+              <stop offset="100%" stopColor="#5b6fff" stopOpacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <path d={fillPath} fill="url(#mmpFill)"/>
+          <path d={linePath} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
+          {pct !== null && (
+            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+          )}
+          {idx !== null && (() => {
+            const cx = DURATIONS.length > 1 ? (idx / (DURATIONS.length - 1)) * W : W / 2
+            const cy = H - pad - ((mmp[idx] - minV) / range) * (H - pad * 2)
+            return <circle cx={cx} cy={cy} r="3" fill="#5b6fff"/>
+          })()}
+        </svg>
+      </div>
+
+      {/* X axis labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        {DURATIONS.filter((_, i) => i === 0 || i === Math.floor(DURATIONS.length/4) || i === Math.floor(DURATIONS.length/2) || i === Math.floor(3*DURATIONS.length/4) || i === DURATIONS.length-1)
+          .map(d => (
+            <span key={d} style={{ fontSize: 9, color: T.textMuted, fontFamily: T.fontMono }}>{fmtDuration(d)}</span>
+          ))}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// GAP CHART — Course à pied uniquement (allure réelle vs ajustée)
+// ─────────────────────────────────────────────────────────────
+function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitude: number[]; distance: number[] }) {
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const N = Math.min(velocity.length, altitude.length, distance.length)
+  if (N < 60) return null
+
+  // Smooth data
+  function smooth(arr: number[], w = 5): number[] {
+    return arr.map((_, i) => {
+      const sl = arr.slice(Math.max(0, i - w), i + w + 1)
+      return sl.reduce((a, b) => a + b, 0) / sl.length
+    })
+  }
+
+  const pace = useMemo(() =>
+    smooth(velocity.slice(0, N).map(v => v > 0.3 ? 1000 / v : 0), 10),
+    [velocity, N]
+  )
+
+  // Grade Adjusted Pace using Minetti energy cost model
+  // grade = (dAlt / dDist) per sample, smoothed
+  const gap = useMemo(() => {
+    const grades = altitude.slice(0, N).map((alt, i) => {
+      if (i === 0) return 0
+      const dDist = Math.max(0.1, distance[i] - distance[i - 1])
+      const dAlt  = alt - altitude[i - 1]
+      return dAlt / dDist  // unitless grade (rise/run)
+    })
+    const sGrades = smooth(grades, 15)
+    return pace.map((p, i) => {
+      if (p <= 0) return 0
+      const g = Math.max(-0.45, Math.min(0.45, sGrades[i]))
+      // Strava-like GAP factor based on Minetti metabolic cost
+      // factor > 1 → going uphill (harder) → GAP pace is faster
+      const factor = 1 + g * (0.033 * Math.abs(g) * 1000 + 0.133)
+      return p / Math.max(0.5, factor)
+    })
+  }, [pace, altitude, distance, N, smooth])
+
+  const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, N)
+  const W = 1000, H = 80, pad = 4
+
+  const validPace = pace.filter(v => v > 0)
+  const validGap  = gap.filter(v => v > 0)
+  if (!validPace.length) return null
+
+  const minV = Math.min(...validPace, ...validGap) * 0.95
+  const maxV = Math.max(...validPace, ...validGap) * 1.05
+  const range = maxV - minV || 1
+
+  function buildPath(data: number[], fill: boolean): string {
+    const pts = data.map((v, i) => {
+      const x = (i / (N - 1)) * W
+      const y = v > 0 ? H - pad - ((maxV - v) / range) * (H - pad * 2) : H
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    if (fill) return `M0,${H}L${pts.join('L')}L${W},${H}Z`
+    return `M${pts.join('L')}`
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+        Allure réelle vs ajustée (GAP)
+      </div>
+
+      {idx !== null && (
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600, fontFamily: T.fontMono }}>Réelle {fmtPace(pace[idx])}</span>
+          <span style={{ fontSize: 11, color: '#86efac', fontWeight: 600, fontFamily: T.fontMono }}>GAP {fmtPace(gap[idx])}</span>
+          {gap[idx] > 0 && pace[idx] > 0 && Math.abs(gap[idx] - pace[idx]) > 3 && (
+            <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>
+              {gap[idx] < pace[idx] ? `↑ montée (${Math.round(pace[idx]-gap[idx])}s/km)` : `↓ descente`}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div style={{ position: 'relative', cursor: 'crosshair' }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
+          preserveAspectRatio="none"
+          onMouseMove={onMove} onMouseLeave={onLeave}
+          onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
+          <defs>
+            <linearGradient id="gapFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#86efac" stopOpacity="0.25"/>
+              <stop offset="100%" stopColor="#86efac" stopOpacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <path d={buildPath(gap, true)} fill="url(#gapFill)"/>
+          <path d={buildPath(gap, false)} fill="none" stroke="#86efac" strokeWidth="1.5" strokeLinejoin="round"/>
+          <path d={buildPath(pace, false)} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round"/>
+          {pct !== null && (
+            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+          )}
+        </svg>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+          <span style={{ width: 12, height: 2, background: '#22c55e', display: 'inline-block', borderRadius: 1 }}/>Allure réelle
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+          <span style={{ width: 12, height: 2, background: '#86efac', display: 'inline-block', borderRadius: 1 }}/>Allure ajustée (GAP)
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// DECOUPLING CHART — Vélo uniquement (puissance normalisée vs FC)
+// ─────────────────────────────────────────────────────────────
+function DecouplingChart({ watts, heartrate, decouplingPct }: {
+  watts: number[]; heartrate: number[]; decouplingPct: number | null
+}) {
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const N = Math.min(watts.length, heartrate.length)
+  if (N < 120) return null
+
+  function smooth(arr: number[], w = 15): number[] {
+    return arr.map((_, i) => {
+      const sl = arr.slice(Math.max(0, i - w), i + w + 1)
+      return sl.reduce((a, b) => a + b, 0) / sl.length
+    })
+  }
+
+  const sWatts = useMemo(() => smooth(watts.slice(0, N)), [watts, N])
+  const sHr    = useMemo(() => smooth(heartrate.slice(0, N)), [heartrate, N])
+
+  // Normalize both 0–1
+  const wMin = Math.min(...sWatts), wMax = Math.max(...sWatts)
+  const hMin = Math.min(...sHr),    hMax = Math.max(...sHr)
+  const wRange = wMax - wMin || 1
+  const hRange = hMax - hMin || 1
+
+  const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, N)
+  const W = 1000, H = 72, pad = 4
+
+  function buildNormPath(data: number[], mn: number, rng: number, fill: boolean): string {
+    const pts = data.map((v, i) => {
+      const x = (i / (N - 1)) * W
+      const y = H - pad - ((v - mn) / rng) * (H - pad * 2)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    if (fill) return `M0,${H}L${pts.join('L')}L${W},${H}Z`
+    return `M${pts.join('L')}`
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+        Découplage puissance / FC
+        {decouplingPct != null && (
+          <span style={{ marginLeft: 8, fontSize: 11, color: decouplingPct < 5 ? '#22c55e' : decouplingPct < 10 ? T.textSub : '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>
+            {decouplingPct.toFixed(1)}%
+          </span>
+        )}
+      </div>
+
+      {idx !== null && (
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(sWatts[idx])} W</span>
+          <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(sHr[idx])} bpm</span>
+        </div>
+      )}
+
+      <div style={{ position: 'relative', cursor: 'crosshair' }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
+          preserveAspectRatio="none"
+          onMouseMove={onMove} onMouseLeave={onLeave}
+          onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
+          <path d={buildNormPath(sWatts, wMin, wRange, false)} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
+          <path d={buildNormPath(sHr, hMin, hRange, false)} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeDasharray="6,3"/>
+          {pct !== null && (
+            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+          )}
+        </svg>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+          <span style={{ width: 12, height: 2, background: '#5b6fff', display: 'inline-block', borderRadius: 1 }}/>Puissance (normalisée)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+          <span style={{ width: 12, height: 2, background: '#ef4444', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #ef4444' }}/>FC (normalisée)
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// HR CUMULATIVE CHART — FC durée cumulée (vélo + course)
+// ─────────────────────────────────────────────────────────────
+function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHrEst: number }) {
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const N = heartrate.length
+  if (N < 60) return null
+
+  const minHr = Math.max(50, Math.floor(Math.min(...heartrate) / 10) * 10)
+  const maxHr = Math.min(240, Math.ceil(Math.max(...heartrate) / 10) * 10)
+
+  // Count seconds at each bpm
+  const bpmCounts = useMemo(() => {
+    const counts: Record<number, number> = {}
+    for (const hr of heartrate) {
+      const bpm = Math.round(hr)
+      counts[bpm] = (counts[bpm] ?? 0) + 1
+    }
+    return counts
+  }, [heartrate])
+
+  // Build cumulative time array: for each bpm X, how many seconds were spent at >= X
+  const bpmRange = Array.from({ length: maxHr - minHr + 1 }, (_, i) => minHr + i)
+  const cumulative = useMemo(() => {
+    const totals = bpmRange.map(bpm => bpmCounts[bpm] ?? 0)
+    // suffix sum: time at >= bpm
+    const cum = new Array(totals.length).fill(0)
+    cum[totals.length - 1] = totals[totals.length - 1]
+    for (let i = totals.length - 2; i >= 0; i--) cum[i] = cum[i + 1] + totals[i]
+    return cum
+  }, [bpmCounts, bpmRange])
+
+  const maxCum = Math.max(...cumulative, 1)
+  const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, bpmRange.length)
+
+  const W = 1000, H = 100, pad = 4
+  const pts = cumulative.map((v, i) => {
+    const x = (i / (bpmRange.length - 1)) * W
+    const y = H - pad - (v / maxCum) * (H - pad * 2)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const fillPath = `M0,${H}L${pts.join('L')}L${W},${H}Z`
+  const linePath = `M${pts.join('L')}`
+
+  function fmtCumTime(s: number): string {
+    if (s < 60)   return `${s}s`
+    if (s < 3600) return `${Math.round(s/60)}'`
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60)
+    return `${h}h${String(m).padStart(2,'0')}`
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+        Durée cumulée par FC
+      </div>
+
+      {idx !== null && (
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>{bpmRange[idx]} bpm</span>
+          <span style={{ fontSize: 11, color: T.text, fontWeight: 600, fontFamily: T.fontMono }}>{fmtCumTime(cumulative[idx])}</span>
+          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>({Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% FC max)</span>
+        </div>
+      )}
+
+      <div style={{ position: 'relative', cursor: 'crosshair' }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
+          preserveAspectRatio="none"
+          onMouseMove={onMove} onMouseLeave={onLeave}
+          onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
+          <defs>
+            <linearGradient id="hrCumFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2"/>
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <path d={fillPath} fill="url(#hrCumFill)"/>
+          <path d={linePath} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round"/>
+          {pct !== null && (
+            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+          )}
+        </svg>
+      </div>
+
+      {/* X axis — bpm labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        {[minHr, ...Array.from({length:4},(_,i)=>Math.round(minHr+(maxHr-minHr)*(i+1)/5)), maxHr].map(bpm => (
+          <span key={bpm} style={{ fontSize: 9, color: T.textMuted, fontFamily: T.fontMono }}>{bpm}</span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // SYNC CHARTS (crosshair, HR zone coloring, laps)
 // ─────────────────────────────────────────────────────────────
 function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
@@ -542,25 +965,28 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     })
   }
 
-  function buildFillPath(data: number[], H: number, pad = 4): string {
+  function buildFillPath(data: number[], H: number, pad = 4, invertY = false): string {
     if (!data.length) return ''
     const mn = Math.min(...data), mx = Math.max(...data)
     const range = mx - mn || 1
     const pts = data.map((v, i) => {
       const x = (i / (N - 1)) * 1000
-      const y = H - pad - ((v - mn) / range) * (H - pad * 2)
+      // invertY: high value → top (low y). Used for pace where low s/km = fast = should be high
+      const norm = invertY ? (mx - v) / range : (v - mn) / range
+      const y = H - pad - norm * (H - pad * 2)
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
     return `M0,${H}L${pts.join('L')}L${1000},${H}Z`
   }
 
-  function buildLinePath(data: number[], H: number, pad = 4): string {
+  function buildLinePath(data: number[], H: number, pad = 4, invertY = false): string {
     if (!data.length) return ''
     const mn = Math.min(...data), mx = Math.max(...data)
     const range = mx - mn || 1
     const pts = data.map((v, i) => {
       const x = (i / (N - 1)) * 1000
-      const y = H - pad - ((v - mn) / range) * (H - pad * 2)
+      const norm = invertY ? (mx - v) / range : (v - mn) / range
+      const y = H - pad - norm * (H - pad * 2)
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
     return `M${pts.join('L')}`
@@ -590,14 +1016,14 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
 
   type Track = {
     label: string; data: number[]; color: string; unit: string; H: number
-    isHr?: boolean; isAlt?: boolean; formatY?: (v: number) => string
+    isHr?: boolean; isAlt?: boolean; invertY?: boolean; formatY?: (v: number) => string
   }
 
   const tracks: Track[] = ([
     alt    ? { label: 'Altitude', data: alt, color: '#94a3b8', unit: 'm',     H: 64, isAlt: true, formatY: (v: number) => `${Math.round(v)} m` } : null,
     hr     ? { label: 'FC',       data: hr,  color: '#ef4444', unit: 'bpm',   H: 64, isHr: true,  formatY: (v: number) => `${Math.round(v)} bpm` } : null,
     isBike && watts    ? { label: 'Puissance', data: watts,    color: '#5b6fff', unit: 'W',     H: 72, formatY: (v: number) => `${Math.round(v)} W` } : null,
-    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#22c55e', unit: 's/km', H: 72, formatY: (v: number) => fmtPace(v) } : null,
+    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#22c55e', unit: 's/km', H: 72, invertY: true, formatY: (v: number) => fmtPace(v) } : null,
     cadence ? { label: 'Cadence', data: cadence, color: '#00c8e0', unit: 'rpm', H: 48, formatY: (v: number) => `${Math.round(v)} rpm` } : null,
   ] as (Track|null)[]).filter((t): t is Track => t !== null)
 
@@ -685,19 +1111,31 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
         {tracks.map((track) => {
           const mn = Math.min(...track.data), mx = Math.max(...track.data)
           const range = mx - mn || 1
-          const fillPath = buildFillPath(track.data, track.H)
-          const linePath = buildLinePath(track.data, track.H)
+          const inv = track.invertY ?? false
+          const fillPath = buildFillPath(track.data, track.H, 4, inv)
+          const linePath = buildLinePath(track.data, track.H, 4, inv)
 
-          // Cursor y position for horizontal line
+          // Cursor y position — respect invertY
           const cursorY = cursor !== null
-            ? track.H - 4 - ((track.data[cursor] - mn) / range) * (track.H - 8)
+            ? (() => {
+                const v = track.data[cursor]
+                const norm = inv ? (mx - v) / range : (v - mn) / range
+                return track.H - 4 - norm * (track.H - 8)
+              })()
             : null
+
+          // Range label — for inverted pace, show fast → slow (ascending label)
+          const rangeLabel = track.formatY
+            ? inv
+              ? `${track.formatY(mx)} – ${track.formatY(mn)}`   // slowest – fastest (axis direction)
+              : `${track.formatY(mn)} – ${track.formatY(mx)}`
+            : `${Math.round(mn)} – ${Math.round(mx)} ${track.unit}`
 
           return (
             <div key={track.label} style={{ marginBottom: 4 }}>
               <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
-                <span>{track.formatY ? `${track.formatY(mn)} – ${track.formatY(mx)}` : `${Math.round(mn)} – ${Math.round(mx)} ${track.unit}`}</span>
+                <span>{rangeLabel}</span>
               </div>
               <svg
                 viewBox={`0 0 1000 ${track.H}`}
@@ -1357,29 +1795,35 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             {!isGym && a.distance_m != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Distance</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtDist(a.distance_m)}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDist(a.distance_m)}</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 12, color: T.textMuted }}>Durée</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtDur(a.moving_time_s)}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(a.moving_time_s)}</span>
             </div>
             {isBike && a.avg_speed_ms != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h</span>
+              </div>
+            )}
+            {isBike && a.max_speed_ms != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse max.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.max_speed_ms) * 3.6).toFixed(1)} km/h</span>
               </div>
             )}
             {(isRun || isSwim) && paceS != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Allure moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtPace(paceS)}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtPace(paceS)}</span>
               </div>
             )}
             {isBike && freewheelS != null && freewheelS > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{fmtDur(freewheelS)} ({freewheelPct}%)</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelS)} ({freewheelPct}%)</span>
               </div>
             )}
           </div>
@@ -1387,27 +1831,15 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           {/* BLOC 2 — Charge / ressenti */}
           <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
             {sensation != null && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{sensation}/10</span>
-                </div>
-                <div style={{ height: 4, background: T.border, borderRadius: 2 }}>
-                  <div style={{ width: `${(Number(sensation) / 10) * 100}%`, height: '100%', borderRadius: 2,
-                    background: Number(sensation) <= 3 ? ZONE_COLORS[1] : Number(sensation) <= 6 ? ZONE_COLORS[2] : Number(sensation) <= 8 ? ZONE_COLORS[3] : ZONE_COLORS[4] }} />
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{sensation}/10</span>
               </div>
             )}
-            {a.rpe != null && a.rpe !== sensation && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <span style={{ fontSize: 12, color: T.textMuted }}>RPE</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Number(a.rpe).toFixed(1)}/10</span>
-                </div>
-                <div style={{ height: 4, background: T.border, borderRadius: 2 }}>
-                  <div style={{ width: `${(Number(a.rpe) / 10) * 100}%`, height: '100%', borderRadius: 2,
-                    background: Number(a.rpe) <= 3 ? ZONE_COLORS[1] : Number(a.rpe) <= 6 ? ZONE_COLORS[2] : Number(a.rpe) <= 8 ? ZONE_COLORS[3] : ZONE_COLORS[4] }} />
-                </div>
+            {a.rpe != null && Number(a.rpe) !== sensation && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>RPE</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Number(a.rpe).toFixed(1)}/10</span>
               </div>
             )}
             {a.tss != null && (
@@ -1415,7 +1847,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
                   TSS<TooltipInfo text={'TSS (Training Stress Score)\n\nMesure la charge d\'une séance.\n\nTSS = (durée × NP × IF)² / FTP²\n\n< 150 → récupération rapide\n150–300 → fatigant\n> 300 → très éprouvant'} />
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.tss))}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.tss))}</span>
+              </div>
+            )}
+            {a.trimp != null && !a.tss && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>TRIMP</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.trimp))}</span>
               </div>
             )}
           </div>
@@ -1477,60 +1915,82 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           </div>
 
           {/* BLOC 4 — Cardio */}
-          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-            {a.avg_hr != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_hr))} bpm</span>
+          {(() => {
+            const maxHrEst = estimateMaxHr(profile.birth_date)
+            return (
+              <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+                {a.avg_hr != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                      {Math.round(Number(a.avg_hr))} bpm
+                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.avg_hr)/maxHrEst)*100)}%)</span>
+                    </span>
+                  </div>
+                )}
+                {a.max_hr != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>FC max.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                      {a.max_hr} bpm
+                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.max_hr)/maxHrEst)*100)}%)</span>
+                    </span>
+                  </div>
+                )}
+                {a.aerobic_decoupling != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Number(a.aerobic_decoupling).toFixed(1)}%</span>
+                  </div>
+                )}
               </div>
-            )}
-            {a.max_hr != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>FC max.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{a.max_hr} bpm</span>
-              </div>
-            )}
-            {a.aerobic_decoupling != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Number(a.aerobic_decoupling).toFixed(1)}%</span>
-              </div>
-            )}
-          </div>
+            )
+          })()}
 
           {/* BLOC 5 — Contexte */}
-          <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
-            {a.elevation_gain_m != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
+          {(() => {
+            const maxTemp = a.streams?.temp?.length
+              ? Math.round(Math.max(...a.streams.temp)) : null
+            return (
+              <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
+                {(a.elevation_gain_m ?? 0) > 5 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
+                  </div>
+                )}
+                {maxAlt != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
+                  </div>
+                )}
+                {avgAlt != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
+                  </div>
+                )}
+                {a.avg_temp_c != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Temp. moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                      {Math.round(Number(a.avg_temp_c))}°C
+                      {maxTemp != null && maxTemp !== Math.round(Number(a.avg_temp_c)) && (
+                        <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>(max {maxTemp}°C)</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {a.calories != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.calories))} kcal</span>
+                  </div>
+                )}
               </div>
-            )}
-            {maxAlt != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{maxAlt} m</span>
-              </div>
-            )}
-            {avgAlt != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{avgAlt} m</span>
-              </div>
-            )}
-            {a.avg_temp_c != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Température</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_temp_c))}°C</span>
-              </div>
-            )}
-            {a.calories != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{a.calories} kcal</span>
-              </div>
-            )}
-          </div>
+            )
+          })()}
         </div>
 
         {/* ── COURBES ── */}
@@ -1627,6 +2087,33 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 })}
               </div>
             </div>
+          )
+        })()}
+
+        {/* ── GRAPHIQUES D'ANALYSE AVANCÉE ── */}
+        {a.streams && (() => {
+          const s = a.streams
+          const maxHrEst = estimateMaxHr(profile.birth_date)
+          return (
+            <>
+              {/* Power Curve — vélo uniquement */}
+              {isBike && s.watts && s.watts.length > 60 && (
+                <PowerCurveChart watts={s.watts} />
+              )}
+              {/* GAP — course à pied */}
+              {isRun && s.velocity && s.altitude && s.distance &&
+               s.velocity.length > 60 && (
+                <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
+              )}
+              {/* Decoupling chart — vélo */}
+              {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
+                <DecouplingChart watts={s.watts} heartrate={s.heartrate} decouplingPct={decoupling} />
+              )}
+              {/* HR Cumulative — vélo + course */}
+              {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
+                <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
+              )}
+            </>
           )
         })()}
 
@@ -2035,9 +2522,28 @@ export default function TrainingPage() {
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [syncing, setSyncing]       = useState(false)
+  const [syncMsg, setSyncMsg]       = useState<string | null>(null)
   const width   = useWindowWidth()
   const isMobile = width < 768
   const active  = NAV.find(n => n.id === section)!
+
+  async function syncStrava() {
+    setSyncing(true)
+    setSyncMsg(null)
+    try {
+      const res  = await fetch('/api/sync/strava', { method: 'POST' })
+      const json = await res.json() as { synced?: number; error?: string }
+      if (!res.ok) throw new Error(json.error ?? 'Sync échoué')
+      setSyncMsg(json.synced === 0 ? 'À jour' : `+${json.synced} activité${json.synced !== 1 ? 's' : ''}`)
+      await reload()
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? e.message : 'Erreur')
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncMsg(null), 4000)
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
@@ -2054,12 +2560,29 @@ export default function TrainingPage() {
           <span style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.3, fontFamily: T.fontDisplay }}>Training</span>
           {!isMobile && <span style={{ fontSize: 12, color: T.textMuted }}>/ {active.label}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {loading && <span style={{ fontSize: 11, color: T.textMuted }}>Chargement…</span>}
-          {!loading && !error && <span style={{ fontSize: 11, color: T.textMuted }}>{activities.length} activités</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
+          {!loading && !error && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>{activities.length} activités</span>}
+          {syncMsg && (
+            <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg === 'À jour' ? T.textMuted : '#ef4444',
+              fontFamily: T.fontBody, fontWeight: 600 }}>{syncMsg}</span>
+          )}
+          <button
+            onClick={syncStrava}
+            disabled={syncing}
+            title="Synchroniser les nouvelles activités depuis Strava"
+            style={{ background: syncing ? T.bgAlt : T.accent, border: 'none', borderRadius: T.radiusSm,
+              color: syncing ? T.textMuted : '#fff', cursor: syncing ? 'not-allowed' : 'pointer',
+              padding: '5px 12px', fontSize: 12, fontWeight: 600, fontFamily: T.fontDisplay,
+              transition: 'all 0.15s', opacity: syncing ? 0.7 : 1 }}
+          >
+            {syncing ? 'Sync…' : 'Strava'}
+          </button>
           <button
             onClick={reload}
-            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, color: T.textSub, cursor: 'pointer', padding: '4px 10px', fontSize: 13 }}
+            title="Recharger depuis la base"
+            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
+              color: T.textSub, cursor: 'pointer', padding: '5px 9px', fontSize: 13 }}
           >
             ↻
           </button>

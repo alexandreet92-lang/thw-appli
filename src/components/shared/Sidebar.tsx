@@ -38,12 +38,23 @@ const NAV = [
     ),
   },
   {
-    href: '/data',
-    label: 'Données',
+    href: '/recovery',
+    label: 'Récupération',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <path d="M3 3v18h18"/>
-        <path d="M7 16l4-6 4 4 4-8"/>
+        <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+        <path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4"/>
+        <path d="M12 8v1M9.17 9.17l.7.7M8 12h1M15 12h1M14.12 9.88l.71-.71"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/nutrition',
+    label: 'Nutrition',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+        <path d="M12 2C8 2 5 5 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-4-3-7-7-7z"/>
+        <circle cx="12" cy="9" r="2.5"/>
       </svg>
     ),
   },

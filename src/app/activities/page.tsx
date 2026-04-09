@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTheme } from '@/hooks/useTheme'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -127,8 +128,13 @@ interface Profile { weight_kg: number | null; birth_date: string | null }
 // SPORT CONFIG (no emojis)
 // ─────────────────────────────────────────────────────────────
 const SPORT_LABEL: Record<SportType, string> = {
-  run: 'Course', trail_run: 'Trail', bike: 'Vélo', virtual_bike: 'Home trainer',
+  run: 'Course', trail_run: 'Trail', bike: 'Vélo', virtual_bike: 'Vélo',
   swim: 'Natation', rowing: 'Aviron', hyrox: 'Hyrox', gym: 'Muscu', other: 'Autre',
+}
+
+// Pour les agrégations sport, virtual_bike est regroupé avec bike
+function normalizeSport(sport: string): string {
+  return sport === 'virtual_bike' ? 'bike' : sport
 }
 
 const SPORT_COLOR: Record<SportType, string> = {
@@ -1327,12 +1333,288 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
 // ─────────────────────────────────────────────────────────────
 // SECTION: DONNÉES
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// DONNÉES SPÉCIFIQUES PAR SPORT
+// ─────────────────────────────────────────────────────────────
+function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZones, bikeTimesZ, runTimesZ, hrTimesZ }: {
+  inRange: Activity[]
+  zones: TrainingZoneRow[]
+  bikeZones: ParsedZone[] | null
+  runZones: ParsedZone[] | null
+  hrZones: ParsedZone[]
+  bikeTimesZ: number[] | null
+  runTimesZ: number[] | null
+  hrTimesZ: number[]
+}) {
+  const [activeSport, setActiveSport] = useState<string>('run')
+
+  const sportsPresent = useMemo(() => {
+    const s = new Set(inRange.map(a => normalizeSport(a.sport_type)))
+    return ['run', 'bike', 'swim', 'gym', 'hyrox', 'rowing'].filter(sp => s.has(sp))
+  }, [inRange])
+
+  if (!sportsPresent.length) return <div style={{ color: T.textMuted, padding: 20 }}>Aucune activité dans la période</div>
+
+  const sport = sportsPresent.includes(activeSport) ? activeSport : sportsPresent[0]
+  const sportActs = inRange.filter(a => normalizeSport(a.sport_type) === sport)
+
+  // Run metrics
+  const runPaces = sportActs.filter(a => a.avg_pace_s_km || (a.moving_time_s && a.distance_m)).map(a =>
+    a.avg_pace_s_km ?? (a.moving_time_s! / a.distance_m!) * 1000)
+  const avgPace = runPaces.length ? runPaces.reduce((a, b) => a + b, 0) / runPaces.length : null
+  const runCadences = sportActs.filter(a => a.avg_cadence).map(a => Number(a.avg_cadence))
+  const avgRunCad = runCadences.length ? Math.round(runCadences.reduce((a,b)=>a+b,0)/runCadences.length) : null
+
+  // Bike metrics
+  const bikeWatts = sportActs.filter(a => a.avg_watts).map(a => Number(a.avg_watts))
+  const avgWatts = bikeWatts.length ? Math.round(bikeWatts.reduce((a,b)=>a+b,0)/bikeWatts.length) : null
+  const bikeNp = sportActs.filter(a => a.normalized_watts).map(a => Number(a.normalized_watts))
+  const avgNp = bikeNp.length ? Math.round(bikeNp.reduce((a,b)=>a+b,0)/bikeNp.length) : null
+  const bikeIf = sportActs.filter(a => a.intensity_factor).map(a => Number(a.intensity_factor))
+  const avgIf = bikeIf.length ? (bikeIf.reduce((a,b)=>a+b,0)/bikeIf.length).toFixed(2) : null
+  const bikeCad = sportActs.filter(a => a.avg_cadence).map(a => Number(a.avg_cadence))
+  const avgBikeCad = bikeCad.length ? Math.round(bikeCad.reduce((a,b)=>a+b,0)/bikeCad.length) : null
+  const bikeDecoupling = sportActs.filter(a => a.aerobic_decoupling != null).map(a => Number(a.aerobic_decoupling))
+  const avgDecoupling = bikeDecoupling.length ? (bikeDecoupling.reduce((a,b)=>a+b,0)/bikeDecoupling.length).toFixed(1) : null
+  const runZoneRow = zones.find(z => z.sport === 'run')
+  const vapKmh = runZoneRow?.vma_ms ? (Number(runZoneRow.vma_ms) * 3.6).toFixed(1) : null
+
+  const SPORT_TAB_LABEL: Record<string, string> = { run: 'Course', bike: 'Vélo', swim: 'Natation', gym: 'Muscu', hyrox: 'Hyrox', rowing: 'Aviron' }
+
+  return (
+    <div>
+      {/* Sport tabs */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+        {sportsPresent.map(sp => (
+          <button key={sp} onClick={() => setActiveSport(sp)} style={{
+            padding: '6px 16px', borderRadius: 20, fontSize: 12, cursor: 'pointer', fontWeight: sport === sp ? 700 : 400,
+            background: sport === sp ? (SPORT_COLOR[sp as SportType] ?? T.accent) : T.surface,
+            color: sport === sp ? '#fff' : T.textSub,
+            border: sport === sp ? `1px solid ${SPORT_COLOR[sp as SportType] ?? T.accent}` : `1px solid ${T.border}`,
+            transition: 'all 0.15s',
+          }}>
+            {SPORT_TAB_LABEL[sp] ?? sp}
+          </button>
+        ))}
+      </div>
+
+      {/* Run specific */}
+      {sport === 'run' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+            {avgPace && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
+            {vapKmh && <StatCard label="VAP" value={`${vapKmh} km/h`} />}
+            {avgRunCad && <StatCard label="Cadence moy." value={`${avgRunCad} spm`} />}
+            {avgDecoupling && <StatCard label="Découplage moy." value={`${avgDecoupling}%`} />}
+          </div>
+          {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <SectionTitle>Zones allure</SectionTitle>
+              <ZoneBars zones={runZones} timesS={runTimesZ} />
+            </div>
+          )}
+          {hrTimesZ.some(t => t > 0) && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <SectionTitle>Zones FC</SectionTitle>
+              <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bike specific */}
+      {sport === 'bike' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+            {avgWatts && <StatCard label="Watts moy." value={`${avgWatts} W`} />}
+            {avgNp && <StatCard label="NP moy." value={`${avgNp} W`} />}
+            {avgIf && <StatCard label="IF moy." value={avgIf} />}
+            {avgBikeCad && <StatCard label="Cadence moy." value={`${avgBikeCad} rpm`} />}
+            {avgDecoupling && <StatCard label="Découplage moy." value={`${avgDecoupling}%`} />}
+          </div>
+          {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <SectionTitle>Zones puissance</SectionTitle>
+              <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
+            </div>
+          )}
+          {hrTimesZ.some(t => t > 0) && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <SectionTitle>Zones FC</SectionTitle>
+              <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Swim specific */}
+      {sport === 'swim' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+          <StatCard label="Séances" value={sportActs.length.toString()} />
+          <StatCard label="Distance tot." value={fmtDist(sportActs.reduce((s,a) => s + (a.distance_m ?? 0), 0))} />
+          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
+          {(() => {
+            const paces = sportActs.filter(a => a.avg_pace_s_km).map(a => Number(a.avg_pace_s_km))
+            const ap = paces.length ? Math.round(paces.reduce((a,b)=>a+b,0)/paces.length) : null
+            return ap ? <StatCard label="Allure moy." value={fmtPace(ap)} /> : null
+          })()}
+        </div>
+      )}
+
+      {/* Gym specific */}
+      {sport === 'gym' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+          <StatCard label="Séances" value={sportActs.length.toString()} />
+          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
+          {(() => {
+            const cals = sportActs.filter(a => a.calories).map(a => Number(a.calories))
+            return cals.length ? <StatCard label="Calories moy." value={`${Math.round(cals.reduce((a,b)=>a+b,0)/cals.length)} kcal`} /> : null
+          })()}
+        </div>
+      )}
+
+      {/* Hyrox specific */}
+      {sport === 'hyrox' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+          <StatCard label="Séances" value={sportActs.length.toString()} />
+          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
+          <StatCard label="Distance tot." value={fmtDist(sportActs.reduce((s,a) => s + (a.distance_m ?? 0), 0))} />
+        </div>
+      )}
+
+      {/* Rowing specific */}
+      {sport === 'rowing' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+          <StatCard label="Séances" value={sportActs.length.toString()} />
+          <StatCard label="Distance tot." value={fmtDist(sportActs.reduce((s,a) => s + (a.distance_m ?? 0), 0))} />
+          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// WEEK DETAIL MODAL
+// ─────────────────────────────────────────────────────────────
+function WeekDetailModal({ week, activities, onClose }: {
+  week: { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }
+  activities: Activity[]
+  onClose: () => void
+}) {
+  const weekStart = new Date(week.week)
+  const weekEnd   = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6)
+  const weekActs  = activities.filter(a => {
+    const d = new Date(a.started_at)
+    return d >= weekStart && d <= weekEnd
+  })
+
+  const totalTss  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
+  const totalElev = weekActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
+  const hrVals    = weekActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
+  const meanHr    = hrVals.length ? Math.round(hrVals.reduce((a,b)=>a+b,0)/hrVals.length) : null
+
+  const sportEntries = Array.from(week.sports.entries()).sort((a, b) => b[1] - a[1])
+  const maxSport = Math.max(...sportEntries.map(e => e[1]), 1)
+
+  const label = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) +
+    ' – ' + weekEnd.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 600,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }} onClick={onClose}>
+      <div style={{
+        background: T.surface, borderRadius: T.radius, padding: '24px 28px',
+        width: '100%', maxWidth: 480, boxShadow: T.shadowCard, maxHeight: '90vh', overflowY: 'auto',
+      }} onClick={e => e.stopPropagation()}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>Semaine du {label}</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{week.count} séance{week.count !== 1 ? 's' : ''}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: T.textMuted, lineHeight: 1 }}>✕</button>
+        </div>
+
+        {/* KPIs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+          {[
+            { label: 'Temps', value: fmtDur(week.time) },
+            { label: 'Distance', value: fmtDist(week.dist) },
+            { label: 'D+', value: totalElev > 1 ? `+${Math.round(totalElev)} m` : '—' },
+            { label: 'TSS', value: totalTss ? Math.round(totalTss).toString() : '—' },
+            { label: 'FC moy.', value: meanHr ? `${meanHr} bpm` : '—' },
+            { label: 'Séances', value: week.count.toString() },
+          ].map(k => (
+            <div key={k.label} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.7, fontFamily: T.fontDisplay, fontWeight: 700 }}>{k.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>{k.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Répartition sport */}
+        {sportEntries.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 10, fontFamily: T.fontDisplay }}>Répartition</div>
+            {sportEntries.map(([sport, time]) => {
+              const col = SPORT_COLOR[sport as SportType] ?? '#888'
+              const pct = (time / maxSport) * 100
+              return (
+                <div key={sport} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 56px', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: T.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: col, display: 'inline-block', flexShrink: 0 }} />
+                    {SPORT_LABEL[sport as SportType] ?? sport}
+                  </div>
+                  <div style={{ height: 8, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: col, borderRadius: 4, transition: 'width 0.4s' }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: T.textSub, textAlign: 'right' }}>{fmtDur(time)}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Activités */}
+        {weekActs.length > 0 && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 8, fontFamily: T.fontDisplay }}>Activités</div>
+            {weekActs.map(a => {
+              const col = SPORT_COLOR[a.sport_type] ?? '#888'
+              return (
+                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${T.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 3, height: 32, background: col, borderRadius: 2, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{a.title}</div>
+                      <div style={{ fontSize: 10, color: T.textMuted }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 11, color: T.textSub, fontFamily: T.fontMono }}>
+                    {a.distance_m ? <div style={{ fontWeight: 600, color: T.text }}>{fmtDist(a.distance_m)}</div> : null}
+                    <div>{fmtDur(a.moving_time_s)}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function SectionDonnees({ activities, zones, profile }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
 }) {
   const [filter, setFilter] = useState<TimeFilter>('4w')
+  const [dataTab, setDataTab] = useState<'general' | 'specific'>('general')
+  const [selectedWeek, setSelectedWeek] = useState<null | { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }>(null)
   const dbMetrics = useMetricsDaily()
   const cutoff = cutoffDate(filter)
   const inRange = useMemo(() =>
@@ -1372,7 +1654,7 @@ function SectionDonnees({ activities, zones, profile }: {
         w.time  += a.moving_time_s ?? 0
         w.dist  += a.distance_m ?? 0
         w.count++
-        const sp = a.sport_type ?? 'other'
+        const sp = normalizeSport(a.sport_type ?? 'other')
         w.sports.set(sp, (w.sports.get(sp) ?? 0) + (a.moving_time_s ?? 0))
       }
     }
@@ -1430,7 +1712,7 @@ function SectionDonnees({ activities, zones, profile }: {
 
   const sportMap = new Map<string, { count: number; time: number; dist: number }>()
   for (const a of inRange) {
-    const sp = a.sport_type ?? 'other'
+    const sp = normalizeSport(a.sport_type ?? 'other')
     if (!sportMap.has(sp)) sportMap.set(sp, { count: 0, time: 0, dist: 0 })
     const e = sportMap.get(sp)!
     e.count++; e.time += a.moving_time_s ?? 0; e.dist += a.distance_m ?? 0
@@ -1441,12 +1723,39 @@ function SectionDonnees({ activities, zones, profile }: {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-        {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
-          <Chip key={f} label={TIME_FILTER_LABEL[f]} active={filter === f} onClick={() => setFilter(f)} />
-        ))}
+      {/* Filtres période + toggle général/spécifique */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
+            <Chip key={f} label={TIME_FILTER_LABEL[f]} active={filter === f} onClick={() => setFilter(f)} />
+          ))}
+        </div>
+        {/* Toggle Général / Spécifique */}
+        <div style={{ display: 'flex', background: T.bgAlt, borderRadius: T.radiusSm, padding: 3, gap: 2, border: `1px solid ${T.border}` }}>
+          {(['general', 'specific'] as const).map(tab => (
+            <button key={tab} onClick={() => setDataTab(tab)} style={{
+              background: dataTab === tab ? T.surface : 'transparent',
+              border: dataTab === tab ? `1px solid ${T.border}` : '1px solid transparent',
+              borderRadius: 7, padding: '5px 14px', fontSize: 12, cursor: 'pointer',
+              color: dataTab === tab ? T.text : T.textSub,
+              fontWeight: dataTab === tab ? 600 : 400,
+              fontFamily: T.fontBody, transition: 'all 0.15s',
+              boxShadow: dataTab === tab ? T.shadow : 'none',
+            }}>
+              {tab === 'general' ? 'Général' : 'Spécifique'}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Modal semaine */}
+      {selectedWeek && (
+        <WeekDetailModal week={selectedWeek} activities={activities} onClose={() => setSelectedWeek(null)} />
+      )}
+
+      {/* === DONNÉES GÉNÉRALES === */}
+      {dataTab === 'general' && (
+        <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10, marginBottom: 24 }}>
         <StatCard label="Séances" value={inRange.length.toString()} />
         <StatCard label="Distance" value={fmtDist(totalDist)} />
@@ -1479,29 +1788,35 @@ function SectionDonnees({ activities, zones, profile }: {
 
       {/* Weekly volume chart */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
-        <SectionTitle>Volume hebdomadaire</SectionTitle>
+        <SectionTitle>Volume hebdomadaire <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 400, marginLeft: 6 }}>— clic pour détail</span></SectionTitle>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
           {weeks.map((w, i) => {
             const barH = Math.max(4, Math.round((w.total / maxTime) * 96))
-            const hours = w.total / 3600
             const isNow = i === weeks.length - 1
             const d = new Date(w.week)
             const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
 
             return (
-              <div key={w.week} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0 }}>
+              <div key={w.week}
+                onClick={() => w.count > 0 && setSelectedWeek(w)}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0, cursor: w.count > 0 ? 'pointer' : 'default' }}>
                 {w.time > 60 && (
                   <div style={{ fontSize: 9, color: isNow ? T.accent : T.textMuted, fontWeight: isNow ? 700 : 400 }}>
                     {fmtDur(w.time)}
                   </div>
                 )}
-                <div style={{ width: '75%', height: barH, display: 'flex', flexDirection: 'column-reverse', borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 6 }}
-                  title={`${d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})} · ${hours.toFixed(1)}h · ${w.count} séance${w.count!==1?'s':''}`}>
+                <div style={{
+                  width: '75%', height: barH, display: 'flex', flexDirection: 'column-reverse',
+                  borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 6,
+                  transition: 'opacity 0.15s', opacity: 1,
+                }}
+                  onMouseEnter={e => { if (w.count > 0) (e.currentTarget as HTMLDivElement).style.opacity = '0.75' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = '1' }}>
                   {sportEntries.map(([sport, sportTime]) => {
                     const col = SPORT_COLOR[sport as SportType] ?? '#94a3b8'
                     const pct = w.total > 0 ? (sportTime / w.total) * 100 : 0
                     return (
-                      <div key={sport} style={{ width: '100%', flexShrink: 0, background: isNow ? col : col + '80',
+                      <div key={sport} style={{ width: '100%', flexShrink: 0, background: isNow ? col : col + '99',
                         height: `${pct}%`, transition: 'height 0.3s' }} />
                     )
                   })}
@@ -1575,6 +1890,13 @@ function SectionDonnees({ activities, zones, profile }: {
           </div>
         )}
       </div>
+        </> /* end general tab */
+      )}
+
+      {/* === DONNÉES SPÉCIFIQUES === */}
+      {dataTab === 'specific' && (
+        <SectionDonneesSpecifiques inRange={inRange} zones={zones} bikeZones={bikeZones} runZones={runZones} hrZones={hrZoneColors} bikeTimesZ={bikeTimesZ} runTimesZ={runTimesZ} hrTimesZ={hrTimesZ} />
+      )}
     </div>
   )
 }
@@ -1613,6 +1935,7 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
           <span style={{ color: col, fontWeight: 600, fontSize: 10, background: col + '18', padding: '1px 7px', borderRadius: 20 }}>{SPORT_LABEL[a.sport_type]}</span>
           {a.is_race && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, background: '#ef444415', padding: '1px 7px', borderRadius: 20 }}>Compét.</span>}
           {a.tss != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>TSS {Math.round(Number(a.tss))}</span>}
+          {(a.rpe ?? a.perceived_effort) != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>RPE {Number(a.rpe ?? a.perceived_effort).toFixed(1)}</span>}
         </div>
       </div>
       <div style={{ fontSize: 11, color: T.textSub, textAlign: 'right', flexShrink: 0, fontFamily: T.fontMono }}>
@@ -1621,6 +1944,94 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
         {paceS && isRunRow ? <div style={{ color: T.textMuted, fontSize: 10 }}>{fmtPace(paceS)}</div> : null}
         {isBikeRow && a.avg_watts ? <div style={{ color: T.textMuted, fontSize: 10 }}>{Math.round(Number(a.avg_watts))} W</div> : null}
         {a.avg_hr ? <div style={{ color: T.textMuted, fontSize: 10 }}>{Math.round(Number(a.avg_hr))} bpm</div> : null}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// RPE / SENSATION INPUT MODAL
+// ─────────────────────────────────────────────────────────────
+function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }: {
+  activityId: string
+  initialRpe: number | null
+  initialSensation: number | null
+  onClose: () => void
+  onSave: (rpe: number, sensation: number) => void
+}) {
+  const [rpe, setRpe]             = useState(initialRpe ?? 5)
+  const [sensation, setSensation] = useState(initialSensation ?? 3)
+  const [saving, setSaving]       = useState(false)
+
+  async function save() {
+    setSaving(true)
+    try {
+      const sb = createClient()
+      await sb.from('activities').update({ rpe, perceived_effort: sensation }).eq('id', activityId)
+      onSave(rpe, sensation)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function SliderRow({ label, value, min, max, step, onChange, color }: {
+    label: string; value: number; min: number; max: number; step: number
+    onChange: (v: number) => void; color: string
+  }) {
+    const pct = ((value - min) / (max - min)) * 100
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>{label}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color, fontFamily: T.fontDisplay }}>{value.toFixed(1)}</span>
+        </div>
+        <div style={{ position: 'relative', height: 36, display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'absolute', left: 0, right: 0, height: 6, background: T.border, borderRadius: 3 }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.1s' }} />
+          </div>
+          <input type="range" min={min} max={max} step={step} value={value}
+            onChange={e => onChange(Number(e.target.value))}
+            style={{ position: 'absolute', left: 0, right: 0, opacity: 0, height: '100%', cursor: 'pointer', width: '100%', margin: 0 }} />
+          <div style={{
+            position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)',
+            width: 20, height: 20, borderRadius: '50%', background: color,
+            boxShadow: `0 0 0 3px ${color}30`, border: `2px solid ${T.surface}`,
+            pointerEvents: 'none',
+          }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: T.textMuted }}>{min}</span>
+          <span style={{ fontSize: 10, color: T.textMuted }}>{max}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={onClose}>
+      <div style={{ background: T.surface, borderRadius: T.radius, padding: '28px 28px 20px', width: '100%', maxWidth: 380, boxShadow: T.shadowCard }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>Ressenti & effort</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: T.textMuted }}>✕</button>
+        </div>
+
+        <SliderRow label="Sensation" value={sensation} min={1} max={5} step={0.5}
+          onChange={setSensation}
+          color={sensation <= 2 ? '#ef4444' : sensation <= 3 ? '#f97316' : '#22c55e'} />
+
+        <SliderRow label="RPE (effort perçu)" value={rpe} min={1} max={10} step={0.5}
+          onChange={setRpe}
+          color={rpe >= 8 ? '#ef4444' : rpe >= 5 ? '#f97316' : '#22c55e'} />
+
+        <button onClick={save} disabled={saving} style={{
+          width: '100%', background: T.accent, color: '#fff', border: 'none', borderRadius: T.radiusSm,
+          padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
+          opacity: saving ? 0.7 : 1, fontFamily: T.fontDisplay,
+        }}>
+          {saving ? 'Enregistrement…' : 'Enregistrer'}
+        </button>
       </div>
     </div>
   )
@@ -1695,7 +2106,11 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const vap = runZoneRowLocal?.vma_ms
     ? `${(Number(runZoneRowLocal.vma_ms) * 3.6).toFixed(1)} km/h` : null
 
-  const sensation = a.perceived_effort ?? a.suffer_score
+  const sensation = a.perceived_effort  // /5 scale
+  const rpeVal    = a.rpe               // /10 scale
+  const [showRpeModal, setShowRpeModal] = useState(false)
+  const [localRpe, setLocalRpe]         = useState<number | null>(rpeVal)
+  const [localSensation, setLocalSensation] = useState<number | null>(sensation)
 
   const powerTimesZ = useMemo(() => {
     if (!bikeZones || !a.streams?.watts) return null
@@ -1830,16 +2245,28 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
           {/* BLOC 2 — Charge / ressenti */}
           <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-            {sensation != null && (
+            {/* RPE input button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: T.textMuted }}>Ressenti</span>
+              <button onClick={() => setShowRpeModal(true)} style={{
+                background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
+                padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
+              }}>+ Saisir</button>
+            </div>
+            {localSensation != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{sensation}/10</span>
+                <span style={{ fontSize: 12, fontWeight: 600,
+                  color: Number(localSensation) <= 2 ? '#ef4444' : Number(localSensation) <= 3 ? '#f97316' : '#22c55e',
+                  fontFamily: T.fontMono }}>{Number(localSensation).toFixed(1)}/5</span>
               </div>
             )}
-            {a.rpe != null && Number(a.rpe) !== sensation && (
+            {localRpe != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>RPE</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Number(a.rpe).toFixed(1)}/10</span>
+                <span style={{ fontSize: 12, fontWeight: 600,
+                  color: Number(localRpe) >= 8 ? '#ef4444' : Number(localRpe) >= 5 ? '#f97316' : '#22c55e',
+                  fontFamily: T.fontMono }}>{Number(localRpe).toFixed(1)}/10</span>
               </div>
             )}
             {a.tss != null && (
@@ -2168,6 +2595,21 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           </div>
         )}
       </div>
+
+      {/* RPE Modal */}
+      {showRpeModal && (
+        <RpeModal
+          activityId={a.id}
+          initialRpe={localRpe}
+          initialSensation={localSensation}
+          onClose={() => setShowRpeModal(false)}
+          onSave={(rpe, sens) => {
+            setLocalRpe(rpe)
+            setLocalSensation(sens)
+            setShowRpeModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -2521,6 +2963,7 @@ const NAV: { id: Section; label: string; desc: string }[] = [
 // PAGE ROOT
 // ─────────────────────────────────────────────────────────────
 export default function TrainingPage() {
+  useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, loading, error, reload } = useActivities()
   const zones   = useTrainingZones()
   const profile = useProfile()

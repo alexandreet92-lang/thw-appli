@@ -6,27 +6,27 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────
-// DESIGN TOKENS — light theme
+// DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
 // ─────────────────────────────────────────────────────────────
 const T = {
-  bg:          '#eef2f7',
-  bgAlt:       '#f8fafc',
-  surface:     '#ffffff',
-  border:      'rgba(0,0,0,0.07)',
-  borderMid:   'rgba(0,0,0,0.12)',
-  text:        '#0d1117',
-  textSub:     'rgba(13,17,23,0.60)',
-  textMuted:   'rgba(13,17,23,0.38)',
+  bg:          'var(--bg)',
+  bgAlt:       'var(--bg-card2)',
+  surface:     'var(--bg-card)',
+  border:      'var(--border)',
+  borderMid:   'var(--border-mid)',
+  text:        'var(--text)',
+  textSub:     'var(--text-mid)',
+  textMuted:   'var(--text-dim)',
   accent:      '#00c8e0',
   accentBg:    'rgba(0,200,224,0.08)',
   accentText:  '#0099b8',
-  sidebar:     '#ffffff',
+  sidebar:     'var(--nav-bg)',
   sidebarW:    220,
   topH:        52,
   radius:      16,
   radiusSm:    10,
-  shadow:      '0 2px 12px rgba(0,80,160,0.07), 0 1px 3px rgba(0,0,0,0.05)',
-  shadowCard:  '0 4px 24px rgba(0,100,150,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+  shadow:      'var(--shadow-card)',
+  shadowCard:  'var(--shadow)',
   fontDisplay: "'Syne', sans-serif",
   fontBody:    "'DM Sans', sans-serif",
   fontMono:    "'DM Mono', monospace",
@@ -2187,7 +2187,9 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
 
   const actMap = new Map<string, Activity[]>()
   for (const a of activities) {
-    const d = a.started_at.slice(0, 10)
+    // Use local date (not UTC slice) to avoid timezone offset shifting the day
+    const localDate = new Date(a.started_at)
+    const d = `${localDate.getFullYear()}-${String(localDate.getMonth()+1).padStart(2,'0')}-${String(localDate.getDate()).padStart(2,'0')}`
     if (!actMap.has(d)) actMap.set(d, [])
     actMap.get(d)!.push(a)
   }
@@ -2244,15 +2246,17 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
         {grid.map((row, ri) => (
           <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: ri < grid.length - 1 ? `1px solid ${T.border}` : 'none' }}>
             {row.map((day, di) => {
-              const dateStr = day.toISOString().slice(0, 10)
-              const dayActs = actMap.get(dateStr) ?? []
-              const isToday = dateStr === new Date().toISOString().slice(0, 10)
-              const isInFuture = day > now
+              // Build local YYYY-MM-DD for this calendar cell
+              const cellDateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`
+              const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+              const dayActs = actMap.get(cellDateStr) ?? []
+              const isToday = cellDateStr === todayStr
+              const isInFuture = cellDateStr > todayStr
               return (
                 <div key={di} style={{
                   borderLeft: di > 0 ? `1px solid ${T.border}` : 'none',
                   minHeight: 64, padding: '5px 6px',
-                  background: isToday ? T.accentBg : isInFuture ? '#fafafa' : T.surface,
+                  background: isToday ? T.accentBg : isInFuture ? 'var(--bg-alt)' : T.surface,
                 }}>
                   <div style={{ fontSize: 11, color: isToday ? T.accent : T.textMuted, fontWeight: isToday ? 700 : 400, marginBottom: 3 }}>
                     {day.getDate()}
@@ -2700,9 +2704,9 @@ export default function TrainingPage() {
 
           {/* Error */}
           {error && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: T.radius, padding: '16px 18px', marginBottom: 20 }}>
+            <div style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: T.radius, padding: '16px 18px', marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 5 }}>Erreur de chargement</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12, fontFamily: 'monospace' }}>{error}</div>
+              <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, fontFamily: 'monospace' }}>{error}</div>
               <button onClick={reload} style={{ background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
                 Réessayer
               </button>
@@ -2729,10 +2733,10 @@ export default function TrainingPage() {
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
-        input::placeholder { color: #9ca3af; }
+        ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+        input::placeholder { color: var(--text-dim); }
         button:focus { outline: none; }
-        select option { background: #fff; color: #111827; }
+        select option { background: var(--bg-card); color: var(--text); }
         table { border-spacing: 0; }
       `}</style>
     </div>

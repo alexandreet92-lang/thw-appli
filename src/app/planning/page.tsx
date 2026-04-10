@@ -574,49 +574,67 @@ function TrainingTab() {
       {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}
       {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
 
-      {/* ── Navigation + Plan A/B + Range ── */}
-      <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
-        {/* Arrows + week label */}
-        <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
-          <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
-          <span style={{ fontSize:11,fontWeight:600,color:'var(--text)',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-          <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
-          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize:9,padding:'2px 6px',borderRadius:5,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Auj.</button>}
+      {/* ── Controls Card ── */}
+      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:'14px 16px',display:'flex',flexDirection:'column',gap:12,boxShadow:'var(--shadow-card)' }}>
+
+        {/* Row 1: Navigation semaine */}
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+          <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+            <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1,fontWeight:400 }}>←</button>
+            <span style={{ fontSize:13,fontWeight:700,color:'var(--text)',minWidth:130,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
+            <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1,fontWeight:400 }}>→</button>
+          </div>
+          {weekOffset!==0
+            ? <button onClick={()=>setWeekOffset(0)} style={{ fontSize:11,padding:'5px 12px',borderRadius:20,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.3)',color:'#00c8e0',cursor:'pointer',fontWeight:700,whiteSpace:'nowrap' as const }}>Auj.</button>
+            : <div style={{ width:52 }}/>
+          }
         </div>
 
-        {/* Week range dropdown */}
+        {/* Row 2: Sélecteur période */}
         <div style={{ position:'relative' }}>
-          <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
-            {weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'} <span style={{ fontSize:9 }}>▾</span>
+          <button onClick={()=>setShowRangeDd(x=>!x)}
+            style={{ width:'100%',padding:'9px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
+            <span>{weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'}</span>
+            <span style={{ fontSize:10,color:'var(--text-dim)',transition:'transform 0.15s',transform:showRangeDd?'rotate(180deg)':'none' }}>▾</span>
           </button>
-          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
+          {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
+          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
             {([1,5,10] as WeekRange[]).map(r=>(
-              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(0,200,224,0.10)':'transparent',color:weekRange===r?'#00c8e0':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
+              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
+                style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
+                  background:weekRange===r?'rgba(0,200,224,0.10)':'transparent',
+                  color:weekRange===r?'#00c8e0':'var(--text-mid)',
+                  fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
                 {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
               </button>
             ))}
           </div>}
         </div>
 
-        {/* Plan A / B / Comparer */}
-        <div style={{ display:'flex',gap:4,marginLeft:'auto' }}>
-          {(['A','B'] as PlanVariant[]).map(p=>(
-            <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
-              style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-                borderColor:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
-                background:!compareMode&&activePlan===p?(p==='A'?'rgba(0,200,224,0.12)':'rgba(167,139,250,0.12)'):'var(--bg-card)',
-                color:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
-              Plan {p} {p==='A'?'— Optimal':'— Minimal'}
-            </button>
-          ))}
+        {/* Row 3: Plan A / Plan B / Comparer */}
+        <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+          {(['A','B'] as PlanVariant[]).map(p=>{
+            const isActive=!compareMode&&activePlan===p
+            const col=p==='A'?'#00c8e0':'#a78bfa'
+            return (
+              <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
+                style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
+                  border:`1.5px solid ${isActive?col:'var(--border)'}`,
+                  background:isActive?`${col}1a`:'transparent',
+                  color:isActive?col:'var(--text-mid)' }}>
+                Plan {p} — {p==='A'?'Optimal':'Minimal'}
+              </button>
+            )
+          })}
           <button onClick={()=>setCompareMode(x=>!x)}
-            style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-              borderColor:compareMode?'#ffb340':'var(--border)',
-              background:compareMode?'rgba(255,179,64,0.12)':'var(--bg-card)',
+            style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
+              border:`1.5px solid ${compareMode?'#ffb340':'var(--border)'}`,
+              background:compareMode?'rgba(255,179,64,0.12)':'transparent',
               color:compareMode?'#ffb340':'var(--text-mid)' }}>
-            ⇄ Comparer
+            ⇄ Comparer les deux plans
           </button>
         </div>
+
       </div>
 
       {/* KPI */}
@@ -996,12 +1014,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
               <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 1px' }}>{DAY_NAMES[d]}</p>
               <p style={{ fontSize:13,fontWeight:700,margin:'0 0 3px',color:d===todayIdx?'#00c8e0':'var(--text)' }}>{dates[d]}</p>
               <span style={{ padding:'1px 5px',borderRadius:20,background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize:8,fontWeight:700 }}>{load.label}</span>
-              {/* Main Task button */}
-              <button onClick={e=>{e.stopPropagation();setMainTaskModal({dayIndex:d});setMainTaskInput('')}}
-                style={{ display:'block',width:'100%',marginTop:4,padding:'2px 4px',borderRadius:6,border:'1px dashed #ffb340',background:'rgba(255,179,64,0.07)',color:'#ffb340',fontSize:8,cursor:'pointer',fontWeight:600 }}>
-                ⭐ Main Task
-              </button>
-              {/* Show existing main tasks */}
+              {/* Main task badges (click to edit) */}
               {mainTasks.map(mt=>(
                 <div key={mt.id} onClick={e=>{e.stopPropagation();setEditModal(mt)}}
                   style={{ marginTop:3,padding:'2px 5px',borderRadius:5,background:'rgba(255,179,64,0.15)',border:'1px solid #ffb34055',cursor:'pointer' }}>
@@ -1071,6 +1084,32 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           ))}
         </div>
       </div>
+
+      {/* ── Tâches importantes du jour + bouton + ── */}
+      {(() => {
+        const todayMainTasks = tasks.filter(t=>t.isMain&&t.dayIndex===todayIdx)
+        return (
+          <div style={{ display:'flex',alignItems:'center',gap:10,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:'10px 14px',minHeight:46 }}>
+            {todayMainTasks.length>0
+              ? <>
+                  <span style={{ fontSize:11,color:'#ffb340',fontWeight:700,whiteSpace:'nowrap' as const }}>⭐ Focus du jour</span>
+                  <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6,flex:1 }}>
+                    {todayMainTasks.map(t=>(
+                      <span key={t.id} onClick={()=>setEditModal(t)}
+                        style={{ padding:'4px 12px',borderRadius:20,background:'rgba(255,179,64,0.15)',border:'1px solid #ffb34066',color:'#ffb340',fontSize:11,fontWeight:700,cursor:'pointer' }}>
+                        {t.title}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              : <span style={{ fontSize:12,color:'var(--text-dim)',flex:1 }}>Pas de tâche principale aujourd'hui</span>
+            }
+            <button onClick={()=>{setMainTaskModal({dayIndex:todayIdx});setMainTaskInput('')}}
+              title="Ajouter une tâche principale"
+              style={{ width:30,height:30,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1,flexShrink:0 }}>+</button>
+          </div>
+        )
+      })()}
 
       {/* MOBILE — switch + nav */}
       <div style={{ display:'flex',flexDirection:'column',gap:8 }} id="mobile-week">

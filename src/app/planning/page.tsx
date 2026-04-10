@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────
-type PlanningTab   = 'training' | 'week' | 'race'
+type PlanningTab   = 'training' | 'week'
 type PlanVariant   = 'A' | 'B'
 type WeekRange     = 1 | 5 | 10
 type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
@@ -1775,7 +1775,6 @@ export default function PlanningPage() {
   const TABS: [PlanningTab,string,string,string,string][] = [
     ['training','Planning Training','Training','#00c8e0','rgba(0,200,224,0.10)'],
     ['week',    'Planning Week',    'Week',    '#a78bfa','rgba(167,139,250,0.10)'],
-    ['race',    'Race Year',        'Race Year','#ef4444','rgba(239,68,68,0.10)'],
   ]
 
   return (
@@ -1800,7 +1799,6 @@ export default function PlanningPage() {
 
       {tab==='training' && <TrainingTab/>}
       {tab==='week'     && <WeekTab trainingWeek={sessions}/>}
-      {tab==='race'     && <RaceYearTab/>}
     </div>
   )
 }

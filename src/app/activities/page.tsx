@@ -2731,16 +2731,24 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
 // ─────────────────────────────────────────────────────────────
 // SECTION: ANALYSE
 // ─────────────────────────────────────────────────────────────
-function SectionAnalyse({ activities, zones, profile }: {
+function SectionAnalyse({ activities, zones, profile, deepLinkId }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
+  deepLinkId?: string | null
 }) {
   const [view, setView]         = useState<'list'|'calendar'>('list')
   const [selected, setSelected] = useState<Activity | null>(null)
   const [search, setSearch]     = useState('')
   const [sport, setSport]       = useState<'all' | SportType>('all')
   const [raceFilter, setRaceFilter] = useState<'all'|'race'|'training'>('all')
+
+  // Deep-link : ouvre automatiquement l'activité demandée depuis Planning
+  useEffect(() => {
+    if (!deepLinkId || activities.length === 0 || selected) return
+    const found = activities.find(a => a.id === deepLinkId)
+    if (found) setSelected(found)
+  }, [deepLinkId, activities])
 
   const allSports = useMemo(() => Array.from(new Set(activities.map(a => a.sport_type))), [activities])
 
@@ -2974,6 +2982,14 @@ export default function TrainingPage() {
   const width   = useWindowWidth()
   const isMobile = width < 768
   const active  = NAV.find(n => n.id === section)!
+  // Deep-link depuis Planning : ?id=<activity_id> → ouvre directement la section analyse
+  const [deepLinkId, setDeepLinkId] = useState<string|null>(null)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('id')
+    if (id) { setDeepLinkId(id); setSection('analyse') }
+  }, [])
 
   async function syncStrava() {
     setSyncing(true)
@@ -3167,7 +3183,7 @@ export default function TrainingPage() {
 
           {/* Sections */}
           {!loading && !error && section === 'donnees'     && <SectionDonnees activities={activities} zones={zones} profile={profile} />}
-          {!loading && !error && section === 'analyse'     && <SectionAnalyse activities={activities} zones={zones} profile={profile} />}
+          {!loading && !error && section === 'analyse'     && <SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} />}
           {!loading && !error && section === 'progression' && <SectionProgression activities={activities} />}
         </main>
       </div>

@@ -60,6 +60,7 @@ interface TrainingActivity {
   id:string; sport:string; name:string; startedAt:string
   elapsedTime:number; dayIndex:number; weekStart:string
   distance?:number; startHour:number; startMin:number
+  tss?:number
 }
 interface Block { id:string; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string }
 interface Session {
@@ -152,7 +153,7 @@ function usePlanning(weekStartParam?:string) {
       supabase.from('planned_races').select('*').eq('user_id',user.id).order('date'),
       supabase.from('day_intensity').select('*').eq('user_id',user.id).eq('week_start',weekStart),
       // Colonnes réelles de la table activities (vérifiées sur activities/page.tsx)
-      supabase.from('activities').select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m')
+      supabase.from('activities').select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m,tss')
         .gte('started_at',weekStart+'T00:00:00').lt('started_at',weekEndStr+'T00:00:00'),
     ])
     setSessions((s.data??[]).map((r:any):Session=>({
@@ -173,7 +174,7 @@ function usePlanning(weekStartParam?:string) {
       return { id:a.id, sport:a.sport_type??'run', name:a.title??'Activité',
         startedAt:a.started_at, elapsedTime:a.moving_time_s??a.elapsed_time_s??0,
         dayIndex:dow, weekStart, distance:a.distance_m,
-        startHour:d.getHours(), startMin:d.getMinutes() }
+        startHour:d.getHours(), startMin:d.getMinutes(), tss:a.tss??undefined }
     })
     setActivities(mappedActs)
     setRaces((r.data??[]).map((x:any):Race=>({
@@ -311,6 +312,56 @@ function InfoModal({ title, content, onClose }:{ title:string; content:React.Rea
   )
 }
 
+// ── Activité quick-view (clic depuis Planning) ───────────────
+function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity; onClose:()=>void }) {
+  const sp = normalizeSportType(activity.sport)
+  const dateObj = new Date(activity.startedAt)
+  const dateStr = dateObj.toLocaleDateString('fr-FR',{ weekday:'long', day:'numeric', month:'long' })
+  const durationMin = Math.round(activity.elapsedTime/60)
+  const distKm = activity.distance ? (activity.distance/1000).toFixed(1) : null
+  const col = SPORT_BORDER[sp]
+  return (
+    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(5px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:`1px solid ${col}44`,padding:22,maxWidth:380,width:'100%',boxShadow:`0 0 0 1px ${col}22,var(--shadow-card)` }}>
+        {/* En-tête */}
+        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:18 }}>
+          <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0 }}>{SPORT_EMOJI[sp]}</div>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ marginBottom:3 }}>
+              <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>✓ RÉALISÉ</span>
+            </div>
+            <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{activity.name}</p>
+          </div>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:17,flexShrink:0 }}>×</button>
+        </div>
+
+        {/* Métriques */}
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
+          {[
+            { label:'Sport',   value:SPORT_LABEL[sp] },
+            { label:'Date',    value:dateStr, small:true },
+            { label:'Heure',   value:`${String(activity.startHour).padStart(2,'0')}:${String(activity.startMin).padStart(2,'0')}`, mono:true },
+            { label:'Durée',   value:formatDur(durationMin), mono:true },
+            ...(distKm ? [{ label:'Distance', value:`${distKm} km`, mono:true }] : []),
+            ...(activity.tss ? [{ label:'TSS', value:`${Math.round(activity.tss)} pts`, mono:true, color:'#5b6fff' }] : []),
+          ].map(({ label, value, mono, small, color })=>(
+            <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
+              <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Bouton vers Training */}
+        <a href={`/activities?id=${activity.id}`}
+          style={{ display:'block',textAlign:'center' as const,padding:'12px 16px',borderRadius:11,background:`linear-gradient(135deg,${col},${col}bb)`,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,textDecoration:'none',letterSpacing:'0.02em' }}>
+          Voir les détails →
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function BlockBuilder({ sport, blocks, onChange }:{ sport:SportType; blocks:Block[]; onChange:(b:Block[])=>void }) {
   const vLabel = sport==='bike'?'Watts':sport==='swim'?'Allure /100m':'Allure /km'
   const vPlh   = sport==='bike'?'250':sport==='swim'?'1:35':'4:30'
@@ -410,6 +461,7 @@ function TrainingTab() {
   const [view, setView] = useState<TrainingView>('vertical')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant}|null>(null)
   const [detailModal, setDetailModal] = useState<Session|null>(null)
+  const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
@@ -490,14 +542,34 @@ function TrainingTab() {
   function onTouchEnd(to:number) { if(!touchRef.current)return; if(touchRef.current.from!==to)moveSession(touchRef.current.id,to); touchRef.current=null }
 
   const allSess = week.flatMap(d=>d.sessions)
+  const allActs = week.flatMap(d=>d.activities)   // activités réellement effectuées
+
   const plannedMin = allSess.reduce((s,x)=>s+x.durationMin,0)
-  const doneMin    = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+x.durationMin,0)
+  // doneMin = séances marquées faites + activités réelles (elapsedTime en secondes → /60 = minutes)
+  const doneMin = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+x.durationMin,0)
+               + allActs.reduce((s,a)=>s+Math.round(a.elapsedTime/60),0)
+
   const plannedTSS = allSess.reduce((s,x)=>s+(x.tss||0),0)
-  const doneTSS    = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+(x.tss||0),0)
-  const plannedN   = allSess.length
-  const doneN      = allSess.filter(s=>s.status==='done').length
-  const sportCounts = (['run','bike','swim','hyrox','triathlon','rowing','gym'] as SportType[]).map(sp=>({ sport:sp, planned:allSess.filter(s=>s.sport===sp).length, done:allSess.filter(s=>s.sport===sp&&s.status==='done').length })).filter(s=>s.planned>0)
-  const sportStats  = (['run','bike','swim','hyrox','triathlon','rowing','gym'] as SportType[]).map(sp=>({ sport:sp, plannedH:allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+x.durationMin/60,0), doneH:allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0) })).filter(s=>s.plannedH>0)
+  const doneTSS = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+(x.tss||0),0)
+               + allActs.reduce((s,a)=>s+(a.tss||0),0)
+
+  const plannedN = allSess.length
+  const doneN    = allSess.filter(s=>s.status==='done').length + allActs.length
+
+  const sportCounts = (['run','bike','swim','hyrox','triathlon','rowing','gym'] as SportType[]).map(sp=>({
+    sport:sp,
+    planned: allSess.filter(s=>s.sport===sp).length,
+    done: allSess.filter(s=>s.sport===sp&&s.status==='done').length
+        + allActs.filter(a=>normalizeSportType(a.sport)===sp).length
+  })).filter(s=>s.planned>0||s.done>0)
+
+  const sportStats = (['run','bike','swim','hyrox','triathlon','rowing','gym'] as SportType[]).map(sp=>({
+    sport:sp,
+    plannedH: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+x.durationMin/60,0),
+    doneH: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0)
+          + allActs.filter(a=>normalizeSportType(a.sport)===sp).reduce((a,x)=>a+x.elapsedTime/3600,0)
+  })).filter(s=>s.plannedH>0||s.doneH>0)
+
   const todaySessions = week[todayIdx]?.sessions??[]
 
   // Render one week grid (used for both single-week and multi-week / compare)
@@ -536,10 +608,10 @@ function TrainingTab() {
               onTouchEnd={()=>onTouchEnd(i)}
               style={{ borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(0,200,224,0.04)':'transparent',minWidth:68,minHeight:80 }}>
               <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
-                {/* Real activities (read-only, from Training) */}
+                {/* Activités réelles (cliquables → modal détail) */}
                 {d.activities.map(a=>{
                   const sp=normalizeSportType(a.sport)
-                  return <div key={a.id} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9 }}>
+                  return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9,cursor:'pointer' }}>
                     <div style={{ display:'flex',alignItems:'center',gap:3 }}>
                       <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>✓</span>
                       <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{SPORT_EMOJI[sp]} {a.name}</p>
@@ -575,6 +647,7 @@ function TrainingTab() {
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
       {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}
       {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
+      {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
@@ -968,9 +1041,10 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
 // ════════════════════════════════════════════════
 function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>['sessions'] }) {
   const { tasks, activities, intensities, addTask, updateTask, deleteTask } = usePlanning()
-  const [taskModal,      setTaskModal]      = useState<{dayIndex:number;startHour:number}|null>(null)
-  const [editModal,      setEditModal]      = useState<WeekTask|null>(null)
-  const [mainTaskModal,  setMainTaskModal]  = useState<{dayIndex:number}|null>(null)
+  const [taskModal,       setTaskModal]       = useState<{dayIndex:number;startHour:number}|null>(null)
+  const [editModal,       setEditModal]       = useState<WeekTask|null>(null)
+  const [mainTaskModal,   setMainTaskModal]   = useState<{dayIndex:number}|null>(null)
+  const [activityDetail,  setActivityDetail]  = useState<TrainingActivity|null>(null)
   const [mainTaskInput,  setMainTaskInput]  = useState('')
   const [mobileDayOffset,setMobileDayOffset]= useState(0)
   const [mobileView,     setMobileView]     = useState<'3days'|'today'>('3days')
@@ -1099,11 +1173,12 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                     setDragOverDay(null)
                   }}
                   style={{ borderLeft:'1px solid var(--border)',padding:'2px 3px',cursor:'pointer',minHeight:CELL_H,position:'relative',background:dragOverDay===d?'rgba(0,200,224,0.04)':'transparent' }}>
-                  {/* Activités importées de Training (lecture seule) */}
+                  {/* Activités importées de Training (cliquables → modal détail) */}
                   {activities.filter(a=>a.dayIndex===d&&a.startHour===hour).map(a=>{
                     const sp=normalizeSportType(a.sport); const topPx=(a.startMin/60)*CELL_H
                     return (
-                      <div key={a.id} style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'default',zIndex:1 }}>
+                      <div key={a.id} onClick={e=>{e.stopPropagation();setActivityDetail(a)}}
+                        style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer',zIndex:1 }}>
                         <div style={{ display:'flex',alignItems:'center',gap:3 }}>
                           <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>✓</span>
                           <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{SPORT_EMOJI[sp]} {a.name}</p>
@@ -1218,6 +1293,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
       {taskModal && <TaskModal dayIndex={taskModal.dayIndex} startHour={taskModal.startHour} onClose={()=>setTaskModal(null)} onSave={handleAddTask}/>}
       {editModal && <TaskEditModal task={editModal} onClose={()=>setEditModal(null)} onSave={handleUpdateTask} onDelete={handleDeleteTask}/>}
+      {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
       {/* Main Task Modal */}
       {mainTaskModal&&<div onClick={()=>setMainTaskModal(null)} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>

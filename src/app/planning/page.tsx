@@ -151,7 +151,8 @@ function usePlanning(weekStartParam?:string) {
       supabase.from('week_tasks').select('*').eq('user_id',user.id).eq('week_start',weekStart),
       supabase.from('planned_races').select('*').eq('user_id',user.id).order('date'),
       supabase.from('day_intensity').select('*').eq('user_id',user.id).eq('week_start',weekStart),
-      supabase.from('activities').select('id,sport_type,name,started_at,elapsed_time,distance')
+      // Colonnes réelles de la table activities (vérifiées sur activities/page.tsx)
+      supabase.from('activities').select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m')
         .gte('started_at',weekStart+'T00:00:00').lt('started_at',weekEndStr+'T00:00:00'),
     ])
     setSessions((s.data??[]).map((r:any):Session=>({
@@ -168,9 +169,10 @@ function usePlanning(weekStartParam?:string) {
     })))
     const mappedActs:TrainingActivity[]=(acts.data??[]).map((a:any)=>{
       const d=new Date(a.started_at); const dow=d.getDay()===0?6:d.getDay()-1
-      return { id:a.id, sport:a.sport_type??'run', name:a.name??'Activité',
-        startedAt:a.started_at, elapsedTime:a.elapsed_time??0,
-        dayIndex:dow, weekStart, distance:a.distance,
+      // moving_time_s en secondes → elapsedTime en secondes (formatDur attend des minutes → on divise par 60 à l'affichage)
+      return { id:a.id, sport:a.sport_type??'run', name:a.title??'Activité',
+        startedAt:a.started_at, elapsedTime:a.moving_time_s??a.elapsed_time_s??0,
+        dayIndex:dow, weekStart, distance:a.distance_m,
         startHour:d.getHours(), startMin:d.getMinutes() }
     })
     setActivities(mappedActs)

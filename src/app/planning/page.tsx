@@ -574,28 +574,66 @@ function TrainingTab() {
       {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}
       {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
 
-      {/* ── Controls Card ── */}
-      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:'14px 16px',display:'flex',flexDirection:'column',gap:12,boxShadow:'var(--shadow-card)' }}>
+      {/* ── Controls — desktop (ancienne interface) ── */}
+      <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
+        <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
+          <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
+          <span style={{ fontSize:11,fontWeight:600,color:'var(--text)',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
+          <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
+          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize:9,padding:'2px 6px',borderRadius:5,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Auj.</button>}
+        </div>
+        <div style={{ position:'relative' }}>
+          <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
+            {weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'} <span style={{ fontSize:9 }}>▾</span>
+          </button>
+          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
+            {([1,5,10] as WeekRange[]).map(r=>(
+              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(0,200,224,0.10)':'transparent',color:weekRange===r?'#00c8e0':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
+                {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
+              </button>
+            ))}
+          </div>}
+        </div>
+        <div style={{ display:'flex',gap:4,marginLeft:'auto' }}>
+          {(['A','B'] as PlanVariant[]).map(p=>(
+            <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
+              style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
+                borderColor:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
+                background:!compareMode&&activePlan===p?(p==='A'?'rgba(0,200,224,0.12)':'rgba(167,139,250,0.12)'):'var(--bg-card)',
+                color:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
+              Plan {p} {p==='A'?'— Optimal':'— Minimal'}
+            </button>
+          ))}
+          <button onClick={()=>setCompareMode(x=>!x)}
+            style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
+              borderColor:compareMode?'#ffb340':'var(--border)',
+              background:compareMode?'rgba(255,179,64,0.12)':'var(--bg-card)',
+              color:compareMode?'#ffb340':'var(--text-mid)' }}>
+            ⇄ Comparer
+          </button>
+        </div>
+      </div>
 
-        {/* Row 1: Navigation semaine */}
+      {/* ── Controls — mobile (3 lignes en carte) ── */}
+      <div id="tr-ctrl-mobile" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:'14px 16px',display:'flex',flexDirection:'column',gap:12,boxShadow:'var(--shadow-card)' }}>
+        {/* Ligne 1 : Navigation semaine */}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-            <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1,fontWeight:400 }}>←</button>
+            <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1 }}>←</button>
             <span style={{ fontSize:13,fontWeight:700,color:'var(--text)',minWidth:130,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-            <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1,fontWeight:400 }}>→</button>
+            <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1 }}>→</button>
           </div>
           {weekOffset!==0
-            ? <button onClick={()=>setWeekOffset(0)} style={{ fontSize:11,padding:'5px 12px',borderRadius:20,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.3)',color:'#00c8e0',cursor:'pointer',fontWeight:700,whiteSpace:'nowrap' as const }}>Auj.</button>
+            ? <button onClick={()=>setWeekOffset(0)} style={{ fontSize:11,padding:'5px 12px',borderRadius:20,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.3)',color:'#00c8e0',cursor:'pointer',fontWeight:700 }}>Auj.</button>
             : <div style={{ width:52 }}/>
           }
         </div>
-
-        {/* Row 2: Sélecteur période */}
+        {/* Ligne 2 : Sélecteur période */}
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)}
             style={{ width:'100%',padding:'9px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
             <span>{weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'}</span>
-            <span style={{ fontSize:10,color:'var(--text-dim)',transition:'transform 0.15s',transform:showRangeDd?'rotate(180deg)':'none' }}>▾</span>
+            <span style={{ fontSize:10,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
           {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
@@ -610,12 +648,10 @@ function TrainingTab() {
             ))}
           </div>}
         </div>
-
-        {/* Row 3: Plan A / Plan B / Comparer */}
+        {/* Ligne 3 : Plan A / B / Comparer */}
         <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
           {(['A','B'] as PlanVariant[]).map(p=>{
-            const isActive=!compareMode&&activePlan===p
-            const col=p==='A'?'#00c8e0':'#a78bfa'
+            const isActive=!compareMode&&activePlan===p; const col=p==='A'?'#00c8e0':'#a78bfa'
             return (
               <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
                 style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
@@ -634,8 +670,12 @@ function TrainingTab() {
             ⇄ Comparer les deux plans
           </button>
         </div>
-
       </div>
+
+      <style>{`
+        @media (min-width: 768px) { #tr-ctrl-mobile { display: none !important; } }
+        @media (max-width: 767px) { #tr-ctrl-desktop { display: none !important; } }
+      `}</style>
 
       {/* KPI */}
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
@@ -720,8 +760,8 @@ function TrainingTab() {
         </div>
       )}
 
-      {/* SINGLE PLAN — multi-week grids */}
-      {!compareMode && (
+      {/* SINGLE PLAN — multi-week grids (vertical uniquement) */}
+      {!compareMode && (weekRange>1 || view==='vertical') && (
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {allWeekStarts.map((ws,wi)=>(
             <WeekGrid key={ws} ws={ws} plan={activePlan} labelTag={weekRange>1?`Semaine ${wi+1} — ${getWeekLabel(ws)}`:undefined}/>
@@ -925,7 +965,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
 // WEEK TAB
 // ════════════════════════════════════════════════
 function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>['sessions'] }) {
-  const { tasks, intensities, addTask, updateTask, deleteTask } = usePlanning()
+  const { tasks, activities, intensities, addTask, updateTask, deleteTask } = usePlanning()
   const [taskModal,      setTaskModal]      = useState<{dayIndex:number;startHour:number}|null>(null)
   const [editModal,      setEditModal]      = useState<WeekTask|null>(null)
   const [mainTaskModal,  setMainTaskModal]  = useState<{dayIndex:number}|null>(null)
@@ -1024,6 +1064,19 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             </div>
           )})}
         </div>
+        {/* Rangée de boutons "+" — un par jour */}
+        <div style={{ display:'grid',gridTemplateColumns:`44px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',background:'var(--bg-card2)' }}>
+          <div/>
+          {days.map(d=>(
+            <div key={d} style={{ borderLeft:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',padding:'4px 0' }}>
+              <button
+                onClick={e=>{e.stopPropagation();setMainTaskModal({dayIndex:d});setMainTaskInput('')}}
+                title={`Tâche principale — ${DAY_NAMES[d]}`}
+                style={{ width:22,height:22,borderRadius:'50%',background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
+            </div>
+          ))}
+        </div>
+
         {/* Time rows */}
         <div style={{ overflowY:'auto',maxHeight:'60vh' }}>
           {HOURS.map(hour=>(
@@ -1044,6 +1097,19 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                     setDragOverDay(null)
                   }}
                   style={{ borderLeft:'1px solid var(--border)',padding:'2px 3px',cursor:'pointer',minHeight:CELL_H,position:'relative',background:dragOverDay===d?'rgba(0,200,224,0.04)':'transparent' }}>
+                  {/* Activités importées de Training (lecture seule) */}
+                  {activities.filter(a=>a.dayIndex===d&&a.startHour===hour).map(a=>{
+                    const sp=normalizeSportType(a.sport); const topPx=(a.startMin/60)*CELL_H
+                    return (
+                      <div key={a.id} style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'default',zIndex:1 }}>
+                        <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                          <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>✓</span>
+                          <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{SPORT_EMOJI[sp]} {a.name}</p>
+                        </div>
+                        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatDur(Math.round(a.elapsedTime/60))}</p>
+                      </div>
+                    )
+                  })}
                   {getTasksForDay(d).filter(t=>t.startHour===hour&&!t.isMain).map(t=>{
                     // Place task with minute offset within cell
                     const topPx = (t.startMin/60)*CELL_H

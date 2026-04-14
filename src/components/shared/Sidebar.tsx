@@ -42,6 +42,16 @@ const NAV = [
     ),
   },
   {
+    href: '/session',
+    label: 'Session',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <path d="M8 12h8M12 8v8"/>
+      </svg>
+    ),
+  },
+  {
     href: '/activities',
     label: 'Activités',
     icon: (

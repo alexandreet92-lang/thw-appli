@@ -3,6 +3,16 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+// ── Types pour l'analyse IA ───────────────────────────────────
+interface AIReadinessResult {
+  score: number
+  readinessLevel: 'low' | 'moderate' | 'good' | 'excellent'
+  fatigue: number
+  recommendation: string
+  trainingLoad: 'reduce' | 'maintain' | 'increase'
+  todayAdvice: string
+}
+
 // ══════════════════════════════════════════════
 // MOCK DATA — supprimer quand Supabase branché
 // Remplacer par : const data = await supabase.from('recovery_daily_logs')...
@@ -249,21 +259,32 @@ interface CheckInData {
 // ══════════════════════════════════════════════
 // SECTION 1 — TODAY
 // ══════════════════════════════════════════════
-function SectionToday({ data, onCheckIn }: { data: typeof MOCK; onCheckIn: () => void }) {
+function SectionToday({ data, onCheckIn, onAIAnalysis, aiLoading }: {
+  data: typeof MOCK
+  onCheckIn: () => void
+  onAIAnalysis: () => void
+  aiLoading: boolean
+}) {
   const status = readinessStatus(data.readiness)
 
   return (
     <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
       {/* Header bulle */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap' as const, gap:8 }}>
         <div>
           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Today</p>
           <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:'3px 0 0' }}>État du jour</h2>
         </div>
-        <button onClick={onCheckIn}
-          style={{ padding:'8px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:600, fontSize:12, cursor:'pointer', whiteSpace:'nowrap' }}>
-          Check-in du matin
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onAIAnalysis} disabled={aiLoading}
+            style={{ padding:'8px 14px', borderRadius:10, background:'rgba(91,111,255,0.10)', border:'1px solid rgba(91,111,255,0.35)', color:'#5b6fff', fontFamily:'Syne,sans-serif', fontWeight:600, fontSize:12, cursor:aiLoading?'default':'pointer', whiteSpace:'nowrap' as const, opacity:aiLoading?0.6:1 }}>
+            {aiLoading ? '⏳ Analyse…' : '🧠 Analyse IA'}
+          </button>
+          <button onClick={onCheckIn}
+            style={{ padding:'8px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:600, fontSize:12, cursor:'pointer', whiteSpace:'nowrap' as const }}>
+            Check-in du matin
+          </button>
+        </div>
       </div>
 
       {/* Grid principal */}
@@ -627,6 +648,43 @@ function SectionDataSources() {
 export default function RecoveryPage() {
   const [showCheckIn, setShowCheckIn] = useState(false)
   const [todayData, setTodayData]     = useState(MOCK)
+  const [aiLoading,  setAiLoading]    = useState(false)
+  const [aiResult,   setAiResult]     = useState<AIReadinessResult | null>(null)
+  const [aiError,    setAiError]      = useState<string | null>(null)
+
+  async function handleAIAnalysis() {
+    setAiLoading(true); setAiResult(null); setAiError(null)
+    try {
+      const res = await fetch('/api/coach-engine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'readiness_check',
+          payload: {
+            recentActivities: todayData.trends.days7.readiness.map((r, i) => ({
+              sport: 'multisport',
+              date: new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0],
+              durationMin: 45,
+              tss: Math.round(r * 0.7),
+              rpe: todayData.trends.days7.fatigue[i],
+            })),
+            sleepQuality: todayData.sleep.quality,
+            subjectiveFeeling: todayData.energy,
+            hrv: todayData.hrv ?? undefined,
+            restingHR: todayData.restingHr ?? undefined,
+            notes: `Fatigue: ${todayData.fatigue}/10, Stress: ${todayData.stress}/10, Motivation: ${todayData.motivation}/10, Douleurs: ${todayData.pain}/10`,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error ?? 'Erreur agent')
+      setAiResult(data.result)
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   function handleCheckIn(d: CheckInData) {
     // Mettre à jour les données locales (mock)
@@ -655,7 +713,72 @@ export default function RecoveryPage() {
         </p>
       </div>
 
-      <SectionToday    data={todayData} onCheckIn={() => setShowCheckIn(true)}/>
+      <SectionToday    data={todayData} onCheckIn={() => setShowCheckIn(true)} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>
+
+      {/* ── Résultat analyse IA ─────────────────────────── */}
+      {aiError && (
+        <div style={{ padding:'12px 18px', borderRadius:14, background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.25)', color:'#ef4444', fontSize:12, marginBottom:16 }}>
+          ⚠️ {aiError}
+        </div>
+      )}
+      {aiResult && (
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap' as const, gap:12 }}>
+            <div>
+              <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Analyse IA</p>
+              <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:'3px 0 0' }}>Coaching du jour</h2>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              <div style={{ textAlign:'center' as const }}>
+                <p style={{ fontFamily:'Syne,sans-serif', fontSize:32, fontWeight:800, margin:0, lineHeight:1,
+                  color: aiResult.score >= 80 ? '#22c55e' : aiResult.score >= 60 ? '#00c8e0' : aiResult.score >= 40 ? '#f97316' : '#ef4444' }}>
+                  {aiResult.score}
+                </p>
+                <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>/ 100</p>
+              </div>
+              <div style={{ padding:'6px 14px', borderRadius:99, fontSize:12, fontWeight:700,
+                background: aiResult.readinessLevel === 'excellent' ? 'rgba(34,197,94,0.12)' : aiResult.readinessLevel === 'good' ? 'rgba(0,200,224,0.12)' : aiResult.readinessLevel === 'moderate' ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)',
+                color: aiResult.readinessLevel === 'excellent' ? '#22c55e' : aiResult.readinessLevel === 'good' ? '#00c8e0' : aiResult.readinessLevel === 'moderate' ? '#f97316' : '#ef4444',
+                border: '1px solid currentColor' }}>
+                {{ low:'Faible', moderate:'Modéré', good:'Bonne forme', excellent:'Optimal' }[aiResult.readinessLevel]}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {/* Charge recommandée */}
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:12,
+              background: aiResult.trainingLoad === 'reduce' ? 'rgba(239,68,68,0.07)' : aiResult.trainingLoad === 'increase' ? 'rgba(34,197,94,0.07)' : 'rgba(0,200,224,0.07)',
+              border: `1px solid ${aiResult.trainingLoad === 'reduce' ? 'rgba(239,68,68,0.25)' : aiResult.trainingLoad === 'increase' ? 'rgba(34,197,94,0.25)' : 'rgba(0,200,224,0.25)'}` }}>
+              <span style={{ fontSize:20 }}>{ aiResult.trainingLoad === 'reduce' ? '🔽' : aiResult.trainingLoad === 'increase' ? '🔼' : '➡️' }</span>
+              <div>
+                <p style={{ fontSize:11, fontWeight:700, margin:0, color: aiResult.trainingLoad === 'reduce' ? '#ef4444' : aiResult.trainingLoad === 'increase' ? '#22c55e' : '#00c8e0' }}>
+                  Charge : { aiResult.trainingLoad === 'reduce' ? 'Réduire' : aiResult.trainingLoad === 'increase' ? 'Augmenter' : 'Maintenir' }
+                </p>
+                <p style={{ fontSize:11, color:'var(--text-mid)', margin:'2px 0 0' }}>{aiResult.recommendation}</p>
+              </div>
+            </div>
+            {/* Conseil séance */}
+            <div style={{ padding:'12px 16px', borderRadius:12, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.2)' }}>
+              <p style={{ fontSize:11, fontWeight:600, color:'#5b6fff', margin:'0 0 4px' }}>💡 Séance du jour</p>
+              <p style={{ fontSize:13, color:'var(--text)', margin:0, lineHeight:1.6 }}>{aiResult.todayAdvice}</p>
+            </div>
+            {/* Fatigue bar */}
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.05em' }}>Fatigue estimée</span>
+                <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:'var(--text)' }}>{aiResult.fatigue}/100</span>
+              </div>
+              <div style={{ height:5, borderRadius:99, background:'var(--border)', overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${aiResult.fatigue}%`, borderRadius:99,
+                  background: aiResult.fatigue > 70 ? '#ef4444' : aiResult.fatigue > 45 ? '#f97316' : '#22c55e' }}/>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setAiResult(null)} style={{ marginTop:16, padding:'5px 12px', borderRadius:8, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:11, cursor:'pointer', display:'block', marginLeft:'auto' }}>✕ Fermer</button>
+        </div>
+      )}
+
       <SectionSleep    sleep={todayData.sleep}/>
       <SectionTrends   data={todayData}/>
       <SectionDataSources/>

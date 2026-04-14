@@ -995,23 +995,48 @@ function PlanQuestionnaireModal({ onClose, onGenerate }: { onClose:()=>void; onG
 // ══════════════════════════════════════════════════════════════════
 // AI CHAT PANEL
 // ══════════════════════════════════════════════════════════════════
-function AIChatPanel({ messages, onSend }: { messages:ChatMessage[]; onSend:(m:ChatMessage)=>void }) {
-  const [input, setInput] = useState('')
+function AIChatPanel({ messages, onSend, mealContext }: {
+  messages: ChatMessage[]
+  onSend: (m: ChatMessage) => void
+  mealContext?: { kcal:number; p:number; c:number; f:number; targetKcal:number }
+}) {
+  const [input,   setInput]   = useState('')
+  const [sending, setSending] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages])
 
-  function send() {
-    if (!input.trim()) return
-    const userMsg: ChatMessage = { id:uid(), role:'user', content:input, ts:nowTs() }
+  async function send() {
+    if (!input.trim() || sending) return
+    const question = input.trim()
+    const userMsg: ChatMessage = { id:uid(), role:'user', content:question, ts:nowTs() }
     onSend(userMsg)
-    const lower = input.toLowerCase()
-    const match = AI_RESPONSES.find(r => r.kw.some(k => lower.includes(k)))
-    const aiContent = match?.r ?? "Bonne question. Pour être précis, je te recommande de consulter ton plan nutritionnel et d'ajuster selon ton ressenti du jour. N'hésite pas à reformuler si tu veux une réponse plus spécifique."
-    setTimeout(() => {
-      onSend({ id:uid(), role:'ai', content:aiContent, ts:nowTs() })
-    }, 800)
     setInput('')
+    setSending(true)
+    try {
+      const res = await fetch('/api/coach-engine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'nutrition',
+          payload: {
+            athleteProfile: { sport: 'multisport' },
+            goal: 'performance',
+            currentIntake: mealContext ? { kcal:mealContext.kcal, proteinG:mealContext.p, carbsG:mealContext.c, fatG:mealContext.f } : undefined,
+            question,
+          },
+        }),
+      })
+      const data = await res.json()
+      const answer = data.ok && data.result?.answer
+        ? data.result.answer
+        : "Désolé, je n'ai pas pu analyser ta question. Réessaie dans un instant."
+      onSend({ id:uid(), role:'ai', content:answer, ts:nowTs() })
+    } catch {
+      onSend({ id:uid(), role:'ai', content:"Erreur de connexion au coach IA. Réessaie dans un instant.", ts:nowTs() })
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -1031,11 +1056,13 @@ function AIChatPanel({ messages, onSend }: { messages:ChatMessage[]; onSend:(m:C
       </div>
       {/* Input */}
       <div style={{ display:'flex', gap:8 }}>
-        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
-          placeholder="Demande quelque chose…"
-          style={{ flex:1, borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'10px 14px', fontFamily:'DM Sans,sans-serif', fontSize:13 }}/>
-        <button onClick={send} style={{ padding:'10px 16px', borderRadius:12, border:'none', background:'#00c8e0', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          Envoyer
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&!sending&&send()}
+          placeholder={sending ? 'Coach IA répond…' : 'Pose ta question nutrition…'}
+          disabled={sending}
+          style={{ flex:1, borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'10px 14px', fontFamily:'DM Sans,sans-serif', fontSize:13, opacity:sending?0.7:1 }}/>
+        <button onClick={send} disabled={sending}
+          style={{ padding:'10px 16px', borderRadius:12, border:'none', background:sending?'var(--bg-card2)':'#00c8e0', color:sending?'var(--text-dim)':'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:sending?'default':'pointer', minWidth:80 }}>
+          {sending ? '⏳' : 'Envoyer'}
         </button>
       </div>
     </div>
@@ -1113,8 +1140,9 @@ function SectionToday({ meals, plan, ctx }: { meals:Meal[]; plan:NutritionPlan|n
 // ══════════════════════════════════════════════════════════════════
 // SECTION 2 — PLAN & IA
 // ══════════════════════════════════════════════════════════════════
-function SectionPlan({ plan, ctx, onCreatePlan, showBody }: { plan:NutritionPlan|null; ctx:SportContext; onCreatePlan:()=>void; showBody:boolean }) {
+function SectionPlan({ plan, ctx, onCreatePlan, showBody, todayTotals }: { plan:NutritionPlan|null; ctx:SportContext; onCreatePlan:()=>void; showBody:boolean; todayTotals?:{kcal:number;p:number;c:number;f:number} }) {
   const [aiMsgs, setAiMsgs] = useState<ChatMessage[]>(MOCK_CHAT)
+  const target = plan ? plan[ctx.today_type] : null
 
   function handleSend(m: ChatMessage) { setAiMsgs(prev => [...prev, m]) }
 
@@ -1225,7 +1253,7 @@ function SectionPlan({ plan, ctx, onCreatePlan, showBody }: { plan:NutritionPlan
 
       {/* AI Chat */}
       <div style={{ borderTop:'1px solid var(--border)', paddingTop:20 }}>
-        <AIChatPanel messages={aiMsgs} onSend={handleSend}/>
+        <AIChatPanel messages={aiMsgs} onSend={handleSend} mealContext={todayTotals ? { ...todayTotals, targetKcal: target?.kcal ?? 2500 } : undefined}/>
       </div>
 
       <style>{`
@@ -1383,6 +1411,7 @@ export default function NutritionPage() {
   const [showQModal,    setShowQModal]  = useState(false)
   const [sportCtx]                      = useState<SportContext>(MOCK_SPORT_CONTEXT)
   const hasBodyData                     = MOCK_BODY.length > 0
+  const todayTotals                     = totalDay(meals)
 
   return (
     <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
@@ -1410,7 +1439,7 @@ export default function NutritionPage() {
       </div>
 
       <SectionToday meals={meals} plan={plan} ctx={sportCtx}/>
-      <SectionPlan  plan={plan} ctx={sportCtx} onCreatePlan={()=>setShowQModal(true)} showBody={hasBodyData}/>
+      <SectionPlan  plan={plan} ctx={sportCtx} onCreatePlan={()=>setShowQModal(true)} showBody={hasBodyData} todayTotals={{ kcal:todayTotals.kcal, p:todayTotals.p, c:todayTotals.c, f:todayTotals.f }}/>
       <SectionMeals meals={meals} setMeals={setMeals}/>
 
       {showQModal && (

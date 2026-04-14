@@ -2970,6 +2970,10 @@ const NAV: { id: Section; label: string; desc: string }[] = [
 // ─────────────────────────────────────────────────────────────
 // PAGE ROOT
 // ─────────────────────────────────────────────────────────────
+// ── Types pour l'analyse IA ───────────────────────────────────
+interface AIPerformanceTrend { metric: string; direction: 'improving'|'stable'|'declining'; change: string }
+interface AIPerformanceResult { summary: string; trends: AIPerformanceTrend[]; strengths: string[]; weaknesses: string[]; recommendations: string[]; fitnessScore: number }
+
 export default function TrainingPage() {
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, loading, error, reload } = useActivities()
@@ -2979,6 +2983,44 @@ export default function TrainingPage() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [syncing, setSyncing]       = useState(false)
   const [syncMsg, setSyncMsg]       = useState<string | null>(null)
+  const [aiLoading,  setAiLoading]  = useState(false)
+  const [aiResult,   setAiResult]   = useState<AIPerformanceResult | null>(null)
+  const [aiError,    setAiError]    = useState<string | null>(null)
+
+  async function analyzePerformance() {
+    if (activities.length === 0) return
+    setAiLoading(true); setAiResult(null); setAiError(null)
+    try {
+      const recent = activities.slice(0, 30)
+      const res = await fetch('/api/coach-engine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'analyze_performance',
+          payload: {
+            activities: recent.map(a => ({
+              sport: a.sport_type,
+              date: a.started_at,
+              durationMin: Math.round((a.moving_time_s ?? 0) / 60),
+              distance: a.distance_m ?? undefined,
+              avgWatts: a.avg_watts ?? undefined,
+              tss: a.tss ?? 0,
+              hrAvg: a.avg_hr ?? undefined,
+            })),
+            metrics: {},
+            period: '30d',
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error ?? 'Erreur agent')
+      setAiResult(data.result)
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setAiLoading(false)
+    }
+  }
   const width   = useWindowWidth()
   const isMobile = width < 768
   const active  = NAV.find(n => n.id === section)!
@@ -3029,6 +3071,19 @@ export default function TrainingPage() {
           {syncMsg && (
             <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg === 'À jour' ? T.textMuted : '#ef4444',
               fontFamily: T.fontBody, fontWeight: 600 }}>{syncMsg}</span>
+          )}
+          {!loading && activities.length > 0 && (
+            <button
+              onClick={analyzePerformance}
+              disabled={aiLoading}
+              title="Analyser mes performances avec l'IA"
+              style={{ background: aiLoading ? T.bgAlt : 'rgba(91,111,255,0.10)', border: '1px solid rgba(91,111,255,0.35)', borderRadius: T.radiusSm,
+                color: aiLoading ? T.textMuted : '#5b6fff', cursor: aiLoading ? 'default' : 'pointer',
+                padding: '5px 12px', fontSize: 12, fontWeight: 700, fontFamily: T.fontDisplay,
+                opacity: aiLoading ? 0.6 : 1, whiteSpace: 'nowrap' as const }}
+            >
+              {aiLoading ? '⏳ Analyse…' : '🧠 Analyser'}
+            </button>
           )}
           <button
             onClick={syncStrava}
@@ -3158,6 +3213,78 @@ export default function TrainingPage() {
             <div style={{ marginBottom: 20 }}>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>{active.label}</h1>
               <p style={{ margin: '3px 0 0', fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{active.desc}</p>
+            </div>
+          )}
+
+          {/* ── Panneau analyse IA ── */}
+          {aiError && (
+            <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: T.radius, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 12 }}>
+              ⚠️ {aiError}
+            </div>
+          )}
+          {aiResult && (
+            <div style={{ marginBottom: 20, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 20, boxShadow: T.shadow }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap' as const, gap: 10 }}>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, color: T.textMuted, margin: 0, fontFamily: T.fontDisplay }}>Intelligence artificielle</p>
+                  <h3 style={{ fontFamily: T.fontDisplay, fontSize: 16, fontWeight: 700, margin: '3px 0 4px', color: T.text }}>Analyse de tes performances</h3>
+                  <p style={{ fontSize: 12, color: T.textSub, margin: 0, fontFamily: T.fontBody, lineHeight: 1.5 }}>{aiResult.summary}</p>
+                </div>
+                <div style={{ textAlign: 'center' as const, flexShrink: 0 }}>
+                  <p style={{ fontFamily: T.fontMono, fontSize: 34, fontWeight: 800, margin: 0, lineHeight: 1,
+                    color: aiResult.fitnessScore >= 75 ? '#22c55e' : aiResult.fitnessScore >= 50 ? '#f97316' : '#ef4444' }}>
+                    {aiResult.fitnessScore}
+                  </p>
+                  <p style={{ fontSize: 9, color: T.textMuted, margin: '2px 0 0', fontFamily: T.fontBody }}>score fitness / 100</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 14 }}>
+                {/* Tendances */}
+                {aiResult.trends.length > 0 && (
+                  <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: T.textMuted, margin: '0 0 8px', fontFamily: T.fontDisplay }}>Tendances</p>
+                    {aiResult.trends.map((t, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                        <span style={{ fontSize: 12 }}>{ t.direction === 'improving' ? '📈' : t.direction === 'declining' ? '📉' : '➡️' }</span>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 600, margin: 0, color: T.text }}>{t.metric}</p>
+                          <p style={{ fontSize: 10, color: T.textMuted, margin: 0, fontFamily: T.fontBody }}>{t.change}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Forces / Faiblesses */}
+                <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
+                  {aiResult.strengths.length > 0 && (
+                    <>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#22c55e', margin: '0 0 6px', fontFamily: T.fontDisplay }}>💪 Forces</p>
+                      {aiResult.strengths.map((s, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 3px', fontFamily: T.fontBody }}>• {s}</p>)}
+                    </>
+                  )}
+                  {aiResult.weaknesses.length > 0 && (
+                    <>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#f97316', margin: '10px 0 6px', fontFamily: T.fontDisplay }}>⚠️ Points à travailler</p>
+                      {aiResult.weaknesses.map((w, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 3px', fontFamily: T.fontBody }}>• {w}</p>)}
+                    </>
+                  )}
+                </div>
+
+                {/* Recommandations */}
+                {aiResult.recommendations.length > 0 && (
+                  <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#5b6fff', margin: '0 0 8px', fontFamily: T.fontDisplay }}>💡 Recommandations</p>
+                    {aiResult.recommendations.map((r, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 5px', fontFamily: T.fontBody }}>• {r}</p>)}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={() => setAiResult(null)} style={{ padding: '5px 12px', borderRadius: T.radiusSm, background: T.bgAlt, border: `1px solid ${T.border}`, color: T.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: T.fontBody, display: 'block', marginLeft: 'auto' }}>
+                ✕ Fermer
+              </button>
             </div>
           )}
 

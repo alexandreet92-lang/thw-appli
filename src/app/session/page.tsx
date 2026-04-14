@@ -981,6 +981,10 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
 // ══════════════════════════════════════════════════════════════════
 // BUILD MODE — full session form + sport builder
 // ══════════════════════════════════════════════════════════════════
+// ── Types pour l'agent IA session ────────────────────────────
+interface AISessionBlock { type:'warmup'|'effort'|'recovery'|'cooldown'; zone:number; durationMin:number; label:string; description?:string }
+interface AISessionResult { title:string; blocks:AISessionBlock[]; totalDurationMin:number; estimatedTSS:number; coachNotes:string }
+
 function BuildMode({ initial, onSave, onCancel }: {
   initial?: SessionTemplate
   onSave: (t: SessionTemplate) => void
@@ -992,6 +996,39 @@ function BuildMode({ initial, onSave, onCancel }: {
   const [intensity, setIntensity] = useState<Intensity>(initial?.intensity ?? 'moderate')
   const [tagsStr,   setTagsStr]   = useState((initial?.tags??[]).join(', '))
   const [notes,     setNotes]     = useState(initial?.notes ?? '')
+
+  const [aiLoading,   setAiLoading]   = useState(false)
+  const [aiResult,    setAiResult]    = useState<AISessionResult | null>(null)
+  const [aiError,     setAiError]     = useState<string | null>(null)
+
+  async function generateWithAI() {
+    setAiLoading(true); setAiResult(null); setAiError(null)
+    const sportToApi: Record<Sport, string> = { muscu:'gym', running:'run', velo:'bike', natation:'swim', hyrox:'hyrox' }
+    const intensityToType: Record<Intensity, string> = { low:'recovery', moderate:'endurance', high:'intervals', max:'intervals' }
+    try {
+      const res = await fetch('/api/coach-engine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'build_session',
+          payload: {
+            sport: sportToApi[sport],
+            type: intensityToType[intensity],
+            targetDurationMin: duration,
+            context: notes || `${sportLabel(sport)} — ${intensityLabel(intensity)}`,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error ?? 'Erreur agent')
+      setAiResult(data.result)
+      if (data.result.title && !name) setName(data.result.title)
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const [muscu,    setMuscu]    = useState<MusculaireSession>(initial?.muscu    ?? { circuits:[], exercises:[] })
   const [endur,    setEndur]    = useState<EnduranceSession>(initial?.endurance ?? { blocks:[] })
@@ -1028,11 +1065,49 @@ function BuildMode({ initial, onSave, onCancel }: {
               {name || 'Seance sans titre'}
             </h2>
           </div>
-          <button onClick={onCancel}
-            style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', cursor:'pointer', color:'var(--text-dim)', fontSize:13, fontFamily:'DM Sans,sans-serif' }}>
-            Annuler
-          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={generateWithAI} disabled={aiLoading}
+              style={{ padding:'7px 14px', borderRadius:9, background:'rgba(91,111,255,0.10)', border:'1px solid rgba(91,111,255,0.35)', color:'#5b6fff', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:700, cursor:aiLoading?'default':'pointer', opacity:aiLoading?0.6:1, whiteSpace:'nowrap' as const }}>
+              {aiLoading ? '⏳ Génération…' : '✨ Générer avec l\'IA'}
+            </button>
+            <button onClick={onCancel}
+              style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', cursor:'pointer', color:'var(--text-dim)', fontSize:13, fontFamily:'DM Sans,sans-serif' }}>
+              Annuler
+            </button>
+          </div>
         </div>
+
+        {/* ── Résultat IA ── */}
+        {aiError && (
+          <div style={{ marginBottom:14, padding:'10px 14px', borderRadius:10, background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.25)', color:'#ef4444', fontSize:12 }}>
+            ⚠️ {aiError}
+          </div>
+        )}
+        {aiResult && (
+          <div style={{ marginBottom:20, padding:'16px', borderRadius:14, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.2)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+              <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'#5b6fff' }}>✨ {aiResult.title}</p>
+              <span style={{ fontSize:10, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{aiResult.totalDurationMin}min · TSS ~{aiResult.estimatedTSS}</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
+              {aiResult.blocks.map((b, i) => {
+                const zoneColors = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
+                const c = zoneColors[Math.min(b.zone - 1, 4)] ?? '#9ca3af'
+                return (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 12px', borderRadius:8, background:'var(--bg-card2)', borderLeft:`3px solid ${c}` }}>
+                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:10, color:c, fontWeight:700, minWidth:26 }}>Z{b.zone}</span>
+                    <span style={{ fontSize:11, fontWeight:600, flex:1 }}>{b.label}</span>
+                    <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{b.durationMin}min</span>
+                  </div>
+                )
+              })}
+            </div>
+            {aiResult.coachNotes && (
+              <p style={{ fontSize:11, color:'var(--text-mid)', margin:'0 0 10px', fontStyle:'italic' as const }}>💬 {aiResult.coachNotes}</p>
+            )}
+            <button onClick={() => setAiResult(null)} style={{ padding:'4px 10px', borderRadius:7, background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>✕ Fermer</button>
+          </div>
+        )}
 
         {/* Nom */}
         <div style={{ marginBottom:14 }}>

@@ -1312,7 +1312,7 @@ export default function SessionPage() {
       `}</style>
 
       {/* Header */}
-      <div className="session-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+      <div className="session-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>
             {titleMap[mode]}
@@ -1321,12 +1321,15 @@ export default function SessionPage() {
             {subMap[mode] || new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
           </p>
         </div>
-        {mode !== 'library' && (
-          <button onClick={()=>setMode('library')}
-            style={{ padding:'8px 16px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
-            ← Bibliotheque
-          </button>
-        )}
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          {mode !== 'library' && (
+            <button onClick={()=>setMode('library')}
+              style={{ padding:'8px 16px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+              ← Bibliotheque
+            </button>
+          )}
+          <AIAssistantButton agent="sessionBuilder" context={{ mode }} />
+        </div>
       </div>
 
       {mode === 'library' && (
@@ -1360,7 +1363,6 @@ export default function SessionPage() {
         </div>
       )}
 
-      <AIAssistantButton agent="sessionBuilder" context={{ mode }} />
     </div>
   )
 }

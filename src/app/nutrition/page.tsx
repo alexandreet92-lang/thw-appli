@@ -1426,17 +1426,20 @@ export default function NutritionPage() {
       `}</style>
 
       {/* Header */}
-      <div className="nutrition-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+      <div className="nutrition-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Nutrition</h1>
           <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>
             {new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
           </p>
         </div>
-        <button onClick={()=>setShowQModal(true)}
-          style={{ padding:'8px 18px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 12px rgba(0,200,224,0.3)' }}>
-          {plan ? 'Mon plan' : '+ Créer un plan'}
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button onClick={()=>setShowQModal(true)}
+            style={{ padding:'8px 18px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 12px rgba(0,200,224,0.3)' }}>
+            {plan ? 'Mon plan' : '+ Créer un plan'}
+          </button>
+          <AIAssistantButton agent="nutrition" context={{ todayKcal: todayTotals.kcal, todayProtein: todayTotals.p, hasPlan: !!plan }} />
+        </div>
       </div>
 
       <SectionToday meals={meals} plan={plan} ctx={sportCtx}/>
@@ -1453,16 +1456,6 @@ export default function NutritionPage() {
         />
       )}
 
-      <AIAssistantButton
-        agent="nutrition"
-        context={{
-          todayKcal: todayTotals.kcal,
-          todayProtein: todayTotals.p,
-          todayCarbs: todayTotals.c,
-          todayFat: todayTotals.f,
-          hasPlan: !!plan,
-        }}
-      />
     </div>
   )
 }

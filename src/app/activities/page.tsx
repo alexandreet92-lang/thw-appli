@@ -3105,6 +3105,7 @@ export default function TrainingPage() {
           >
             ↻
           </button>
+          <AIAssistantButton agent="performance" context={{ activityCount: activities.length, section }} />
         </div>
       </div>
 
@@ -3327,13 +3328,6 @@ export default function TrainingPage() {
         table { border-spacing: 0; }
       `}</style>
 
-      <AIAssistantButton
-        agent="performance"
-        context={{
-          activityCount: activities.length,
-          section,
-        }}
-      />
     </div>
   )
 }

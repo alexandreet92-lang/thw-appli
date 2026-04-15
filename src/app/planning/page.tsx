@@ -1893,9 +1893,12 @@ export default function PlanningPage() {
 
   return (
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
-        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+        <div>
+          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
+          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
+        </div>
+        <AIAssistantButton agent="planning" context={{ tab }} />
       </div>
 
       <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' as const }}>
@@ -1913,8 +1916,6 @@ export default function PlanningPage() {
 
       {tab==='training' && <TrainingTab/>}
       {tab==='week'     && <WeekTab trainingWeek={sessions}/>}
-
-      <AIAssistantButton agent="planning" context={{ tab }} />
     </div>
   )
 }

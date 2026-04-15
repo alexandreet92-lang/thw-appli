@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
 // ── Types ─────────────────────────────────────────
 type CalTab        = 'race' | 'pro' | 'perso' | 'all'
@@ -1181,9 +1182,12 @@ export default function CalendarPage() {
   return (
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
       {/* Header */}
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
-        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+        <div>
+          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
+          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
+        </div>
+        <AIAssistantButton agent="strategy" context={{ tab }} />
       </div>
 
       {/* Tab pills */}

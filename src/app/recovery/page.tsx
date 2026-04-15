@@ -707,11 +707,14 @@ export default function RecoveryPage() {
     <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
 
       {/* Header page */}
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Récupération</h1>
-        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>
-          {new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
-        </p>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
+        <div>
+          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Récupération</h1>
+          <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>
+            {new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+          </p>
+        </div>
+        <AIAssistantButton agent="readiness" context={{ readiness: todayData.readiness, hrv: todayData.hrv, sleep: todayData.sleep }} />
       </div>
 
       <SectionToday    data={todayData} onCheckIn={() => setShowCheckIn(true)} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>
@@ -791,15 +794,6 @@ export default function RecoveryPage() {
         />
       )}
 
-      <AIAssistantButton
-        agent="readiness"
-        context={{
-          readiness: todayData.readiness,
-          hrv: todayData.hrv,
-          sleep: todayData.sleep,
-          trends7d: todayData.trends.days7.readiness,
-        }}
-      />
     </div>
   )
 }

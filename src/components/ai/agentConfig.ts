@@ -15,7 +15,6 @@ export type PageAgent =
 
 export interface QuickAction {
   label: string
-  emoji: string
   prompt: string
 }
 
@@ -27,6 +26,27 @@ export interface AgentConfig {
   quickActions: QuickAction[]
 }
 
+// Agents affichés dans la sidebar du panel IA
+export const MAIN_AGENTS: PageAgent[] = [
+  'planning',
+  'strategy',
+  'sessionBuilder',
+  'performance',
+  'readiness',
+  'nutrition',
+]
+
+// Noms d'affichage courts pour le dropdown / sidebar
+export const AGENT_DISPLAY: Record<PageAgent, string> = {
+  planning:       'Planning',
+  strategy:       'Calendrier',
+  readiness:      'Récupération',
+  sessionBuilder: 'Séances',
+  nutrition:      'Nutrition',
+  performance:    'Training',
+  adjustment:     'Adaptation',
+}
+
 export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
   planning: {
     id: 'planning',
@@ -36,22 +56,18 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     quickActions: [
       {
         label: 'Analyse ma semaine',
-        emoji: '📊',
         prompt: 'Analyse ma semaine d\'entraînement actuelle. Dis-moi si la charge est équilibrée, si les intensités sont bien réparties et si tu vois des risques.',
       },
       {
         label: 'Ajuste mon plan',
-        emoji: '⚡',
         prompt: 'Je me sens un peu fatigué cette semaine. Comment devrais-je ajuster mon planning ? Quelles séances conserver en priorité ?',
       },
       {
         label: 'Optimise ma charge',
-        emoji: '📈',
         prompt: 'Donne-moi des conseils pour optimiser ma charge d\'entraînement cette semaine. Comment progresser sans risquer le surmenage ?',
       },
       {
-        label: 'Semaine de récup',
-        emoji: '😴',
+        label: 'Semaine de récupération',
         prompt: 'J\'ai besoin d\'une semaine de récupération. Comment devrais-je organiser mes séances pour décharger sans perdre ma forme ?',
       },
     ],
@@ -65,22 +81,18 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     quickActions: [
       {
         label: 'Définis mon objectif',
-        emoji: '🎯',
         prompt: 'Aide-moi à définir un objectif sportif réaliste et ambitieux pour les 3 prochains mois.',
       },
       {
         label: 'Planifie mes cycles',
-        emoji: '🗓️',
         prompt: 'Comment devrais-je structurer mes cycles d\'entraînement pour progresser de façon optimale ?',
       },
       {
         label: 'Évalue ma progression',
-        emoji: '📈',
         prompt: 'Donne-moi une évaluation honnête de ma progression et dis-moi sur quoi me concentrer maintenant.',
       },
       {
         label: 'Prépare une compétition',
-        emoji: '🏆',
         prompt: 'J\'ai une compétition dans 8 semaines. Comment préparer au mieux ces dernières semaines ?',
       },
     ],
@@ -93,23 +105,19 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     accent: '#f97316',
     quickActions: [
       {
-        label: 'J\'ai mal aux jambes',
-        emoji: '🦵',
+        label: 'Douleurs dans les jambes',
         prompt: 'J\'ai des douleurs dans les jambes depuis hier. Dois-je m\'entraîner aujourd\'hui ? Que me conseilles-tu ?',
       },
       {
         label: 'Récupération express',
-        emoji: '⚡',
         prompt: 'J\'ai fait une grosse séance hier. Comment récupérer rapidement pour être prêt demain ?',
       },
       {
-        label: 'Stress & fatigue',
-        emoji: '😓',
+        label: 'Stress et fatigue',
         prompt: 'Je suis très stressé au travail en ce moment. Comment adapter mon entraînement sans sacrifier ma progression ?',
       },
       {
         label: 'Reprise après pause',
-        emoji: '🔄',
         prompt: 'Je n\'ai pas pu m\'entraîner pendant 10 jours. Comment reprendre intelligemment sans me blesser ?',
       },
     ],
@@ -122,23 +130,19 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     accent: '#22c55e',
     quickActions: [
       {
-        label: 'Comment je me sens ?',
-        emoji: '💚',
+        label: 'Analyse mes données',
         prompt: 'Analyse mes données de récupération et dis-moi objectivement comment je me sens aujourd\'hui.',
       },
       {
-        label: 'Séance du jour',
-        emoji: '🏃',
+        label: 'Intensité du jour',
         prompt: 'Vu ma forme actuelle, quelle intensité d\'entraînement me recommandes-tu pour aujourd\'hui ?',
       },
       {
-        label: 'Améliore mon sommeil',
-        emoji: '😴',
+        label: 'Améliorer le sommeil',
         prompt: 'Mon sommeil n\'est pas optimal. Quels conseils pratiques peux-tu me donner pour mieux récupérer la nuit ?',
       },
       {
         label: 'Signes de surmenage',
-        emoji: '⚠️',
         prompt: 'Comment savoir si je suis en surmenage ? Quels signes dois-je surveiller ?',
       },
     ],
@@ -152,23 +156,19 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     quickActions: [
       {
         label: 'Séance endurance',
-        emoji: '🏃',
         prompt: 'Crée-moi une séance d\'endurance fondamentale pour aujourd\'hui. J\'ai environ 1h disponible.',
       },
       {
         label: 'Fractionné intense',
-        emoji: '⚡',
         prompt: 'Je veux faire du fractionné intensif aujourd\'hui. Construis-moi une séance efficace de 45-60 minutes.',
       },
       {
-        label: 'Récup active',
-        emoji: '🧘',
+        label: 'Récupération active',
         prompt: 'J\'ai besoin d\'une séance de récupération active. Quelque chose de doux mais qui me permette quand même de bouger.',
       },
       {
-        label: 'Séance surprise',
-        emoji: '🎲',
-        prompt: 'Surprends-moi ! Crée une séance originale et motivante pour aujourd\'hui selon ma discipline.',
+        label: 'Séance originale',
+        prompt: 'Construis une séance originale et motivante pour aujourd\'hui selon ma discipline et ma forme.',
       },
     ],
   },
@@ -181,22 +181,18 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     quickActions: [
       {
         label: 'Mes macros du jour',
-        emoji: '🎯',
         prompt: 'Calcule mes besoins en macronutriments pour aujourd\'hui selon mon activité prévue.',
       },
       {
         label: 'Repas avant séance',
-        emoji: '🍌',
         prompt: 'Que dois-je manger avant ma séance d\'aujourd\'hui ? Donne-moi des options pratiques.',
       },
       {
-        label: 'Récup nutritionnelle',
-        emoji: '🥩',
+        label: 'Récupération nutritionnelle',
         prompt: 'J\'ai fini une séance intense. Que dois-je manger pour optimiser ma récupération ?',
       },
       {
-        label: 'Hydratation',
-        emoji: '💧',
+        label: 'Plan d\'hydratation',
         prompt: 'Donne-moi un plan d\'hydratation optimal pour aujourd\'hui avec ma séance prévue.',
       },
     ],
@@ -210,22 +206,18 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     quickActions: [
       {
         label: 'Analyse mes activités',
-        emoji: '📊',
         prompt: 'Analyse mes activités récentes. Qu\'est-ce que tu observes comme tendances ? Je progresse ?',
       },
       {
-        label: 'Points faibles',
-        emoji: '🔍',
+        label: 'Identifie mes points faibles',
         prompt: 'Identifie mes points faibles dans mes données d\'entraînement et dis-moi comment les améliorer.',
       },
       {
         label: 'Pic de forme',
-        emoji: '🏔️',
         prompt: 'Comment atteindre un pic de forme pour une compétition dans 6 semaines ?',
       },
       {
-        label: 'Compare mes zones',
-        emoji: '💡',
+        label: 'Analyse mes zones',
         prompt: 'Analyse ma répartition par zones d\'intensité. Est-ce que je m\'entraîne dans les bonnes zones ?',
       },
     ],

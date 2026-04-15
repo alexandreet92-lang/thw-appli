@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 // import { createClient } from '@/lib/supabase/client'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -1451,6 +1452,17 @@ export default function NutritionPage() {
           }}
         />
       )}
+
+      <AIAssistantButton
+        agent="nutrition"
+        context={{
+          todayKcal: todayTotals.kcal,
+          todayProtein: todayTotals.p,
+          todayCarbs: todayTotals.c,
+          todayFat: todayTotals.f,
+          hasPlan: !!plan,
+        }}
+      />
     </div>
   )
 }

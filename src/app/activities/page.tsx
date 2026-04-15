@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/hooks/useTheme'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -3325,6 +3326,14 @@ export default function TrainingPage() {
         select option { background: var(--bg-card); color: var(--text); }
         table { border-spacing: 0; }
       `}</style>
+
+      <AIAssistantButton
+        agent="performance"
+        context={{
+          activityCount: activities.length,
+          section,
+        }}
+      />
     </div>
   )
 }

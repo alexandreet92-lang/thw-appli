@@ -15,6 +15,7 @@ export type AgentName =
   | 'adjustment'
   | 'performance'
   | 'nutrition'
+  | 'chat'
 
 // Chaque action déclare les agents utilisés, dans l'ordre d'exécution.
 // Les agents marqués "parallel" peuvent être appelés simultanément.
@@ -53,6 +54,10 @@ export const ACTION_MAP: Record<CoachAction, ActionMapping> = {
   nutrition: {
     agents: ['nutrition'],
     description: 'Calcule les besoins nutritionnels et répond aux questions',
+  },
+  chat: {
+    agents: ['chat'],
+    description: 'Conversation contextuelle avec l\'assistant IA de la page',
   },
 }
 

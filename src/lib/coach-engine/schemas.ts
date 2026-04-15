@@ -34,6 +34,7 @@ export type CoachAction =
   | 'adjust_plan'
   | 'analyze_performance'
   | 'nutrition'
+  | 'chat'
 
 // ── STRATEGY AGENT ─────────────────────────────────────────────
 
@@ -295,6 +296,26 @@ export interface NutritionOutput {
 
 // ── ORCHESTRATOR — Payload union ───────────────────────────────
 
+// ── CHAT AGENT ────────────────────────────────────────────────
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatInput {
+  agentId: string           // 'planning' | 'readiness' | 'sessionBuilder' | 'nutrition' | 'performance'
+  messages: ChatMessage[]   // historique complet
+  context?: Record<string, unknown>  // contexte page (stats, séances, etc.)
+}
+
+export interface ChatOutput {
+  reply: string             // réponse conversationnelle en texte
+  agentId: string
+}
+
+// ── ORCHESTRATOR — Payload union ───────────────────────────────
+
 export type CoachPayload =
   | StrategyInput
   | ProgramInput
@@ -304,6 +325,7 @@ export type CoachPayload =
   | AdjustmentInput
   | PerformanceInput
   | NutritionInput
+  | ChatInput
 
 export type CoachResult =
   | { action: 'generate_program';    result: { strategy: StrategyOutput; program: ProgramOutput } }
@@ -313,3 +335,4 @@ export type CoachResult =
   | { action: 'adjust_plan';         result: AdjustmentOutput }
   | { action: 'analyze_performance'; result: PerformanceOutput }
   | { action: 'nutrition';           result: NutritionOutput }
+  | { action: 'chat';                result: ChatOutput }

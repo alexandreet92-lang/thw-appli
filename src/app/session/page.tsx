@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 // import { createClient } from '@/lib/supabase/client'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -1358,6 +1359,8 @@ export default function SessionPage() {
           )}
         </div>
       )}
+
+      <AIAssistantButton agent="sessionBuilder" context={{ mode }} />
     </div>
   )
 }

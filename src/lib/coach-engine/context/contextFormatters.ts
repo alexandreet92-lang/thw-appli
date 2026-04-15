@@ -17,7 +17,7 @@ function section(title: string, lines: string[]): string {
 
 function missing(fields: string[]): string {
   if (fields.length === 0) return ''
-  return `\n### Données absentes (à demander si nécessaire)\n  ${fields.join(', ')}`
+  return `\n### Données non disponibles dans l'application\n  ${fields.join(', ')}\n  IMPORTANT: Ces données ne sont pas encore saisies dans l'app. Ne demande PAS à l'utilisateur de les fournir manuellement. Indique-lui où les saisir dans l'app ou réponds en fonction de ce qui est disponible.`
 }
 
 // ── PLANNING ────────────────────────────────────────────────
@@ -294,11 +294,12 @@ export function formatNutritionContext(ctx: Record<string, unknown>): string {
   // Repas saisis
   const meals = (ctx.meals as any[]) ?? []
   if (meals.length > 0) {
-    const nonEmpty = meals.filter((m: any) => m.foods && m.foods.length > 0)
+    const nonEmpty = meals.filter((m: any) => (m.entries ?? m.foods ?? []).length > 0)
     if (nonEmpty.length > 0) {
       const lines = nonEmpty.map((m: any) => {
-        const kcal = m.foods.reduce((s: number, f: any) => s + (f.kcal || 0), 0)
-        return `${m.type}: ${m.foods.length} aliment(s), ~${Math.round(kcal)} kcal`
+        const foods = m.entries ?? m.foods ?? []
+        const kcal = foods.reduce((s: number, f: any) => s + (f.kcal || 0), 0)
+        return `${m.type}: ${foods.length} aliment(s), ~${Math.round(kcal)} kcal`
       })
       parts.push(section('Repas enregistrés aujourd\'hui', lines))
     }

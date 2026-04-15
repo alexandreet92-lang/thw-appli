@@ -1,13 +1,18 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// AI PANEL — Interface IA premium
-// Desktop : panneau fixe 540px (sidebar 200px + chat flex-1)
-// Mobile  : plein écran 100dvh, sidebar overlay gauche
+// AI PANEL — Interface IA premium THW Coaching
 //
-// BUG INPUT FIX : SidebarContent et ChatArea sont renderés
-// en JSX inline — pas en composants intérieurs — pour éviter
-// le unmount/remount sur chaque keystroke (perte de focus).
+// CORRECTIONS :
+// [1] Input bug — JSX inline, jamais de composants intérieurs
+// [2] Transparence dark mode — fonds solides
+// [3] Safari zoom — font-size ≥ 16px sur textarea
+// [4] Scroll mobile — flex layout correct + -webkit-overflow-scrolling
+// [5] Sidebar : Discussions → convs → nouvelle conv → Thèmes
+// [6] Menu "..." par conversation : renommer / supprimer
+// [7] Header compact — logo + hamburger + close seulement
+// [8] Fullscreen mode — bouton expand
+// [9] Markdown propre — pas de ### ou --- visibles
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -22,7 +27,6 @@ interface AIMsg {
   content: string
   ts: number
 }
-
 interface AIConv {
   id: string
   title: string
@@ -31,7 +35,6 @@ interface AIConv {
   updatedAt: number
   msgs: AIMsg[]
 }
-
 type ConvStore = Partial<Record<PageAgent, AIConv[]>>
 
 interface Props {
@@ -41,10 +44,22 @@ interface Props {
   context?: Record<string, unknown>
 }
 
+// ── Routes par agent ──────────────────────────────────────────
+
+const AGENT_ROUTES: Record<string, string> = {
+  planning:       '/planning',
+  strategy:       '/calendar',
+  readiness:      '/recovery',
+  sessionBuilder: '/session',
+  nutrition:      '/nutrition',
+  performance:    '/activities',
+  adjustment:     '/planning',
+}
+
 // ── Storage ────────────────────────────────────────────────────
 
-const STORE_KEY = 'thw_ai_convs_v2'
-const MAX_PER_AGENT = 20
+const STORE_KEY  = 'thw_ai_convs_v2'
+const MAX_AGENT  = 20
 
 function loadStore(): ConvStore {
   if (typeof window === 'undefined') return {}
@@ -58,216 +73,213 @@ function saveStore(s: ConvStore) {
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
 function fmtDate(ts: number) {
   const d = Date.now() - ts
-  if (d < 60_000) return "À l'instant"
+  if (d < 60_000) return "instant"
   if (d < 3_600_000) return `${Math.floor(d / 60_000)}min`
   if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h`
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-// ── Markdown renderer (gère ###, **, -, ---, listes numérotées) ─
+// ── Markdown renderer — aucun hashtag ou tiret visible ─────────
 
 function MsgContent({ text }: { text: string }) {
+  const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
-  const nodes: React.ReactNode[] = []
+  let i = 0
 
-  lines.forEach((raw, i) => {
+  while (i < lines.length) {
+    const raw = lines[i]
     const line = raw.trimEnd()
 
-    // Ligne vide
-    if (!line.trim()) { nodes.push(<div key={i} style={{ height: 8 }} />); return }
+    // Ligne vide → espace
+    if (!line.trim()) { blocks.push(<div key={i} style={{ height: 7 }} />); i++; continue }
 
-    // Séparateur --- : on ignore (ne pas afficher)
-    if (/^[-—]{3,}$/.test(line.trim())) return
+    // Séparateur --- ou === → ignoré
+    if (/^[-=]{3,}$/.test(line.trim())) { i++; continue }
 
-    // Heading ### ou ## ou #
-    const headMatch = line.match(/^(#{1,3})\s+(.+)/)
-    if (headMatch) {
-      const level = headMatch[1].length
-      const txt = headMatch[2]
-      nodes.push(
+    // Heading ## ou # → titre stylé sans symboles
+    const hMatch = line.match(/^(#{1,4})\s+(.+)/)
+    if (hMatch) {
+      const lvl = hMatch[1].length
+      blocks.push(
         <div key={i} style={{
           fontFamily: 'Syne, sans-serif',
           fontWeight: 700,
-          fontSize: level === 1 ? 15 : level === 2 ? 13 : 12,
-          color: 'var(--text)',
-          marginTop: level === 1 ? 14 : 10,
-          marginBottom: 4,
-          letterSpacing: level === 3 ? '0.04em' : undefined,
-          textTransform: level === 3 ? 'uppercase' : undefined,
-          opacity: level === 3 ? 0.55 : 1,
+          fontSize: lvl <= 2 ? 14 : 12,
+          color: 'inherit',
+          marginTop: lvl <= 2 ? 14 : 10,
+          marginBottom: 5,
+          letterSpacing: lvl >= 3 ? '0.05em' : undefined,
+          textTransform: lvl >= 3 ? 'uppercase' as const : undefined,
+          opacity: lvl >= 3 ? 0.5 : 1,
+          borderBottom: lvl === 1 ? '1px solid rgba(91,111,255,0.2)' : undefined,
+          paddingBottom: lvl === 1 ? 6 : undefined,
         }}>
-          {parseBold(txt)}
+          {parseBold(hMatch[2])}
         </div>
       )
-      return
+      i++; continue
     }
 
     // Liste numérotée
-    const numMatch = line.match(/^(\d+)\.\s+(.+)/)
-    if (numMatch) {
-      nodes.push(
-        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3, paddingLeft: 4 }}>
-          <span style={{ color: 'var(--text-dim)', minWidth: 16, flexShrink: 0, fontSize: 12 }}>{numMatch[1]}.</span>
-          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(numMatch[2])}</span>
+    const nMatch = line.match(/^(\d+)[.)]\s+(.+)/)
+    if (nMatch) {
+      blocks.push(
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
+          <span style={{ color: '#5b6fff', minWidth: 18, fontSize: 12, fontWeight: 600, flexShrink: 0, marginTop: 2 }}>
+            {nMatch[1]}.
+          </span>
+          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(nMatch[2])}</span>
         </div>
       )
-      return
+      i++; continue
     }
 
-    // Bullet point
-    const bulletMatch = line.match(/^[-•*]\s+(.+)/)
-    if (bulletMatch) {
-      nodes.push(
-        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3, paddingLeft: 4 }}>
-          <span style={{ color: '#5b6fff', flexShrink: 0, marginTop: 2, fontSize: 10 }}>▸</span>
-          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(bulletMatch[1])}</span>
+    // Bullet
+    const bMatch = line.match(/^[-•*]\s+(.+)/)
+    if (bMatch) {
+      blocks.push(
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
+          <span style={{ color: '#5b6fff', flexShrink: 0, fontSize: 9, marginTop: 5 }}>▸</span>
+          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(bMatch[1])}</span>
         </div>
       )
-      return
+      i++; continue
     }
 
     // Texte normal
-    nodes.push(
-      <div key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 2 }}>
+    blocks.push(
+      <p key={i} style={{ fontSize: 13, lineHeight: 1.65, margin: '0 0 5px 0' }}>
         {parseBold(line)}
-      </div>
+      </p>
     )
-  })
+    i++
+  }
 
-  return <div>{nodes}</div>
+  return <div style={{ fontFamily: 'DM Sans, sans-serif' }}>{blocks}</div>
 }
 
 function parseBold(text: string): React.ReactNode {
   const parts = text.split(/\*\*([^*]+)\*\*/g)
   if (parts.length === 1) return text
-  return (
-    <>
-      {parts.map((p, i) =>
-        i % 2 === 1
-          ? <strong key={i} style={{ fontWeight: 600, color: 'var(--text)' }}>{p}</strong>
-          : <span key={i}>{p}</span>
-      )}
-    </>
-  )
+  return <>{parts.map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : <span key={j}>{p}</span>)}</>
 }
 
 // ── Loading dots ───────────────────────────────────────────────
 
-function LoadingDots() {
+function Dots() {
   return (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 4, padding: '2px 0' }}>
       {[0, 1, 2].map(i => (
         <span key={i} style={{
-          display: 'inline-block',
-          width: 5, height: 5, borderRadius: '50%',
-          background: 'var(--text-dim)',
-          animation: `aiDot 1.2s ease-in-out ${i * 0.18}s infinite`,
+          display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
+          background: 'var(--ai-dim)',
+          animation: `ai_dot 1.2s ease-in-out ${i * 0.18}s infinite`,
         }} />
       ))}
     </div>
   )
 }
 
-// ── Main Panel ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// COMPOSANT PRINCIPAL
+// ══════════════════════════════════════════════════════════════
 
 export default function AIPanel({ open, onClose, initialAgent, context }: Props) {
-  const [agent, setAgent]           = useState<PageAgent>(initialAgent)
-  const [store, setStore]           = useState<ConvStore>({})
-  const [activeId, setActiveId]     = useState<string | null>(null)
-  const [input, setInput]           = useState('')
-  const [loading, setLoading]       = useState(false)
-  const [mounted, setMounted]       = useState(false)
-  const [ddOpen, setDdOpen]         = useState(false)     // theme dropdown
-  const [sbOpen, setSbOpen]         = useState(false)     // mobile sidebar
-  const [menuConvId, setMenuConvId] = useState<string | null>(null)  // "..." menu
-  const [renaming, setRenaming]     = useState<string | null>(null)  // conv being renamed
-  const [renameVal, setRenameVal]   = useState('')
 
-  const areaRef    = useRef<HTMLTextAreaElement>(null)
-  const ddRef      = useRef<HTMLDivElement>(null)
-  const menuRef    = useRef<HTMLDivElement>(null)
-  const endRef     = useRef<HTMLDivElement>(null)
+  // ── State ────────────────────────────────────────────────
+  const [agent,    setAgent]    = useState<PageAgent>(initialAgent)
+  const [store,    setStore]    = useState<ConvStore>({})
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [input,    setInput]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [mounted,  setMounted]  = useState(false)
+  const [sbOpen,   setSbOpen]   = useState(false)   // sidebar mobile
+  const [fullscr,  setFullscr]  = useState(false)   // fullscreen
+  const [menuId,   setMenuId]   = useState<string | null>(null)  // conv "..."
+  const [renId,    setRenId]    = useState<string | null>(null)  // conv rename
+  const [renVal,   setRenVal]   = useState('')
+
+  const areaRef  = useRef<HTMLTextAreaElement>(null)
+  const menuRef  = useRef<HTMLDivElement>(null)
+  const endRef   = useRef<HTMLDivElement>(null)
 
   const cfg    = AGENT_CONFIGS[agent]
   const convs  = store[agent] ?? []
   const active = convs.find(c => c.id === activeId) ?? null
 
-  // ── Effects ────────────────────────────────────────────────
+  // ── Effects ──────────────────────────────────────────────
 
   useEffect(() => { setMounted(true); setStore(loadStore()) }, [])
   useEffect(() => { if (mounted) saveStore(store) }, [store, mounted])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [activeId, loading, store])
+  useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
+  useEffect(() => { if (open) setAgent(initialAgent) }, [open, initialAgent])
+  useEffect(() => { setActiveId(null) }, [agent])
 
+  // Escape key
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [activeId, loading, store])
-
-  useEffect(() => {
-    if (open) setTimeout(() => areaRef.current?.focus(), 280)
-  }, [open])
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (ddOpen) setDdOpen(false); else if (menuConvId) setMenuConvId(null); else onClose() } }
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (menuId) { setMenuId(null) }
+        else if (sbOpen) { setSbOpen(false) }
+        else if (fullscr) { setFullscr(false) }
+        else { onClose() }
+      }
+    }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose, ddOpen, menuConvId])
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!ddOpen) return
-    const h = (e: MouseEvent) => { if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDdOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [ddOpen])
+  }, [onClose, menuId, sbOpen, fullscr])
 
   // Close conv menu on outside click
   useEffect(() => {
-    if (!menuConvId) return
-    const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuConvId(null) }
+    if (!menuId) return
+    const h = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuId(null)
+    }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [menuConvId])
+  }, [menuId])
 
-  // Reset conv on agent change
-  useEffect(() => { setActiveId(null) }, [agent])
+  // ── Handlers ─────────────────────────────────────────────
 
-  // Sync agent with page when panel opens
-  useEffect(() => { if (open) setAgent(initialAgent) }, [open, initialAgent])
-
-  // ── Handlers ──────────────────────────────────────────────
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  // TEXTAREA : gestion stable du state input
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
     const el = e.target
     el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+    el.style.height = Math.min(el.scrollHeight, 130) + 'px'
+  }
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+  const switchAgent = (a: PageAgent) => {
+    setAgent(a); setActiveId(null); setSbOpen(false)
   }
 
-  const switchAgent = (a: PageAgent) => { setAgent(a); setDdOpen(false); setSbOpen(false); setActiveId(null) }
+  const openConv = (c: AIConv) => {
+    setAgent(c.agentId); setActiveId(c.id); setSbOpen(false); setMenuId(null)
+  }
 
-  const openConv = (c: AIConv) => { setAgent(c.agentId); setActiveId(c.id); setSbOpen(false); setMenuConvId(null) }
+  const newConv = () => {
+    setActiveId(null); setSbOpen(false)
+    setTimeout(() => areaRef.current?.focus(), 80)
+  }
 
-  const newConv = () => { setActiveId(null); setSbOpen(false); setTimeout(() => areaRef.current?.focus(), 80) }
-
-  const deleteConv = (agentId: PageAgent, cid: string) => {
-    setStore(p => ({ ...p, [agentId]: (p[agentId] ?? []).filter(c => c.id !== cid) }))
+  const delConv = (agId: PageAgent, cid: string) => {
+    setStore(p => ({ ...p, [agId]: (p[agId] ?? []).filter(c => c.id !== cid) }))
     if (activeId === cid) setActiveId(null)
-    setMenuConvId(null)
+    setMenuId(null)
   }
 
-  const startRename = (c: AIConv) => { setRenaming(c.id); setRenameVal(c.title); setMenuConvId(null) }
-
-  const confirmRename = (agentId: PageAgent, cid: string) => {
-    const val = renameVal.trim()
-    if (val) {
-      setStore(p => ({ ...p, [agentId]: (p[agentId] ?? []).map(c => c.id === cid ? { ...c, title: val } : c) }))
-    }
-    setRenaming(null)
+  const startRen = (c: AIConv) => { setRenId(c.id); setRenVal(c.title); setMenuId(null) }
+  const confirmRen = (agId: PageAgent, cid: string) => {
+    const v = renVal.trim()
+    if (v) setStore(p => ({ ...p, [agId]: (p[agId] ?? []).map(c => c.id === cid ? { ...c, title: v } : c) }))
+    setRenId(null)
   }
 
+  // SEND MESSAGE
   const send = useCallback(async (preset?: string) => {
     const txt = (preset ?? input).trim()
     if (!txt || loading) return
@@ -276,18 +288,15 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
 
-    const currentAgent = agent
+    const curAgent = agent
     let conv = active
     let isNew = false
 
     if (!conv) {
       conv = {
         id: genId(),
-        title: txt.slice(0, 48) + (txt.length > 48 ? '…' : ''),
-        agentId: currentAgent,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        msgs: [],
+        title: txt.slice(0, 46) + (txt.length > 46 ? '…' : ''),
+        agentId: curAgent, createdAt: Date.now(), updatedAt: Date.now(), msgs: [],
       }
       isNew = true
     }
@@ -296,16 +305,15 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
     const updated: AIConv = {
       ...conv,
       msgs: [...conv.msgs, userMsg],
-      title: conv.msgs.length === 0 ? (txt.slice(0, 48) + (txt.length > 48 ? '…' : '')) : conv.title,
+      title: conv.msgs.length === 0 ? (txt.slice(0, 46) + (txt.length > 46 ? '…' : '')) : conv.title,
       updatedAt: Date.now(),
     }
 
-    // Update store
     setStore(p => {
-      const list = p[currentAgent] ?? []
-      const exists = list.some(c => c.id === updated.id)
-      const next = exists ? list.map(c => c.id === updated.id ? updated : c) : [updated, ...list]
-      return { ...p, [currentAgent]: next.slice(0, MAX_PER_AGENT) }
+      const list = p[curAgent] ?? []
+      const has  = list.some(c => c.id === updated.id)
+      const next = has ? list.map(c => c.id === updated.id ? updated : c) : [updated, ...list]
+      return { ...p, [curAgent]: next.slice(0, MAX_AGENT) }
     })
     if (isNew) setActiveId(updated.id)
 
@@ -318,7 +326,7 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
         body: JSON.stringify({
           action: 'chat',
           payload: {
-            agentId: currentAgent,
+            agentId: curAgent,
             messages: updated.msgs.map(m => ({ role: m.role, content: m.content })),
             context: context ?? {},
           },
@@ -329,16 +337,16 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
       const aiMsg: AIMsg = { id: genId(), role: 'assistant', content: reply, ts: Date.now() }
       setStore(p => ({
         ...p,
-        [currentAgent]: (p[currentAgent] ?? []).map(c =>
+        [curAgent]: (p[curAgent] ?? []).map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, aiMsg], updatedAt: Date.now() } : c
         ),
       }))
     } catch {
-      const errMsg: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
+      const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
       setStore(p => ({
         ...p,
-        [currentAgent]: (p[currentAgent] ?? []).map(c =>
-          c.id === cid ? { ...c, msgs: [...c.msgs, errMsg], updatedAt: Date.now() } : c
+        [curAgent]: (p[curAgent] ?? []).map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
         ),
       }))
     } finally {
@@ -347,127 +355,194 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, loading, active, agent, context])
 
-  // ── Render ────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  // RENDU
+  // IMPORTANT : Aucun composant interne (SidebarContent, ChatArea...)
+  // Tout est JSX inline pour éviter le remount sur chaque keystroke
+  // ══════════════════════════════════════════════════════════
 
   return (
     <>
-      {/* Global CSS — animations + responsive */}
+      {/* ── CSS global ───────────────────────────────────── */}
       <style>{`
-        @keyframes aiDot {
-          0%,80%,100% { opacity:0.2; transform:translateY(0); }
+        @keyframes ai_dot {
+          0%,80%,100% { opacity:.2; transform:translateY(0); }
           40% { opacity:1; transform:translateY(-3px); }
         }
+
+        /* Variables couleurs solides (fix transparence dark mode) */
         .aip-root {
-          position:fixed; top:0; right:0; bottom:0; width:540px; max-width:100vw;
-          z-index:1200; background:var(--bg-card); border-left:1px solid var(--border);
-          display:flex; flex-direction:column; overflow:hidden;
-          box-shadow:-20px 0 60px rgba(0,0,0,0.16);
-          transition:transform 0.32s cubic-bezier(0.32,1.08,0.64,1);
+          --ai-bg:      #ffffff;
+          --ai-bg2:     #f6f8fc;
+          --ai-border:  rgba(0,0,0,0.08);
+          --ai-text:    #0d1117;
+          --ai-mid:     rgba(13,17,23,0.58);
+          --ai-dim:     rgba(13,17,23,0.36);
         }
-        .aip-root.closed { transform:translateX(100%); box-shadow:none; }
-        .aip-body { display:flex; flex:1; min-height:0; overflow:hidden; position:relative; }
-        .aip-sidebar {
-          width:200px; flex-shrink:0; border-right:1px solid var(--border);
-          background:var(--bg-card2); display:flex; flex-direction:column; overflow:hidden;
+        html.dark .aip-root {
+          --ai-bg:      #13161e;
+          --ai-bg2:     #0f121a;
+          --ai-border:  rgba(255,255,255,0.09);
+          --ai-text:    #eef2f7;
+          --ai-mid:     rgba(238,242,247,0.60);
+          --ai-dim:     rgba(238,242,247,0.35);
         }
-        .aip-hamburger { display:none !important; }
-        .aip-sb-overlay { display:none; }
-        @media (max-width:767px) {
-          .aip-root { width:100% !important; left:0; border-left:none; }
-          .aip-sidebar {
-            position:absolute !important; left:0; top:0; bottom:0; width:260px !important;
-            z-index:20; transform:translateX(-100%); transition:transform 0.24s ease;
+
+        /* Panneau principal */
+        .aip-root {
+          position: fixed; top: 0; right: 0; bottom: 0;
+          width: 540px; max-width: 100vw; z-index: 1200;
+          background: var(--ai-bg);
+          border-left: 1px solid var(--ai-border);
+          display: flex; flex-direction: column; overflow: hidden;
+          box-shadow: -16px 0 48px rgba(0,0,0,0.18);
+          transition: transform 0.3s cubic-bezier(0.32,1.06,0.64,1);
+          color: var(--ai-text);
+        }
+        .aip-root.closed { transform: translateX(100%); box-shadow: none; }
+        .aip-root.fullscreen { width: 100vw !important; left: 0; border-left: none; }
+
+        /* Body */
+        .aip-body {
+          display: flex; flex: 1; min-height: 0;
+          overflow: hidden; position: relative;
+        }
+
+        /* Sidebar */
+        .aip-sb {
+          width: 200px; flex-shrink: 0;
+          border-right: 1px solid var(--ai-border);
+          background: var(--ai-bg2);
+          display: flex; flex-direction: column;
+          overflow: hidden;
+          transition: width 0.2s ease;
+        }
+        .aip-root.fullscreen .aip-sb { width: 0; overflow: hidden; border: none; }
+
+        /* Hamburger — hidden desktop, visible mobile */
+        .aip-hbg { display: none !important; }
+
+        /* Overlay sidebar mobile */
+        .aip-overlay { display: none; }
+
+        /* Mobile */
+        @media (max-width: 767px) {
+          .aip-root {
+            width: 100% !important; left: 0; border-left: none;
+            /* svh = small viewport height, évite le bug clavier Safari */
+            height: 100svh;
+            height: -webkit-fill-available;
           }
-          .aip-sidebar.sb-open { transform:translateX(0); box-shadow:4px 0 20px rgba(0,0,0,0.2); }
-          .aip-hamburger { display:flex !important; }
-          .aip-sb-overlay { display:block; position:absolute; inset:0; z-index:15; background:rgba(0,0,0,0.38); }
+          .aip-sb {
+            position: absolute !important;
+            left: 0; top: 0; bottom: 0;
+            width: 76% !important; max-width: 280px;
+            z-index: 20;
+            transform: translateX(-105%);
+            transition: transform 0.26s ease;
+          }
+          .aip-sb.open {
+            transform: translateX(0);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.22);
+          }
+          .aip-hbg { display: flex !important; }
+          .aip-overlay {
+            display: block; position: absolute; inset: 0;
+            z-index: 15; background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(1px);
+          }
         }
+
+        /* Textarea — font-size 16px minimum pour éviter zoom Safari */
+        .aip-textarea {
+          font-size: 16px !important;
+        }
+        @media (min-width: 768px) {
+          .aip-textarea { font-size: 13px !important; }
+        }
+
+        /* Scroll messages — smooth sur iOS */
+        .aip-messages {
+          flex: 1; overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+        }
+
+        /* Conv item hover — show ... button */
+        .aip-conv-item:hover .aip-dots-btn { opacity: 1 !important; }
+        .aip-conv-item.active-conv .aip-dots-btn { opacity: 0.6 !important; }
+
+        /* Scrollbar discret */
+        .aip-messages::-webkit-scrollbar,
+        .aip-sb-list::-webkit-scrollbar { width: 3px; }
+        .aip-messages::-webkit-scrollbar-thumb,
+        .aip-sb-list::-webkit-scrollbar-thumb { background: var(--ai-border); border-radius: 2px; }
       `}</style>
 
-      <div className={`aip-root${open ? '' : ' closed'}`}>
+      {/* ══ PANNEAU ══════════════════════════════════════════ */}
+      <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
 
-        {/* ══ HEADER ══════════════════════════════════════════ */}
+        {/* ══ HEADER compact ═══════════════════════════════ */}
         <div style={{
-          height: 52, padding: '0 12px',
-          borderBottom: '1px solid var(--border)',
+          height: 46, padding: '0 10px',
+          borderBottom: `1px solid var(--ai-border)`,
           display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+          background: 'var(--ai-bg)',
         }}>
           {/* Logo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="THW" style={{ height: 26, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+          <img
+            src="/logo.png" alt="THW"
+            style={{ height: 24, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+          />
 
-          {/* Theme dropdown */}
-          <div ref={ddRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            <button
-              onClick={() => setDdOpen(d => !d)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '5px 9px', borderRadius: 7,
-                border: '1px solid var(--border)',
-                background: ddOpen ? 'rgba(91,111,255,0.08)' : 'transparent',
-                cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 600,
-                color: ddOpen ? '#5b6fff' : 'var(--text-mid)',
-                transition: 'all 0.13s',
-              }}
-            >
-              <span>{AGENT_DISPLAY[agent]}</span>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                style={{ transform: ddOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
+          {/* Agent label */}
+          <span style={{
+            flex: 1, fontSize: 13, fontWeight: 600,
+            fontFamily: 'Syne, sans-serif',
+            color: 'var(--ai-mid)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {cfg.name}
+          </span>
 
-            {ddOpen && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 4px)', left: 0,
-                minWidth: 168, background: 'var(--bg-card)',
-                border: '1px solid var(--border)', borderRadius: 10,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 60,
-              }}>
-                {MAIN_AGENTS.map(a => (
-                  <button
-                    key={a}
-                    onClick={() => switchAgent(a)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      width: '100%', padding: '9px 14px',
-                      border: 'none',
-                      background: a === agent ? 'rgba(91,111,255,0.09)' : 'transparent',
-                      cursor: 'pointer',
-                      fontFamily: 'DM Sans, sans-serif', fontSize: 13,
-                      fontWeight: a === agent ? 600 : 400,
-                      color: a === agent ? '#5b6fff' : 'var(--text-mid)',
-                      textAlign: 'left',
-                    }}
-                    onMouseEnter={e => { if (a !== agent) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                    onMouseLeave={e => { if (a !== agent) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                  >
-                    <span>{AGENT_DISPLAY[a]}</span>
-                    {a === agent && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2.5" strokeLinecap="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Hamburger — mobile only */}
+          {/* Fullscreen toggle */}
           <button
-            className="aip-hamburger"
-            onClick={() => setSbOpen(s => !s)}
+            onClick={() => setFullscr(f => !f)}
+            title={fullscr ? 'Réduire' : 'Plein écran'}
             style={{
-              width: 30, height: 30, borderRadius: 50,
-              border: '1px solid var(--border)', background: 'transparent',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, color: 'var(--text-mid)',
+              width: 28, height: 28, borderRadius: 7,
+              border: `1px solid var(--ai-border)`,
+              background: 'transparent', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, color: 'var(--ai-dim)',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M4 8h16M4 16h16" />
+            {fullscr ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              </svg>
+            )}
+          </button>
+
+          {/* Hamburger — mobile */}
+          <button
+            className="aip-hbg"
+            onClick={() => setSbOpen(s => !s)}
+            style={{
+              width: 28, height: 28, borderRadius: 50,
+              border: `1px solid var(--ai-border)`,
+              background: 'transparent', cursor: 'pointer',
+              alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, color: 'var(--ai-mid)',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 6h18M3 12h18M3 18h18" />
             </svg>
           </button>
 
@@ -475,56 +550,55 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
           <button
             onClick={onClose}
             style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: '1px solid var(--border)', background: 'transparent',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, color: 'var(--text-dim)', transition: 'all 0.12s',
+              width: 28, height: 28, borderRadius: 7,
+              border: `1px solid var(--ai-border)`,
+              background: 'transparent', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, color: 'var(--ai-dim)',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* ══ BODY ════════════════════════════════════════════ */}
+        {/* ══ BODY ═════════════════════════════════════════ */}
         <div className="aip-body">
 
-          {/* Mobile overlay */}
-          {sbOpen && <div className="aip-sb-overlay" onClick={() => setSbOpen(false)} />}
+          {/* Overlay mobile sidebar */}
+          {sbOpen && <div className="aip-overlay" onClick={() => setSbOpen(false)} />}
 
-          {/* ── SIDEBAR ─────────────────────────────────────── */}
-          <div className={`aip-sidebar${sbOpen ? ' sb-open' : ''}`}>
-            {/* Sidebar header : "Discussions" + bouton nouvelle conv */}
+          {/* ══ SIDEBAR ══════════════════════════════════════ */}
+          <div className={`aip-sb${sbOpen ? ' open' : ''}`}>
+
+            {/* — SECTION DISCUSSIONS — */}
             <div style={{
-              padding: '12px 10px 10px',
-              borderBottom: '1px solid var(--border)',
+              padding: '10px 10px 6px',
+              borderBottom: `1px solid var(--ai-border)`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               flexShrink: 0,
             }}>
               <span style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-                textTransform: 'uppercase', color: 'var(--text-dim)',
+                textTransform: 'uppercase', color: 'var(--ai-dim)',
               }}>
                 Discussions
               </span>
-              {/* Bouton nouvelle discussion — bulle chat bleue + + */}
+              {/* Bouton nouvelle discussion — bulle bleue + */}
               <button
                 onClick={newConv}
                 title="Nouvelle discussion"
                 style={{
-                  width: 26, height: 26, borderRadius: 8,
-                  border: 'none',
+                  width: 24, height: 24, borderRadius: 7, border: 'none',
                   background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
                   cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0, color: 'white',
-                  boxShadow: '0 2px 8px rgba(91,111,255,0.35)',
+                  boxShadow: '0 2px 8px rgba(91,111,255,0.3)',
                 }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                   <path d="M12 8v4M10 10h4" />
                 </svg>
@@ -532,135 +606,132 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
             </div>
 
             {/* Liste des conversations */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
+            <div className="aip-sb-list" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
               {convs.length === 0 ? (
                 <div style={{
-                  padding: '20px 8px', textAlign: 'center',
-                  color: 'var(--text-dim)', fontSize: 11, lineHeight: 1.6,
+                  padding: '16px 8px', textAlign: 'center',
+                  color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6,
                 }}>
                   Aucune discussion.<br />Pose une question pour commencer.
                 </div>
               ) : convs.map(conv => (
-                <div
-                  key={conv.id}
-                  style={{ position: 'relative', marginBottom: 2 }}
-                >
+                <div key={conv.id} style={{ position: 'relative', marginBottom: 1 }}>
+
                   {/* Rename inline */}
-                  {renaming === conv.id ? (
-                    <div style={{ padding: '4px 6px' }}>
+                  {renId === conv.id ? (
+                    <div style={{ padding: '3px 4px' }}>
                       <input
                         autoFocus
-                        value={renameVal}
-                        onChange={e => setRenameVal(e.target.value)}
+                        value={renVal}
+                        onChange={e => setRenVal(e.target.value)}
                         onKeyDown={e => {
-                          if (e.key === 'Enter') confirmRename(conv.agentId, conv.id)
-                          if (e.key === 'Escape') setRenaming(null)
+                          if (e.key === 'Enter') confirmRen(conv.agentId, conv.id)
+                          if (e.key === 'Escape') setRenId(null)
                         }}
-                        onBlur={() => confirmRename(conv.agentId, conv.id)}
+                        onBlur={() => confirmRen(conv.agentId, conv.id)}
                         style={{
                           width: '100%', padding: '5px 8px', borderRadius: 6,
                           border: '1px solid rgba(91,111,255,0.5)',
-                          background: 'var(--bg-card)', color: 'var(--text)',
-                          fontFamily: 'DM Sans, sans-serif', fontSize: 12, outline: 'none',
-                          boxSizing: 'border-box',
+                          background: 'var(--ai-bg)', color: 'var(--ai-text)',
+                          fontFamily: 'DM Sans, sans-serif', fontSize: 12,
+                          outline: 'none', boxSizing: 'border-box',
                         }}
                       />
                     </div>
                   ) : (
                     <div
+                      className={`aip-conv-item${conv.id === activeId ? ' active-conv' : ''}`}
                       onClick={() => openConv(conv)}
                       style={{
-                        padding: '8px 8px 8px 10px',
-                        borderRadius: 8,
-                        background: conv.id === activeId ? 'rgba(91,111,255,0.1)' : 'transparent',
-                        border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.28)' : 'transparent'}`,
+                        padding: '7px 6px 7px 10px',
+                        borderRadius: 7,
+                        background: conv.id === activeId ? 'rgba(91,111,255,0.11)' : 'transparent',
+                        border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.25)' : 'transparent'}`,
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', gap: 4,
-                        transition: 'background 0.1s',
                       }}
-                      onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.04)' }}
-                      onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontSize: 12, fontWeight: conv.id === activeId ? 600 : 400,
-                          color: conv.id === activeId ? 'var(--text)' : 'var(--text-mid)',
+                          color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           lineHeight: 1.35,
                         }}>
                           {conv.title}
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 1 }}>
+                        <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 1 }}>
                           {fmtDate(conv.updatedAt)}
                         </div>
                       </div>
 
                       {/* Bouton "..." */}
-                      <div style={{ position: 'relative' }} ref={menuConvId === conv.id ? menuRef : undefined}>
+                      <div
+                        style={{ position: 'relative', flexShrink: 0 }}
+                        ref={menuId === conv.id ? menuRef : undefined}
+                      >
                         <button
-                          onClick={e => { e.stopPropagation(); setMenuConvId(menuConvId === conv.id ? null : conv.id) }}
+                          className="aip-dots-btn"
+                          onClick={e => { e.stopPropagation(); setMenuId(menuId === conv.id ? null : conv.id) }}
                           style={{
-                            width: 22, height: 22, borderRadius: 5, border: 'none',
-                            background: 'transparent', cursor: 'pointer',
+                            width: 22, height: 22, borderRadius: 5,
+                            border: 'none', background: 'transparent',
+                            cursor: 'pointer', padding: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--text-dim)', flexShrink: 0, padding: 0,
-                            opacity: menuConvId === conv.id || conv.id === activeId ? 1 : 0,
-                            transition: 'opacity 0.12s',
-                          }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-                          onMouseLeave={e => {
-                            if (menuConvId !== conv.id && conv.id !== activeId)
-                              (e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                            color: 'var(--ai-dim)', opacity: 0, transition: 'opacity 0.12s',
                           }}
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                            <circle cx="5" cy="12" r="2.2" />
+                            <circle cx="12" cy="12" r="2.2" />
+                            <circle cx="19" cy="12" r="2.2" />
                           </svg>
                         </button>
 
                         {/* Menu contextuel */}
-                        {menuConvId === conv.id && (
+                        {menuId === conv.id && (
                           <div style={{
-                            position: 'absolute', right: 0, top: '100%', zIndex: 40,
-                            background: 'var(--bg-card)', border: '1px solid var(--border)',
-                            borderRadius: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.14)',
+                            position: 'absolute', right: 0, top: '100%', zIndex: 50,
+                            background: 'var(--ai-bg)',
+                            border: `1px solid var(--ai-border)`,
+                            borderRadius: 8,
+                            boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                             overflow: 'hidden', minWidth: 130,
                           }}>
-                            <button
-                              onClick={e => { e.stopPropagation(); startRename(conv) }}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                width: '100%', padding: '8px 12px',
-                                border: 'none', background: 'transparent', cursor: 'pointer',
-                                fontFamily: 'DM Sans, sans-serif', fontSize: 12,
-                                color: 'var(--text-mid)', textAlign: 'left',
-                              }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                              </svg>
-                              Renommer
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); deleteConv(conv.agentId, conv.id) }}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                width: '100%', padding: '8px 12px',
-                                border: 'none', background: 'transparent', cursor: 'pointer',
-                                fontFamily: 'DM Sans, sans-serif', fontSize: 12,
-                                color: '#ef4444', textAlign: 'left',
-                              }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                              </svg>
-                              Supprimer
-                            </button>
+                            {[
+                              {
+                                label: 'Renommer',
+                                icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/></svg>,
+                                action: () => startRen(conv),
+                                color: 'var(--ai-mid)',
+                                hover: 'var(--ai-bg2)',
+                              },
+                              {
+                                label: 'Supprimer',
+                                icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>,
+                                action: () => delConv(conv.agentId, conv.id),
+                                color: '#ef4444',
+                                hover: 'rgba(239,68,68,0.08)',
+                              },
+                            ].map(item => (
+                              <button
+                                key={item.label}
+                                onClick={e => { e.stopPropagation(); item.action() }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  width: '100%', padding: '8px 12px',
+                                  border: 'none', background: 'transparent',
+                                  cursor: 'pointer', color: item.color,
+                                  fontFamily: 'DM Sans, sans-serif', fontSize: 12,
+                                  textAlign: 'left',
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = item.hover }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                              >
+                                {item.icon}
+                                {item.label}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -669,24 +740,70 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
                 </div>
               ))}
             </div>
+
+            {/* — SECTION THÈMES — */}
+            <div style={{
+              borderTop: `1px solid var(--ai-border)`,
+              padding: '8px 6px 8px',
+              flexShrink: 0,
+            }}>
+              <div style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+                textTransform: 'uppercase', color: 'var(--ai-dim)',
+                padding: '0 4px 6px',
+              }}>
+                Thèmes
+              </div>
+              {MAIN_AGENTS.map(a => (
+                <button
+                  key={a}
+                  onClick={() => switchAgent(a)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '7px 10px',
+                    borderRadius: 7, border: 'none',
+                    background: a === agent ? 'rgba(91,111,255,0.1)' : 'transparent',
+                    cursor: 'pointer',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 12,
+                    fontWeight: a === agent ? 600 : 400,
+                    color: a === agent ? '#5b6fff' : 'var(--ai-mid)',
+                    textAlign: 'left', marginBottom: 1,
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { if (a !== agent) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(91,111,255,0.05)' }}
+                  onMouseLeave={e => { if (a !== agent) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                >
+                  <span>{AGENT_DISPLAY[a]}</span>
+                  {a === agent && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* ── CHAT ────────────────────────────────────────── */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+          {/* ══ CHAT ═════════════════════════════════════════ */}
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            minWidth: 0, minHeight: 0, overflow: 'hidden',
+          }}>
 
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px 0' }}>
+            {/* Messages — scroll indépendant */}
+            <div className="aip-messages" style={{ padding: '14px 14px 0' }}>
 
-              {/* Zone vide → actions rapides */}
+              {/* Actions rapides (conv vide) */}
               {(!active || active.msgs.length === 0) && (
                 <div>
                   <div style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-                    textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10,
+                    textTransform: 'uppercase', color: 'var(--ai-dim)',
+                    marginBottom: 10,
                   }}>
                     Actions rapides
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 18 }}>
                     {cfg.quickActions.map((qa, i) => (
                       <button
                         key={i}
@@ -694,27 +811,29 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
                         disabled={loading}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          gap: 10, padding: '10px 13px', borderRadius: 9,
-                          border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                          gap: 10, padding: '10px 12px', borderRadius: 9,
+                          border: `1px solid var(--ai-border)`,
+                          background: 'var(--ai-bg2)',
                           cursor: loading ? 'not-allowed' : 'pointer',
-                          textAlign: 'left', transition: 'all 0.13s',
-                          opacity: loading ? 0.55 : 1, width: '100%',
+                          textAlign: 'left', width: '100%',
+                          opacity: loading ? 0.5 : 1,
+                          transition: 'border-color 0.12s, background 0.12s',
                         }}
                         onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.borderColor = cfg.accent + '55'; (e.currentTarget as HTMLButtonElement).style.background = cfg.accent + '0d' } }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                       >
-                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-mid)', lineHeight: 1.3 }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-mid)', lineHeight: 1.3 }}>
                           {qa.label}
                         </span>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                           <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
                       </button>
                     ))}
                   </div>
-                  <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 11, paddingBottom: 12 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 12, margin: 0 }}>
                     ou tape directement ta question
-                  </div>
+                  </p>
                 </div>
               )}
 
@@ -729,52 +848,54 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
                     }}>
                       {msg.role === 'assistant' && (
                         <div style={{
-                          width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                          background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                          background: 'var(--ai-bg2)',
+                          border: `1px solid var(--ai-border)`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           marginTop: 2, overflow: 'hidden',
                         }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+                          <img src="/logo.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
                         </div>
                       )}
                       <div style={{
                         maxWidth: '84%',
-                        padding: msg.role === 'user' ? '9px 13px' : '10px 14px',
-                        borderRadius: msg.role === 'user' ? '13px 13px 4px 13px' : '13px 13px 13px 4px',
+                        padding: msg.role === 'user' ? '9px 13px' : '11px 14px',
+                        borderRadius: msg.role === 'user'
+                          ? '14px 14px 4px 14px'
+                          : '14px 14px 14px 4px',
                         background: msg.role === 'user'
                           ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                          : 'var(--bg-card2)',
-                        border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
-                        color: msg.role === 'user' ? '#fff' : 'inherit',
-                        fontSize: 13,
+                          : 'var(--ai-bg2)',
+                        border: msg.role === 'user'
+                          ? 'none'
+                          : `1px solid var(--ai-border)`,
+                        color: msg.role === 'user' ? '#fff' : 'var(--ai-text)',
                       }}>
                         {msg.role === 'user'
-                          ? <span style={{ lineHeight: 1.55 }}>{msg.content}</span>
+                          ? <span style={{ fontSize: 13, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
                           : <MsgContent text={msg.content} />
                         }
                       </div>
                     </div>
                   ))}
 
-                  {/* Loading */}
                   {loading && (
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{
-                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                        background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                        width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                        background: 'var(--ai-bg2)', border: `1px solid var(--ai-border)`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         overflow: 'hidden',
                       }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+                        <img src="/logo.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
                       </div>
                       <div style={{
-                        padding: '10px 14px',
-                        borderRadius: '13px 13px 13px 4px',
-                        background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                        padding: '10px 14px', borderRadius: '14px 14px 14px 4px',
+                        background: 'var(--ai-bg2)', border: `1px solid var(--ai-border)`,
                       }}>
-                        <LoadingDots />
+                        <Dots />
                       </div>
                     </div>
                   )}
@@ -783,41 +904,48 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
               )}
             </div>
 
-            {/* ── INPUT ──────────────────────────────────────── */}
+            {/* ══ INPUT ════════════════════════════════════════ */}
             <div style={{
-              padding: '10px 14px 14px',
-              borderTop: '1px solid var(--border)', flexShrink: 0,
+              padding: '8px 12px 12px',
+              borderTop: `1px solid var(--ai-border)`,
+              flexShrink: 0, background: 'var(--ai-bg)',
             }}>
               <div style={{
                 display: 'flex', gap: 8, alignItems: 'flex-end',
-                background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                borderRadius: 12, padding: '8px 8px 8px 13px',
+                background: 'var(--ai-bg2)',
+                border: `1px solid var(--ai-border)`,
+                borderRadius: 12, padding: '7px 7px 7px 13px',
               }}>
+                {/* TEXTAREA — font-size 16px sur mobile pour éviter zoom Safari */}
                 <textarea
                   ref={areaRef}
+                  className="aip-textarea"
                   value={input}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
+                  onChange={handleInput}
+                  onKeyDown={handleKey}
                   placeholder="Pose ta question…"
                   rows={1}
                   style={{
-                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                    resize: 'none', fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 13, lineHeight: 1.5, color: 'inherit',
-                    minHeight: 20, maxHeight: 140, overflowY: 'auto', paddingTop: 1,
+                    flex: 1, background: 'transparent',
+                    border: 'none', outline: 'none', resize: 'none',
+                    fontFamily: 'DM Sans, sans-serif',
+                    lineHeight: 1.5, color: 'var(--ai-text)',
+                    minHeight: 22, maxHeight: 130,
+                    overflowY: 'auto', paddingTop: 2,
                   }}
                 />
                 <button
-                  onClick={() => send()}
+                  onClick={() => void send()}
                   disabled={!input.trim() || loading}
                   style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0, border: 'none',
+                    width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                    border: 'none',
                     background: input.trim() && !loading
                       ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                      : 'var(--border)',
+                      : 'var(--ai-border)',
                     cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.14s', color: 'white',
+                    transition: 'background 0.15s',
                   }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -825,8 +953,11 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
                   </svg>
                 </button>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, textAlign: 'center' }}>
-                Entrée pour envoyer · Shift+Entrée pour sauter une ligne
+              <div style={{
+                fontSize: 10, color: 'var(--ai-dim)',
+                marginTop: 5, textAlign: 'center',
+              }}>
+                Entrée · Shift+Entrée pour nouvelle ligne
               </div>
             </div>
           </div>

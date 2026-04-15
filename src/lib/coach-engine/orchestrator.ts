@@ -12,6 +12,7 @@ import { runReadinessAgent }         from '@/lib/agents/readinessAgent'
 import { runPerformanceAgent }       from '@/lib/agents/performanceAgent'
 import { runAdjustmentAgent }        from '@/lib/agents/adjustmentAgent'
 import { runNutritionAgent }         from '@/lib/agents/nutritionAgent'
+import { runChatAgent }              from '@/lib/agents/chatAgent'
 import { isValidAction }             from './mapping'
 
 import type {
@@ -25,6 +26,7 @@ import type {
   AdjustmentInput,
   PerformanceInput,
   NutritionInput,
+  ChatInput,
 } from './schemas'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -161,6 +163,16 @@ export async function runCoachEngine(
       return { action: 'nutrition', result } as CoachResult
     } catch (err) {
       agentError('nutritionAgent', err)
+    }
+  }
+
+  // ── CAS 8 : chat ──────────────────────────────────────────
+  if (action === 'chat') {
+    try {
+      const result = await runChatAgent(payload as ChatInput)
+      return { action: 'chat', result } as CoachResult
+    } catch (err) {
+      agentError('chatAgent', err)
     }
   }
 

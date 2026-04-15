@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
   if (!isValidAction(action)) {
     return NextResponse.json(
-      { error: `Unknown action: "${action}"`, availableActions: ['generate_program','analyze_planning','build_session','readiness_check','adjust_plan','analyze_performance','nutrition'] },
+      { error: `Unknown action: "${action}"`, availableActions: ['generate_program','analyze_planning','build_session','readiness_check','adjust_plan','analyze_performance','nutrition','chat'] },
       { status: 400 }
     )
   }
@@ -63,6 +63,7 @@ export async function GET() {
       adjust_plan:         'AdjustmentInput → AdjustmentOutput',
       analyze_performance: 'PerformanceInput → PerformanceOutput',
       nutrition:           'NutritionInput → NutritionOutput',
+      chat:                'ChatInput → ChatOutput (conversation contextuelle)',
     },
   })
 }

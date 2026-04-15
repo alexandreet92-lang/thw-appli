@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
 // ── Types pour l'analyse IA ───────────────────────────────────
 interface AIReadinessResult {
@@ -789,6 +790,16 @@ export default function RecoveryPage() {
           onSave={handleCheckIn}
         />
       )}
+
+      <AIAssistantButton
+        agent="readiness"
+        context={{
+          readiness: todayData.readiness,
+          hrv: todayData.hrv,
+          sleep: todayData.sleep,
+          trends7d: todayData.trends.days7.readiness,
+        }}
+      />
     </div>
   )
 }

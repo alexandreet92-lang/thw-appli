@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -1912,6 +1913,8 @@ export default function PlanningPage() {
 
       {tab==='training' && <TrainingTab/>}
       {tab==='week'     && <WeekTab trainingWeek={sessions}/>}
+
+      <AIAssistantButton agent="planning" context={{ tab }} />
     </div>
   )
 }

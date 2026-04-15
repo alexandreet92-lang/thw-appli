@@ -1438,7 +1438,29 @@ export default function NutritionPage() {
             style={{ padding:'8px 18px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 12px rgba(0,200,224,0.3)' }}>
             {plan ? 'Mon plan' : '+ Créer un plan'}
           </button>
-          <AIAssistantButton agent="nutrition" context={{ todayKcal: todayTotals.kcal, todayProtein: todayTotals.p, hasPlan: !!plan }} />
+          <AIAssistantButton
+            agent="nutrition"
+            context={{
+              page:          'nutrition',
+              todayKcal:     todayTotals.kcal,
+              todayProtein:  todayTotals.p,
+              todayCarbs:    todayTotals.c,
+              todayFat:      todayTotals.f,
+              hasPlan:       !!plan,
+              plan:          plan ? { mode: plan.mode, protein_g_per_kg: plan.protein_g_per_kg } : null,
+              sportContext:  sportCtx,
+              meals:         meals.map(m => ({
+                type:  m.type,
+                foods: (m.entries ?? []).map((f: any) => ({
+                  name: f.name,
+                  kcal: f.kcal,
+                  p:    f.p,
+                  c:    f.c,
+                  f:    f.f,
+                })),
+              })),
+            }}
+          />
         </div>
       </div>
 

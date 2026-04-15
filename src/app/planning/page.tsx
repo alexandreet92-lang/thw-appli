@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import { useTrainingZones } from '@/hooks/useTrainingZones'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -1884,12 +1885,44 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
 // ════════════════════════════════════════════════
 export default function PlanningPage() {
   const [tab, setTab] = useState<PlanningTab>('training')
-  const { sessions } = usePlanning()
+  const { sessions, races, intensities, weekStart } = usePlanning()
+  const { zones } = useTrainingZones()
 
   const TABS: [PlanningTab,string,string,string,string][] = [
     ['training','Planning Training','Training','#00c8e0','rgba(0,200,224,0.10)'],
     ['week',    'Planning Week',    'Week',    '#a78bfa','rgba(167,139,250,0.10)'],
   ]
+
+  const aiContext = {
+    page: 'planning',
+    weekStart,
+    sessions: sessions.map(s => ({
+      day_index:    s.dayIndex,
+      sport:        s.sport,
+      title:        s.title,
+      duration_min: s.durationMin,
+      intensity:    (s as any).intensity ?? 'mid',
+      tss:          s.tss,
+      status:       s.status,
+      notes:        s.notes,
+    })),
+    intensities,
+    races: races.map(r => ({
+      name:         r.name,
+      sport:        r.sport,
+      date:         r.date,
+      level:        r.level,
+      goal:         r.goal,
+      goal_time:    r.goalTime,
+      run_distance: r.runDistance,
+      tri_distance: r.triDistance,
+    })),
+    zones: {
+      run:  zones.run,
+      bike: zones.bike,
+      swim: zones.swim,
+    },
+  }
 
   return (
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
@@ -1898,7 +1931,7 @@ export default function PlanningPage() {
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
         </div>
-        <AIAssistantButton agent="planning" context={{ tab }} />
+        <AIAssistantButton agent="planning" context={aiContext} />
       </div>
 
       <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' as const }}>

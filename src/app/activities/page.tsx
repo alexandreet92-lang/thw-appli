@@ -3105,7 +3105,40 @@ export default function TrainingPage() {
           >
             ↻
           </button>
-          <AIAssistantButton agent="performance" context={{ activityCount: activities.length, section }} />
+          <AIAssistantButton
+            agent="performance"
+            context={{
+              page:    'performance',
+              section,
+              recentActivities: activities.slice(0, 20).map(a => ({
+                sport_type:    a.sport_type,
+                title:         a.title,
+                started_at:    a.started_at,
+                duration_min:  Math.round((a.moving_time_s ?? a.elapsed_time_s ?? 0) / 60),
+                distance_km:   a.distance_m ? Math.round(a.distance_m / 100) / 10 : null,
+                avg_hr:        a.avg_hr,
+                avg_watts:     a.avg_watts,
+                avg_pace_s_km: a.avg_pace_s_km,
+                tss:           a.tss,
+                is_race:       a.is_race,
+              })),
+              zones: zones.reduce((acc: Record<string, any>, z) => {
+                acc[z.sport] = {
+                  ftp_watts:  z.ftp_watts,
+                  z1_value:   z.z1_value,
+                  z2_value:   z.z2_value,
+                  z3_value:   z.z3_value,
+                  z4_value:   z.z4_value,
+                  z5_value:   z.z5_value,
+                  lthr:       z.lthr,
+                }
+                return acc
+              }, {}),
+              profile: {
+                weight_kg:  profile.weight_kg,
+              },
+            }}
+          />
         </div>
       </div>
 

@@ -1179,6 +1179,22 @@ export default function CalendarPage() {
     { id:'all',   label:'All',   short:'All',   color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
   ]
 
+  const aiContext = {
+    page: 'strategy',
+    races: races.map(r => ({
+      name:         r.name,
+      sport:        r.sport,
+      date:         r.date,
+      level:        r.level,
+      goal:         r.goal,
+      goal_time:    r.goalTime,
+      run_distance: r.runDistance,
+      tri_distance: r.triDistance,
+      validated:    r.validated,
+    })),
+    eventsCount: events.length,
+  }
+
   return (
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
       {/* Header */}
@@ -1187,7 +1203,7 @@ export default function CalendarPage() {
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
         </div>
-        <AIAssistantButton agent="strategy" context={{ tab }} />
+        <AIAssistantButton agent="strategy" context={aiContext} />
       </div>
 
       {/* Tab pills */}

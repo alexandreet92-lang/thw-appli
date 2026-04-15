@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 // import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import { useTrainingZones } from '@/hooks/useTrainingZones'
+import { usePlanning } from '@/hooks/usePlanning'
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -1282,6 +1284,8 @@ export default function SessionPage() {
   const [mode,          setMode]          = useState<PageMode>('library')
   const [editTarget,    setEditTarget]    = useState<SessionTemplate|undefined>()
   const [execTarget,    setExecTarget]    = useState<SessionTemplate|undefined>()
+  const { zones }                         = useTrainingZones()
+  const { races }                         = usePlanning()
 
   function handleNew() { setEditTarget(undefined); setMode('build') }
   function handleEdit(t: SessionTemplate) { setEditTarget(t); setMode('build') }
@@ -1328,7 +1332,30 @@ export default function SessionPage() {
               ← Bibliotheque
             </button>
           )}
-          <AIAssistantButton agent="sessionBuilder" context={{ mode }} />
+          <AIAssistantButton
+            agent="sessionBuilder"
+            context={{
+              page: 'session',
+              mode,
+              currentTemplate: editTarget ? {
+                sport:        editTarget.sport,
+                name:         editTarget.name,
+                duration_min: editTarget.durationMin,
+              } : null,
+              zones: {
+                run:  zones.run,
+                bike: zones.bike,
+                swim: zones.swim,
+              },
+              races: races.slice(0, 3).map(r => ({
+                name:      r.name,
+                sport:     r.sport,
+                date:      r.date,
+                level:     r.level,
+                goal_time: r.goal_time,
+              })),
+            }}
+          />
         </div>
       </div>
 

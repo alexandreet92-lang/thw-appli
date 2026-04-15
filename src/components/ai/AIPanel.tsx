@@ -3,19 +3,19 @@
 // ══════════════════════════════════════════════════════════════
 // AI PANEL — Interface IA premium THW Coaching
 //
-// CORRECTIONS :
-// [1] Input bug — JSX inline, jamais de composants intérieurs
-// [2] Transparence dark mode — fonds solides
-// [3] Safari zoom — font-size ≥ 16px sur textarea
-// [4] Scroll mobile — flex layout correct + -webkit-overflow-scrolling
-// [5] Sidebar : Discussions → convs → nouvelle conv → Thèmes
-// [6] Menu "..." par conversation : renommer / supprimer
-// [7] Header compact — logo + hamburger + close seulement
-// [8] Fullscreen mode — bouton expand
-// [9] Markdown propre — pas de ### ou --- visibles
+// [FIX LAYOUT] createPortal → rendu sur document.body
+//   La <main> du layout a z-index:10 (stacking context).
+//   Sans portal, le z-index:1200 du panel est relatif à ce
+//   contexte et reste sous la barre mobile (z-index:50 root).
+//   Avec portal, le panel est dans le root stacking context
+//   et z-index:1200 > z-index:50 de la barre mobile.
+//
+// [FIX SAFE AREA] padding-top: env(safe-area-inset-top)
+//   Gère le notch iPhone / Dynamic Island.
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import type { PageAgent } from './agentConfig'
 import { AGENT_CONFIGS, MAIN_AGENTS, AGENT_DISPLAY } from './agentConfig'
 
@@ -357,11 +357,14 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
 
   // ══════════════════════════════════════════════════════════
   // RENDU
-  // IMPORTANT : Aucun composant interne (SidebarContent, ChatArea...)
-  // Tout est JSX inline pour éviter le remount sur chaque keystroke
+  // createPortal → body : échappe le stacking context de <main>
+  // (main a z-index:10, ce qui bloquait l'AI panel sous la barre nav)
   // ══════════════════════════════════════════════════════════
 
-  return (
+  // SSR guard — portal ne peut s'ouvrir que côté client
+  if (!mounted) return null
+
+  return createPortal(
     <>
       {/* ── CSS global ───────────────────────────────────── */}
       <style>{`
@@ -388,16 +391,23 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
           --ai-dim:     rgba(238,242,247,0.35);
         }
 
-        /* Panneau principal */
+        /* Panneau principal
+           z-index 1200 dans le root stacking context (via createPortal)
+           → au-dessus de la barre nav mobile (z-index 50) et desktop (z-index 35-40)
+           padding-top: env(safe-area-inset-top) → notch iPhone / Dynamic Island */
         .aip-root {
-          position: fixed; top: 0; right: 0; bottom: 0;
-          width: 540px; max-width: 100vw; z-index: 1200;
+          position: fixed;
+          top: 0; right: 0; bottom: 0;
+          width: 540px; max-width: 100vw;
+          z-index: 1200;
           background: var(--ai-bg);
           border-left: 1px solid var(--ai-border);
           display: flex; flex-direction: column; overflow: hidden;
           box-shadow: -16px 0 48px rgba(0,0,0,0.18);
           transition: transform 0.3s cubic-bezier(0.32,1.06,0.64,1);
           color: var(--ai-text);
+          /* Safe area pour iOS notch */
+          padding-top: env(safe-area-inset-top, 0px);
         }
         .aip-root.closed { transform: translateX(100%); box-shadow: none; }
         .aip-root.fullscreen { width: 100vw !important; left: 0; border-left: none; }
@@ -429,9 +439,10 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
         @media (max-width: 767px) {
           .aip-root {
             width: 100% !important; left: 0; border-left: none;
-            /* svh = small viewport height, évite le bug clavier Safari */
-            height: 100svh;
-            height: -webkit-fill-available;
+            /* 100dvh = dynamic viewport height (suit le clavier virtuel) */
+            height: 100dvh;
+            top: 0; bottom: auto;
+            box-shadow: none;
           }
           .aip-sb {
             position: absolute !important;
@@ -963,6 +974,7 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }

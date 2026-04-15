@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'THW Coaching',
   description: 'Application de coaching sportif premium',

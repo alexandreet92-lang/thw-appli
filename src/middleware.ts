@@ -24,11 +24,11 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Routes publiques — toujours accessibles
-  const publicRoutes = ['/login', '/onboarding', '/select-plan']
+  const publicRoutes = ['/login', '/onboarding']
   if (publicRoutes.some(r => path.startsWith(r))) {
-    // Si déjà connecté et va sur /login → redirige
+    // Si déjà connecté et va sur /login → redirige vers home
     if (path === '/login' && user) {
-      return NextResponse.redirect(new URL('/profile', request.url))
+      return NextResponse.redirect(new URL('/', request.url))
     }
     return response
   }
@@ -41,28 +41,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Connecté → vérifie onboarding et trial
+  // Connecté → vérifie onboarding uniquement
   const { data: profile } = await supabase
     .from('profiles')
-    .select('onboarding_completed, trial_ends_at, plan')
+    .select('onboarding_completed')
     .eq('id', user.id)
     .single()
 
-  // Onboarding pas terminé
+  // Onboarding pas terminé → redirige
   if (profile && !profile.onboarding_completed && path !== '/onboarding') {
     return NextResponse.redirect(new URL('/onboarding', request.url))
-  }
-
-  // Trial expiré et pas d'abonnement actif
-  if (profile && profile.onboarding_completed) {
-    const trialExpired = profile.trial_ends_at
-      ? new Date(profile.trial_ends_at) < new Date()
-      : false
-    const hasPlan = profile.plan && profile.plan !== 'trial'
-
-    if (trialExpired && !hasPlan && path !== '/select-plan') {
-      return NextResponse.redirect(new URL('/select-plan', request.url))
-    }
   }
 
   return response

@@ -1,9 +1,13 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// AI PANEL — Interface IA premium, redesign complet.
+// AI PANEL — Interface IA premium
 // Desktop : panneau fixe 540px (sidebar 200px + chat flex-1)
-// Mobile  : plein écran 100dvh, sidebar en overlay absolu
+// Mobile  : plein écran 100dvh, sidebar overlay gauche
+//
+// BUG INPUT FIX : SidebarContent et ChatArea sont renderés
+// en JSX inline — pas en composants intérieurs — pour éviter
+// le unmount/remount sur chaque keystroke (perte de focus).
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -40,61 +44,110 @@ interface Props {
 // ── Storage ────────────────────────────────────────────────────
 
 const STORE_KEY = 'thw_ai_convs_v2'
-const MAX_CONVS_PER_AGENT = 20
+const MAX_PER_AGENT = 20
 
 function loadStore(): ConvStore {
   if (typeof window === 'undefined') return {}
-  try {
-    const raw = localStorage.getItem(STORE_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}') }
+  catch { return {} }
 }
-
-function saveStore(store: ConvStore) {
+function saveStore(s: ConvStore) {
   if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(store))
-  } catch {}
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)) } catch {}
 }
-
-function genId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
-}
-
-function fmtDate(ts: number): string {
-  const diff = Date.now() - ts
-  if (diff < 60_000) return "À l'instant"
-  if (diff < 3_600_000) return `Il y a ${Math.floor(diff / 60_000)}min`
-  if (diff < 86_400_000) return `Il y a ${Math.floor(diff / 3_600_000)}h`
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
+function fmtDate(ts: number) {
+  const d = Date.now() - ts
+  if (d < 60_000) return "À l'instant"
+  if (d < 3_600_000) return `${Math.floor(d / 60_000)}min`
+  if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h`
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-// ── Mini Markdown ──────────────────────────────────────────────
+// ── Markdown renderer (gère ###, **, -, ---, listes numérotées) ─
 
 function MsgContent({ text }: { text: string }) {
   const lines = text.split('\n')
+  const nodes: React.ReactNode[] = []
+
+  lines.forEach((raw, i) => {
+    const line = raw.trimEnd()
+
+    // Ligne vide
+    if (!line.trim()) { nodes.push(<div key={i} style={{ height: 8 }} />); return }
+
+    // Séparateur --- : on ignore (ne pas afficher)
+    if (/^[-—]{3,}$/.test(line.trim())) return
+
+    // Heading ### ou ## ou #
+    const headMatch = line.match(/^(#{1,3})\s+(.+)/)
+    if (headMatch) {
+      const level = headMatch[1].length
+      const txt = headMatch[2]
+      nodes.push(
+        <div key={i} style={{
+          fontFamily: 'Syne, sans-serif',
+          fontWeight: 700,
+          fontSize: level === 1 ? 15 : level === 2 ? 13 : 12,
+          color: 'var(--text)',
+          marginTop: level === 1 ? 14 : 10,
+          marginBottom: 4,
+          letterSpacing: level === 3 ? '0.04em' : undefined,
+          textTransform: level === 3 ? 'uppercase' : undefined,
+          opacity: level === 3 ? 0.55 : 1,
+        }}>
+          {parseBold(txt)}
+        </div>
+      )
+      return
+    }
+
+    // Liste numérotée
+    const numMatch = line.match(/^(\d+)\.\s+(.+)/)
+    if (numMatch) {
+      nodes.push(
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3, paddingLeft: 4 }}>
+          <span style={{ color: 'var(--text-dim)', minWidth: 16, flexShrink: 0, fontSize: 12 }}>{numMatch[1]}.</span>
+          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(numMatch[2])}</span>
+        </div>
+      )
+      return
+    }
+
+    // Bullet point
+    const bulletMatch = line.match(/^[-•*]\s+(.+)/)
+    if (bulletMatch) {
+      nodes.push(
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3, paddingLeft: 4 }}>
+          <span style={{ color: '#5b6fff', flexShrink: 0, marginTop: 2, fontSize: 10 }}>▸</span>
+          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(bulletMatch[1])}</span>
+        </div>
+      )
+      return
+    }
+
+    // Texte normal
+    nodes.push(
+      <div key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 2 }}>
+        {parseBold(line)}
+      </div>
+    )
+  })
+
+  return <div>{nodes}</div>
+}
+
+function parseBold(text: string): React.ReactNode {
+  const parts = text.split(/\*\*([^*]+)\*\*/g)
+  if (parts.length === 1) return text
   return (
-    <div style={{ lineHeight: 1.65 }}>
-      {lines.map((line, i) => {
-        if (!line.trim()) return <div key={i} style={{ height: 6 }} />
-        const isBullet = /^[-•*]\s+/.test(line)
-        const cleaned = isBullet ? line.replace(/^[-•*]\s+/, '') : line
-        const parts = cleaned.split(/\*\*([^*]+)\*\*/g)
-        const rendered = parts.map((part, j) =>
-          j % 2 === 1
-            ? <strong key={j} style={{ fontWeight: 600 }}>{part}</strong>
-            : <span key={j}>{part}</span>
-        )
-        return (
-          <div key={i} style={{ display: 'flex', gap: 6, marginBottom: isBullet ? 3 : 0 }}>
-            {isBullet && <span style={{ color: 'var(--text-dim)', flexShrink: 0, marginTop: 1 }}>·</span>}
-            <span>{rendered}</span>
-          </div>
-        )
-      })}
-    </div>
+    <>
+      {parts.map((p, i) =>
+        i % 2 === 1
+          ? <strong key={i} style={{ fontWeight: 600, color: 'var(--text)' }}>{p}</strong>
+          : <span key={i}>{p}</span>
+      )}
+    </>
   )
 }
 
@@ -102,215 +155,161 @@ function MsgContent({ text }: { text: string }) {
 
 function LoadingDots() {
   return (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '2px 0' }}>
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
       {[0, 1, 2].map(i => (
-        <div
-          key={i}
-          style={{
-            width: 5, height: 5, borderRadius: '50%',
-            background: 'var(--text-dim)',
-            animation: `aiDot 1.2s ease-in-out ${i * 0.2}s infinite`,
-          }}
-        />
+        <span key={i} style={{
+          display: 'inline-block',
+          width: 5, height: 5, borderRadius: '50%',
+          background: 'var(--text-dim)',
+          animation: `aiDot 1.2s ease-in-out ${i * 0.18}s infinite`,
+        }} />
       ))}
     </div>
-  )
-}
-
-// ── Icon helpers ───────────────────────────────────────────────
-
-function IconX({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M18 6L6 18M6 6l12 12" />
-    </svg>
-  )
-}
-
-function IconChevron({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  )
-}
-
-function IconTrash({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-    </svg>
-  )
-}
-
-function IconArrow({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
-  )
-}
-
-function IconSend({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
-    </svg>
-  )
-}
-
-// Hamburger (deux traits) pour mobile sidebar
-function IconMenu({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M4 8h16M4 16h16" />
-    </svg>
-  )
-}
-
-// New conv : bulle chat + plus
-function IconNewConv({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-      <path d="M12 8v4M10 10h4" />
-    </svg>
   )
 }
 
 // ── Main Panel ─────────────────────────────────────────────────
 
 export default function AIPanel({ open, onClose, initialAgent, context }: Props) {
-  const [activeAgent, setActiveAgent]       = useState<PageAgent>(initialAgent)
-  const [store, setStore]                   = useState<ConvStore>({})
-  const [activeConvId, setActiveConvId]     = useState<string | null>(null)
-  const [input, setInput]                   = useState('')
-  const [loading, setLoading]               = useState(false)
-  const [mounted, setMounted]               = useState(false)
-  const [dropdownOpen, setDropdownOpen]     = useState(false)
-  const [sidebarOpen, setSidebarOpen]       = useState(false) // mobile sidebar toggle
+  const [agent, setAgent]           = useState<PageAgent>(initialAgent)
+  const [store, setStore]           = useState<ConvStore>({})
+  const [activeId, setActiveId]     = useState<string | null>(null)
+  const [input, setInput]           = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [mounted, setMounted]       = useState(false)
+  const [ddOpen, setDdOpen]         = useState(false)     // theme dropdown
+  const [sbOpen, setSbOpen]         = useState(false)     // mobile sidebar
+  const [menuConvId, setMenuConvId] = useState<string | null>(null)  // "..." menu
+  const [renaming, setRenaming]     = useState<string | null>(null)  // conv being renamed
+  const [renameVal, setRenameVal]   = useState('')
 
-  const chatEndRef   = useRef<HTMLDivElement>(null)
-  const textareaRef  = useRef<HTMLTextAreaElement>(null)
-  const dropdownRef  = useRef<HTMLDivElement>(null)
+  const areaRef    = useRef<HTMLTextAreaElement>(null)
+  const ddRef      = useRef<HTMLDivElement>(null)
+  const menuRef    = useRef<HTMLDivElement>(null)
+  const endRef     = useRef<HTMLDivElement>(null)
 
-  const config = AGENT_CONFIGS[activeAgent]
-  const convs  = store[activeAgent] ?? []
-  const activeConv = convs.find(c => c.id === activeConvId) ?? null
+  const cfg    = AGENT_CONFIGS[agent]
+  const convs  = store[agent] ?? []
+  const active = convs.find(c => c.id === activeId) ?? null
 
-  // Mount + load store
+  // ── Effects ────────────────────────────────────────────────
+
+  useEffect(() => { setMounted(true); setStore(loadStore()) }, [])
+  useEffect(() => { if (mounted) saveStore(store) }, [store, mounted])
+
   useEffect(() => {
-    setMounted(true)
-    setStore(loadStore())
-  }, [])
+    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [activeId, loading, store])
 
-  // Save store on change
   useEffect(() => {
-    if (mounted) saveStore(store)
-  }, [store, mounted])
-
-  // Scroll to bottom
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [activeConvId, loading, store])
-
-  // Focus textarea on open
-  useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 300)
+    if (open) setTimeout(() => areaRef.current?.focus(), 280)
   }, [open])
 
-  // Escape to close panel
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (ddOpen) setDdOpen(false); else if (menuConvId) setMenuConvId(null); else onClose() } }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose])
+  }, [onClose, ddOpen, menuConvId])
 
   // Close dropdown on outside click
   useEffect(() => {
-    if (!dropdownOpen) return
-    const h = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
+    if (!ddOpen) return
+    const h = (e: MouseEvent) => { if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDdOpen(false) }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [dropdownOpen])
+  }, [ddOpen])
 
-  // Reset conversation when agent changes
+  // Close conv menu on outside click
   useEffect(() => {
-    setActiveConvId(null)
-  }, [activeAgent])
+    if (!menuConvId) return
+    const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuConvId(null) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [menuConvId])
 
-  // Reset to initialAgent when panel opens
-  useEffect(() => {
-    if (open) setActiveAgent(initialAgent)
-  }, [open, initialAgent])
+  // Reset conv on agent change
+  useEffect(() => { setActiveId(null) }, [agent])
 
-  // Auto-resize textarea
+  // Sync agent with page when panel opens
+  useEffect(() => { if (open) setAgent(initialAgent) }, [open, initialAgent])
+
+  // ── Handlers ──────────────────────────────────────────────
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
-    e.target.style.height = 'auto'
-    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
   }
 
-  // Create new conversation
-  const newConv = useCallback((firstMsg: string): AIConv => ({
-    id: genId(),
-    title: firstMsg.slice(0, 48) + (firstMsg.length > 48 ? '…' : ''),
-    agentId: activeAgent,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    msgs: [],
-  }), [activeAgent])
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+  }
 
-  // Update store helper
-  const updateConvInStore = useCallback((conv: AIConv) => {
-    setStore(prev => {
-      const agentConvs = prev[conv.agentId] ?? []
-      const exists = agentConvs.some(c => c.id === conv.id)
-      const updated = exists
-        ? agentConvs.map(c => c.id === conv.id ? conv : c)
-        : [conv, ...agentConvs]
-      return {
-        ...prev,
-        [conv.agentId]: updated.slice(0, MAX_CONVS_PER_AGENT),
-      }
-    })
-  }, [])
+  const switchAgent = (a: PageAgent) => { setAgent(a); setDdOpen(false); setSbOpen(false); setActiveId(null) }
 
-  // Send message
-  const send = useCallback(async (text?: string) => {
-    const msgText = (text ?? input).trim()
-    if (!msgText || loading) return
+  const openConv = (c: AIConv) => { setAgent(c.agentId); setActiveId(c.id); setSbOpen(false); setMenuConvId(null) }
+
+  const newConv = () => { setActiveId(null); setSbOpen(false); setTimeout(() => areaRef.current?.focus(), 80) }
+
+  const deleteConv = (agentId: PageAgent, cid: string) => {
+    setStore(p => ({ ...p, [agentId]: (p[agentId] ?? []).filter(c => c.id !== cid) }))
+    if (activeId === cid) setActiveId(null)
+    setMenuConvId(null)
+  }
+
+  const startRename = (c: AIConv) => { setRenaming(c.id); setRenameVal(c.title); setMenuConvId(null) }
+
+  const confirmRename = (agentId: PageAgent, cid: string) => {
+    const val = renameVal.trim()
+    if (val) {
+      setStore(p => ({ ...p, [agentId]: (p[agentId] ?? []).map(c => c.id === cid ? { ...c, title: val } : c) }))
+    }
+    setRenaming(null)
+  }
+
+  const send = useCallback(async (preset?: string) => {
+    const txt = (preset ?? input).trim()
+    if (!txt || loading) return
 
     setInput('')
-    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
 
-    // Get or create conversation
-    let conv = activeConv
+    const currentAgent = agent
+    let conv = active
     let isNew = false
+
     if (!conv) {
-      conv = newConv(msgText)
+      conv = {
+        id: genId(),
+        title: txt.slice(0, 48) + (txt.length > 48 ? '…' : ''),
+        agentId: currentAgent,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        msgs: [],
+      }
       isNew = true
     }
 
-    const userMsg: AIMsg = { id: genId(), role: 'user', content: msgText, ts: Date.now() }
-    const withUser: AIConv = {
+    const userMsg: AIMsg = { id: genId(), role: 'user', content: txt, ts: Date.now() }
+    const updated: AIConv = {
       ...conv,
       msgs: [...conv.msgs, userMsg],
-      title: conv.msgs.length === 0 ? (msgText.slice(0, 48) + (msgText.length > 48 ? '…' : '')) : conv.title,
+      title: conv.msgs.length === 0 ? (txt.slice(0, 48) + (txt.length > 48 ? '…' : '')) : conv.title,
       updatedAt: Date.now(),
     }
 
-    updateConvInStore(withUser)
-    if (isNew) setActiveConvId(withUser.id)
+    // Update store
+    setStore(p => {
+      const list = p[currentAgent] ?? []
+      const exists = list.some(c => c.id === updated.id)
+      const next = exists ? list.map(c => c.id === updated.id ? updated : c) : [updated, ...list]
+      return { ...p, [currentAgent]: next.slice(0, MAX_PER_AGENT) }
+    })
+    if (isNew) setActiveId(updated.id)
 
-    // Keep local ref for reply
-    const convId = withUser.id
-    const convAgentId = withUser.agentId
+    const cid = updated.id
 
     try {
       const res = await fetch('/api/coach-engine', {
@@ -319,623 +318,136 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
         body: JSON.stringify({
           action: 'chat',
           payload: {
-            agentId: activeAgent,
-            messages: withUser.msgs.map(m => ({ role: m.role, content: m.content })),
+            agentId: currentAgent,
+            messages: updated.msgs.map(m => ({ role: m.role, content: m.content })),
             context: context ?? {},
           },
         }),
       })
       const data = await res.json()
-      const replyText = data?.result?.reply ?? data?.reply ?? "Désolé, je n'ai pas pu générer de réponse."
-
-      const aiMsg: AIMsg = { id: genId(), role: 'assistant', content: replyText, ts: Date.now() }
-      setStore(prev => {
-        const agentConvs = prev[convAgentId] ?? []
-        return {
-          ...prev,
-          [convAgentId]: agentConvs.map(c =>
-            c.id === convId ? { ...c, msgs: [...c.msgs, aiMsg], updatedAt: Date.now() } : c
-          ),
-        }
-      })
+      const reply = data?.result?.reply ?? data?.reply ?? "Désolé, une erreur est survenue."
+      const aiMsg: AIMsg = { id: genId(), role: 'assistant', content: reply, ts: Date.now() }
+      setStore(p => ({
+        ...p,
+        [currentAgent]: (p[currentAgent] ?? []).map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, aiMsg], updatedAt: Date.now() } : c
+        ),
+      }))
     } catch {
-      const errMsg: AIMsg = {
-        id: genId(),
-        role: 'assistant',
-        content: 'Une erreur est survenue. Vérifie ta connexion et réessaie.',
-        ts: Date.now(),
-      }
-      setStore(prev => {
-        const agentConvs = prev[convAgentId] ?? []
-        return {
-          ...prev,
-          [convAgentId]: agentConvs.map(c =>
-            c.id === convId ? { ...c, msgs: [...c.msgs, errMsg], updatedAt: Date.now() } : c
-          ),
-        }
-      })
+      const errMsg: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
+      setStore(p => ({
+        ...p,
+        [currentAgent]: (p[currentAgent] ?? []).map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, errMsg], updatedAt: Date.now() } : c
+        ),
+      }))
     } finally {
       setLoading(false)
     }
-  }, [input, loading, activeConv, activeAgent, context, newConv, updateConvInStore])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, loading, active, agent, context])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      send()
-    }
-  }
-
-  const deleteConv = (agentId: PageAgent, convId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setStore(prev => ({
-      ...prev,
-      [agentId]: (prev[agentId] ?? []).filter(c => c.id !== convId),
-    }))
-    if (activeConvId === convId) setActiveConvId(null)
-  }
-
-  const openConv = (conv: AIConv) => {
-    setActiveAgent(conv.agentId)
-    setActiveConvId(conv.id)
-    setSidebarOpen(false)
-  }
-
-  const handleNewConv = () => {
-    setActiveConvId(null)
-    setSidebarOpen(false)
-    setTimeout(() => textareaRef.current?.focus(), 100)
-  }
-
-  const switchAgent = (agent: PageAgent) => {
-    setActiveAgent(agent)
-    setDropdownOpen(false)
-    setSidebarOpen(false)
-    setActiveConvId(null)
-  }
-
-  // ── Sidebar content ────────────────────────────────────────
-
-  const SidebarContent = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Header sidebar */}
-      <div style={{
-        padding: '16px 14px 10px',
-        borderBottom: '1px solid var(--border)',
-        flexShrink: 0,
-      }}>
-        <div style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: 'var(--text-dim)',
-        }}>
-          Conversations
-        </div>
-      </div>
-
-      {/* Conv list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
-        {convs.length === 0 ? (
-          <div style={{
-            padding: '24px 8px',
-            textAlign: 'center',
-            color: 'var(--text-dim)',
-            fontSize: 12,
-            lineHeight: 1.5,
-          }}>
-            Aucune conversation.<br />Commence par poser une question.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {convs.map(conv => (
-              <div
-                key={conv.id}
-                onClick={() => openConv(conv)}
-                style={{
-                  padding: '8px 10px',
-                  borderRadius: 8,
-                  background: conv.id === activeConvId ? 'rgba(91,111,255,0.1)' : 'transparent',
-                  border: `1px solid ${conv.id === activeConvId ? 'rgba(91,111,255,0.3)' : 'transparent'}`,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 6,
-                  transition: 'all 0.12s',
-                  position: 'relative' as const,
-                }}
-                onMouseEnter={e => {
-                  if (conv.id !== activeConvId) {
-                    (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-card2)'
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (conv.id !== activeConvId) {
-                    (e.currentTarget as HTMLDivElement).style.background = 'transparent'
-                  }
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12,
-                    fontWeight: conv.id === activeConvId ? 600 : 400,
-                    color: conv.id === activeConvId ? 'var(--text)' : 'var(--text-mid)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    lineHeight: 1.4,
-                  }}>
-                    {conv.title}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>
-                    {fmtDate(conv.updatedAt)}
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => deleteConv(conv.agentId, conv.id, e)}
-                  title="Supprimer"
-                  style={{
-                    flexShrink: 0,
-                    width: 20,
-                    height: 20,
-                    borderRadius: 4,
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-dim)',
-                    opacity: 0,
-                    transition: 'opacity 0.12s',
-                    padding: 0,
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0' }}
-                  onFocus={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-                  onBlur={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0' }}
-                >
-                  <IconTrash />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
-  // ── Chat area ──────────────────────────────────────────────
-
-  const ChatArea = () => (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      minWidth: 0,
-      minHeight: 0,
-      overflow: 'hidden',
-    }}>
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0' }}>
-
-        {/* Quick actions (no active conv or empty conv) */}
-        {(!activeConv || activeConv.msgs.length === 0) && (
-          <div>
-            <div style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--text-dim)',
-              marginBottom: 12,
-            }}>
-              Actions rapides
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
-              {config.quickActions.map((qa, i) => (
-                <button
-                  key={i}
-                  onClick={() => send(qa.prompt)}
-                  disabled={loading}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 10,
-                    padding: '11px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-card2)',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.14s',
-                    opacity: loading ? 0.55 : 1,
-                    width: '100%',
-                  }}
-                  onMouseEnter={e => {
-                    if (!loading) {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = config.accent + '55'
-                      ;(e.currentTarget as HTMLButtonElement).style.background = config.accent + '0d'
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
-                    ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'
-                  }}
-                >
-                  <span style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: 'var(--text-mid)',
-                    lineHeight: 1.3,
-                  }}>
-                    {qa.label}
-                  </span>
-                  <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>
-                    <IconArrow />
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div style={{
-              textAlign: 'center',
-              color: 'var(--text-dim)',
-              fontSize: 11,
-              paddingBottom: 16,
-            }}>
-              ou tape directement ta question ci-dessous
-            </div>
-          </div>
-        )}
-
-        {/* Messages list */}
-        {activeConv && activeConv.msgs.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 16 }}>
-            {activeConv.msgs.map(msg => (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                  alignItems: 'flex-start',
-                  gap: 8,
-                }}
-              >
-                {/* AI avatar */}
-                {msg.role === 'assistant' && (
-                  <div style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 7,
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-card2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginTop: 1,
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logo.png" alt="THW" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                  </div>
-                )}
-                <div style={{
-                  maxWidth: '82%',
-                  padding: '9px 13px',
-                  borderRadius: msg.role === 'user'
-                    ? '13px 13px 4px 13px'
-                    : '13px 13px 13px 4px',
-                  background: msg.role === 'user'
-                    ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                    : 'var(--bg-card2)',
-                  border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
-                  color: msg.role === 'user' ? '#fff' : 'inherit',
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                }}>
-                  {msg.role === 'user' ? msg.content : <MsgContent text={msg.content} />}
-                </div>
-              </div>
-            ))}
-
-            {/* Loading */}
-            {loading && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                  overflow: 'hidden', border: '1px solid var(--border)',
-                  background: 'var(--bg-card2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo.png" alt="THW" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                </div>
-                <div style={{
-                  padding: '10px 14px',
-                  borderRadius: '13px 13px 13px 4px',
-                  background: 'var(--bg-card2)',
-                  border: '1px solid var(--border)',
-                }}>
-                  <LoadingDots />
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-        )}
-      </div>
-
-      {/* Input area */}
-      <div style={{
-        padding: '10px 14px 14px',
-        borderTop: '1px solid var(--border)',
-        flexShrink: 0,
-      }}>
-        <div style={{
-          display: 'flex',
-          gap: 8,
-          alignItems: 'flex-end',
-          background: 'var(--bg-card2)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '8px 8px 8px 14px',
-        }}>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Pose ta question…"
-            rows={1}
-            style={{
-              flex: 1,
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              fontFamily: 'DM Sans, sans-serif',
-              fontSize: 13,
-              lineHeight: 1.5,
-              color: 'inherit',
-              minHeight: 20,
-              maxHeight: 140,
-              overflowY: 'auto',
-              paddingTop: 1,
-            }}
-          />
-          <button
-            onClick={() => send()}
-            disabled={!input.trim() || loading}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              flexShrink: 0,
-              border: 'none',
-              background: input.trim() && !loading
-                ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                : 'var(--border)',
-              cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.15s',
-              color: 'white',
-            }}
-          >
-            <IconSend />
-          </button>
-        </div>
-        <div style={{
-          fontSize: 10,
-          color: 'var(--text-dim)',
-          marginTop: 5,
-          textAlign: 'center',
-          letterSpacing: '0.01em',
-        }}>
-          Entrée pour envoyer · Shift+Entrée pour sauter une ligne
-        </div>
-      </div>
-    </div>
-  )
+  // ── Render ────────────────────────────────────────────────
 
   return (
     <>
-      {/* CSS global pour animations + media queries mobile */}
+      {/* Global CSS — animations + responsive */}
       <style>{`
         @keyframes aiDot {
-          0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
-          40% { opacity: 1; transform: translateY(-3px); }
+          0%,80%,100% { opacity:0.2; transform:translateY(0); }
+          40% { opacity:1; transform:translateY(-3px); }
         }
-        .ai-panel-root {
-          position: fixed;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          width: 540px;
-          max-width: 100vw;
-          z-index: 1200;
-          background: var(--bg-card);
-          border-left: 1px solid var(--border);
-          display: flex;
-          flex-direction: column;
-          box-shadow: -24px 0 60px rgba(0,0,0,0.18);
-          transition: transform 0.34s cubic-bezier(0.32,1.08,0.64,1);
-          overflow: hidden;
+        .aip-root {
+          position:fixed; top:0; right:0; bottom:0; width:540px; max-width:100vw;
+          z-index:1200; background:var(--bg-card); border-left:1px solid var(--border);
+          display:flex; flex-direction:column; overflow:hidden;
+          box-shadow:-20px 0 60px rgba(0,0,0,0.16);
+          transition:transform 0.32s cubic-bezier(0.32,1.08,0.64,1);
         }
-        .ai-panel-root.panel-closed {
-          transform: translateX(100%);
-          box-shadow: none;
+        .aip-root.closed { transform:translateX(100%); box-shadow:none; }
+        .aip-body { display:flex; flex:1; min-height:0; overflow:hidden; position:relative; }
+        .aip-sidebar {
+          width:200px; flex-shrink:0; border-right:1px solid var(--border);
+          background:var(--bg-card2); display:flex; flex-direction:column; overflow:hidden;
         }
-        .ai-panel-body {
-          display: flex;
-          flex: 1;
-          min-height: 0;
-          overflow: hidden;
-          position: relative;
-        }
-        .ai-panel-sidebar {
-          width: 200px;
-          flex-shrink: 0;
-          border-right: 1px solid var(--border);
-          background: var(--bg-card2);
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-        .ai-panel-sidebar-overlay {
-          display: none;
-        }
-        .ai-hamburger-btn {
-          display: none;
-        }
-        @media (max-width: 767px) {
-          .ai-panel-root {
-            width: 100% !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 100dvh;
-            border-left: none;
+        .aip-hamburger { display:none !important; }
+        .aip-sb-overlay { display:none; }
+        @media (max-width:767px) {
+          .aip-root { width:100% !important; left:0; border-left:none; }
+          .aip-sidebar {
+            position:absolute !important; left:0; top:0; bottom:0; width:260px !important;
+            z-index:20; transform:translateX(-100%); transition:transform 0.24s ease;
           }
-          .ai-panel-sidebar {
-            position: absolute !important;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 260px !important;
-            z-index: 20;
-            transform: translateX(-100%);
-            transition: transform 0.25s ease;
-            box-shadow: none;
-          }
-          .ai-panel-sidebar.sidebar-open {
-            transform: translateX(0);
-            box-shadow: 4px 0 24px rgba(0,0,0,0.22);
-          }
-          .ai-panel-sidebar-overlay {
-            display: block;
-            position: absolute;
-            inset: 0;
-            z-index: 15;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(2px);
-          }
-          .ai-hamburger-btn {
-            display: flex !important;
-          }
+          .aip-sidebar.sb-open { transform:translateX(0); box-shadow:4px 0 20px rgba(0,0,0,0.2); }
+          .aip-hamburger { display:flex !important; }
+          .aip-sb-overlay { display:block; position:absolute; inset:0; z-index:15; background:rgba(0,0,0,0.38); }
         }
       `}</style>
 
-      {/* Panel */}
-      <div className={`ai-panel-root${open ? '' : ' panel-closed'}`}>
+      <div className={`aip-root${open ? '' : ' closed'}`}>
 
-        {/* ── Header ── */}
+        {/* ══ HEADER ══════════════════════════════════════════ */}
         <div style={{
-          padding: '0 14px',
-          height: 52,
+          height: 52, padding: '0 12px',
           borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
         }}>
           {/* Logo */}
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="THW Coach"
-              style={{ height: 28, width: 'auto', objectFit: 'contain' }}
-            />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="THW" style={{ height: 26, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
 
           {/* Theme dropdown */}
-          <div ref={dropdownRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <div ref={ddRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
             <button
-              onClick={() => setDropdownOpen(d => !d)}
+              onClick={() => setDdOpen(d => !d)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 9px',
-                borderRadius: 7,
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 9px', borderRadius: 7,
                 border: '1px solid var(--border)',
-                background: dropdownOpen ? 'var(--bg-card2)' : 'transparent',
+                background: ddOpen ? 'rgba(91,111,255,0.08)' : 'transparent',
                 cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--text-mid)',
+                fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 600,
+                color: ddOpen ? '#5b6fff' : 'var(--text-mid)',
                 transition: 'all 0.13s',
-                whiteSpace: 'nowrap' as const,
               }}
             >
-              <span>{AGENT_DISPLAY[activeAgent]}</span>
-              <span style={{
-                color: 'var(--text-dim)',
-                transition: 'transform 0.15s',
-                display: 'flex',
-                transform: dropdownOpen ? 'rotate(180deg)' : 'none',
-              }}>
-                <IconChevron />
-              </span>
+              <span>{AGENT_DISPLAY[agent]}</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                style={{ transform: ddOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </button>
 
-            {/* Dropdown menu */}
-            {dropdownOpen && (
+            {ddOpen && (
               <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                left: 0,
-                minWidth: 160,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: 10,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-                overflow: 'hidden',
-                zIndex: 50,
+                position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+                minWidth: 168, background: 'var(--bg-card)',
+                border: '1px solid var(--border)', borderRadius: 10,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 60,
               }}>
-                {MAIN_AGENTS.map(agent => (
+                {MAIN_AGENTS.map(a => (
                   <button
-                    key={agent}
-                    onClick={() => switchAgent(agent)}
+                    key={a}
+                    onClick={() => switchAgent(a)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      padding: '9px 14px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '9px 14px',
                       border: 'none',
-                      background: agent === activeAgent ? 'rgba(91,111,255,0.08)' : 'transparent',
+                      background: a === agent ? 'rgba(91,111,255,0.09)' : 'transparent',
                       cursor: 'pointer',
-                      fontFamily: 'DM Sans, sans-serif',
-                      fontSize: 13,
-                      fontWeight: agent === activeAgent ? 600 : 400,
-                      color: agent === activeAgent ? '#5b6fff' : 'var(--text-mid)',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                      fontWeight: a === agent ? 600 : 400,
+                      color: a === agent ? '#5b6fff' : 'var(--text-mid)',
                       textAlign: 'left',
-                      transition: 'background 0.1s',
                     }}
-                    onMouseEnter={e => {
-                      if (agent !== activeAgent)
-                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'
-                    }}
-                    onMouseLeave={e => {
-                      if (agent !== activeAgent)
-                        (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-                    }}
+                    onMouseEnter={e => { if (a !== agent) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                    onMouseLeave={e => { if (a !== agent) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                   >
-                    <span>{AGENT_DISPLAY[agent]}</span>
-                    {agent === activeAgent && (
-                      <span style={{ color: '#5b6fff' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </span>
+                    <span>{AGENT_DISPLAY[a]}</span>
+                    {a === agent && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2.5" strokeLinecap="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
                     )}
                   </button>
                 ))}
@@ -943,99 +455,381 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
             )}
           </div>
 
-          {/* New conversation button */}
-          <button
-            onClick={handleNewConv}
-            title="Nouvelle conversation"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              border: 'none',
-              background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              color: 'white',
-              transition: 'opacity 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-          >
-            <IconNewConv />
-          </button>
-
           {/* Hamburger — mobile only */}
           <button
-            className="ai-hamburger-btn"
-            onClick={() => setSidebarOpen(s => !s)}
-            title="Conversations"
+            className="aip-hamburger"
+            onClick={() => setSbOpen(s => !s)}
             style={{
-              width: 30,
-              height: 30,
-              borderRadius: 50,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              cursor: 'pointer',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              color: 'var(--text-mid)',
+              width: 30, height: 30, borderRadius: 50,
+              border: '1px solid var(--border)', background: 'transparent',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, color: 'var(--text-mid)',
             }}
           >
-            <IconMenu />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 8h16M4 16h16" />
+            </svg>
           </button>
 
           {/* Close */}
           <button
             onClick={onClose}
-            title="Fermer"
             style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              color: 'var(--text-dim)',
-              transition: 'all 0.13s',
+              width: 30, height: 30, borderRadius: 8,
+              border: '1px solid var(--border)', background: 'transparent',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, color: 'var(--text-dim)', transition: 'all 0.12s',
             }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'
-              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)'
-            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
           >
-            <IconX />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
-        {/* ── Body ── */}
-        <div className="ai-panel-body">
-          {/* Mobile sidebar overlay */}
-          {sidebarOpen && (
-            <div
-              className="ai-panel-sidebar-overlay"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
+        {/* ══ BODY ════════════════════════════════════════════ */}
+        <div className="aip-body">
 
-          {/* Sidebar */}
-          <div className={`ai-panel-sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
-            <SidebarContent />
+          {/* Mobile overlay */}
+          {sbOpen && <div className="aip-sb-overlay" onClick={() => setSbOpen(false)} />}
+
+          {/* ── SIDEBAR ─────────────────────────────────────── */}
+          <div className={`aip-sidebar${sbOpen ? ' sb-open' : ''}`}>
+            {/* Sidebar header : "Discussions" + bouton nouvelle conv */}
+            <div style={{
+              padding: '12px 10px 10px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexShrink: 0,
+            }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+                textTransform: 'uppercase', color: 'var(--text-dim)',
+              }}>
+                Discussions
+              </span>
+              {/* Bouton nouvelle discussion — bulle chat bleue + + */}
+              <button
+                onClick={newConv}
+                title="Nouvelle discussion"
+                style={{
+                  width: 26, height: 26, borderRadius: 8,
+                  border: 'none',
+                  background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, color: 'white',
+                  boxShadow: '0 2px 8px rgba(91,111,255,0.35)',
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                  <path d="M12 8v4M10 10h4" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Liste des conversations */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
+              {convs.length === 0 ? (
+                <div style={{
+                  padding: '20px 8px', textAlign: 'center',
+                  color: 'var(--text-dim)', fontSize: 11, lineHeight: 1.6,
+                }}>
+                  Aucune discussion.<br />Pose une question pour commencer.
+                </div>
+              ) : convs.map(conv => (
+                <div
+                  key={conv.id}
+                  style={{ position: 'relative', marginBottom: 2 }}
+                >
+                  {/* Rename inline */}
+                  {renaming === conv.id ? (
+                    <div style={{ padding: '4px 6px' }}>
+                      <input
+                        autoFocus
+                        value={renameVal}
+                        onChange={e => setRenameVal(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') confirmRename(conv.agentId, conv.id)
+                          if (e.key === 'Escape') setRenaming(null)
+                        }}
+                        onBlur={() => confirmRename(conv.agentId, conv.id)}
+                        style={{
+                          width: '100%', padding: '5px 8px', borderRadius: 6,
+                          border: '1px solid rgba(91,111,255,0.5)',
+                          background: 'var(--bg-card)', color: 'var(--text)',
+                          fontFamily: 'DM Sans, sans-serif', fontSize: 12, outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => openConv(conv)}
+                      style={{
+                        padding: '8px 8px 8px 10px',
+                        borderRadius: 8,
+                        background: conv.id === activeId ? 'rgba(91,111,255,0.1)' : 'transparent',
+                        border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.28)' : 'transparent'}`,
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.04)' }}
+                      onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: conv.id === activeId ? 600 : 400,
+                          color: conv.id === activeId ? 'var(--text)' : 'var(--text-mid)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          lineHeight: 1.35,
+                        }}>
+                          {conv.title}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 1 }}>
+                          {fmtDate(conv.updatedAt)}
+                        </div>
+                      </div>
+
+                      {/* Bouton "..." */}
+                      <div style={{ position: 'relative' }} ref={menuConvId === conv.id ? menuRef : undefined}>
+                        <button
+                          onClick={e => { e.stopPropagation(); setMenuConvId(menuConvId === conv.id ? null : conv.id) }}
+                          style={{
+                            width: 22, height: 22, borderRadius: 5, border: 'none',
+                            background: 'transparent', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--text-dim)', flexShrink: 0, padding: 0,
+                            opacity: menuConvId === conv.id || conv.id === activeId ? 1 : 0,
+                            transition: 'opacity 0.12s',
+                          }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+                          onMouseLeave={e => {
+                            if (menuConvId !== conv.id && conv.id !== activeId)
+                              (e.currentTarget as HTMLButtonElement).style.opacity = '0'
+                          }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                          </svg>
+                        </button>
+
+                        {/* Menu contextuel */}
+                        {menuConvId === conv.id && (
+                          <div style={{
+                            position: 'absolute', right: 0, top: '100%', zIndex: 40,
+                            background: 'var(--bg-card)', border: '1px solid var(--border)',
+                            borderRadius: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.14)',
+                            overflow: 'hidden', minWidth: 130,
+                          }}>
+                            <button
+                              onClick={e => { e.stopPropagation(); startRename(conv) }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                width: '100%', padding: '8px 12px',
+                                border: 'none', background: 'transparent', cursor: 'pointer',
+                                fontFamily: 'DM Sans, sans-serif', fontSize: 12,
+                                color: 'var(--text-mid)', textAlign: 'left',
+                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                              Renommer
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); deleteConv(conv.agentId, conv.id) }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                width: '100%', padding: '8px 12px',
+                                border: 'none', background: 'transparent', cursor: 'pointer',
+                                fontFamily: 'DM Sans, sans-serif', fontSize: 12,
+                                color: '#ef4444', textAlign: 'left',
+                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                              </svg>
+                              Supprimer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Chat */}
-          <ChatArea />
+          {/* ── CHAT ────────────────────────────────────────── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px 0' }}>
+
+              {/* Zone vide → actions rapides */}
+              {(!active || active.msgs.length === 0) && (
+                <div>
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+                    textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10,
+                  }}>
+                    Actions rapides
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 20 }}>
+                    {cfg.quickActions.map((qa, i) => (
+                      <button
+                        key={i}
+                        onClick={() => send(qa.prompt)}
+                        disabled={loading}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          gap: 10, padding: '10px 13px', borderRadius: 9,
+                          border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          textAlign: 'left', transition: 'all 0.13s',
+                          opacity: loading ? 0.55 : 1, width: '100%',
+                        }}
+                        onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.borderColor = cfg.accent + '55'; (e.currentTarget as HTMLButtonElement).style.background = cfg.accent + '0d' } }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                      >
+                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-mid)', lineHeight: 1.3 }}>
+                          {qa.label}
+                        </span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 11, paddingBottom: 12 }}>
+                    ou tape directement ta question
+                  </div>
+                </div>
+              )}
+
+              {/* Messages */}
+              {active && active.msgs.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 14 }}>
+                  {active.msgs.map(msg => (
+                    <div key={msg.id} style={{
+                      display: 'flex',
+                      justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      alignItems: 'flex-start', gap: 8,
+                    }}>
+                      {msg.role === 'assistant' && (
+                        <div style={{
+                          width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                          background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          marginTop: 2, overflow: 'hidden',
+                        }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+                        </div>
+                      )}
+                      <div style={{
+                        maxWidth: '84%',
+                        padding: msg.role === 'user' ? '9px 13px' : '10px 14px',
+                        borderRadius: msg.role === 'user' ? '13px 13px 4px 13px' : '13px 13px 13px 4px',
+                        background: msg.role === 'user'
+                          ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
+                          : 'var(--bg-card2)',
+                        border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
+                        color: msg.role === 'user' ? '#fff' : 'inherit',
+                        fontSize: 13,
+                      }}>
+                        {msg.role === 'user'
+                          ? <span style={{ lineHeight: 1.55 }}>{msg.content}</span>
+                          : <MsgContent text={msg.content} />
+                        }
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Loading */}
+                  {loading && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                        background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+                      </div>
+                      <div style={{
+                        padding: '10px 14px',
+                        borderRadius: '13px 13px 13px 4px',
+                        background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                      }}>
+                        <LoadingDots />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={endRef} />
+                </div>
+              )}
+            </div>
+
+            {/* ── INPUT ──────────────────────────────────────── */}
+            <div style={{
+              padding: '10px 14px 14px',
+              borderTop: '1px solid var(--border)', flexShrink: 0,
+            }}>
+              <div style={{
+                display: 'flex', gap: 8, alignItems: 'flex-end',
+                background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                borderRadius: 12, padding: '8px 8px 8px 13px',
+              }}>
+                <textarea
+                  ref={areaRef}
+                  value={input}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Pose ta question…"
+                  rows={1}
+                  style={{
+                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                    resize: 'none', fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 13, lineHeight: 1.5, color: 'inherit',
+                    minHeight: 20, maxHeight: 140, overflowY: 'auto', paddingTop: 1,
+                  }}
+                />
+                <button
+                  onClick={() => send()}
+                  disabled={!input.trim() || loading}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0, border: 'none',
+                    background: input.trim() && !loading
+                      ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
+                      : 'var(--border)',
+                    cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.14s', color: 'white',
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+                  </svg>
+                </button>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, textAlign: 'center' }}>
+                Entrée pour envoyer · Shift+Entrée pour sauter une ligne
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </>

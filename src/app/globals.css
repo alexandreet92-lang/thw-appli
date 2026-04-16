@@ -91,3 +91,22 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .page-enter { animation: fadeUp 0.3s ease forwards; }
+
+/* ── Animations de données ────────────────────────────────────── */
+
+/* Card : fade + léger translateY vers le haut */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-enter   { animation: cardEnter 0.38s cubic-bezier(0.4, 0, 0.2, 1) both; }
+.card-enter-1 { animation-delay: 60ms;  }
+.card-enter-2 { animation-delay: 120ms; }
+.card-enter-3 { animation-delay: 180ms; }
+.card-enter-4 { animation-delay: 240ms; }
+
+/* Barre de progression : remplissage gauche → droite via scaleX */
+@keyframes barFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}

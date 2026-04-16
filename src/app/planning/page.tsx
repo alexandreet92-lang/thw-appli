@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
+import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -795,39 +796,39 @@ function TrainingTab() {
 
       {/* KPI */}
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
+        <div className="card-enter" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Volume</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatDur(plannedMin)}</p>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#00c8e0',margin:'0 0 8px' }}>{formatDur(doneMin)}</p>
-          <div style={{ height:5,borderRadius:999,overflow:'hidden',background:'var(--border)',marginBottom:6 }}><div style={{ height:'100%',width:`${plannedMin?Math.min(doneMin/plannedMin*100,100):0}%`,background:'#00c8e0',borderRadius:999 }}/></div>
+          <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#00c8e0" height={5} className="mb-1.5" />
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
         </div>
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
+        <div className="card-enter card-enter-1" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Séances</p>
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedN}</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#ffb340',margin:'0 0 8px' }}>{doneN}</p>
-          <div style={{ height:5,borderRadius:999,overflow:'hidden',background:'var(--border)',marginBottom:6 }}><div style={{ height:'100%',width:`${plannedN?Math.min(doneN/plannedN*100,100):0}%`,background:'#ffb340',borderRadius:999 }}/></div>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#ffb340',margin:'0 0 8px' }}><CountUp value={doneN} /></p>
+          <AnimatedBar pct={plannedN?Math.min(doneN/plannedN*100,100):0} color="#ffb340" height={5} className="mb-1.5" />
           <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:4 }}>
             {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:SPORT_BORDER[s.sport],fontFamily:'DM Mono,monospace' }}>{SPORT_EMOJI[s.sport]} {s.done}/{s.planned}</span>)}
           </div>
         </div>
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
+        <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(91,111,255,0.10)',border:'1px solid rgba(91,111,255,0.25)',color:'#5b6fff',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedTSS} pts</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#5b6fff',margin:'0 0 8px' }}>{doneTSS} pts</p>
-          <div style={{ height:5,borderRadius:999,overflow:'hidden',background:'var(--border)' }}><div style={{ height:'100%',width:`${plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0}%`,background:'#5b6fff',borderRadius:999 }}/></div>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#5b6fff',margin:'0 0 8px' }}><CountUp value={doneTSS} /> pts</p>
+          <AnimatedBar pct={plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0} color="#5b6fff" height={5} />
         </div>
       </div>
 
       {/* Volume par discipline */}
       {sportStats.length>0 && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
+        <div className="card-enter card-enter-3" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 12px' }}>Volume par discipline</p>
           {sportStats.map(s=>{ const pct=s.plannedH>0?Math.min(s.doneH/s.plannedH*100,100):0; const c=SPORT_BORDER[s.sport]; return (
             <div key={s.sport} style={{ marginBottom:10 }}>
@@ -835,7 +836,7 @@ function TrainingTab() {
                 <span style={{ fontSize:12,display:'flex',alignItems:'center',gap:5 }}><span>{SPORT_EMOJI[s.sport]}</span><span style={{ fontWeight:500,color:'var(--text-mid)' }}>{SPORT_LABEL[s.sport]}</span></span>
                 <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:c,fontWeight:600 }}>{s.doneH.toFixed(1)}h <span style={{ color:'var(--text-dim)',fontWeight:400 }}>/ {s.plannedH.toFixed(1)}h</span></span>
               </div>
-              <div style={{ height:6,borderRadius:999,overflow:'hidden',background:'var(--border)' }}><div style={{ height:'100%',width:`${pct}%`,background:`linear-gradient(90deg,${c}bb,${c})`,borderRadius:999 }}/></div>
+              <AnimatedBar pct={pct} gradient={`linear-gradient(90deg,${c}bb,${c})`} height={6} />
             </div>
           )})}
         </div>
@@ -865,7 +866,7 @@ function TrainingTab() {
         </div>
       )}
       {analyzeResult && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:20,boxShadow:'var(--shadow-card)',display:'flex',flexDirection:'column',gap:16 }}>
+        <div className="card-enter" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:20,boxShadow:'var(--shadow-card)',display:'flex',flexDirection:'column',gap:16 }}>
           {/* En-tête score */}
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:10 }}>
             <div>
@@ -875,7 +876,7 @@ function TrainingTab() {
             <div style={{ textAlign:'center' as const,flexShrink:0 }}>
               <p style={{ fontFamily:'Syne,sans-serif',fontSize:36,fontWeight:800,margin:0,lineHeight:1,
                 color:analyzeResult.score>=80?'#22c55e':analyzeResult.score>=60?'#ffb340':'#ef4444' }}>
-                {analyzeResult.score}
+                <CountUp value={analyzeResult.score} />
               </p>
               <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>/ 100</p>
             </div>

@@ -30,6 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             position: 'relative',
             zIndex: 10,
             background: 'var(--bg)',
+            scrollBehavior: 'smooth',
+            WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
           }}>
             {children}
           </main>
@@ -50,6 +52,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             zIndex: 10,
             background: 'var(--bg)',
             marginTop: '56px',
+            scrollBehavior: 'smooth',
+            WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
           }}>
             {children}
           </main>

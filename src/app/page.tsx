@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn, formatTime, getReadinessLabel } from '@/lib/utils'
 import {
@@ -74,13 +74,29 @@ function getTSBZone(tsb: number) {
 
 // ─── Readiness ring ──────────────────────────────────────────────
 function ReadinessRing({ score }: { score: number }) {
+  const [ready, setReady] = useState(false)
+
+  // Déclenche la transition CSS au prochain frame après le mount
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setReady(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
   const r = 36, c = 2 * Math.PI * r, off = c - (score / 100) * c
+
   return (
     <div className="relative flex-shrink-0" style={{ width: 84, height: 84 }}>
       <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: 'rotate(-90deg)' }}>
         <circle cx="42" cy="42" r={r} fill="none" stroke="var(--border)" strokeWidth="6"/>
-        <circle cx="42" cy="42" r={r} fill="none" stroke="url(#rg)" strokeWidth="6"
-          strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off}/>
+        {/* Démarre à offset = c (anneau vide), transite vers la valeur réelle */}
+        <circle
+          cx="42" cy="42" r={r}
+          fill="none" stroke="url(#rg)" strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={ready ? off : c}
+          style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
+        />
         <defs>
           <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor={color.brand}/>
@@ -98,6 +114,13 @@ function ReadinessRing({ score }: { score: number }) {
 
 // ─── Progress bar ────────────────────────────────────────────────
 function ProgressBar({ label, value, pct, barColor }: { label: string; value: string; pct: number; barColor: string }) {
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setReady(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -105,7 +128,14 @@ function ProgressBar({ label, value, pct, barColor }: { label: string; value: st
         <span style={{ ...type.monoXs, color: 'var(--text)' }}>{value}</span>
       </div>
       <div style={{ height: 4, borderRadius: radius.pill, overflow: 'hidden', background: 'var(--border)' }}>
-        <div style={{ height: '100%', width: `${pct}%`, borderRadius: radius.pill, background: barColor }}/>
+        {/* Démarre à 0, transite vers la vraie valeur au mount */}
+        <div style={{
+          height: '100%',
+          width: ready ? `${pct}%` : '0%',
+          borderRadius: radius.pill,
+          background: barColor,
+          transition: 'width 0.8s ease-out',
+        }}/>
       </div>
     </div>
   )

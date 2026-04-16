@@ -56,7 +56,11 @@
 *::-webkit-scrollbar { width: 4px; }
 *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-html { height: 100%; -webkit-font-smoothing: antialiased; }
+html {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
 
 body {
   height: 100%;

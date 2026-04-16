@@ -39,7 +39,7 @@ Z1: récupération active, Z2: endurance fondamentale, Z3: tempo, Z4: seuil, Z5:
 
   return callAgent<SessionBuilderOutput>({
     agentName: 'sessionBuilderAgent',
-    model: 'balanced',
+    model: 'fast',
     maxTokens: 1024,
     systemPrompt: SYSTEM_BASE,
     userPrompt,

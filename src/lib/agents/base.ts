@@ -20,9 +20,9 @@ export function getAnthropicClient(): Anthropic {
 // ── Modèles disponibles ───────────────────────────────────────
 
 export const MODELS = {
-  fast:     'claude-haiku-3-5-20241022',   // analyse légère, readiness, nutrition
-  balanced: 'claude-opus-4-6',             // planification, sessions
-  powerful: 'claude-opus-4-6',             // génération de programme
+  fast:     'claude-haiku-4-5-20251001',   // Q&A, chat, nutrition, readiness, génération texte court
+  balanced: 'claude-sonnet-4-6',           // analyse données complexes, planning, performance
+  powerful: 'claude-sonnet-4-6',           // génération programme complet multi-semaines
 } as const
 
 export type ModelKey = keyof typeof MODELS

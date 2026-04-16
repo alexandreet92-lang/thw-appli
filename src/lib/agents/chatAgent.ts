@@ -113,7 +113,7 @@ export async function runChatAgent(input: ChatInput): Promise<ChatOutput> {
 
   // 5. Appel API
   const response = await client.messages.create({
-    model: MODELS.balanced,
+    model: MODELS.fast,
     max_tokens: 1200,
     system: systemPrompt,
     messages: anthropicMessages,

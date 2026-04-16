@@ -45,7 +45,7 @@ ${Object.entries(intensities).map(([d, v]) => `- Jour ${d} (${['Lun','Mar','Mer'
 Retourne UNIQUEMENT le JSON, rien d'autre.`
 
     const message = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })

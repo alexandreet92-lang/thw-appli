@@ -1007,7 +1007,14 @@ function AIChatPanel({ messages, onSend, mealContext }: {
   const [sending, setSending] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages])
+  const prevLenRef = useRef(messages.length)
+  useEffect(() => {
+    // Ne scroll que si un nouveau message vient d'être ajouté (pas au mount initial)
+    if (messages.length > prevLenRef.current) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    prevLenRef.current = messages.length
+  }, [messages])
 
   async function send() {
     if (!input.trim() || sending) return

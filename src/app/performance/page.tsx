@@ -1,11 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import dynamic from 'next/dynamic'
+import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { CountUp } from '@/components/ui/AnimatedBar'
 
-type PerfTab = 'profil' | 'zones' | 'records' | 'progression'
+const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
+
+// ── Types ───────────────────────────────────────────────────────
+type PerfTab    = 'profil' | 'datas' | 'tests'
 type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox' | 'gym'
-type ZoneTab = 'power' | 'pace' | 'hr'
+type ZoneTab    = 'power' | 'pace' | 'hr'
+interface SelectedDatum { label: string; value: string }
 
 const Z_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
 
@@ -14,6 +21,7 @@ const INIT_PROFILE = {
   thresholdPace: '4:08', vma: 18.5, css: '1:28', vo2max: 62,
 }
 
+// ── Zone helpers ─────────────────────────────────────────────────
 function calcBikeZones(ftp: number) {
   return [
     { z:'Z1', label:'Recuperation', minW: 0,                        maxW: Math.round(ftp*0.55) },
@@ -88,9 +96,8 @@ function toSec(t: string): number {
   return p.length === 3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+(p[1]||0)
 }
 
-// ── Typed data ─────────────────────────────────────
+// ── Data ────────────────────────────────────────────────────────
 const BIKE_DURS = ['Pmax','10s','30s','1min','3min','5min','8min','10min','12min','20min','30min','1h','2h','3h','4h','5h','6h']
-
 const BIKE_REC: Record<string, {w:number;date:string}[]> = {
   'Pmax': [{w:1240,date:'2024-08-12'},{w:1180,date:'2023-06-20'}],
   '10s':  [{w:980, date:'2024-09-01'},{w:920, date:'2023-07-15'}],
@@ -145,27 +152,16 @@ const ROW_REC: Record<string, {time:string;date:string}[]> = {
   '5000m':  [{time:'18:30', date:'2024-04-05'},{time:'19:10', date:'2023-05-20'}],
   '10000m': [{time:'38:45', date:'2024-05-10'},{time:'40:20', date:'2023-06-08'}],
   'Semi':   [{time:'—',     date:'—'},          {time:'—',    date:'—'}],
-  'Marathon':[{time:'—',    date:'—'},           {time:'—',   date:'—'}],
+  'Marathon':[{time:'—',   date:'—'},           {time:'—',   date:'—'}],
 }
 
 const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmers Carry','Sandbag Lunges','Wall Balls']
-
 interface HyroxRecord {
-  format: string
-  date: string
-  total: string
-  roxzone: string
-  penalties: string
-  stations: Record<string, string>
-  runs: string[]
+  format: string; date: string; total: string; roxzone: string; penalties: string
+  stations: Record<string, string>; runs: string[]
 }
-
 const HYROX_REC: HyroxRecord = {
-  format: 'Solo Open Homme',
-  date: '2024-05-10',
-  total: '1:02:45',
-  roxzone: '8:30',
-  penalties: '0',
+  format: 'Solo Open Homme', date: '2024-05-10', total: '1:02:45', roxzone: '8:30', penalties: '0',
   stations: {
     'SkiErg': '3:42', 'Sled Push': '3:15', 'Sled Pull': '2:55',
     'Burpee Broad Jump': '5:10', 'Rowing': '3:28', 'Farmers Carry': '2:40',
@@ -191,7 +187,31 @@ const PROG = {
   row2k:   ['7:35', '7:08', '6:52'],
 }
 
-// ── UI primitives ─────────────────────────────────
+// ── Smart message builder ────────────────────────────────────────
+function buildAIMessage(datum: SelectedDatum): string {
+  const { label, value } = datum
+  const l = label.toLowerCase()
+  if (l === 'vo2max')                  return `Que signifie mon VO2max de ${value} ? Est-ce un bon niveau et comment l'améliorer ?`
+  if (l === 'ftp')                     return `Mon FTP est de ${value}. Comment progresser en puissance au seuil ?`
+  if (l === 'vma')                     return `Avec une VMA de ${value}, quels entraînements spécifiques me conseilles-tu ?`
+  if (l === 'css')                     return `Ma CSS est de ${value}. Comment améliorer mon endurance en natation ?`
+  if (l.includes('fc max'))            return `Ma FC max est de ${value}. Est-ce normal pour mon profil d'athlète ?`
+  if (l.includes('fc repos'))          return `Ma FC au repos est de ${value}. Que m'indique cette valeur sur ma récupération ?`
+  if (l.includes('lthr'))              return `Mon LTHR est de ${value}. Comment utiliser cette donnée pour calibrer mes zones d'intensité ?`
+  if (l.includes('allure'))            return `Mon allure seuil est de ${value}. Quel programme pour l'améliorer ?`
+  if (l.includes('w/kg'))              return `Mon ratio puissance/poids est de ${value}. Comment l'améliorer ?`
+  if (l.startsWith('z') && l.includes('zone')) return `Explique-moi ${label} (${value}). Quels entraînements dois-je faire dans cette zone ?`
+  if (l.includes('zone'))              return `Explique-moi ${label} : ${value}. Quels entraînements dois-je faire dans cette zone ?`
+  if (l.includes('run') || l.includes('course') || l.includes('km') || l.includes('marathon') || l.includes('semi'))
+                                       return `Mon record sur ${label} est de ${value}. Comment progresser sur cette distance ?`
+  if (l.includes('natation') || l.includes('swim')) return `Mon record en ${label} est de ${value}. Comment améliorer ma vitesse en natation ?`
+  if (l.includes('aviron') || l.includes('row'))    return `Mon record en ${label} est de ${value}. Comment améliorer mes temps en aviron ?`
+  if (l.includes('hyrox'))             return `Mon temps Hyrox sur "${label}" est de ${value}. Comment améliorer cette station ?`
+  if (l.includes('1rm') || l.includes('rm') || l.includes('reps')) return `Mon record de ${label} est de ${value}. Comment progresser en musculation sur ce mouvement ?`
+  return `Analyse ma donnée de performance "${label}" : ${value}. Quel est ce niveau et comment puis-je progresser ?`
+}
+
+// ── UI primitives ────────────────────────────────────────────────
 function Card({ children, style, delay }: { children: React.ReactNode; style?: React.CSSProperties; delay?: number }) {
   return (
     <div
@@ -203,12 +223,27 @@ function Card({ children, style, delay }: { children: React.ReactNode; style?: R
   )
 }
 
-function StatBox({ label, value, unit, sub, color }: { label:string; value:string|number; unit?:string; sub?:string; color?:string }) {
+function StatBox({ label, value, unit, sub, color, onSelect, selected }: {
+  label: string; value: string|number; unit?: string; sub?: string; color?: string;
+  onSelect?: () => void; selected?: boolean;
+}) {
   const isInt = typeof value === 'number' && value >= 0 && Number.isInteger(value)
   return (
-    <div className="card-enter" style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, padding:'11px 13px' }}>
+    <div
+      className="card-enter"
+      onClick={onSelect}
+      style={{
+        background: selected ? 'rgba(0,200,224,0.08)' : 'var(--bg-card2)',
+        border: `1px solid ${selected ? '#00c8e0' : 'var(--border)'}`,
+        borderRadius:12, padding:'11px 13px',
+        cursor: onSelect ? 'pointer' : undefined,
+        transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
+        boxShadow: selected ? '0 0 0 2px rgba(0,200,224,0.15)' : undefined,
+        userSelect: 'none' as const,
+      }}
+    >
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
-      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:color||'var(--text)', margin:0, lineHeight:1 }}>
+      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:selected?'#00c8e0':color||'var(--text)', margin:0, lineHeight:1 }}>
         {isInt ? <CountUp value={value as number} /> : value}
         {unit && <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)', marginLeft:3 }}>{unit}</span>}
       </p>
@@ -217,32 +252,85 @@ function StatBox({ label, value, unit, sub, color }: { label:string; value:strin
   )
 }
 
-function ZBars({ zones }: { zones: { z:string; label:string; range:string }[] }) {
+function ZBars({ zones, onSelect, selectedKey }: {
+  zones: { z:string; label:string; range:string }[];
+  onSelect?: (key: string, label: string, range: string) => void;
+  selectedKey?: string;
+}) {
   const [ready, setReady] = useState(false)
   useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-      {zones.map((z, i) => (
-        <div key={z.z} style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ width:26, height:26, borderRadius:6, background:`${Z_COLORS[i]}22`, border:`1px solid ${Z_COLORS[i]}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:Z_COLORS[i], flexShrink:0 }}>{z.z}</span>
-          <div style={{ flex:1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
-              <span style={{ fontSize:11, color:'var(--text-mid)' }}>{z.label}</span>
-              <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:Z_COLORS[i], fontWeight:600 }}>{z.range}</span>
-            </div>
-            <div style={{ height:5, borderRadius:999, background:`${Z_COLORS[i]}22`, overflow:'hidden' }}>
-              <div style={{
-                height:'100%', width:`${20+i*16}%`, background:Z_COLORS[i], opacity:0.7, borderRadius:999,
-                transformOrigin:'left center',
-                transform: ready ? 'scaleX(1)' : 'scaleX(0)',
-                transition:`transform 1.1s cubic-bezier(0.25,1,0.5,1) ${i * 60}ms`,
-                willChange:'transform',
-              }}/>
+      {zones.map((z, i) => {
+        const key = `${z.z}-${z.label}`
+        const sel = selectedKey === key
+        return (
+          <div
+            key={z.z}
+            onClick={() => onSelect?.(key, `Zone ${z.z} ${z.label}`, z.range)}
+            style={{
+              display:'flex', alignItems:'center', gap:10,
+              padding: onSelect ? '4px 6px' : undefined,
+              borderRadius: onSelect ? 8 : undefined,
+              cursor: onSelect ? 'pointer' : undefined,
+              background: sel ? `${Z_COLORS[i]}14` : undefined,
+              border: sel ? `1px solid ${Z_COLORS[i]}55` : '1px solid transparent',
+              transition:'background 0.15s, border-color 0.15s',
+            }}
+          >
+            <span style={{ width:26, height:26, borderRadius:6, background:`${Z_COLORS[i]}22`, border:`1px solid ${Z_COLORS[i]}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:Z_COLORS[i], flexShrink:0 }}>{z.z}</span>
+            <div style={{ flex:1 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
+                <span style={{ fontSize:11, color:'var(--text-mid)' }}>{z.label}</span>
+                <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:Z_COLORS[i], fontWeight:600 }}>{z.range}</span>
+              </div>
+              <div style={{ height:5, borderRadius:999, background:`${Z_COLORS[i]}22`, overflow:'hidden' }}>
+                <div style={{
+                  height:'100%', width:`${20+i*16}%`, background:Z_COLORS[i], opacity:0.7, borderRadius:999,
+                  transformOrigin:'left center',
+                  transform: ready ? 'scaleX(1)' : 'scaleX(0)',
+                  transition:`transform 1.1s cubic-bezier(0.25,1,0.5,1) ${i * 60}ms`,
+                  willChange:'transform',
+                }}/>
+              </div>
             </div>
           </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function RecordRow({ label, rec24, rec23, sub, onSelect, selected }: {
+  label: string; rec24: string; rec23: string; sub?: string;
+  onSelect?: () => void; selected?: boolean;
+}) {
+  const isPR = rec24 !== '—' && rec23 !== '—' && rec24 < rec23
+  return (
+    <div
+      onClick={rec24 !== '—' ? onSelect : undefined}
+      style={{
+        display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:9,
+        background: selected ? 'rgba(0,200,224,0.06)' : 'var(--bg-card2)',
+        border: `1px solid ${selected ? '#00c8e0' : 'var(--border)'}`,
+        marginBottom:5,
+        cursor: (onSelect && rec24 !== '—') ? 'pointer' : undefined,
+        transition:'border-color 0.15s, background 0.15s',
+        userSelect: 'none' as const,
+      }}
+    >
+      <span style={{ fontSize:11, fontWeight:500, color:'var(--text-mid)', minWidth:72, flexShrink:0 }}>{label}</span>
+      <div style={{ flex:1 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color: selected ? '#00c8e0' : '#00c8e0' }}>{rec24}</span>
+          {isPR && <span style={{ fontSize:9, padding:'1px 5px', borderRadius:4, background:'rgba(0,200,224,0.15)', color:'#00c8e0', fontWeight:700 }}>PR</span>}
+          {sub && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{sub}</span>}
         </div>
-      ))}
+        {rec23 && rec23 !== '—' && (
+          <span style={{ fontSize:10, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>2023 : {rec23}</span>
+        )}
+      </div>
     </div>
   )
 }
@@ -321,13 +409,72 @@ function LineChart({ series, labels }: { series:{label:string;color:string;data:
   )
 }
 
+// ── Floating bubble ──────────────────────────────────────────────
+function SelectedDatumBubble({ datum, onClear, onAsk }: {
+  datum: SelectedDatum; onClear: () => void; onAsk: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
+
+  return createPortal(
+    <div style={{
+      position:'fixed', bottom:88, left:'50%', transform:'translateX(-50%)',
+      zIndex:1100,
+      display:'flex', alignItems:'center', gap:10,
+      padding:'10px 14px 10px 16px',
+      borderRadius:14,
+      background:'var(--bg-card)',
+      border:'1px solid rgba(0,200,224,0.45)',
+      boxShadow:'0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,200,224,0.08)',
+      animation:'cardEnter 0.22s cubic-bezier(0.4,0,0.2,1) both',
+      maxWidth:'calc(100vw - 48px)',
+      whiteSpace:'nowrap' as const,
+    }}>
+      <div style={{ minWidth:0 }}>
+        <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:0 }}>{datum.label}</p>
+        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#00c8e0', margin:0 }}>{datum.value}</p>
+      </div>
+      <button
+        onClick={onAsk}
+        style={{
+          padding:'7px 14px', borderRadius:10,
+          background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+          border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer',
+          whiteSpace:'nowrap' as const, flexShrink:0,
+        }}
+      >
+        Demander au Coach IA
+      </button>
+      <button
+        onClick={onClear}
+        style={{
+          width:24, height:24, borderRadius:6, border:'1px solid var(--border)',
+          background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer',
+          fontSize:16, display:'flex', alignItems:'center', justifyContent:'center',
+          flexShrink:0, lineHeight:1,
+        }}
+      >×</button>
+    </div>,
+    document.body
+  )
+}
+
 // ════════════════════════════════════════════════
-// PROFIL
+// ONGLET PROFIL
 // ════════════════════════════════════════════════
-function ProfilTab() {
+function ProfilTab({ onSelect, selectedDatum }: {
+  onSelect: (label: string, value: string) => void
+  selectedDatum: SelectedDatum | null
+}) {
   const [p, setP] = useState({ ...INIT_PROFILE })
   const [editing, setEditing] = useState(false)
   const wkg = (p.ftp / p.weight).toFixed(2)
+
+  function isSel(label: string, value: string | number, unit?: string) {
+    const v = `${value}${unit ? ` ${unit}` : ''}`
+    return selectedDatum?.label === label && selectedDatum?.value === v
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -357,14 +504,14 @@ function ProfilTab() {
           </div>
         ) : (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="md:grid-cols-4">
-            <StatBox label="FTP" value={p.ftp} unit="W" sub={`${wkg} W/kg`} color="#00c8e0"/>
-            <StatBox label="Allure seuil" value={p.thresholdPace} unit="/km" color="#22c55e"/>
-            <StatBox label="VMA" value={p.vma} unit="km/h" color="#22c55e"/>
-            <StatBox label="CSS" value={p.css} unit="/100m" color="#38bdf8"/>
-            <StatBox label="FC max" value={p.hrMax} unit="bpm" color="#ef4444"/>
-            <StatBox label="FC repos" value={p.hrRest} unit="bpm" color="#22c55e"/>
-            <StatBox label="LTHR" value={p.lthr} unit="bpm" color="#f97316"/>
-            <StatBox label="VO2max" value={p.vo2max} unit="ml/kg/min" color="#a855f7"/>
+            <StatBox label="FTP"          value={p.ftp}            unit="W"        sub={`${wkg} W/kg`} color="#00c8e0" onSelect={() => onSelect('FTP', `${p.ftp} W`)} selected={isSel('FTP', p.ftp, 'W')}/>
+            <StatBox label="Allure seuil" value={p.thresholdPace}  unit="/km"      color="#22c55e"     onSelect={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)} selected={selectedDatum?.label==='Allure seuil'}/>
+            <StatBox label="VMA"          value={p.vma}            unit="km/h"     color="#22c55e"     onSelect={() => onSelect('VMA', `${p.vma} km/h`)} selected={isSel('VMA', p.vma, 'km/h')}/>
+            <StatBox label="CSS"          value={p.css}            unit="/100m"    color="#38bdf8"     onSelect={() => onSelect('CSS', `${p.css}/100m`)} selected={selectedDatum?.label==='CSS'}/>
+            <StatBox label="FC max"       value={p.hrMax}          unit="bpm"      color="#ef4444"     onSelect={() => onSelect('FC max', `${p.hrMax} bpm`)} selected={isSel('FC max', p.hrMax, 'bpm')}/>
+            <StatBox label="FC repos"     value={p.hrRest}         unit="bpm"      color="#22c55e"     onSelect={() => onSelect('FC repos', `${p.hrRest} bpm`)} selected={isSel('FC repos', p.hrRest, 'bpm')}/>
+            <StatBox label="LTHR"         value={p.lthr}           unit="bpm"      color="#f97316"     onSelect={() => onSelect('LTHR', `${p.lthr} bpm`)} selected={isSel('LTHR', p.lthr, 'bpm')}/>
+            <StatBox label="VO2max"       value={p.vo2max}         unit="ml/kg/min" color="#a855f7"   onSelect={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)} selected={isSel('VO2max', p.vo2max, 'ml/kg/min')}/>
           </div>
         )}
       </Card>
@@ -372,33 +519,49 @@ function ProfilTab() {
       <Card>
         <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:'0 0 14px' }}>Niveau estime</h2>
         {[
-          { label:'W/kg', val:parseFloat(wkg), max:6,  display:`${wkg} W/kg`, color:'#00c8e0', desc:parseFloat(wkg)>=4.5?'Expert':parseFloat(wkg)>=3.5?'Avance':'Intermediaire' },
-          { label:'VO2max', val:p.vo2max,      max:80, display:`${p.vo2max} ml/kg/min`, color:'#a855f7', desc:p.vo2max>=65?'Elite':p.vo2max>=55?'Eleve':'Moyen' },
-          { label:'FC repos', val:80-p.hrRest, max:50, display:`${p.hrRest} bpm`, color:'#22c55e', desc:p.hrRest<=40?'Elite':p.hrRest<=50?'Eleve':'Moyen' },
-        ].map(item => (
-          <div key={item.label} style={{ marginBottom:12 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-              <span style={{ fontSize:12, color:'var(--text-mid)' }}>{item.label}</span>
-              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:`${item.color}22`, color:item.color, fontWeight:600 }}>{item.desc}</span>
-                <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, color:item.color }}>{item.display}</span>
+          { label:'W/kg',    val:parseFloat(wkg), max:6,  display:`${wkg} W/kg`,           color:'#00c8e0', desc:parseFloat(wkg)>=4.5?'Expert':parseFloat(wkg)>=3.5?'Avance':'Intermediaire' },
+          { label:'VO2max',  val:p.vo2max,        max:80, display:`${p.vo2max} ml/kg/min`,  color:'#a855f7', desc:p.vo2max>=65?'Elite':p.vo2max>=55?'Eleve':'Moyen' },
+          { label:'FC repos',val:80-p.hrRest,     max:50, display:`${p.hrRest} bpm`,        color:'#22c55e', desc:p.hrRest<=40?'Elite':p.hrRest<=50?'Eleve':'Moyen' },
+        ].map(item => {
+          const sel = selectedDatum?.label === item.label
+          return (
+            <div
+              key={item.label}
+              onClick={() => onSelect(item.label, item.display)}
+              style={{
+                marginBottom:12, padding:'8px 10px', borderRadius:10, cursor:'pointer',
+                background: sel ? `${item.color}10` : undefined,
+                border: `1px solid ${sel ? item.color+'55' : 'transparent'}`,
+                transition:'background 0.15s, border-color 0.15s',
+              }}
+            >
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                <span style={{ fontSize:12, color:'var(--text-mid)' }}>{item.label}</span>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:`${item.color}22`, color:item.color, fontWeight:600 }}>{item.desc}</span>
+                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, color:item.color }}>{item.display}</span>
+                </div>
+              </div>
+              <div style={{ height:7, borderRadius:999, overflow:'hidden', background:'var(--border)' }}>
+                <div style={{ height:'100%', width:`${Math.min(Math.abs(item.val)/item.max*100,100)}%`, background:`linear-gradient(90deg,${item.color}88,${item.color})`, borderRadius:999 }}/>
               </div>
             </div>
-            <div style={{ height:7, borderRadius:999, overflow:'hidden', background:'var(--border)' }}>
-              <div style={{ height:'100%', width:`${Math.min(Math.abs(item.val)/item.max*100,100)}%`, background:`linear-gradient(90deg,${item.color}88,${item.color})`, borderRadius:999 }}/>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </Card>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════
-// ZONES
+// ONGLET DATAS (Zones + Records)
 // ════════════════════════════════════════════════
-function ZonesTab() {
-  const [p, setP] = useState({ ...INIT_PROFILE })
+function DatasTab({ onSelect, selectedDatum }: {
+  onSelect: (label: string, value: string) => void
+  selectedDatum: SelectedDatum | null
+}) {
+  // ── Zones state ──
+  const [p, setP]           = useState({ ...INIT_PROFILE })
   const [zoneTab, setZoneTab] = useState<ZoneTab>('power')
   const [editing, setEditing] = useState(false)
 
@@ -407,11 +570,47 @@ function ZonesTab() {
   const swimZones = calcSwimZones(parseSec(p.css))
   const hrZones   = calcHRZones(p.hrMax, p.hrRest)
 
+  // ── Records state ──
+  const [sport, setSport]       = useState<RecordSport>('bike')
+  const [simMode, setSimMode]   = useState(false)
+  const [simDeltas, setSimDeltas] = useState<Record<string,number>>({})
+
+  const curve24 = BIKE_DURS.map(d => BIKE_REC[d]?.[0]?.w || 0)
+  const curve23 = BIKE_DURS.map(d => BIKE_REC[d]?.[1]?.w || 0)
+
+  function hyroxSimTotal(): string {
+    let total = 0
+    HYROX_STATIONS.forEach(s => { total += toSec(HYROX_REC.stations[s] || '0:00') - (simDeltas[s] || 0) })
+    HYROX_REC.runs.forEach((r, i) => { total += toSec(r) - (simDeltas[`run${i}`] || 0) })
+    total += toSec(HYROX_REC.roxzone)
+    return `${Math.floor(total/60)}:${String(total%60).padStart(2,'0')}`
+  }
+
+  const SPORT_TABS: [RecordSport,string,string][] = [
+    ['bike','Velo','#3b82f6'],['run','Course','#22c55e'],['swim','Natation','#38bdf8'],
+    ['rowing','Aviron','#14b8a6'],['hyrox','Hyrox','#ef4444'],['gym','Muscu','#f97316'],
+  ]
+
+  const zoneSelKey = selectedDatum
+    ? (() => {
+        // Reverse-match: selectedDatum label is like "Zone Z1 Recup" → key "Z1-Recup"
+        const m = selectedDatum.label.match(/^Zone (Z\d) (.+)$/)
+        return m ? `${m[1]}-${m[2]}` : undefined
+      })()
+    : undefined
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* ── SECTION ZONES ─────────────────────── */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 0' }}>
+        <div style={{ width:3, height:20, borderRadius:2, background:'linear-gradient(180deg,#00c8e0,#5b6fff)' }}/>
+        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>Zones d'entraînement</h2>
+      </div>
+
       <Card>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap' as const, gap:8 }}>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Zones d'entrainement</h2>
+          <p style={{ fontSize:12, color:'var(--text-mid)', margin:0 }}>Zones calculées depuis tes seuils physiologiques</p>
           <button onClick={() => setEditing(!editing)}
             style={{ padding:'5px 12px', borderRadius:8, background:editing?'linear-gradient(135deg,#00c8e0,#5b6fff)':'var(--bg-card2)', border:`1px solid ${editing?'transparent':'var(--border)'}`, color:editing?'#fff':'var(--text-mid)', fontSize:11, cursor:'pointer', fontWeight:600 }}>
             {editing ? 'Appliquer' : 'Modifier seuils'}
@@ -443,17 +642,25 @@ function ZonesTab() {
               <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:0 }}>Velo — FTP {p.ftp}W</h3>
               <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:'#00c8e0' }}>{(p.ftp/p.weight).toFixed(2)} W/kg</span>
             </div>
-            <ZBars zones={bikeZones.map(z => ({ z:z.z, label:z.label, range:`${z.minW}–${z.maxW}W` }))}/>
+            <ZBars
+              zones={bikeZones.map(z => ({ z:z.z, label:z.label, range:`${z.minW}–${z.maxW}W` }))}
+              onSelect={(key, label, range) => onSelect(label, range)}
+              selectedKey={zoneSelKey}
+            />
           </Card>
           <Card>
             <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>Aviron /500m</h3>
-            <ZBars zones={[
-              { z:'Z1', label:'Recup',   range:'> 2:15/500m' },
-              { z:'Z2', label:'Aerobie', range:'2:00 - 2:14/500m' },
-              { z:'Z3', label:'Tempo',   range:'1:52 - 1:59/500m' },
-              { z:'Z4', label:'Seuil',   range:'1:44 - 1:51/500m' },
-              { z:'Z5', label:'VO2max',  range:'< 1:43/500m' },
-            ]}/>
+            <ZBars
+              zones={[
+                { z:'Z1', label:'Recup',   range:'> 2:15/500m' },
+                { z:'Z2', label:'Aerobie', range:'2:00 - 2:14/500m' },
+                { z:'Z3', label:'Tempo',   range:'1:52 - 1:59/500m' },
+                { z:'Z4', label:'Seuil',   range:'1:44 - 1:51/500m' },
+                { z:'Z5', label:'VO2max',  range:'< 1:43/500m' },
+              ]}
+              onSelect={(key, label, range) => onSelect(label, range)}
+              selectedKey={zoneSelKey}
+            />
           </Card>
         </div>
       )}
@@ -462,11 +669,19 @@ function ZonesTab() {
         <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12 }} className="md:grid-cols-2">
           <Card>
             <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>Course — seuil {p.thresholdPace}/km</h3>
-            <ZBars zones={runZones}/>
+            <ZBars
+              zones={runZones}
+              onSelect={(key, label, range) => onSelect(label, range)}
+              selectedKey={zoneSelKey}
+            />
           </Card>
           <Card>
             <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>Natation — CSS {p.css}/100m</h3>
-            <ZBars zones={swimZones}/>
+            <ZBars
+              zones={swimZones}
+              onSelect={(key, label, range) => onSelect(label, range)}
+              selectedKey={zoneSelKey}
+            />
           </Card>
         </div>
       )}
@@ -481,7 +696,11 @@ function ZonesTab() {
               <span style={{ color:'var(--text-dim)' }}>Max : <strong style={{ color:'#ef4444', fontFamily:'DM Mono,monospace' }}>{p.hrMax}bpm</strong></span>
             </div>
           </div>
-          <ZBars zones={hrZones.map(z => ({ z:z.z, label:z.label, range:`${z.min} - ${z.max} bpm` }))}/>
+          <ZBars
+            zones={hrZones.map(z => ({ z:z.z, label:z.label, range:`${z.min} - ${z.max} bpm` }))}
+            onSelect={(key, label, range) => onSelect(label, range)}
+            selectedKey={zoneSelKey}
+          />
           <div style={{ marginTop:14 }}>
             <div style={{ display:'flex', height:14, borderRadius:7, overflow:'hidden' }}>
               {hrZones.map((z, i) => <div key={z.z} style={{ flex:z.max-z.min, background:Z_COLORS[i], opacity:0.8 }}/>)}
@@ -497,60 +716,18 @@ function ZonesTab() {
           </div>
         </Card>
       )}
-    </div>
-  )
-}
 
-// ════════════════════════════════════════════════
-// RECORDS
-// ════════════════════════════════════════════════
-function RecordsTab() {
-  const [sport, setSport] = useState<RecordSport>('bike')
-  const [simMode, setSimMode] = useState(false)
-  const [simDeltas, setSimDeltas] = useState<Record<string,number>>({})
-
-  const curve24 = BIKE_DURS.map(d => BIKE_REC[d]?.[0]?.w || 0)
-  const curve23 = BIKE_DURS.map(d => BIKE_REC[d]?.[1]?.w || 0)
-
-  function hyroxSimTotal(): string {
-    let total = 0
-    HYROX_STATIONS.forEach(s => {
-      total += toSec(HYROX_REC.stations[s] || '0:00') - (simDeltas[s] || 0)
-    })
-    HYROX_REC.runs.forEach((r, i) => {
-      total += toSec(r) - (simDeltas[`run${i}`] || 0)
-    })
-    total += toSec(HYROX_REC.roxzone)
-    const m = Math.floor(total/60), s = total%60
-    return `${m}:${String(s).padStart(2,'0')}`
-  }
-
-  function RecordRow({ label, rec24, rec23, sub }: { label:string; rec24:string; rec23:string; sub?:string }) {
-    const isPR = rec24 !== '—' && rec23 !== '—' && rec24 < rec23
-    return (
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', marginBottom:5 }}>
-        <span style={{ fontSize:11, fontWeight:500, color:'var(--text-mid)', minWidth:72, flexShrink:0 }}>{label}</span>
-        <div style={{ flex:1 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color:'#00c8e0' }}>{rec24}</span>
-            {isPR && <span style={{ fontSize:9, padding:'1px 5px', borderRadius:4, background:'rgba(0,200,224,0.15)', color:'#00c8e0', fontWeight:700 }}>PR</span>}
-            {sub && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{sub}</span>}
-          </div>
-          {rec23 && rec23 !== '—' && (
-            <span style={{ fontSize:10, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>2023 : {rec23}</span>
-          )}
+      {/* ── SÉPARATEUR ────────────────────────── */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 0 4px' }}>
+        <div style={{ flex:1, height:1, background:'var(--border)' }}/>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:3, height:20, borderRadius:2, background:'linear-gradient(180deg,#ffb340,#f97316)' }}/>
+          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>Records personnels</h2>
         </div>
+        <div style={{ flex:1, height:1, background:'var(--border)' }}/>
       </div>
-    )
-  }
 
-  const SPORT_TABS: [RecordSport,string,string][] = [
-    ['bike','Velo','#3b82f6'],['run','Course','#22c55e'],['swim','Natation','#38bdf8'],
-    ['rowing','Aviron','#14b8a6'],['hyrox','Hyrox','#ef4444'],['gym','Muscu','#f97316'],
-  ]
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      {/* ── RECORDS ──────────────────────────── */}
       <div style={{ display:'flex', gap:5, flexWrap:'wrap' as const }}>
         {SPORT_TABS.map(([s,l,c]) => (
           <button key={s} onClick={() => setSport(s)}
@@ -587,11 +764,14 @@ function RecordsTab() {
               const r24 = BIKE_REC[d]?.[0]
               const r23 = BIKE_REC[d]?.[1]
               if (!r24) return null
+              const sel = selectedDatum?.label === `Vélo ${d}` && selectedDatum?.value === `${r24.w}W`
               return (
                 <RecordRow key={d} label={d}
                   rec24={`${r24.w}W`}
                   rec23={r23 ? `${r23.w}W` : '—'}
                   sub={`${(r24.w/INIT_PROFILE.weight).toFixed(2)} W/kg`}
+                  onSelect={() => onSelect(`Vélo ${d}`, `${r24.w}W`)}
+                  selected={sel}
                 />
               )
             })}
@@ -606,11 +786,14 @@ function RecordsTab() {
             const r24 = RUN_REC[d]?.[0]
             const r23 = RUN_REC[d]?.[1]
             const pace = calcPacePerKm(RUN_KM[d], r24?.time || '')
+            const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (r24?.time || '—')
             return (
               <RecordRow key={d} label={d}
                 rec24={r24?.time || '—'}
                 rec23={r23?.time || '—'}
                 sub={pace !== '—' ? pace : undefined}
+                onSelect={() => r24?.time && r24.time !== '—' ? onSelect(`Course ${d}`, r24.time) : undefined}
+                selected={sel}
               />
             )
           })}
@@ -624,11 +807,14 @@ function RecordsTab() {
             const r24 = SWIM_REC[d]?.[0]
             const r23 = SWIM_REC[d]?.[1]
             const split = calcSplit500m(SWIM_M[d], r24?.time || '')
+            const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (r24?.time || '—')
             return (
               <RecordRow key={d} label={d}
                 rec24={r24?.time || '—'}
                 rec23={r23?.time || '—'}
                 sub={split !== '—' ? split.replace('/500m','/100m') : undefined}
+                onSelect={() => r24?.time && r24.time !== '—' ? onSelect(`Natation ${d}`, r24.time) : undefined}
+                selected={sel}
               />
             )
           })}
@@ -649,11 +835,14 @@ function RecordsTab() {
               if (ss > 0) watts = `~${Math.round(2.80/(ss/500)**3)}W`
             }
             const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
+            const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (r24?.time || '—')
             return (
               <RecordRow key={d} label={lbl}
                 rec24={r24?.time || '—'}
                 rec23={r23?.time || '—'}
                 sub={split !== '—' ? `${split} · ${watts}` : undefined}
+                onSelect={() => r24?.time && r24.time !== '—' ? onSelect(`Aviron ${d}`, r24.time) : undefined}
+                selected={sel}
               />
             )
           })}
@@ -692,22 +881,46 @@ function RecordsTab() {
             </div>
             <h3 style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 8px' }}>Stations</h3>
             <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
-              {HYROX_STATIONS.map((s, i) => (
-                <div key={s} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.05)', border:'1px solid rgba(239,68,68,0.12)' }}>
-                  <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', width:17, flexShrink:0 }}>{i+1}</span>
-                  <span style={{ flex:1, fontSize:11 }}>{s}</span>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, color:'#ef4444' }}>{HYROX_REC.stations[s]}</span>
-                </div>
-              ))}
+              {HYROX_STATIONS.map((s, i) => {
+                const sel = selectedDatum?.label === `Hyrox ${s}` && selectedDatum?.value === HYROX_REC.stations[s]
+                return (
+                  <div
+                    key={s}
+                    onClick={() => onSelect(`Hyrox ${s}`, HYROX_REC.stations[s])}
+                    style={{
+                      display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderRadius:8,
+                      background: sel ? 'rgba(239,68,68,0.10)' : 'rgba(239,68,68,0.05)',
+                      border: `1px solid ${sel ? 'rgba(239,68,68,0.50)' : 'rgba(239,68,68,0.12)'}`,
+                      cursor:'pointer', transition:'background 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', width:17, flexShrink:0 }}>{i+1}</span>
+                    <span style={{ flex:1, fontSize:11 }}>{s}</span>
+                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, color:'#ef4444' }}>{HYROX_REC.stations[s]}</span>
+                  </div>
+                )
+              })}
             </div>
             <h3 style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 8px' }}>Runs (8x1km)</h3>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
-              {HYROX_REC.runs.map((r, i) => (
-                <div key={i} style={{ padding:'6px 8px', borderRadius:7, background:'rgba(34,197,94,0.07)', border:'1px solid rgba(34,197,94,0.15)', textAlign:'center' as const }}>
-                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 2px' }}>Run {i+1}</p>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, color:'#22c55e', margin:0 }}>{r}</p>
-                </div>
-              ))}
+              {HYROX_REC.runs.map((r, i) => {
+                const sel = selectedDatum?.label === `Hyrox Run ${i+1}` && selectedDatum?.value === r
+                return (
+                  <div
+                    key={i}
+                    onClick={() => onSelect(`Hyrox Run ${i+1}`, r)}
+                    style={{
+                      padding:'6px 8px', borderRadius:7, textAlign:'center' as const, cursor:'pointer',
+                      background: sel ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.07)',
+                      border: `1px solid ${sel ? 'rgba(34,197,94,0.50)' : 'rgba(34,197,94,0.15)'}`,
+                      transition:'background 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 2px' }}>Run {i+1}</p>
+                    <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, color:'#22c55e', margin:0 }}>{r}</p>
+                  </div>
+                )
+              })}
             </div>
           </Card>
 
@@ -765,14 +978,29 @@ function RecordsTab() {
             <Card key={m.name} style={{ padding:16 }}>
               <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:'0 0 10px', color:'#f97316' }}>{m.name}</h3>
               <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                {m.recs.map(r => (
-                  <div key={r.l} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 9px', borderRadius:7, background:'rgba(249,115,22,0.07)', border:'1px solid rgba(249,115,22,0.15)' }}>
-                    <span style={{ fontSize:11, color:'var(--text-mid)' }}>{r.l}</span>
-                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color:r.v ? '#f97316' : 'var(--text-dim)' }}>
-                      {r.v ? `${r.v}${r.l.includes('reps') ? '' : ' kg'}` : '—'}
-                    </span>
-                  </div>
-                ))}
+                {m.recs.map(r => {
+                  const valStr = r.v ? `${r.v}${r.l.includes('reps') ? ' reps' : ' kg'}` : '—'
+                  const sel = selectedDatum?.label === `${m.name} — ${r.l}` && selectedDatum?.value === valStr
+                  return (
+                    <div
+                      key={r.l}
+                      onClick={() => r.v ? onSelect(`${m.name} — ${r.l}`, valStr) : undefined}
+                      style={{
+                        display:'flex', alignItems:'center', justifyContent:'space-between',
+                        padding:'5px 9px', borderRadius:7,
+                        background: sel ? 'rgba(249,115,22,0.14)' : 'rgba(249,115,22,0.07)',
+                        border: `1px solid ${sel ? 'rgba(249,115,22,0.50)' : 'rgba(249,115,22,0.15)'}`,
+                        cursor: r.v ? 'pointer' : undefined,
+                        transition:'background 0.15s, border-color 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize:11, color:'var(--text-mid)' }}>{r.l}</span>
+                      <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color:r.v ? '#f97316' : 'var(--text-dim)' }}>
+                        {valStr}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </Card>
           ))}
@@ -783,9 +1011,9 @@ function RecordsTab() {
 }
 
 // ════════════════════════════════════════════════
-// PROGRESSION
+// ONGLET TESTS (ex-Progression)
 // ════════════════════════════════════════════════
-function ProgressionTab() {
+function TestsTab() {
   const ftpSeries   = [{ label:'FTP',   color:'#00c8e0', data: PROG.ftp }]
   const run5kSeries = [{ label:'5km',   color:'#22c55e', data: [1185,1092,1065] }]
   const swim100     = [{ label:'100m',  color:'#38bdf8', data: [82,76,70] }]
@@ -896,22 +1124,42 @@ function ProgressionTab() {
 // PAGE
 // ════════════════════════════════════════════════
 export default function PerformancePage() {
-  const [tab, setTab] = useState<PerfTab>('profil')
+  const [tab, setTab]                   = useState<PerfTab>('profil')
+  const [selectedDatum, setSelectedDatum] = useState<SelectedDatum | null>(null)
+  const [aiOpen, setAiOpen]             = useState(false)
+  const [aiPrefill, setAiPrefill]       = useState('')
 
-  const TABS: { id:PerfTab; label:string; short:string; color:string; bg:string }[] = [
-    { id:'profil',      label:'Profil',      short:'Profil',      color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
-    { id:'zones',       label:'Zones',       short:'Zones',       color:'#f97316', bg:'rgba(249,115,22,0.10)' },
-    { id:'records',     label:'Records',     short:'Records',     color:'#ffb340', bg:'rgba(255,179,64,0.10)' },
-    { id:'progression', label:'Progression', short:'Prog.',       color:'#22c55e', bg:'rgba(34,197,94,0.10)'  },
+  function onSelectDatum(label: string, value: string) {
+    setSelectedDatum(prev =>
+      prev?.label === label && prev?.value === value ? null : { label, value }
+    )
+  }
+
+  function handleAsk() {
+    if (!selectedDatum) return
+    setAiPrefill(buildAIMessage(selectedDatum))
+    setAiOpen(true)
+    setSelectedDatum(null)
+  }
+
+  const TABS: { id: PerfTab; label: string; short: string; color: string; bg: string }[] = [
+    { id:'profil', label:'Profil', short:'Profil', color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
+    { id:'datas',  label:'Datas',  short:'Datas',  color:'#f97316', bg:'rgba(249,115,22,0.10)' },
+    { id:'tests',  label:'Tests',  short:'Tests',  color:'#22c55e', bg:'rgba(34,197,94,0.10)'  },
   ]
 
   return (
     <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
-        <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records · Progression</p>
+      {/* ── En-tête ── */}
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>
+        <div>
+          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
+          <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records · Tests</p>
+        </div>
+        <AIAssistantButton agent="performance" context={{ page:'performance' }}/>
       </div>
 
+      {/* ── Tab bar desktop ── */}
       <div className="hidden md:flex" style={{ gap:8, marginBottom:20, flexWrap:'wrap' as const }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
@@ -921,6 +1169,7 @@ export default function PerformancePage() {
         ))}
       </div>
 
+      {/* ── Tab bar mobile ── */}
       <div className="md:hidden" style={{ display:'flex', gap:5, marginBottom:16, flexWrap:'wrap' as const }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
@@ -930,10 +1179,28 @@ export default function PerformancePage() {
         ))}
       </div>
 
-      {tab === 'profil'      && <ProfilTab/>}
-      {tab === 'zones'       && <ZonesTab/>}
-      {tab === 'records'     && <RecordsTab/>}
-      {tab === 'progression' && <ProgressionTab/>}
+      {/* ── Contenu ── */}
+      {tab === 'profil' && <ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum}/>}
+      {tab === 'datas'  && <DatasTab  onSelect={onSelectDatum} selectedDatum={selectedDatum}/>}
+      {tab === 'tests'  && <TestsTab/>}
+
+      {/* ── Bulle flottante de sélection ── */}
+      {selectedDatum && (
+        <SelectedDatumBubble
+          datum={selectedDatum}
+          onClear={() => setSelectedDatum(null)}
+          onAsk={handleAsk}
+        />
+      )}
+
+      {/* ── Panel Coach IA (pour les données sélectionnées) ── */}
+      <AIPanel
+        open={aiOpen}
+        onClose={() => { setAiOpen(false); setAiPrefill('') }}
+        initialAgent="performance"
+        prefillMessage={aiPrefill}
+        context={{ page:'performance' }}
+      />
     </div>
   )
 }

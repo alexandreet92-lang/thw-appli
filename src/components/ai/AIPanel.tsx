@@ -42,6 +42,7 @@ interface Props {
   onClose: () => void
   initialAgent: PageAgent
   context?: Record<string, unknown>
+  prefillMessage?: string
 }
 
 // ── Routes par agent ──────────────────────────────────────────
@@ -184,7 +185,7 @@ function Dots() {
 // COMPOSANT PRINCIPAL
 // ══════════════════════════════════════════════════════════════
 
-export default function AIPanel({ open, onClose, initialAgent, context }: Props) {
+export default function AIPanel({ open, onClose, initialAgent, context, prefillMessage }: Props) {
 
   // ── State ────────────────────────────────────────────────
   const [agent,    setAgent]    = useState<PageAgent>(initialAgent)
@@ -213,6 +214,7 @@ export default function AIPanel({ open, onClose, initialAgent, context }: Props)
   useEffect(() => { if (mounted) saveStore(store) }, [store, mounted])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [activeId, loading, store])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
+  useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
   useEffect(() => { if (open) setAgent(initialAgent) }, [open, initialAgent])
   useEffect(() => { setActiveId(null) }, [agent])
 

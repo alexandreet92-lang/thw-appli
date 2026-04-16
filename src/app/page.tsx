@@ -95,7 +95,10 @@ function ReadinessRing({ score }: { score: number }) {
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={ready ? off : c}
-          style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
+          style={{
+            transition: 'stroke-dashoffset 1.1s cubic-bezier(0.25, 1, 0.5, 1)',
+            willChange: 'stroke-dashoffset',
+          }}
         />
         <defs>
           <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -128,13 +131,19 @@ function ProgressBar({ label, value, pct, barColor }: { label: string; value: st
         <span style={{ ...type.monoXs, color: 'var(--text)' }}>{value}</span>
       </div>
       <div style={{ height: 4, borderRadius: radius.pill, overflow: 'hidden', background: 'var(--border)' }}>
-        {/* Démarre à 0, transite vers la vraie valeur au mount */}
+        {/*
+          scaleX au lieu de width → GPU-composited, zéro reflow.
+          La largeur finale est fixée statiquement ; seul transform anime.
+        */}
         <div style={{
           height: '100%',
-          width: ready ? `${pct}%` : '0%',
+          width: `${pct}%`,
           borderRadius: radius.pill,
           background: barColor,
-          transition: 'width 0.8s ease-out',
+          transformOrigin: 'left center',
+          transform: ready ? 'scaleX(1)' : 'scaleX(0)',
+          transition: 'transform 1.1s cubic-bezier(0.25, 1, 0.5, 1)',
+          willChange: 'transform',
         }}/>
       </div>
     </div>

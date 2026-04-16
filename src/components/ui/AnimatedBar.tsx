@@ -35,7 +35,7 @@ export function AnimatedBar({
           borderRadius: 999,
           background: bg,
           transformOrigin: 'left center',
-          animation: 'barFill 0.50s cubic-bezier(0.4, 0, 0.2, 1) both',
+          animation: 'barFill 1.1s cubic-bezier(0.25, 1, 0.5, 1) both',
         }}
       />
     </div>

@@ -114,3 +114,18 @@ body {
   from { transform: scaleX(0); }
   to   { transform: scaleX(1); }
 }
+
+/* Barre verticale (graphiques) : de bas vers le haut via scaleY */
+@keyframes chartBarEnter {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+/* Respect des préférences d'accessibilité */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

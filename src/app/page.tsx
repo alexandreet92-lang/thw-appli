@@ -6,6 +6,7 @@ import { cn, formatTime, getReadinessLabel } from '@/lib/utils'
 import {
   color, type, space, radius, shadow, alpha, cardBase, cardCompact,
 } from '@/styles/design-system'
+import { CountUp } from '@/components/ui/AnimatedBar'
 
 const LOAD = { ctl: 84, atl: 91, tsb: -7, volume: 12.4 }
 const RECOVERY = {
@@ -202,17 +203,24 @@ function InfoModal({ metric, onClose }: { metric: string; onClose: () => void })
 
 // ─── MetricCard ──────────────────────────────────────────────────
 function MetricCard({
-  label, metricKey, value, unit, sub, accentColor, onInfo,
+  label, metricKey, value, unit, sub, accentColor, onInfo, delay = 0,
 }: {
   label: string; metricKey?: string; value: string | number; unit: string;
-  sub: React.ReactNode; accentColor: string; onInfo?: (key: string) => void
+  sub: React.ReactNode; accentColor: string; onInfo?: (key: string) => void; delay?: number
 }) {
+  // CountUp uniquement sur les entiers positifs
+  const isPositiveInt = typeof value === 'number' && value >= 0 && Number.isInteger(value)
+
   return (
-    <div style={{
-      ...cardBase,
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
+    <div
+      className="card-enter"
+      style={{
+        ...cardBase,
+        position: 'relative',
+        overflow: 'hidden',
+        animationDelay: `${delay}ms`,
+      }}
+    >
       {/* barre couleur en haut */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 3,
@@ -235,9 +243,9 @@ function MetricCard({
         )}
       </div>
 
-      {/* Valeur principale */}
+      {/* Valeur principale — CountUp sur entiers positifs */}
       <p style={{ ...type.metricLg, color: accentColor, margin: 0 }}>
-        {value}
+        {isPositiveInt ? <CountUp value={value as number} /> : value}
         <span style={{ ...type.bodySm, color: 'var(--text-dim)', marginLeft: 5, fontWeight: 400 }}>{unit}</span>
       </p>
 
@@ -326,13 +334,13 @@ export default function DashboardPage() {
           label="CTL · Forme" metricKey="CTL"
           value={LOAD.ctl} unit="pts" accentColor={color.ctl}
           sub={<span style={{ color: color.ctl }}>↑ +3 cette semaine</span>}
-          onInfo={setInfoModal}
+          onInfo={setInfoModal} delay={0}
         />
         <MetricCard
           label="ATL · Fatigue" metricKey="ATL"
           value={LOAD.atl} unit="pts" accentColor={color.atl}
           sub={<span style={{ color: color.atl }}>↑ Charge élevée</span>}
-          onInfo={setInfoModal}
+          onInfo={setInfoModal} delay={80}
         />
         <MetricCard
           label="TSB · Forme nette" metricKey="TSB"
@@ -346,12 +354,13 @@ export default function DashboardPage() {
               {tsbZone.label}
             </span>
           }
-          onInfo={setInfoModal}
+          onInfo={setInfoModal} delay={160}
         />
         <MetricCard
           label="Volume S12"
           value={LOAD.volume} unit="h" accentColor={color.volume}
           sub={<span style={{ color: color.ctl }}>↑ +1.2h vs S11</span>}
+          delay={240}
         />
       </div>
 
@@ -359,7 +368,7 @@ export default function DashboardPage() {
       <div className="hidden md:grid" style={{ gridTemplateColumns: '2fr 1fr', gap: space[4], marginBottom: space[5] }}>
 
         {/* Graph charge */}
-        <div style={{ ...cardBase }}>
+        <div className="card-enter" style={{ ...cardBase, animationDelay: '320ms' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: space[5] }}>
             <div>
               <h2 style={{ ...type.h3, color: 'var(--text)', margin: 0 }}>Charge hebdomadaire</h2>
@@ -375,7 +384,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 7, height: 88 }}>
-            {WEEK_BARS.map((b) => (
+            {WEEK_BARS.map((b, i) => (
               <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
                 <div style={{
                   width: '100%', height: `${b.pct}%`, borderRadius: '5px 5px 0 0',
@@ -386,6 +395,12 @@ export default function DashboardPage() {
                       : `linear-gradient(180deg,${alpha(color.brandAlt, 0.55)},${alpha(color.brandAlt, 0.18)})`,
                   border: b.type === 'current' ? `1px solid ${alpha(color.brand, 0.5)}` : 'none',
                   boxShadow: b.type === 'current' ? `0 0 14px ${alpha(color.brand, 0.30)}` : 'none',
+                  transformOrigin: 'bottom center',
+                  animationName: 'chartBarEnter',
+                  animationDuration: '0.7s',
+                  animationTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                  animationDelay: `${i * 40}ms`,
+                  animationFillMode: 'both',
                 }}/>
                 <span style={{
                   ...type.monoXs,
@@ -403,7 +418,7 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
 
           {/* Aujourd'hui */}
-          <div style={{ ...cardBase }}>
+          <div className="card-enter" style={{ ...cardBase, animationDelay: '360ms' }}>
             <h2 style={{ ...type.h3, color: 'var(--text-mid)', margin: `0 0 ${space[4]}px` }}>Aujourd'hui</h2>
             <div style={{ padding: `${space[3]}px ${space[4]}px`, borderRadius: radius.md, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: space[3], marginBottom: space[3] }}>
@@ -439,7 +454,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Readiness */}
-          <div style={{ ...cardBase }}>
+          <div className="card-enter" style={{ ...cardBase, animationDelay: '420ms' }}>
             <h2 style={{ ...type.h3, color: 'var(--text-mid)', margin: `0 0 ${space[4]}px` }}>Readiness</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: space[4], marginBottom: space[3] }}>
               <ReadinessRing score={RECOVERY.score} />
@@ -468,7 +483,7 @@ export default function DashboardPage() {
           Charge hebdomadaire — 8 sem.
         </h2>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 64 }}>
-          {WEEK_BARS.map((b) => (
+          {WEEK_BARS.map((b, i) => (
             <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
               <div style={{
                 width: '100%', height: `${b.pct}%`, borderRadius: '4px 4px 0 0',
@@ -478,6 +493,12 @@ export default function DashboardPage() {
                     ? `linear-gradient(180deg,${alpha(color.brand, 0.45)},${alpha(color.brand, 0.12)})`
                     : `linear-gradient(180deg,${alpha(color.brandAlt, 0.55)},${alpha(color.brandAlt, 0.18)})`,
                 border: b.type === 'current' ? `1px solid ${alpha(color.brand, 0.5)}` : 'none',
+                transformOrigin: 'bottom center',
+                animationName: 'chartBarEnter',
+                animationDuration: '0.7s',
+                animationTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                animationDelay: `${i * 40}ms`,
+                animationFillMode: 'both',
               }}/>
               <span style={{ ...type.monoXs, fontSize: 9, color: b.type === 'current' ? color.brand : 'var(--text-dim)' }}>
                 {b.label}
@@ -539,12 +560,13 @@ export default function DashboardPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: space[3] }}>
         {SESSIONS.map((s, i) => (
-          <div key={i} style={{
+          <div key={i} className="card-enter" style={{
             display: 'flex', alignItems: 'center', gap: space[3],
             padding: `${space[4]}px`, borderRadius: radius.lg, cursor: 'pointer',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
             boxShadow: shadow.card,
             transition: 'box-shadow 0.15s, border-color 0.15s',
+            animationDelay: `${480 + i * 80}ms`,
           }}>
             <div style={{
               width: 40, height: 40, borderRadius: radius.md,

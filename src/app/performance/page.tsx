@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { CountUp } from '@/components/ui/AnimatedBar'
 
 type PerfTab = 'profil' | 'zones' | 'records' | 'progression'
 type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox' | 'gym'
@@ -191,20 +192,24 @@ const PROG = {
 }
 
 // ── UI primitives ─────────────────────────────────
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+function Card({ children, style, delay }: { children: React.ReactNode; style?: React.CSSProperties; delay?: number }) {
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:20, boxShadow:'var(--shadow-card)', ...style }}>
+    <div
+      className="card-enter"
+      style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:20, boxShadow:'var(--shadow-card)', animationDelay: delay ? `${delay}ms` : undefined, ...style }}
+    >
       {children}
     </div>
   )
 }
 
 function StatBox({ label, value, unit, sub, color }: { label:string; value:string|number; unit?:string; sub?:string; color?:string }) {
+  const isInt = typeof value === 'number' && value >= 0 && Number.isInteger(value)
   return (
-    <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, padding:'11px 13px' }}>
+    <div className="card-enter" style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, padding:'11px 13px' }}>
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
       <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:color||'var(--text)', margin:0, lineHeight:1 }}>
-        {value}
+        {isInt ? <CountUp value={value as number} /> : value}
         {unit && <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)', marginLeft:3 }}>{unit}</span>}
       </p>
       {sub && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'3px 0 0' }}>{sub}</p>}
@@ -213,6 +218,9 @@ function StatBox({ label, value, unit, sub, color }: { label:string; value:strin
 }
 
 function ZBars({ zones }: { zones: { z:string; label:string; range:string }[] }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
       {zones.map((z, i) => (
@@ -223,8 +231,14 @@ function ZBars({ zones }: { zones: { z:string; label:string; range:string }[] })
               <span style={{ fontSize:11, color:'var(--text-mid)' }}>{z.label}</span>
               <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:Z_COLORS[i], fontWeight:600 }}>{z.range}</span>
             </div>
-            <div style={{ height:5, borderRadius:999, background:`${Z_COLORS[i]}22` }}>
-              <div style={{ height:'100%', width:`${20+i*16}%`, background:Z_COLORS[i], opacity:0.7, borderRadius:999 }}/>
+            <div style={{ height:5, borderRadius:999, background:`${Z_COLORS[i]}22`, overflow:'hidden' }}>
+              <div style={{
+                height:'100%', width:`${20+i*16}%`, background:Z_COLORS[i], opacity:0.7, borderRadius:999,
+                transformOrigin:'left center',
+                transform: ready ? 'scaleX(1)' : 'scaleX(0)',
+                transition:`transform 1.1s cubic-bezier(0.25,1,0.5,1) ${i * 60}ms`,
+                willChange:'transform',
+              }}/>
             </div>
           </div>
         </div>

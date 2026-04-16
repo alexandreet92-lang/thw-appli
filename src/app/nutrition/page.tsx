@@ -302,6 +302,9 @@ function generatePlan(q: QuestionnaireData): NutritionPlan {
 // UI PRIMITIVES
 // ══════════════════════════════════════════════════════════════════
 function KcalRing({ consumed, target, size=128 }: { consumed:number; target:number; size?:number }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
+
   const r = (size-14)/2; const cx=size/2; const cy=size/2
   const circ = 2*Math.PI*r; const pct = Math.min(1, target>0 ? consumed/target : 0)
   const st = dayStatus(consumed, target)
@@ -309,8 +312,8 @@ function KcalRing({ consumed, target, size=128 }: { consumed:number; target:numb
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:'rotate(-90deg)', flexShrink:0 }}>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth={10}/>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={st.color} strokeWidth={10}
-        strokeDasharray={`${pct*circ} ${circ}`} strokeLinecap="round"
-        style={{ filter:`drop-shadow(0 0 6px ${st.color}55)`, transition:'stroke-dashoffset .8s' }}/>
+        strokeDasharray={ready ? `${pct*circ} ${circ}` : `0 ${circ}`} strokeLinecap="round"
+        style={{ filter:`drop-shadow(0 0 6px ${st.color}55)`, transition:'stroke-dasharray 1.1s cubic-bezier(0.25,1,0.5,1)', willChange:'stroke-dasharray' }}/>
       <text x={cx} y={cy-12} textAnchor="middle" fill={st.color}
         fontSize={size>110?22:18} fontFamily="Syne,sans-serif" fontWeight={800}
         style={{ transform:`rotate(90deg) translate(0, 0)` }}/>
@@ -319,6 +322,9 @@ function KcalRing({ consumed, target, size=128 }: { consumed:number; target:numb
 }
 
 function KcalRingLabeled({ consumed, target }: { consumed:number; target:number }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
+
   const size=148; const r=60; const cx=74; const cy=74
   const circ=2*Math.PI*r; const pct=Math.min(1, target>0 ? consumed/target : 0)
   const st = dayStatus(consumed, target); const remaining=Math.max(0,target-consumed)
@@ -327,8 +333,8 @@ function KcalRingLabeled({ consumed, target }: { consumed:number; target:number 
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:'rotate(-90deg)' }}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth={11}/>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke={st.color} strokeWidth={11}
-          strokeDasharray={`${pct*circ} ${circ}`} strokeLinecap="round"
-          style={{ filter:`drop-shadow(0 0 8px ${st.color}66)`, transition:'stroke-dashoffset .8s ease' }}/>
+          strokeDasharray={ready ? `${pct*circ} ${circ}` : `0 ${circ}`} strokeLinecap="round"
+          style={{ filter:`drop-shadow(0 0 8px ${st.color}66)`, transition:'stroke-dasharray 1.1s cubic-bezier(0.25,1,0.5,1)', willChange:'stroke-dasharray' }}/>
       </svg>
       <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:0 }}>
         <span style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:28, color:st.color, lineHeight:1 }}>{Math.round(consumed)}</span>
@@ -342,6 +348,9 @@ function KcalRingLabeled({ consumed, target }: { consumed:number; target:number 
 }
 
 function MacroBar({ label, value, target, color }: { label:string; value:number; target:number; color:string }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
+
   const pct = target>0 ? Math.min(100,(value/target)*100) : 0
   return (
     <div style={{ marginBottom:10 }}>
@@ -351,8 +360,14 @@ function MacroBar({ label, value, target, color }: { label:string; value:number;
           {Math.round(value)}<span style={{ color:'var(--text-dim)', fontWeight:400 }}>/{Math.round(target)}g</span>
         </span>
       </div>
-      <div style={{ height:5, borderRadius:99, background:'var(--border)' }}>
-        <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:99, transition:'width .5s ease' }}/>
+      <div style={{ height:5, borderRadius:99, background:'var(--border)', overflow:'hidden' }}>
+        <div style={{
+          height:'100%', width:`${pct}%`, background:color, borderRadius:99,
+          transformOrigin:'left center',
+          transform: ready ? 'scaleX(1)' : 'scaleX(0)',
+          transition:'transform 1.1s cubic-bezier(0.25,1,0.5,1)',
+          willChange:'transform',
+        }}/>
       </div>
     </div>
   )

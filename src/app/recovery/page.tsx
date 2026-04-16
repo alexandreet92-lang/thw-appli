@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 
@@ -134,6 +134,9 @@ function LineChart({ values, color, height = 56, showDots = true }: {
 // READINESS RING
 // ══════════════════════════════════════════════
 function ReadinessRing({ score, size = 140 }: { score: number; size?: number }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
+
   const status = readinessStatus(score)
   const r = (size - 16) / 2
   const c = 2 * Math.PI * r
@@ -143,8 +146,9 @@ function ReadinessRing({ score, size = 140 }: { score: number; size?: number }) 
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform:'rotate(-90deg)' }}>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border)" strokeWidth="10"/>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={status.color} strokeWidth="10"
-          strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off}
-          style={{ filter:`drop-shadow(0 0 6px ${status.color}66)`, transition:'stroke-dashoffset 0.8s ease' }}/>
+          strokeLinecap="round" strokeDasharray={c}
+          strokeDashoffset={ready ? off : c}
+          style={{ filter:`drop-shadow(0 0 6px ${status.color}66)`, transition:'stroke-dashoffset 1.1s cubic-bezier(0.25,1,0.5,1)', willChange:'stroke-dashoffset' }}/>
       </svg>
       <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
         <span style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:size > 120 ? 36 : 28, color:status.color, lineHeight:1 }}>{score}</span>
@@ -158,6 +162,9 @@ function ReadinessRing({ score, size = 140 }: { score: number; size?: number }) 
 // METRIC BAR (1-10 avec barre colorée)
 // ══════════════════════════════════════════════
 function MetricBar({ label, value, inverted = false }: { label: string; value: number; inverted?: boolean }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { const raf = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(raf) }, [])
+
   const color = metricColor(value, inverted)
   return (
     <div>
@@ -166,7 +173,13 @@ function MetricBar({ label, value, inverted = false }: { label: string; value: n
         <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, color }}>{value}<span style={{ fontSize:9, color:'var(--text-dim)', fontWeight:400 }}>/10</span></span>
       </div>
       <div style={{ height:4, borderRadius:99, background:'var(--border)', overflow:'hidden' }}>
-        <div style={{ height:'100%', width:`${value * 10}%`, background:color, borderRadius:99, transition:'width 0.6s ease' }}/>
+        <div style={{
+          height:'100%', width:`${value * 10}%`, background:color, borderRadius:99,
+          transformOrigin:'left center',
+          transform: ready ? 'scaleX(1)' : 'scaleX(0)',
+          transition:'transform 1.1s cubic-bezier(0.25,1,0.5,1)',
+          willChange:'transform',
+        }}/>
       </div>
     </div>
   )
@@ -271,7 +284,7 @@ function SectionToday({ data, onCheckIn, onAIAnalysis, aiLoading }: {
   const status = readinessStatus(data.readiness)
 
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
+    <div className="card-enter" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
       {/* Header bulle */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap' as const, gap:8 }}>
         <div>
@@ -357,7 +370,7 @@ function SectionSleep({ sleep }: { sleep: typeof MOCK.sleep }) {
   const qualityColor = sleep.quality >= 8 ? '#22c55e' : sleep.quality >= 6 ? '#00c8e0' : sleep.quality >= 4 ? '#f97316' : '#ef4444'
 
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
+    <div className="card-enter card-enter-1" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
@@ -495,7 +508,7 @@ function SectionTrends({ data }: { data: typeof MOCK }) {
   ]
 
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
+    <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:8 }}>
         <div>
@@ -582,7 +595,7 @@ function SectionDataSources() {
   const available  = DATA_SOURCES.filter(s => !s.connected)
 
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)' }}>
+    <div className="card-enter card-enter-3" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:8 }}>
         <div>
           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Sources</p>

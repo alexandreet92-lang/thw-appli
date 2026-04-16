@@ -1097,40 +1097,571 @@ const TESTS: Record<TestSport, TestDef[]> = {
   ],
 }
 
+// ════════════════════════════════════════════════
+// PROTOCOLES — contenu détaillé par test
+// ════════════════════════════════════════════════
+const PROTOCOLS: Record<string, TestProtocol> = {
+  // ── Running ─────────────────────────────────
+  'vo2max-run': {
+    objectif: "Mesurer la consommation maximale d'oxygène (VO2max) par un effort gradué jusqu'à épuisement volontaire.",
+    avertissement: "Test médical — réaliser idéalement sous supervision. Contre-indiqué si douleur thoracique ou pathologie cardiaque non contrôlée.",
+    conditions: ["Reposé 48h sans effort intense", "À jeun depuis 2h minimum", "Piste ou tapis de course calibré", "Capteur cardiaque thoracique recommandé"],
+    echauffement: ["10 min à 50–60% FCmax", "2 × 30s d'accélération progressive", "5 min de marche récupération"],
+    etapes: ["Palier 1 : allure facile (60–70% FCmax), 3 min", "Augmenter l'allure de 0,5 km/h toutes les 1–2 min", "Continuer jusqu'à épuisement volontaire ou FC plateau", "Enregistrer la vitesse et la FC à l'arrêt"],
+    interpretation: ["VO2max estimé : 15 × FCmax / FCrepos (formule Uth)", "Excellent H : > 60 ml/kg/min · Bon : 50–60 · Moyen : 40–50", "Excellent F : > 55 ml/kg/min · Bon : 45–55 · Moyen : 35–45"],
+    erreurs: ["Partir trop vite sur les premiers paliers", "Arrêter avant l'épuisement réel", "Mauvaise calibration du tapis ou de la piste"],
+    frequence: "1–2 fois/an — test exigeant, non reproductible à court terme",
+    fields: [
+      { cle:'vo2max', label:'VO2max mesuré', unite:'ml/kg/min', type:'number', required:true },
+      { cle:'vvma', label:'Vitesse à VO2max (vVO2max)', unite:'km/h', type:'number' },
+      { cle:'fcmax', label:'FC maximale atteinte', unite:'bpm', type:'number' },
+      { cle:'duree', label:'Durée totale du test', unite:'min', type:'number' },
+    ],
+  },
+  'vma': {
+    objectif: "Déterminer la Vitesse Maximale Aérobie (VMA) pour calibrer toutes les zones d'entraînement running.",
+    conditions: ["Piste 400m plate", "Vent nul ou faible", "Reposé 48h", "Chaussures légères de compétition"],
+    echauffement: ["15 min à allure très facile", "3 × 100m progressifs", "5 min marche"],
+    etapes: ["Option VAMEVAL : départ à 8 km/h, +0,5 km/h toutes les 1 min (balise sonore)", "Option Brue court : paliers de 2 min, +1 km/h à chaque palier", "Option 6 min all-out : VMA ≈ distance (m) / 100", "Arrêt quand impossible de tenir l'allure 2 paliers consécutifs"],
+    interpretation: ["VMA = vitesse du dernier palier tenu complet", "Elite : > 22 km/h · Bon : 18–22 · Moyen : 15–18 · Débutant : < 15", "Z1 < 60% VMA · Z2 : 60–75% · Z3 : 75–85% · Z4 : 85–95% · Z5 : 95–105%"],
+    erreurs: ["Partir trop fort sur l'option 6 min", "Courir en dehors de la piste (vent, virages)", "Ne pas respecter les balises sonores VAMEVAL"],
+    frequence: "2–3 fois/an (début, mi et fin de saison)",
+    fields: [
+      { cle:'vma', label:'VMA', unite:'km/h', type:'number', placeholder:'Ex: 17.5', required:true },
+      { cle:'methode', label:'Méthode utilisée', unite:null, type:'string', placeholder:'VAMEVAL / Brue / 6min' },
+      { cle:'fcmax', label:'FC max atteinte', unite:'bpm', type:'number' },
+    ],
+  },
+  'lactate-run': {
+    objectif: "Établir un profil lactatémique précis pour identifier SL1 (seuil aérobie) et SL2 (seuil anaérobie) avec mesure sanguine à chaque palier.",
+    avertissement: "Protocole invasif — nécessite un lactomètre (Lactate Scout, Arkray…), des bandelettes et des lancettes. Matériel stérile obligatoire.",
+    conditions: ["Repos 48h", "À jeun depuis 3h (pas de glucides rapides)", "Piste ou tapis calibré", "Lactomètre + bandelettes + lancettes + alcool + gants"],
+    echauffement: ["10 min à 55% FCmax", "Mesure lactate de base (au repos)"],
+    etapes: ["Palier 1 : 3 min @ 60% FCmax → mesure lactate à la fin", "Palier 2 : 3 min @ 65% FCmax → mesure", "Paliers suivants : +5% FCmax toutes les 3 min → mesure", "Continuer jusqu'à > 8 mmol/L ou épuisement", "Tracer la courbe lactate/allure — SL1 ≈ 2 mmol/L, SL2 ≈ 4 mmol/L"],
+    interpretation: ["SL1 (seuil aérobie) : rupture de pente à ~2 mmol/L", "SL2 (seuil anaérobie) : ~4 mmol/L", "Zone 2 = entre SL1 et SL2 · Intervalles = au-dessus de SL2"],
+    erreurs: ["Mauvaise prise de sang (doigt froid, hémolise)", "Paliers trop courts (< 3 min = pas de stabilisation)", "FC non stabilisée entre deux paliers"],
+    frequence: "1 fois/an minimum — idéalement début et fin de bloc d'entraînement",
+    fields: [
+      { cle:'sl1_allure', label:'Allure au SL1', unite:'/km', type:'string', placeholder:'Ex: 5:30' },
+      { cle:'sl1_fc', label:'FC au SL1', unite:'bpm', type:'number' },
+      { cle:'sl1_lactat', label:'Lactate au SL1', unite:'mmol/L', type:'number' },
+      { cle:'sl2_allure', label:'Allure au SL2', unite:'/km', type:'string', placeholder:'Ex: 4:45' },
+      { cle:'sl2_fc', label:'FC au SL2', unite:'bpm', type:'number' },
+      { cle:'sl2_lactat', label:'Lactate au SL2', unite:'mmol/L', type:'number' },
+    ],
+  },
+  'cooper': {
+    objectif: "Mesurer la distance maximale parcourue en 12 minutes pour estimer le VO2max selon la formule Cooper.",
+    conditions: ["Piste 400m (ou GPS de précision)", "Météo clémente — sans vent fort", "Reposé 48h"],
+    echauffement: ["10 min à allure très facile", "2 × 100m en accélération progressive", "5 min marche active"],
+    etapes: ["Départ au signal, effort maximal soutenu pendant exactement 12 min", "Réguler l'allure : trop essoufflé à la 3e min = trop rapide", "Viser une allure légèrement inférieure à ton allure de compétition 5km", "Marquer la distance exacte à l'arrêt du chrono (en mètres)"],
+    interpretation: ["VO2max ≈ (distance en m − 504,9) / 44,73", "Distance > 3200m : excellent · 2800–3200m : bon · 2400–2800m : moyen · < 2400m : à améliorer", "Répéter dans les mêmes conditions pour suivre la progression"],
+    erreurs: ["Partir trop vite → marche forcée en fin de test", "Test par vent fort (fausse les mesures)", "Mesure GPS imprécise en milieu urbain ou avec virages"],
+    frequence: "Toutes les 8–12 semaines",
+    fields: [
+      { cle:'distance', label:'Distance parcourue', unite:'m', type:'number', placeholder:'Ex: 2950', required:true },
+      { cle:'vo2max_estime', label:'VO2max estimé', unite:'ml/kg/min', type:'number', helper:'(distance − 504,9) / 44,73' },
+      { cle:'fcmax', label:'FC fin de test', unite:'bpm', type:'number' },
+    ],
+  },
+  'tmi': {
+    objectif: "Mesurer la capacité à maintenir l'allure au seuil anaérobie (SL2) pendant 30 minutes continues.",
+    conditions: ["Connaître son allure SL2 ou LTHR au préalable", "Piste ou route plate", "Capteur FC thoracique", "Reposé 48h"],
+    echauffement: ["15 min progressif", "3 × 2 min à l'allure seuil avec 2 min récup"],
+    etapes: ["Courir exactement 30 min à l'allure SL2 (87–92% FCmax)", "Enregistrer FC, allure et RPE toutes les 5 min", "Mesurer la dérive cardiaque : ∆FC entre min 5 et min 30", "Si dérive > 5 bpm → allure surestimée, recalibrer"],
+    interpretation: ["Dérive FC < 3 bpm = excellente capacité aérobie", "Dérive 3–8 bpm = zone de travail correcte", "Dérive > 10 bpm = allure trop élevée ou fatigue cumulée", "Allure tenue 30 min ≈ allure marathon cible"],
+    erreurs: ["Partir trop vite et accumuler de la fatigue prématurément", "Oublier de noter la FC toutes les 5 min", "Dénivelé ou vent qui biaise l'allure réelle"],
+    frequence: "Toutes les 6–8 semaines en période de construction aérobie",
+    fields: [
+      { cle:'allure_moy', label:'Allure moyenne', unite:'/km', type:'string', placeholder:'Ex: 4:30', required:true },
+      { cle:'fc_debut', label:'FC à 5 min', unite:'bpm', type:'number' },
+      { cle:'fc_fin', label:'FC à 30 min', unite:'bpm', type:'number' },
+      { cle:'derive_fc', label:'Dérive cardiaque', unite:'bpm', type:'number', helper:'FC fin − FC début' },
+    ],
+  },
+  // ── Cyclisme ────────────────────────────────
+  'cp20': {
+    objectif: "Mesurer la puissance maximale soutenue sur 20 min pour estimer la FTP (FTP = puissance moy × 0,95).",
+    conditions: ["Capteur de puissance (wattmètre) indispensable", "Vélo en parfait état ou ergocycle calibré", "Reposé 48–72h", "Température < 25°C"],
+    echauffement: ["20 min à 55–65% FTP", "3 × 1 min @ 105% FTP avec 1 min récup", "5 min récup légère avant le départ test"],
+    etapes: ["20 min all-out en cherchant à maintenir la puissance la plus haute possible", "Première minute : ne pas dépasser +5% au-dessus de l'objectif", "Maintenir constant — variations > 20W dégradent la puissance moyenne", "Enregistrer la puissance moyenne exacte sur les 20 min"],
+    interpretation: ["FTP estimée = puissance moyenne × 0,95", "W/kg > 5,0 : niveau World Tour · 4,0–5,0 : élite amateur · 3,5–4,0 : compétiteur · < 3,5 : loisir", "Recalculer toutes les zones Z1–Z6 avec la nouvelle FTP"],
+    erreurs: ["Départ trop fort → effondrement en fin de test", "Test sur route avec arrêts (signaux, trafic)", "Warm-up insuffisant — garantit une sous-performance"],
+    frequence: "Toutes les 4–8 semaines selon la période d'entraînement",
+    fields: [
+      { cle:'puissance_moy', label:'Puissance moyenne 20 min', unite:'W', type:'number', required:true },
+      { cle:'ftp', label:'FTP estimée (×0,95)', unite:'W', type:'number', helper:'Puissance moy × 0,95' },
+      { cle:'ftp_kg', label:'FTP en W/kg', unite:'W/kg', type:'number' },
+      { cle:'fcmax', label:'FC max atteinte', unite:'bpm', type:'number' },
+    ],
+  },
+  'critical-power': {
+    objectif: "Modéliser la courbe puissance-durée (CP + W') à partir de 2 efforts maximaux de durées différentes.",
+    conditions: ["Capteur de puissance indispensable", "2 séances séparées de 48h minimum", "Ergocycle ou home trainer calibré"],
+    echauffement: ["20 min progressif + 2 × 1 min à haute intensité", "Repos 10 min avant chaque effort test"],
+    etapes: ["Effort 1 : 3 min all-out — puissance max maintenable (séance A)", "Effort 2 : 12 min all-out — puissance max maintenable (séance B)", "Calcul CP = (P12 × 12 − P3 × 3) / (12 − 3)", "Calcul W' = (P3 − CP) × 3 × 60 en joules"],
+    interpretation: ["CP ≈ puissance seuil critique (proche de la FTP)", "W' = réserve anaérobie — typiquement 15–25 kJ", "W' élevé = capacité à produire des efforts courts intenses répétés", "Le modèle CP prédit la performance sur toute durée d'effort"],
+    erreurs: ["Efforts non maximaux (sous-estime CP et W')", "Pas assez de repos entre les 2 séances (48h minimum)", "Capteur de puissance non calibré = résultats non fiables"],
+    frequence: "2 fois/an (début et milieu de saison)",
+    fields: [
+      { cle:'puiss_3min', label:'Puissance moy 3 min', unite:'W', type:'number', required:true },
+      { cle:'puiss_12min', label:'Puissance moy 12 min', unite:'W', type:'number', required:true },
+      { cle:'cp', label:'Critical Power (CP)', unite:'W', type:'number', helper:'(P12×12 − P3×3) / (12−3)' },
+      { cle:'wprime', label:"W' (réserve anaérobie)", unite:'kJ', type:'number' },
+    ],
+  },
+  'lactate-cycling': {
+    objectif: "Établir le profil lactatémique sur ergocycle pour des zones d'entraînement ultra-précises en cyclisme.",
+    avertissement: "Protocole invasif — mesures sanguines au doigt à chaque palier. Lactomètre et matériel stérile obligatoires.",
+    conditions: ["Ergocycle calibré (Wahoo Kickr, Tacx Neo ou similaire)", "Lactomètre + bandelettes + lancettes", "Reposé 72h", "À jeun depuis 3h (pas de glucides rapides)"],
+    echauffement: ["10 min @ 100W ou 50% FTP", "Mesure lactate de base au repos"],
+    etapes: ["Palier 1 : 5 min @ 40% FTP → mesure lactate + FC", "Palier 2 : 5 min @ 50% FTP → mesure", "Paliers suivants : +10% FTP toutes les 5 min → mesure", "Continuer jusqu'à > 8 mmol/L ou épuisement", "Tracer la courbe lactate/puissance — SL1 ≈ 2 mmol/L, SL2 ≈ 4 mmol/L"],
+    interpretation: ["SL1 (seuil aérobie) : rupture de pente à ~2 mmol/L", "SL2 (seuil anaérobie) : 4 mmol/L", "Zone 2 cible = puissance entre SL1 et SL2", "Permet de valider ou corriger la FTP estimée au CP20"],
+    erreurs: ["Paliers trop courts (< 4 min = pas de stabilisation FC)", "Mauvaise prise de sang (doigt froid ou insuffisant)", "Ergocycle non calibré = puissance erronée"],
+    frequence: "1 fois/an minimum — test de référence annuel",
+    fields: [
+      { cle:'sl1_puiss', label:'Puissance au SL1', unite:'W', type:'number' },
+      { cle:'sl1_fc', label:'FC au SL1', unite:'bpm', type:'number' },
+      { cle:'sl1_lactat', label:'Lactate au SL1', unite:'mmol/L', type:'number' },
+      { cle:'sl2_puiss', label:'Puissance au SL2', unite:'W', type:'number' },
+      { cle:'sl2_fc', label:'FC au SL2', unite:'bpm', type:'number' },
+    ],
+  },
+  'endurance-cycling': {
+    objectif: "Calibrer la zone 2 et mesurer la dérive cardiaque à puissance modérée sur 2 heures continues.",
+    conditions: ["Capteur de puissance", "FTP connue au préalable", "Parcours plat ou home trainer", "Eau disponible en permanence"],
+    echauffement: ["10 min léger puis directement à la puissance cible — l'intensité est modérée"],
+    etapes: ["Rouler 120 min à 60–65% FTP (zone 2 basse)", "Enregistrer FC toutes les 15 min", "Mesurer la dérive cardiaque (∆FC entre min 15 et min 105)", "Ne pas dépasser la puissance cible — discipline stricte", "Noter les sensations et RPE toutes les 30 min"],
+    interpretation: ["Dérive FC < 5 bpm = zone 2 bien calibrée, bonne capacité lipidique", "Dérive 5–10 bpm = limite zone 2, intensité légèrement haute", "Dérive > 10 bpm = trop intense, baisser la puissance cible", "Test idéal pour valider les adaptations après un bloc d'endurance"],
+    erreurs: ["Intensité trop élevée dès le départ", "Pause ou arrêt qui casse la continuité", "Pas d'enregistrement FC continu"],
+    frequence: "Toutes les 6–8 semaines",
+    fields: [
+      { cle:'puissance_cible', label:'Puissance cible', unite:'W', type:'number' },
+      { cle:'fc_15min', label:'FC à 15 min', unite:'bpm', type:'number' },
+      { cle:'fc_105min', label:'FC à 105 min', unite:'bpm', type:'number' },
+      { cle:'derive_fc', label:'Dérive cardiaque', unite:'bpm', type:'number', helper:'FC 105 min − FC 15 min' },
+      { cle:'rpm_moy', label:'Cadence moyenne', unite:'rpm', type:'number' },
+    ],
+  },
+  'vo2max-cycling': {
+    objectif: "Déterminer la Puissance Maximale Aérobie (PMA) par test rampe sur ergocycle à paliers progressifs.",
+    conditions: ["Ergocycle calibré ou home trainer de précision", "Capteur de puissance", "Reposé 48h"],
+    echauffement: ["15 min progressif à 50–65% FTP", "1 × 1 min effort vif, puis 3 min récup"],
+    etapes: ["Départ à 100W ou 50% FTP estimée", "Augmenter de 20W toutes les 60 secondes", "Maintenir la cadence > 80 rpm à chaque palier", "Arrêt quand impossible de maintenir la cadence cible", "PMA = puissance du dernier palier tenu complet"],
+    interpretation: ["PMA/poids > 5 W/kg : élite · 4–5 : bon · 3–4 : moyen · < 3 : débutant", "FTP ≈ 72–80% de la PMA selon profil", "Intervalles VO2max recommandés à 90–110% PMA", "VO2max ≈ PMA (W) × 10,8 / poids (kg) + 7"],
+    erreurs: ["Cadence trop basse (< 80 rpm) → sous-estime la PMA", "Démarrage à une puissance trop élevée", "Home trainer non calibré = résultats non fiables"],
+    frequence: "2–3 fois/an",
+    fields: [
+      { cle:'pma', label:'PMA (puissance max aérobie)', unite:'W', type:'number', required:true },
+      { cle:'pma_kg', label:'PMA en W/kg', unite:'W/kg', type:'number' },
+      { cle:'vo2max_estime', label:'VO2max estimé', unite:'ml/kg/min', type:'number', helper:'PMA × 10,8 / poids + 7' },
+      { cle:'fcmax', label:'FC max atteinte', unite:'bpm', type:'number' },
+    ],
+  },
+  'wingate': {
+    objectif: "Mesurer la puissance anaérobie alactique de crête et la capacité anaérobie sur 30 secondes all-out.",
+    avertissement: "Effort extrêmement violent — ne pas réaliser si douleur musculaire ou tendineuse. Échauffement obligatoire.",
+    conditions: ["Ergocycle Wingate ou ergomètre à résistance fixe (Monark, Technogym)", "Résistance : 7,5% du poids corporel", "Pas de home trainer standard — résistance physique requise"],
+    echauffement: ["15 min progressif", "3 × 5s sprint à ~60% de la résistance Wingate", "10 min récup facile"],
+    etapes: ["Partir depuis la vitesse nulle (pas de départ lancé)", "Signal → sprint MAXIMAL pendant 30 secondes sans ralentir", "Mesure automatique : puissance de crête (Ppeak), puissance moyenne (Pmoy), Pmin", "Indice de fatigue (IF) = (Ppeak − Pmin) / Ppeak × 100"],
+    interpretation: ["Ppeak H : 700–1200W · Élite : > 1200W", "Ppeak F : 450–800W · Élite : > 800W", "IF < 30% : bonne résistance à la fatigue · IF > 50% : profil explosif, faible endurance anaérobie", "Ppeak/kg > 12 W/kg = sprinter élite"],
+    erreurs: ["Départ trop lent → perd la puissance de crête", "Résistance mal calculée (sous ou sur-estimée)", "Ergomètre inadapté (home trainer = résultats non fiables)"],
+    frequence: "4–6 fois/an hors phase de récupération",
+    fields: [
+      { cle:'ppeak', label:'Puissance de crête', unite:'W', type:'number', required:true },
+      { cle:'pmoy', label:'Puissance moyenne 30s', unite:'W', type:'number' },
+      { cle:'pmin', label:'Puissance minimale', unite:'W', type:'number' },
+      { cle:'if_fatigue', label:'Indice de fatigue', unite:'%', type:'number', helper:'(Ppeak − Pmin) / Ppeak × 100' },
+      { cle:'ppeak_kg', label:'Ppeak en W/kg', unite:'W/kg', type:'number' },
+    ],
+  },
+  // ── Natation ────────────────────────────────
+  'css': {
+    objectif: "Mesurer la Critical Swim Speed (CSS = vitesse au seuil lactate en natation) à partir du 400m et du 200m chrono.",
+    conditions: ["Piscine 25m ou 50m (noter la longueur)", "Reposé 48h", "Chronomètre ou touchpad électronique", "Départ depuis le mur (pas de plongeon)"],
+    echauffement: ["400m progressif en nages variées", "6 × 50m @ 80% avec 20s récup", "5 min repos complet avant le test"],
+    etapes: ["400m all-out — noter le temps exact en secondes (T400)", "Repos actif léger 10 min", "200m all-out — noter le temps exact en secondes (T200)", "CSS = (400 − 200) / (T400 − T200) en m/s", "Allure CSS : 100 / CSS = secondes pour 100m"],
+    interpretation: ["CSS < 1:20/100m : élite · 1:20–1:35 : compétiteur · 1:35–1:50 : loisir amélioré", "Zone 2 nage ≈ CSS + 10–15 s/100m", "CSS est ton allure seuil — base de tous les intervals en natation"],
+    erreurs: ["Pause trop courte entre 400m et 200m", "Virage sans toucher le mur (perd des mètres)", "Piscine de longueur inconnue ou virages lents"],
+    frequence: "Toutes les 6–8 semaines",
+    fields: [
+      { cle:'t400', label:'Temps 400m', unite:'s', type:'number', placeholder:'Ex: 360', required:true },
+      { cle:'t200', label:'Temps 200m', unite:'s', type:'number', placeholder:'Ex: 160', required:true },
+      { cle:'css', label:'CSS calculée', unite:'s/100m', type:'number', helper:'(400−200)/(T400−T200) × 100' },
+    ],
+  },
+  'vmax-swim': {
+    objectif: "Mesurer la vitesse maximale de nage sur 25 ou 50 mètres pour évaluer la puissance explosive en eau.",
+    conditions: ["Piscine 25m ou 50m", "Départ depuis le mur (ou bloc si disponible)", "Récupération complète entre les efforts (5–8 min)"],
+    echauffement: ["600m progressif en nages variées", "4 × 25m de plus en plus vite avec 1 min récup chacun"],
+    etapes: ["3 × 25m all-out avec 5 min récup entre chaque", "Ou 2 × 50m all-out avec 8 min récup", "Conserver le meilleur temps de la série", "Calculer la vitesse : Vmax = distance / temps (m/s)"],
+    interpretation: ["25m H < 12s : sprinter élite · 12–14s : bon · > 16s : à travailler", "25m F < 13,5s : élite · 13,5–15,5s : bon · > 17s : à travailler", "Écart 50m vs 25m × 2 > 4s = forte fatigue explosive → travail anaérobie recommandé"],
+    erreurs: ["Pas assez de récupération entre les sprints", "Virage compté dans la distance sur 50m en bassin 25m", "Nage parasitée par d'autres nageurs dans le couloir"],
+    frequence: "1 fois/mois en période compétitive",
+    fields: [
+      { cle:'t25m', label:'Meilleur temps 25m', unite:'s', type:'number', placeholder:'Ex: 14.2' },
+      { cle:'t50m', label:'Meilleur temps 50m', unite:'s', type:'number', placeholder:'Ex: 30.5' },
+      { cle:'nage', label:'Nage utilisée', unite:null, type:'string', placeholder:'Crawl / Brasse / Dos / Papillon' },
+    ],
+  },
+  // ── Aviron ──────────────────────────────────
+  '2000m-row': {
+    objectif: "Test référence mondial Concept2 sur 2000m — mesure la capacité anaérobie lactique et la puissance aérobie en aviron.",
+    conditions: ["Ergomètre Concept2 Model D/E ou Dynamic", "Damper réglé à 4–5", "Reposé 72h", "Salle < 20°C de préférence"],
+    echauffement: ["10 min léger @ split cible +30s/500m", "4 × 20s puissance élevée avec 40s repos", "5 min récup facile"],
+    etapes: ["Départ explosif — puissance max sur les 5 premières secondes", "Réguler rapidement sur les 500m suivants (ne pas s'effondrer)", "Maintenir un split constant sur les 500–1500m intermédiaires", "Dernier 500m : tout donner progressivement"],
+    interpretation: ["Niveau Recreational : H > 7:00 · F > 8:00", "Niveau Competitive : H 6:30–7:00 · F 7:30–8:00", "Niveau Performance : H < 6:30 · F < 7:30", "Split moyen → puissance : P = 2,80 / (split/500)³"],
+    erreurs: ["Départ trop violent → effondrement à 1000m", "Damper trop élevé (> 6) → s'épuise plus vite", "Pas de stratégie de split préparée"],
+    frequence: "2–3 fois/an — jamais deux fois en moins de 6 semaines",
+    fields: [
+      { cle:'temps_total', label:'Temps total', unite:null, type:'string', placeholder:'Ex: 6:52.3', required:true },
+      { cle:'split_moy', label:'Split moyen /500m', unite:'/500m', type:'string', placeholder:'Ex: 1:43.0' },
+      { cle:'puissance_moy', label:'Puissance moyenne', unite:'W', type:'number' },
+      { cle:'spm_moy', label:'Cadence moyenne', unite:'spm', type:'number' },
+      { cle:'fcmax', label:'FC maximale', unite:'bpm', type:'number' },
+    ],
+  },
+  '10000m-row': {
+    objectif: "Évaluer la capacité aérobie et la gestion de l'allure sur 10 000m — endurance fondamentale aviron.",
+    conditions: ["Concept2 ou ergomètre calibré", "Eau à portée", "Reposé 48h"],
+    echauffement: ["5 min @ split cible +30s/500m — l'intensité étant modérée, pas de warm-up long nécessaire"],
+    etapes: ["Départ à split cible (2000m split + 15–20s/500m)", "Maintenir cadence et split de façon régulière", "Mesurer la dérive FC : noter toutes les 2000m", "Dernier 1000m : légère accélération si les réserves le permettent"],
+    interpretation: ["Dérive FC < 8 bpm sur l'ensemble = bonne capacité aérobie", "Split stable (± 2s) = excellente gestion d'allure", "Écart normal split 10000m/2000m = +15–25s/500m"],
+    erreurs: ["Partir trop vite surtout si réalisé après le 2000m", "Omettre de noter les FC intermédiaires", "Cadence trop élevée (> 24 spm sur longue durée = inefficient)"],
+    frequence: "1 fois/mois en période de construction aérobie",
+    fields: [
+      { cle:'temps_total', label:'Temps total', unite:null, type:'string', placeholder:'Ex: 40:15.0', required:true },
+      { cle:'split_moy', label:'Split moyen /500m', unite:'/500m', type:'string' },
+      { cle:'fc_debut', label:'FC à 2000m', unite:'bpm', type:'number' },
+      { cle:'fc_fin', label:'FC à 10000m', unite:'bpm', type:'number' },
+    ],
+  },
+  '30min-row': {
+    objectif: "Mesurer la distance maximale couverte en 30 minutes — estimateur direct du FTP aviron (split /500m de référence).",
+    conditions: ["Concept2 en mode chrono (ne pas afficher Distance Remaining)", "Damper 4–5", "Reposé 48h"],
+    echauffement: ["10 min progressif", "2 × 30s puissance élevée avec 2 min récup"],
+    etapes: ["Lancer le chrono, ramer 30 min en effort soutenu constant", "Viser un split constant tout au long (± 3s/500m max)", "Dernières 5 min : accélération progressive si les réserves le permettent", "Relever la distance totale exacte à l'arrêt du chrono"],
+    interpretation: ["Split moyen /500m du 30 min ≈ FTP aviron", "FTP aviron (puissance) : P = 2,80 / (split/500)³", "Comparer aux classements Concept2 en ligne dans ta catégorie"],
+    erreurs: ["Départ trop fort → résultat sous-estimé sur la 2e moitié", "Regarder le temps restant trop souvent (pression mentale)", "Cadence inconstante qui fragmente l'effort"],
+    frequence: "Toutes les 4–6 semaines",
+    fields: [
+      { cle:'distance', label:'Distance totale', unite:'m', type:'number', placeholder:'Ex: 8350', required:true },
+      { cle:'split_moy', label:'Split moyen /500m', unite:'/500m', type:'string' },
+      { cle:'fcmax', label:'FC maximale', unite:'bpm', type:'number' },
+      { cle:'puissance_moy', label:'Puissance moyenne', unite:'W', type:'number' },
+    ],
+  },
+  'power-row': {
+    objectif: "Mesurer la puissance explosive de crête sur 10 secondes en sprint maximal sur ergomètre aviron.",
+    conditions: ["Concept2 ou Rowerg en mode sprint", "Reposé 48h", "Échauffement obligatoire"],
+    echauffement: ["10 min progressif", "3 × 5s accélération progressive avec 2 min récup"],
+    etapes: ["3 tentatives × 10s sprint all-out avec 5 min récup entre chaque", "Départ depuis l'immobilité complète (vitesse zéro)", "Sprint maximal — puissance de crête enregistrée par le PM5", "Conserver le meilleur résultat des 3 tentatives"],
+    interpretation: ["H : > 900W exceptionnel · 700–900W très bon · 500–700W bon", "F : > 650W exceptionnel · 500–650W très bon · 350–500W bon", "Puissance/poids > 10 W/kg = profil sprint de haut niveau"],
+    erreurs: ["Départ trop précipité — perd le placement initial", "Récupération insuffisante entre les tentatives", "Damper trop élevé (n'améliore pas la puissance réelle mesurée)"],
+    frequence: "1 fois/mois en phase de développement de puissance",
+    fields: [
+      { cle:'ppeak', label:'Puissance de crête', unite:'W', type:'number', required:true },
+      { cle:'ppeak_kg', label:'Puissance/poids', unite:'W/kg', type:'number' },
+      { cle:'spm_peak', label:'Cadence au pic', unite:'spm', type:'number' },
+    ],
+  },
+  'vo2max-row': {
+    objectif: "Déterminer la puissance maximale aérobie (PMA) en aviron par test rampe sur ergomètre à paliers progressifs.",
+    conditions: ["Concept2 ou ergomètre calibré", "Damper 4–5", "Reposé 48h"],
+    echauffement: ["10 min @ split cible +40s/500m", "2 × 30s puissance élevée avec 3 min récup"],
+    etapes: ["Départ @ 2000m split + 30s/500m", "Baisser le split de 2s (ou augmenter de ~10W) toutes les 60 secondes", "Continuer jusqu'à incapacité à maintenir la cadence cible (> 18 spm)", "PMA = puissance du dernier palier complet tenu"],
+    interpretation: ["PMA/poids > 5 W/kg : élite", "VO2max ≈ (PMA × 10,8 / poids) + 7 (estimation)", "FTP aviron ≈ 75–80% de la PMA"],
+    erreurs: ["Paliers trop longs → fatigue prématurée qui sous-estime la PMA", "Cadence trop haute dès le début → inefficacité technique", "Pas d'échauffement → sous-performance garantie"],
+    frequence: "2–3 fois/an",
+    fields: [
+      { cle:'pma', label:'PMA (puissance max)', unite:'W', type:'number', required:true },
+      { cle:'split_pma', label:'Split à la PMA', unite:'/500m', type:'string' },
+      { cle:'fcmax', label:'FC maximale', unite:'bpm', type:'number' },
+    ],
+  },
+  // ── Hyrox ───────────────────────────────────
+  'pft': {
+    objectif: "Performance Fitness Test — circuit Hyrox complet pour évaluer le niveau global et identifier les points à améliorer station par station.",
+    avertissement: "Effort total sur 50–90 min incluant 8km de course et 8 stations. Ne pas réaliser à moins de 5 jours d'une compétition officielle.",
+    conditions: ["Espace > 25m linéaire pour le sled", "Matériel standardisé Hyrox (SkiErg, Sled, Sandbag, Wall Ball…)", "Partenaire pour chrono et sécurité", "Reposé 72h"],
+    echauffement: ["15 min progressif en course", "1 série légère de chaque station à ~40% de l'effort"],
+    etapes: ["Run 1km + SkiErg 1000m", "Run 1km + Sled Push 4×25m", "Run 1km + Sled Pull 4×25m", "Run 1km + Burpee Broad Jumps 80m", "Run 1km + Rowing 1000m", "Run 1km + Farmer Carry 200m", "Run 1km + Sandbag Lunges 100m", "Run 1km + Wall Balls 100 reps"],
+    interpretation: ["< 1h : niveau élite · 1h–1h15 : compétiteur · 1h15–1h30 : performance · > 1h30 : progression", "Analyser split Run vs Stations pour identifier les maillons faibles", "Roxzone = temps total stations / temps total course × 100"],
+    erreurs: ["Partir trop vite sur les runs du début", "Négliger la technique sur Sled Push (perte d'énergie)", "Mauvaise hydratation en cours d'effort"],
+    frequence: "2–3 fois/an — jamais < 3 semaines avant une compétition",
+    fields: [
+      { cle:'temps_total', label:'Temps total', unite:null, type:'string', placeholder:'Ex: 1:08:45', required:true },
+      { cle:'roxzone', label:'Roxzone (stations)', unite:null, type:'string' },
+      { cle:'run_total', label:'Total runs (8km)', unite:null, type:'string' },
+      { cle:'fcmax', label:'FC maximale', unite:'bpm', type:'number' },
+    ],
+  },
+  'station': {
+    objectif: "Test chronométré d'une station Hyrox isolée pour mesurer la performance spécifique et identifier les faiblesses.",
+    conditions: ["Matériel standardisé pour la station choisie", "Poids officiels Hyrox selon catégorie H / F", "Reposé 48h"],
+    echauffement: ["10 min cardio léger", "2–3 séries légères de la station @ 40% effort"],
+    etapes: ["Choisir la station à tester (SkiErg, Sled Push, Sled Pull, BBJ, Rowing, FC, SBL, Wall Ball)", "Distances et répétitions officielles Hyrox strictement respectées", "Chrono lancé au signal, arrêté à la fin de la dernière rep / distance", "Comparer au split obtenu en compétition ou lors du PFT"],
+    interpretation: ["Comparer au split de référence de ta catégorie d'âge", "Un split > +20% par rapport à tes meilleures stations = point faible prioritaire", "Calculer l'impact théorique sur le temps total PFT"],
+    erreurs: ["Ne pas respecter les poids ou distances officiels", "Mauvaise technique sous fatigue (risque blessure + perte de temps)", "Absence de warm-up spécifique avant la station"],
+    frequence: "1 fois/semaine par station en période de spécialisation Hyrox",
+    fields: [
+      { cle:'station', label:'Station testée', unite:null, type:'string', placeholder:'Ex: Wall Ball', required:true },
+      { cle:'temps', label:'Temps réalisé', unite:null, type:'string', placeholder:'Ex: 3:42', required:true },
+      { cle:'poids', label:'Poids utilisé', unite:'kg', type:'number' },
+    ],
+  },
+  'bbj': {
+    objectif: "20 Burpee Broad Jumps chronométrés — mesure la puissance explosive et l'endurance anaérobie des membres inférieurs.",
+    conditions: ["Sol plat non glissant", "Distance officielle Hyrox : 80m (4 allers-retours de 20m)", "Poids corporel uniquement"],
+    echauffement: ["10 min cardio léger", "3 BBJ lents puis 3 BBJ @ 60%"],
+    etapes: ["20 BBJ consécutifs à effort maximal", "Chrono démarré au premier mouvement, arrêté au retour sur la ligne de départ", "Technique : planche — saut pieds joints — maximum en longueur — ramener les pieds", "Ne pas poser les genoux au sol pendant la planche (pénalité)"],
+    interpretation: ["< 2:30 : élite · 2:30–3:00 : très bon · 3:00–3:45 : moyen · > 3:45 : à améliorer", "Rythme régulier préférable à un sprint-pause-sprint", "Comparer au split BBJ en compétition Hyrox (station 4 = 80m)"],
+    erreurs: ["Sauts trop courts — économise les forces mais augmente le temps", "Genoux au sol pendant la planche (hors règle Hyrox)", "Départ trop explosif → cassure à mi-parcours"],
+    frequence: "1 fois/semaine en phase de préparation Hyrox",
+    fields: [
+      { cle:'temps_20bbj', label:'Temps 20 BBJ', unite:null, type:'string', placeholder:'Ex: 2:48', required:true },
+      { cle:'distance_moy', label:'Distance moy par saut', unite:'m', type:'number', helper:'Distance totale / 20' },
+    ],
+  },
+  'farmer-carry': {
+    objectif: "Farmer Carry sur 200m standardisé — mesure l'endurance de grip, du gainage et la vitesse de déplacement chargé.",
+    conditions: ["2 kettlebells ou barres : 32 kg H / 24 kg F (poids officiels Hyrox)", "Couloir 25m minimum (4 allers-retours)", "Sol plat"],
+    echauffement: ["5 min marche active", "1 × 50m @ 50% de la charge", "3 min récup"],
+    etapes: ["Prendre les charges, partir au signal", "Marcher sur 200m aller-retour (4 × 25m + demi-tours)", "Pose des charges autorisée uniquement à la ligne de demi-tour", "Chrono arrêté au franchissement de la ligne d'arrivée"],
+    interpretation: ["< 1:20 : élite · 1:20–1:45 : bon · 1:45–2:15 : moyen · > 2:15 : à améliorer", "Lâcher les charges entre les plots = pénalité 5s en compétition", "Si > 2 min → prioriser travail grip + gainage"],
+    erreurs: ["Courber le dos sous la charge (risque lombaire)", "Lâcher les charges hors des zones autorisées", "Pas assez de récup avant le test"],
+    frequence: "1 fois/semaine en phase de force-endurance",
+    fields: [
+      { cle:'temps_200m', label:'Temps 200m', unite:null, type:'string', placeholder:'Ex: 1:38', required:true },
+      { cle:'poids', label:'Poids par main', unite:'kg', type:'number' },
+      { cle:'poses', label:'Nombre de poses', unite:null, type:'number' },
+    ],
+  },
+  'wall-ball': {
+    objectif: "100 Wall Balls chronométrées — mesure la puissance-endurance des membres inférieurs et l'explosivité du push bras.",
+    conditions: ["Wall Ball 9 kg H / 6 kg F (poids officiels Hyrox)", "Mur plat avec cible à 3m de hauteur", "Sol antidérapant"],
+    echauffement: ["10 min cardio", "20 reps @ 50–60%", "3 min récup"],
+    etapes: ["100 Wall Balls — poses de la balle autorisées (comptabilisées dans le temps)", "Fléchir en dessous du parallèle à chaque rep (genoux au niveau des hanches)", "Balle au-dessus de la cible (3m) à chaque rep valide", "Chrono arrêté à la 100e répétition valide"],
+    interpretation: ["< 4:00 : élite · 4:00–5:00 : bon · 5:00–6:30 : moyen · > 6:30 : à améliorer", "Stratégie en séries courtes (15–20 reps + pause 5s) souvent plus rapide que le continu", "Douleur avant-bras → travail grip · Douleur quads → force spécifique Wall Ball"],
+    erreurs: ["Squat pas assez profond (rep non valide)", "Balle en dessous de la cible (rep invalide)", "Tenir trop longtemps sans poser → effondrement technique"],
+    frequence: "1 fois/semaine en période de spécialisation Hyrox",
+    fields: [
+      { cle:'temps_100', label:'Temps 100 reps', unite:null, type:'string', placeholder:'Ex: 4:45', required:true },
+      { cle:'poids_balle', label:'Poids de la balle', unite:'kg', type:'number' },
+      { cle:'nb_poses', label:'Nombre de poses', unite:null, type:'number' },
+    ],
+  },
+  'sled-push': {
+    objectif: "Sled Push 4 × 25m — mesure la force propulsive et la résistance anaérobie sur travail de sled poussé.",
+    conditions: ["Sled Hyrox standard : +100 kg H / +60 kg F", "Surface synthétique ou tartan (pas sur béton brut)", "4 passages de 25m = 100m total"],
+    echauffement: ["10 min cardio", "1 × 25m @ ~50% de la charge officielle"],
+    etapes: ["Dos à la ligne de départ, sled en face", "Pousser le sled sur 25m, demi-tour, repousser (4 passages)", "Puissance générée par poussée basse, cadence de pas rapide", "Chrono arrêté après le 4e franchissement de ligne"],
+    interpretation: ["< 1:30 : élite · 1:30–2:00 : bon · 2:00–2:45 : moyen · > 2:45 : à améliorer", "Sled Push est la station la plus énergivore → point faible à prioriser", "Force quadriceps + position basse = facteurs clés de performance"],
+    erreurs: ["Position trop haute → perd de la puissance de transmission", "Pousser avec les bras seuls sans engagement des jambes", "Mauvaise inclinaison des mains (doit être dans l'axe du sled)"],
+    frequence: "1 fois/semaine en phase de développement de force",
+    fields: [
+      { cle:'temps', label:'Temps 4×25m', unite:null, type:'string', placeholder:'Ex: 1:52', required:true },
+      { cle:'charge', label:'Charge totale sled', unite:'kg', type:'number' },
+    ],
+  },
+  'sled-pull': {
+    objectif: "Sled Pull 4 × 25m à la corde — mesure la force de traction, l'endurance du dos et la résistance du grip.",
+    conditions: ["Sled Hyrox : +100 kg H / +60 kg F", "Corde de 15m minimum", "Surface adaptée (synthétique)"],
+    echauffement: ["10 min cardio", "1 × 25m @ ~50% de la charge"],
+    etapes: ["Faire face au sled, corde tendue", "Tirer le sled vers soi main par main en reculant", "Ligne d'arrivée → demi-tour, tirer le sled dans l'autre sens (4 passages)", "Chrono arrêté au franchissement de la 4e ligne"],
+    interpretation: ["< 2:00 : élite · 2:00–2:45 : bon · 2:45–3:30 : moyen · > 3:30 : à améliorer", "Endurance de grip souvent le facteur limitant", "Forte sollicitation dorsale → prévoir récupération musculaire active"],
+    erreurs: ["Lâcher la corde sans contrôle (risque de chute)", "Tirer avec le dos voûté (risque lombaire)", "Demi-tour trop lent entre les passages"],
+    frequence: "1 fois/semaine en phase de force-endurance",
+    fields: [
+      { cle:'temps', label:'Temps 4×25m', unite:null, type:'string', placeholder:'Ex: 2:20', required:true },
+      { cle:'charge', label:'Charge totale sled', unite:'kg', type:'number' },
+    ],
+  },
+  'run-compromised': {
+    objectif: "Mesurer l'allure de course immédiatement après une station Hyrox pour quantifier l'impact de la fatigue musculaire sur la foulée.",
+    conditions: ["GPS de précision ou piste 400m", "Station Hyrox réalisée immédiatement avant (Wall Ball, BBJ, Sled ou FC)", "Reposé 48h avant le test global"],
+    echauffement: ["Pas d'échauffement spécifique course — la station fait office de stimulus de fatigue"],
+    etapes: ["Réaliser la station choisie aux poids et distances officiels Hyrox", "Départ course immédiatement après la dernière répétition (< 10s de transition)", "Courir 1km à l'effort maximal soutenu", "Enregistrer l'allure et comparer à l'allure 1km fresh de référence"],
+    interpretation: ["Delta < 10 s/km : très bonne résistance à la fatigue musculaire", "Delta 10–25 s/km : impact modéré, travail couplé possible", "Delta > 30 s/km : point faible significatif → intervals station + run à intégrer", "Tester avec différentes stations pour identifier celle qui dégrade le plus la foulée"],
+    erreurs: ["Délai > 10s entre la station et le run (fausse le test)", "GPS imprécis en intérieur", "Ne pas noter quelle station a précédé la course"],
+    frequence: "1 fois/semaine en préparation spécifique Hyrox",
+    fields: [
+      { cle:'station_prec', label:'Station précédente', unite:null, type:'string', placeholder:'Ex: Wall Ball', required:true },
+      { cle:'allure_1km', label:'Allure 1km compromised', unite:'/km', type:'string', placeholder:'Ex: 4:05' },
+      { cle:'allure_fresh', label:'Allure 1km fresh (ref)', unite:'/km', type:'string', placeholder:'Ex: 3:38' },
+      { cle:'delta', label:'Delta allure', unite:'s/km', type:'number', helper:'Compromised − Fresh (en secondes)' },
+    ],
+  },
+}
+
+// ── Icônes réutilisables pour les sections ──
+function IcoTarget() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg> }
+function IcoWarn()   { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> }
+function IcoCheck()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> }
+function IcoFlame()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg> }
+function IcoList()   { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> }
+function IcoBook()   { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> }
+function IcoClock()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> }
+function IcoSave()   { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> }
+
 function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClose: () => void }) {
+  const [vals, setVals]   = useState<Record<string, string>>({})
+  const [saved, setSaved] = useState(false)
+
   if (!ot || typeof document === 'undefined') return null
-  const cfg = TEST_SPORT_TABS.find(t => t.id === ot.sport)!
+
+  const cfg   = TEST_SPORT_TABS.find(t => t.id === ot.sport)!
+  const proto = PROTOCOLS[ot.test.id]
+
+  function setVal(cle: string, v: string) { setVals(p => ({...p, [cle]: v})); setSaved(false) }
+  function handleSave() { setSaved(true); setTimeout(() => setSaved(false), 2500) }
+
+  const SH = ({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) => (
+    <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:9 }}>
+      <span style={{ color, opacity:0.9 }}>{icon}</span>
+      <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color }}>{label}</span>
+    </div>
+  )
+
   return createPortal(
     <>
-      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)', animation:'cardEnter 0.2s ease both' }}/>
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'20px 20px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'24px 24px 40px', boxShadow:'0 -8px 40px rgba(0,0,0,0.3)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'85vh', overflowY:'auto' as const }}>
-        <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 20px' }}/>
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:24 }}>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(4px)', animation:'cardEnter 0.2s ease both' }}/>
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'22px 22px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'20px 22px 44px', boxShadow:'0 -10px 50px rgba(0,0,0,0.35)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'90vh', overflowY:'auto' as const }}>
+
+        {/* Handle */}
+        <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 18px' }}/>
+
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${cfg.color}18`, border:`1px solid ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center', color:cfg.color, flexShrink:0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            <div style={{ width:44, height:44, borderRadius:13, background:`${cfg.color}18`, border:`1px solid ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center', color:cfg.color, flexShrink:0 }}>
+              {cfg.icon}
             </div>
             <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
-                <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:0 }}>{ot.test.name}</h2>
-                <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${DIFFICULTY_COLOR[ot.test.difficulty]}22`, color:DIFFICULTY_COLOR[ot.test.difficulty], textTransform:'uppercase' as const, letterSpacing:'0.07em' }}>{ot.test.difficulty}</span>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, margin:0, letterSpacing:'-0.02em' }}>{ot.test.name}</h2>
+                <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${DIFFICULTY_COLOR[ot.test.difficulty]}20`, color:DIFFICULTY_COLOR[ot.test.difficulty], textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{ot.test.difficulty}</span>
               </div>
               <p style={{ fontSize:11, color:cfg.color, margin:0, fontWeight:600 }}>{cfg.label} · {ot.test.duration}</p>
             </div>
           </div>
           <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
         </div>
-        <div style={{ minHeight:200, borderRadius:16, border:`1px dashed ${cfg.color}40`, background:`${cfg.color}06`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, padding:32 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, display:'flex', alignItems:'center', justifyContent:'center', color:cfg.color, opacity:0.7 }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+
+        {!proto ? (
+          <div style={{ textAlign:'center' as const, padding:'32px 0', color:'var(--text-dim)', fontSize:13 }}>
+            Protocole en cours de rédaction…
           </div>
-          <div style={{ textAlign:'center' as const }}>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:'0 0 6px', color:'var(--text)' }}>Contenu à venir</p>
-            <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.6, maxWidth:280 }}>
-              Le protocole du test <strong style={{ color:'var(--text-mid)' }}>{ot.test.name}</strong> sera disponible dans une prochaine mise à jour.
-            </p>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+            {/* Objectif */}
+            <div style={{ padding:'13px 16px', borderRadius:13, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
+              <SH icon={<IcoTarget/>} label="Objectif" color={cfg.color}/>
+              <p style={{ fontSize:13, color:'var(--text)', margin:0, lineHeight:1.65 }}>{proto.objectif}</p>
+            </div>
+
+            {/* Avertissement */}
+            {proto.avertissement && (
+              <div style={{ padding:'12px 16px', borderRadius:13, background:'rgba(251,146,60,0.08)', border:'1px solid rgba(251,146,60,0.35)' }}>
+                <SH icon={<IcoWarn/>} label="Attention" color="#f97316"/>
+                <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>{proto.avertissement}</p>
+              </div>
+            )}
+
+            {/* Conditions + Échauffement — grid 2 col */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <SH icon={<IcoCheck/>} label="Conditions" color="var(--text-mid)"/>
+                <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
+                  {proto.conditions.map((c,i) => (
+                    <li key={i} style={{ fontSize:11.5, color:'var(--text-mid)', lineHeight:1.5 }}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <SH icon={<IcoFlame/>} label="Échauffement" color="#f59e0b"/>
+                <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
+                  {proto.echauffement.map((e,i) => (
+                    <li key={i} style={{ fontSize:11.5, color:'var(--text-mid)', lineHeight:1.5 }}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Étapes */}
+            <div style={{ padding:'13px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <SH icon={<IcoList/>} label="Protocole — étapes" color="var(--text)"/>
+              <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                {proto.etapes.map((e, i) => (
+                  <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:10, fontWeight:700, color:cfg.color, width:18, flexShrink:0, paddingTop:2 }}>{i+1}.</span>
+                    <p style={{ fontSize:12.5, color:'var(--text)', margin:0, lineHeight:1.6 }}>{e}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Interprétation */}
+            <div style={{ padding:'13px 16px', borderRadius:13, background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.25)' }}>
+              <SH icon={<IcoBook/>} label="Interprétation des résultats" color="#22c55e"/>
+              <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                {proto.interpretation.map((r, i) => (
+                  <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                    <span style={{ color:'#22c55e', fontSize:12, flexShrink:0, paddingTop:1 }}>→</span>
+                    <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.55 }}>{r}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Erreurs + Fréquence — grid 2 col */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.20)' }}>
+                <SH icon={<IcoWarn/>} label="Erreurs courantes" color="#ef4444"/>
+                <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
+                  {proto.erreurs.map((e,i) => (
+                    <li key={i} style={{ fontSize:11.5, color:'var(--text-mid)', lineHeight:1.5 }}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.22)' }}>
+                <SH icon={<IcoClock/>} label="Fréquence" color="#818cf8"/>
+                <p style={{ fontSize:12, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>{proto.frequence}</p>
+              </div>
+            </div>
+
+            {/* Saisie des résultats */}
+            {proto.fields.length > 0 && (
+              <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
+                <SH icon={<IcoSave/>} label="Saisir mes résultats" color={cfg.color}/>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
+                  {proto.fields.map(f => (
+                    <div key={f.cle} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                      <label style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600 }}>
+                        {f.label}{f.unite ? <span style={{ color:'var(--text-dim)', fontWeight:400 }}> ({f.unite})</span> : null}
+                        {f.required && <span style={{ color:cfg.color }}>*</span>}
+                      </label>
+                      <input
+                        value={vals[f.cle] ?? ''}
+                        onChange={e => setVal(f.cle, e.target.value)}
+                        placeholder={f.placeholder ?? (f.unite ? `En ${f.unite}` : '—')}
+                        style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', width:'100%', boxSizing:'border-box' as const }}
+                      />
+                      {f.helper && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{f.helper}</span>}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleSave}
+                  style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:saved ? '#22c55e' : cfg.color, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'Syne,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : cfg.color+'40'}` }}
+                >
+                  {saved ? '✓ Résultats enregistrés' : 'Enregistrer ce test'}
+                </button>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </>,
     document.body

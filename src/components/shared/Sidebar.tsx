@@ -218,31 +218,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       overflowY: 'auto',
     }}>
 
-      {/* ── Brand ── */}
-      <div style={{
-        padding: '20px 16px 16px',
-        display: 'flex', alignItems: 'center', gap: 10,
-        borderBottom: '1px solid var(--nav-border)',
-        flexShrink: 0,
-      }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-          background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'Syne, sans-serif', fontWeight: 800,
-          fontSize: 10, color: '#fff',
-          boxShadow: '0 0 12px rgba(0,200,224,0.25)',
-        }}>
-          THW
-        </div>
-        <span style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 700,
-          fontSize: 14, color: 'var(--text)', letterSpacing: '-0.02em',
-        }}>
-          THW Coaching
-        </span>
-      </div>
-
       {/* ── Profile ── */}
       <Link
         href="/profile"

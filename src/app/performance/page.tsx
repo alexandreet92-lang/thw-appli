@@ -1019,6 +1019,17 @@ interface TestDef {
   difficulty: 'Modéré' | 'Intense' | 'Maximal'
 }
 interface OpenTest { sport: TestSport; test: TestDef }
+interface FieldDef {
+  cle: string; label: string; unite: string | null; type: 'number' | 'string'
+  placeholder?: string; helper?: string; required?: boolean
+}
+interface TestProtocol {
+  objectif: string; avertissement?: string
+  conditions: string[]; echauffement: string[]
+  etapes: string[]; interpretation: string[]
+  erreurs: string[]; frequence: string
+  fields: FieldDef[]
+}
 
 const DIFFICULTY_COLOR: Record<TestDef['difficulty'], string> = {
   'Modéré': '#22c55e', 'Intense': '#f59e0b', 'Maximal': '#ef4444',

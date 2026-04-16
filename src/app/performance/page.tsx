@@ -463,12 +463,15 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
 // ════════════════════════════════════════════════
 // ONGLET PROFIL
 // ════════════════════════════════════════════════
-function ProfilTab({ onSelect, selectedDatum }: {
+function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAnalyzeProfile }: {
   onSelect: (label: string, value: string) => void
   selectedDatum: SelectedDatum | null
+  profile: typeof INIT_PROFILE
+  setProfile: React.Dispatch<React.SetStateAction<typeof INIT_PROFILE>>
+  onAnalyzeProfile?: () => Promise<void>
 }) {
-  const [p, setP] = useState({ ...INIT_PROFILE })
-  const [editing, setEditing] = useState(false)
+  const [editing,   setEditing]   = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
   const wkg = (p.ftp / p.weight).toFixed(2)
 
   function isSel(label: string, value: string | number, unit?: string) {
@@ -484,10 +487,24 @@ function ProfilTab({ onSelect, selectedDatum }: {
             <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil athlete</h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Parametres physiologiques</p>
           </div>
-          <button onClick={() => setEditing(!editing)}
-            style={{ padding:'6px 14px', borderRadius:9, background:editing?'linear-gradient(135deg,#00c8e0,#5b6fff)':'var(--bg-card2)', border:`1px solid ${editing?'transparent':'var(--border)'}`, color:editing?'#fff':'var(--text-mid)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
-            {editing ? 'Sauvegarder' : 'Modifier'}
-          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            {!editing && onAnalyzeProfile && (
+              <button
+                onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }}
+                disabled={analyzing}
+                style={{ padding:'6px 14px', borderRadius:9, background:'linear-gradient(135deg,#f97316,#fb923c)', border:'1px solid transparent', color:'#fff', fontSize:12, cursor:analyzing?'not-allowed':'pointer', fontWeight:600, opacity:analyzing?0.7:1, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' as const }}
+              >
+                {analyzing
+                  ? <><span style={{ width:11, height:11, border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>Analyse…</>
+                  : '🔬 Analyser'
+                }
+              </button>
+            )}
+            <button onClick={() => setEditing(!editing)}
+              style={{ padding:'6px 14px', borderRadius:9, background:editing?'linear-gradient(135deg,#00c8e0,#5b6fff)':'var(--bg-card2)', border:`1px solid ${editing?'transparent':'var(--border)'}`, color:editing?'#fff':'var(--text-mid)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
+              {editing ? 'Sauvegarder' : 'Modifier'}
+            </button>
+          </div>
         </div>
         {editing ? (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="md:grid-cols-3">
@@ -1668,7 +1685,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
   )
 }
 
-function TestCard({ test, accentColor, onOpen }: { test: TestDef; accentColor: string; onOpen: () => void }) {
+function TestCard({ test, accentColor, onOpen, onAnalyze }: { test: TestDef; accentColor: string; onOpen: () => void; onAnalyze?: () => void }) {
   const diffColor = DIFFICULTY_COLOR[test.difficulty]
   return (
     <div className="card-enter" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', boxShadow:'var(--shadow-card)', display:'flex', flexDirection:'column', gap:12 }}>
@@ -1686,14 +1703,24 @@ function TestCard({ test, accentColor, onOpen }: { test: TestDef; accentColor: s
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{test.duration}</span>
         </div>
-        <button
-          onClick={onOpen}
-          style={{ padding:'7px 16px', borderRadius:9, background:`${accentColor}18`, border:`1px solid ${accentColor}40`, color:accentColor, fontSize:12, fontWeight:600, cursor:'pointer', transition:'background 0.15s, border-color 0.15s', whiteSpace:'nowrap' as const }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`${accentColor}28`; (e.currentTarget as HTMLButtonElement).style.borderColor=`${accentColor}70` }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background=`${accentColor}18`; (e.currentTarget as HTMLButtonElement).style.borderColor=`${accentColor}40` }}
-        >
-          Ouvrir
-        </button>
+        <div style={{ display:'flex', gap:6 }}>
+          {onAnalyze && (
+            <button
+              onClick={onAnalyze}
+              style={{ padding:'7px 12px', borderRadius:9, background:'rgba(249,115,22,0.12)', border:'1px solid rgba(249,115,22,0.35)', color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const }}
+            >
+              🔬 Analyser
+            </button>
+          )}
+          <button
+            onClick={onOpen}
+            style={{ padding:'7px 16px', borderRadius:9, background:`${accentColor}18`, border:`1px solid ${accentColor}40`, color:accentColor, fontSize:12, fontWeight:600, cursor:'pointer', transition:'background 0.15s, border-color 0.15s', whiteSpace:'nowrap' as const }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`${accentColor}28`; (e.currentTarget as HTMLButtonElement).style.borderColor=`${accentColor}70` }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background=`${accentColor}18`; (e.currentTarget as HTMLButtonElement).style.borderColor=`${accentColor}40` }}
+          >
+            Ouvrir
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1702,7 +1729,10 @@ function TestCard({ test, accentColor, onOpen }: { test: TestDef; accentColor: s
 // ════════════════════════════════════════════════
 // ONGLET TESTS
 // ════════════════════════════════════════════════
-function TestsTab() {
+function TestsTab({ profile, onAnalyzeTest }: {
+  profile: typeof INIT_PROFILE
+  onAnalyzeTest?: (test: TestDef) => Promise<void>
+}) {
   const [testSport, setTestSport] = useState<TestSport>('running')
   const [openTest,  setOpenTest]  = useState<OpenTest | null>(null)
 
@@ -1744,7 +1774,7 @@ function TestsTab() {
       {/* Cards grid */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(1,1fr)', gap:12 }} className="md:grid-cols-2">
         {tests.map(test => (
-          <TestCard key={test.id} test={test} accentColor={cfg.color} onOpen={() => setOpenTest({ sport:testSport, test })}/>
+          <TestCard key={test.id} test={test} accentColor={cfg.color} onOpen={() => setOpenTest({ sport:testSport, test })} onAnalyze={onAnalyzeTest ? () => void onAnalyzeTest(test) : undefined}/>
         ))}
       </div>
 
@@ -1759,9 +1789,12 @@ function TestsTab() {
 // ════════════════════════════════════════════════
 export default function PerformancePage() {
   const [tab, setTab]                   = useState<PerfTab>('profil')
+  const [profile, setProfile]           = useState({ ...INIT_PROFILE })
   const [selectedDatum, setSelectedDatum] = useState<SelectedDatum | null>(null)
   const [aiOpen, setAiOpen]             = useState(false)
   const [aiPrefill, setAiPrefill]       = useState('')
+  const [aiInitLabel, setAiInitLabel]   = useState<string | undefined>(undefined)
+  const [aiInitMsg,   setAiInitMsg]     = useState<string | undefined>(undefined)
 
   function onSelectDatum(label: string, value: string) {
     setSelectedDatum(prev =>
@@ -1769,11 +1802,61 @@ export default function PerformancePage() {
     )
   }
 
-  function handleAsk() {
+  async function handleAnalyzeProfile() {
+    try {
+      const res  = await fetch('/api/performance-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analyzeProfile', payload: { profile } }),
+      })
+      const data = await res.json() as { reply?: string; error?: string }
+      setAiInitLabel('Analyse mon profil')
+      setAiInitMsg(data.reply ?? data.error ?? 'Erreur lors de l\'analyse.')
+      setAiOpen(true)
+    } catch {
+      setAiInitLabel('Analyse mon profil')
+      setAiInitMsg('Erreur réseau. Vérifie ta connexion et réessaie.')
+      setAiOpen(true)
+    }
+  }
+
+  async function handleAnalyzeTest(test: TestDef) {
+    try {
+      const res  = await fetch('/api/performance-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analyzeTest', payload: { testName: test.name, testResults: {}, profile } }),
+      })
+      const data = await res.json() as { reply?: string; error?: string }
+      setAiInitLabel(`Analyse : ${test.name}`)
+      setAiInitMsg(data.reply ?? data.error ?? 'Erreur lors de l\'analyse.')
+      setAiOpen(true)
+    } catch {
+      setAiInitLabel(`Analyse : ${test.name}`)
+      setAiInitMsg('Erreur réseau. Vérifie ta connexion et réessaie.')
+      setAiOpen(true)
+    }
+  }
+
+  async function handleAsk() {
     if (!selectedDatum) return
-    setAiPrefill(buildAIMessage(selectedDatum))
-    setAiOpen(true)
     setSelectedDatum(null)
+    try {
+      const res  = await fetch('/api/performance-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'explainData', payload: { dataName: selectedDatum.label, dataValue: selectedDatum.value } }),
+      })
+      const data = await res.json() as { reply?: string; error?: string }
+      setAiInitLabel(`${selectedDatum.label} : ${selectedDatum.value}`)
+      setAiInitMsg(data.reply ?? data.error ?? 'Erreur lors de l\'analyse.')
+      setAiOpen(true)
+    } catch {
+      setAiInitLabel(`${selectedDatum.label} : ${selectedDatum.value}`)
+      setAiInitMsg('Erreur réseau. Vérifie ta connexion et réessaie.')
+      setAiPrefill(buildAIMessage(selectedDatum))
+      setAiOpen(true)
+    }
   }
 
   const TABS: { id: PerfTab; label: string; short: string; color: string; bg: string }[] = [
@@ -1814,9 +1897,22 @@ export default function PerformancePage() {
       </div>
 
       {/* ── Contenu ── */}
-      {tab === 'profil' && <ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum}/>}
+      {tab === 'profil' && (
+        <ProfilTab
+          onSelect={onSelectDatum}
+          selectedDatum={selectedDatum}
+          profile={profile}
+          setProfile={setProfile}
+          onAnalyzeProfile={handleAnalyzeProfile}
+        />
+      )}
       {tab === 'datas'  && <DatasTab  onSelect={onSelectDatum} selectedDatum={selectedDatum}/>}
-      {tab === 'tests'  && <TestsTab/>}
+      {tab === 'tests'  && (
+        <TestsTab
+          profile={profile}
+          onAnalyzeTest={handleAnalyzeTest}
+        />
+      )}
 
       {/* ── Bulle flottante de sélection ── */}
       {selectedDatum && (
@@ -1827,13 +1923,15 @@ export default function PerformancePage() {
         />
       )}
 
-      {/* ── Panel Coach IA (pour les données sélectionnées) ── */}
+      {/* ── Panel Coach IA ── */}
       <AIPanel
         open={aiOpen}
-        onClose={() => { setAiOpen(false); setAiPrefill('') }}
+        onClose={() => { setAiOpen(false); setAiPrefill(''); setAiInitMsg(undefined); setAiInitLabel(undefined) }}
         initialAgent="performance"
         prefillMessage={aiPrefill}
-        context={{ page:'performance' }}
+        initialUserLabel={aiInitLabel}
+        initialAssistantMsg={aiInitMsg}
+        context={{ page:'performance', profile }}
       />
     </div>
   )

@@ -18,6 +18,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { PageAgent } from './agentConfig'
 import { AGENT_CONFIGS, MAIN_AGENTS, AGENT_DISPLAY } from './agentConfig'
+import type { QuickAction } from './agentConfig'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -43,6 +44,9 @@ interface Props {
   initialAgent: PageAgent
   context?: Record<string, unknown>
   prefillMessage?: string
+  /** Pré-remplit une conversation avec un message IA déjà généré (ex: analyse de profil) */
+  initialUserLabel?: string
+  initialAssistantMsg?: string
 }
 
 // ── Routes par agent ──────────────────────────────────────────
@@ -185,7 +189,7 @@ function Dots() {
 // COMPOSANT PRINCIPAL
 // ══════════════════════════════════════════════════════════════
 
-export default function AIPanel({ open, onClose, initialAgent, context, prefillMessage }: Props) {
+export default function AIPanel({ open, onClose, initialAgent, context, prefillMessage, initialUserLabel, initialAssistantMsg }: Props) {
 
   // ── State ────────────────────────────────────────────────
   const [agent,    setAgent]    = useState<PageAgent>(initialAgent)
@@ -200,9 +204,10 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
   const [renId,    setRenId]    = useState<string | null>(null)  // conv rename
   const [renVal,   setRenVal]   = useState('')
 
-  const areaRef  = useRef<HTMLTextAreaElement>(null)
-  const menuRef  = useRef<HTMLDivElement>(null)
-  const endRef   = useRef<HTMLDivElement>(null)
+  const areaRef      = useRef<HTMLTextAreaElement>(null)
+  const menuRef      = useRef<HTMLDivElement>(null)
+  const endRef       = useRef<HTMLDivElement>(null)
+  const initMsgRef   = useRef<string | undefined>(undefined)
 
   const cfg    = AGENT_CONFIGS[agent]
   const convs  = store[agent] ?? []
@@ -217,6 +222,31 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
   useEffect(() => { if (open) setAgent(initialAgent) }, [open, initialAgent])
   useEffect(() => { setActiveId(null) }, [agent])
+
+  // Pré-remplir une conversation quand initialAssistantMsg est fourni
+  useEffect(() => {
+    if (!open) { initMsgRef.current = undefined; return }
+    if (!initialAssistantMsg || !mounted) return
+    if (initMsgRef.current === initialAssistantMsg) return  // déjà traité
+    initMsgRef.current = initialAssistantMsg
+
+    const label = (initialUserLabel ?? 'Analyse IA').slice(0, 60)
+    const conv: AIConv = {
+      id: genId(),
+      title: label,
+      agentId: 'performance',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      msgs: [
+        { id: genId(), role: 'user',      content: label,                ts: Date.now() },
+        { id: genId(), role: 'assistant', content: initialAssistantMsg,  ts: Date.now() + 1 },
+      ],
+    }
+    setAgent('performance')
+    setStore(p => ({ ...p, performance: [conv, ...(p.performance ?? [])].slice(0, MAX_AGENT) }))
+    setActiveId(conv.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialAssistantMsg, mounted])
 
   // Escape key
   useEffect(() => {
@@ -356,6 +386,59 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, loading, active, agent, context])
+
+  // SEND via Managed Agent (pour les quickActions avec managedAgentAction)
+  const sendManaged = useCallback(async (qa: QuickAction) => {
+    if (loading || !qa.managedAgentAction) return
+
+    const label = qa.label.replace(/^[^\w\s]+\s*/, '') // strip emoji prefix
+    setLoading(true)
+
+    const curAgent = agent
+    const conv: AIConv = {
+      id: genId(),
+      title: label.slice(0, 46),
+      agentId: curAgent,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      msgs: [{ id: genId(), role: 'user', content: label, ts: Date.now() }],
+    }
+
+    setStore(p => ({ ...p, [curAgent]: [conv, ...(p[curAgent] ?? [])].slice(0, MAX_AGENT) }))
+    setActiveId(conv.id)
+    const cid = conv.id
+
+    try {
+      const res = await fetch('/api/performance-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: qa.managedAgentAction,
+          payload: { profile: (context as Record<string, unknown>)?.profile ?? {} },
+        }),
+      })
+      const data = await res.json() as { reply?: string; error?: string }
+      const reply = data.reply ?? data.error ?? 'Désolé, une erreur est survenue.'
+      const aiMsg: AIMsg = { id: genId(), role: 'assistant', content: reply, ts: Date.now() }
+      setStore(p => ({
+        ...p,
+        [curAgent]: (p[curAgent] ?? []).map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, aiMsg], updatedAt: Date.now() } : c
+        ),
+      }))
+    } catch {
+      const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
+      setStore(p => ({
+        ...p,
+        [curAgent]: (p[curAgent] ?? []).map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
+        ),
+      }))
+    } finally {
+      setLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, agent, context])
 
   // ══════════════════════════════════════════════════════════
   // RENDU
@@ -820,7 +903,7 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
                     {cfg.quickActions.map((qa, i) => (
                       <button
                         key={i}
-                        onClick={() => send(qa.prompt)}
+                        onClick={() => qa.managedAgentAction ? void sendManaged(qa) : void send(qa.prompt)}
                         disabled={loading}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',

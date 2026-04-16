@@ -16,6 +16,8 @@ export type PageAgent =
 export interface QuickAction {
   label: string
   prompt: string
+  /** Si défini, déclenche un appel au Managed Agent au lieu du chat classique */
+  managedAgentAction?: 'analyzeProfile' | 'analyzeTest' | 'explainData'
 }
 
 export interface AgentConfig {
@@ -201,24 +203,34 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
   performance: {
     id: 'performance',
     name: 'Coach Performance',
-    subtitle: 'Analyse ta progression et tes trends',
+    subtitle: 'Analyse ta progression et tes données',
     accent: '#f97316',
     quickActions: [
       {
-        label: 'Analyse mes activités',
+        label: '🔬 Analyse complète de mon profil',
+        prompt: 'Analyse mon profil d\'athlète',
+        managedAgentAction: 'analyzeProfile',
+      },
+      {
+        label: '📈 Tendances & progression',
         prompt: 'Analyse mes activités récentes. Qu\'est-ce que tu observes comme tendances ? Je progresse ?',
       },
       {
-        label: 'Identifie mes points faibles',
+        label: '⚡ Identifier mes points faibles',
         prompt: 'Identifie mes points faibles dans mes données d\'entraînement et dis-moi comment les améliorer.',
       },
       {
-        label: 'Pic de forme',
-        prompt: 'Comment atteindre un pic de forme pour une compétition dans 6 semaines ?',
+        label: '🎯 Pic de forme',
+        prompt: 'Comment atteindre un pic de forme pour une compétition dans 6 semaines ? Adapte ta réponse à mon profil.',
       },
       {
-        label: 'Analyse mes zones',
-        prompt: 'Analyse ma répartition par zones d\'intensité. Est-ce que je m\'entraîne dans les bonnes zones ?',
+        label: '🔵 Analyse mes zones d\'intensité',
+        prompt: 'Analyse ma répartition par zones d\'intensité. Est-ce que je m\'entraîne dans les bonnes zones selon mon profil ?',
+      },
+      {
+        label: '💡 Recommandations personnalisées',
+        prompt: 'Génère un profil d\'athlète personnalisé',
+        managedAgentAction: 'analyzeProfile',
       },
     ],
   },

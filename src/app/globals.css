@@ -121,6 +121,12 @@ body {
   to   { transform: scaleY(1); }
 }
 
+/* Slide-up (modals, panneaux bottom-sheet) */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0.7; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
 /* Respect des préférences d'accessibilité */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

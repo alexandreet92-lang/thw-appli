@@ -3,14 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
+import { useProfile } from '@/hooks/useProfile'
 import { useState, useEffect, useRef } from 'react'
+
+// ── Nav items ──────────────────────────────────────────────────
 
 const NAV = [
   {
     href: '/',
     label: 'Dashboard',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="3" width="7" height="7" rx="1.5"/>
         <rect x="14" y="3" width="7" height="7" rx="1.5"/>
         <rect x="3" y="14" width="7" height="7" rx="1.5"/>
@@ -22,7 +25,7 @@ const NAV = [
     href: '/planning',
     label: 'Planning',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="4" width="18" height="18" rx="2"/>
         <path d="M16 2v4M8 2v4M3 10h18"/>
       </svg>
@@ -32,7 +35,7 @@ const NAV = [
     href: '/calendar',
     label: 'Calendar',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="4" width="18" height="18" rx="2"/>
         <path d="M16 2v4M8 2v4M3 10h18"/>
         <circle cx="8" cy="15" r="1" fill="currentColor"/>
@@ -45,7 +48,7 @@ const NAV = [
     href: '/session',
     label: 'Session',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="3" width="18" height="18" rx="3"/>
         <path d="M8 12h8M12 8v8"/>
       </svg>
@@ -53,9 +56,9 @@ const NAV = [
   },
   {
     href: '/activities',
-    label: 'Activités',
+    label: 'Training',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
     ),
@@ -64,7 +67,7 @@ const NAV = [
     href: '/recovery',
     label: 'Récupération',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
         <path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4"/>
         <path d="M12 8v1M9.17 9.17l.7.7M8 12h1M15 12h1M14.12 9.88l.71-.71"/>
@@ -75,7 +78,7 @@ const NAV = [
     href: '/nutrition',
     label: 'Nutrition',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2C8 2 5 5 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-4-3-7-7-7z"/>
         <circle cx="12" cy="9" r="2.5"/>
       </svg>
@@ -85,9 +88,8 @@ const NAV = [
     href: '/performance',
     label: 'Performance',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 8v4l3 3"/>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
       </svg>
     ),
   },
@@ -95,7 +97,7 @@ const NAV = [
     href: '/injuries',
     label: 'Blessures',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
         <path d="M12 8v4M12 16h.01"/>
       </svg>
@@ -105,7 +107,7 @@ const NAV = [
     href: '/athletes',
     label: 'Athlètes',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
         <circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
@@ -114,336 +116,393 @@ const NAV = [
   },
 ]
 
-function NavContent({ onClose }: { onClose?: () => void }) {
-  const pathname = usePathname()
-  const { mode, toggleTheme, label } = useTheme()
+// ── Avatar helper ──────────────────────────────────────────────
+
+function Avatar({ url, name, size = 40 }: { url: string | null; name: string | null; size?: number }) {
+  const initials = name
+    ? name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?'
+
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name ?? 'Avatar'}
+        style={{
+          width: size, height: size,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          flexShrink: 0,
+          border: '2px solid rgba(0,200,224,0.3)',
+        }}
+      />
+    )
+  }
 
   return (
     <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: '20px 12px',
+      width: size, height: size,
+      borderRadius: '50%',
+      flexShrink: 0,
+      background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'Syne, sans-serif',
+      fontWeight: 700,
+      fontSize: size * 0.35,
+      color: '#fff',
+      letterSpacing: '-0.02em',
+    }}>
+      {initials}
+    </div>
+  )
+}
+
+// ── Nav link ───────────────────────────────────────────────────
+
+function NavItem({
+  href, label, icon, active, onClick,
+}: {
+  href: string; label: string; icon: React.ReactNode
+  active: boolean; onClick?: () => void
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '9px 12px',
+        borderRadius: 10,
+        textDecoration: 'none',
+        fontFamily: 'DM Sans, sans-serif',
+        fontSize: 13,
+        fontWeight: active ? 600 : 400,
+        color: active ? '#00c8e0' : 'var(--text-mid)',
+        background: active ? 'rgba(0,200,224,0.10)' : 'transparent',
+        borderLeft: `3px solid ${active ? '#00c8e0' : 'transparent'}`,
+        transition: 'background 0.14s, color 0.14s',
+      }}
+      onMouseEnter={e => {
+        if (!active) {
+          (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)'
+          ;(e.currentTarget as HTMLElement).style.color = 'var(--text)'
+        }
+      }}
+      onMouseLeave={e => {
+        if (!active) {
+          (e.currentTarget as HTMLElement).style.background = 'transparent'
+          ;(e.currentTarget as HTMLElement).style.color = 'var(--text-mid)'
+        }
+      }}
+    >
+      <span style={{ flexShrink: 0, opacity: active ? 1 : 0.6, display: 'flex' }}>
+        {icon}
+      </span>
+      {label}
+    </Link>
+  )
+}
+
+// ── Sidebar content (shared desktop + mobile drawer) ───────────
+
+function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const pathname = usePathname()
+  const { mode, toggleTheme, label } = useTheme()
+  const { profile } = useProfile()
+
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
       overflowY: 'auto',
     }}>
-      {/* Logo */}
-      <Link
-        href="/"
-        onClick={onClose}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '10px 12px', borderRadius: '12px',
-          marginBottom: '28px', textDecoration: 'none',
-          background: 'linear-gradient(135deg, rgba(0,200,224,0.10), rgba(91,111,255,0.07))',
-          border: '1px solid rgba(0,200,224,0.15)',
-        }}
-      >
+
+      {/* ── Brand ── */}
+      <div style={{
+        padding: '20px 16px 16px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        borderBottom: '1px solid var(--nav-border)',
+        flexShrink: 0,
+      }}>
         <div style={{
-          width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+          width: 30, height: 30, borderRadius: 9, flexShrink: 0,
           background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
-          boxShadow: '0 0 16px rgba(0,200,224,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'Syne, sans-serif', fontWeight: 800,
-          fontSize: '11px', color: '#fff',
+          fontSize: 10, color: '#fff',
+          boxShadow: '0 0 12px rgba(0,200,224,0.25)',
         }}>
           THW
         </div>
-        <div>
+        <span style={{
+          fontFamily: 'Syne, sans-serif', fontWeight: 700,
+          fontSize: 14, color: 'var(--text)', letterSpacing: '-0.02em',
+        }}>
+          THW Coaching
+        </span>
+      </div>
+
+      {/* ── Profile ── */}
+      <Link
+        href="/profile"
+        onClick={onClose}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 16px',
+          textDecoration: 'none',
+          borderBottom: '1px solid var(--nav-border)',
+          flexShrink: 0,
+          transition: 'background 0.14s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.05)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+      >
+        <Avatar
+          url={profile?.avatar_url ?? null}
+          name={profile?.full_name ?? null}
+          size={40}
+        />
+        <div style={{ minWidth: 0 }}>
           <div style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            fontSize: '14px', color: 'var(--text)', lineHeight: 1.2,
+            fontFamily: 'Syne, sans-serif',
+            fontWeight: 700,
+            fontSize: 13,
+            color: 'var(--text)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            lineHeight: 1.3,
           }}>
-            THW Coaching
+            {profile?.full_name ?? 'Mon profil'}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '1px' }}>
-            Coach · Athlète
+          <div style={{
+            fontSize: 11,
+            color: 'var(--text-dim)',
+            marginTop: 2,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            Athlète
           </div>
         </div>
       </Link>
 
-      {/* Nav items */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-        {NAV.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '10px 12px', borderRadius: '11px',
-                textDecoration: 'none', transition: 'all 0.15s',
-                background: isActive ? 'rgba(0,200,224,0.10)' : 'transparent',
-                color: isActive ? '#00c8e0' : 'var(--text-mid)',
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: '13.5px',
-                fontWeight: isActive ? 600 : 400,
-                borderLeft: isActive ? '3px solid #00c8e0' : '3px solid transparent',
-              }}
-            >
-              <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.65 }}>
-                {item.icon}
-              </span>
-              {item.label}
-            </Link>
-          )
-        })}
+      {/* ── Nav ── */}
+      <nav style={{
+        flex: 1,
+        display: 'flex', flexDirection: 'column',
+        padding: '8px 8px',
+        gap: 2,
+      }}>
+        {NAV.map(item => (
+          <NavItem
+            key={item.href}
+            href={item.href}
+            label={item.label}
+            icon={item.icon}
+            active={pathname === item.href}
+            onClick={onClose}
+          />
+        ))}
       </nav>
 
-      {/* Bottom */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingTop: '8px' }}>
+      {/* ── Bottom ── */}
+      <div style={{
+        padding: '8px 8px 16px',
+        borderTop: '1px solid var(--nav-border)',
+        display: 'flex', flexDirection: 'column', gap: 2,
+        flexShrink: 0,
+      }}>
         <button
           onClick={toggleTheme}
           style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            padding: '10px 12px', borderRadius: '11px',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: 'var(--text-mid)', fontSize: '13.5px',
-            fontFamily: 'DM Sans, sans-serif', width: '100%', textAlign: 'left' as const,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: 'var(--text-mid)', fontSize: 13,
+            fontFamily: 'DM Sans, sans-serif', width: '100%',
+            textAlign: 'left',
+            transition: 'background 0.14s',
           }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
         >
-          {mode === 'dark' ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <circle cx="12" cy="12" r="5"/>
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-            </svg>
-          )}
+          <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
+            {mode === 'dark' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <circle cx="12" cy="12" r="5"/>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+            )}
+          </span>
           {label}
         </button>
-
-        <Link
-          href="/profile"
-          onClick={onClose}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            padding: '10px 12px', borderRadius: '11px',
-            textDecoration: 'none',
-            background: pathname === '/profile' ? 'rgba(0,200,224,0.10)' : 'transparent',
-            color: pathname === '/profile' ? '#00c8e0' : 'var(--text-mid)',
-            fontSize: '13.5px', fontFamily: 'DM Sans, sans-serif',
-            borderLeft: pathname === '/profile' ? '3px solid #00c8e0' : '3px solid transparent',
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-            <circle cx="12" cy="8" r="4"/>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-          </svg>
-          Mon profil
-        </Link>
       </div>
     </div>
   )
 }
 
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR EXPORT
+// Desktop : statique 240px dans le flux flex du layout
+// Mobile  : top bar 56px fixe + drawer CSS-transitionné
+// ══════════════════════════════════════════════════════════════
+
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [desktopOpen, setDesktopOpen] = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
-  const drawerRef = useRef<HTMLDivElement>(null)
 
-  // Mobile: swipe to open/close
+  // Swipe to open/close on mobile
   useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
+    const onStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX
       touchStartY.current = e.touches[0].clientY
     }
-    const handleTouchEnd = (e: TouchEvent) => {
+    const onEnd = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - touchStartX.current
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
-      if (dx > 60 && dy < 100 && touchStartX.current < 40) setMobileOpen(true)
-      if (dx < -60 && dy < 100) setMobileOpen(false)
+      // Swipe right from left edge → open
+      if (dx > 55 && dy < 80 && touchStartX.current < 32) setMobileOpen(true)
+      // Swipe left → close
+      if (dx < -55 && dy < 80) setMobileOpen(false)
     }
-    document.addEventListener('touchstart', handleTouchStart, { passive: true })
-    document.addEventListener('touchend', handleTouchEnd, { passive: true })
+    document.addEventListener('touchstart', onStart, { passive: true })
+    document.addEventListener('touchend', onEnd, { passive: true })
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart)
-      document.removeEventListener('touchend', handleTouchEnd)
+      document.removeEventListener('touchstart', onStart)
+      document.removeEventListener('touchend', onEnd)
     }
+  }, [])
+
+  // Close on Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false) }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
   }, [])
 
   return (
     <>
-      {/* ── DESKTOP ── */}
-
-      {/* Hover trigger zone — 3 lignes à gauche */}
-      <div
+      {/* ════════════════════════════════════════════════════
+          DESKTOP — sidebar statique 240px, toujours visible
+          Elle s'insère dans le flex row du layout.tsx et
+          prend 240px ; la <main> prend le reste (flex:1).
+          ════════════════════════════════════════════════════ */}
+      <aside
         className="hidden md:flex"
-        onMouseEnter={() => setDesktopOpen(true)}
         style={{
-          position: 'fixed',
-          top: 0, left: 0, bottom: 0,
-          width: desktopOpen ? '0' : '28px',
-          zIndex: 30,
-          cursor: 'pointer',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: 240,
+          flexShrink: 0,
+          height: '100vh',
+          background: 'var(--nav-bg)',
+          borderRight: '1px solid var(--nav-border)',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
         }}
-      />
+      >
+        <SidebarContent />
+      </aside>
 
-      {/* Desktop burger button — visible quand sidebar fermée */}
-      {!desktopOpen && (
-        <button
-          className="hidden md:flex"
-          onMouseEnter={() => setDesktopOpen(true)}
-          style={{
-            position: 'fixed',
-            top: '18px', left: '14px',
-            zIndex: 40,
-            width: '36px', height: '36px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text)',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-            transition: 'opacity 0.2s',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M3 12h18M3 6h18M3 18h18"/>
-          </svg>
-        </button>
-      )}
+      {/* ════════════════════════════════════════════════════
+          MOBILE — top bar fixe 56px + drawer avec transition
+          ════════════════════════════════════════════════════ */}
 
-      {/* Desktop sidebar — s'ouvre au survol */}
-      {desktopOpen && (
-        <>
-          {/* Overlay transparent pour fermer */}
-          <div
-            className="hidden md:block"
-            onMouseLeave={() => setDesktopOpen(false)}
-            style={{
-              position: 'fixed', inset: 0,
-              zIndex: 25,
-            }}
-          />
-          <aside
-            className="hidden md:flex flex-col"
-            onMouseLeave={() => setDesktopOpen(false)}
-            style={{
-              position: 'fixed',
-              top: 0, left: 0, bottom: 0,
-              width: '220px',
-              zIndex: 35,
-              background: 'var(--nav-bg)',
-              borderRight: '1px solid var(--nav-border)',
-              boxShadow: '4px 0 32px rgba(0,0,0,0.15)',
-              animation: 'slideIn 0.18s ease',
-            }}
-          >
-            <NavContent />
-          </aside>
-        </>
-      )}
-
-      {/* ── MOBILE ── */}
-
-      {/* Mobile top bar */}
+      {/* Top bar */}
       <div
         className="md:hidden"
         style={{
           position: 'fixed', top: 0, left: 0, right: 0,
-          zIndex: 50, height: '56px',
+          height: 56, zIndex: 50,
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 16px',
+          padding: '0 14px',
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
         }}
       >
-        {/* Burger à gauche */}
+        {/* Burger */}
         <button
-          onClick={() => setMobileOpen(!mobileOpen)}
+          onClick={() => setMobileOpen(v => !v)}
           style={{
+            width: 36, height: 36, borderRadius: 9,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: '9px', padding: '7px',
             cursor: 'pointer', color: 'var(--text)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           {mobileOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M3 12h18M3 6h18M3 18h18"/>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+              <path d="M3 6h18M3 12h18M3 18h18"/>
             </svg>
           )}
         </button>
 
         {/* Logo centré */}
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
           <div style={{
-            width: '32px', height: '32px', borderRadius: '9px',
+            width: 30, height: 30, borderRadius: 8,
             background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: 'Syne, sans-serif', fontWeight: 800,
-            fontSize: '11px', color: '#fff',
-            boxShadow: '0 0 12px rgba(0,200,224,0.3)',
+            fontSize: 10, color: '#fff',
+            boxShadow: '0 0 10px rgba(0,200,224,0.3)',
           }}>
             THW
           </div>
           <span style={{
             fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            fontSize: '15px', color: 'var(--text)',
+            fontSize: 15, color: 'var(--text)',
           }}>
             THW Coaching
           </span>
         </Link>
 
-        {/* Placeholder droite pour équilibrer */}
-        <div style={{ width: '36px' }} />
+        {/* Espace droit */}
+        <div style={{ width: 36 }} />
       </div>
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <>
-          <div
-            className="md:hidden"
-            onClick={() => setMobileOpen(false)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 40,
-              background: 'rgba(0,0,0,0.35)',
-              backdropFilter: 'blur(2px)',
-            }}
-          />
-          <div
-            ref={drawerRef}
-            className="md:hidden"
-            style={{
-              position: 'fixed', top: 0, left: 0, bottom: 0,
-              width: '260px', zIndex: 50,
-              background: 'var(--nav-bg)',
-              boxShadow: '4px 0 32px rgba(0,0,0,0.15)',
-              animation: 'slideIn 0.22s ease',
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch' as any,
-              touchAction: 'pan-y',
-            }}
-          >
-            <NavContent onClose={() => setMobileOpen(false)} />
-          </div>
-        </>
-      )}
+      {/* Overlay sombre derrière le drawer */}
+      <div
+        className="md:hidden"
+        onClick={() => setMobileOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 55,
+          background: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(2px)',
+          opacity: mobileOpen ? 1 : 0,
+          pointerEvents: mobileOpen ? 'auto' : 'none',
+          transition: 'opacity 0.25s ease',
+        }}
+      />
 
-      <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(-100%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-      `}</style>
+      {/* Drawer — transition CSS, pas de conditional render */}
+      <div
+        className="md:hidden"
+        style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0,
+          width: 280, zIndex: 60,
+          background: 'var(--nav-bg)',
+          boxShadow: mobileOpen ? '4px 0 32px rgba(0,0,0,0.18)' : 'none',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+          transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.26s cubic-bezier(0.32,1.06,0.64,1)',
+        }}
+      >
+        <SidebarContent onClose={() => setMobileOpen(false)} />
+      </div>
     </>
   )
 }

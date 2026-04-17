@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Types ────────────────────────────────────────────────────────
@@ -707,13 +707,17 @@ function ZonesSubTab({ profile, onSelect, selectedDatum }: {
 // ════════════════════════════════════════════════
 // POWER CURVE LOG SVG
 // ════════════════════════════════════════════════
-function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
+function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
   bikeByYear: Record<string, Record<string, number>>
   hiddenYears: Set<string>
   selectedYear: string
+  weight: number
 }) {
   const W = 760, H = 380
   const leftMargin = 52, bottomMargin = 36
+
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [cursor, setCursor] = useState<{ svgX: number; pxX: number; dur: string | null } | null>(null)
 
   // compute visible watts
   const allYears = Object.keys(bikeByYear).sort()
@@ -756,6 +760,46 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
     return bikeByYear[year] ?? {}
   }
 
+  // Find the nearest BIKE_DURS duration to a given SVG x coordinate
+  function nearestDur(svgX: number): string | null {
+    let best: string | null = null
+    let bestDist = Infinity
+    for (const dur of BIKE_DURS) {
+      const secs = DUR_SECS[dur]
+      if (!secs) continue
+      const dist = Math.abs(logX(secs) - svgX)
+      if (dist < bestDist) { bestDist = dist; best = dur }
+    }
+    return bestDist < 28 ? best : null
+  }
+
+  function getSvgCoords(clientX: number): { svgX: number; pxX: number } | null {
+    const svg = svgRef.current
+    if (!svg) return null
+    const rect = svg.getBoundingClientRect()
+    const scale = W / rect.width
+    return {
+      svgX: (clientX - rect.left) * scale,
+      pxX: clientX - rect.left,
+    }
+  }
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const coords = getSvgCoords(e.clientX)
+    if (!coords) return
+    setCursor({ ...coords, dur: nearestDur(coords.svgX) })
+  }
+
+  function handleTouchMove(e: React.TouchEvent<SVGSVGElement>) {
+    if (!e.touches[0]) return
+    const coords = getSvgCoords(e.touches[0].clientX)
+    if (!coords) return
+    setCursor({ ...coords, dur: nearestDur(coords.svgX) })
+  }
+
+  function handleMouseLeave() { setCursor(null) }
+  function handleTouchEnd() { setCursor(null) }
+
   const xAxisDurs = ['10s','1min','5min','20min','1h','3h','6h']
 
   // Y grid lines at every 100W
@@ -767,85 +811,155 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
     ? visibleYears
     : visibleYears.filter(y => y === selectedYear)
 
+  // Tooltip rows for the hovered duration
+  const tooltipRows: { yr: string; color: string; w: number; wkg: string }[] = []
+  if (cursor?.dur) {
+    for (const yr of yearsToRender) {
+      const w = getBestForYear(yr)[cursor.dur] ?? 0
+      if (w > 0) {
+        const wkg = weight > 0 ? (w / weight).toFixed(2) : '—'
+        tooltipRows.push({ yr, color: YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR, w, wkg })
+      }
+    }
+    tooltipRows.sort((a, b) => b.w - a.w)
+  }
+
   // gradient IDs must be unique per year
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', minWidth: W, height: H + 4, display: 'block', overflow: 'visible' }}>
-      <defs>
+    <div style={{ position: 'relative' }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', minWidth: W, height: H + 4, display: 'block', overflow: 'visible', cursor: 'crosshair' }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <defs>
+          {yearsToRender.map(yr => {
+            const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+            return (
+              <linearGradient key={yr} id={`pcg-${yr}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+              </linearGradient>
+            )
+          })}
+          {selectedYear === 'All Time' && (
+            <linearGradient id="pcg-alltime" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#00c8e0" stopOpacity="0.20" />
+              <stop offset="100%" stopColor="#00c8e0" stopOpacity="0.02" />
+            </linearGradient>
+          )}
+        </defs>
+
+        {/* Grid */}
+        {yGridVals.map(w => (
+          <line key={w}
+            x1={leftMargin} y1={polyY(w)} x2={W} y2={polyY(w)}
+            stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 4"
+          />
+        ))}
+
+        {/* Y axis labels */}
+        {yGridVals.filter(w => w % 100 === 0).map(w => (
+          <text key={w} x={leftMargin - 6} y={polyY(w) + 4} textAnchor="end"
+            style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+            {w}W
+          </text>
+        ))}
+
+        {/* Year curves + dots */}
         {yearsToRender.map(yr => {
           const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+          const bestForYear = getBestForYear(yr)
+          const points = BIKE_DURS.map(dur => {
+            const w = bestForYear[dur] ?? 0
+            return { dur, w, x: logX(DUR_SECS[dur] ?? 1), y: polyY(w) }
+          }).filter(p => p.w > 0)
+
+          if (points.length === 0) return null
+
+          const polylineStr = points.map(p => `${p.x},${p.y}`).join(' ')
+          const fillStr = `${leftMargin},${H - bottomMargin} ${polylineStr} ${points[points.length - 1].x},${H - bottomMargin}`
+
           return (
-            <linearGradient key={yr} id={`pcg-${yr}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-            </linearGradient>
+            <g key={yr}>
+              <polygon points={fillStr} fill={`url(#pcg-${yr})`} />
+              <polyline points={polylineStr} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              {points.map(p => {
+                const isHovered = cursor?.dur === p.dur
+                return (
+                  <g key={p.dur} style={{ pointerEvents: 'none' }}>
+                    {isHovered && (
+                      <circle cx={p.x} cy={p.y} r={11} fill={color} opacity={0.18} />
+                    )}
+                    <circle cx={p.x} cy={p.y} r={isHovered ? 6 : 4.5} fill={color} stroke={isHovered ? '#fff' : 'none'} strokeWidth={isHovered ? 1.5 : 0}>
+                      {!isHovered && <title>{yr} · {p.dur} · {p.w}W</title>}
+                    </circle>
+                  </g>
+                )
+              })}
+            </g>
           )
         })}
-        {selectedYear === 'All Time' && (
-          <linearGradient id="pcg-alltime" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00c8e0" stopOpacity="0.20" />
-            <stop offset="100%" stopColor="#00c8e0" stopOpacity="0.02" />
-          </linearGradient>
+
+        {/* Vertical crosshair */}
+        {cursor && (
+          <line
+            x1={cursor.svgX} y1={10}
+            x2={cursor.svgX} y2={H - bottomMargin}
+            stroke="rgba(255,255,255,0.30)" strokeWidth="1" strokeDasharray="4 3"
+            style={{ pointerEvents: 'none' }}
+          />
         )}
-      </defs>
 
-      {/* Grid */}
-      {yGridVals.map(w => (
-        <line key={w}
-          x1={leftMargin} y1={polyY(w)} x2={W} y2={polyY(w)}
-          stroke="var(--border)" strokeWidth="0.5" strokeDasharray="3 4"
-        />
-      ))}
+        {/* X axis labels */}
+        {xAxisDurs.map(dur => {
+          const secs = DUR_SECS[dur]
+          if (!secs) return null
+          return (
+            <text key={dur} x={logX(secs)} y={H - 10} textAnchor="middle"
+              style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+              {dur}
+            </text>
+          )
+        })}
 
-      {/* Y axis labels */}
-      {yGridVals.filter(w => w % 100 === 0).map(w => (
-        <text key={w} x={leftMargin - 6} y={polyY(w) + 4} textAnchor="end"
-          style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
-          {w}W
-        </text>
-      ))}
+        {/* X axis line */}
+        <line x1={leftMargin} y1={H - bottomMargin} x2={W} y2={H - bottomMargin} stroke="var(--border)" strokeWidth="1" />
+      </svg>
 
-      {/* Year curves */}
-      {yearsToRender.map(yr => {
-        const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
-        const bestForYear = getBestForYear(yr)
-        const points = BIKE_DURS.map(dur => {
-          const w = bestForYear[dur] ?? 0
-          return { dur, w, x: logX(DUR_SECS[dur] ?? 1), y: polyY(w) }
-        }).filter(p => p.w > 0)
-
-        if (points.length === 0) return null
-
-        const polylineStr = points.map(p => `${p.x},${p.y}`).join(' ')
-        const fillStr = `${leftMargin},${H - bottomMargin} ${polylineStr} ${points[points.length - 1].x},${H - bottomMargin}`
-
-        return (
-          <g key={yr}>
-            <polygon points={fillStr} fill={`url(#pcg-${yr})`} />
-            <polyline points={polylineStr} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-            {points.map(p => (
-              <circle key={p.dur} cx={p.x} cy={p.y} r={4.5} fill={color}>
-                <title>{yr} · {p.dur} · {p.w}W</title>
-              </circle>
-            ))}
-          </g>
-        )
-      })}
-
-      {/* X axis labels */}
-      {xAxisDurs.map(dur => {
-        const secs = DUR_SECS[dur]
-        if (!secs) return null
-        return (
-          <text key={dur} x={logX(secs)} y={H - 10} textAnchor="middle"
-            style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
-            {dur}
-          </text>
-        )
-      })}
-
-      {/* X axis line */}
-      <line x1={leftMargin} y1={H - bottomMargin} x2={W} y2={H - bottomMargin} stroke="var(--border)" strokeWidth="1" />
-    </svg>
+      {/* Floating tooltip */}
+      {cursor?.dur && tooltipRows.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: 14,
+          left: cursor.svgX < W * 0.55 ? cursor.pxX + 14 : cursor.pxX - 198,
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: '8px 12px',
+          pointerEvents: 'none',
+          zIndex: 20,
+          minWidth: 172,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            {cursor.dur}
+          </div>
+          {tooltipRows.map(row => (
+            <div key={row.yr} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: row.color, flexShrink: 0, display: 'inline-block' }} />
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 34 }}>{row.yr}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono,monospace', marginLeft: 'auto' }}>{row.w}W</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{row.wkg} W/kg</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -935,7 +1049,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
 
             {/* Scroll horizontal sur mobile si l'axe X est trop dense */}
             <div style={{ overflowX: 'auto', overflowY: 'visible', margin: '0 -4px' }}>
-              <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={selectedYear} />
+              <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={selectedYear} weight={profile.weight} />
             </div>
 
             {/* Legend */}

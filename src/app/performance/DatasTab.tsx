@@ -712,8 +712,8 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
   hiddenYears: Set<string>
   selectedYear: string
 }) {
-  const W = 560, H = 150
-  const leftMargin = 35, bottomMargin = 24
+  const W = 760, H = 380
+  const leftMargin = 52, bottomMargin = 36
 
   // compute visible watts
   const allYears = Object.keys(bikeByYear).sort()
@@ -769,7 +769,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
 
   // gradient IDs must be unique per year
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H + 4, overflow: 'visible' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', minWidth: W, height: H + 4, display: 'block', overflow: 'visible' }}>
       <defs>
         {yearsToRender.map(yr => {
           const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
@@ -797,9 +797,9 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
       ))}
 
       {/* Y axis labels */}
-      {yGridVals.filter(w => w % 200 === 0).map(w => (
-        <text key={w} x={leftMargin - 4} y={polyY(w) + 4} textAnchor="end"
-          style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+      {yGridVals.filter(w => w % 100 === 0).map(w => (
+        <text key={w} x={leftMargin - 6} y={polyY(w) + 4} textAnchor="end"
+          style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
           {w}W
         </text>
       ))}
@@ -821,9 +821,9 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
         return (
           <g key={yr}>
             <polygon points={fillStr} fill={`url(#pcg-${yr})`} />
-            <polyline points={polylineStr} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            <polyline points={polylineStr} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
             {points.map(p => (
-              <circle key={p.dur} cx={p.x} cy={p.y} r={3} fill={color}>
+              <circle key={p.dur} cx={p.x} cy={p.y} r={4.5} fill={color}>
                 <title>{yr} · {p.dur} · {p.w}W</title>
               </circle>
             ))}
@@ -836,8 +836,8 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear }: {
         const secs = DUR_SECS[dur]
         if (!secs) return null
         return (
-          <text key={dur} x={logX(secs)} y={H - 6} textAnchor="middle"
-            style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+          <text key={dur} x={logX(secs)} y={H - 10} textAnchor="middle"
+            style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
             {dur}
           </text>
         )
@@ -933,7 +933,10 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
               </select>
             </div>
 
-            <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={selectedYear} />
+            {/* Scroll horizontal sur mobile si l'axe X est trop dense */}
+            <div style={{ overflowX: 'auto', overflowY: 'visible', margin: '0 -4px' }}>
+              <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={selectedYear} />
+            </div>
 
             {/* Legend */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>

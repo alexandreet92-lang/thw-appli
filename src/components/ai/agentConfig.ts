@@ -12,6 +12,7 @@ export type PageAgent =
   | 'sessionBuilder'
   | 'nutrition'
   | 'performance'
+  | 'profiling'
 
 export interface QuickAction {
   label: string
@@ -34,6 +35,7 @@ export const MAIN_AGENTS: PageAgent[] = [
   'strategy',
   'sessionBuilder',
   'performance',
+  'profiling',
   'readiness',
   'nutrition',
 ]
@@ -46,6 +48,7 @@ export const AGENT_DISPLAY: Record<PageAgent, string> = {
   sessionBuilder: 'Séances',
   nutrition:      'Nutrition',
   performance:    'Training',
+  profiling:      'Performance',
   adjustment:     'Adaptation',
 }
 
@@ -194,43 +197,58 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
         prompt: 'J\'ai fini une séance intense. Que dois-je manger pour optimiser ma récupération ?',
       },
       {
-        label: 'Plan d\'hydratation',
-        prompt: 'Donne-moi un plan d\'hydratation optimal pour aujourd\'hui avec ma séance prévue.',
+        label: 'Créer un plan nutritionnel',
+        prompt: 'Crée-moi un plan nutritionnel complet et personnalisé pour la semaine. Prends en compte mon profil d\'athlète, mes objectifs et mon programme d\'entraînement.',
       },
     ],
   },
 
+  // ── Training : analyse des activités, zones, progression ─────
   performance: {
     id: 'performance',
-    name: 'Coach Performance',
-    subtitle: 'Analyse ta progression et tes données',
+    name: 'Coach Training',
+    subtitle: 'Analyse tes activités et ta progression',
     accent: '#f97316',
     quickActions: [
       {
-        label: '🔬 Analyse complète de mon profil',
+        label: 'Analyse une activité',
+        prompt: 'Je veux analyser une activité spécifique. Dis-moi laquelle tu souhaites que j\'analyse (ex : course du 12 avril, sortie vélo de samedi, dernière séance Hyrox…) et je te donne une analyse complète : allure, FC, zones, points forts et axes de progression.',
+      },
+      {
+        label: 'Identifie mes points faibles',
+        prompt: 'Pour quel sport veux-tu que j\'identifie tes points faibles ? (course, vélo, natation, Hyrox, gym…) Indique-le moi et je t\'analyse les données d\'entraînement pour trouver les lacunes et les axes de travail prioritaires.',
+      },
+      {
+        label: 'Pic de forme',
+        prompt: 'Comment atteindre un pic de forme pour une compétition dans 6 semaines ? Donne-moi un plan de périodisation avec la gestion de la charge, les intensités et les semaines-clés.',
+      },
+      {
+        label: 'Analyser mes zones',
+        prompt: 'Analyse ma répartition par zones d\'intensité sur mes dernières séances. Est-ce que je m\'entraîne dans les bonnes zones ? Y a-t-il un déséquilibre et comment le corriger ?',
+      },
+    ],
+  },
+
+  // ── Performance : profil physiologique & tests ───────────────
+  profiling: {
+    id: 'profiling',
+    name: 'Coach Performance',
+    subtitle: 'Profil physiologique · Tests · Données',
+    accent: '#a855f7',
+    quickActions: [
+      {
+        label: 'Analyse complète de mon profil',
         prompt: 'Analyse mon profil d\'athlète',
         managedAgentAction: 'analyzeProfile',
       },
       {
-        label: '📈 Tendances & progression',
-        prompt: 'Analyse mes activités récentes. Qu\'est-ce que tu observes comme tendances ? Je progresse ?',
+        label: 'Tendances & progression',
+        prompt: 'Analyse l\'évolution de mes indicateurs physiologiques (FTP, VMA, VO2max, FC) sur le temps. Quelles tendances vois-tu ? Est-ce que je progresse dans la bonne direction ?',
       },
       {
-        label: '⚡ Identifier mes points faibles',
-        prompt: 'Identifie mes points faibles dans mes données d\'entraînement et dis-moi comment les améliorer.',
-      },
-      {
-        label: '🎯 Pic de forme',
-        prompt: 'Comment atteindre un pic de forme pour une compétition dans 6 semaines ? Adapte ta réponse à mon profil.',
-      },
-      {
-        label: '🔵 Analyse mes zones d\'intensité',
-        prompt: 'Analyse ma répartition par zones d\'intensité. Est-ce que je m\'entraîne dans les bonnes zones selon mon profil ?',
-      },
-      {
-        label: '💡 Recommandations personnalisées',
-        prompt: 'Génère un profil d\'athlète personnalisé',
-        managedAgentAction: 'analyzeProfile',
+        label: 'Analyser un test',
+        prompt: 'Analyse un test de performance',
+        managedAgentAction: 'analyzeTest',
       },
     ],
   },

@@ -58,6 +58,7 @@ const AGENT_ROUTES: Record<string, string> = {
   sessionBuilder: '/session',
   nutrition:      '/nutrition',
   performance:    '/activities',
+  profiling:      '/performance',
   adjustment:     '/planning',
 }
 

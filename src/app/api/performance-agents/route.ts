@@ -3,6 +3,8 @@ import {
   analyzeProfile,
   analyzeTest,
   explainData,
+  getLacunes,
+  getProgression,
   type AthleteProfile,
 } from '@/lib/agents/performanceAgents'
 
@@ -34,6 +36,18 @@ export async function POST(req: NextRequest) {
         const dataValue = (payload.dataValue as string) ?? ''
         const context   = (payload.context as { sport?: string; period?: string } | undefined)
         reply = await explainData(dataName, dataValue, context)
+        break
+      }
+      case 'getLacunes': {
+        const profile     = (payload.profile ?? {}) as AthleteProfile
+        const testHistory = (payload.testHistory as Record<string, unknown>[]) ?? []
+        reply = await getLacunes(profile, testHistory)
+        break
+      }
+      case 'getProgression': {
+        const profile    = (payload.profile ?? {}) as AthleteProfile
+        const historique = (payload.historique as Record<string, unknown>[]) ?? []
+        reply = await getProgression(profile, historique)
         break
       }
       default:

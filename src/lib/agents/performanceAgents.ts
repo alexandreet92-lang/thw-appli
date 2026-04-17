@@ -1,17 +1,12 @@
 // ══════════════════════════════════════════════════════════════
 // PERFORMANCE AGENTS
-// Appels aux Managed Agents Anthropic pour l'onglet Performance.
-// 3 agents spécialisés : Profil, Tests, Explication de données.
+// Appels à l'agent unifié Anthropic pour l'onglet Performance.
 // ══════════════════════════════════════════════════════════════
 
-const API_BASE   = 'https://api.anthropic.com/v1'
+const API_BASE    = 'https://api.anthropic.com/v1'
 const BETA_HEADER = 'managed-agents-2026-04-01'
 
-const AGENT_IDS = {
-  profil:  'agent_011Ca8DqHw1fHXhq7yeSNNrG',
-  tests:   'agent_011Ca8Ds9wMNxrpNi4B9YQuz',
-  explain: 'agent_011Ca8DwizZna5RJJXcg4s25',
-} as const
+const AGENT_ID = 'agent_011CaA6jzcmrj51wUc8qTc7y'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -36,7 +31,7 @@ interface SseEvent {
   error?: { message?: string }
 }
 
-async function callManagedAgent(agentId: string, userMessage: string): Promise<string> {
+async function callManagedAgent(payload: Record<string, unknown>): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
 
@@ -47,8 +42,8 @@ async function callManagedAgent(agentId: string, userMessage: string): Promise<s
     'anthropic-beta': BETA_HEADER,
   }
 
+  const sessBody: Record<string, string> = { agent: AGENT_ID }
   const envId = process.env.ANTHROPIC_ENVIRONMENT_ID
-  const sessBody: Record<string, string> = { agent: agentId }
   if (envId) sessBody.environment_id = envId
 
   // 1. Créer la session
@@ -64,7 +59,8 @@ async function callManagedAgent(agentId: string, userMessage: string): Promise<s
   const sess = await sessRes.json() as { id: string }
   const sessionId = sess.id
 
-  // 2. Envoyer le message utilisateur
+  // 2. Envoyer le message utilisateur (JSON sérialisé)
+  const userMessage = JSON.stringify(payload)
   const evtRes = await fetch(`${API_BASE}/sessions/${sessionId}/events`, {
     method: 'POST',
     headers,
@@ -126,26 +122,10 @@ async function callManagedAgent(agentId: string, userMessage: string): Promise<s
 // ── Fonctions exportées ──────────────────────────────────────
 
 export async function analyzeProfile(profile: AthleteProfile): Promise<string> {
-  const wkg = profile.ftp && profile.weight
-    ? `${(profile.ftp / profile.weight).toFixed(2)} W/kg`
-    : 'non renseigné'
-
-  const message = `Analyse le profil physiologique de cet athlète et donne une évaluation complète :
-
-- FTP : ${profile.ftp ?? 'non renseigné'} W (${wkg})
-- VMA : ${profile.vma ?? 'non renseigné'} km/h
-- VO2max : ${profile.vo2max ?? 'non renseigné'} ml/kg/min
-- FC max : ${profile.hrMax ?? 'non renseigné'} bpm
-- FC repos : ${profile.hrRest ?? 'non renseigné'} bpm
-- LTHR : ${profile.lthr ?? 'non renseigné'} bpm
-- Allure seuil : ${profile.thresholdPace ?? 'non renseigné'} /km
-- CSS : ${profile.css ?? 'non renseigné'} /100m
-- Poids : ${profile.weight ?? 'non renseigné'} kg
-- Âge : ${profile.age ?? 'non renseigné'} ans
-
-Donne : (1) niveau global par discipline, (2) points forts, (3) points faibles, (4) axes de progression prioritaires, (5) recommandations concrètes d'entraînement. Réponds en français de façon structurée.`
-
-  return callManagedAgent(AGENT_IDS.profil, message)
+  return callManagedAgent({
+    demande: 'profil_complet',
+    profil:  profile,
+  })
 }
 
 export async function analyzeTest(
@@ -153,25 +133,12 @@ export async function analyzeTest(
   testResults: Record<string, string>,
   profile?: AthleteProfile,
 ): Promise<string> {
-  const hasResults = Object.keys(testResults).length > 0
-  const resultsStr = hasResults
-    ? Object.entries(testResults).map(([k, v]) => `- ${k} : ${v}`).join('\n')
-    : '(aucun résultat enregistré — analyse le protocole et les attentes de performance)'
-
-  const profileStr = profile
-    ? `FTP: ${profile.ftp ?? '?'}W, VMA: ${profile.vma ?? '?'} km/h, VO2max: ${profile.vo2max ?? '?'} ml/kg/min, FC max: ${profile.hrMax ?? '?'} bpm, Poids: ${profile.weight ?? '?'} kg`
-    : 'non disponible'
-
-  const message = `Analyse le test sportif "${testName}" :
-
-Résultats obtenus :
-${resultsStr}
-
-Profil athlète : ${profileStr}
-
-Donne : (1) interprétation des résultats, (2) niveau de performance par rapport aux normes, (3) points forts et faibles identifiés, (4) recommandations concrètes d'entraînement pour progresser sur ce test. Réponds en français de façon structurée.`
-
-  return callManagedAgent(AGENT_IDS.tests, message)
+  return callManagedAgent({
+    demande:    'analyse_test',
+    test:       testName,
+    resultats:  testResults,
+    profil:     profile ?? null,
+  })
 }
 
 export async function explainData(
@@ -179,14 +146,32 @@ export async function explainData(
   dataValue: string,
   context?: { sport?: string; period?: string },
 ): Promise<string> {
-  const ctxStr = context?.sport ? ` (sport : ${context.sport})` : ''
+  return callManagedAgent({
+    demande:  'explication_donnee',
+    donnee:   dataName,
+    valeur:   dataValue,
+    contexte: context ?? null,
+  })
+}
 
-  const message = `Explique cette donnée d'entraînement${ctxStr} :
+export async function getLacunes(
+  profile: AthleteProfile,
+  testHistory: Record<string, unknown>[],
+): Promise<string> {
+  return callManagedAgent({
+    demande:          'lacunes',
+    profil:           profile,
+    historique_tests: testHistory,
+  })
+}
 
-Métrique : ${dataName}
-Valeur : ${dataValue}
-
-Donne : (1) définition claire de cette métrique, (2) comment interpréter cette valeur, (3) si c'est un bon niveau (avec références), (4) ce que cette valeur révèle sur la forme/progression de l'athlète, (5) conseils concrets pour l'améliorer. Réponds en français de façon accessible et actionnable.`
-
-  return callManagedAgent(AGENT_IDS.explain, message)
+export async function getProgression(
+  profile: AthleteProfile,
+  historique: Record<string, unknown>[],
+): Promise<string> {
+  return callManagedAgent({
+    demande:    'progression',
+    profil:     profile,
+    historique: historique,
+  })
 }

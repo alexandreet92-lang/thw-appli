@@ -18,7 +18,7 @@ export interface QuickAction {
   label: string
   prompt: string
   /** Si défini, déclenche un appel au Managed Agent au lieu du chat classique */
-  managedAgentAction?: 'analyzeProfile' | 'analyzeTest' | 'explainData'
+  managedAgentAction?: 'analyzeProfile' | 'analyzeTest' | 'explainData' | 'getLacunes' | 'getProgression'
 }
 
 export interface AgentConfig {
@@ -242,8 +242,14 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
         managedAgentAction: 'analyzeProfile',
       },
       {
-        label: 'Tendances & progression',
-        prompt: 'Analyse l\'évolution de mes indicateurs physiologiques (FTP, VMA, VO2max, FC) sur le temps. Quelles tendances vois-tu ? Est-ce que je progresse dans la bonne direction ?',
+        label: 'Quelles sont mes lacunes prioritaires ?',
+        prompt: '',
+        managedAgentAction: 'getLacunes',
+      },
+      {
+        label: 'Est-ce que je progresse ?',
+        prompt: '',
+        managedAgentAction: 'getProgression',
       },
       {
         label: 'Analyser un test',

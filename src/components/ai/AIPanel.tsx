@@ -410,13 +410,26 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
     const cid = conv.id
 
     try {
+      const ctx = context as Record<string, unknown> | undefined
+      const profile = ctx?.profile ?? {}
+
+      // Build payload specific to each action
+      let payload: Record<string, unknown>
+      switch (qa.managedAgentAction) {
+        case 'getLacunes':
+          payload = { profile, testHistory: [] }
+          break
+        case 'getProgression':
+          payload = { profile, historique: [] }
+          break
+        default:
+          payload = { profile }
+      }
+
       const res = await fetch('/api/performance-agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: qa.managedAgentAction,
-          payload: { profile: (context as Record<string, unknown>)?.profile ?? {} },
-        }),
+        body: JSON.stringify({ action: qa.managedAgentAction, payload }),
       })
       const data = await res.json() as { reply?: string; error?: string }
       const reply = data.reply ?? data.error ?? 'Désolé, une erreur est survenue.'

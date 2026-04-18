@@ -29,6 +29,13 @@ const YEAR_COLORS: Record<string, string> = {
 }
 const YEAR_DEFAULT_COLOR = '#9ca3af'
 
+// ── Power Curve: couleurs par rang (plus récent = index 0) ──────
+const PC_COLORS = ['#60B4FF', '#2563EB', '#EAB308', '#F97316', '#EF4444'] as const
+function getPCColor(yr: string, sortedDesc: string[]): string {
+  const idx = sortedDesc.indexOf(yr)
+  return idx >= 0 && idx < PC_COLORS.length ? PC_COLORS[idx] : YEAR_DEFAULT_COLOR
+}
+
 // ── Utility functions ────────────────────────────────────────────
 function parseSec(pace: string): number {
   const p = pace.split(':')
@@ -868,8 +875,9 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ svgX: number; pxX: number; dur: string | null } | null>(null)
 
-  // compute visible watts
-  const allYears = Object.keys(bikeByYear).sort()
+  // ── 5 années max, plus récentes en premier ───────────────────
+  const sortedDesc = Object.keys(bikeByYear).sort((a, b) => b.localeCompare(a)).slice(0, 5)
+  const allYears   = [...sortedDesc].reverse()                 // asc pour itération cohérente
   const visibleYears = allYears.filter(y => !hiddenYears.has(y))
 
   let maxW = 0
@@ -884,15 +892,17 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
   const plotW = W - leftMargin
   const plotH = H - bottomMargin - 10
 
+  // ── Échelle logarithmique : positionX = log10(secs) / log10(duréeMax) ──
+  const LOG_MAX = Math.log10(21600)   // 6h en secondes
   function logX(secs: number): number {
-    return (Math.log10(Math.max(secs, 1)) / Math.log10(21600)) * plotW + leftMargin
+    return (Math.log10(Math.max(secs, 1)) / LOG_MAX) * plotW + leftMargin
   }
 
   function polyY(w: number): number {
     return H - bottomMargin - (w / (maxW * 1.1)) * plotH
   }
 
-  // Build "all time" best per duration
+  // Best per duration (all time = max across visible years)
   function getBestForYear(year: string): Record<string, number> {
     if (year === 'All Time') {
       const best: Record<string, number> = {}
@@ -909,8 +919,17 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
     return bikeByYear[year] ?? {}
   }
 
-  // Find the nearest BIKE_DURS duration to a given SVG x coordinate
-  function nearestDur(svgX: number): string | null {
+  // ── Nearest duration avec seuil 30px physiques ───────────────
+  // scale = SVG units per CSS pixel → threshold en SVG units = 30 * scale
+  function getSvgCoords(clientX: number): { svgX: number; pxX: number; scale: number } | null {
+    const svg = svgRef.current
+    if (!svg) return null
+    const rect = svg.getBoundingClientRect()
+    const scale = W / rect.width
+    return { svgX: (clientX - rect.left) * scale, pxX: clientX - rect.left, scale }
+  }
+
+  function nearestDur(svgX: number, scale: number): string | null {
     let best: string | null = null
     let bestDist = Infinity
     for (const dur of BIKE_DURS) {
@@ -919,31 +938,21 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
       const dist = Math.abs(logX(secs) - svgX)
       if (dist < bestDist) { bestDist = dist; best = dur }
     }
-    return bestDist < 28 ? best : null
-  }
-
-  function getSvgCoords(clientX: number): { svgX: number; pxX: number } | null {
-    const svg = svgRef.current
-    if (!svg) return null
-    const rect = svg.getBoundingClientRect()
-    const scale = W / rect.width
-    return {
-      svgX: (clientX - rect.left) * scale,
-      pxX: clientX - rect.left,
-    }
+    // Convert SVG distance to physical pixels: dist / scale, seuil = 30px
+    return best !== null && bestDist / scale < 30 ? best : null
   }
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     const coords = getSvgCoords(e.clientX)
     if (!coords) return
-    setCursor({ ...coords, dur: nearestDur(coords.svgX) })
+    setCursor({ svgX: coords.svgX, pxX: coords.pxX, dur: nearestDur(coords.svgX, coords.scale) })
   }
 
   function handleTouchMove(e: React.TouchEvent<SVGSVGElement>) {
     if (!e.touches[0]) return
     const coords = getSvgCoords(e.touches[0].clientX)
     if (!coords) return
-    setCursor({ ...coords, dur: nearestDur(coords.svgX) })
+    setCursor({ svgX: coords.svgX, pxX: coords.pxX, dur: nearestDur(coords.svgX, coords.scale) })
   }
 
   function handleMouseLeave() { setCursor(null) }
@@ -967,7 +976,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
       const w = getBestForYear(yr)[cursor.dur] ?? 0
       if (w > 0) {
         const wkg = weight > 0 ? (w / weight).toFixed(2) : '—'
-        tooltipRows.push({ yr, color: YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR, w, wkg })
+        tooltipRows.push({ yr, color: getPCColor(yr, sortedDesc), w, wkg })
       }
     }
     tooltipRows.sort((a, b) => b.w - a.w)
@@ -987,7 +996,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
       >
         <defs>
           {yearsToRender.map(yr => {
-            const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+            const color = getPCColor(yr, sortedDesc)
             return (
               <linearGradient key={yr} id={`pcg-${yr}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={color} stopOpacity="0.22" />
@@ -1021,7 +1030,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
 
         {/* Year curves + dots */}
         {yearsToRender.map(yr => {
-          const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+          const color = getPCColor(yr, sortedDesc)
           const bestForYear = getBestForYear(yr)
           const points = BIKE_DURS.map(dur => {
             const w = bestForYear[dur] ?? 0
@@ -1235,7 +1244,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       if (!bikeByYear[yr][dur]) bikeByYear[yr][dur] = prev.w
     }
   }
-  const bikeYears = Object.keys(bikeByYear).sort((a, b) => b.localeCompare(a))
+  // Max 5 années les plus récentes
+  const bikeYears = Object.keys(bikeByYear).sort((a, b) => b.localeCompare(a)).slice(0, 5)
 
   function toggleHiddenYear(yr: string) {
     setHiddenYears(prev => {
@@ -1303,7 +1313,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             {/* Legend */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               {bikeYears.map(yr => {
-                const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+                const color = getPCColor(yr, bikeYears)
                 const hidden = hiddenYears.has(yr)
                 return (
                   <button key={yr} onClick={() => toggleHiddenYear(yr)} style={{

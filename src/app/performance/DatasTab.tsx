@@ -216,6 +216,538 @@ const GYM_MOVES = [
   { name:'Pompes',         recs:[{l:'Max reps',v:65}] },
 ]
 
+// ── Sports Records Types ─────────────────────────────────────────
+interface SpRecord {
+  id: string
+  sport: string
+  distance_label: string
+  performance: string
+  performance_unit: string
+  achieved_at: string
+}
+
+interface HyroxRace {
+  id: string
+  user_id: string
+  date: string
+  format: 'solo_open' | 'solo_pro' | 'duo_open' | 'duo_pro'
+  partenaire: string | null
+  temps_final: string
+  temps_run_total: string | null
+  stations: Record<string, string>
+  runs: string[]
+  created_at: string
+}
+
+const HYROX_FORMAT_LABELS: Record<string, string> = {
+  solo_open: 'Solo Open',
+  solo_pro:  'Solo Pro',
+  duo_open:  'Duo Open',
+  duo_pro:   'Duo Pro',
+}
+
+const CHART_DISTS: Record<string, string[]> = {
+  run:    ['5km', '10km', 'Semi', 'Marathon'],
+  swim:   ['100m', '200m', '400m', '1500m'],
+  rowing: ['500m', '2000m', '5000m'],
+}
+
+// ── YearSelector ─────────────────────────────────────────────────
+function YearSelector({ years, value, onChange, color = '#5b6fff' }: {
+  years: string[]; value: string; onChange: (y: string) => void; color?: string
+}) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} style={{
+      padding: '5px 10px', borderRadius: 7,
+      border: `1px solid ${color}55`,
+      background: 'var(--bg-card2)', color: 'var(--text)',
+      fontSize: 11, cursor: 'pointer', outline: 'none',
+    }}>
+      <option value="All Time">All Time</option>
+      {years.map(y => <option key={y} value={y}>{y}</option>)}
+    </select>
+  )
+}
+
+// ── TimeBarChart ─────────────────────────────────────────────────
+// Taller bar = slower = worse. Supabase data only.
+function TimeBarChart({ records, chartDists, color }: {
+  records: SpRecord[]
+  chartDists: string[]
+  color: string
+}) {
+  const [selDist, setSelDist] = useState(chartDists[0] ?? '')
+  const [hovIdx, setHovIdx]   = useState<number | null>(null)
+
+  const distRecs = records.filter(r => r.distance_label === selDist && r.performance !== '—')
+
+  const byYear: Record<string, { perf: string; date: string }> = {}
+  for (const rec of distRecs) {
+    const yr = rec.achieved_at.slice(0, 4)
+    if (!byYear[yr] || toSec(rec.performance) < toSec(byYear[yr].perf)) {
+      byYear[yr] = { perf: rec.performance, date: rec.achieved_at }
+    }
+  }
+  const sortedYears = Object.keys(byYear).sort((a, b) => b.localeCompare(a)).slice(0, 5)
+
+  const W = 360, H = 160, padL = 48, padR = 16, padT = 20, padB = 36
+  const plotW = W - padL - padR
+  const plotH = H - padT - padB
+
+  function fmtSec(s: number): string {
+    if (s >= 3600) {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60
+      return `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`
+    }
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`
+  }
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+        {chartDists.map(d => (
+          <button key={d} onClick={() => setSelDist(d)} style={{
+            padding: '4px 10px', borderRadius: 6,
+            background: selDist === d ? `${color}22` : 'var(--bg-card2)',
+            border: `1px solid ${selDist === d ? color : 'var(--border)'}`,
+            color: selDist === d ? color : 'var(--text-dim)',
+            fontSize: 11, fontWeight: selDist === d ? 600 : 400, cursor: 'pointer',
+          }}>{d}</button>
+        ))}
+      </div>
+      {sortedYears.length === 0 ? (
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
+          Ajoute un record {selDist} pour voir l'évolution annuelle.
+        </p>
+      ) : (() => {
+        const maxSec = Math.max(...sortedYears.map(y => toSec(byYear[y].perf)))
+        const minSec = Math.min(...sortedYears.map(y => toSec(byYear[y].perf)))
+        const range   = maxSec - minSec || maxSec * 0.1 || 60
+        const topSec  = maxSec + range * 0.2
+        const barW    = Math.min(40, plotW / sortedYears.length * 0.65)
+        const gap     = plotW / sortedYears.length
+        const bh  = (s: number) => (s / topSec) * plotH
+        const bx  = (i: number) => padL + gap * i + gap / 2 - barW / 2
+        const by  = (s: number) => padT + plotH - bh(s)
+        return (
+          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+            {[0, 0.5, 1].map(f => {
+              const y = padT + plotH * (1 - f)
+              return (
+                <g key={f}>
+                  <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3,3" />
+                  <text x={padL - 4} y={y + 4} textAnchor="end" fontSize={8} fill="var(--text-dim)">{fmtSec(Math.round(topSec * f))}</text>
+                </g>
+              )
+            })}
+            {sortedYears.map((yr, i) => {
+              const secs  = toSec(byYear[yr].perf)
+              const x     = bx(i), y = by(secs), h = bh(secs)
+              const col   = getPCColor(yr, sortedYears)
+              const isHov = hovIdx === i
+              const isBest = secs === minSec
+              return (
+                <g key={yr} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
+                  <rect x={x} y={y} width={barW} height={h}
+                    fill={`${col}${isHov ? 'ee' : '88'}`} stroke={col}
+                    strokeWidth={isBest ? 2 : 1} rx={3} />
+                  {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill={col} fontWeight="bold">★</text>}
+                  {(isHov || isBest) && (
+                    <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill={col} fontWeight="600">
+                      {byYear[yr].perf}
+                    </text>
+                  )}
+                  <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize={9}
+                    fill={isHov ? col : 'var(--text-dim)'}>{yr}</text>
+                </g>
+              )
+            })}
+            <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
+            <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
+          </svg>
+        )
+      })()}
+    </div>
+  )
+}
+
+// ── HyroxTotalChart ───────────────────────────────────────────────
+function HyroxTotalChart({ races, bestId }: { races: HyroxRace[]; bestId: string | null }) {
+  const [hovIdx, setHovIdx] = useState<number | null>(null)
+  const W = 360, H = 140, padL = 50, padR = 16, padT = 20, padB = 40
+  const plotW = W - padL - padR
+  const plotH = H - padT - padB
+  const maxSec = Math.max(...races.map(r => toSec(r.temps_final)))
+  const range  = maxSec * 0.15 || 300
+  const topSec = maxSec + range
+  const barW   = Math.min(36, plotW / races.length * 0.65)
+  const gap    = plotW / races.length
+  const bh = (s: number) => (s / topSec) * plotH
+  const bx = (i: number) => padL + gap * i + gap / 2 - barW / 2
+  const by = (s: number) => padT + plotH - bh(s)
+  const minSec = Math.min(...races.map(r => toSec(r.temps_final)))
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+      {[0, 0.5, 1].map(f => {
+        const y = padT + plotH * (1 - f)
+        const s = Math.round(topSec * f)
+        return (
+          <g key={f}>
+            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3,3" />
+            <text x={padL - 4} y={y + 4} textAnchor="end" fontSize={8} fill="var(--text-dim)">
+              {`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
+            </text>
+          </g>
+        )
+      })}
+      {races.map((r, i) => {
+        const secs  = toSec(r.temps_final)
+        const x = bx(i), y = by(secs), h = bh(secs)
+        const isBest = r.id === bestId
+        const isHov  = hovIdx === i
+        const col    = isBest ? '#ef4444' : '#ef444455'
+        return (
+          <g key={r.id} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
+            <rect x={x} y={y} width={barW} height={h}
+              fill={isHov ? '#ef4444aa' : col}
+              stroke={isBest ? '#ef4444' : 'none'} strokeWidth={2} rx={3} />
+            {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill="#ef4444" fontWeight="bold">★</text>}
+            {(isHov || secs === minSec) && (
+              <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill="#ef4444" fontWeight="600">
+                {r.temps_final}
+              </text>
+            )}
+            <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize={8}
+              fill={isHov ? '#ef4444' : 'var(--text-dim)'}>{r.date.slice(0, 7)}</text>
+            <text x={x + barW / 2} y={H - padB + 23} textAnchor="middle" fontSize={7} fill="var(--text-dim)">
+              {(HYROX_FORMAT_LABELS[r.format] ?? r.format).replace(' ', '·')}
+            </text>
+          </g>
+        )
+      })}
+      <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
+      <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
+    </svg>
+  )
+}
+
+// ── HyroxSection ─────────────────────────────────────────────────
+function HyroxSection({ onSelect, selectedDatum }: {
+  onSelect: (label: string, value: string) => void
+  selectedDatum: { label: string; value: string } | null
+}) {
+  const [races,    setRaces]    = useState<HyroxRace[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [c1Format, setC1Format] = useState('all')
+  const [c2Id,     setC2Id]     = useState<string | null>(null)
+
+  // Form state
+  const [fDate,       setFDate]       = useState(new Date().toISOString().slice(0, 10))
+  const [fFormat,     setFFormat]     = useState<HyroxRace['format']>('solo_open')
+  const [fPartenaire, setFPartenaire] = useState('')
+  const [fFinal,      setFFinal]      = useState('')
+  const [fStations,   setFStations]   = useState<Record<string, string>>(
+    () => Object.fromEntries(HYROX_STATIONS.map(s => [s, '']))
+  )
+  const [fRuns, setFRuns] = useState<string[]>(() => Array(8).fill('') as string[])
+
+  useEffect(() => { void loadRaces() }, [])
+
+  async function loadRaces() {
+    setLoading(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+    const { data } = await supabase
+      .from('hyrox_races')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+    if (data) setRaces(data as HyroxRace[])
+    setLoading(false)
+  }
+
+  function resetForm() {
+    setFDate(new Date().toISOString().slice(0, 10))
+    setFFormat('solo_open')
+    setFPartenaire('')
+    setFFinal('')
+    setFStations(Object.fromEntries(HYROX_STATIONS.map(s => [s, ''])))
+    setFRuns(Array(8).fill('') as string[])
+  }
+
+  async function saveRace() {
+    if (!fFinal) return
+    setSaving(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const totalRunSec = fRuns.reduce((acc, r) => acc + toSec(r), 0)
+      const totalRunStr = totalRunSec > 0
+        ? `${Math.floor(totalRunSec / 60)}:${String(totalRunSec % 60).padStart(2, '0')}`
+        : null
+      const { data: ins } = await supabase.from('hyrox_races').insert({
+        user_id: user.id, date: fDate, format: fFormat,
+        partenaire: fPartenaire || null, temps_final: fFinal,
+        temps_run_total: totalRunStr,
+        stations: fStations,
+        runs: fRuns.filter(r => r !== ''),
+      }).select().single()
+      if (ins) {
+        const newRace = ins as HyroxRace
+        setRaces(prev => [newRace, ...prev])
+        setC2Id(newRace.id)
+      }
+    }
+    setSaving(false)
+    setShowModal(false)
+    resetForm()
+  }
+
+  const c1Races = races
+    .filter(r => c1Format === 'all' || r.format === c1Format)
+    .slice(0, 10)
+  const bestId = c1Races.length > 0
+    ? c1Races.reduce((b, r) => toSec(r.temps_final) < toSec(b.temps_final) ? r : b).id
+    : null
+  const selectedRace = races.find(r => r.id === c2Id) ?? races[0] ?? null
+
+  if (loading) {
+    return <Card><p style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center', padding: '20px 0' }}>Chargement…</p></Card>
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Chart 1: total times */}
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Courses Hyrox</h2>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
+              {races.length === 0 ? 'Aucune course enregistrée' : `${races.length} course${races.length > 1 ? 's' : ''}`}
+            </p>
+          </div>
+          <button onClick={() => setShowModal(true)} style={{
+            padding: '7px 14px', borderRadius: 9, border: 'none',
+            background: 'linear-gradient(135deg,#ef4444,#f97316)',
+            color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>+ Ajouter</button>
+        </div>
+
+        {races.length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
+            Ajoute ta première course Hyrox pour voir les graphiques.
+          </p>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Format :</span>
+              {(['all', 'solo_open', 'solo_pro', 'duo_open', 'duo_pro'] as const).map(f => (
+                <button key={f} onClick={() => setC1Format(f)} style={{
+                  padding: '3px 9px', borderRadius: 6,
+                  background: c1Format === f ? 'rgba(239,68,68,0.15)' : 'var(--bg-card2)',
+                  border: `1px solid ${c1Format === f ? '#ef4444' : 'var(--border)'}`,
+                  color: c1Format === f ? '#ef4444' : 'var(--text-dim)',
+                  fontSize: 10, fontWeight: c1Format === f ? 700 : 400, cursor: 'pointer',
+                }}>
+                  {f === 'all' ? 'Tous' : (HYROX_FORMAT_LABELS[f] ?? f)}
+                </button>
+              ))}
+            </div>
+            {c1Races.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '8px 0' }}>
+                Aucune course {HYROX_FORMAT_LABELS[c1Format] ?? ''} enregistrée.
+              </p>
+            ) : (
+              <HyroxTotalChart races={c1Races} bestId={bestId} />
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* Chart 2: station detail */}
+      {races.length > 0 && (
+        <Card>
+          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Détail par station</h2>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
+            {races.slice(0, 5).map(r => {
+              const isActive = selectedRace?.id === r.id
+              return (
+                <button key={r.id} onClick={() => setC2Id(r.id)} style={{
+                  padding: '4px 10px', borderRadius: 7,
+                  background: isActive ? 'rgba(239,68,68,0.15)' : 'var(--bg-card2)',
+                  border: `1px solid ${isActive ? '#ef4444' : 'var(--border)'}`,
+                  color: isActive ? '#ef4444' : 'var(--text-dim)',
+                  fontSize: 10, cursor: 'pointer',
+                }}>
+                  {r.date.slice(0, 7)} · {HYROX_FORMAT_LABELS[r.format] ?? r.format}
+                </button>
+              )
+            })}
+          </div>
+          {selectedRace && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div>
+                  <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Temps total</p>
+                  <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 800, color: '#ef4444', margin: 0 }}>{selectedRace.temps_final}</p>
+                </div>
+                {selectedRace.partenaire && (
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Partenaire</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{selectedRace.partenaire}</p>
+                  </div>
+                )}
+              </div>
+              <h3 style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>Stations</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                {HYROX_STATIONS.map((s, i) => {
+                  const time = selectedRace.stations[s] ?? '—'
+                  const sel  = selectedDatum?.label === `Hyrox ${s}` && selectedDatum?.value === time
+                  return (
+                    <div key={s} onClick={() => time !== '—' ? onSelect(`Hyrox ${s}`, time) : undefined} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 8,
+                      background: sel ? 'rgba(239,68,68,0.10)' : 'rgba(239,68,68,0.05)',
+                      border: `1px solid ${sel ? 'rgba(239,68,68,0.50)' : 'rgba(239,68,68,0.12)'}`,
+                      cursor: time !== '—' ? 'pointer' : undefined,
+                    }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', width: 17, flexShrink: 0 }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontSize: 11 }}>{s}</span>
+                      <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 600, color: time !== '—' ? '#ef4444' : 'var(--text-dim)' }}>{time}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              {selectedRace.runs.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>Runs (×1km)</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                    {selectedRace.runs.map((r, i) => {
+                      const sel = selectedDatum?.label === `Hyrox Run ${i + 1}` && selectedDatum?.value === r
+                      return (
+                        <div key={i} onClick={() => onSelect(`Hyrox Run ${i + 1}`, r)} style={{
+                          padding: '6px 8px', borderRadius: 7, textAlign: 'center', cursor: 'pointer',
+                          background: sel ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.07)',
+                          border: `1px solid ${sel ? 'rgba(34,197,94,0.50)' : 'rgba(34,197,94,0.15)'}`,
+                        }}>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 2px' }}>Run {i + 1}</p>
+                          <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 600, color: '#22c55e', margin: 0 }}>{r}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* Modal: add race */}
+      {showModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9000,
+          background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16,
+        }} onClick={() => { setShowModal(false); resetForm() }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--bg-card)', borderRadius: 16, padding: 24,
+            width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle course Hyrox</h2>
+              <button onClick={() => { setShowModal(false); resetForm() }} style={{
+                width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)',
+                background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Date</p>
+                  <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} style={{
+                    width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
+                    background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none',
+                  }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Format</p>
+                  <select value={fFormat} onChange={e => setFFormat(e.target.value as HyroxRace['format'])} style={{
+                    width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
+                    background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none', cursor: 'pointer',
+                  }}>
+                    {Object.entries(HYROX_FORMAT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+              {(fFormat === 'duo_open' || fFormat === 'duo_pro') && (
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Partenaire</p>
+                  <input type="text" value={fPartenaire} onChange={e => setFPartenaire(e.target.value)} placeholder="Prénom Nom" style={{
+                    width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
+                    background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none',
+                  }} />
+                </div>
+              )}
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Temps final</p>
+                <input type="text" value={fFinal} onChange={e => setFFinal(e.target.value)} placeholder="ex: 1:02:45" style={{
+                  width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
+                  background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 14, outline: 'none',
+                }} />
+              </div>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Stations</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {HYROX_STATIONS.map((s, i) => (
+                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 10, color: '#ef4444', width: 14, flexShrink: 0, fontWeight: 700 }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontSize: 11 }}>{s}</span>
+                      <input type="text" value={fStations[s]} onChange={e => setFStations(prev => ({ ...prev, [s]: e.target.value }))}
+                        placeholder="mm:ss" style={{
+                          width: 72, padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)',
+                          background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none', textAlign: 'right',
+                        }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Runs (8×1km)</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i}>
+                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textAlign: 'center' }}>Run {i + 1}</p>
+                      <input type="text" value={fRuns[i]} placeholder="mm:ss"
+                        onChange={e => setFRuns(prev => { const n = [...prev]; n[i] = e.target.value; return n })}
+                        style={{
+                          width: '100%', padding: '5px 6px', borderRadius: 7, border: '1px solid var(--border)',
+                          background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none', textAlign: 'center',
+                        }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => void saveRace()} disabled={!fFinal || saving} style={{
+                padding: '10px', borderRadius: 10, border: 'none',
+                background: fFinal && !saving ? 'linear-gradient(135deg,#ef4444,#f97316)' : 'var(--bg-card2)',
+                color: fFinal && !saving ? '#fff' : 'var(--text-dim)',
+                fontSize: 13, fontWeight: 700, cursor: fFinal && !saving ? 'pointer' : 'not-allowed', marginTop: 4,
+              }}>
+                {saving ? 'Sauvegarde…' : 'Enregistrer la course'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── UI Primitives ────────────────────────────────────────────────
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
@@ -1132,9 +1664,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   const [sport, setSport] = useState<RecordSport>('bike')
   const [selectedYear, setSelectedYear] = useState('All Time')
   const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set())
-  const [simMode, setSimMode]     = useState(false)
-  const [simDeltas, setSimDeltas] = useState<Record<string, number>>({})
-
   // ── Inline edit state (one record at a time) ─────────────────────
   // key format: "bike-record-${dur}"
   const [activeEdit, setActiveEdit] = useState<string | null>(null)
@@ -1144,6 +1673,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
 
   // Supabase overrides: {dur -> {w, date}} — most recent record per duration
   const [bikeOverrides, setBikeOverrides] = useState<Record<string, {w: number; date: string}>>({})
+
+  // All personal records for run/swim/rowing/gym from Supabase
+  const [allSpRecords, setAllSpRecords] = useState<SpRecord[]>([])
+  const [runYear,  setRunYear]  = useState('All Time')
+  const [swimYear, setSwimYear] = useState('All Time')
+  const [rowYear,  setRowYear]  = useState('All Time')
+  const [gymYear,  setGymYear]  = useState('All Time')
 
   // Load latest bike records from Supabase on mount
   useEffect(() => {
@@ -1170,6 +1706,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     void load()
   }, [])
 
+  // Load run/swim/rowing/gym records from Supabase
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('personal_records')
+        .select('id, sport, distance_label, performance, performance_unit, achieved_at')
+        .eq('user_id', user.id)
+        .in('sport', ['run', 'swim', 'rowing', 'gym'])
+        .order('achieved_at', { ascending: false })
+      if (data) setAllSpRecords(data as SpRecord[])
+    }
+    void load()
+  }, [])
+
   // Returns the best record to display for a duration (Supabase override takes priority)
   function getEffectiveRec(dur: string): {w: number; date: string} {
     return bikeOverrides[dur] ?? BIKE_REC[dur]?.[0] ?? { w: 0, date: '—' }
@@ -1191,6 +1744,67 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   }
 
   function cancelEdit() {
+    setActiveEdit(null)
+    setEditDraft('')
+  }
+
+  // Helpers for non-bike sports
+  function getSpBest(sport: string, dist: string, year: string): { perf: string; date: string } | null {
+    const recs = allSpRecords.filter(r =>
+      r.sport === sport && r.distance_label === dist &&
+      (year === 'All Time' || r.achieved_at.slice(0, 4) === year)
+    )
+    if (!recs.length) return null
+    const isTime = sport !== 'gym'
+    const sorted = [...recs].sort((a, b) =>
+      isTime
+        ? toSec(a.performance) - toSec(b.performance)
+        : parseFloat(b.performance) - parseFloat(a.performance)
+    )
+    return { perf: sorted[0].performance, date: sorted[0].achieved_at }
+  }
+
+  function getSpYears(sport: string): string[] {
+    const years = new Set<string>()
+    allSpRecords.filter(r => r.sport === sport).forEach(r => years.add(r.achieved_at.slice(0, 4)))
+    return [...years].sort((a, b) => b.localeCompare(a))
+  }
+
+  async function confirmSpRecord(sport: string, dist: string, unit: string) {
+    setRecordSaving(true)
+    if (editDraft) {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('personal_records').insert({
+          user_id:          user.id,
+          sport,
+          distance_label:   dist,
+          performance:      editDraft,
+          performance_unit: unit,
+          event_type:       'training',
+          achieved_at:      editDate || new Date().toISOString().slice(0, 10),
+          race_name:        null,
+          pace_s_km:        null,
+          elevation_gain_m: null,
+          split_swim:       null,
+          split_bike:       null,
+          split_run:        null,
+          station_times:    null,
+          notes:            null,
+        })
+        const newRec: SpRecord = {
+          id:               crypto.randomUUID(),
+          sport,
+          distance_label:   dist,
+          performance:      editDraft,
+          performance_unit: unit,
+          achieved_at:      editDate || new Date().toISOString().slice(0, 10),
+        }
+        setAllSpRecords(prev => [...prev, newRec])
+      }
+    }
+    setRecordSaving(false)
     setActiveEdit(null)
     setEditDraft('')
   }
@@ -1254,14 +1868,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       else next.add(yr)
       return next
     })
-  }
-
-  function hyroxSimTotal(): string {
-    let total = 0
-    HYROX_STATIONS.forEach(s => { total += toSec(HYROX_REC.stations[s] || '0:00') - (simDeltas[s] || 0) })
-    HYROX_REC.runs.forEach((r, i) => { total += toSec(r) - (simDeltas[`run${i}`] || 0) })
-    total += toSec(HYROX_REC.roxzone)
-    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
   }
 
   const SPORT_TABS: [RecordSport, string, string][] = [
@@ -1406,227 +2012,288 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
 
       {/* RUN */}
       {sport === 'run' && (
-        <Card>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Records course à pied</h2>
-          {RUN_DISTS.map(d => {
-            const r24 = RUN_REC[d]?.[0]
-            const r23 = RUN_REC[d]?.[1]
-            const pace = calcPacePerKm(RUN_KM[d], r24?.time || '')
-            const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (r24?.time || '—')
-            return (
-              <RecordRow key={d} label={d}
-                rec24={r24?.time || '—'}
-                rec23={r23?.time || '—'}
-                sub={pace !== '—' ? pace : undefined}
-                onSelect={() => r24?.time && r24.time !== '—' ? onSelect(`Course ${d}`, r24.time) : undefined}
-                selected={sel}
-              />
-            )
-          })}
-        </Card>
-      )}
-
-      {/* SWIM */}
-      {sport === 'swim' && (
-        <Card>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Records natation</h2>
-          {SWIM_DISTS.map(d => {
-            const r24 = SWIM_REC[d]?.[0]
-            const r23 = SWIM_REC[d]?.[1]
-            const split = calcSplit500m(SWIM_M[d], r24?.time || '')
-            const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (r24?.time || '—')
-            return (
-              <RecordRow key={d} label={d}
-                rec24={r24?.time || '—'}
-                rec23={r23?.time || '—'}
-                sub={split !== '—' ? split.replace('/500m', '/100m') : undefined}
-                onSelect={() => r24?.time && r24.time !== '—' ? onSelect(`Natation ${d}`, r24.time) : undefined}
-                selected={sel}
-              />
-            )
-          })}
-        </Card>
-      )}
-
-      {/* ROWING */}
-      {sport === 'rowing' && (
-        <Card>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Records aviron</h2>
-          {ROW_DISTS.map(d => {
-            const r24 = ROW_REC[d]?.[0]
-            const r23 = ROW_REC[d]?.[1]
-            const split = calcSplit500m(ROW_M[d], r24?.time || '')
-            let watts = '—'
-            if (split !== '—') {
-              const pp = split.split('/')[0].split(':').map(Number)
-              const ss = pp[0] * 60 + (pp[1] || 0)
-              if (ss > 0) watts = `~${Math.round(2.80 / (ss / 500) ** 3)}W`
-            }
-            const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
-            const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (r24?.time || '—')
-            return (
-              <RecordRow key={d} label={lbl}
-                rec24={r24?.time || '—'}
-                rec23={r23?.time || '—'}
-                sub={split !== '—' ? `${split} · ${watts}` : undefined}
-                onSelect={() => r24?.time && r24.time !== '—' ? onSelect(`Aviron ${d}`, r24.time) : undefined}
-                selected={sel}
-              />
-            )
-          })}
-          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>Puissance via formule Concept2 : P = 2.80 / (split/500)^3</p>
-        </Card>
-      )}
-
-      {/* HYROX */}
-      {sport === 'hyrox' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Meilleur résultat Hyrox</h2>
-                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>{HYROX_REC.format} · {HYROX_REC.date}</p>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 24, fontWeight: 800, color: '#ef4444', margin: 0 }}>{HYROX_REC.total}</p>
-                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0 }}>Temps total</p>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
+              <YearSelector years={getSpYears('run')} value={runYear} onChange={setRunYear} color="#22c55e" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-              <div style={{ padding: '8px 12px', borderRadius: 9, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Roxzone</p>
-                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: '#ef4444', margin: 0 }}>{HYROX_REC.roxzone}</p>
-              </div>
-              <div style={{ padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Total running</p>
-                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: '#22c55e', margin: 0 }}>
-                  {(() => {
-                    let s = 0
-                    HYROX_REC.runs.forEach(r => { const pp = r.split(':').map(Number); s += pp[0] * 60 + (pp[1] || 0) })
-                    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-                  })()}
-                </p>
-              </div>
-            </div>
-            <h3 style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>Stations</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-              {HYROX_STATIONS.map((s, i) => {
-                const sel = selectedDatum?.label === `Hyrox ${s}` && selectedDatum?.value === HYROX_REC.stations[s]
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
+            {RUN_DISTS.map(d => {
+              const editKey = `run-${d}`
+              const isEditing = activeEdit === editKey
+              const spBest = getSpBest('run', d, runYear)
+              const staticBest = (() => {
+                const sr = (RUN_REC[d] ?? []).filter(r => r.time !== '—' && (runYear === 'All Time' || r.date.slice(0, 4) === runYear))
+                return sr.length > 0 ? { perf: sr[0].time, date: sr[0].date } : null
+              })()
+              const displayRec = spBest ?? staticBest
+              const prevRec = runYear === 'All Time'
+                ? (() => { const p = RUN_REC[d]?.[1]; return p && p.time !== '—' ? { perf: p.time, date: p.date } : null })()
+                : null
+              const pace = displayRec ? calcPacePerKm(RUN_KM[d] ?? 0, displayRec.perf) : '—'
+              const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (displayRec?.perf ?? '—')
+              if (isEditing) {
                 return (
-                  <div key={s} onClick={() => onSelect(`Hyrox ${s}`, HYROX_REC.stations[s])} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 8,
-                    background: sel ? 'rgba(239,68,68,0.10)' : 'rgba(239,68,68,0.05)',
-                    border: `1px solid ${sel ? 'rgba(239,68,68,0.50)' : 'rgba(239,68,68,0.12)'}`,
-                    cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s',
+                  <div key={d} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
+                    background: 'rgba(34,197,94,0.06)', border: '1px solid #22c55e',
                   }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', width: 17, flexShrink: 0 }}>{i + 1}</span>
-                    <span style={{ flex: 1, fontSize: 11 }}>{s}</span>
-                    <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 600, color: '#ef4444' }}>{HYROX_REC.stations[s]}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{d}</span>
+                    <input type="text" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
+                      placeholder="mm:ss ou h:mm:ss"
+                      style={{ flex: 1, padding: '4px 8px', borderRadius: 6, border: '1px solid #22c55e', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
+                      onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('run', d, 'time'); if (e.key === 'Escape') cancelEdit() }} />
+                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                    <button onClick={() => void confirmSpRecord('run', d, 'time')} disabled={recordSaving}
+                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                      {recordSaving ? '…' : 'Confirmer'}
+                    </button>
+                    <button onClick={cancelEdit}
+                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Annuler
+                    </button>
                   </div>
                 )
-              })}
-            </div>
-            <h3 style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>Runs (8×1km)</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
-              {HYROX_REC.runs.map((r, i) => {
-                const sel = selectedDatum?.label === `Hyrox Run ${i + 1}` && selectedDatum?.value === r
-                return (
-                  <div key={i} onClick={() => onSelect(`Hyrox Run ${i + 1}`, r)} style={{
-                    padding: '6px 8px', borderRadius: 7, textAlign: 'center', cursor: 'pointer',
-                    background: sel ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.07)',
-                    border: `1px solid ${sel ? 'rgba(34,197,94,0.50)' : 'rgba(34,197,94,0.15)'}`,
-                    transition: 'background 0.15s, border-color 0.15s',
-                  }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 2px' }}>Run {i + 1}</p>
-                    <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 600, color: '#22c55e', margin: 0 }}>{r}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
-
-          {/* Simulation */}
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div>
-                <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Simulation de performance</h2>
-                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>Simuler des gains sur chaque station</p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {simMode && (
-                  <div style={{ padding: '8px 14px', borderRadius: 9, background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}>
-                    <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Temps simulé</p>
-                    <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 800, color: '#ef4444', margin: 0 }}>{hyroxSimTotal()}</p>
-                  </div>
-                )}
-                <button onClick={() => setSimMode(!simMode)} style={{
-                  padding: '6px 12px', borderRadius: 9,
-                  background: simMode ? 'linear-gradient(135deg,#ef4444,#f97316)' : 'var(--bg-card2)',
-                  border: `1px solid ${simMode ? 'transparent' : 'var(--border)'}`,
-                  color: simMode ? '#fff' : 'var(--text-mid)',
-                  fontSize: 11, cursor: 'pointer', fontWeight: 600,
-                }}>
-                  {simMode ? 'Simulation active' : 'Simuler'}
-                </button>
-              </div>
-            </div>
-            {simMode ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {HYROX_STATIONS.map(s => (
-                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 11, flex: 1, color: 'var(--text-mid)' }}>{s}</span>
-                    <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 11, color: '#ef4444', width: 40, textAlign: 'right' }}>{HYROX_REC.stations[s]}</span>
-                    <button onClick={() => setSimDeltas(prev => ({...prev, [s]: (prev[s] || 0) + 5}))}
-                      style={{ width: 24, height: 24, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#22c55e', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: '#22c55e', minWidth: 32, textAlign: 'center' }}>
-                      {simDeltas[s] ? `-${simDeltas[s]}s` : '0s'}
-                    </span>
-                    <button onClick={() => setSimDeltas(prev => ({...prev, [s]: Math.max((prev[s] || 0) - 5, 0)}))}
-                      style={{ width: 24, height: 24, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                  </div>
-                ))}
-                <button onClick={() => setSimDeltas({})} style={{ marginTop: 6, padding: '5px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
-                  Réinitialiser
-                </button>
-              </div>
-            ) : (
-              <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '10px 0' }}>
-                Active la simulation pour identifier tes points faibles.
-              </p>
-            )}
+              }
+              return (
+                <RecordRow key={d} label={d}
+                  rec24={displayRec?.perf ?? '—'}
+                  rec23={prevRec?.perf ?? '—'}
+                  sub={pace !== '—' ? pace : undefined}
+                  onSelect={() => displayRec ? onSelect(`Course ${d}`, displayRec.perf) : undefined}
+                  selected={sel}
+                  actions={
+                    <button onClick={() => tryEdit(editKey, displayRec?.perf ?? '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Modifier
+                    </button>
+                  } />
+              )
+            })}
           </Card>
         </div>
       )}
 
+      {/* SWIM */}
+      {sport === 'swim' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
+              <YearSelector years={getSpYears('swim')} value={swimYear} onChange={setSwimYear} color="#38bdf8" />
+            </div>
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} color="#38bdf8" />
+            {SWIM_DISTS.map(d => {
+              const editKey = `swim-${d}`
+              const isEditing = activeEdit === editKey
+              const spBest = getSpBest('swim', d, swimYear)
+              const staticBest = (() => {
+                const sr = (SWIM_REC[d] ?? []).filter(r => r.time !== '—' && (swimYear === 'All Time' || r.date.slice(0, 4) === swimYear))
+                return sr.length > 0 ? { perf: sr[0].time, date: sr[0].date } : null
+              })()
+              const displayRec = spBest ?? staticBest
+              const prevRec = swimYear === 'All Time'
+                ? (() => { const p = SWIM_REC[d]?.[1]; return p && p.time !== '—' ? { perf: p.time, date: p.date } : null })()
+                : null
+              const split = displayRec ? calcSplit500m(SWIM_M[d] ?? 0, displayRec.perf).replace('/500m', '/100m') : '—'
+              const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (displayRec?.perf ?? '—')
+              if (isEditing) {
+                return (
+                  <div key={d} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
+                    background: 'rgba(56,189,248,0.06)', border: '1px solid #38bdf8',
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{d}</span>
+                    <input type="text" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
+                      placeholder="mm:ss"
+                      style={{ flex: 1, padding: '4px 8px', borderRadius: 6, border: '1px solid #38bdf8', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
+                      onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('swim', d, 'time'); if (e.key === 'Escape') cancelEdit() }} />
+                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                    <button onClick={() => void confirmSpRecord('swim', d, 'time')} disabled={recordSaving}
+                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#38bdf8', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                      {recordSaving ? '…' : 'Confirmer'}
+                    </button>
+                    <button onClick={cancelEdit}
+                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Annuler
+                    </button>
+                  </div>
+                )
+              }
+              return (
+                <RecordRow key={d} label={d}
+                  rec24={displayRec?.perf ?? '—'}
+                  rec23={prevRec?.perf ?? '—'}
+                  sub={split !== '—' ? split : undefined}
+                  onSelect={() => displayRec ? onSelect(`Natation ${d}`, displayRec.perf) : undefined}
+                  selected={sel}
+                  actions={
+                    <button onClick={() => tryEdit(editKey, displayRec?.perf ?? '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Modifier
+                    </button>
+                  } />
+              )
+            })}
+          </Card>
+        </div>
+      )}
+
+      {/* ROWING */}
+      {sport === 'rowing' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
+              <YearSelector years={getSpYears('rowing')} value={rowYear} onChange={setRowYear} color="#14b8a6" />
+            </div>
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} color="#14b8a6" />
+            {ROW_DISTS.map(d => {
+              const editKey = `rowing-${d}`
+              const isEditing = activeEdit === editKey
+              const spBest = getSpBest('rowing', d, rowYear)
+              const staticBest = (() => {
+                const sr = (ROW_REC[d] ?? []).filter(r => r.time !== '—' && (rowYear === 'All Time' || r.date.slice(0, 4) === rowYear))
+                return sr.length > 0 ? { perf: sr[0].time, date: sr[0].date } : null
+              })()
+              const displayRec = spBest ?? staticBest
+              const prevRec = rowYear === 'All Time'
+                ? (() => { const p = ROW_REC[d]?.[1]; return p && p.time !== '—' ? { perf: p.time, date: p.date } : null })()
+                : null
+              const split = displayRec ? calcSplit500m(ROW_M[d] ?? 0, displayRec.perf) : '—'
+              const wStr = (() => {
+                if (split === '—') return '—'
+                const pp = split.split('/')[0].split(':').map(Number)
+                const ss = (pp[0] ?? 0) * 60 + (pp[1] ?? 0)
+                return ss > 0 ? `~${Math.round(2.80 / (ss / 500) ** 3)}W` : '—'
+              })()
+              const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
+              const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (displayRec?.perf ?? '—')
+              if (isEditing) {
+                return (
+                  <div key={d} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
+                    background: 'rgba(20,184,166,0.06)', border: '1px solid #14b8a6',
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 80, flexShrink: 0 }}>{lbl}</span>
+                    <input type="text" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
+                      placeholder="mm:ss ou h:mm:ss"
+                      style={{ flex: 1, padding: '4px 8px', borderRadius: 6, border: '1px solid #14b8a6', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
+                      onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('rowing', d, 'time'); if (e.key === 'Escape') cancelEdit() }} />
+                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                    <button onClick={() => void confirmSpRecord('rowing', d, 'time')} disabled={recordSaving}
+                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#14b8a6', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                      {recordSaving ? '…' : 'Confirmer'}
+                    </button>
+                    <button onClick={cancelEdit}
+                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Annuler
+                    </button>
+                  </div>
+                )
+              }
+              return (
+                <RecordRow key={d} label={lbl}
+                  rec24={displayRec?.perf ?? '—'}
+                  rec23={prevRec?.perf ?? '—'}
+                  sub={split !== '—' ? `${split} · ${wStr}` : undefined}
+                  onSelect={() => displayRec ? onSelect(`Aviron ${d}`, displayRec.perf) : undefined}
+                  selected={sel}
+                  actions={
+                    <button onClick={() => tryEdit(editKey, displayRec?.perf ?? '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Modifier
+                    </button>
+                  } />
+              )
+            })}
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>Puissance via formule Concept2 : P = 2.80 / (split/500)³</p>
+          </Card>
+        </div>
+      )}
+
+      {/* HYROX */}
+      {sport === 'hyrox' && (
+        <HyroxSection onSelect={onSelect} selectedDatum={selectedDatum} />
+      )}
+
       {/* GYM */}
       {sport === 'gym' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }} className="md:grid-cols-2">
-          {GYM_MOVES.map(m => (
-            <Card key={m.name} style={{ padding: 16 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: '#f97316' }}>{m.name}</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {m.recs.map(r => {
-                  const valStr = r.v ? `${r.v}${r.l.includes('reps') ? ' reps' : ' kg'}` : '—'
-                  const sel = selectedDatum?.label === `${m.name} — ${r.l}` && selectedDatum?.value === valStr
-                  return (
-                    <div key={r.l} onClick={() => r.v ? onSelect(`${m.name} — ${r.l}`, valStr) : undefined} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '5px 9px', borderRadius: 7,
-                      background: sel ? 'rgba(249,115,22,0.14)' : 'rgba(249,115,22,0.07)',
-                      border: `1px solid ${sel ? 'rgba(249,115,22,0.50)' : 'rgba(249,115,22,0.15)'}`,
-                      cursor: r.v ? 'pointer' : undefined,
-                      transition: 'background 0.15s, border-color 0.15s',
-                    }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-mid)' }}>{r.l}</span>
-                      <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: r.v ? '#f97316' : 'var(--text-dim)' }}>
-                        {valStr}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <SectionHeader label="Records muscu" gradient="linear-gradient(180deg,#fb923c,#f97316)" />
+            <YearSelector years={getSpYears('gym')} value={gymYear} onChange={setGymYear} color="#f97316" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }} className="md:grid-cols-2">
+            {GYM_MOVES.map(m => (
+              <Card key={m.name} style={{ padding: 16 }}>
+                <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: '#f97316' }}>{m.name}</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {m.recs.map(r => {
+                    const distLabel = `${m.name} — ${r.l}`
+                    const editKey   = `gym-${distLabel}`
+                    const isEditing = activeEdit === editKey
+                    const unit      = r.l.includes('reps') ? 'reps' : 'kg'
+                    const spBest    = getSpBest('gym', distLabel, gymYear)
+                    const staticVal = r.v ? `${r.v}${unit === 'reps' ? ' reps' : ' kg'}` : '—'
+                    const displayVal = spBest ? `${spBest.perf}${unit === 'reps' ? ' reps' : ' kg'}` : staticVal
+                    const sel = selectedDatum?.label === distLabel && selectedDatum?.value === displayVal
+
+                    if (isEditing) {
+                      return (
+                        <div key={r.l} style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '6px 9px', borderRadius: 7, marginBottom: 3,
+                          background: 'rgba(249,115,22,0.06)', border: '1px solid #f97316',
+                        }}>
+                          <span style={{ fontSize: 11, flex: 1, color: 'var(--text-mid)' }}>{r.l}</span>
+                          <input type="number" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
+                            placeholder={unit}
+                            style={{ width: 64, padding: '3px 7px', borderRadius: 6, border: '1px solid #f97316', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
+                            onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('gym', distLabel, unit); if (e.key === 'Escape') cancelEdit() }} />
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{unit}</span>
+                          <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                            style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 10, outline: 'none' }} />
+                          <button onClick={() => void confirmSpRecord('gym', distLabel, unit)} disabled={recordSaving}
+                            style={{ padding: '3px 9px', borderRadius: 6, border: 'none', background: '#f97316', color: '#000', fontSize: 10, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                            {recordSaving ? '…' : 'OK'}
+                          </button>
+                          <button onClick={cancelEdit}
+                            style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div key={r.l} onClick={() => displayVal !== '—' ? onSelect(distLabel, displayVal) : undefined} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '5px 9px', borderRadius: 7,
+                        background: sel ? 'rgba(249,115,22,0.14)' : 'rgba(249,115,22,0.07)',
+                        border: `1px solid ${sel ? 'rgba(249,115,22,0.50)' : 'rgba(249,115,22,0.15)'}`,
+                        cursor: displayVal !== '—' ? 'pointer' : undefined,
+                        transition: 'background 0.15s, border-color 0.15s',
+                      }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-mid)' }}>{r.l}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: displayVal !== '—' ? '#f97316' : 'var(--text-dim)' }}>
+                            {displayVal}
+                          </span>
+                          <button onClick={e => { e.stopPropagation(); tryEdit(editKey, spBest?.perf ?? (r.v ? String(r.v) : '')) }}
+                            style={{ padding: '2px 7px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', flexShrink: 0 }}>
+                            Modifier
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>

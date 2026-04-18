@@ -1624,128 +1624,260 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
 }
 
 // ════════════════════════════════════════════════
-// SUB-TAB 3: YEAR DATAS
+// SUB-TAB 3: YEAR DATAS — refonte complète
 // ════════════════════════════════════════════════
-type SportYear = { count: number; secs: number; distM: number; load: number; elevM: number }
-type YearlyStats = Record<string, Record<string, SportYear>>
 
-interface RawActivity {
-  sport: string | null
-  date: string | null
-  duration: number | null
-  distance: number | null
-  load: number | null
+// ── Types ─────────────────────────────────────────────────────
+type YDSportId = 'running' | 'trail' | 'cycling' | 'swimming' | 'rowing' | 'hyrox' | 'gym' | 'ski'
+
+interface YDAutoStat {
+  nb_sorties: number; km: number; heures: number
+  denivele: number; longest_km: number; longest_h: number; tss: number
+}
+
+interface YDManual {
+  id?: string; user_id?: string; sport: string; year: number
+  km: number | null; heures: number | null; denivele: number | null
+  nb_sorties: number | null
+  sortie_plus_longue_km: number | null; sortie_plus_longue_heures: number | null
+  tss: number | null; volume_tonnes: number | null
+  specifique: Record<string, unknown>; updated_at?: string
+}
+
+interface YDRawAct {
+  sport: string | null; date: string | null
+  duration: number | null; distance: number | null; load: number | null
   raw_data: unknown
 }
 
-function YearDatasSubTab() {
-  const [loading, setLoading] = useState(true)
-  const [yearly, setYearly] = useState<YearlyStats>({})
-  const [availableYears, setAvailableYears] = useState<string[]>([])
-  const [selectedYear, setSelectedYear] = useState('all')
-  const [chartSport, setChartSport] = useState('cycling')
-  const [chartMetric, setChartMetric] = useState<'count' | 'secs' | 'distM' | 'load'>('distM')
+// ── Sport definitions ──────────────────────────────────────────
+const YD_SPORTS: { id: YDSportId; label: string; icon: string; color: string; keys: string[] }[] = [
+  { id: 'running',  label: 'Running',  icon: '🏃', color: '#22c55e', keys: ['running', 'run'] },
+  { id: 'trail',    label: 'Trail',    icon: '⛰️',  color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running'] },
+  { id: 'cycling',  label: 'Cyclisme', icon: '🚴', color: '#00c8e0', keys: ['cycling', 'ride', 'virtual_ride', 'road_cycling'] },
+  { id: 'swimming', label: 'Natation', icon: '🏊', color: '#38bdf8', keys: ['swimming', 'swim', 'open_water_swimming'] },
+  { id: 'rowing',   label: 'Aviron',   icon: '🚣', color: '#14b8a6', keys: ['rowing'] },
+  { id: 'hyrox',    label: 'Hyrox',    icon: '⚡', color: '#ef4444', keys: ['hyrox'] },
+  { id: 'gym',      label: 'Muscu',    icon: '💪', color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout'] },
+  { id: 'ski',      label: 'Ski',      icon: '⛷️', color: '#a78bfa', keys: ['skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard'] },
+]
 
+// ── Metric definitions ─────────────────────────────────────────
+interface YDMetric {
+  key: string; label: string
+  fmt: (v: number) => string
+  fromAuto: (s: YDAutoStat) => number
+  fromManual: (e: YDManual) => number | null
+  manualKey: 'km' | 'heures' | 'denivele' | 'nb_sorties' | 'tss' | 'volume_tonnes'
+  step: string
+}
+
+const YD_METRICS: Record<string, YDMetric> = {
+  km:            { key: 'km',            label: 'Distance',   fmt: v => `${v.toFixed(0)} km`, fromAuto: s => s.km,          fromManual: e => e.km,            manualKey: 'km',            step: '0.1' },
+  heures:        { key: 'heures',        label: 'Heures',     fmt: v => `${v.toFixed(1)} h`,  fromAuto: s => s.heures,      fromManual: e => e.heures,        manualKey: 'heures',        step: '0.1' },
+  denivele:      { key: 'denivele',      label: 'D+',         fmt: v => `${Math.round(v)} m`, fromAuto: s => s.denivele,    fromManual: e => e.denivele,      manualKey: 'denivele',      step: '1'   },
+  nb_sorties:    { key: 'nb_sorties',    label: 'Sorties',    fmt: v => `${Math.round(v)}`,   fromAuto: s => s.nb_sorties,  fromManual: e => e.nb_sorties,    manualKey: 'nb_sorties',    step: '1'   },
+  tss:           { key: 'tss',           label: 'TSS',        fmt: v => `${Math.round(v)}`,   fromAuto: s => s.tss,         fromManual: e => e.tss,           manualKey: 'tss',           step: '1'   },
+  volume_tonnes: { key: 'volume_tonnes', label: 'Volume (t)', fmt: v => `${v.toFixed(1)} t`,  fromAuto: _ => 0,             fromManual: e => e.volume_tonnes, manualKey: 'volume_tonnes', step: '0.1' },
+}
+
+const YD_SPORT_METRICS: Record<YDSportId, string[]> = {
+  running:  ['km', 'heures', 'denivele', 'nb_sorties'],
+  trail:    ['km', 'heures', 'denivele', 'nb_sorties'],
+  cycling:  ['km', 'heures', 'denivele', 'tss', 'nb_sorties'],
+  swimming: ['km', 'heures', 'nb_sorties'],
+  rowing:   ['km', 'heures', 'nb_sorties'],
+  hyrox:    ['nb_sorties', 'km', 'heures'],
+  gym:      ['nb_sorties', 'heures', 'volume_tonnes'],
+  ski:      ['heures', 'denivele', 'nb_sorties'],
+}
+
+// ── Component ─────────────────────────────────────────────────
+function YearDatasSubTab() {
+  const [loading, setLoading]       = useState(true)
+  // year → sportId → aggregated stat (from Strava activities)
+  const [autoStats, setAutoStats]   = useState<Record<string, Record<string, YDAutoStat>>>({})
+  // sportId → year → manual entry (from year_data_manual table)
+  const [manualMap, setManualMap]   = useState<Record<string, Record<string, YDManual>>>({})
+  const [allYears, setAllYears]     = useState<string[]>([])
+
+  const [activeSport, setActiveSport] = useState<YDSportId>('running')
+  const [mode, setMode]             = useState<'auto' | 'manual'>('auto')
+  const [selectedYear, setSelectedYear] = useState('all')
+  const [chartMetric, setChartMetric]   = useState('km')
+
+  // Edit state (manual mode)
+  const [editYear, setEditYear]     = useState<string | null>(null)
+  const [editDraft, setEditDraft]   = useState<Partial<YDManual>>({})
+  const [saving, setSaving]         = useState(false)
+
+  // Chart tooltip
+  const [hoveredBar, setHoveredBar] = useState<{ year: string; val: number; svgX: number } | null>(null)
+
+  // ── Fetch ────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true)
-    try {
-      const supabase = createClient()
-      const { data: acts } = await supabase
-        .from('activities')
-        .select('sport, date, duration, distance, load, raw_data')
+    const sb = createClient()
 
-      const stats: YearlyStats = {}
-      const typedActs = (acts ?? []) as RawActivity[]
+    // 1. Auto: Strava activities
+    const { data: acts } = await sb
+      .from('activities')
+      .select('sport, date, duration, distance, load, raw_data')
 
-      for (const act of typedActs) {
-        if (!act.date || !act.sport) continue
-        const year = act.date.slice(0, 4)
-        const sport = act.sport
-
-        if (!stats[year]) stats[year] = {}
-        if (!stats[year][sport]) stats[year][sport] = { count: 0, secs: 0, distM: 0, load: 0, elevM: 0 }
-
-        const sy = stats[year][sport]
-        sy.count += 1
-        sy.secs  += act.duration ?? 0
-        sy.distM += act.distance ?? 0
-        sy.load  += act.load ?? 0
-
-        // elevation from raw_data
-        const rd = act.raw_data as Record<string, unknown> | null
-        const elev = typeof rd?.total_elevation_gain === 'number' ? rd.total_elevation_gain : 0
-        sy.elevM += elev
+    const auto: Record<string, Record<string, YDAutoStat>> = {}
+    for (const act of (acts ?? []) as YDRawAct[]) {
+      if (!act.date || !act.sport) continue
+      const year  = act.date.slice(0, 4)
+      const lower = act.sport.toLowerCase()
+      for (const sp of YD_SPORTS) {
+        if (!sp.keys.includes(lower)) continue
+        if (!auto[year]) auto[year] = {}
+        if (!auto[year][sp.id]) auto[year][sp.id] = { nb_sorties: 0, km: 0, heures: 0, denivele: 0, longest_km: 0, longest_h: 0, tss: 0 }
+        const s   = auto[year][sp.id]
+        const km  = (act.distance ?? 0) / 1000
+        const h   = (act.duration ?? 0) / 3600
+        const rd  = act.raw_data as Record<string, unknown> | null
+        s.nb_sorties += 1
+        s.km         += km
+        s.heures     += h
+        s.tss        += act.load ?? 0
+        s.denivele   += typeof rd?.total_elevation_gain === 'number' ? rd.total_elevation_gain : 0
+        if (km > s.longest_km) s.longest_km = km
+        if (h  > s.longest_h)  s.longest_h  = h
+        break
       }
-
-      const years = Object.keys(stats).sort((a, b) => b.localeCompare(a))
-      setYearly(stats)
-      setAvailableYears(years)
-    } catch {
-      // ignore — leave empty
-    } finally {
-      setLoading(false)
     }
+
+    // 2. Manual: year_data_manual (may not exist yet — ignore error)
+    const manual: Record<string, Record<string, YDManual>> = {}
+    const { data: manualRows, error: manualErr } = await sb
+      .from('year_data_manual')
+      .select('*')
+      .order('year', { ascending: false })
+    if (!manualErr && manualRows) {
+      for (const row of manualRows as YDManual[]) {
+        if (!manual[row.sport]) manual[row.sport] = {}
+        manual[row.sport][String(row.year)] = row
+      }
+    }
+
+    // 3. Collect all years
+    const yearsSet = new Set<string>()
+    Object.keys(auto).forEach(y => yearsSet.add(y))
+    Object.values(manual).forEach(m => Object.keys(m).forEach(y => yearsSet.add(y)))
+    const years = Array.from(yearsSet).sort((a, b) => b.localeCompare(a))
+
+    setAutoStats(auto)
+    setManualMap(manual)
+    setAllYears(years)
+    setLoading(false)
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { void fetchData() }, [fetchData])
 
-  // Get stats for display (selected year or aggregate)
-  function getStats(sport: string): SportYear | null {
-    if (selectedYear === 'all') {
-      const agg: SportYear = { count: 0, secs: 0, distM: 0, load: 0, elevM: 0 }
-      let found = false
-      for (const yr of availableYears) {
-        const s = yearly[yr]?.[sport]
-        if (s) {
-          agg.count += s.count
-          agg.secs  += s.secs
-          agg.distM += s.distM
-          agg.load  += s.load
-          agg.elevM += s.elevM
-          found = true
-        }
+  // ── Derived helpers ──────────────────────────────────────────
+  const sportDef     = YD_SPORTS.find(s => s.id === activeSport)!
+  const sportMetrics = YD_SPORT_METRICS[activeSport]
+  const validMetric  = sportMetrics.includes(chartMetric) ? chartMetric : sportMetrics[0]
+  const metricDef    = YD_METRICS[validMetric]!
+
+  const chartYears = [...allYears].sort()
+
+  function autoStat(year: string): YDAutoStat | null {
+    return autoStats[year]?.[activeSport] ?? null
+  }
+  function manualEntry(year: string): YDManual | null {
+    return manualMap[activeSport]?.[year] ?? null
+  }
+  function getDisplayVal(m: YDMetric, year: string): number {
+    if (mode === 'auto') {
+      const s = autoStat(year)
+      return s ? m.fromAuto(s) : 0
+    }
+    const e = manualEntry(year)
+    return e ? (m.fromManual(e) ?? 0) : 0
+  }
+
+  // Aggregate (auto mode + all years)
+  const aggStat: YDAutoStat | null = (() => {
+    if (mode !== 'auto') return null
+    const agg: YDAutoStat = { nb_sorties: 0, km: 0, heures: 0, denivele: 0, longest_km: 0, longest_h: 0, tss: 0 }
+    let found = false
+    for (const yr of allYears) {
+      const s = autoStat(yr)
+      if (!s) continue
+      found = true
+      agg.nb_sorties += s.nb_sorties
+      agg.km         += s.km
+      agg.heures     += s.heures
+      agg.denivele   += s.denivele
+      agg.tss        += s.tss
+      if (s.longest_km > agg.longest_km) agg.longest_km = s.longest_km
+      if (s.longest_h  > agg.longest_h)  agg.longest_h  = s.longest_h
+    }
+    return found ? agg : null
+  })()
+
+  const displayAuto:   YDAutoStat | null = selectedYear === 'all' ? aggStat : autoStat(selectedYear)
+  const displayManual: YDManual   | null = selectedYear === 'all' ? null    : manualEntry(selectedYear)
+  const hasDisplay = mode === 'auto' ? displayAuto !== null : displayManual !== null
+
+  // Chart
+  const chartVals   = chartYears.map(yr => getDisplayVal(metricDef, yr))
+  const maxChartVal = Math.max(...chartVals, 1)
+
+  // ── Save manual entry ────────────────────────────────────────
+  async function saveManual(year: string) {
+    setSaving(true)
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const existing = manualEntry(year)
+      const payload = {
+        user_id:                   user.id,
+        sport:                     activeSport,
+        year:                      parseInt(year),
+        km:                        editDraft.km                        ?? null,
+        heures:                    editDraft.heures                    ?? null,
+        denivele:                  editDraft.denivele                  ?? null,
+        nb_sorties:                editDraft.nb_sorties                ?? null,
+        sortie_plus_longue_km:     editDraft.sortie_plus_longue_km     ?? null,
+        sortie_plus_longue_heures: editDraft.sortie_plus_longue_heures ?? null,
+        tss:                       editDraft.tss                       ?? null,
+        volume_tonnes:             editDraft.volume_tonnes             ?? null,
+        specifique:                editDraft.specifique                ?? {},
+        updated_at:                new Date().toISOString(),
       }
-      return found ? agg : null
+      let saved: YDManual | null = null
+      if (existing?.id) {
+        const { data } = await sb.from('year_data_manual').update(payload).eq('id', existing.id).select().single()
+        saved = data as YDManual | null
+      } else {
+        const { data } = await sb.from('year_data_manual').insert(payload).select().single()
+        saved = data as YDManual | null
+      }
+      if (saved) {
+        setManualMap(prev => ({ ...prev, [activeSport]: { ...(prev[activeSport] ?? {}), [year]: saved! } }))
+        if (!allYears.includes(year)) setAllYears(prev => [...prev, year].sort((a, b) => b.localeCompare(a)))
+      }
+      setEditYear(null)
+      setEditDraft({})
+    } finally {
+      setSaving(false)
     }
-    return yearly[selectedYear]?.[sport] ?? null
   }
 
-  // Sports to display
-  const DISPLAY_SPORTS: { id: string; label: string; color: string; icon: string }[] = [
-    { id: 'running',  label: 'Running',  color: '#22c55e', icon: '🏃' },
-    { id: 'cycling',  label: 'Cyclisme', color: '#00c8e0', icon: '🚴' },
-    { id: 'hyrox',    label: 'Hyrox',    color: '#ef4444', icon: '⚡' },
-    { id: 'gym',      label: 'Muscu',    color: '#f97316', icon: '💪' },
-    { id: 'swimming', label: 'Natation', color: '#38bdf8', icon: '🏊' },
-    { id: 'rowing',   label: 'Aviron',   color: '#14b8a6', icon: '🚣' },
-  ]
-
-  // Chart data: per-year for chartSport + chartMetric
-  const chartYears = [...availableYears].sort() // asc for chart
-  const chartValues = chartYears.map(yr => yearly[yr]?.[chartSport]?.[chartMetric] ?? 0)
-  const maxChartVal = Math.max(...chartValues, 1)
-
-  const METRIC_LABELS: Record<string, string> = {
-    count: 'Activités', secs: 'Heures', distM: 'Distance (km)', load: 'Charge (TSS)',
-  }
-
-  function fmtMetric(val: number, metric: string): string {
-    if (metric === 'secs') return `${(val / 3600).toFixed(1)}h`
-    if (metric === 'distM') return `${(val / 1000).toFixed(0)}km`
-    if (metric === 'load') return `${Math.round(val)}`
-    return `${val}`
-  }
-
-  // Get best year value for bar scaling inside cards
-  function getBestYearVal(sport: string, metric: keyof SportYear): number {
-    let best = 0
-    for (const yr of availableYears) {
-      const v = yearly[yr]?.[sport]?.[metric] ?? 0
-      if (v > best) best = v
+  function startEdit(year: string) {
+    if (editYear && editYear !== year) {
+      if (!window.confirm('Abandonner les modifications en cours ?')) return
     }
-    return best
+    const existing = manualEntry(year)
+    setEditDraft(existing ? { ...existing } : { sport: activeSport, year: parseInt(year), specifique: {} })
+    setEditYear(year)
   }
 
+  // ── Loading ──────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
@@ -1757,177 +1889,264 @@ function YearDatasSubTab() {
     )
   }
 
+  const currentYear    = String(new Date().getFullYear())
+  const manualListYrs  = allYears.includes(currentYear) ? allYears : [currentYear, ...allYears]
+  const SVG_W          = 500
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <SectionHeader label="Données annuelles" gradient="linear-gradient(180deg,#a855f7,#5b6fff)" />
-        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
-          <option value="all">Toutes les années</option>
-          {availableYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
-        </select>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            {(['auto', 'manual'] as const).map(m => (
+              <button key={m} onClick={() => {
+                setMode(m)
+                setSelectedYear(m === 'auto' ? 'all' : (allYears[0] ?? currentYear))
+                setEditYear(null)
+              }}
+                style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                  background: mode === m ? '#5b6fff' : 'var(--bg-card2)',
+                  color:      mode === m ? '#fff'    : 'var(--text-dim)' }}>
+                {m === 'auto' ? '⚡ Auto' : '✏️ Manuel'}
+              </button>
+            ))}
+          </div>
+          {/* Year selector */}
+          <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
+            {mode === 'auto' && <option value="all">Toutes années</option>}
+            {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* Sport cards grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }} className="md:grid-cols-2">
-        {DISPLAY_SPORTS.map(sp => {
-          const stats = getStats(sp.id)
-          const bestDist = getBestYearVal(sp.id, 'distM')
-          const barWidth = bestDist > 0 && stats ? Math.round((stats.distM / bestDist) * 100) : 0
+      {/* ── Sport tabs ── */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+        {YD_SPORTS.map(sp => (
+          <button key={sp.id} onClick={() => {
+            setActiveSport(sp.id)
+            setEditYear(null)
+            setChartMetric(YD_SPORT_METRICS[sp.id][0] ?? 'km')
+          }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: 'none',
+              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+              background: activeSport === sp.id ? sp.color : 'var(--bg-card2)',
+              color:      activeSport === sp.id ? '#fff'   : 'var(--text-dim)' }}>
+            <span>{sp.icon}</span>
+            <span>{sp.label}</span>
+          </button>
+        ))}
+      </div>
 
-          return (
-            <Card key={sp.id} style={{ padding: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>{sp.icon}</span>
-                  <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0, color: sp.color }}>{sp.label}</h3>
-                </div>
-                {stats && (
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: `${sp.color}22`, color: sp.color, fontWeight: 600 }}>
-                    {stats.count} séance{stats.count > 1 ? 's' : ''}
-                  </span>
-                )}
+      {/* ── Stat cards ── */}
+      {hasDisplay ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+          {sportMetrics.map(mk => {
+            const m = YD_METRICS[mk]
+            if (!m) return null
+            const val = mode === 'auto'
+              ? (displayAuto   ? m.fromAuto(displayAuto)              : 0)
+              : (displayManual ? (m.fromManual(displayManual) ?? 0)   : 0)
+            return (
+              <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{m.label}</p>
+                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: sportDef.color, margin: 0 }}>
+                  {val > 0
+                    ? m.fmt(val)
+                    : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
+                </p>
               </div>
-
-              {!stats ? (
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune donnée</p>
-              ) : (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 10 }}>
-                    {sp.id !== 'gym' && sp.id !== 'hyrox' && (
-                      <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '8px 10px' }}>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Distance</p>
-                        <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: sp.color, margin: 0 }}>
-                          {(stats.distM / 1000).toFixed(1)}<span style={{ fontSize: 10, fontWeight: 400, marginLeft: 2 }}>km</span>
-                        </p>
-                      </div>
-                    )}
-                    {sp.id !== 'gym' && (
-                      <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '8px 10px' }}>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Heures</p>
-                        <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
-                          {(stats.secs / 3600).toFixed(1)}<span style={{ fontSize: 10, fontWeight: 400, marginLeft: 2 }}>h</span>
-                        </p>
-                      </div>
-                    )}
-                    {(sp.id === 'running' || sp.id === 'cycling') && stats.elevM > 0 && (
-                      <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '8px 10px' }}>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Dénivelé+</p>
-                        <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
-                          {Math.round(stats.elevM)}<span style={{ fontSize: 10, fontWeight: 400, marginLeft: 2 }}>m</span>
-                        </p>
-                      </div>
-                    )}
-                    {(sp.id === 'cycling') && stats.load > 0 && (
-                      <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '8px 10px' }}>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>TSS total</p>
-                        <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
-                          {Math.round(stats.load)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Relative volume bar */}
-                  {bestDist > 0 && (
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Volume vs meilleure année</span>
-                        <span style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: sp.color }}>{barWidth}%</span>
-                      </div>
-                      <div style={{ height: 5, borderRadius: 999, background: `${sp.color}22`, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${barWidth}%`, background: sp.color, opacity: 0.7, borderRadius: 999, transition: 'width 0.8s ease' }} />
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Comparison bar chart */}
-      {availableYears.length > 0 && (
+            )
+          })}
+        </div>
+      ) : (
         <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Comparaison par année</h3>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <select value={chartSport} onChange={e => setChartSport(e.target.value)}
-                style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-                {DISPLAY_SPORTS.map(sp => <option key={sp.id} value={sp.id}>{sp.label}</option>)}
-              </select>
-              <select value={chartMetric} onChange={e => setChartMetric(e.target.value as typeof chartMetric)}
-                style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-                {(Object.entries(METRIC_LABELS)).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '10px 0' }}>
+            {mode === 'manual'
+              ? 'Aucune donnée. Passe en mode Manuel et clique sur "+ Saisir".'
+              : 'Aucune activité Strava pour ce sport / cette période.'}
+          </p>
+        </Card>
+      )}
+
+      {/* ── Bar chart ── */}
+      {(chartVals.some(v => v > 0) || allYears.length > 0) && (
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Évolution par année</h3>
+            <select value={validMetric} onChange={e => setChartMetric(e.target.value)}
+              style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+              {sportMetrics.map(mk => <option key={mk} value={mk}>{YD_METRICS[mk]?.label}</option>)}
+            </select>
           </div>
 
           {(() => {
-            const svgW = 500, svgH = 160
-            const bottomPad = 24, topPad = 10, leftPad = 40
-            const plotW = svgW - leftPad
-            const plotH = svgH - bottomPad - topPad
-            const barGap = 6
-            const barW = Math.max(8, (plotW / Math.max(chartYears.length, 1)) - barGap)
+            const svgH  = 150
+            const bPad  = 22, tPad = 8, lPad = 42
+            const plotW = SVG_W - lPad - 8
+            const plotH = svgH - bPad - tPad
+            const n     = Math.max(chartYears.length, 1)
+            const gap   = 5
+            const barW  = Math.max(12, plotW / n - gap)
+            const yMax  = maxChartVal * 1.15
 
-            // y axis labels
             const yStep = Math.pow(10, Math.floor(Math.log10(maxChartVal || 1)))
             const yLabels: number[] = []
-            for (let v = 0; v <= maxChartVal * 1.1; v += yStep) yLabels.push(v)
+            for (let v = 0; v <= yMax && yLabels.length < 5; v += yStep) yLabels.push(v)
 
             return (
-              <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', height: svgH, overflow: 'visible' }}>
-                {/* Y grid + labels */}
-                {yLabels.slice(0, 6).map(v => {
-                  const y = topPad + plotH - (v / (maxChartVal * 1.1)) * plotH
-                  return (
-                    <g key={v}>
-                      <line x1={leftPad} y1={y} x2={svgW} y2={y} stroke="var(--border)" strokeWidth="0.5" />
-                      <text x={leftPad - 4} y={y + 4} textAnchor="end"
-                        style={{ fontSize: 8, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
-                        {fmtMetric(v, chartMetric)}
-                      </text>
-                    </g>
-                  )
-                })}
-
-                {/* Bars */}
-                {chartYears.map((yr, i) => {
-                  const val = chartValues[i]
-                  const bh = (val / (maxChartVal * 1.1)) * plotH
-                  const bx = leftPad + i * (barW + barGap)
-                  const by = topPad + plotH - bh
-                  const color = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
-                  return (
-                    <g key={yr}>
-                      <rect x={bx} y={by} width={barW} height={bh} rx={3} fill={color} opacity={0.75}>
-                        <title>{yr} · {METRIC_LABELS[chartMetric]}: {fmtMetric(val, chartMetric)}</title>
-                      </rect>
-                      <text x={bx + barW / 2} y={svgH - 6} textAnchor="middle"
-                        style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
-                        {yr}
-                      </text>
-                    </g>
-                  )
-                })}
-
-                {/* Baseline */}
-                <line x1={leftPad} y1={topPad + plotH} x2={svgW} y2={topPad + plotH} stroke="var(--border)" strokeWidth="1" />
-              </svg>
+              <div style={{ position: 'relative' }}>
+                <svg viewBox={`0 0 ${SVG_W} ${svgH}`} style={{ width: '100%', height: svgH, overflow: 'visible' }}
+                  onMouseLeave={() => setHoveredBar(null)}>
+                  {/* Grid + Y labels */}
+                  {yLabels.map(v => {
+                    const y = tPad + plotH - (v / yMax) * plotH
+                    return (
+                      <g key={v}>
+                        <line x1={lPad} y1={y} x2={SVG_W - 8} y2={y} stroke="var(--border)" strokeWidth="0.5" />
+                        <text x={lPad - 3} y={y + 4} textAnchor="end"
+                          style={{ fontSize: 8, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+                          {metricDef.fmt(v)}
+                        </text>
+                      </g>
+                    )
+                  })}
+                  {/* Baseline */}
+                  <line x1={lPad} y1={tPad + plotH} x2={SVG_W - 8} y2={tPad + plotH} stroke="var(--border)" strokeWidth="1" />
+                  {/* Bars */}
+                  {chartYears.map((yr, i) => {
+                    const val  = chartVals[i]
+                    const bh   = Math.max(0, (val / yMax) * plotH)
+                    const bx   = lPad + i * (barW + gap) + gap / 2
+                    const by   = tPad + plotH - bh
+                    const cx   = bx + barW / 2
+                    const col  = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+                    const sel  = selectedYear === yr
+                    const hov  = hoveredBar?.year === yr
+                    return (
+                      <g key={yr} style={{ cursor: 'pointer' }}
+                        onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
+                        onClick={() => setSelectedYear(yr)}>
+                        <rect x={bx} y={by} width={barW} height={bh} rx={3} fill={col} opacity={hov ? 1 : 0.72} />
+                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={3} fill="none" stroke={col} strokeWidth="1.5" />}
+                        <text x={cx} y={svgH - 5} textAnchor="middle"
+                          style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
+                          {yr.slice(2)}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+                {/* Tooltip */}
+                {hoveredBar && (
+                  <div style={{
+                    position: 'absolute', top: 4, pointerEvents: 'none', zIndex: 10,
+                    left:  hoveredBar.svgX < SVG_W / 2 ? `calc(${(hoveredBar.svgX / SVG_W * 100).toFixed(1)}% + 10px)` : undefined,
+                    right: hoveredBar.svgX >= SVG_W / 2 ? `calc(${((SVG_W - hoveredBar.svgX) / SVG_W * 100).toFixed(1)}% + 10px)` : undefined,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', whiteSpace: 'nowrap',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px', color: YEAR_COLORS[hoveredBar.year] ?? YEAR_DEFAULT_COLOR }}>{hoveredBar.year}</p>
+                    <p style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', margin: 0 }}>
+                      {metricDef.label}: <strong>{metricDef.fmt(hoveredBar.val)}</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
             )
           })()}
         </Card>
       )}
 
-      {availableYears.length === 0 && !loading && (
+      {/* ── Manual entry list ── */}
+      {mode === 'manual' && (
         <Card>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '20px 0' }}>
-            Aucune activité trouvée. Synchronise Strava pour voir tes données.
+          <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px' }}>
+            {sportDef.icon} {sportDef.label} — Saisie manuelle
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {manualListYrs.map(yr => {
+              const entry     = manualEntry(yr)
+              const isEditing = editYear === yr
+              const col       = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+
+              if (isEditing) {
+                return (
+                  <div key={yr} style={{ border: `1.5px solid ${col}50`, borderRadius: 10, padding: 14, background: 'var(--bg-card2)' }}>
+                    <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: col, margin: '0 0 10px' }}>{yr}</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                      {sportMetrics.map(mk => {
+                        const m = YD_METRICS[mk]
+                        if (!m) return null
+                        const rawVal = editDraft[m.manualKey]
+                        const strVal = typeof rawVal === 'number' ? String(rawVal) : ''
+                        return (
+                          <div key={mk}>
+                            <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>{m.label}</label>
+                            <input type="number" step={m.step} min="0" value={strVal}
+                              onChange={e => setEditDraft(p => ({
+                                ...p,
+                                [m.manualKey]: e.target.value === '' ? null : parseFloat(e.target.value),
+                              }))}
+                              style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => { void saveManual(yr) }} disabled={saving}
+                        style={{ padding: '6px 16px', borderRadius: 7, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                        {saving ? '…' : 'Confirmer'}
+                      </button>
+                      <button onClick={() => { setEditYear(null); setEditDraft({}) }}
+                        style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-card2)' }}>
+                  <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: col, minWidth: 36 }}>{yr}</span>
+                  <div style={{ flex: 1, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {entry
+                      ? sportMetrics.slice(0, 3).map(mk => {
+                          const m = YD_METRICS[mk]!
+                          const v = m.fromManual(entry)
+                          return v != null && v > 0 ? (
+                            <span key={mk} style={{ fontSize: 11 }}>
+                              <span style={{ color: 'var(--text-dim)' }}>{m.label} </span>
+                              <span style={{ fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>{m.fmt(v)}</span>
+                            </span>
+                          ) : null
+                        })
+                      : <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Aucune donnée</span>}
+                  </div>
+                  <button onClick={() => startEdit(yr)}
+                    style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                    {entry ? 'Modifier' : '+ Saisir'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Auto empty state ── */}
+      {mode === 'auto' && allYears.length === 0 && (
+        <Card>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '16px 0' }}>
+            Aucune activité trouvée. Synchronise Strava pour voir tes données annuelles.
           </p>
         </Card>
       )}
+
     </div>
   )
 }

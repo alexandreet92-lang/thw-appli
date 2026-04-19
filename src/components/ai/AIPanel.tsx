@@ -177,6 +177,549 @@ function parseBold(text: string): React.ReactNode {
   return <>{parts.map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : <span key={j}>{p}</span>)}</>
 }
 
+// ══════════════════════════════════════════════════════════════
+// SESSION DETECTION & RENDERING
+// Détecte les séances d'entraînement dans les réponses IA et
+// les affiche sous forme de carte visuelle avec graphique,
+// édition inline et ajout direct au Planning Supabase.
+// ══════════════════════════════════════════════════════════════
+
+// Zone colors — identiques à Z_COLORS dans Performance
+const SESSION_ZONE_COLORS = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444']
+
+interface SessionBlock {
+  label: string
+  duration_min: number
+  zone: number      // 1–5
+  intensity: string // e.g. "Z3 · 75-85%"
+  notes: string
+}
+interface ParsedSession {
+  title: string
+  sport: string
+  total_min: number
+  blocks: SessionBlock[]
+}
+
+const PHASE_RE = /échauffement|warm.?up|retour au calme|cool.?down|intervalle|récupér|fractionné|effort|tempo|seuil|vma|vo2\s*max|progressif|activation/i
+
+function zoneFromText(text: string): number {
+  const t = text.toLowerCase()
+  if (/retour au calme|cool.?down/.test(t)) return 1
+  if (/récupér/.test(t)) return 1
+  if (/échauffement|warm.?up|activation/.test(t)) return 2
+  if (/z5|vma|vo2|sprint/.test(t)) return 5
+  if (/z4|seuil|threshold/.test(t)) return 4
+  if (/z3|tempo/.test(t)) return 3
+  if (/z2|endurance|aérobie/.test(t)) return 2
+  if (/z1/.test(t)) return 1
+  const pct = text.match(/(\d+)[-–]?\d*%/)
+  if (pct) {
+    const v = parseInt(pct[1])
+    if (v < 65) return 1
+    if (v < 75) return 2
+    if (v < 82) return 3
+    if (v < 90) return 4
+    return 5
+  }
+  return 2
+}
+
+function durFromText(text: string): number {
+  const rep = text.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
+  if (rep) return parseInt(rep[1]) * parseInt(rep[2])
+  const min = text.match(/(\d+)\s*min/i)
+  return min ? parseInt(min[1]) : 0
+}
+
+function detectSport(text: string): string {
+  const t = text.toLowerCase()
+  if (/\bcyclisme\b|vélo|watt|ftp/.test(t)) return 'cycling'
+  if (/\bnatation\b|piscine|nage|css/.test(t)) return 'swim'
+  if (/\baviron\b|rowing|ergomètre/.test(t)) return 'rowing'
+  if (/\bhyrox\b|skierg|sled|wall ball/.test(t)) return 'hyrox'
+  if (/muscu|squat|bench|deadlift/.test(t)) return 'gym'
+  return 'running'
+}
+
+function mapBlockType(label: string): string {
+  const l = label.toLowerCase()
+  if (/échauffement|warm.?up|activation/.test(l)) return 'warmup'
+  if (/retour au calme|cool.?down/.test(l)) return 'cooldown'
+  if (/récup/.test(l)) return 'recovery'
+  if (/intervalle|fractionné/.test(l)) return 'interval'
+  if (/effort|seuil|vma|tempo/.test(l)) return 'effort'
+  return 'steady'
+}
+
+/** Détecte et parse une séance d'entraînement dans le texte IA.
+ *  Retourne null si le texte ne contient pas de séance structurée. */
+function parseSession(text: string): ParsedSession | null {
+  const lower = text.toLowerCase()
+  // Garde-fou : doit contenir échauffement ET retour au calme ET au moins une durée
+  if (!/échauffement|warm.?up/.test(lower)) return null
+  if (!/retour au calme|cool.?down/.test(lower)) return null
+  if (!/\d+\s*min/.test(lower)) return null
+
+  const lines = text.split('\n')
+
+  // Stratégie 1 — sections délimitées par des titres Markdown (#, ##, ###, ####)
+  type Sec = { headingText: string; bodyLines: string[] }
+  const sections: Sec[] = []
+  let cur: Sec | null = null
+  for (const line of lines) {
+    const hm = line.match(/^#{1,4}\s+(.+)/)
+    if (hm) {
+      if (cur) sections.push(cur)
+      cur = { headingText: hm[1].replace(/\*\*/g, '').trim(), bodyLines: [] }
+    } else if (cur) {
+      cur.bodyLines.push(line)
+    }
+  }
+  if (cur) sections.push(cur)
+
+  const phaseSections = sections.filter(s => {
+    const combined = s.headingText + ' ' + s.bodyLines.join(' ')
+    return PHASE_RE.test(s.headingText) && durFromText(combined) > 0
+  })
+
+  if (phaseSections.length >= 2) {
+    const blocks: SessionBlock[] = phaseSections.map(s => {
+      const combined = s.headingText + ' ' + s.bodyLines.join(' ')
+      const zone = zoneFromText(combined)
+      const pctM = combined.match(/(\d+[-–]\d+)%/)
+      const intensity = pctM ? `Z${zone} · ${pctM[1]}%` : `Z${zone}`
+      const notes = s.bodyLines
+        .map(l => l.replace(/^[-•*]\s*/, '').trim())
+        .filter(l => l && !/^\d+\s*min/.test(l))[0] ?? ''
+      return {
+        label: s.headingText.replace(/^\d+[.):\s]+/, '').trim(),
+        duration_min: durFromText(combined),
+        zone, intensity, notes,
+      }
+    })
+    const total = blocks.reduce((s, b) => s + b.duration_min, 0)
+    return { title: 'Séance proposée', sport: detectSport(text), total_min: total, blocks }
+  }
+
+  // Stratégie 2 — lignes avec label en gras + durée
+  // ex: "**Échauffement** : 10 min — Z2 · 65-70% FCmax"
+  const boldBlocks: SessionBlock[] = []
+  for (const line of lines) {
+    if (!/\*\*[^*]+\*\*/.test(line)) continue
+    if (!PHASE_RE.test(line)) continue
+    const dur = durFromText(line)
+    if (!dur) continue
+    const labelM = line.match(/\*\*([^*]+)\*\*/)
+    const label = labelM ? labelM[1] : line.slice(0, 30)
+    const zone = zoneFromText(line)
+    const pctM = line.match(/(\d+[-–]\d+)%/)
+    const intensity = pctM ? `Z${zone} · ${pctM[1]}%` : `Z${zone}`
+    const notes = line
+      .replace(/\*\*[^*]+\*\*/, '').replace(/\d+\s*min/ig, '')
+      .replace(/[-•*:·]/g, '').trim().slice(0, 80)
+    boldBlocks.push({ label, duration_min: dur, zone, intensity, notes })
+  }
+
+  if (boldBlocks.length >= 2) {
+    const total = boldBlocks.reduce((s, b) => s + b.duration_min, 0)
+    return { title: 'Séance proposée', sport: detectSport(text), total_min: total, blocks: boldBlocks }
+  }
+
+  return null
+}
+
+// ── Session Block Chart (SVG-free, div-based) ─────────────────
+
+function SessionBlockChart({ blocks, total }: { blocks: SessionBlock[]; total: number }) {
+  const [hovIdx, setHovIdx] = useState<number | null>(null)
+
+  return (
+    <div style={{ position: 'relative', userSelect: 'none' }}>
+      {hovIdx !== null && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
+          borderRadius: 7, padding: '5px 10px', zIndex: 20,
+          fontSize: 11, whiteSpace: 'nowrap', marginBottom: 6,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.20)', pointerEvents: 'none',
+        }}>
+          <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{blocks[hovIdx].label}</span>
+          <span style={{ color: 'var(--ai-dim)', margin: '0 5px' }}>·</span>
+          <span style={{ color: 'var(--ai-text)' }}>{blocks[hovIdx].duration_min} min</span>
+          <span style={{ color: 'var(--ai-dim)', margin: '0 5px' }}>·</span>
+          <span style={{ color: SESSION_ZONE_COLORS[(blocks[hovIdx].zone - 1) % 5], fontWeight: 600 }}>
+            {blocks[hovIdx].intensity}
+          </span>
+        </div>
+      )}
+      {/* Barre horizontale */}
+      <div style={{ display: 'flex', height: 38, borderRadius: 8, overflow: 'hidden', marginBottom: 5 }}>
+        {blocks.map((b, i) => {
+          const pct = total > 0 ? (b.duration_min / total) * 100 : 100 / blocks.length
+          const col = SESSION_ZONE_COLORS[(b.zone - 1) % 5]
+          const isHov = hovIdx === i
+          return (
+            <div key={i}
+              style={{
+                width: `${pct}%`, background: isHov ? col : `${col}cc`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'default', transition: 'background 0.1s',
+                borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+              }}
+              onMouseEnter={() => setHovIdx(i)}
+              onMouseLeave={() => setHovIdx(null)}
+            >
+              {pct > 12 && (
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.03em' }}>
+                  {b.duration_min}′
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {/* Labels sous la barre */}
+      <div style={{ display: 'flex' }}>
+        {blocks.map((b, i) => {
+          const pct = total > 0 ? (b.duration_min / total) * 100 : 100 / blocks.length
+          const col = SESSION_ZONE_COLORS[(b.zone - 1) % 5]
+          const isHov = hovIdx === i
+          return (
+            <div key={i}
+              style={{ width: `${pct}%`, overflow: 'hidden', paddingRight: 2 }}
+              onMouseEnter={() => setHovIdx(i)}
+              onMouseLeave={() => setHovIdx(null)}
+            >
+              {pct > 8 && (
+                <div style={{
+                  fontSize: 9, lineHeight: 1.2,
+                  color: isHov ? col : 'var(--ai-dim)',
+                  fontWeight: isHov ? 600 : 400,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {b.label}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── AddToPlanningModal ────────────────────────────────────────
+
+const SPORT_LABELS_FR: Record<string, string> = {
+  running: 'Course à pied', cycling: 'Vélo', swim: 'Natation',
+  rowing: 'Aviron', hyrox: 'Hyrox', gym: 'Muscu',
+}
+const SPORT_EMOJIS: Record<string, string> = {
+  running: '🏃', cycling: '🚴', swim: '🏊', rowing: '🚣', hyrox: '💪', gym: '🏋️',
+}
+
+function weekStartOf(dateStr: string): string {
+  const d = new Date(dateStr)
+  const dow = d.getDay() === 0 ? 6 : d.getDay() - 1
+  d.setDate(d.getDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+function dayIdxOf(dateStr: string): number {
+  const dow = new Date(dateStr).getDay()
+  return dow === 0 ? 6 : dow - 1
+}
+
+function AddToPlanningModal({ session, onClose }: { session: ParsedSession; onClose: () => void }) {
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
+  const [date,   setDate]   = useState(tomorrow.toISOString().slice(0, 10))
+  const [time,   setTime]   = useState('09:00')
+  const [sport,  setSport]  = useState(session.sport)
+  const [plan,   setPlan]   = useState<'A' | 'B'>('A')
+  const [saving, setSaving] = useState(false)
+  const [done,   setDone]   = useState(false)
+  const [errMsg, setErrMsg] = useState('')
+
+  async function save() {
+    setSaving(true); setErrMsg('')
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setErrMsg('Non connecté'); setSaving(false); return }
+      const planBlocks = session.blocks.map((b, i) => ({
+        id: `ai-${Date.now()}-${i}`,
+        type: mapBlockType(b.label),
+        durationMin: b.duration_min,
+        zone: b.zone,
+        value: '',
+        hrAvg: '',
+        label: b.label,
+      }))
+      const { error } = await sb.from('planned_sessions').insert({
+        user_id: user.id,
+        week_start: weekStartOf(date),
+        day_index: dayIdxOf(date),
+        sport, title: session.title, time,
+        duration_min: session.total_min,
+        tss: null, status: 'planned',
+        notes: `Générée par Coach IA · Plan ${plan}`,
+        rpe: null, blocks: planBlocks,
+        validation_data: { plan, source: 'ai_coach', at: new Date().toISOString() },
+      })
+      if (error) { setErrMsg(error.message); setSaving(false); return }
+      setDone(true)
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : 'Erreur réseau')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={onClose}
+    >
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--ai-bg)', borderRadius: 14, padding: 22,
+        width: 320, border: '1px solid var(--ai-border)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }}>
+        {done ? (
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>Séance ajoutée !</p>
+            <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 16px' }}>
+              Plan {plan} · {new Date(date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--ai-text)' }}>
+                Ajouter au Planning
+              </h3>
+              <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Plan A / B */}
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Plan</p>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['A', 'B'] as const).map(p => (
+                    <button key={p} onClick={() => setPlan(p)} style={{
+                      flex: 1, padding: '7px', borderRadius: 8,
+                      border: `1px solid ${plan === p ? '#5b6fff' : 'var(--ai-border)'}`,
+                      background: plan === p ? 'rgba(91,111,255,0.12)' : 'var(--ai-bg2)',
+                      color: plan === p ? '#5b6fff' : 'var(--ai-mid)',
+                      fontSize: 13, fontWeight: plan === p ? 700 : 400, cursor: 'pointer',
+                    }}>Plan {p}</button>
+                  ))}
+                </div>
+              </div>
+              {/* Date */}
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Date</p>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              {/* Heure */}
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Heure</p>
+                <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              {/* Sport */}
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Sport</p>
+                <select value={sport} onChange={e => setSport(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', cursor: 'pointer', boxSizing: 'border-box' }}>
+                  {Object.entries(SPORT_LABELS_FR).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              {errMsg && <p style={{ fontSize: 11, color: '#ef4444', margin: 0 }}>{errMsg}</p>}
+              <button onClick={() => void save()} disabled={saving} style={{
+                padding: '10px', borderRadius: 9, border: 'none', marginTop: 2,
+                background: saving ? 'var(--ai-border)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                color: '#fff', fontSize: 13, fontWeight: 700,
+                cursor: saving ? 'not-allowed' : 'pointer',
+              }}>
+                {saving ? 'Ajout…' : `Ajouter au Plan ${plan}`}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── SessionCard ───────────────────────────────────────────────
+// Carte visuelle de séance — s'affiche sous la bulle IA quand
+// une séance structurée est détectée dans la réponse.
+
+function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean }) {
+  const [session,      setSession]      = useState<ParsedSession | null>(null)
+  const [editMode,     setEditMode]     = useState(false)
+  const [editedBlocks, setEditedBlocks] = useState<SessionBlock[]>([])
+  const [showModal,    setShowModal]    = useState(false)
+
+  useEffect(() => {
+    if (isStreaming) return
+    const s = parseSession(text)
+    setSession(s)
+    if (s) setEditedBlocks(s.blocks)
+  }, [text, isStreaming])
+
+  if (!session) return null
+
+  const displayBlocks = editMode ? editedBlocks : session.blocks
+  const total = displayBlocks.reduce((s, b) => s + b.duration_min, 0)
+  const emoji = SPORT_EMOJIS[session.sport] ?? '🏃'
+  const sportLabel = SPORT_LABELS_FR[session.sport] ?? session.sport
+
+  function updateBlock(i: number, field: keyof SessionBlock, value: string | number) {
+    setEditedBlocks(prev => prev.map((b, j) => j === i ? { ...b, [field]: value } : b))
+  }
+
+  function confirmEdit() {
+    const newTotal = editedBlocks.reduce((s, b) => s + b.duration_min, 0)
+    setSession(prev => prev ? { ...prev, blocks: editedBlocks, total_min: newTotal } : prev)
+    setEditMode(false)
+  }
+
+  return (
+    <>
+      <div style={{
+        borderRadius: 12,
+        border: '1px solid var(--ai-border)',
+        background: 'var(--ai-bg2)',
+        overflow: 'hidden',
+        marginLeft: 34, // align with message bubble (skip avatar width + gap)
+      }}>
+        {/* ─ Header ─ */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 14px',
+          background: 'linear-gradient(90deg,rgba(91,111,255,0.09) 0%,transparent 100%)',
+          borderBottom: '1px solid var(--ai-border)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span style={{ fontSize: 15 }}>{emoji}</span>
+            <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
+              {sportLabel} · {total} min
+            </span>
+            <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, letterSpacing: '0.05em' }}>
+              SÉANCE
+            </span>
+          </div>
+          {/* Zone dots */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {session.blocks.map((b, i) => (
+              <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: SESSION_ZONE_COLORS[(b.zone - 1) % 5], opacity: 0.85 }} />
+            ))}
+          </div>
+        </div>
+
+        {/* ─ Bar chart ─ */}
+        <div style={{ padding: '12px 14px 8px' }}>
+          <SessionBlockChart blocks={displayBlocks} total={total} />
+        </div>
+
+        {/* ─ Block list ─ */}
+        <div style={{ padding: '2px 10px 10px' }}>
+          {editMode ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {editedBlocks.map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 7, background: 'rgba(0,0,0,0.04)' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: SESSION_ZONE_COLORS[(b.zone - 1) % 5], flexShrink: 0 }} />
+                  <input
+                    value={b.label}
+                    onChange={e => updateBlock(i, 'label', e.target.value)}
+                    style={{ flex: 1, padding: '3px 7px', borderRadius: 5, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', fontFamily: 'DM Sans,sans-serif' }}
+                  />
+                  <input
+                    type="number" value={b.duration_min} min={1}
+                    onChange={e => updateBlock(i, 'duration_min', parseInt(e.target.value) || 1)}
+                    style={{ width: 46, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', textAlign: 'center', fontFamily: 'DM Mono,monospace' }}
+                  />
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', flexShrink: 0 }}>min</span>
+                  <select
+                    value={b.zone}
+                    onChange={e => {
+                      const z = parseInt(e.target.value)
+                      updateBlock(i, 'zone', z)
+                      updateBlock(i, 'intensity', `Z${z}`)
+                    }}
+                    style={{ width: 50, padding: '3px 4px', borderRadius: 5, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}
+                  >
+                    {[1, 2, 3, 4, 5].map(z => <option key={z} value={z}>Z{z}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {displayBlocks.map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 6 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: SESSION_ZONE_COLORS[(b.zone - 1) % 5], flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 12, color: 'var(--ai-text)', lineHeight: 1.3 }}>{b.label}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-mid)', minWidth: 32, textAlign: 'right' }}>{b.duration_min}′</span>
+                  <span style={{ fontSize: 10, color: SESSION_ZONE_COLORS[(b.zone - 1) % 5], fontWeight: 700, minWidth: 20, textAlign: 'right' }}>
+                    {b.intensity.split(' ')[0]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ─ Actions ─ */}
+        <div style={{ display: 'flex', gap: 6, padding: '0 10px 11px' }}>
+          {editMode ? (
+            <>
+              <button
+                onClick={() => setEditMode(false)}
+                style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmEdit}
+                style={{ flex: 2, padding: '7px', borderRadius: 8, border: 'none', background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+              >
+                ✓ Valider les modifications
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => { setEditedBlocks(session.blocks); setEditMode(true) }}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+              >
+                ✏️ Modifier
+              </button>
+              <button
+                onClick={() => setShowModal(true)}
+                style={{ flex: 2, padding: '7px 10px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+              >
+                + Ajouter au Planning
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {showModal && (
+        <AddToPlanningModal
+          session={{ ...session, blocks: editMode ? editedBlocks : session.blocks }}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
+  )
+}
+
 // ── Loading dots ───────────────────────────────────────────────
 
 function Dots() {
@@ -983,43 +1526,53 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
               {/* Messages */}
               {active && active.msgs.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 14 }}>
-                  {active.msgs.map(msg => (
-                    <div key={msg.id} style={{
-                      display: 'flex',
-                      justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start', gap: 8,
-                    }}>
-                      {msg.role === 'assistant' && (
-                        <div style={{
-                          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                          background: 'var(--ai-bg2)',
-                          border: `1px solid var(--ai-border)`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          marginTop: 2, overflow: 'hidden',
-                        }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/logo.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                        </div>
-                      )}
+                  {active.msgs.map((msg, idx) => (
+                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {/* ── Bulle message ── */}
                       <div style={{
-                        maxWidth: '84%',
-                        padding: msg.role === 'user' ? '9px 13px' : '11px 14px',
-                        borderRadius: msg.role === 'user'
-                          ? '14px 14px 4px 14px'
-                          : '14px 14px 14px 4px',
-                        background: msg.role === 'user'
-                          ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                          : 'var(--ai-bg2)',
-                        border: msg.role === 'user'
-                          ? 'none'
-                          : `1px solid var(--ai-border)`,
-                        color: msg.role === 'user' ? '#fff' : 'var(--ai-text)',
+                        display: 'flex',
+                        justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                        alignItems: 'flex-start', gap: 8,
                       }}>
-                        {msg.role === 'user'
-                          ? <span style={{ fontSize: 13, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
-                          : <MsgContent text={msg.content} />
-                        }
+                        {msg.role === 'assistant' && (
+                          <div style={{
+                            width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                            background: 'var(--ai-bg2)',
+                            border: `1px solid var(--ai-border)`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginTop: 2, overflow: 'hidden',
+                          }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/logo.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+                          </div>
+                        )}
+                        <div style={{
+                          maxWidth: '84%',
+                          padding: msg.role === 'user' ? '9px 13px' : '11px 14px',
+                          borderRadius: msg.role === 'user'
+                            ? '14px 14px 4px 14px'
+                            : '14px 14px 14px 4px',
+                          background: msg.role === 'user'
+                            ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
+                            : 'var(--ai-bg2)',
+                          border: msg.role === 'user'
+                            ? 'none'
+                            : `1px solid var(--ai-border)`,
+                          color: msg.role === 'user' ? '#fff' : 'var(--ai-text)',
+                        }}>
+                          {msg.role === 'user'
+                            ? <span style={{ fontSize: 13, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
+                            : <MsgContent text={msg.content} />
+                          }
+                        </div>
                       </div>
+                      {/* ── Carte séance (détection automatique) ── */}
+                      {msg.role === 'assistant' && (
+                        <SessionCard
+                          text={msg.content}
+                          isStreaming={loading && idx === active.msgs.length - 1}
+                        />
+                      )}
                     </div>
                   ))}
 

@@ -84,34 +84,28 @@ ${GOLDEN_RULE}`
 
 // ── Chat Agent ────────────────────────────────────────────────
 
-export async function runChatAgent(input: ChatInput): Promise<ChatOutput> {
+export function buildChatParams(input: ChatInput) {
   const { agentId, messages, context } = input
-  const client = getAnthropicClient()
-
-  // 1. System prompt de base
   const baseSystem = AGENT_SYSTEM_PROMPTS[agentId] ?? DEFAULT_SYSTEM
-
-  // 2. Contexte formaté (texte structuré lisible par l'IA)
   const contextBlock = context && Object.keys(context).length > 0
     ? formatContextForAgent(agentId, context)
     : ''
-
-  // 3. System prompt final : base + contexte
-  const systemPrompt = contextBlock
-    ? `${baseSystem}\n\n${contextBlock}`
-    : baseSystem
-
-  // 4. Messages au format Anthropic
+  const systemPrompt = contextBlock ? `${baseSystem}\n\n${contextBlock}` : baseSystem
   const anthropicMessages = messages.map(m => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }))
+  return { systemPrompt, anthropicMessages }
+}
+
+export async function runChatAgent(input: ChatInput): Promise<ChatOutput> {
+  const client = getAnthropicClient()
+  const { systemPrompt, anthropicMessages } = buildChatParams(input)
 
   if (anthropicMessages.length === 0) {
     throw new Error('[chatAgent] No messages provided')
   }
 
-  // 5. Appel API
   const response = await client.messages.create({
     model: MODELS.fast,
     max_tokens: 1200,
@@ -126,6 +120,6 @@ export async function runChatAgent(input: ChatInput): Promise<ChatOutput> {
 
   return {
     reply: textBlock.text,
-    agentId,
+    agentId: input.agentId,
   }
 }

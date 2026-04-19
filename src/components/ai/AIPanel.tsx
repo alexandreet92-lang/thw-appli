@@ -77,6 +77,13 @@ function saveStore(s: ConvStore) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(s)) } catch {}
 }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
+
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12) return 'matin'
+  if (h >= 12 && h < 18) return 'après-midi'
+  return 'soir'
+}
 function fmtDate(ts: number) {
   const d = Date.now() - ts
   if (d < 60_000) return "instant"
@@ -218,7 +225,7 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
 
   useEffect(() => { setMounted(true); setStore(loadStore()) }, [])
   useEffect(() => { if (mounted) saveStore(store) }, [store, mounted])
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [activeId, loading, store])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, store])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
   useEffect(() => { if (open) setAgent(initialAgent) }, [open, initialAgent])
@@ -353,27 +360,46 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
     const cid = updated.id
 
     try {
-      const res = await fetch('/api/coach-engine', {
+      const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'chat',
-          payload: {
-            agentId: curAgent,
-            messages: updated.msgs.map(m => ({ role: m.role, content: m.content })),
-            context: context ?? {},
-          },
+          agentId: curAgent,
+          messages: updated.msgs.map(m => ({ role: m.role, content: m.content })),
+          context: context ?? {},
         }),
       })
-      const data = await res.json()
-      const reply = data?.result?.reply ?? data?.reply ?? "Désolé, une erreur est survenue."
-      const aiMsg: AIMsg = { id: genId(), role: 'assistant', content: reply, ts: Date.now() }
+
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+
+      const aiMsgId = genId()
       setStore(p => ({
         ...p,
         [curAgent]: (p[curAgent] ?? []).map(c =>
-          c.id === cid ? { ...c, msgs: [...c.msgs, aiMsg], updatedAt: Date.now() } : c
+          c.id === cid
+            ? { ...c, msgs: [...c.msgs, { id: aiMsgId, role: 'assistant' as const, content: '', ts: Date.now() }], updatedAt: Date.now() }
+            : c
         ),
       }))
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+        const text = accumulated
+        setStore(p => ({
+          ...p,
+          [curAgent]: (p[curAgent] ?? []).map(c =>
+            c.id === cid
+              ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: text } : m), updatedAt: Date.now() }
+              : c
+          ),
+        }))
+      }
     } catch {
       const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
       setStore(p => ({
@@ -906,6 +932,13 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
               {/* Actions rapides (conv vide) */}
               {(!active || active.msgs.length === 0) && (
                 <div>
+                  <p style={{
+                    textAlign: 'center', margin: '18px 0 22px',
+                    fontSize: 15, fontWeight: 600, color: 'var(--ai-text)',
+                    lineHeight: 1.4,
+                  }}>
+                    Comment puis-je vous aider ce {getGreeting()} ?
+                  </p>
                   <div style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
                     textTransform: 'uppercase', color: 'var(--ai-dim)',
@@ -990,7 +1023,7 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
                     </div>
                   ))}
 
-                  {loading && (
+                  {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{
                         width: 26, height: 26, borderRadius: 7, flexShrink: 0,
@@ -1033,7 +1066,7 @@ export default function AIPanel({ open, onClose, initialAgent, context, prefillM
                   value={input}
                   onChange={handleInput}
                   onKeyDown={handleKey}
-                  placeholder="Pose ta question…"
+                  placeholder="Posez votre question à THW"
                   rows={1}
                   style={{
                     flex: 1, background: 'transparent',

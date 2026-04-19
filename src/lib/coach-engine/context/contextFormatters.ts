@@ -395,6 +395,47 @@ function formatZonesSection(zones: Record<string, any>): string {
   return lines.length > 0 ? section('Zones d\'entraînement', lines) : ''
 }
 
+// ── CENTRAL (agrège tous les contextes disponibles) ──────────
+
+export function formatCentralContext(ctx: Record<string, unknown>): string {
+  const parts: string[] = ['=== CONTEXTE THW COACH ===']
+
+  const hasSessions   = ctx.sessions !== undefined || ctx.weekStart !== undefined
+  const hasRaces      = ctx.races !== undefined
+  const hasRecovery   = ctx.readiness != null || ctx.hrv != null || ctx.fatigue != null || ctx.sleep != null
+  const hasNutrition  = ctx.todayKcal != null || ctx.meals != null || ctx.hasPlan != null
+  const hasActivities = ctx.recentActivities != null
+
+  // Planning (inclut les courses si hasSessions)
+  if (hasSessions) {
+    parts.push(formatPlanningContext(ctx).replace('=== CONTEXTE PLANNING ===', ''))
+  } else if (hasRaces) {
+    // Stratégie / calendrier si pas de planning en cours
+    parts.push(formatStrategyContext(ctx).replace('=== CONTEXTE STRATÉGIE & CALENDRIER ===', ''))
+  }
+
+  // Récupération
+  if (hasRecovery) {
+    parts.push(formatRecoveryContext(ctx).replace('=== CONTEXTE RÉCUPÉRATION ===', ''))
+  }
+
+  // Nutrition
+  if (hasNutrition) {
+    parts.push(formatNutritionContext(ctx).replace('=== CONTEXTE NUTRITION ===', ''))
+  }
+
+  // Performance / activités
+  if (hasActivities) {
+    parts.push(formatPerformanceContext(ctx).replace('=== CONTEXTE PERFORMANCE ===', ''))
+  }
+
+  if (parts.length === 1) {
+    parts.push('\nAucune donnée disponible pour cette session. Réponds de façon générale.')
+  }
+
+  return parts.filter(Boolean).join('\n')
+}
+
 // ── DISPATCHER ──────────────────────────────────────────────
 
 export function formatContextForAgent(
@@ -404,6 +445,7 @@ export function formatContextForAgent(
   if (!ctx || Object.keys(ctx).length === 0) return ''
 
   switch (agentId) {
+    case 'central':      return formatCentralContext(ctx)
     case 'planning':     return formatPlanningContext(ctx)
     case 'strategy':     return formatStrategyContext(ctx)
     case 'readiness':    return formatRecoveryContext(ctx)

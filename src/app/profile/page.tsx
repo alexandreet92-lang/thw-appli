@@ -6,34 +6,25 @@ import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-// ── Types ─────────────────────────────────────────
-type ProfileTab = 'profil' | 'zones' | 'records'
-type SportType  = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox' | 'triathlon' | 'trail'
-type ZoneSport  = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox_row' | 'hyrox_ski'
+// ══════════════════════════════════════════════════
+// TYPES
+// ══════════════════════════════════════════════════
+
+type ProfileTab    = 'profil' | 'notifications' | 'ia'
 type OAuthProvider = 'strava' | 'wahoo' | 'polar' | 'withings'
+type THWModel      = 'hermes' | 'athena' | 'zeus'
+type ToneId        = 'pro' | 'warm' | 'spontaneous' | 'offbeat' | 'efficient'
+type DetailId      = 'short' | 'normal' | 'deep'
 
 interface Connection {
   id: string; provider?: OAuthProvider; label: string
   connected: boolean; lastSync: string; loading: boolean; available: boolean
 }
 
-interface ZoneData {
-  zones: string[]; sl1: string; sl2: string; ftp?: string; runCompromised?: string
-}
+// ══════════════════════════════════════════════════
+// HELPERS & CONSTANTS
+// ══════════════════════════════════════════════════
 
-interface RecordEntry {
-  id: string; distance: string; perf: string; date: string; year: string; race: string
-  type: 'entrainement'|'competition'; pace?: string; elevation?: string
-  splits?: {swim?:string;bike?:string;run?:string}; stationTimes?: Record<string,string>
-}
-
-interface PalmEntry {
-  id: string; race: string; year: string; rank: string; time: string; category: string
-  stationTimes?: Record<string,string>
-}
-
-// ── Helpers ───────────────────────────────────────
-function uid() { return `${Date.now()}_${Math.random().toString(36).slice(2)}` }
 function today() { return new Date().toISOString().split('T')[0] }
 function sinceDate(d: string): string {
   const now = new Date(), dt = new Date(d)
@@ -52,51 +43,46 @@ const SPORT_COLOR: Record<string,string> = {
   run:'#22c55e', bike:'#3b82f6', swim:'#38bdf8', rowing:'#14b8a6',
   hyrox:'#ef4444', triathlon:'#a855f7', trail:'#f97316', gym:'#ffb340'
 }
-const Z_COLORS = ['#60a5fa','#34d399','#fbbf24','#f97316','#ef4444']
-const Z_LABELS = ['Récup','Aérobie','Tempo','Seuil','VO2max']
-const BIKE_DISTS  = ['Pmax','10s','30s','1min','3min','5min','8min','10min','12min','20min','30min','1h','2h','3h','4h','5h','6h']
-const RUN_DISTS   = ['1500m','5km','10km','Semi-marathon','Marathon','50km','100km']
-const TRAIL_DISTS = ['20km','30km','50km','80km','100km','Ultra (100km+)']
-const TRI_DISTS   = ['XS','S (Sprint)','M (Standard)','70.3 / L','Ironman / XL']
-const SWIM_DISTS  = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
-const ROW_DISTS   = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
-const HYROX_CATS  = ['Open Solo','Pro Solo']
-const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmer Carry','Sandbag Lunges','Wall Balls']
-const RUN_KM: Record<string,number> = {'1500m':1.5,'5km':5,'10km':10,'Semi-marathon':21.1,'Marathon':42.195,'50km':50,'100km':100}
 
-function calcPace(distKm:number, t:string):string {
-  const p=t.split(':').map(Number)
-  const s=p.length===3?p[0]*3600+p[1]*60+p[2]:p.length===2?p[0]*60+p[1]:parseFloat(t)||0
-  if(!s||!distKm) return ''
-  const spk=s/distKm
-  return `${Math.floor(spk/60)}:${String(Math.round(spk%60)).padStart(2,'0')}/km`
-}
+// ══════════════════════════════════════════════════
+// APP LOGOS
+// ══════════════════════════════════════════════════
 
-// ── App logos ─────────────────────────────────────
 function AppLogo({ id, size=28 }: { id:string; size?:number }) {
   const logos: Record<string,React.ReactNode> = {
-    strava: <svg width={size} height={size} viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116z" fill="#FC4C02"/><path d="M11.214 13.828l2.084-4.116 2.089 4.116h3.066L13.298 3.656l-5.15 10.172h3.066z" fill="#FC4C02"/></svg>,
-    wahoo: <svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#E8002D"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">WAHOO</text></svg>,
-    polar: <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#C40000"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">P</text></svg>,
-    withings: <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#00B5D8"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">W</text></svg>,
-    apple_health: <svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#FF2D55"/><path d="M12 6c.5-1.5 2-2.5 3.5-2 1.5.5 2 2 1.5 3.5L12 18 7 7.5C6.5 6 7 4.5 8.5 4c1.5-.5 3 .5 3.5 2z" fill="white"/></svg>,
-    google_fit: <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#4285F4"/><path d="M12 6l1.5 3h3l-2.5 2 1 3-3-2-3 2 1-3-2.5-2h3z" fill="white"/></svg>,
-    fitbit: <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#00B0B9"/><circle cx="12" cy="8" r="1.5" fill="white"/><circle cx="12" cy="12" r="2" fill="white"/><circle cx="12" cy="16.5" r="1.5" fill="white"/></svg>,
-    hrv4training: <svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#E53E3E"/><path d="M3 12h3l2-6 4 12 2-6h7" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>,
+    strava:    <svg width={size} height={size} viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116z" fill="#FC4C02"/><path d="M11.214 13.828l2.084-4.116 2.089 4.116h3.066L13.298 3.656l-5.15 10.172h3.066z" fill="#FC4C02"/></svg>,
+    wahoo:     <svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#E8002D"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">WAHOO</text></svg>,
+    polar:     <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#C40000"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">P</text></svg>,
+    withings:  <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#00B5D8"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">W</text></svg>,
+    apple_health:<svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#FF2D55"/><path d="M12 6c.5-1.5 2-2.5 3.5-2 1.5.5 2 2 1.5 3.5L12 18 7 7.5C6.5 6 7 4.5 8.5 4c1.5-.5 3 .5 3.5 2z" fill="white"/></svg>,
+    google_fit:<svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#4285F4"/><path d="M12 6l1.5 3h3l-2.5 2 1 3-3-2-3 2 1-3-2.5-2h3z" fill="white"/></svg>,
+    fitbit:    <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#00B0B9"/><circle cx="12" cy="8" r="1.5" fill="white"/><circle cx="12" cy="12" r="2" fill="white"/><circle cx="12" cy="16.5" r="1.5" fill="white"/></svg>,
+    hrv4training:<svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#E53E3E"/><path d="M3 12h3l2-6 4 12 2-6h7" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>,
     elite_hrv: <svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#2D3748"/><path d="M4 12h3l2-5 4 10 2-5h5" stroke="#68D391" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>,
-    oura: <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1A1A2E"/><circle cx="12" cy="12" r="5" stroke="#C4A35A" strokeWidth="2" fill="none"/><circle cx="12" cy="12" r="2" fill="#C4A35A"/></svg>,
-    myfitnesspal: <svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#00B3E6"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">MFP</text></svg>,
-    cronometer: <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#F5A623"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">C</text></svg>,
+    oura:      <svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1A1A2E"/><circle cx="12" cy="12" r="5" stroke="#C4A35A" strokeWidth="2" fill="none"/><circle cx="12" cy="12" r="2" fill="#C4A35A"/></svg>,
+    myfitnesspal:<svg width={size} height={size} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#00B3E6"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">MFP</text></svg>,
+    cronometer:<svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#F5A623"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">C</text></svg>,
   }
   return <>{logos[id] ?? <div style={{ width:size, height:size, borderRadius:6, background:'var(--border)' }}/>}</>
 }
 
-// ── Shared UI ─────────────────────────────────────
+// ══════════════════════════════════════════════════
+// SHARED UI
+// ══════════════════════════════════════════════════
+
 function Card({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:20, boxShadow:'var(--shadow-card)', marginBottom:12, ...style }}>{children}</div>
+  return <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:18, padding:20, boxShadow:'var(--shadow-card)', marginBottom:12, ...style }}>{children}</div>
 }
-function SectionTitle({ children }: { children:React.ReactNode }) {
-  return <p style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 14px' }}>{children}</p>
+function CardTitle({ children, icon }: { children:React.ReactNode; icon?:React.ReactNode }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:18 }}>
+      {icon && <div style={{ width:30, height:30, borderRadius:9, background:'rgba(91,111,255,0.1)', border:'1px solid rgba(91,111,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', color:'#5b6fff', flexShrink:0 }}>{icon}</div>}
+      <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{children}</p>
+    </div>
+  )
+}
+function SectionLabel({ children }: { children:React.ReactNode }) {
+  return <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 10px' }}>{children}</p>
 }
 function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
   return <button onClick={()=>onChange(!value)} style={{ width:38, height:21, borderRadius:11, background:value?'#00c8e0':'rgba(120,120,140,0.3)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:15, height:15, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
@@ -106,16 +92,55 @@ function InfoModal({ title, content, onClose }: { title:string; content:React.Re
 }
 function HelpBtn({ title, content }: { title:string; content:React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  return <><button onClick={()=>setOpen(true)} style={{ width:16, height:16, borderRadius:'50%', background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:9, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, verticalAlign:'middle' }}>?</button>{open && <InfoModal title={title} content={content} onClose={()=>setOpen(false)}/>}</>
+  return <><button onClick={()=>setOpen(true)} style={{ width:16, height:16, borderRadius:'50%', background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:9, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>?</button>{open && <InfoModal title={title} content={content} onClose={()=>setOpen(false)}/>}</>
 }
 function Toast({ msg, ok }: { msg:string; ok:boolean }) {
   return <div style={{ position:'fixed', top:20, right:20, zIndex:999, padding:'12px 18px', borderRadius:12, background:ok?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${ok?'rgba(34,197,94,0.4)':'rgba(239,68,68,0.4)'}`, color:ok?'#22c55e':'#ef4444', fontSize:13, fontWeight:600, backdropFilter:'blur(8px)' }}>{msg}</div>
 }
 function SaveBtn({ saving, onClick }: { saving:boolean; onClick:()=>void }) {
-  return <button onClick={onClick} disabled={saving} style={{ padding:'5px 14px', borderRadius:8, background:saving?'var(--border)':'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:11, cursor:saving?'not-allowed':'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>{saving?'Sauvegarde...':'Sauvegarder ✓'}</button>
+  return <button onClick={onClick} disabled={saving} style={{ padding:'7px 16px', borderRadius:10, background:saving?'var(--border)':'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>{saving?'Sauvegarde...':'Sauvegarder ✓'}</button>
 }
 
-// ── Connexions hook ────────────────────────────────
+// Bottom-sheet overlay
+function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onClose:()=>void; title:string; subtitle?:string; children:React.ReactNode }) {
+  if (!open) return null
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.72)', backdropFilter:'blur(14px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'92vh', overflowY:'auto', paddingBottom:40 }}>
+        <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
+          <div>
+            <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>{title}</p>
+            {subtitle && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>{subtitle}</p>}
+          </div>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+        </div>
+        <div style={{ padding:'20px 20px 0' }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+// Nav row (clickable list item with chevron)
+function NavRow({ label, sub, icon, onClick }: { label:string; sub:string; icon:React.ReactNode; onClick:()=>void }) {
+  return (
+    <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', textAlign:'left' as const, width:'100%', transition:'background 0.14s' }}
+      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}
+      onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}
+    >
+      <div style={{ width:34, height:34, borderRadius:9, background:'rgba(91,111,255,0.1)', border:'1px solid rgba(91,111,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', color:'#5b6fff', flexShrink:0 }}>{icon}</div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:0 }}>{label}</p>
+        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{sub}</p>
+      </div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// HOOKS
+// ══════════════════════════════════════════════════
+
 function useConnections() {
   const [connections, setConnections] = useState<Connection[]>([
     { id:'strava',       provider:'strava',   label:'Strava',       connected:false, lastSync:'', loading:false, available:true },
@@ -143,7 +168,7 @@ function useConnections() {
 
   useEffect(() => { reload() }, [reload])
 
-  function setLoading(id:string, v:boolean) { setConnections(p=>p.map(c=>c.id===id?{...c,loading:v}:c)) }
+  function setLoading(id:string, v:boolean)   { setConnections(p=>p.map(c=>c.id===id?{...c,loading:v}:c)) }
   function setConnected(id:string, v:boolean) { setConnections(p=>p.map(c=>c.id===id?{...c,connected:v,lastSync:v?today():''}:c)) }
 
   async function connect(c:Connection) {
@@ -151,7 +176,6 @@ function useConnections() {
     setLoading(c.id, true)
     window.location.href = `/api/oauth/connect?provider=${c.provider}`
   }
-
   async function disconnect(c:Connection) {
     if (!c.provider) return
     setLoading(c.id, true)
@@ -161,7 +185,6 @@ function useConnections() {
     } catch {}
     setLoading(c.id, false)
   }
-
   async function sync(c:Connection) {
     if (!c.provider||!c.connected) return
     setLoading(c.id, true)
@@ -175,7 +198,6 @@ function useConnections() {
   return { connections, connect, disconnect, sync, reload }
 }
 
-// ── Profile hook ──────────────────────────────────
 function useProfile() {
   const supabase = createClient()
   const [data, setData] = useState({ full_name:'', bio:'', height_cm:'', weight_kg:'', email:'' })
@@ -187,11 +209,11 @@ function useProfile() {
       if (!user) return
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setData({
-        full_name:  p?.full_name  ?? '',
-        bio:        p?.bio        ?? '',
-        height_cm:  p?.height_cm  ? String(p.height_cm)  : '',
-        weight_kg:  p?.weight_kg  ? String(p.weight_kg)  : '',
-        email:      user.email    ?? '',
+        full_name: p?.full_name  ?? '',
+        bio:       p?.bio        ?? '',
+        height_cm: p?.height_cm  ? String(p.height_cm) : '',
+        weight_kg: p?.weight_kg  ? String(p.weight_kg) : '',
+        email:     user.email    ?? '',
       })
     }
     load()
@@ -226,7 +248,6 @@ function useProfile() {
   return { data, setData, saving, save, uploadAvatar }
 }
 
-// ── Athlete sports hook ───────────────────────────
 function useAthleteSports() {
   const supabase = createClient()
   const [sports, setSports] = useState<{id:string;sport:string;since_date:string|null}[]>([])
@@ -255,143 +276,10 @@ function useAthleteSports() {
   return { sports, add, remove }
 }
 
-// ── Training zones hook ───────────────────────────
-function useTrainingZones() {
-  const supabase = createClient()
-  const empty = (sport: ZoneSport): ZoneData => ({ zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' })
- const [zoneData, setZoneData] = useState<Record<ZoneSport, ZoneData>>({
-    bike:      { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
-    run:       { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
-    swim:      { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
-    rowing:    { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
-    hyrox_row: { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
-    hyrox_ski: { zones:['','','','',''], sl1:'', sl2:'', ftp:'', runCompromised:'' },
-  })
-  const [saving, setSaving] = useState(false)
+// ══════════════════════════════════════════════════
+// PROFIL BLOC — Onglet 1
+// ══════════════════════════════════════════════════
 
-  useEffect(() => {
-    const init: Record<ZoneSport, ZoneData> = {
-      bike: empty('bike'), run: empty('run'), swim: empty('swim'),
-      rowing: empty('rowing'), hyrox_row: empty('hyrox_row'), hyrox_ski: empty('hyrox_ski'),
-    }
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setZoneData(init); return }
-      const { data } = await supabase.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true)
-      if (!data?.length) { setZoneData(init); return }
-      const updated = { ...init }
-      for (const row of data) {
-        const s = row.sport as ZoneSport
-        updated[s] = {
-          zones: [row.z1_value??'', row.z2_value??'', row.z3_value??'', row.z4_value??'', row.z5_value??''],
-          sl1:  row.sl1 ?? '', sl2: row.sl2 ?? '',
-          ftp:  row.ftp_watts ? String(row.ftp_watts) : '',
-          runCompromised: row.run_compromised ?? '',
-        }
-      }
-      setZoneData(updated)
-    }
-    load()
-  }, [])
-
-  async function saveZone(sport: ZoneSport, d: ZoneData) {
-    setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
-    await supabase.from('training_zones').upsert({
-      user_id: user.id, sport,
-      ftp_watts:       d.ftp ? parseFloat(d.ftp) : null,
-      sl1: d.sl1||null, sl2: d.sl2||null,
-      run_compromised: d.runCompromised||null,
-      z1_value: d.zones[0]||null, z2_value: d.zones[1]||null,
-      z3_value: d.zones[2]||null, z4_value: d.zones[3]||null,
-      z5_value: d.zones[4]||null,
-      is_current: true,
-      effective_from: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,sport,effective_from' })
-    setZoneData(p => ({ ...p, [sport]: d }))
-    setSaving(false)
-  }
-
-  return { zoneData, setZoneData, saving, saveZone }
-}
-
-// ── Records hook ──────────────────────────────────
-function useRecords() {
-  const supabase = createClient()
-  const [records,  setRecords]  = useState<any[]>([])
-  const [palmares, setPalmares] = useState<any[]>([])
-  const [saving, setSaving] = useState(false)
-
-  async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const [r, p] = await Promise.all([
-      supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending:false }),
-      supabase.from('race_results').select('*').eq('user_id', user.id).order('race_date', { ascending:false }),
-    ])
-    setRecords(r.data ?? [])
-    setPalmares(p.data ?? [])
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function addRecord(sport: string, entry: RecordEntry) {
-    setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
-    const distKm = RUN_KM[entry.distance]
-    const pace_s = (sport==='run'||sport==='trail') && distKm && entry.perf
-      ? (() => { const p=entry.perf.split(':').map(Number); const s=p.length===3?p[0]*3600+p[1]*60+p[2]:p.length===2?p[0]*60+p[1]:0; return s ? Math.round(s/distKm) : null })()
-      : null
-    await supabase.from('personal_records').insert({
-      user_id: user.id, sport,
-      distance_label: entry.distance,
-      distance_m: distKm ? distKm*1000 : null,
-      performance: entry.perf,
-      performance_unit: sport==='bike' ? 'watts' : 'time',
-      event_type: entry.type==='competition' ? 'competition' : 'training',
-      race_name: entry.race || null,
-      achieved_at: entry.date,
-      pace_s_km: pace_s,
-      elevation_gain_m: entry.elevation ? parseInt(entry.elevation) : null,
-      split_swim: entry.splits?.swim || null,
-      split_bike: entry.splits?.bike || null,
-      split_run:  entry.splits?.run  || null,
-      station_times: entry.stationTimes || null,
-    })
-    await load()
-    setSaving(false)
-  }
-
-  async function addPalmares(sport: string, entry: PalmEntry) {
-    setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
-    await supabase.from('race_results').insert({
-      user_id: user.id, sport,
-      race_name: entry.race,
-      race_date: entry.year + '-01-01',
-      finish_time: entry.time || null,
-      overall_rank: entry.rank ? parseInt(entry.rank.split('/')[0]) : null,
-      overall_total: entry.rank?.includes('/') ? parseInt(entry.rank.split('/')[1]) : null,
-      category: entry.category || null,
-      station_times: entry.stationTimes || null,
-    })
-    await load()
-    setSaving(false)
-  }
-
-  function getRecordsBySport(sport: string) { return records.filter(r => r.sport === sport) }
-  function getPalmaresBySport(sport: string) { return palmares.filter(r => r.sport === sport) }
-
-  return { records, palmares, saving, addRecord, addPalmares, getRecordsBySport, getPalmaresBySport }
-}
-
-// ════════════════════════════════════════════════
-// BLOC 1 — PROFIL
-// ════════════════════════════════════════════════
 function ProfilBloc() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -399,45 +287,20 @@ function ProfilBloc() {
   const { data: profileData, setData: setProfileData, saving: savingProfile, save: saveProfile, uploadAvatar } = useProfile()
   const { sports, add: addSport, remove: removeSport } = useAthleteSports()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [photo, setPhoto] = useState<string|null>(null)
+
+  const [photo, setPhoto]     = useState<string|null>(null)
   const [editing, setEditing] = useState(false)
   const [newSport, setNewSport] = useState('run')
   const [newSince, setNewSince] = useState('')
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [planExpanded, setPlanExpanded] = useState(false)
-  const [notifs, setNotifs] = useState({ globalOn:true, morningProg:true, sessionRemind:true, hrv:true, fatigue:true, sleep:false, meals:true, weekSummary:true, monthSummary:false })
-  const [sleepActive, setSleepActive] = useState(false)
-  const [sleepStart, setSleepStart] = useState<Date|null>(null)
-  const [sleepDur, setSleepDur] = useState<string|null>(null)
-  const [toast, setToast] = useState<{msg:string;ok:boolean}|null>(null)
-  const trialLeft = 9; const trialDays = 14
-  const dailyUsed = 23;  const dailyMax = 80
-  const weekUsed  = 87;  const weekMax  = 400
-  const [aiDefaultModel, setAiDefaultModel] = useState<'hermes'|'athena'|'zeus'>('athena')
-  const [aiContextInject, setAiContextInject] = useState(true)
-  const [aiResponseLen, setAiResponseLen] = useState<'short'|'balanced'|'detailed'>('balanced')
-  const [modelsOpen, setModelsOpen] = useState(false)
-  const [subOpen, setSubOpen] = useState(false)
-
-  useEffect(() => {
-    const m = localStorage.getItem('thw_ai_default_model')
-    const l = localStorage.getItem('thw_ai_resp_len')
-    const c = localStorage.getItem('thw_ai_context_inject')
-    if (m === 'hermes' || m === 'athena' || m === 'zeus') setAiDefaultModel(m)
-    if (l === 'short' || l === 'balanced' || l === 'detailed') setAiResponseLen(l)
-    if (c !== null) setAiContextInject(c !== 'false')
-  }, [])
+  const [toast, setToast]     = useState<{msg:string;ok:boolean}|null>(null)
 
   useEffect(() => {
     const status = searchParams.get('oauth'); const provider = searchParams.get('provider') ?? ''
     if (!status) return
     const MSGS: Record<string,{msg:string;ok:boolean}> = {
-      connected:     { msg:`${provider} connecté !`,          ok:true  },
-      denied:        { msg:'Connexion annulée.',               ok:false },
-      error:         { msg:'Erreur de connexion.',             ok:false },
-      token_error:   { msg:'Erreur d\'authentification.',      ok:false },
-      invalid_state: { msg:'Erreur sécurité. Réessayez.',      ok:false },
-      no_session:    { msg:'Session expirée.',                 ok:false },
+      connected: { msg:`${provider} connecté !`, ok:true }, denied: { msg:'Connexion annulée.', ok:false },
+      error: { msg:'Erreur de connexion.', ok:false }, token_error: { msg:"Erreur d'authentification.", ok:false },
+      invalid_state: { msg:'Erreur sécurité.', ok:false }, no_session: { msg:'Session expirée.', ok:false },
     }
     if (MSGS[status]) { setToast(MSGS[status]); setTimeout(()=>setToast(null),4000); reloadConn(); router.replace('/profile') }
   }, [searchParams, router, reloadConn])
@@ -445,298 +308,458 @@ function ProfilBloc() {
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return
     const r = new FileReader(); r.onload = ev => setPhoto(ev.target?.result as string); r.readAsDataURL(f)
-    const url = await uploadAvatar(f)
-    if (url) setPhoto(url)
+    const url = await uploadAvatar(f); if (url) setPhoto(url)
   }
 
   async function handleSave() {
-    await saveProfile()
-    setEditing(false)
-    setToast({ msg:'Profil sauvegardé !', ok:true })
-    setTimeout(()=>setToast(null), 3000)
-  }
-
-  function toggleSleep() {
-    if (!sleepActive) { setSleepActive(true); setSleepStart(new Date()); setSleepDur(null) }
-    else {
-      const dur = sleepStart ? Math.round((Date.now()-sleepStart.getTime())/60000) : 0
-      setSleepDur(`${Math.floor(dur/60)}h${String(dur%60).padStart(2,'0')}`)
-      setSleepActive(false)
-    }
+    await saveProfile(); setEditing(false)
+    setToast({ msg:'Profil sauvegardé !', ok:true }); setTimeout(()=>setToast(null), 3000)
   }
 
   const imc = profileData.height_cm && profileData.weight_kg
     ? (parseFloat(profileData.weight_kg)/((parseFloat(profileData.height_cm)/100)**2)).toFixed(1) : '—'
 
-  const PLANS = [
-    { id:'premium', label:'Premium', monthly:'15€/mois', annual:'129€/an', save:'28%', color:'#00c8e0', features:['Toutes les fonctionnalites','Connexions apps (5)','Export PDF','Historique 1 an'] },
-    { id:'pro',     label:'Pro',     monthly:'29€/mois', annual:'199€/an', save:'43%', color:'#a855f7', features:['Tout Premium','Connexions illimitées','Coach IA','Historique illimité'] },
-    { id:'expert',  label:'Expert',  monthly:'49€/mois', annual:'349€/an', save:'41%', color:'#f97316', features:['Tout Pro','Multi-athlètes','Dashboard coach','API accès'] },
-  ]
-
-  const NOTIF_SECTIONS = [
-    { label:'Entrainement', items:[{ key:'morningProg', label:'Programme du matin', help:'Programme envoyé chaque matin.' }, { key:'sessionRemind', label:'Rappel séance', help:'Notification avant votre séance.' }]},
-    { label:'Recuperation', items:[{ key:'hrv', label:'Rappel HRV', help:'Mesure HRV au réveil.' }, { key:'fatigue', label:'Alerte fatigue', help:'Niveau de fatigue cumulé.' }, { key:'sleep', label:'Suivi sommeil', help:'Rappel chronomètre sommeil.' }]},
-    { label:'Nutrition', items:[{ key:'meals', label:'Rappels repas', help:'Heures de repas personnalisées.' }]},
-    { label:'Resumes', items:[{ key:'weekSummary', label:'Résumé semaine', help:'Bilan hebdomadaire.' }, { key:'monthSummary', label:'Résumé mois', help:'Synthèse mensuelle.' }]},
-  ]
+  const availableConns = connections.filter(c=>c.available)
+  const soonConns      = connections.filter(c=>!c.available)
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
       {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
 
+      {/* ── Identité ──────────────────────────────────── */}
       <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <SectionTitle>Profil</SectionTitle>
-          {editing
-            ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
-            : <button onClick={()=>setEditing(true)} style={{ padding:'5px 12px', borderRadius:8, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:11, cursor:'pointer', fontWeight:600 }}>Modifier</button>
-          }
-        </div>
-        <div style={{ display:'flex', alignItems:'flex-start', gap:16, marginBottom:18 }}>
-          <div onClick={()=>fileRef.current?.click()} style={{ width:68, height:68, borderRadius:16, background:'var(--bg-card2)', border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden' }}>
-            {photo ? <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : <div style={{ textAlign:'center' as const }}><div style={{ fontSize:22 }}>📷</div><p style={{ fontSize:8, color:'var(--text-dim)', margin:0 }}>Photo</p></div>}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:16, marginBottom:22 }}>
+          {/* Avatar */}
+          <div onClick={()=>fileRef.current?.click()} style={{ width:76, height:76, borderRadius:22, background:'var(--bg-card2)', border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', flexDirection:'column' as const }}>
+            {photo
+              ? <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              : <><div style={{ fontSize:24 }}>📷</div><p style={{ fontSize:8, color:'var(--text-dim)', margin:'3px 0 0' }}>Photo</p></>
+            }
             <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
           </div>
-          <div style={{ flex:1 }}>
-            {editing ? (
-              <><input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', width:'100%', marginBottom:6 }}/>
-              <input value={profileData.email} disabled placeholder="Email" style={{ fontSize:12, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text-dim)', outline:'none', width:'100%' }}/></>
-            ) : (
-              <><p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, margin:'0 0 3px' }}>{profileData.full_name||'—'}</p><p style={{ fontSize:12, color:'var(--text-dim)', margin:0 }}>{profileData.email||'—'}</p></>
-            )}
+
+          {/* Name / email */}
+          <div style={{ flex:1, minWidth:0 }}>
+            {editing
+              ? <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:800, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:10, padding:'6px 10px', color:'var(--text)', outline:'none', width:'100%', marginBottom:7 }}/>
+              : <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>{profileData.full_name||'—'}</p>
+            }
+            <p style={{ fontSize:12, color:'var(--text-dim)', margin:0 }}>{profileData.email||'—'}</p>
           </div>
+
+          {/* Edit/Save */}
+          {editing
+            ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
+            : <button onClick={()=>setEditing(true)} style={{ padding:'7px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Modifier
+              </button>
+          }
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8, marginBottom:14 }}>
+
+        {/* Stats */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:20 }}>
           {[
-            { label:'Taille', val:profileData.height_cm, key:'height_cm', unit:'cm', ph:'ex: 178' },
-            { label:'Poids',  val:profileData.weight_kg, key:'weight_kg', unit:'kg', ph:'ex: 72' },
+            { label:'Taille', val:profileData.height_cm, key:'height_cm', unit:'cm', ph:'178' },
+            { label:'Poids',  val:profileData.weight_kg, key:'weight_kg', unit:'kg', ph:'72' },
             { label:'IMC',    val:imc, key:'', unit:'', ph:'', readonly:true },
           ].map(f=>(
-            <div key={f.label} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:11, padding:'10px 12px' }}>
-              <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{f.label}</p>
+            <div key={f.label} style={{ padding:'13px 14px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
+              <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.09em', color:'var(--text-dim)', margin:'0 0 7px' }}>{f.label}</p>
               {editing && !f.readonly
-                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, background:'transparent', border:'none', color:'#00c8e0', outline:'none', width:'100%' }}/>
-                : <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, color:'#00c8e0', margin:0 }}>{f.val||'—'} <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)' }}>{f.unit}</span></p>
+                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, background:'transparent', border:'none', color:'#00c8e0', outline:'none', width:'100%', textAlign:'center' as const }}/>
+                : <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, color:'#00c8e0', margin:0 }}>{f.val||'—'}</p>
               }
+              {f.unit && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'3px 0 0' }}>{f.unit}</p>}
             </div>
           ))}
         </div>
-        <div>
-          <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', marginBottom:6 }}>Bio</p>
-          <textarea value={profileData.bio} onChange={e=>setProfileData(p=>({...p,bio:e.target.value}))} disabled={!editing} placeholder="Décris ton profil, tes objectifs..." rows={3} style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.6, opacity:editing?1:0.7 }}/>
-        </div>
+
+        {/* Bio */}
+        <SectionLabel>Bio</SectionLabel>
+        <textarea
+          value={profileData.bio}
+          onChange={e=>setProfileData(p=>({...p,bio:e.target.value}))}
+          disabled={!editing}
+          placeholder="Décris ton profil, tes objectifs, ta pratique..."
+          rows={3}
+          style={{ width:'100%', padding:'11px 13px', borderRadius:12, border:'1px solid var(--border)', background:editing?'var(--input-bg)':'var(--bg-card2)', color:'var(--text)', fontSize:12.5, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.65, opacity:editing?1:0.75, boxSizing:'border-box' as const }}
+        />
       </Card>
 
+      {/* ── Sports pratiqués ─────────────────────────── */}
       <Card>
-        <SectionTitle>Sports pratiqués</SectionTitle>
-        {sports.length === 0 && <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', margin:'0 0 12px', textAlign:'center' as const }}>Aucun sport — ajoutez vos disciplines</p>}
-        {sports.length > 0 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12 }}>
-            {sports.map(s=>(
-              <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <div style={{ width:8, height:8, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'#888', flexShrink:0 }}/>
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:12, fontWeight:600, margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
-                  {s.since_date && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Depuis {sinceDate(s.since_date)}</p>}
-                </div>
-                <button onClick={()=>removeSport(s.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:13 }}>✕</button>
-              </div>
-            ))}
-          </div>
+        <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}>Sports pratiqués</CardTitle>
+
+        {sports.length === 0 && (
+          <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', margin:'0 0 14px', textAlign:'center' as const }}>Aucun sport — ajoute tes disciplines</p>
         )}
-        <div style={{ display:'flex', gap:7, flexWrap:'wrap' as const }}>
-          <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ flex:1, minWidth:100, padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
+          {sports.map(s=>(
+            <div key={s.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ width:10, height:10, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'#888', flexShrink:0, boxShadow:`0 0 6px ${SPORT_COLOR[s.sport]||'#888'}66` }}/>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
+                {s.since_date && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Depuis {sinceDate(s.since_date)}</p>}
+              </div>
+              <button onClick={()=>removeSport(s.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:14, opacity:0.7, padding:'2px 6px' }}>✕</button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
+          <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ flex:1, minWidth:110, padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}>
             {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
           </select>
-          <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
-          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'7px 14px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
+          <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
+          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
         </div>
       </Card>
 
-      {/* ── Overlay Modèles ─────────────────────────────────────── */}
-      {modelsOpen && (
-        <div onClick={()=>setModelsOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(12px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:0 }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'92vh', overflowY:'auto', padding:'0 0 40px' }}>
-            {/* Header */}
-            <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
-              <div>
-                <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>Les modèles IA</p>
-                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Trois niveaux pour chaque besoin</p>
+      {/* ── Connexions ───────────────────────────────── */}
+      <Card>
+        <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>}>Connexions</CardTitle>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
+          {availableConns.map(c=>(
+            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ flexShrink:0 }}><AppLogo id={c.id} size={28}/></div>
+              <div style={{ flex:1 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                  <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{c.label}</p>
+                  <span style={{ fontSize:9, padding:'1px 7px', borderRadius:20, background:c.connected?'rgba(34,197,94,0.1)':'rgba(120,120,140,0.1)', color:c.connected?'#22c55e':'#9ca3af', fontWeight:600 }}>
+                    {c.loading?'...' : c.connected?'Connecté':'Non connecté'}
+                  </span>
+                </div>
+                {c.connected && c.lastSync && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>Dernière sync : {c.lastSync}</p>}
               </div>
-              <button onClick={()=>setModelsOpen(false)} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+              <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'5px 10px', borderRadius:8, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer' }}>↻</button>}
+                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 12px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.07)':'rgba(0,200,224,0.08)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'rgba(0,200,224,0.2)'}`, color:c.connected?'#ef4444':'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
+                  {c.loading?'...' : c.connected?'Déconnecter':'Connecter'}
+                </button>
+              </div>
             </div>
-            {/* Models */}
-            <div style={{ padding:'20px 20px 0', display:'flex', flexDirection:'column', gap:16 }}>
-              {([
-                {
-                  id:'hermes', name:'Hermès', color:'#d4a017',
-                  tagline:'Le modèle le plus rapide.',
-                  desc:'Conçu pour répondre immédiatement, de manière simple et efficace. Il va droit au but et évite toute complexité inutile.',
-                  uses:['Une question simple','Un besoin rapide','Une décision immédiate'],
-                  levels:['Rapide','Clair','Direct'],
-                  cost:1,
-                  effigy:(
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="3" x2="12" y2="21"/>
-                      <path d="M8.5 6.5 Q12 4 15.5 6.5"/>
-                      <path d="M9.5 10 Q10.5 13.5 12 11.5 Q13.5 9.5 14.5 13 Q13 16 12 14 Q10.5 12 9.5 10"/>
-                    </svg>
-                  ),
-                },
-                {
-                  id:'athena', name:'Athéna', color:'#5b6fff',
-                  tagline:'Le modèle principal de coaching intelligent.',
-                  desc:'Elle analyse en profondeur, comprend le contexte de l\'athlète et croise les données disponibles. Elle ne se contente pas de répondre : elle explique, enseigne et propose des améliorations concrètes.',
-                  uses:['Analyser une situation','Comprendre un problème','Optimiser un entraînement','Obtenir des conseils précis'],
-                  levels:['Structuré','Pédagogique','Intelligent'],
-                  cost:3,
-                  effigy:(
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="9" r="3.5"/>
-                      <path d="M6.5 8.5 Q4.5 6 5.5 3.5 Q8.5 2 12 4.5"/>
-                      <path d="M17.5 8.5 Q19.5 6 18.5 3.5 Q15.5 2 12 4.5"/>
-                      <path d="M9 12.5 Q8.5 16.5 10.5 18.5 Q12 20 13.5 18.5 Q15.5 16.5 15 12.5"/>
-                    </svg>
-                  ),
-                },
-                {
-                  id:'zeus', name:'Zeus', color:'#8b5cf6',
-                  tagline:'Le modèle le plus avancé.',
-                  desc:'Il produit les réponses les plus complètes, les plus précises et les plus stratégiques. Il va très loin dans l\'analyse, hiérarchise les priorités et apporte une vision globale. Il ne fait pas qu\'expliquer : il démontre, structure et approfondit au maximum.',
-                  uses:['Une analyse très poussée','Une réflexion stratégique','Une vision globale','Une réponse complète et détaillée'],
-                  levels:['Très approfondi','Stratégique','Structuré','Premium'],
-                  cost:8,
-                  effigy:(
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                      <polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.9"/>
-                    </svg>
-                  ),
-                },
-              ] as const).map(m=>(
-                <div key={m.id} style={{ borderRadius:16, border:`1px solid ${m.color}33`, background:`${m.color}08`, padding:'18px 18px 16px', overflow:'hidden' }}>
-                  {/* Name + cost */}
-                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:40, height:40, borderRadius:11, background:`${m.color}18`, border:`1px solid ${m.color}44`, display:'flex', alignItems:'center', justifyContent:'center', color:m.color, flexShrink:0 }}>
-                        {m.effigy}
-                      </div>
-                      <div>
-                        <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, color:m.color, margin:0, letterSpacing:'-0.01em' }}>{m.name}</p>
-                        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'1px 0 0', fontStyle:'italic' }}>{m.tagline}</p>
-                      </div>
-                    </div>
-                    <div style={{ textAlign:'right' as const, flexShrink:0, paddingTop:2 }}>
-                      <p style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:700, color:m.color, margin:0 }}>{m.cost}</p>
-                      <p style={{ fontSize:9, color:'var(--text-dim)', margin:'1px 0 0' }}>crédit{m.cost>1?'s':''}</p>
-                    </div>
+          ))}
+        </div>
+
+        <SectionLabel>Bientôt disponible</SectionLabel>
+        <div style={{ display:'flex', flexWrap:'wrap' as const, gap:7 }}>
+          {soonConns.map(c=>(
+            <span key={c.id} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:20, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <AppLogo id={c.id} size={16}/>
+              <span style={{ fontSize:11, color:'var(--text-dim)' }}>{c.label}</span>
+            </span>
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// NOTIFICATIONS BLOC — Onglet 2
+// ══════════════════════════════════════════════════
+
+type NotifKey =
+  | 'sessionRemind' | 'morningProg' | 'sessionUpcoming'
+  | 'hrv' | 'sleep' | 'fatigue'
+  | 'meals' | 'hydration' | 'nutritionTiming'
+  | 'weekSummary' | 'monthSummary' | 'progressionDetected'
+  | 'aiSuggestions' | 'aiAnalysis' | 'dataReminder'
+
+function NotificationsBloc() {
+  const [globalOn, setGlobalOn] = useState(true)
+  const [settings, setSettings] = useState<Record<NotifKey,boolean>>({
+    sessionRemind: true,  morningProg: true,   sessionUpcoming: false,
+    hrv: true,            sleep: false,         fatigue: true,
+    meals: true,          hydration: false,     nutritionTiming: false,
+    weekSummary: true,    monthSummary: false,  progressionDetected: true,
+    aiSuggestions: true,  aiAnalysis: false,    dataReminder: false,
+  })
+
+  const toggle = (key: NotifKey) => setSettings(p=>({...p,[key]:!p[key]}))
+
+  const SECTIONS: {
+    label: string; color: string;
+    icon: React.ReactNode;
+    items: { key: NotifKey; label: string; sub: string }[]
+  }[] = [
+    {
+      label:'Entraînement', color:'#00c8e0',
+      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+      items:[
+        { key:'sessionRemind',    label:'Rappel séance',     sub:'Notification avant ta séance planifiée' },
+        { key:'morningProg',      label:'Programme du matin',sub:'Reçois ton programme chaque matin' },
+        { key:'sessionUpcoming',  label:'Séance à venir',    sub:'Alerte 1h avant une séance clé' },
+      ],
+    },
+    {
+      label:'Récupération', color:'#22c55e',
+      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4"/></svg>,
+      items:[
+        { key:'hrv',    label:'Rappel HRV',    sub:'Mesure HRV chaque matin au réveil' },
+        { key:'sleep',  label:'Suivi sommeil', sub:'Rappel pour démarrer le chrono sommeil' },
+        { key:'fatigue',label:'Alerte fatigue',sub:'Notification si ta charge dépasse le seuil' },
+      ],
+    },
+    {
+      label:'Nutrition', color:'#f97316',
+      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M12 2C8 2 5 5 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>,
+      items:[
+        { key:'meals',           label:'Rappel repas',         sub:'Alertes aux heures de repas' },
+        { key:'hydration',       label:'Hydratation',          sub:'Rappels pour boire tout au long de la journée' },
+        { key:'nutritionTiming', label:'Timing nutritionnel',  sub:'Conseils avant / après séance' },
+      ],
+    },
+    {
+      label:'Performance', color:'#a855f7',
+      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+      items:[
+        { key:'weekSummary',          label:'Résumé semaine',      sub:'Bilan hebdo de ta charge et progression' },
+        { key:'monthSummary',         label:'Résumé mois',         sub:'Synthèse mensuelle de tes entraînements' },
+        { key:'progressionDetected',  label:'Progression détectée',sub:'Alerte quand une amélioration est constatée' },
+      ],
+    },
+    {
+      label:'IA', color:'#5b6fff',
+      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.7"/></svg>,
+      items:[
+        { key:'aiSuggestions', label:'Suggestions IA',           sub:'THW Coach propose des actions à la volée' },
+        { key:'aiAnalysis',    label:'Analyse disponible',       sub:'L\'IA a généré une nouvelle analyse' },
+        { key:'dataReminder',  label:'Rappel compléter données', sub:'Données manquantes pour une meilleure analyse' },
+      ],
+    },
+  ]
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
+      {/* Toggle global */}
+      <Card>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, color:'var(--text)', margin:'0 0 3px' }}>Notifications</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Activer ou désactiver toutes les notifications</p>
+          </div>
+          <Toggle value={globalOn} onChange={setGlobalOn}/>
+        </div>
+      </Card>
+
+      {/* Sections */}
+      <div style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s', display:'flex', flexDirection:'column' }}>
+        {SECTIONS.map(sec=>(
+          <Card key={sec.label}>
+            {/* Section header */}
+            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:14 }}>
+              <div style={{ width:28, height:28, borderRadius:8, background:`${sec.color}15`, border:`1px solid ${sec.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:sec.color, flexShrink:0 }}>
+                {sec.icon}
+              </div>
+              <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', margin:0 }}>{sec.label}</p>
+            </div>
+
+            {/* Items */}
+            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+              {sec.items.map((item, idx)=>(
+                <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
+                  <div style={{ flex:1, paddingRight:12 }}>
+                    <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
+                    <p style={{ fontSize:10, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
                   </div>
-                  {/* Description */}
-                  <p style={{ fontSize:12.5, color:'var(--text-mid)', lineHeight:1.7, margin:'0 0 14px' }}>{m.desc}</p>
-                  {/* À utiliser pour */}
-                  <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 7px' }}>À utiliser pour</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
-                    {m.uses.map((u,i)=>(
-                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <div style={{ width:4, height:4, borderRadius:'50%', background:m.color, flexShrink:0 }}/>
-                        <span style={{ fontSize:12, color:'var(--text-mid)' }}>{u}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Niveau */}
-                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
-                    {m.levels.map((l,i)=>(
-                      <span key={i} style={{ fontSize:10, padding:'3px 10px', borderRadius:20, background:`${m.color}14`, border:`1px solid ${m.color}33`, color:m.color, fontWeight:600 }}>{l}</span>
-                    ))}
-                  </div>
+                  <Toggle value={settings[item.key]} onChange={()=>toggle(item.key)}/>
                 </div>
               ))}
-              {/* Footer note */}
-              <div style={{ padding:'14px 16px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
-                <p style={{ fontSize:12, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>
-                  Tous les modèles sont accessibles à tous.<br/>
-                  <span style={{ color:'var(--text-dim)' }}>La différence se fait sur les crédits.</span>
-                </p>
-              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-      {/* ── Overlay Abonnement ───────────────────────────────────── */}
-      {subOpen && (
-        <div onClick={()=>setSubOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(12px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'88vh', overflowY:'auto', padding:'0 0 40px' }}>
-            {/* Header */}
-            <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
-              <div>
-                <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>Abonnement</p>
-                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Plan actuel et utilisation</p>
-              </div>
-              <button onClick={()=>setSubOpen(false)} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
-            </div>
-            <div style={{ padding:'20px' }}>
-              {/* Plan actuel */}
-              <div style={{ padding:'16px 18px', borderRadius:14, background:'rgba(255,179,64,0.07)', border:'1px solid rgba(255,179,64,0.28)', marginBottom:20 }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+// ══════════════════════════════════════════════════
+// RÉGLAGES IA BLOC — Onglet 3
+// ══════════════════════════════════════════════════
+
+const PLANS = [
+  { id:'premium', label:'Premium', monthly:'15€/mois', annual:'129€/an', save:'28%', color:'#00c8e0', features:['Toutes les fonctionnalités','Connexions apps (5)','Export PDF','Historique 1 an'] },
+  { id:'pro',     label:'Pro',     monthly:'29€/mois', annual:'199€/an', save:'43%', color:'#a855f7', features:['Tout Premium','Connexions illimitées','Coach IA','Historique illimité'] },
+  { id:'expert',  label:'Expert',  monthly:'49€/mois', annual:'349€/an', save:'41%', color:'#f97316', features:['Tout Pro','Multi-athlètes','Dashboard coach','API accès'] },
+]
+
+const MODEL_META = {
+  hermes:{ color:'#d4a017', tagline:'Le modèle le plus rapide.', cost:1,
+    desc:"Conçu pour répondre immédiatement, de manière simple et efficace. Il va droit au but et évite toute complexité inutile.",
+    uses:['Une question simple','Un besoin rapide','Une décision immédiate'],
+    levels:['Rapide','Clair','Direct'],
+    effigy:<svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M8.5 6.5 Q12 4 15.5 6.5"/><path d="M9.5 10 Q10.5 13.5 12 11.5 Q13.5 9.5 14.5 13 Q13 16 12 14 Q10.5 12 9.5 10"/></svg>,
+  },
+  athena:{ color:'#5b6fff', tagline:'Le modèle principal de coaching intelligent.', cost:3,
+    desc:"Elle analyse en profondeur, comprend le contexte de l'athlète et croise les données disponibles. Elle ne se contente pas de répondre : elle explique, enseigne et propose des améliorations concrètes.",
+    uses:['Analyser une situation','Comprendre un problème','Optimiser un entraînement','Obtenir des conseils précis'],
+    levels:['Structuré','Pédagogique','Intelligent'],
+    effigy:<svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="9" r="3.5"/><path d="M6.5 8.5 Q4.5 6 5.5 3.5 Q8.5 2 12 4.5"/><path d="M17.5 8.5 Q19.5 6 18.5 3.5 Q15.5 2 12 4.5"/><path d="M9 12.5 Q8.5 16.5 10.5 18.5 Q12 20 13.5 18.5 Q15.5 16.5 15 12.5"/></svg>,
+  },
+  zeus:{ color:'#8b5cf6', tagline:'Le modèle le plus avancé.', cost:8,
+    desc:"Il produit les réponses les plus complètes, les plus précises et les plus stratégiques. Il ne fait pas qu'expliquer : il démontre, structure et approfondit au maximum.",
+    uses:['Une analyse très poussée','Une réflexion stratégique','Une vision globale','Une réponse complète et détaillée'],
+    levels:['Très approfondi','Stratégique','Structuré','Premium'],
+    effigy:<svg width={22} height={22} viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.9"/></svg>,
+  },
+} satisfies Record<THWModel, { color:string; tagline:string; cost:number; desc:string; uses:string[]; levels:string[]; effigy:React.ReactNode }>
+
+function IASettingsBloc() {
+  const trialLeft = 9; const trialDays = 14
+  const dailyUsed = 23; const dailyMax = 80
+  const weekUsed  = 87; const weekMax  = 400
+
+  // Overlays
+  const [modelsOpen,  setModelsOpen]  = useState(false)
+  const [subOpen,     setSubOpen]     = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+
+  // AI settings — localStorage
+  const [defaultModel,    setDefaultModel]    = useState<THWModel>('athena')
+  const [creditSaving,    setCreditSaving]    = useState(false)
+  const [customPrompt,    setCustomPrompt]    = useState('')
+  const [tone,            setTone]            = useState<ToneId>('pro')
+  const [detail,          setDetail]          = useState<DetailId>('normal')
+  const [allowSuggestions,setAllowSuggestions]= useState(true)
+  const [prefTypes, setPrefTypes] = useState({ practical:true, detailed:false, plans:false, analysis:true })
+
+  useEffect(() => {
+    const m = localStorage.getItem('thw_ai_default_model')
+    const cs = localStorage.getItem('thw_ai_credit_saving')
+    const cp = localStorage.getItem('thw_ai_custom_prompt')
+    const t  = localStorage.getItem('thw_ai_tone')
+    const d  = localStorage.getItem('thw_ai_detail')
+    const as = localStorage.getItem('thw_ai_allow_suggestions')
+    const pt = localStorage.getItem('thw_ai_pref_types')
+    if (m === 'hermes' || m === 'athena' || m === 'zeus') setDefaultModel(m)
+    if (cs) setCreditSaving(cs === 'true')
+    if (cp) setCustomPrompt(cp)
+    if (t === 'pro'||t==='warm'||t==='spontaneous'||t==='offbeat'||t==='efficient') setTone(t)
+    if (d === 'short'||d==='normal'||d==='deep') setDetail(d)
+    if (as) setAllowSuggestions(as !== 'false')
+    if (pt) { try { setPrefTypes(JSON.parse(pt)) } catch {} }
+  }, [])
+
+  function save(key:string, val:string) { localStorage.setItem(key, val) }
+
+  // Data connection status (static indicators for now)
+  const DATA_CONNECTIONS = [
+    { label:'Planning', connected:true,  sub:'Séances et calendrier disponibles' },
+    { label:'Nutrition',connected:false, sub:'Aucun repas enregistré aujourd\'hui' },
+    { label:'Récupération',connected:true, sub:'HRV et métriques disponibles' },
+  ]
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
+
+      {/* ── Overlay Modèles ───────────────────────────── */}
+      <Sheet open={modelsOpen} onClose={()=>setModelsOpen(false)} title="Les modèles IA" subtitle="Trois niveaux pour chaque besoin">
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {(Object.entries(MODEL_META) as [THWModel, typeof MODEL_META[THWModel]][]).map(([id, m])=>(
+            <div key={id} style={{ borderRadius:16, border:`1px solid ${m.color}33`, background:`${m.color}08`, padding:'18px 18px 16px' }}>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:40, height:40, borderRadius:11, background:`${m.color}18`, border:`1px solid ${m.color}44`, display:'flex', alignItems:'center', justifyContent:'center', color:m.color, flexShrink:0 }}>{m.effigy}</div>
                   <div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                      <span style={{ padding:'3px 10px', borderRadius:20, background:'rgba(255,179,64,0.15)', border:'1px solid rgba(255,179,64,0.4)', color:'#ffb340', fontSize:11, fontWeight:700 }}>Essai gratuit</span>
-                    </div>
-                    <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color:'var(--text)' }}>Version Premium</p>
-                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Accès complet pendant l'essai</p>
+                    <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, color:m.color, margin:0, textTransform:'capitalize' as const }}>{id === 'athena' ? 'Athéna' : id.charAt(0).toUpperCase()+id.slice(1)}</p>
+                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'1px 0 0', fontStyle:'italic' }}>{m.tagline}</p>
                   </div>
-                  <button onClick={()=>{ setSubOpen(false); setUpgradeOpen(true) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>Upgrade</button>
                 </div>
-                <div style={{ height:6, borderRadius:999, background:'rgba(255,179,64,0.15)', overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
-                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>Essai commencé</span>
-                  <span style={{ fontSize:10, color:'#ffb340', fontWeight:600 }}>{trialLeft} jours restants sur {trialDays}</span>
+                <div style={{ textAlign:'right' as const, flexShrink:0, paddingTop:2 }}>
+                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:700, color:m.color, margin:0 }}>{m.cost}</p>
+                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'1px 0 0' }}>crédit{m.cost>1?'s':''}</p>
                 </div>
               </div>
-              {/* Jauges utilisation */}
-              <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 12px' }}>Utilisation des crédits IA</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                {([
-                  { label:'Aujourd\'hui', used:dailyUsed, max:dailyMax, color:'#00c8e0', period:'jour' },
-                  { label:'Cette semaine', used:weekUsed, max:weekMax, color:'#5b6fff', period:'semaine' },
-                ] as const).map(g=>{
-                  const pct = Math.min(100, Math.round((g.used/g.max)*100))
-                  const remaining = g.max - g.used
-                  return (
-                    <div key={g.label} style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10 }}>
-                        <p style={{ fontSize:12, fontWeight:600, color:'var(--text)', margin:0 }}>{g.label}</p>
-                        <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:g.color }}>{g.used}</span>
-                          <span style={{ fontSize:11, color:'var(--text-dim)' }}>/ {g.max}</span>
-                        </div>
-                      </div>
-                      <div style={{ height:8, borderRadius:999, background:'var(--border)', overflow:'hidden', marginBottom:8 }}>
-                        <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius:999, transition:'width 0.4s' }}/>
-                      </div>
-                      <div style={{ display:'flex', justifyContent:'space-between' }}>
-                        <span style={{ fontSize:10, color:'var(--text-dim)' }}>{pct}% utilisé</span>
-                        <span style={{ fontSize:10, color:'var(--text-mid)', fontWeight:600 }}>{remaining} restants ce{g.period==='jour'?'tte':''} {g.period}</span>
-                      </div>
-                    </div>
-                  )
-                })}
+              <p style={{ fontSize:12.5, color:'var(--text-mid)', lineHeight:1.7, margin:'0 0 14px' }}>{m.desc}</p>
+              <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 7px' }}>À utiliser pour</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
+                {m.uses.map((u,i)=>(
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ width:5, height:5, borderRadius:'50%', background:m.color, flexShrink:0 }}/>
+                    <span style={{ fontSize:12, color:'var(--text-mid)' }}>{u}</span>
+                  </div>
+                ))}
               </div>
-              {/* Quota info */}
-              <div style={{ marginTop:14, padding:'12px 14px', borderRadius:11, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.15)' }}>
-                <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, lineHeight:1.6 }}>
-                  Plan <strong style={{ color:'var(--text)' }}>Pro</strong> : 400 crédits / semaine · <strong style={{ color:'var(--text)' }}>Expert</strong> : 800 crédits / semaine
-                </p>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
+                {m.levels.map((l,i)=>(
+                  <span key={i} style={{ fontSize:10, padding:'3px 10px', borderRadius:20, background:`${m.color}14`, border:`1px solid ${m.color}33`, color:m.color, fontWeight:600 }}>{l}</span>
+                ))}
               </div>
             </div>
+          ))}
+          <div style={{ padding:'14px 16px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
+            <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.7 }}>
+              Tous les modèles sont accessibles à tous.<br/>
+              <span style={{ color:'var(--text-dim)' }}>La différence se fait sur les crédits.</span>
+            </p>
           </div>
         </div>
-      )}
+      </Sheet>
 
-      {/* ── Modal Upgrade ──────────────────────────────────────────── */}
+      {/* ── Overlay Abonnement ────────────────────────── */}
+      <Sheet open={subOpen} onClose={()=>setSubOpen(false)} title="Abonnement" subtitle="Plan actuel et utilisation des crédits">
+        {/* Plan */}
+        <div style={{ padding:'16px 18px', borderRadius:14, background:'rgba(255,179,64,0.07)', border:'1px solid rgba(255,179,64,0.28)', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
+                <span style={{ padding:'3px 10px', borderRadius:20, background:'rgba(255,179,64,0.15)', border:'1px solid rgba(255,179,64,0.4)', color:'#ffb340', fontSize:11, fontWeight:700 }}>Essai gratuit</span>
+              </div>
+              <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color:'var(--text)' }}>Version Premium</p>
+              <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Accès complet pendant l'essai</p>
+            </div>
+            <button onClick={()=>{ setSubOpen(false); setUpgradeOpen(true) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>Upgrade</button>
+          </div>
+          <div style={{ height:6, borderRadius:999, background:'rgba(255,179,64,0.15)', overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+            <span style={{ fontSize:10, color:'var(--text-dim)' }}>Essai en cours</span>
+            <span style={{ fontSize:10, color:'#ffb340', fontWeight:600 }}>{trialLeft} jours restants sur {trialDays}</span>
+          </div>
+        </div>
+
+        {/* Jauges */}
+        <SectionLabel>Utilisation des crédits IA</SectionLabel>
+        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
+          {([
+            { label:'Journalière',    used:dailyUsed, max:dailyMax, color:'#00c8e0', period:'jour' },
+            { label:'Hebdomadaire', used:weekUsed,  max:weekMax,  color:'#5b6fff', period:'semaine' },
+          ] as const).map(g=>{
+            const pct = Math.min(100, Math.round((g.used/g.max)*100))
+            const remaining = g.max - g.used
+            return (
+              <div key={g.label} style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10 }}>
+                  <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:0 }}>{g.label}</p>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:16, fontWeight:700, color:g.color }}>{g.used}</span>
+                    <span style={{ fontSize:11, color:'var(--text-dim)' }}>/ {g.max}</span>
+                  </div>
+                </div>
+                <div style={{ height:8, borderRadius:999, background:'var(--border)', overflow:'hidden', marginBottom:8 }}>
+                  <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius:999, transition:'width 0.4s' }}/>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>{pct}% utilisé</span>
+                  <span style={{ fontSize:10, color:'var(--text-mid)', fontWeight:600 }}>{remaining} crédit{remaining>1?'s':''} restant{remaining>1?'s':''}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ padding:'11px 14px', borderRadius:11, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.15)' }}>
+          <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, lineHeight:1.6 }}>
+            Plan <strong style={{ color:'var(--text)' }}>Pro</strong> : 400 crédits/semaine — <strong style={{ color:'var(--text)' }}>Expert</strong> : 800 crédits/semaine
+          </p>
+        </div>
+      </Sheet>
+
+      {/* ── Modal Upgrade ─────────────────────────────── */}
       {upgradeOpen && (
         <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
@@ -766,505 +789,219 @@ function ProfilBloc() {
         </div>
       )}
 
-      {/* ── Bloc Coach IA : Modèles + Abonnement + Réglages ─────── */}
+      {/* ── Nav : Modèles + Abonnement ────────────────── */}
       <Card>
-        <SectionTitle>Coach IA</SectionTitle>
-
-        {/* Lignes cliquables */}
-        <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
-          {([
-            { label:'Modèles', sub:'Hermès · Athéna · Zeus', icon:(
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.6"/>
-              </svg>
-            ), onClick:()=>setModelsOpen(true) },
-            { label:'Abonnement', sub:'Essai gratuit · crédits & limites', icon:(
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <rect x="2" y="5" width="20" height="14" rx="2"/>
-                <path d="M2 10h20"/>
-                <path d="M6 15h4M14 15h2"/>
-              </svg>
-            ), onClick:()=>setSubOpen(true) },
-          ]).map(row=>(
-            <button key={row.label} onClick={row.onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', textAlign:'left' as const, width:'100%', transition:'background 0.14s' }}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}
-            >
-              <div style={{ width:32, height:32, borderRadius:9, background:'rgba(91,111,255,0.1)', border:'1px solid rgba(91,111,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', color:'#5b6fff', flexShrink:0 }}>
-                {row.icon}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:0 }}>{row.label}</p>
-                <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{row.sub}</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
-          ))}
-        </div>
-
-        {/* Séparateur */}
-        <div style={{ height:1, background:'var(--border)', margin:'0 0 14px' }}/>
-        <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 10px' }}>Réglages IA</p>
-
-        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
-          {/* Modèle par défaut */}
-          <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-            <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Modèle par défaut</p>
-            <div style={{ display:'flex', gap:6 }}>
-              {([
-                ['hermes','Hermès','#d4a017'],
-                ['athena','Athéna','#5b6fff'],
-                ['zeus',  'Zeus',  '#8b5cf6'],
-              ] as const).map(([id,label,color])=>{
-                const active = aiDefaultModel===id
-                return (
-                  <button key={id} onClick={()=>{ setAiDefaultModel(id); localStorage.setItem('thw_ai_default_model',id) }}
-                    style={{ flex:1, padding:'8px 4px', borderRadius:9, border:`1px solid ${active?`${color}55`:'var(--border)'}`, background:active?`${color}18`:'transparent', color:active?color:'var(--text-dim)', fontSize:11, fontWeight:active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit' }}>
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Contexte automatique */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-            <div>
-              <p style={{ fontSize:12, fontWeight:600, color:'var(--text)', margin:'0 0 2px' }}>Contexte automatique</p>
-              <p style={{ fontSize:10, color:'var(--text-dim)', margin:0 }}>L'IA reçoit tes données d'entraînement à chaque message</p>
-            </div>
-            <Toggle value={aiContextInject} onChange={v=>{ setAiContextInject(v); localStorage.setItem('thw_ai_context_inject',String(v)) }}/>
-          </div>
-
-          {/* Longueur des réponses */}
-          <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-            <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Longueur des réponses</p>
-            <div style={{ display:'flex', gap:6 }}>
-              {([
-                ['short','Courte'],
-                ['balanced','Équilibrée'],
-                ['detailed','Détaillée'],
-              ] as const).map(([id,label])=>{
-                const active = aiResponseLen===id
-                return (
-                  <button key={id} onClick={()=>{ setAiResponseLen(id); localStorage.setItem('thw_ai_resp_len',id) }}
-                    style={{ flex:1, padding:'8px 4px', borderRadius:9, border:`1px solid ${active?'rgba(120,120,150,0.5)':'var(--border)'}`, background:active?'var(--bg-card)':'transparent', color:active?'var(--text)':'var(--text-dim)', fontSize:11, fontWeight:active?600:400, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit' }}>
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle>Connexions externes</SectionTitle>
-        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-          {connections.map(c=>(
-            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', opacity:c.available?1:0.55 }}>
-              <div style={{ flexShrink:0 }}><AppLogo id={c.id} size={28}/></div>
-              <div style={{ flex:1 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <p style={{ fontSize:12, fontWeight:600, margin:0 }}>{c.label}</p>
-                  {!c.available
-                    ? <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:'rgba(120,120,140,0.12)', color:'#9ca3af', fontWeight:600 }}>Bientôt</span>
-                    : <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:c.connected?'rgba(34,197,94,0.12)':'rgba(120,120,140,0.12)', color:c.connected?'#22c55e':'#9ca3af', fontWeight:600 }}>{c.loading?'...':c.connected?'Connecté':'Non connecté'}</span>
-                  }
-                </div>
-                {c.connected && c.lastSync && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Sync : {c.lastSync}</p>}
-              </div>
-              {c.available && (
-                <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                  {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'4px 9px', borderRadius:7, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:10, fontWeight:600, cursor:'pointer' }}>↻</button>}
-                  <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 11px', borderRadius:7, background:c.connected?'rgba(239,68,68,0.08)':'rgba(0,200,224,0.08)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'rgba(0,200,224,0.2)'}`, color:c.connected?'#ef4444':'#00c8e0', fontSize:10, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
-                    {c.loading?'...':c.connected?'Déconnecter':'Connecter'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <SectionTitle>Notifications</SectionTitle>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:11, color:'var(--text-dim)' }}>Tout</span>
-            <Toggle value={notifs.globalOn} onChange={v=>setNotifs(p=>({...p,globalOn:v}))}/>
-          </div>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:8, opacity:notifs.globalOn?1:0.4, pointerEvents:notifs.globalOn?'auto':'none' }}>
-          {NOTIF_SECTIONS.map(section=>(
-            <div key={section.label} style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>{section.label}</p>
-              {section.items.map(item=>(
-                <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <span style={{ fontSize:12, color:'var(--text)' }}>{item.label}</span>
-                    <HelpBtn title={item.label} content={<p style={{ margin:0 }}>{item.help}</p>}/>
-                  </div>
-                  <Toggle value={(notifs as any)[item.key]} onChange={v=>setNotifs(p=>({...p,[item.key]:v}))}/>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-          <SectionTitle>Suivi sommeil</SectionTitle>
-          <HelpBtn title="Suivi sommeil" content={<p>Appuyez sur <strong>Lancer</strong> au coucher et <strong>Arrêter</strong> au réveil pour enregistrer la durée.</p>}/>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' as const }}>
-          <button onClick={toggleSleep} style={{ padding:'11px 22px', borderRadius:11, background:sleepActive?'linear-gradient(135deg,#a855f7,#5b6fff)':'linear-gradient(135deg,#1e293b,#334155)', border:`1px solid ${sleepActive?'rgba(168,85,247,0.4)':'var(--border)'}`, color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
-            {sleepActive ? '⏹ Arrêter' : '🌙 Lancer le sommeil'}
-          </button>
-          {sleepActive && sleepStart && <div style={{ padding:'9px 13px', borderRadius:10, background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.2)' }}><p style={{ fontSize:11, color:'#a855f7', margin:'0 0 1px', fontWeight:600 }}>En cours</p><p style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)', margin:0 }}>{sleepStart.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</p></div>}
-          {sleepDur && <div style={{ padding:'9px 13px', borderRadius:10, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)' }}><p style={{ fontSize:11, color:'#22c55e', margin:'0 0 1px', fontWeight:600 }}>Dernière nuit</p><p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:'#22c55e', margin:0 }}>{sleepDur}</p></div>}
-        </div>
-      </Card>
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════
-// BLOC 2 — ZONES (avec sauvegarde Supabase)
-// ════════════════════════════════════════════════
-function ZonesBloc() {
-  const { zoneData, setZoneData, saving, saveZone } = useTrainingZones()
-  const [sport, setSport] = useState<ZoneSport>('bike')
-  const [calcMode, setCalcMode] = useState(false)
-  const [testVal, setTestVal] = useState('')
-  const [saved, setSaved] = useState(false)
-
-  const SPORT_TABS: {id:ZoneSport;label:string}[] = [
-    {id:'bike',label:'Cyclisme'},{id:'run',label:'Running'},
-    {id:'swim',label:'Natation'},{id:'rowing',label:'Aviron'},
-    {id:'hyrox_row',label:'Hyrox — Rowing'},{id:'hyrox_ski',label:'Hyrox — SkiErg'},
-  ]
-
-  const UNIT: Record<ZoneSport,string> = { bike:'W', run:'/km', swim:'/100m', rowing:'/500m', hyrox_row:'/500m', hyrox_ski:'/500m' }
-  const TEST_LABEL: Record<ZoneSport,string> = {
-    bike:'Test 20 min — puissance moyenne (W)', run:'Record 10km (min:sec)',
-    swim:'Record 400m (min:sec)', rowing:'Record 2000m (min:sec)',
-    hyrox_row:'2000m Rowing — split /500m', hyrox_ski:'2000m SkiErg — split /500m'
-  }
-
-  const current = zoneData[sport]
-
-  function update(patch: Partial<ZoneData>) {
-    setZoneData(p => ({ ...p, [sport]: { ...p[sport], ...patch } }))
-  }
-
-  function updateZone(i: number, val: string) {
-    const z = [...current.zones]; z[i] = val; update({ zones: z })
-  }
-
-  function parseTime(val: string): number {
-    const p = val.split(':').map(Number)
-    return p.length === 2 ? p[0]*60+p[1] : parseFloat(val)||0
-  }
-
-  function calculate() {
-    const v = parseTime(testVal); if (!v) return
-    let zones: string[] = [], sl1='', sl2='', ftp=''
-    if (sport === 'bike') {
-      const f = Math.round(v*0.95); ftp=`${f}`
-      sl1=`${Math.round(f*0.75)}W`; sl2=`${Math.round(f*0.87)}W`
-      zones=[`<${Math.round(f*0.55)}W`,`${Math.round(f*0.56)}-${Math.round(f*0.75)}W`,`${Math.round(f*0.76)}-${Math.round(f*0.87)}W`,`${Math.round(f*0.88)}-${Math.round(f*1.05)}W`,`>${Math.round(f*1.06)}W`]
-    } else {
-      const base = sport==='run' ? v/10 : v/4
-      const s = (x:number) => `${Math.floor(x/60)}:${String(Math.round(x%60)).padStart(2,'0')}`
-      sl1=s(base*1.10)+UNIT[sport]; sl2=s(base*1.01)+UNIT[sport]
-      zones=[`>${s(base*1.25)}${UNIT[sport]}`,`${s(base*1.11)}-${s(base*1.25)}${UNIT[sport]}`,`${s(base*1.02)}-${s(base*1.10)}${UNIT[sport]}`,`${s(base*0.92)}-${s(base*1.01)}${UNIT[sport]}`,`<${s(base*0.91)}${UNIT[sport]}`]
-    }
-    update({ zones, sl1, sl2, ...(sport==='bike'?{ftp}:{}) })
-  }
-
-  async function handleSave() {
-    await saveZone(sport, current)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column' }}>
-      <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <SectionTitle>Zones d'entraînement</SectionTitle>
-            <HelpBtn title="SL1, SL2 et FTP" content={<><p><strong>SL1</strong> — Seuil Lactate 1. Fin Z2 / début Z3.</p><p><strong>SL2</strong> — Seuil Lactate 2. Fin Z3 / début Z4.</p><p><strong>FTP</strong> — Puissance seuil 60 min. Vélo uniquement.</p></>}/>
-          </div>
-          <div style={{ display:'flex', gap:6 }}>
-            <button onClick={()=>setCalcMode(false)} style={{ padding:'5px 11px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:!calcMode?'#00c8e0':'var(--border)', background:!calcMode?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:!calcMode?'#00c8e0':'var(--text-mid)', fontWeight:!calcMode?600:400 }}>Manuel</button>
-            <button onClick={()=>setCalcMode(true)} style={{ padding:'5px 11px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:calcMode?'#00c8e0':'var(--border)', background:calcMode?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:calcMode?'#00c8e0':'var(--text-mid)', fontWeight:calcMode?600:400 }}>Calculateur</button>
-            <SaveBtn saving={saving} onClick={handleSave}/>
-          </div>
-        </div>
-        {saved && <div style={{ padding:'6px 12px', borderRadius:8, background:'rgba(34,197,94,0.10)', border:'1px solid rgba(34,197,94,0.25)', color:'#22c55e', fontSize:11, fontWeight:600, marginBottom:12 }}>Zones sauvegardées ✓</div>}
-
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:18 }}>
-          {SPORT_TABS.map(t=><button key={t.id} onClick={()=>setSport(t.id)} style={{ padding:'5px 11px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:sport===t.id?'#00c8e0':'var(--border)', background:sport===t.id?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:sport===t.id?'#00c8e0':'var(--text-mid)', fontWeight:sport===t.id?600:400 }}>{t.label}</button>)}
-        </div>
-
-        {calcMode && (
-          <div style={{ padding:'13px 15px', borderRadius:11, background:'rgba(0,200,224,0.05)', border:'1px solid rgba(0,200,224,0.15)', marginBottom:18 }}>
-            <p style={{ fontSize:12, fontWeight:600, color:'#00c8e0', margin:'0 0 9px' }}>{TEST_LABEL[sport]}</p>
-            <div style={{ display:'flex', gap:8 }}>
-              <input value={testVal} onChange={e=>setTestVal(e.target.value)} placeholder={sport==='bike'?'ex: 320':'ex: 37:20'} style={{ flex:1, padding:'7px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13, outline:'none' }}/>
-              <button onClick={calculate} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>Calculer</button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ position:'relative', marginBottom:32 }}>
-          <div style={{ display:'flex', gap:3, marginBottom:8 }}>
-            {Z_COLORS.map((c,i)=><div key={i} style={{ flex:1, height:44, borderRadius:8, background:`${c}22`, border:`1px solid ${c}55`, display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ fontSize:11, fontWeight:700, color:c }}>Z{i+1}</span></div>)}
-          </div>
-          <div style={{ position:'absolute', top:-14, left:'calc(40% - 24px)', zIndex:10 }}>
-            <div style={{ background:'var(--bg-card)', border:'2px solid #34d399', borderRadius:20, padding:'2px 8px', fontSize:10, fontWeight:700, color:'#34d399', whiteSpace:'nowrap', position:'relative' }}>SL1<div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'7px solid #34d399' }}/></div>
-          </div>
-          <div style={{ position:'absolute', top:-14, left:'calc(60% - 24px)', zIndex:10 }}>
-            <div style={{ background:'var(--bg-card)', border:'2px solid #f97316', borderRadius:20, padding:'2px 8px', fontSize:10, fontWeight:700, color:'#f97316', whiteSpace:'nowrap', position:'relative' }}>SL2<div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'7px solid #f97316' }}/></div>
-          </div>
-          <div style={{ display:'flex', gap:3 }}>
-            {Z_COLORS.map((c,i)=>(
-              <div key={i} style={{ flex:1 }}>
-                <p style={{ fontSize:8, fontWeight:600, color:'var(--text-dim)', textAlign:'center', margin:'0 0 3px', textTransform:'uppercase', letterSpacing:'0.05em' }}>{Z_LABELS[i]}</p>
-                <input value={current.zones[i]||''} onChange={e=>updateZone(i,e.target.value)} placeholder={UNIT[sport]} style={{ width:'100%', padding:'5px 4px', borderRadius:7, border:`1px solid ${c}44`, background:'var(--input-bg)', color:c, fontFamily:'DM Mono,monospace', fontSize:10, fontWeight:600, outline:'none', textAlign:'center' }}/>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {sport==='bike' && <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}><span style={{ fontSize:11, color:'var(--text-dim)', minWidth:40 }}>FTP</span><input value={current.ftp||''} onChange={e=>update({ftp:e.target.value})} placeholder="ex: 280" style={{ flex:1, padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:600, outline:'none' }}/><span style={{ fontSize:11, color:'var(--text-dim)' }}>W</span></div>}
-          <div style={{ display:'flex', gap:8 }}>
-            <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, padding:'9px 13px', borderRadius:10, background:'rgba(52,211,153,0.07)', border:'1px solid rgba(52,211,153,0.2)' }}>
-              <span style={{ fontSize:11, color:'#34d399', fontWeight:600, minWidth:30 }}>SL1</span>
-              <input value={current.sl1||''} onChange={e=>update({sl1:e.target.value})} placeholder={`ex: 230${UNIT[sport]}`} style={{ flex:1, padding:'4px 8px', borderRadius:7, border:'1px solid rgba(52,211,153,0.25)', background:'var(--input-bg)', color:'#34d399', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, outline:'none' }}/>
-            </div>
-            <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, padding:'9px 13px', borderRadius:10, background:'rgba(249,115,22,0.07)', border:'1px solid rgba(249,115,22,0.2)' }}>
-              <span style={{ fontSize:11, color:'#f97316', fontWeight:600, minWidth:30 }}>SL2</span>
-              <input value={current.sl2||''} onChange={e=>update({sl2:e.target.value})} placeholder={`ex: 265${UNIT[sport]}`} style={{ flex:1, padding:'4px 8px', borderRadius:7, border:'1px solid rgba(249,115,22,0.25)', background:'var(--input-bg)', color:'#f97316', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, outline:'none' }}/>
-            </div>
-          </div>
-          {(sport==='hyrox_ski'||sport==='hyrox_row') && (
-            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 13px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:140 }}>
-                <span style={{ fontSize:11, color:'var(--text-dim)' }}>Run Compromised</span>
-                <HelpBtn title="Run Compromised" content={<p>Allure de course entre les stations Hyrox. Plus lente en raison de la fatigue accumulée.</p>}/>
-              </div>
-              <input value={current.runCompromised||''} onChange={e=>update({runCompromised:e.target.value})} placeholder="ex: 4:30/km" style={{ flex:1, padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:600, outline:'none' }}/>
-            </div>
-          )}
+          <NavRow label="Modèles" sub="Hermès · Athéna · Zeus — crédits et usages"
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.75"/></svg>}
+            onClick={()=>setModelsOpen(true)}
+          />
+          <NavRow label="Abonnement" sub="Plan actuel · crédits journaliers et hebdo"
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}
+            onClick={()=>setSubOpen(true)}
+          />
         </div>
       </Card>
-    </div>
-  )
-}
 
-// ════════════════════════════════════════════════
-// BLOC 3 — RECORDS (avec sauvegarde Supabase)
-// ════════════════════════════════════════════════
-function RecordsBloc() {
-  const { records, palmares, saving, addRecord, addPalmares, getRecordsBySport, getPalmaresBySport } = useRecords()
-  const [sport,      setSport]      = useState<SportType>('bike')
-  const [addModal,   setAddModal]   = useState<{dist:string}|null>(null)
-  const [addPalm,    setAddPalm]    = useState(false)
-  const [yearFilter, setYearFilter] = useState('all')
-
-  const SPORT_TABS: {id:SportType;label:string}[] = [
-    {id:'bike',label:'Cyclisme'},{id:'run',label:'Running'},{id:'trail',label:'Trail'},
-    {id:'triathlon',label:'Triathlon'},{id:'swim',label:'Natation'},{id:'rowing',label:'Aviron'},{id:'hyrox',label:'Hyrox'},
-  ]
-  const SPORT_DISTS: Record<string,string[]> = {
-    bike:BIKE_DISTS, run:RUN_DISTS, trail:TRAIL_DISTS, triathlon:TRI_DISTS, swim:SWIM_DISTS, rowing:ROW_DISTS, hyrox:HYROX_CATS
-  }
-  const dists = SPORT_DISTS[sport]||[]
-  const isBike = sport==='bike'
-  const YEARS = ['all','2025','2024','2023','2022','2021','2020']
-
-  function getSupabaseRecords(dist: string) {
-    return getRecordsBySport(sport)
-      .filter(r => r.distance_label===dist && (yearFilter==='all'||String(r.year)===yearFilter))
-      .sort((a,b) => isBike ? (parseInt(b.performance)||0)-(parseInt(a.performance)||0) : a.performance.localeCompare(b.performance))
-  }
-
-  function getSupabasePalmares() {
-    return getPalmaresBySport(sport)
-      .filter(r => yearFilter==='all'||String(r.year)===yearFilter)
-  }
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column' }}>
-      <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:12 }}>
-        {SPORT_TABS.map(t=><button key={t.id} onClick={()=>setSport(t.id)} style={{ padding:'7px 12px', borderRadius:9, border:'1px solid', cursor:'pointer', fontSize:11, borderColor:sport===t.id?SPORT_COLOR[t.id]:'var(--border)', background:sport===t.id?`${SPORT_COLOR[t.id]}18`:'var(--bg-card)', color:sport===t.id?SPORT_COLOR[t.id]:'var(--text-mid)', fontWeight:sport===t.id?700:400 }}>{t.label}</button>)}
-      </div>
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:12, flexWrap:'wrap' }}>
-        <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:600 }}>Année :</span>
-        <select value={yearFilter} onChange={e=>setYearFilter(e.target.value)} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none', cursor:'pointer' }}>
-          {YEARS.map(y=><option key={y} value={y}>{y==='all'?'Toutes':y}</option>)}
-        </select>
-        <button onClick={()=>setAddPalm(true)} style={{ marginLeft:'auto', padding:'6px 12px', borderRadius:8, background:'rgba(168,85,247,0.10)', border:'1px solid rgba(168,85,247,0.25)', color:'#a855f7', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ Palmarès</button>
-      </div>
-
+      {/* ── Comportement ──────────────────────────────── */}
       <Card>
-        <SectionTitle>Records — {SPORT_LABEL[sport]||sport}</SectionTitle>
-        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-          {dists.map(dist=>{
-            const recs = getSupabaseRecords(dist)
-            const best = recs[0]
-            return (
-              <div key={dist} style={{ padding:'10px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:11, fontWeight:600, color:'var(--text-mid)', minWidth:76, flexShrink:0 }}>{dist}</span>
-                  {best ? (
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#00c8e0' }}>{best.performance}{isBike?'W':''}</span>
-                        {best.pace_s_km && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{Math.floor(best.pace_s_km/60)}:{String(best.pace_s_km%60).padStart(2,'0')}/km</span>}
-                        <span style={{ fontSize:9, padding:'1px 6px', borderRadius:20, background:best.event_type==='competition'?'rgba(0,200,224,0.12)':'rgba(34,197,94,0.12)', color:best.event_type==='competition'?'#00c8e0':'#22c55e', fontWeight:700 }}>{best.event_type}</span>
-                      </div>
-                      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{best.race_name||''}{best.race_name&&best.achieved_at?' · ':''}{best.achieved_at}</p>
-                    </div>
-                  ) : <span style={{ flex:1, fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>Aucun record</span>}
-                  <button onClick={()=>setAddModal({dist})} style={{ padding:'4px 9px', borderRadius:7, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>+</button>
-                </div>
-                {recs.length>1 && <div style={{ marginTop:7, paddingTop:7, borderTop:'1px solid var(--border)' }}>{recs.slice(1).map(r=><div key={r.id} style={{ display:'flex', gap:10, padding:'2px 0' }}><span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{r.performance}{isBike?'W':''}</span><span style={{ fontSize:10, color:'var(--text-dim)' }}>{r.race_name||''}{r.race_name&&r.achieved_at?' · ':''}{r.achieved_at}</span></div>)}</div>}
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>}>Comportement</CardTitle>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+          {[
+            { label:'Mode économie de crédits', sub:"L'IA sélectionne automatiquement le modèle le plus adapté pour économiser des crédits", val:creditSaving, onChange:(v:boolean)=>{ setCreditSaving(v); save('thw_ai_credit_saving',String(v)) } },
+            { label:'Autoriser les suggestions', sub:"THW Coach peut proposer des actions ou analyses proactives en dehors du chat", val:allowSuggestions, onChange:(v:boolean)=>{ setAllowSuggestions(v); save('thw_ai_allow_suggestions',String(v)) } },
+          ].map((item, idx)=>(
+            <div key={item.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
+              <div style={{ flex:1, paddingRight:14 }}>
+                <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
+                <p style={{ fontSize:10, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
               </div>
+              <Toggle value={item.val} onChange={item.onChange}/>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* ── Modèle par défaut ─────────────────────────── */}
+      <Card>
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.6"/></svg>}>Modèle par défaut</CardTitle>
+        <div style={{ display:'flex', gap:8 }}>
+          {([['hermes','Hermès','#d4a017'],['athena','Athéna','#5b6fff'],['zeus','Zeus','#8b5cf6']] as const).map(([id,label,color])=>{
+            const active = defaultModel===id
+            return (
+              <button key={id} onClick={()=>{ setDefaultModel(id); save('thw_ai_default_model',id) }}
+                style={{ flex:1, padding:'10px 6px', borderRadius:11, border:`1.5px solid ${active?`${color}66`:'var(--border)'}`, background:active?`${color}18`:'transparent', color:active?color:'var(--text-dim)', fontSize:12, fontWeight:active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit', textAlign:'center' as const }}>
+                <div style={{ fontSize:9, fontWeight:600, color:active?`${color}99`:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.06em', marginBottom:2 }}>
+                  {id==='hermes'?'Rapide':id==='athena'?'Équilibré':'Avancé'}
+                </div>
+                {label}
+              </button>
             )
           })}
         </div>
       </Card>
 
+      {/* ── Style de réponse ──────────────────────────── */}
       <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <SectionTitle>Palmarès — {SPORT_LABEL[sport]||sport}</SectionTitle>
-          <button onClick={()=>setAddPalm(true)} style={{ padding:'5px 11px', borderRadius:8, background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.2)', color:'#a855f7', fontSize:11, cursor:'pointer', fontWeight:600 }}>+ Ajouter</button>
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>}>Style de réponse</CardTitle>
+
+        <SectionLabel>Ton</SectionLabel>
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const, marginBottom:16 }}>
+          {([['pro','Pro'],['warm','Chaleureux'],['spontaneous','Spontané'],['offbeat','Décalé'],['efficient','Efficace']] as const).map(([id,label])=>{
+            const active = tone===id
+            return (
+              <button key={id} onClick={()=>{ setTone(id); save('thw_ai_tone',id) }}
+                style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${active?'rgba(91,111,255,0.55)':'var(--border)'}`, background:active?'rgba(91,111,255,0.12)':'transparent', color:active?'#5b6fff':'var(--text-dim)', fontSize:12, fontWeight:active?600:400, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit' }}>
+                {label}
+              </button>
+            )
+          })}
         </div>
-        {getSupabasePalmares().length===0 ? <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', textAlign:'center', padding:'10px 0', margin:0 }}>Aucune entrée</p> : (
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {getSupabasePalmares().map(p=>(
-              <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:800, color:'#a855f7' }}>#{p.overall_rank||'?'}</span>
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.race_name}</p>
-                  <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.year} · {p.category} · {p.finish_time}</p>
-                </div>
+
+        <SectionLabel>Niveau de détail</SectionLabel>
+        <div style={{ display:'flex', gap:8 }}>
+          {([['short','Court'],['normal','Normal'],['deep','Approfondi']] as const).map(([id,label])=>{
+            const active = detail===id
+            return (
+              <button key={id} onClick={()=>{ setDetail(id); save('thw_ai_detail',id) }}
+                style={{ flex:1, padding:'9px 6px', borderRadius:10, border:`1.5px solid ${active?'rgba(120,120,150,0.55)':'var(--border)'}`, background:active?'var(--bg-card2)':'transparent', color:active?'var(--text)':'var(--text-dim)', fontSize:12, fontWeight:active?600:400, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit', textAlign:'center' as const }}>
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* ── Préférences de contenu ────────────────────── */}
+      <Card>
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>}>Préférences de contenu</CardTitle>
+        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 14px', lineHeight:1.5 }}>L'IA adapte le style de ses réponses à tes préférences.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+          {([
+            ['practical', 'Conseils pratiques',     'Actions directement applicables'],
+            ['detailed',  'Explications détaillées','Contexte scientifique et raisons'],
+            ['plans',     'Plans structurés',        'Organisation par étapes et calendrier'],
+            ['analysis',  'Analyse de données',      'Interprétation chiffrée et tendances'],
+          ] as const).map(([key,label,sub], idx)=>(
+            <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
+              <div style={{ flex:1, paddingRight:14 }}>
+                <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{label}</p>
+                <p style={{ fontSize:10, color:'var(--text-dim)', margin:0 }}>{sub}</p>
               </div>
-            ))}
+              <Toggle value={prefTypes[key]} onChange={v=>{ const next={...prefTypes,[key]:v}; setPrefTypes(next); save('thw_ai_pref_types',JSON.stringify(next)) }}/>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* ── Prompt personnalisé ───────────────────────── */}
+      <Card>
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>}>Prompt personnalisé</CardTitle>
+        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 10px', lineHeight:1.55 }}>Décris comment tu veux que l'IA te réponde — objectifs, style, attentes, contraintes particulières.</p>
+        <textarea
+          value={customPrompt}
+          onChange={e=>{ setCustomPrompt(e.target.value); save('thw_ai_custom_prompt',e.target.value) }}
+          placeholder="Ex : Je préfère les réponses concises. Je m'entraîne le matin. Mon objectif est un Ironman en octobre..."
+          rows={4}
+          style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12.5, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.65, boxSizing:'border-box' as const }}
+        />
+        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'7px 0 0', textAlign:'right' as const }}>{customPrompt.length} / 500 caractères</p>
+      </Card>
+
+      {/* ── Connexion aux données ─────────────────────── */}
+      <Card>
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>}>Connexion aux données</CardTitle>
+        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 12px', lineHeight:1.55 }}>L'IA accède à ces données pour personnaliser ses réponses.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {DATA_CONNECTIONS.map((d,idx)=>(
+            <div key={idx} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 13px', borderRadius:12, background:'var(--bg-card2)', border:`1px solid ${d.connected?'rgba(34,197,94,0.18)':'var(--border)'}` }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:d.connected?'#22c55e':'rgba(120,120,140,0.4)', flexShrink:0, boxShadow:d.connected?'0 0 6px rgba(34,197,94,0.5)':'none' }}/>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:'0 0 1px' }}>{d.label}</p>
+                <p style={{ fontSize:10, color:d.connected?'var(--text-dim)':'var(--text-dim)', margin:0 }}>{d.sub}</p>
+              </div>
+              <span style={{ fontSize:10, fontWeight:600, color:d.connected?'#22c55e':'#9ca3af', flexShrink:0 }}>
+                {d.connected ? '✓ Connecté' : '✗ Absent'}
+              </span>
+            </div>
+          ))}
+        </div>
+        {DATA_CONNECTIONS.some(d=>!d.connected) && (
+          <div style={{ marginTop:10, padding:'10px 13px', borderRadius:11, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.18)' }}>
+            <p style={{ fontSize:11, color:'var(--text-mid)', margin:0, lineHeight:1.55 }}>
+              Des données manquent — complète les sections concernées dans l'app pour améliorer la qualité des réponses.
+            </p>
           </div>
         )}
       </Card>
 
-      {addModal && <AddRecordModal dist={addModal.dist} sport={sport} saving={saving} onClose={()=>setAddModal(null)} onSave={async e=>{await addRecord(sport,e);setAddModal(null)}}/>}
-      {addPalm  && <AddPalmaresModal sport={sport} saving={saving} onClose={()=>setAddPalm(false)} onSave={async e=>{await addPalmares(sport,e);setAddPalm(false)}}/>}
     </div>
   )
 }
 
-function AddRecordModal({ dist, sport, saving, onClose, onSave }: { dist:string; sport:SportType; saving:boolean; onClose:()=>void; onSave:(e:RecordEntry)=>Promise<void> }) {
-  const [perf,setPerf]=useState(''); const [date,setDate]=useState(today()); const [year,setYear]=useState('2025'); const [race,setRace]=useState(''); const [type,setType]=useState<'entrainement'|'competition'>('competition'); const [elev,setElev]=useState(''); const [swimT,setSwimT]=useState(''); const [bikeT,setBikeT]=useState(''); const [runT,setRunT]=useState('')
-  const isBike=sport==='bike'; const distKm=RUN_KM[dist]; const pace=(sport==='run'||sport==='trail')&&distKm&&perf?calcPace(distKm,perf):''
-  return (
-    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:22, maxWidth:440, width:'100%', maxHeight:'90vh', overflowY:'auto' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Record — {dist}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', cursor:'pointer', color:'var(--text-dim)', fontSize:15 }}>×</button>
-        </div>
-        <div style={{ display:'flex', gap:7, marginBottom:12 }}>
-          {(['competition','entrainement'] as const).map(t=><button key={t} onClick={()=>setType(t)} style={{ flex:1, padding:'7px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:11, fontWeight:type===t?600:400, borderColor:type===t?'#00c8e0':'var(--border)', background:type===t?'rgba(0,200,224,0.10)':'var(--bg-card2)', color:type===t?'#00c8e0':'var(--text-mid)' }}>{t}</button>)}
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:12 }}>
-          {[{label:isBike?'Puissance (W)':'Performance',value:perf,set:setPerf,ph:isBike?'ex: 380':'ex: 1:24:30',mono:true},{label:'Date',value:date,set:setDate,type:'date'},{label:'Année',value:year,set:setYear,ph:'2025'},{label:'Course / lieu',value:race,set:setRace,ph:`ex: ${dist}`}].map(f=>(
-            <div key={f.label}><p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.label}</p><input type={f.type||'text'} value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{ width:'100%', padding:'7px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:f.mono?'DM Mono,monospace':'inherit', fontSize:12, outline:'none' }}/></div>
-          ))}
-        </div>
-        {pace && <div style={{ padding:'7px 11px', borderRadius:8, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', marginBottom:10 }}><p style={{ fontSize:12, color:'#22c55e', margin:0, fontFamily:'DM Mono,monospace', fontWeight:600 }}>Allure : {pace}</p></div>}
-        {sport==='trail' && <div style={{ marginBottom:10 }}><p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>Dénivelé (D+)</p><input value={elev} onChange={e=>setElev(e.target.value)} placeholder="ex: 2400m" style={{ width:'100%', padding:'7px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}/></div>}
-        {sport==='triathlon' && <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:10 }}>{[{l:'Natation',v:swimT,s:setSwimT},{l:'Vélo',v:bikeT,s:setBikeT},{l:'Course',v:runT,s:setRunT}].map(f=><div key={f.l}><p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.l}</p><input value={f.v} onChange={e=>f.s(e.target.value)} placeholder="0:00:00" style={{ width:'100%', padding:'6px 7px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/></div>)}</div>}
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:12, cursor:'pointer' }}>Annuler</button>
-          <button onClick={()=>onSave({id:uid(),distance:dist,perf,date,year,race:race||dist,type,pace:pace||undefined,elevation:elev||undefined,splits:(sport==='triathlon'&&(swimT||bikeT||runT))?{swim:swimT,bike:bikeT,run:runT}:undefined})} disabled={saving} style={{ flex:2, padding:10, borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12, cursor:'pointer', opacity:saving?0.6:1 }}>{saving?'Sauvegarde...':'Enregistrer'}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
+// ══════════════════════════════════════════════════
+// PAGE PRINCIPALE — Navigation entre onglets
+// ══════════════════════════════════════════════════
 
-function AddPalmaresModal({ sport, saving, onClose, onSave }: { sport:SportType; saving:boolean; onClose:()=>void; onSave:(e:PalmEntry)=>Promise<void> }) {
-  const [race,setRace]=useState(''); const [year,setYear]=useState('2025'); const [rank,setRank]=useState(''); const [time,setTime]=useState(''); const [category,setCategory]=useState('Open'); const [showStations,setShowStations]=useState(false); const [stationTimes,setStationTimes]=useState<Record<string,string>>({}); const [runTime,setRunTime]=useState('')
-  const isHyrox=sport==='hyrox'
-  return (
-    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:22, maxWidth:420, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Palmarès — {SPORT_LABEL[sport]||sport}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 8px', cursor:'pointer', color:'var(--text-dim)', fontSize:15 }}>×</button>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:9, marginBottom:14 }}>
-          {[{label:'Nom de la course',value:race,set:setRace,ph:'ex: Ironman Nice'},{label:'Année',value:year,set:setYear,ph:'2025'},{label:'Classement',value:rank,set:setRank,ph:'ex: 12 ou 12/450'},{label:'Temps total',value:time,set:setTime,ph:'ex: 9:45:00',mono:true},{label:'Catégorie',value:category,set:setCategory,ph:'Open / Pro / AG...'}].map(f=>(
-            <div key={f.label}><p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{f.label}</p><input value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{ width:'100%', padding:'7px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:(f as any).mono?'DM Mono,monospace':'inherit', fontSize:12, outline:'none' }}/></div>
-          ))}
-        </div>
-        {isHyrox && (
-          <div style={{ marginBottom:14 }}>
-            <button onClick={()=>setShowStations(!showStations)} style={{ padding:'7px 13px', borderRadius:9, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', color:'#ef4444', fontSize:11, fontWeight:600, cursor:'pointer', marginBottom:showStations?10:0, display:'flex', alignItems:'center', gap:6 }}>{showStations?'▾':'▸'} Temps stations</button>
-            {showStations && (
-              <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                  {HYROX_STATIONS.map((s,i)=><div key={s}><p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:3 }}>Station {i+1} — {s}</p><input value={stationTimes[s]||''} onChange={e=>setStationTimes(p=>({...p,[s]:e.target.value}))} placeholder="ex: 1:45" style={{ width:'100%', padding:'5px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/></div>)}
-                </div>
-                <div style={{ marginTop:9 }}><p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:3 }}>Run compromised</p><input value={runTime} onChange={e=>setRunTime(e.target.value)} placeholder="ex: 32:10" style={{ width:'100%', padding:'5px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none' }}/></div>
-              </div>
-            )}
-          </div>
-        )}
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:12, cursor:'pointer' }}>Annuler</button>
-          <button onClick={()=>onSave({id:uid(),race,year,rank,time,category,stationTimes:isHyrox&&showStations?{...stationTimes,run:runTime}:undefined})} disabled={saving} style={{ flex:2, padding:10, borderRadius:10, background:'linear-gradient(135deg,#a855f7,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12, cursor:'pointer', opacity:saving?0.6:1 }}>{saving?'Sauvegarde...':'Enregistrer'}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════
-// PAGE
-// ════════════════════════════════════════════════
 function ProfileContent() {
   const [tab, setTab] = useState<ProfileTab>('profil')
-  const TABS = [
-    { id:'profil'  as ProfileTab, label:'Profil',             color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
-    { id:'zones'   as ProfileTab, label:'Zones',              color:'#f97316', bg:'rgba(249,115,22,0.10)' },
-    { id:'records' as ProfileTab, label:'Records & Palmarès', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
+
+  const TABS: { id:ProfileTab; label:string; icon:React.ReactNode }[] = [
+    {
+      id:'profil', label:'Profil',
+      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    },
+    {
+      id:'notifications', label:'Notifications',
+      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+    },
+    {
+      id:'ia', label:'Réglages IA',
+      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.55"/></svg>,
+    },
   ]
+
   return (
-    <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Mon Profil</h1>
-        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records</p>
+    <div style={{ maxWidth:680, margin:'0 auto', padding:'0 0 80px' }}>
+
+      {/* Header */}
+      <div style={{ padding:'28px 20px 0' }}>
+        <p style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>Mon Profil</p>
+        <p style={{ fontSize:13, color:'var(--text-dim)', margin:'0 0 24px' }}>Paramètres · Coaching · Connexions</p>
+
+        {/* Tab bar */}
+        <div style={{ display:'flex', gap:4, padding:'4px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', marginBottom:20 }}>
+          {TABS.map(t=>{
+            const active = tab===t.id
+            return (
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'9px 8px', borderRadius:11, border:'none', background:active?'var(--bg-card)':'transparent', color:active?'var(--text)':'var(--text-dim)', fontSize:12, fontWeight:active?700:500, cursor:'pointer', transition:'all 0.16s', fontFamily:'DM Sans,sans-serif', boxShadow:active?'0 1px 6px rgba(0,0,0,0.1)':'none' }}>
+                <span style={{ opacity:active?1:0.55, display:'flex', flexShrink:0 }}>{t.icon}</span>
+                <span style={{ whiteSpace:'nowrap' as const }}>{t.label}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
-      <div style={{ display:'flex', gap:7, marginBottom:20, flexWrap:'wrap' }}>
-        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, minWidth:100, padding:'11px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:tab===t.id?t.color:'var(--border)', background:tab===t.id?t.bg:'var(--bg-card)', color:tab===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:tab===t.id?700:400, boxShadow:'var(--shadow-card)', transition:'all 0.15s' }}>{t.label}</button>)}
+
+      {/* Content */}
+      <div style={{ padding:'0 12px' }}>
+        {tab === 'profil'        && <ProfilBloc/>}
+        {tab === 'notifications' && <NotificationsBloc/>}
+        {tab === 'ia'            && <IASettingsBloc/>}
       </div>
-      {tab==='profil'  && <ProfilBloc/>}
-      {tab==='zones'   && <ZonesBloc/>}
-      {tab==='records' && <RecordsBloc/>}
     </div>
   )
 }
+
+// ══════════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════════
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div style={{ padding:'24px 28px' }}><div style={{ height:40, borderRadius:8, background:'var(--border)', marginBottom:12 }}/></div>}>
+    <Suspense fallback={<div style={{ padding:40, color:'var(--text-dim)', textAlign:'center' as const }}>Chargement…</div>}>
       <ProfileContent/>
     </Suspense>
   )

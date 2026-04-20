@@ -30,7 +30,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | null
 
 interface Props {
   open: boolean
@@ -1015,6 +1015,208 @@ function RechargeFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; 
   )
 }
 
+// ── AnalyzeTestFlow ───────────────────────────────────────────
+
+const AT_SPORTS: { id: string; label: string }[] = [
+  { id: 'running',  label: 'Running' },
+  { id: 'cycling',  label: 'Vélo' },
+  { id: 'natation', label: 'Natation' },
+  { id: 'aviron',   label: 'Rowing' },
+  { id: 'hyrox',    label: 'Hyrox' },
+]
+
+interface TestResultRow {
+  id: string
+  date: string
+  valeurs: Record<string, unknown>
+  notes: string | null
+  test_definitions: { nom: string; sport: string } | null
+}
+
+function AnalyzeTestFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; onCancel: () => void }) {
+  const [step,     setStep]     = useState<'sport' | 'results'>('sport')
+  const [sport,    setSport]    = useState<string | null>(null)
+  const [tests,    setTests]    = useState<TestResultRow[] | null>(null)
+  const [loadingT, setLoadingT] = useState(false)
+
+  async function loadTests(sp: string) {
+    setLoadingT(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setTests([]); setLoadingT(false); setStep('results'); return }
+
+      // Fetch test definitions for this sport
+      const { data: defs } = await sb
+        .from('test_definitions')
+        .select('id')
+        .eq('sport', sp)
+
+      if (!defs?.length) { setTests([]); setLoadingT(false); setStep('results'); return }
+
+      const defIds = defs.map((d: { id: string }) => d.id)
+
+      const { data: results } = await sb
+        .from('test_results')
+        .select('id, date, valeurs, notes, test_definitions(nom, sport)')
+        .in('test_definition_id', defIds)
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(10)
+
+      setTests((results as unknown as TestResultRow[]) ?? [])
+    } catch {
+      setTests([])
+    } finally {
+      setLoadingT(false)
+      setStep('results')
+    }
+  }
+
+  function handleSportSelect(sp: string) {
+    setSport(sp)
+    void loadTests(sp)
+  }
+
+  function buildPrompt() {
+    if (!tests?.length || !sport) return
+    const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
+    const testLines = tests.map(t => {
+      const nom = t.test_definitions?.nom ?? 'Test'
+      const vals = Object.entries(t.valeurs)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ')
+      return `- ${nom} (${t.date}) : ${vals}${t.notes ? ` — Notes: ${t.notes}` : ''}`
+    }).join('\n')
+
+    onSend(
+      `Analyse mes résultats de tests en ${sportLabel}.\n\n` +
+      `Résultats disponibles :\n${testLines}\n\n` +
+      `Interprète ces données : progression, niveaux atteints, points forts, faiblesses identifiées. ` +
+      `Propose des axes de travail concrets basés sur ces mesures réelles.`
+    )
+  }
+
+  // ── Étape 1 : sélection du sport ──
+  if (step === 'sport') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Quel sport analyser ?
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Tes tests enregistrés pour ce sport seront affichés
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+          {AT_SPORTS.map(s => (
+            <button key={s.id} onClick={() => handleSportSelect(s.id)}
+              disabled={loadingT}
+              style={{
+                padding: '8px 16px', borderRadius: 20,
+                border: '1px solid var(--ai-border)',
+                background: 'var(--ai-bg2)', color: 'var(--ai-mid)',
+                fontSize: 12, fontWeight: 500, cursor: loadingT ? 'not-allowed' : 'pointer',
+                fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s',
+              }}
+              onMouseEnter={e => { if (!loadingT) { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ai-mid)' }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {loadingT && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
+            <Dots />
+            <span>Chargement des tests…</span>
+          </div>
+        )}
+        <button onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          Annuler
+        </button>
+      </div>
+    )
+  }
+
+  // ── Étape 2 : résultats ──
+  const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
+
+  if (!tests?.length) {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <div style={{
+          padding: '16px', borderRadius: 10,
+          border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+          marginBottom: 14,
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+            Aucun test en {sportLabel}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px', lineHeight: 1.5 }}>
+            Tu n'as encore aucun test enregistré pour ce sport.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>
+            Va dans <strong style={{ color: 'var(--ai-text)' }}>Performance → Tests</strong> pour en ajouter.
+            Cela permettra une analyse précise de ta progression.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Autre sport
+          </button>
+          <button onClick={onCancel}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '8px 0 4px' }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        {tests.length} test{tests.length > 1 ? 's' : ''} en {sportLabel}
+      </p>
+      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
+        Résultats les plus récents
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+        {tests.slice(0, 5).map(t => (
+          <div key={t.id} style={{
+            padding: '8px 12px', borderRadius: 8,
+            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                {t.test_definitions?.nom ?? 'Test'}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
+                {t.date}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
+              {Object.entries(t.valeurs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
+          style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          Retour
+        </button>
+        <button onClick={buildPrompt}
+          style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          Analyser mes tests
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════
 // PLUS MENU
 // ══════════════════════════════════════════════════════════════
@@ -1064,8 +1266,8 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Tests',
     items: [
+      { label: 'Analyser un test', flow: 'analyzetest' },
       { label: 'Calculer mes zones', prompt: 'Explique-moi comment calculer et utiliser mes zones d\'entraînement (fréquence cardiaque, allure, puissance). Propose une méthode adaptée à mes sports pratiqués.' },
-      { label: 'Préparer un test FTP', prompt: 'Comment préparer et réaliser un test FTP (cyclisme) ou un test de seuil (course à pied) ? Donne-moi le protocole complet et comment interpréter les résultats.' },
     ],
   },
   {
@@ -1159,7 +1361,9 @@ function PlusMenu({
 }
 
 // ══════════════════════════════════════════════════════════════
-// HISTORY DRAWER
+// HISTORY SIDEBAR / DRAWER
+// persistent=true  → colonne inline (desktop)
+// persistent=false → overlay avec backdrop (mobile)
 // ══════════════════════════════════════════════════════════════
 
 function HistoryDrawer({
@@ -1169,6 +1373,7 @@ function HistoryDrawer({
   onDelete,
   onNew,
   onClose,
+  persistent = false,
 }: {
   convs: AIConv[]
   activeId: string | null
@@ -1176,13 +1381,13 @@ function HistoryDrawer({
   onDelete: (id: string) => void
   onNew: () => void
   onClose: () => void
+  persistent?: boolean
 }) {
   const [menuId, setMenuId] = useState<string | null>(null)
   const [renId,  setRenId]  = useState<string | null>(null)
   const [renVal, setRenVal] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Close menu on outside click
   useEffect(() => {
     if (!menuId) return
     const h = (e: MouseEvent) => {
@@ -1192,171 +1397,195 @@ function HistoryDrawer({
     return () => document.removeEventListener('mousedown', h)
   }, [menuId])
 
+  // ── Contenu partagé (header + liste + settings) ─────────────
+
+  const sidebarContent = (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div style={{
+        padding: '12px 10px 8px',
+        borderBottom: '1px solid var(--ai-border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', fontFamily: 'Syne,sans-serif', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Conversations
+        </span>
+        <button
+          onClick={onNew}
+          title="Nouvelle conversation"
+          style={{
+            width: 24, height: 24, borderRadius: 6, border: 'none',
+            background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(91,111,255,0.3)',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Conversation list */}
+      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+        {convs.length === 0 ? (
+          <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
+            Aucune conversation.<br />Pose une question pour commencer.
+          </div>
+        ) : convs.map(conv => (
+          <div key={conv.id} className="aip-hist-item" style={{ position: 'relative', marginBottom: 1 }}>
+            {renId === conv.id ? (
+              <div style={{ padding: '3px 4px' }}>
+                <input
+                  autoFocus
+                  value={renVal}
+                  onChange={e => setRenVal(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (renVal.trim()) onSelect({ ...conv, title: renVal.trim() })
+                      setRenId(null)
+                    }
+                    if (e.key === 'Escape') setRenId(null)
+                  }}
+                  onBlur={() => setRenId(null)}
+                  style={{
+                    width: '100%', padding: '5px 7px', borderRadius: 6,
+                    border: '1px solid rgba(91,111,255,0.5)',
+                    background: 'var(--ai-bg)', color: 'var(--ai-text)',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 11,
+                    outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                onClick={() => { onSelect(conv); if (!persistent) onClose() }}
+                style={{
+                  padding: '6px 4px 6px 8px', borderRadius: 6, cursor: 'pointer',
+                  background: conv.id === activeId ? 'rgba(91,111,255,0.11)' : 'transparent',
+                  border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.25)' : 'transparent'}`,
+                  display: 'flex', alignItems: 'center', gap: 3,
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.04)' }}
+                onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: conv.id === activeId ? 600 : 400,
+                    color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    lineHeight: 1.3,
+                  }}>
+                    {conv.title}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--ai-dim)', marginTop: 1 }}>
+                    {fmtDate(conv.updatedAt)}
+                  </div>
+                </div>
+
+                {/* ⋯ */}
+                <div
+                  ref={menuId === conv.id ? menuRef : undefined}
+                  style={{ position: 'relative', flexShrink: 0 }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setMenuId(menuId === conv.id ? null : conv.id)}
+                    className="aip-hist-dots"
+                    style={{
+                      width: 20, height: 20, borderRadius: 4,
+                      border: 'none', background: 'transparent',
+                      cursor: 'pointer', color: 'var(--ai-dim)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: 0, transition: 'opacity 0.1s',
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" />
+                    </svg>
+                  </button>
+                  {menuId === conv.id && (
+                    <div style={{
+                      position: 'absolute', right: 0, top: '100%', zIndex: 60,
+                      background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
+                      borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
+                      overflow: 'hidden', minWidth: 120,
+                    }}>
+                      <button onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
+                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >Renommer</button>
+                      <button onClick={() => { onDelete(conv.id); setMenuId(null) }}
+                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >Supprimer</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Settings ── */}
+      <div style={{ borderTop: '1px solid var(--ai-border)', padding: '7px 6px 8px', flexShrink: 0 }}>
+        <a
+          href="/profile"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 9px', borderRadius: 7,
+            color: 'var(--ai-mid)', textDecoration: 'none',
+            fontFamily: 'DM Sans,sans-serif', fontSize: 11,
+            transition: 'background 0.1s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(0,0,0,0.04)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+          <span>Réglages IA</span>
+        </a>
+      </div>
+    </div>
+  )
+
+  // ── Mode persistant (desktop) — colonne inline ──────────────
+  if (persistent) {
+    return (
+      <div style={{
+        width: 190, flexShrink: 0,
+        borderRight: '1px solid var(--ai-border)',
+        background: 'var(--ai-bg2)',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+        {sidebarContent}
+      </div>
+    )
+  }
+
+  // ── Mode overlay (mobile) ────────────────────────────────────
   return (
     <>
-      {/* Backdrop */}
       <div
         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 25 }}
         onClick={onClose}
       />
-      {/* Drawer */}
       <div style={{
         position: 'absolute', top: 0, left: 0, bottom: 0,
-        width: 240, background: 'var(--ai-bg)',
+        width: 260, background: 'var(--ai-bg)',
         borderRight: '1px solid var(--ai-border)',
         zIndex: 26, display: 'flex', flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.16)',
       }}>
-        <div style={{
-          padding: '14px 12px 10px',
-          borderBottom: '1px solid var(--ai-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
-            Conversations
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={onNew}
-              title="Nouvelle conversation"
-              style={{
-                width: 26, height: 26, borderRadius: 7, border: 'none',
-                background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(91,111,255,0.3)',
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                width: 26, height: 26, borderRadius: 7,
-                border: '1px solid var(--ai-border)', background: 'transparent',
-                cursor: 'pointer', color: 'var(--ai-dim)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
-          {convs.length === 0 ? (
-            <div style={{ padding: '20px 10px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
-              Aucune conversation.<br />Pose une question pour commencer.
-            </div>
-          ) : convs.map(conv => (
-            <div key={conv.id} style={{ position: 'relative', marginBottom: 1 }}>
-              {renId === conv.id ? (
-                <div style={{ padding: '3px 4px' }}>
-                  <input
-                    autoFocus
-                    value={renVal}
-                    onChange={e => setRenVal(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        if (renVal.trim()) {
-                          // rename handled by parent via update
-                          onSelect({ ...conv, title: renVal.trim() })
-                        }
-                        setRenId(null)
-                      }
-                      if (e.key === 'Escape') setRenId(null)
-                    }}
-                    onBlur={() => setRenId(null)}
-                    style={{
-                      width: '100%', padding: '5px 8px', borderRadius: 6,
-                      border: '1px solid rgba(91,111,255,0.5)',
-                      background: 'var(--ai-bg)', color: 'var(--ai-text)',
-                      fontFamily: 'DM Sans, sans-serif', fontSize: 12,
-                      outline: 'none', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              ) : (
-                <div
-                  onClick={() => { onSelect(conv); onClose() }}
-                  style={{
-                    padding: '7px 6px 7px 10px', borderRadius: 7, cursor: 'pointer',
-                    background: conv.id === activeId ? 'rgba(91,111,255,0.11)' : 'transparent',
-                    border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.25)' : 'transparent'}`,
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}
-                  onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-bg2)' }}
-                  onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 12, fontWeight: conv.id === activeId ? 600 : 400,
-                      color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {conv.title}
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 1 }}>
-                      {fmtDate(conv.updatedAt)}
-                    </div>
-                  </div>
-
-                  {/* ⋯ button */}
-                  <div
-                    ref={menuId === conv.id ? menuRef : undefined}
-                    style={{ position: 'relative', flexShrink: 0 }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => setMenuId(menuId === conv.id ? null : conv.id)}
-                      style={{
-                        width: 22, height: 22, borderRadius: 5,
-                        border: 'none', background: 'transparent',
-                        cursor: 'pointer', color: 'var(--ai-dim)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        opacity: 0, transition: 'opacity 0.1s',
-                      }}
-                      className="aip-hist-dots"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" />
-                      </svg>
-                    </button>
-
-                    {menuId === conv.id && (
-                      <div style={{
-                        position: 'absolute', right: 0, top: '100%', zIndex: 50,
-                        background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-                        borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
-                        overflow: 'hidden', minWidth: 130,
-                      }}>
-                        <button
-                          onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                        >
-                          Renommer
-                        </button>
-                        <button
-                          onClick={() => { onDelete(conv.id); setMenuId(null) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        {sidebarContent}
       </div>
     </>
   )
@@ -1424,10 +1653,13 @@ export default function AIPanel({
   const [histOpen,    setHistOpen]    = useState(false)
   const [plusOpen,    setPlusOpen]    = useState(false)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
+  const [isDesktop,   setIsDesktop]   = useState(false)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
   const initMsgRef = useRef<string | undefined>(undefined)
+  // Swipe tracking (mobile)
+  const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
 
@@ -1438,6 +1670,21 @@ export default function AIPanel({
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
+
+  // Détection desktop — sidebar persistante
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const update = (matches: boolean) => {
+      setIsDesktop(matches)
+      // Auto-ouvrir la sidebar sur desktop au premier montage
+      if (matches) setHistOpen(true)
+    }
+    update(mq.matches)
+    const handler = (e: MediaQueryListEvent) => update(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Pré-remplir depuis initialAssistantMsg (ex: analyse profil)
   useEffect(() => {
@@ -1505,6 +1752,27 @@ export default function AIPanel({
     setConvs(prev => prev.filter(c => c.id !== id))
     if (activeId === id) setActiveId(null)
   }
+
+  // ── Swipe (mobile) ────────────────────────────────────────
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isDesktop) return
+    const t = e.touches[0]
+    swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() }
+  }, [isDesktop])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (isDesktop || !swipeRef.current) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - swipeRef.current.x
+    const dy = t.clientY - swipeRef.current.y
+    const dt = Date.now() - swipeRef.current.t
+    swipeRef.current = null
+    // Ignorer si vertical ou trop lent (>400ms) ou trop court (<50px)
+    if (Math.abs(dy) > Math.abs(dx)) return
+    if (dt > 400 || Math.abs(dx) < 50) return
+    if (dx > 0 && !histOpen) setHistOpen(true)
+    if (dx < 0 && histOpen)  setHistOpen(false)
+  }, [isDesktop, histOpen])
 
   // SEND MESSAGE
   const send = useCallback(async (preset?: string) => {
@@ -1631,7 +1899,7 @@ export default function AIPanel({
         .aip-root {
           position: fixed;
           top: 0; right: 0; bottom: 0;
-          width: 480px; max-width: 100vw;
+          width: 640px; max-width: 100vw;
           z-index: 1200;
           background: var(--ai-bg);
           border-left: 1px solid var(--ai-border);
@@ -1651,6 +1919,22 @@ export default function AIPanel({
             height: 100dvh; top: 0; bottom: auto; box-shadow: none;
           }
         }
+
+        /* Body : flex-row pour sidebar + chat sur desktop */
+        .aip-body {
+          display: flex; flex-direction: row;
+          flex: 1; min-height: 0; overflow: hidden; position: relative;
+        }
+
+        /* Chat column */
+        .aip-chat-col {
+          flex: 1; display: flex; flex-direction: column;
+          min-width: 0; min-height: 0; overflow: hidden;
+        }
+
+        /* History list scroll */
+        .aip-hist-list::-webkit-scrollbar { width: 3px; }
+        .aip-hist-list::-webkit-scrollbar-thumb { background: var(--ai-border); border-radius: 2px; }
 
         /* Textarea font — 16px min pour éviter zoom Safari */
         .aip-textarea { font-size: 16px !important; }
@@ -1780,11 +2064,24 @@ export default function AIPanel({
           </button>
         </div>
 
-        {/* ══ BODY ══════════════════════════════════════════ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+        {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
+        <div className="aip-body">
 
-          {/* History drawer overlay */}
-          {histOpen && (
+          {/* ── Sidebar desktop (persistante, toujours visible) ── */}
+          {isDesktop && (
+            <HistoryDrawer
+              persistent
+              convs={convs}
+              activeId={activeId}
+              onSelect={selectConv}
+              onDelete={deleteConv}
+              onNew={newConv}
+              onClose={() => setHistOpen(false)}
+            />
+          )}
+
+          {/* ── Sidebar mobile (overlay) ── */}
+          {!isDesktop && histOpen && (
             <HistoryDrawer
               convs={convs}
               activeId={activeId}
@@ -1794,6 +2091,13 @@ export default function AIPanel({
               onClose={() => setHistOpen(false)}
             />
           )}
+
+          {/* ── Chat column ── */}
+          <div
+            className="aip-chat-col"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
 
           {/* ── MESSAGES ───────────────────────────────────── */}
           <div className="aip-messages" style={{ padding: '16px 16px 0' }}>
@@ -1880,6 +2184,12 @@ export default function AIPanel({
                 )}
                 {activeFlow === 'nutrition' && (
                   <NutritionFlow
+                    onSend={p => void send(p)}
+                    onCancel={() => setActiveFlow(null)}
+                  />
+                )}
+                {activeFlow === 'analyzetest' && (
+                  <AnalyzeTestFlow
                     onSend={p => void send(p)}
                     onCancel={() => setActiveFlow(null)}
                   />
@@ -2048,6 +2358,9 @@ export default function AIPanel({
               Entrée · Shift+Entrée pour nouvelle ligne
             </div>
           </div>
+          {/* /chat-col */}
+          </div>
+        {/* /body */}
         </div>
       </div>
     </>,

@@ -4,8 +4,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import { NextRequest } from 'next/server'
-import { getAnthropicClient, MODELS } from '@/lib/agents/base'
-import { buildChatParams } from '@/lib/agents/chatAgent'
+import { getAnthropicClient } from '@/lib/agents/base'
+import { buildChatParams, getModelConfig } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
 
 export async function POST(req: NextRequest) {
@@ -22,11 +22,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { systemPrompt, anthropicMessages } = buildChatParams(body)
+  const { model, maxTokens } = getModelConfig(body.modelId)
   const client = getAnthropicClient()
 
   const stream = await client.messages.create({
-    model: MODELS.fast,
-    max_tokens: 1200,
+    model,
+    max_tokens: maxTokens,
     system: systemPrompt,
     messages: anthropicMessages,
     stream: true,

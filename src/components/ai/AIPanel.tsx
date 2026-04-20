@@ -16,11 +16,14 @@ import { createPortal } from 'react-dom'
 
 // ── Types ──────────────────────────────────────────────────────
 
+type THWModel = 'hermes' | 'athena' | 'zeus'
+
 interface AIMsg {
   id: string
   role: 'user' | 'assistant'
   content: string
   ts: number
+  modelId?: THWModel   // modèle utilisé pour cette réponse
 }
 interface AIConv {
   id: string
@@ -57,6 +60,44 @@ function saveConvs(c: AIConv[]) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(c)) } catch {}
 }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
+
+// ── Configs des 3 modèles ─────────────────────────────────────
+
+interface ModelConfig {
+  name: string
+  color: string       // teinte principale
+  colorBg: string     // fond teinté (light)
+  colorBgDark: string // fond teinté (dark)
+  desc: string        // description courte
+  hint: string        // hint affiché dans le picker
+}
+
+const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
+  hermes: {
+    name: 'Hermès',
+    color: '#d4a017',
+    colorBg: 'rgba(212,160,23,0.1)',
+    colorBgDark: 'rgba(212,160,23,0.13)',
+    desc: 'Rapide et direct',
+    hint: 'Réponse express',
+  },
+  athena: {
+    name: 'Athéna',
+    color: '#5b6fff',
+    colorBg: 'rgba(91,111,255,0.1)',
+    colorBgDark: 'rgba(91,111,255,0.13)',
+    desc: 'Analyse approfondie',
+    hint: 'Équilibre et expertise',
+  },
+  zeus: {
+    name: 'Zeus',
+    color: '#8b5cf6',
+    colorBg: 'rgba(139,92,246,0.1)',
+    colorBgDark: 'rgba(139,92,246,0.13)',
+    desc: 'Vision stratégique',
+    hint: 'Analyse maximale',
+  },
+}
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -661,6 +702,137 @@ function Dots() {
           animation: `ai_dot 1.2s ease-in-out ${i * 0.18}s infinite`,
         }} />
       ))}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODEL EFFIGY — SVG animé identifiant le modèle actif
+// ══════════════════════════════════════════════════════════════
+
+function ModelEffigy({ model, isAnimating, size = 18 }: {
+  model: THWModel
+  isAnimating: boolean
+  size?: number
+}) {
+  const cfg = MODEL_CONFIGS[model]
+  const animName  = isAnimating ? `${model}_effigy_on` : `${model}_effigy_off`
+  const animSpeed = isAnimating
+    ? (model === 'hermes' ? '0.65s' : model === 'zeus' ? '1.1s' : '1.5s')
+    : (model === 'zeus' ? '2.5s' : '3.5s')
+
+  const svgStyle: React.CSSProperties = {
+    color: cfg.color,
+    display: 'block',
+    flexShrink: 0,
+    animation: `${animName} ${animSpeed} ease-in-out infinite`,
+  }
+
+  if (model === 'hermes') return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={svgStyle}>
+      {/* Staff */}
+      <line x1="10" y1="2.5" x2="10" y2="17.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Left wing */}
+      <path d="M10 4.5 Q8 2.5 5.5 3.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      {/* Right wing */}
+      <path d="M10 4.5 Q12 2.5 14.5 3.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      {/* Snake 1 */}
+      <path d="M10 6 C13.5 7 13.5 9.5 10 10.5 C6.5 11.5 6.5 14 10 15" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+      {/* Snake 2 */}
+      <path d="M10 6 C6.5 7 6.5 9.5 10 10.5 C13.5 11.5 13.5 14 10 15" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+    </svg>
+  )
+
+  if (model === 'athena') return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={svgStyle}>
+      {/* Left wing */}
+      <path d="M10 12 Q6.5 9.5 4 11 Q4.5 14 8 13" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" fill="currentColor" fillOpacity="0.15"/>
+      {/* Right wing */}
+      <path d="M10 12 Q13.5 9.5 16 11 Q15.5 14 12 13" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" fill="currentColor" fillOpacity="0.15"/>
+      {/* Head */}
+      <circle cx="10" cy="8" r="4" stroke="currentColor" strokeWidth="1.3"/>
+      {/* Eyes */}
+      <circle cx="8.5" cy="7.5" r="1.1" fill="currentColor"/>
+      <circle cx="11.5" cy="7.5" r="1.1" fill="currentColor"/>
+      {/* Ear tufts */}
+      <path d="M8.5 4 L7.5 2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+      <path d="M11.5 4 L12.5 2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  )
+
+  // Zeus — éclair
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={svgStyle}>
+      <path d="M12.5 1.5 L5.5 11 L10.5 11 L7.5 18.5 L14.5 9 L9.5 9 Z"
+        stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round"
+        fill="currentColor" fillOpacity="0.2"/>
+    </svg>
+  )
+}
+
+// ── ModelPicker — sélecteur des 3 modèles ────────────────────
+
+function ModelPicker({ model, onChange }: {
+  model: THWModel
+  onChange: (m: THWModel) => void
+}) {
+  const models: THWModel[] = ['hermes', 'athena', 'zeus']
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 3,
+      padding: '0 1px 8px',
+    }}>
+      <span style={{
+        fontSize: 10, color: 'var(--ai-dim)',
+        fontFamily: 'DM Sans,sans-serif', marginRight: 3, flexShrink: 0,
+        letterSpacing: '0.03em',
+      }}>
+        Modèle
+      </span>
+
+      <div style={{ display: 'flex', gap: 2, flex: 1 }}>
+        {models.map(m => {
+          const cfg = MODEL_CONFIGS[m]
+          const isActive = model === m
+          return (
+            <button
+              key={m}
+              onClick={() => onChange(m)}
+              title={`${cfg.name} — ${cfg.desc}`}
+              className="aip-model-pill"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '4px 10px', borderRadius: 16,
+                border: `1px solid ${isActive ? cfg.color + '70' : 'transparent'}`,
+                background: isActive ? cfg.colorBg : 'transparent',
+                cursor: 'pointer', transition: 'all 0.15s',
+                // CSS var for hover bg
+                ['--pill-hover' as string]: isActive ? cfg.colorBg : 'rgba(0,0,0,0.04)',
+              }}
+            >
+              <ModelEffigy model={m} isAnimating={false} size={12} />
+              <span style={{
+                fontSize: 11, fontFamily: 'Syne,sans-serif',
+                fontWeight: isActive ? 700 : 400,
+                color: isActive ? cfg.color : 'var(--ai-dim)',
+                letterSpacing: '0.01em',
+                lineHeight: 1,
+              }}>
+                {cfg.name}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <span style={{
+        fontSize: 10, color: MODEL_CONFIGS[model].color,
+        fontFamily: 'DM Sans,sans-serif', flexShrink: 0,
+        opacity: 0.75, letterSpacing: '0.02em',
+      }}>
+        {MODEL_CONFIGS[model].hint}
+      </span>
     </div>
   )
 }
@@ -1600,32 +1772,38 @@ interface QuickAction {
   sub: string
   prompt?: string
   flow?: FlowId
+  model: THWModel   // modèle recommandé pour cette action
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
     label: 'Analyser la semaine d\'entraînement',
     sub: 'Charge, intensités, équilibre et recommandations',
+    model: 'athena',
     prompt: 'Analyse ma semaine d\'entraînement actuelle. Évalue la répartition des charges, les intensités, l\'équilibre entre les disciplines et la progression globale. Donne des recommandations concrètes et actionnables pour la semaine suivante.',
   },
   {
     label: 'Créer un plan d\'entraînement',
     sub: 'Plan structuré adapté à tes objectifs',
+    model: 'zeus',
     prompt: 'Crée un plan d\'entraînement structuré adapté à mes objectifs et mon niveau actuel. Tiens compte de mes courses planifiées, ma charge hebdomadaire disponible et mon état de forme. Détaille les grandes phases et la logique de progression.',
   },
   {
     label: 'Identifier mes points faibles',
     sub: 'Analyse multi-sports de tes lacunes',
+    model: 'athena',
     flow: 'weakpoints',
   },
   {
     label: 'Analyser ma récupération globale',
     sub: 'Readiness, HRV, sommeil et conseils du jour',
+    model: 'hermes',
     prompt: 'Analyse mon état de récupération global. Interprète mes données disponibles (readiness, HRV, sommeil, fatigue subjective) et dis-moi concrètement si je peux m\'entraîner intensément aujourd\'hui, à quelle intensité, et ce que je dois surveiller.',
   },
   {
     label: 'Créer un plan nutritionnel',
     sub: 'Plan personnalisé selon ton profil et tes sports',
+    model: 'athena',
     flow: 'nutrition',
   },
 ]
@@ -1654,6 +1832,7 @@ export default function AIPanel({
   const [plusOpen,    setPlusOpen]    = useState(false)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
+  const [model,       setModel]       = useState<THWModel>('athena')
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -1811,7 +1990,8 @@ export default function AIPanel({
     })
     if (isNew) setActiveId(updated.id)
 
-    const cid = updated.id
+    const cid      = updated.id
+    const snapshot = model   // capture le modèle au moment du send
 
     try {
       const res = await fetch('/api/coach-stream', {
@@ -1819,6 +1999,7 @@ export default function AIPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentId: 'central',
+          modelId: snapshot,
           messages: updated.msgs.map(m => ({ role: m.role, content: m.content })),
           context: context ?? {},
         }),
@@ -1829,7 +2010,7 @@ export default function AIPanel({
       const aiMsgId = genId()
       setConvs(prev => prev.map(c =>
         c.id === cid
-          ? { ...c, msgs: [...c.msgs, { id: aiMsgId, role: 'assistant' as const, content: '', ts: Date.now() }], updatedAt: Date.now() }
+          ? { ...c, msgs: [...c.msgs, { id: aiMsgId, role: 'assistant' as const, content: '', ts: Date.now(), modelId: snapshot }], updatedAt: Date.now() }
           : c
       ))
 
@@ -1857,7 +2038,7 @@ export default function AIPanel({
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context])
+  }, [input, loading, active, context, model])
 
   // SSR guard
   if (!mounted) return null
@@ -1955,6 +2136,41 @@ export default function AIPanel({
         /* Plus menu scroll */
         .aip-plus-scroll::-webkit-scrollbar { width: 3px; }
         .aip-plus-scroll::-webkit-scrollbar-thumb { background: var(--ai-border); border-radius: 2px; }
+
+        /* ── Model Effigy Animations ─────────────────────────── */
+
+        /* Hermès : oscillation rapide et légère */
+        @keyframes hermes_effigy_on {
+          0%,100% { transform: translateY(0) rotate(-3deg); opacity: 1; }
+          50% { transform: translateY(-2px) rotate(3deg); opacity: 0.9; }
+        }
+        @keyframes hermes_effigy_off {
+          0%,100% { opacity: 0.65; }
+          50% { opacity: 0.95; }
+        }
+
+        /* Athéna : respiration stable et maîtrisée */
+        @keyframes athena_effigy_on {
+          0%,100% { transform: scale(1); opacity: 0.9; }
+          50% { transform: scale(1.07); opacity: 1; }
+        }
+        @keyframes athena_effigy_off {
+          0%,100% { opacity: 0.65; transform: scale(1); }
+          50% { opacity: 0.95; transform: scale(1.03); }
+        }
+
+        /* Zeus : pulsation puissante */
+        @keyframes zeus_effigy_on {
+          0%,100% { transform: scale(1); opacity: 0.8; }
+          40%,60% { transform: scale(1.12); opacity: 1; }
+        }
+        @keyframes zeus_effigy_off {
+          0%,70%,100% { opacity: 0.6; }
+          35% { opacity: 1; }
+        }
+
+        /* Model picker pill hover */
+        .aip-model-pill:hover { background: var(--pill-hover) !important; }
       `}</style>
 
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
@@ -2125,46 +2341,57 @@ export default function AIPanel({
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                  {QUICK_ACTIONS.map((qa, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        if (qa.flow) setActiveFlow(qa.flow)
-                        else if (qa.prompt) void send(qa.prompt)
-                      }}
-                      disabled={loading}
-                      style={{
-                        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                        gap: 10, padding: '11px 14px', borderRadius: 10,
-                        border: '1px solid var(--ai-border)',
-                        background: 'var(--ai-bg2)',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        textAlign: 'left', width: '100%',
-                        opacity: loading ? 0.5 : 1,
-                        transition: 'border-color 0.12s, background 0.12s',
-                      }}
-                      onMouseEnter={e => { if (!loading) {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(91,111,255,0.35)'
-                        ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(91,111,255,0.05)'
-                      }}}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
-                        ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                          {qa.label}
+                  {QUICK_ACTIONS.map((qa, i) => {
+                    const mcfg = MODEL_CONFIGS[qa.model]
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setModel(qa.model)
+                          if (qa.flow) setActiveFlow(qa.flow)
+                          else if (qa.prompt) void send(qa.prompt)
+                        }}
+                        disabled={loading}
+                        style={{
+                          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                          gap: 10, padding: '11px 14px', borderRadius: 10,
+                          border: '1px solid var(--ai-border)',
+                          background: 'var(--ai-bg2)',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          textAlign: 'left', width: '100%',
+                          opacity: loading ? 0.5 : 1,
+                          transition: 'border-color 0.12s, background 0.12s',
+                        }}
+                        onMouseEnter={e => { if (!loading) {
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = mcfg.color + '50'
+                          ;(e.currentTarget as HTMLButtonElement).style.background = mcfg.colorBg
+                        }}}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
+                          ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
+                            {qa.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
+                            {qa.sub}
+                          </div>
+                          {/* Modèle recommandé */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                            <ModelEffigy model={qa.model} isAnimating={false} size={10} />
+                            <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
+                              {mcfg.name}
+                            </span>
+                          </div>
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
-                          {qa.sub}
-                        </div>
-                      </div>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  ))}
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 14, margin: 0 }}>
@@ -2214,17 +2441,22 @@ export default function AIPanel({
                       justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       alignItems: 'flex-start', gap: 8,
                     }}>
-                      {msg.role === 'assistant' && (
-                        <div style={{
-                          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                          background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          marginTop: 2, overflow: 'hidden',
-                        }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/logo.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                        </div>
-                      )}
+                      {msg.role === 'assistant' && (() => {
+                        const m   = msg.modelId ?? 'athena'
+                        const mcfg = MODEL_CONFIGS[m]
+                        const isStreaming = loading && idx === active.msgs.length - 1
+                        return (
+                          <div style={{
+                            width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                            background: mcfg.colorBg,
+                            border: `1px solid ${mcfg.color}35`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginTop: 2,
+                          }}>
+                            <ModelEffigy model={m} isAnimating={isStreaming} size={16} />
+                          </div>
+                        )
+                      })()}
                       <div style={{
                         maxWidth: '84%',
                         padding: msg.role === 'user' ? '9px 13px' : '11px 14px',
@@ -2252,24 +2484,27 @@ export default function AIPanel({
                 ))}
 
                 {/* Typing indicator */}
-                {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                      background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-                    }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/logo.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+                {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (() => {
+                  const mcfg = MODEL_CONFIGS[model]
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{
+                        width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                        background: mcfg.colorBg,
+                        border: `1px solid ${mcfg.color}35`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <ModelEffigy model={model} isAnimating={true} size={16} />
+                      </div>
+                      <div style={{
+                        padding: '10px 14px', borderRadius: '14px 14px 14px 4px',
+                        background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                      }}>
+                        <Dots />
+                      </div>
                     </div>
-                    <div style={{
-                      padding: '10px 14px', borderRadius: '14px 14px 14px 4px',
-                      background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
-                    }}>
-                      <Dots />
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
                 <div ref={endRef} />
               </div>
             )}
@@ -2282,6 +2517,9 @@ export default function AIPanel({
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
+            {/* Model picker */}
+            <ModelPicker model={model} onChange={setModel} />
+
             {/* Plus menu */}
             {plusOpen && (
               <PlusMenu

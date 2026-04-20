@@ -303,10 +303,14 @@ export interface ChatMessage {
   content: string
 }
 
+// Modèles IA disponibles dans l'IA centrale
+export type THWModelId = 'hermes' | 'athena' | 'zeus'
+
 export interface ChatInput {
-  agentId: string           // 'planning' | 'readiness' | 'sessionBuilder' | 'nutrition' | 'performance'
+  agentId: string           // 'central' | 'planning' | 'readiness' | etc.
   messages: ChatMessage[]   // historique complet
   context?: Record<string, unknown>  // contexte page (stats, séances, etc.)
+  modelId?: THWModelId      // modèle sélectionné (central uniquement)
 }
 
 export interface ChatOutput {

@@ -416,6 +416,8 @@ function ProfilBloc() {
   const [aiDefaultModel, setAiDefaultModel] = useState<'hermes'|'athena'|'zeus'>('athena')
   const [aiContextInject, setAiContextInject] = useState(true)
   const [aiResponseLen, setAiResponseLen] = useState<'short'|'balanced'|'detailed'>('balanced')
+  const [modelsOpen, setModelsOpen] = useState(false)
+  const [subOpen, setSubOpen] = useState(false)
 
   useEffect(() => {
     const m = localStorage.getItem('thw_ai_default_model')
@@ -552,154 +554,260 @@ function ProfilBloc() {
         </div>
       </Card>
 
-      <Card>
-        <SectionTitle>Modèles IA</SectionTitle>
-        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
-          {([
-            {
-              id:'hermes', name:'Hermès', color:'#d4a017',
-              role:'Rapide & direct',
-              uses:['Questions rapides','Récap du jour','Réponse express'],
-              cost:1,
-              effigy:(
-                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="3" x2="12" y2="21"/>
-                  <path d="M8.5 6.5 Q12 4 15.5 6.5"/>
-                  <path d="M9.5 10 Q10.5 13.5 12 11.5 Q13.5 9.5 14.5 13 Q13 16 12 14 Q10.5 12 9.5 10"/>
-                </svg>
-              ),
-            },
-            {
-              id:'athena', name:'Athéna', color:'#5b6fff',
-              role:'Analyse & expertise',
-              uses:['Analyse hebdo','Construction de séance','Nutrition sportive'],
-              cost:3,
-              effigy:(
-                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="9" r="3.5"/>
-                  <path d="M6.5 8.5 Q4.5 6 5.5 3.5 Q8.5 2 12 4.5"/>
-                  <path d="M17.5 8.5 Q19.5 6 18.5 3.5 Q15.5 2 12 4.5"/>
-                  <path d="M9 12.5 Q8.5 16.5 10.5 18.5 Q12 20 13.5 18.5 Q15.5 16.5 15 12.5"/>
-                </svg>
-              ),
-            },
-            {
-              id:'zeus', name:'Zeus', color:'#8b5cf6',
-              role:'Vision stratégique',
-              uses:['Planification long terme','Analyse multi-facteurs','Cycles et progression'],
-              cost:8,
-              effigy:(
-                <svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                  <polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.9"/>
-                </svg>
-              ),
-            },
-          ] as const).map(m=>(
-            <div key={m.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 13px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:`${m.color}18`, border:`1px solid ${m.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:m.color, flexShrink:0 }}>
-                {m.effigy}
+      {/* ── Overlay Modèles ─────────────────────────────────────── */}
+      {modelsOpen && (
+        <div onClick={()=>setModelsOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(12px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:0 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'92vh', overflowY:'auto', padding:'0 0 40px' }}>
+            {/* Header */}
+            <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
+              <div>
+                <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>Les modèles IA</p>
+                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Trois niveaux pour chaque besoin</p>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:5 }}>
-                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:m.color }}>{m.name}</span>
-                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>—</span>
-                  <span style={{ fontSize:11, color:'var(--text-mid)', fontWeight:500 }}>{m.role}</span>
-                </div>
-                <div style={{ display:'flex', flexWrap:'wrap' as const, gap:5 }}>
-                  {m.uses.map((u,i)=>(
-                    <span key={i} style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-dim)' }}>{u}</span>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, flexShrink:0, paddingTop:2 }}>
-                <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:m.color }}>{m.cost}</span>
-                <span style={{ fontSize:9, color:'var(--text-dim)' }}>crédit{m.cost>1?'s':''}</span>
-              </div>
+              <button onClick={()=>setModelsOpen(false)} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
-          ))}
-        </div>
-        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'10px 0 0', textAlign:'center' as const, fontStyle:'italic' }}>Tous les abonnements donnent accès aux 3 modèles</p>
-      </Card>
-
-      <Card>
-        <SectionTitle>Abonnement</SectionTitle>
-        <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(255,179,64,0.08)', border:'1px solid rgba(255,179,64,0.25)', marginBottom:12 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                <span style={{ padding:'2px 9px', borderRadius:20, background:'rgba(255,179,64,0.15)', border:'1px solid rgba(255,179,64,0.4)', color:'#ffb340', fontSize:11, fontWeight:700 }}>Essai gratuit</span>
-                <span style={{ fontSize:11, color:'var(--text-dim)' }}>{trialLeft}/{trialDays} jours</span>
-              </div>
-              <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Version Premium — accès complet</p>
-            </div>
-            <div style={{ display:'flex', gap:7, alignItems:'center' }}>
-              <button onClick={()=>setPlanExpanded(!planExpanded)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:16, transform:planExpanded?'rotate(180deg)':'none', transition:'transform 0.2s' }}>▾</button>
-              <button onClick={()=>setUpgradeOpen(true)} style={{ padding:'7px 14px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>Upgrade</button>
-            </div>
-          </div>
-          {planExpanded && <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid rgba(255,179,64,0.2)' }}>
-            {['Suivi entrainements complet','Zones personnalisées','Analyse récupération','Blessures & historique'].map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7, marginBottom:5 }}><span style={{ color:'#22c55e', fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span></div>)}
-          </div>}
-        </div>
-        <div style={{ height:5, borderRadius:999, background:'var(--border)', overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
-        </div>
-        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'5px 0 0', textAlign:'right' as const }}>{trialLeft} jours restants</p>
-
-        <div style={{ marginTop:14, padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-          <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Utilisation IA</p>
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {([
-              { label:'Aujourd\'hui', used:dailyUsed, max:dailyMax, color:'#5b6fff' },
-              { label:'Cette semaine', used:weekUsed,  max:weekMax,  color:'#a855f7' },
-            ] as const).map(g=>(
-              <div key={g.label}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                  <span style={{ fontSize:11, color:'var(--text-mid)', fontWeight:600 }}>{g.label}</span>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{g.used} / {g.max}</span>
-                </div>
-                <div style={{ height:4, borderRadius:999, background:'var(--border)', overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${Math.min(100,(g.used/g.max)*100)}%`, background:`linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius:999, transition:'width 0.3s' }}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {upgradeOpen && (
-          <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
-            <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-                <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0 }}>Choisir un abonnement</h3>
-                <button onClick={()=>setUpgradeOpen(false)} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                {PLANS.map(p=>(
-                  <div key={p.id} style={{ padding:'16px', borderRadius:14, background:'var(--bg-card2)', border:`1px solid ${p.color}44` }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                      <span style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
-                      <div style={{ textAlign:'right' as const }}>
-                        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
-                        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
+            {/* Models */}
+            <div style={{ padding:'20px 20px 0', display:'flex', flexDirection:'column', gap:16 }}>
+              {([
+                {
+                  id:'hermes', name:'Hermès', color:'#d4a017',
+                  tagline:'Le modèle le plus rapide.',
+                  desc:'Conçu pour répondre immédiatement, de manière simple et efficace. Il va droit au but et évite toute complexité inutile.',
+                  uses:['Une question simple','Un besoin rapide','Une décision immédiate'],
+                  levels:['Rapide','Clair','Direct'],
+                  cost:1,
+                  effigy:(
+                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="3" x2="12" y2="21"/>
+                      <path d="M8.5 6.5 Q12 4 15.5 6.5"/>
+                      <path d="M9.5 10 Q10.5 13.5 12 11.5 Q13.5 9.5 14.5 13 Q13 16 12 14 Q10.5 12 9.5 10"/>
+                    </svg>
+                  ),
+                },
+                {
+                  id:'athena', name:'Athéna', color:'#5b6fff',
+                  tagline:'Le modèle principal de coaching intelligent.',
+                  desc:'Elle analyse en profondeur, comprend le contexte de l\'athlète et croise les données disponibles. Elle ne se contente pas de répondre : elle explique, enseigne et propose des améliorations concrètes.',
+                  uses:['Analyser une situation','Comprendre un problème','Optimiser un entraînement','Obtenir des conseils précis'],
+                  levels:['Structuré','Pédagogique','Intelligent'],
+                  cost:3,
+                  effigy:(
+                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="9" r="3.5"/>
+                      <path d="M6.5 8.5 Q4.5 6 5.5 3.5 Q8.5 2 12 4.5"/>
+                      <path d="M17.5 8.5 Q19.5 6 18.5 3.5 Q15.5 2 12 4.5"/>
+                      <path d="M9 12.5 Q8.5 16.5 10.5 18.5 Q12 20 13.5 18.5 Q15.5 16.5 15 12.5"/>
+                    </svg>
+                  ),
+                },
+                {
+                  id:'zeus', name:'Zeus', color:'#8b5cf6',
+                  tagline:'Le modèle le plus avancé.',
+                  desc:'Il produit les réponses les plus complètes, les plus précises et les plus stratégiques. Il va très loin dans l\'analyse, hiérarchise les priorités et apporte une vision globale. Il ne fait pas qu\'expliquer : il démontre, structure et approfondit au maximum.',
+                  uses:['Une analyse très poussée','Une réflexion stratégique','Une vision globale','Une réponse complète et détaillée'],
+                  levels:['Très approfondi','Stratégique','Structuré','Premium'],
+                  cost:8,
+                  effigy:(
+                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                      <polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.9"/>
+                    </svg>
+                  ),
+                },
+              ] as const).map(m=>(
+                <div key={m.id} style={{ borderRadius:16, border:`1px solid ${m.color}33`, background:`${m.color}08`, padding:'18px 18px 16px', overflow:'hidden' }}>
+                  {/* Name + cost */}
+                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <div style={{ width:40, height:40, borderRadius:11, background:`${m.color}18`, border:`1px solid ${m.color}44`, display:'flex', alignItems:'center', justifyContent:'center', color:m.color, flexShrink:0 }}>
+                        {m.effigy}
+                      </div>
+                      <div>
+                        <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, color:m.color, margin:0, letterSpacing:'-0.01em' }}>{m.name}</p>
+                        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'1px 0 0', fontStyle:'italic' }}>{m.tagline}</p>
                       </div>
                     </div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
-                      {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span></div>)}
+                    <div style={{ textAlign:'right' as const, flexShrink:0, paddingTop:2 }}>
+                      <p style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:700, color:m.color, margin:0 }}>{m.cost}</p>
+                      <p style={{ fontSize:9, color:'var(--text-dim)', margin:'1px 0 0' }}>crédit{m.cost>1?'s':''}</p>
                     </div>
-                    <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>Choisir {p.label}</button>
-                    <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>Paiement sécurisé via Stripe</p>
                   </div>
-                ))}
+                  {/* Description */}
+                  <p style={{ fontSize:12.5, color:'var(--text-mid)', lineHeight:1.7, margin:'0 0 14px' }}>{m.desc}</p>
+                  {/* À utiliser pour */}
+                  <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 7px' }}>À utiliser pour</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
+                    {m.uses.map((u,i)=>(
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ width:4, height:4, borderRadius:'50%', background:m.color, flexShrink:0 }}/>
+                        <span style={{ fontSize:12, color:'var(--text-mid)' }}>{u}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Niveau */}
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
+                    {m.levels.map((l,i)=>(
+                      <span key={i} style={{ fontSize:10, padding:'3px 10px', borderRadius:20, background:`${m.color}14`, border:`1px solid ${m.color}33`, color:m.color, fontWeight:600 }}>{l}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {/* Footer note */}
+              <div style={{ padding:'14px 16px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
+                <p style={{ fontSize:12, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>
+                  Tous les modèles sont accessibles à tous.<br/>
+                  <span style={{ color:'var(--text-dim)' }}>La différence se fait sur les crédits.</span>
+                </p>
               </div>
             </div>
           </div>
-        )}
-      </Card>
+        </div>
+      )}
 
+      {/* ── Overlay Abonnement ───────────────────────────────────── */}
+      {subOpen && (
+        <div onClick={()=>setSubOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(12px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'88vh', overflowY:'auto', padding:'0 0 40px' }}>
+            {/* Header */}
+            <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
+              <div>
+                <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>Abonnement</p>
+                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Plan actuel et utilisation</p>
+              </div>
+              <button onClick={()=>setSubOpen(false)} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+            </div>
+            <div style={{ padding:'20px' }}>
+              {/* Plan actuel */}
+              <div style={{ padding:'16px 18px', borderRadius:14, background:'rgba(255,179,64,0.07)', border:'1px solid rgba(255,179,64,0.28)', marginBottom:20 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
+                      <span style={{ padding:'3px 10px', borderRadius:20, background:'rgba(255,179,64,0.15)', border:'1px solid rgba(255,179,64,0.4)', color:'#ffb340', fontSize:11, fontWeight:700 }}>Essai gratuit</span>
+                    </div>
+                    <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color:'var(--text)' }}>Version Premium</p>
+                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Accès complet pendant l'essai</p>
+                  </div>
+                  <button onClick={()=>{ setSubOpen(false); setUpgradeOpen(true) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>Upgrade</button>
+                </div>
+                <div style={{ height:6, borderRadius:999, background:'rgba(255,179,64,0.15)', overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>Essai commencé</span>
+                  <span style={{ fontSize:10, color:'#ffb340', fontWeight:600 }}>{trialLeft} jours restants sur {trialDays}</span>
+                </div>
+              </div>
+              {/* Jauges utilisation */}
+              <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 12px' }}>Utilisation des crédits IA</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {([
+                  { label:'Aujourd\'hui', used:dailyUsed, max:dailyMax, color:'#00c8e0', period:'jour' },
+                  { label:'Cette semaine', used:weekUsed, max:weekMax, color:'#5b6fff', period:'semaine' },
+                ] as const).map(g=>{
+                  const pct = Math.min(100, Math.round((g.used/g.max)*100))
+                  const remaining = g.max - g.used
+                  return (
+                    <div key={g.label} style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10 }}>
+                        <p style={{ fontSize:12, fontWeight:600, color:'var(--text)', margin:0 }}>{g.label}</p>
+                        <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:g.color }}>{g.used}</span>
+                          <span style={{ fontSize:11, color:'var(--text-dim)' }}>/ {g.max}</span>
+                        </div>
+                      </div>
+                      <div style={{ height:8, borderRadius:999, background:'var(--border)', overflow:'hidden', marginBottom:8 }}>
+                        <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius:999, transition:'width 0.4s' }}/>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span style={{ fontSize:10, color:'var(--text-dim)' }}>{pct}% utilisé</span>
+                        <span style={{ fontSize:10, color:'var(--text-mid)', fontWeight:600 }}>{remaining} restants ce{g.period==='jour'?'tte':''} {g.period}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Quota info */}
+              <div style={{ marginTop:14, padding:'12px 14px', borderRadius:11, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.15)' }}>
+                <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, lineHeight:1.6 }}>
+                  Plan <strong style={{ color:'var(--text)' }}>Pro</strong> : 400 crédits / semaine · <strong style={{ color:'var(--text)' }}>Expert</strong> : 800 crédits / semaine
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Upgrade ──────────────────────────────────────────── */}
+      {upgradeOpen && (
+        <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+              <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0 }}>Choisir un abonnement</h3>
+              <button onClick={()=>setUpgradeOpen(false)} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {PLANS.map(p=>(
+                <div key={p.id} style={{ padding:'16px', borderRadius:14, background:'var(--bg-card2)', border:`1px solid ${p.color}44` }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                    <span style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
+                    <div style={{ textAlign:'right' as const }}>
+                      <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
+                      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
+                    {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span></div>)}
+                  </div>
+                  <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>Choisir {p.label}</button>
+                  <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>Paiement sécurisé via Stripe</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bloc Coach IA : Modèles + Abonnement + Réglages ─────── */}
       <Card>
-        <SectionTitle>Réglages IA</SectionTitle>
-        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+        <SectionTitle>Coach IA</SectionTitle>
 
+        {/* Lignes cliquables */}
+        <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
+          {([
+            { label:'Modèles', sub:'Hermès · Athéna · Zeus', icon:(
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.6"/>
+              </svg>
+            ), onClick:()=>setModelsOpen(true) },
+            { label:'Abonnement', sub:'Essai gratuit · crédits & limites', icon:(
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M2 10h20"/>
+                <path d="M6 15h4M14 15h2"/>
+              </svg>
+            ), onClick:()=>setSubOpen(true) },
+          ]).map(row=>(
+            <button key={row.label} onClick={row.onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', textAlign:'left' as const, width:'100%', transition:'background 0.14s' }}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}
+            >
+              <div style={{ width:32, height:32, borderRadius:9, background:'rgba(91,111,255,0.1)', border:'1px solid rgba(91,111,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', color:'#5b6fff', flexShrink:0 }}>
+                {row.icon}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:0 }}>{row.label}</p>
+                <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{row.sub}</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          ))}
+        </div>
+
+        {/* Séparateur */}
+        <div style={{ height:1, background:'var(--border)', margin:'0 0 14px' }}/>
+        <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 10px' }}>Réglages IA</p>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+          {/* Modèle par défaut */}
           <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
             <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Modèle par défaut</p>
             <div style={{ display:'flex', gap:6 }}>
@@ -719,6 +827,7 @@ function ProfilBloc() {
             </div>
           </div>
 
+          {/* Contexte automatique */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
             <div>
               <p style={{ fontSize:12, fontWeight:600, color:'var(--text)', margin:'0 0 2px' }}>Contexte automatique</p>
@@ -727,6 +836,7 @@ function ProfilBloc() {
             <Toggle value={aiContextInject} onChange={v=>{ setAiContextInject(v); localStorage.setItem('thw_ai_context_inject',String(v)) }}/>
           </div>
 
+          {/* Longueur des réponses */}
           <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
             <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Longueur des réponses</p>
             <div style={{ display:'flex', gap:6 }}>
@@ -745,7 +855,6 @@ function ProfilBloc() {
               })}
             </div>
           </div>
-
         </div>
       </Card>
 

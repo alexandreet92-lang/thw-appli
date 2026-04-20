@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
+import GlobalAIButton from '@/components/ai/GlobalAIButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
         </div>
 
+        <GlobalAIButton />
       </body>
     </html>
   )

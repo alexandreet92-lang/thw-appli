@@ -13,20 +13,32 @@ type PlanningTab   = 'training' | 'week'
 type PlanVariant   = 'A' | 'B'
 type WeekRange     = 1 | 5 | 10
 type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
-type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing' | 'gym'
+type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
 type SessionStatus = 'planned' | 'done'
 type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown'
+type BlockMode     = 'single' | 'interval'
 type TaskType      = 'sport' | 'work' | 'personal' | 'recovery'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
 type CalView       = 'year' | 'month'
 type TrainingView  = 'horizontal' | 'vertical'
 type RaceSport     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
+type CyclingSub    = 'velo' | 'vtt' | 'ht' | 'elliptique'
 
 // ── Constants ─────────────────────────────────────
-const SPORT_BG: Record<SportType,string>     = { swim:'rgba(56,189,248,0.13)', run:'rgba(34,197,94,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(249,115,22,0.13)', triathlon:'rgba(168,85,247,0.13)', rowing:'rgba(20,184,166,0.13)' }
-const SPORT_BORDER: Record<SportType,string> = { swim:'#38bdf8', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', triathlon:'#a855f7', rowing:'#14b8a6' }
-const SPORT_EMOJI: Record<SportType,string>  = { run:'🏃', bike:'🚴', swim:'🏊', hyrox:'🏋️', gym:'💪', triathlon:'🔱', rowing:'🚣' }
-const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', triathlon:'Triathlon', rowing:'Aviron' }
+const SPORT_BG: Record<SportType,string>     = { swim:'rgba(56,189,248,0.13)', run:'rgba(34,197,94,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(249,115,22,0.13)', rowing:'rgba(20,184,166,0.13)' }
+const SPORT_BORDER: Record<SportType,string> = { swim:'#38bdf8', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6' }
+const SPORT_EMOJI: Record<SportType,string>  = { run:'🏃', bike:'🚴', swim:'🏊', hyrox:'🏋️', gym:'💪', rowing:'🚣' }
+const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron' }
+const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW' }
+const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer', elliptique:'Elliptique' }
+const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
+  run:   ['EF','SL1','SL2','VMA','Strides','Heat Training'],
+  bike:  ['EF','SL1','SL2','PMA','Sprints','Heat Training'],
+  swim:  ['EF','Technique','Seuil','Sprints'],
+  hyrox: ['Simulation','Ergo','Wall Ball','BBJ','Fentes','Sled Push','Sled Pull','Farmer Carry'],
+  gym:   ['Strength','Strength endurance','Explosivité'],
+  rowing:['EF','SL1','SL2','PMA','Sprints'],
+}
 const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
 const TASK_CONFIG: Record<TaskType,{label:string;color:string;bg:string}> = {
   sport:    { label:'Sport',     color:'#22c55e', bg:'rgba(34,197,94,0.15)'   },
@@ -39,6 +51,14 @@ const RACE_CONFIG: Record<RaceLevel,{label:string;color:string;bg:string;border:
   important: { label:'Important',  color:'#f97316', bg:'rgba(249,115,22,0.12)', border:'#f97316', emoji:'🟠' },
   main:      { label:'Principal',  color:'#ef4444', bg:'rgba(239,68,68,0.12)',  border:'#ef4444', emoji:'🔴' },
   gty:       { label:'GTY',        color:'var(--gty-text)', bg:'var(--gty-bg)', border:'var(--gty-border)', emoji:'⚫' },
+}
+const RACE_SPORT_COLOR: Record<RaceSport,{border:string;bg:string}> = {
+  run:     { border:'#22c55e', bg:'rgba(34,197,94,0.13)'   },
+  bike:    { border:'#3b82f6', bg:'rgba(59,130,246,0.13)'  },
+  swim:    { border:'#38bdf8', bg:'rgba(56,189,248,0.13)'  },
+  hyrox:   { border:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
+  triathlon:{ border:'#a855f7',bg:'rgba(168,85,247,0.13)'  },
+  rowing:  { border:'#14b8a6', bg:'rgba(20,184,166,0.13)'  },
 }
 const INTENSITY_CONFIG: Record<DayIntensity,{label:string;color:string;bg:string;border:string}> = {
   recovery: { label:'Récup', color:'#9ca3af', bg:'rgba(156,163,175,0.10)', border:'rgba(156,163,175,0.25)' },
@@ -66,8 +86,12 @@ interface TrainingActivity {
   elapsedTime:number; dayIndex:number; weekStart:string
   distance?:number; startHour:number; startMin:number
   tss?:number
+  matchedSessionId?:string
 }
-interface Block { id:string; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string }
+interface Block {
+  id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
+  reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number
+}
 interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
   tss?:number; main?:boolean; status:SessionStatus; notes?:string; blocks:Block[]
@@ -96,7 +120,15 @@ interface AnalyzeResult { score:number; summary:string; issues:AnalyzeIssue[]; s
 
 // ── Helpers ───────────────────────────────────────
 function uid():string { return `${Date.now()}_${Math.random().toString(36).slice(2)}` }
-function formatDur(min:number):string { const h=Math.floor(min/60),m=min%60; return h===0?`0:${String(m).padStart(2,'0')}`:`${h}h${String(m).padStart(2,'0')}` }
+function hMinToMin(h:number,m:number):number { return h*60+m }
+function minToHMin(total:number):{ h:number; m:number } { return { h:Math.floor(total/60), m:total%60 } }
+function formatHM(totalMin:number):string {
+  const h=Math.floor(totalMin/60), m=totalMin%60
+  if(h===0) return `${m}min`
+  return m===0 ? `${h}h` : `${h}h${String(m).padStart(2,'0')}`
+}
+// Keep formatDur as alias for backward compat in display
+function formatDur(min:number):string { return formatHM(min) }
 function daysUntil(d:string):number { return Math.ceil((new Date(d).getTime()-Date.now())/(1000*60*60*24)) }
 function calcSpeed(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; return `${(d/(m/60)).toFixed(1)} km/h` }
 function calcPaceStr(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; const s=m*60/d; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` }
@@ -111,9 +143,41 @@ function getZone(sport:SportType,v:string):number {
   if(sport==='run'){ const s=parsePace(v),t=ATHLETE.thresholdPace; if(s>t*1.25)return 1;if(s>t*1.10)return 2;if(s>t*1.00)return 3;if(s>t*0.90)return 4;return 5 }
   return 3
 }
-function calcTSS(blocks:Block[],sport:SportType):number {
-  return Math.round(blocks.reduce((t,b)=>{ const IF=[0.55,0.70,0.83,0.95,1.10][b.zone-1]; return t+(b.durationMin/60)*IF*IF*100*(sport==='bike'?1:0.9) },0))
+
+function calcTSS(blocks:Block[], sport:SportType, totalMin?:number, rpe?:number):number {
+  const IF_BY_ZONE = [0.55,0.70,0.83,0.95,1.10]
+  const SPORT_FACTOR: Partial<Record<SportType,number>> = {
+    bike:1.0, run:0.9, swim:0.85, rowing:0.95, hyrox:1.05, gym:0.7
+  }
+  const sf = SPORT_FACTOR[sport] ?? 0.9
+
+  if(blocks.length>0) {
+    return Math.round(blocks.reduce((total,b)=>{
+      if(b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin) {
+        const ifE = IF_BY_ZONE[b.zone-1] ?? 0.83
+        const recZone = b.recoveryZone ?? 1
+        const ifR = IF_BY_ZONE[recZone-1] ?? 0.55
+        const effortTss = b.reps*(b.effortMin/60)*ifE*ifE*100*sf
+        const recovTss  = b.reps*(b.recoveryMin/60)*ifR*ifR*100*sf
+        return total+effortTss+recovTss
+      }
+      const IF = IF_BY_ZONE[b.zone-1] ?? 0.70
+      return total+(b.durationMin/60)*IF*IF*100*sf
+    },0))
+  }
+
+  if(totalMin && rpe) {
+    const ifFromRpe = 0.45+(rpe/10)*0.7
+    return Math.round((totalMin/60)*ifFromRpe*ifFromRpe*100*sf)
+  }
+
+  if(totalMin) {
+    return Math.round((totalMin/60)*0.70*0.70*100*sf)
+  }
+
+  return 0
 }
+
 function getWeekDates():string[] {
   const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1
   return DAY_NAMES.map((_,i)=>{ const d=new Date(now); d.setDate(now.getDate()-dow+i); return String(d.getDate()) })
@@ -131,8 +195,47 @@ function getWeekLabel(ws:string):string {
   return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} – ${e.getDate()} ${MONTH_SHORT[e.getMonth()]}`
 }
 function normalizeSportType(s:string):SportType {
-  const m:Record<string,SportType>={running:'run',cycling:'bike',virtual_ride:'bike',virtual_bike:'bike',swimming:'swim',trail_run:'run',trail_running:'run'}
-  return m[s]??((['run','bike','swim','hyrox','gym','triathlon','rowing'] as SportType[]).includes(s as SportType)?s as SportType:'run')
+  const m:Record<string,SportType>={running:'run',cycling:'bike',virtual_ride:'bike',virtual_bike:'bike',swimming:'swim',trail_run:'run',trail_running:'run',triathlon:'run'}
+  return m[s]??((['run','bike','swim','hyrox','gym','rowing'] as SportType[]).includes(s as SportType)?s as SportType:'run')
+}
+
+function matchActivity(activity:TrainingActivity, sessions:Session[]):Session|null {
+  const actMin = Math.round(activity.elapsedTime/60)
+  const actSport = normalizeSportType(activity.sport)
+  const candidates = sessions.filter(s=>
+    s.dayIndex===activity.dayIndex &&
+    s.sport===actSport &&
+    s.status!=='done'
+  )
+  if(candidates.length===0) return null
+  const sorted = candidates.slice().sort((a,b)=>
+    Math.abs(a.durationMin-actMin)-Math.abs(b.durationMin-actMin)
+  )
+  const best = sorted[0]
+  const tolerance = Math.max(best.durationMin*0.5, 20)
+  return Math.abs(best.durationMin-actMin)<=tolerance ? best : null
+}
+
+function matchStatus(plannedMin:number, doneMin:number):{label:string;color:string} {
+  const diff = (doneMin-plannedMin)/plannedMin
+  if(Math.abs(diff)<=0.15) return { label:'Conforme', color:'#22c55e' }
+  if(diff<-0.4) return { label:'Écourtée', color:'#ef4444' }
+  if(diff>0.4)  return { label:'Prolongée', color:'#f97316' }
+  if(diff<0)    return { label:'Écourtée', color:'#f97316' }
+  return { label:'Prolongée', color:'#f97316' }
+}
+
+// ── SportBadge component ──────────────────────────
+function SportBadge({ sport, size='sm' }:{ sport:SportType; size?:'sm'|'xs' }) {
+  const col = SPORT_BORDER[sport]
+  const sz = size==='xs'
+    ? { fontSize:7, padding:'1px 4px', borderRadius:3 }
+    : { fontSize:8, padding:'2px 5px', borderRadius:4 }
+  return (
+    <span style={{ background:`${col}22`, color:col, fontWeight:800, letterSpacing:'0.04em', ...sz }}>
+      {SPORT_ABBR[sport]}
+    </span>
+  )
 }
 
 // ════════════════════════════════════════════════
@@ -332,10 +435,12 @@ function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity; o
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:`1px solid ${col}44`,padding:22,maxWidth:380,width:'100%',boxShadow:`0 0 0 1px ${col}22,var(--shadow-card)` }}>
         {/* En-tête */}
         <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:18 }}>
-          <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0 }}>{SPORT_EMOJI[sp]}</div>
+          <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+            <SportBadge sport={sp} size="sm"/>
+          </div>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ marginBottom:3 }}>
-              <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>✓ RÉALISÉ</span>
+              <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>RÉALISÉ</span>
             </div>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{activity.name}</p>
           </div>
@@ -372,42 +477,76 @@ function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity; o
 function BlockBuilder({ sport, blocks, onChange }:{ sport:SportType; blocks:Block[]; onChange:(b:Block[])=>void }) {
   const vLabel = sport==='bike'?'Watts':sport==='swim'?'Allure /100m':'Allure /km'
   const vPlh   = sport==='bike'?'250':sport==='swim'?'1:35':'4:30'
-  function addBlock() { onChange([...blocks,{id:`b_${Date.now()}`,type:'effort',durationMin:10,zone:3,value:sport==='bike'?'220':'4:30',hrAvg:'',label:'Bloc'}]) }
-  function upd(id:string,field:keyof Block,val:string|number) { onChange(blocks.map(b=>{ if(b.id!==id)return b; const u:Block={...b,[field]:val}; if(field==='value')u.zone=getZone(sport,String(val)); return u })) }
-  const totalMin = blocks.reduce((s,b)=>s+b.durationMin,0)
+  function addSingle() { onChange([...blocks,{id:`b_${Date.now()}`,mode:'single',type:'effort',durationMin:10,zone:3,value:sport==='bike'?'220':'4:30',hrAvg:'',label:'Bloc'}]) }
+  function addInterval() { onChange([...blocks,{id:`b_${Date.now()}`,mode:'interval',type:'effort',durationMin:0,zone:4,value:'',hrAvg:'',label:'',reps:5,effortMin:4,recoveryMin:1,recoveryZone:1}]) }
+  function upd(id:string,field:keyof Block,val:string|number) { onChange(blocks.map(b=>{ if(b.id!==id)return b; const u:Block={...b,[field]:val}; if(field==='value')u.zone=getZone(sport,String(val)); if(u.mode==='interval'&&u.reps&&u.effortMin&&u.recoveryMin)u.durationMin=u.reps*(u.effortMin+u.recoveryMin); return u })) }
+  const totalMin = blocks.reduce((s,b)=>{
+    if(b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin) return s+b.reps*(b.effortMin+b.recoveryMin)
+    return s+b.durationMin
+  },0)
   return (
     <div>
       {blocks.length>0 && (
         <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:7 }}>
             TSS estimé : <span style={{ color:SPORT_BORDER[sport] }}>{calcTSS(blocks,sport)} pts</span>
-            <span style={{ marginLeft:10,fontWeight:400 }}>· {formatDur(totalMin)}</span>
+            <span style={{ marginLeft:10,fontWeight:400 }}>· {formatHM(totalMin)}</span>
           </p>
           <div style={{ display:'flex',alignItems:'flex-end',gap:2,height:48,marginBottom:4 }}>
-            {blocks.map(b=>{ const hp=((b.zone/5)*0.85+0.05)*100,wp=(b.durationMin/totalMin)*100,c=ZONE_COLORS[b.zone-1]; return <div key={b.id} style={{ width:`${wp}%`,height:`${hp}%`,background:`linear-gradient(180deg,${c}ee,${c}55)`,borderRadius:'3px 3px 0 0',border:`1px solid ${c}88`,minWidth:4 }}/> })}
+            {blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; const hp=((b.zone/5)*0.85+0.05)*100,wp=totalMin?(bMin/totalMin)*100:0,c=ZONE_COLORS[b.zone-1]; return <div key={b.id} style={{ width:`${wp}%`,height:`${hp}%`,background:`linear-gradient(180deg,${c}ee,${c}55)`,borderRadius:'3px 3px 0 0',border:`1px solid ${c}88`,minWidth:4 }}/> })}
           </div>
         </div>
       )}
       <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:7 }}>
         {blocks.map(b=>(
           <div key={b.id} style={{ background:'var(--bg-card2)',border:`1px solid ${ZONE_COLORS[b.zone-1]}44`,borderLeft:`3px solid ${ZONE_COLORS[b.zone-1]}`,borderRadius:8,padding:'7px 9px' }}>
+            {b.mode==='interval' ? (
+              // ── Interval block ──
+              <div>
+                <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:6 }}>
+                  <span style={{ fontSize:9,fontWeight:800,color:'#a78bfa',background:'rgba(167,139,250,0.15)',padding:'2px 6px',borderRadius:4 }}>REPS</span>
+                  <span style={{ flex:1,fontSize:10,fontWeight:600,color:'var(--text)' }}>
+                    {b.reps} × {b.effortMin}{'\''}
+                    <span style={{ color:ZONE_COLORS[b.zone-1] }}> Z{b.zone}</span>
+                    {' / '}{b.recoveryMin}{'\''}
+                    <span style={{ color:ZONE_COLORS[(b.recoveryZone??1)-1] }}> Z{b.recoveryZone??1}</span>
+                    {b.reps&&b.effortMin&&b.recoveryMin?<span style={{ color:'var(--text-dim)',marginLeft:6 }}>= {formatHM(b.reps*(b.effortMin+b.recoveryMin))}</span>:null}
+                  </span>
+                  <button onClick={()=>onChange(blocks.filter(x=>x.id!==b.id))} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,flexShrink:0 }}>×</button>
+                </div>
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:5 }}>
+                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Rép.</p><input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
+                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Effort</p><input type="number" min={0.5} step={0.5} value={b.effortMin??4} onChange={e=>upd(b.id,'effortMin',parseFloat(e.target.value)||0.5)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:`1px solid ${ZONE_COLORS[b.zone-1]}66`,background:`${ZONE_COLORS[b.zone-1]}11`,color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
+                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Z effort</p><input type="number" min={1} max={5} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
+                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Récup</p><input type="number" min={0.5} step={0.5} value={b.recoveryMin??1} onChange={e=>upd(b.id,'recoveryMin',parseFloat(e.target.value)||0.5)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:`1px solid ${ZONE_COLORS[(b.recoveryZone??1)-1]}66`,background:`${ZONE_COLORS[(b.recoveryZone??1)-1]}11`,color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
+                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Z récup</p><input type="number" min={1} max={5} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
+                </div>
+              </div>
+            ) : (
+              // ── Single block ──
+              <>
             <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:6 }}>
               <span style={{ width:20,height:20,borderRadius:4,background:`${ZONE_COLORS[b.zone-1]}22`,border:`1px solid ${ZONE_COLORS[b.zone-1]}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:ZONE_COLORS[b.zone-1],flexShrink:0 }}>Z{b.zone}</span>
               <select value={b.type} onChange={e=>upd(b.id,'type',e.target.value)} style={{ flex:1,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none' }}>
                 {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType,string][]).map(([k,v])=><option key={k} value={k}>{v}</option>)}
               </select>
               <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder="Nom" style={{ flex:1.5,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none' }}/>
-              <button onClick={()=>onChange(blocks.filter(x=>x.id!==b.id))} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:12,flexShrink:0 }}>✕</button>
+              <button onClick={()=>onChange(blocks.filter(x=>x.id!==b.id))} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,flexShrink:0 }}>×</button>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
               <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Durée (min)</p><input type="number" value={b.durationMin} onChange={e=>upd(b.id,'durationMin',parseInt(e.target.value)||0)} style={{ width:'100%',padding:'4px 6px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
               <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>{vLabel}</p><input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%',padding:'4px 6px',borderRadius:5,border:`1px solid ${ZONE_COLORS[b.zone-1]}66`,background:`${ZONE_COLORS[b.zone-1]}11`,color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
               <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>FC moy.</p><input value={b.hrAvg} onChange={e=>upd(b.id,'hrAvg',e.target.value)} placeholder="158" style={{ width:'100%',padding:'4px 6px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
             </div>
+            </>
+            )}
           </div>
         ))}
       </div>
-      <button onClick={addBlock} style={{ width:'100%',padding:'7px',borderRadius:8,background:'transparent',border:'1px dashed var(--border-mid)',color:'var(--text-dim)',fontSize:11,cursor:'pointer' }}>+ Ajouter un bloc</button>
+      <div style={{ display:'flex',gap:6 }}>
+        <button onClick={addSingle} style={{ flex:1,padding:'7px',borderRadius:8,background:'transparent',border:'1px dashed var(--border-mid)',color:'var(--text-dim)',fontSize:11,cursor:'pointer' }}>+ Bloc simple</button>
+        <button onClick={addInterval} style={{ flex:1,padding:'7px',borderRadius:8,background:'transparent',border:'1px dashed #a78bfa66',color:'#a78bfa',fontSize:11,cursor:'pointer' }}>+ Répétitions</button>
+      </div>
     </div>
   )
 }
@@ -429,7 +568,7 @@ function Last10WeeksModal({ onClose }:{ onClose:()=>void }) {
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:17,fontWeight:700,margin:0 }}>Last 10 Weeks</h3>
             <p style={{ fontSize:12,color:'var(--text-dim)',margin:'3px 0 0' }}>Volume & TSS</p>
           </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:9,padding:'5px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:16 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:9,padding:'5px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:16 }}>×</button>
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
@@ -563,14 +702,14 @@ function TrainingTab() {
   const plannedN = allSess.length
   const doneN    = allSess.filter(s=>s.status==='done').length + allActs.length
 
-  const sportCounts = (['run','bike','swim','hyrox','triathlon','rowing','gym'] as SportType[]).map(sp=>({
+  const sportCounts = (['run','bike','swim','hyrox','rowing','gym'] as SportType[]).map(sp=>({
     sport:sp,
     planned: allSess.filter(s=>s.sport===sp).length,
     done: allSess.filter(s=>s.sport===sp&&s.status==='done').length
         + allActs.filter(a=>normalizeSportType(a.sport)===sp).length
   })).filter(s=>s.planned>0||s.done>0)
 
-  const sportStats = (['run','bike','swim','hyrox','triathlon','rowing','gym'] as SportType[]).map(sp=>({
+  const sportStats = (['run','bike','swim','hyrox','rowing','gym'] as SportType[]).map(sp=>({
     sport:sp,
     plannedH: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+x.durationMin/60,0),
     doneH: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0)
@@ -643,23 +782,39 @@ function TrainingTab() {
                 {/* Activités réelles (cliquables → modal détail) */}
                 {d.activities.map(a=>{
                   const sp=normalizeSportType(a.sport)
+                  const matchedSession = matchActivity(a, d.sessions)
+                  if(matchedSession) {
+                    const actMin = Math.round(a.elapsedTime/60)
+                    const st = matchStatus(matchedSession.durationMin, actMin)
+                    return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
+                      <div style={{ display:'flex',alignItems:'center',gap:3,marginBottom:2 }}>
+                        <SportBadge sport={sp} size="xs"/>
+                        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,flex:1 }}>{matchedSession.title}</p>
+                      </div>
+                      <p style={{ fontSize:7,margin:'0 0 1px',fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>Prévu {formatHM(matchedSession.durationMin)} · Réalisé {formatHM(actMin)}</p>
+                      <span style={{ fontSize:7,fontWeight:700,color:st.color }}>{st.label}</span>
+                    </div>
+                  }
                   return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9,cursor:'pointer' }}>
                     <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                      <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>✓</span>
-                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{SPORT_EMOJI[sp]} {a.name}</p>
+                      <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>OK</span>
+                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
                     </div>
-                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatDur(Math.round(a.elapsedTime/60))}</p>
+                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
                   </div>
                 })}
-                {/* Planned sessions */}
-                {d.sessions.map(s=>(
+                {/* Planned sessions (hide ones matched by an activity) */}
+                {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
                   <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={()=>onTouchStart(s.id,i)} onClick={()=>setDetailModal(s)}
                     style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[s.sport],borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative' }}>
-                    {s.status==='done' && <span style={{ position:'absolute',top:2,right:2,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700 }}>✓</span>}
+                    {s.status==='done' && <span style={{ position:'absolute',top:2,right:2,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700 }}>FAIT</span>}
                     {s.planVariant && <span style={{ position:'absolute',top:2,left:2,fontSize:7,fontWeight:800,color:s.planVariant==='A'?'#00c8e0':'#a78bfa' }}>{s.planVariant}</span>}
-                    <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,paddingLeft:8 }}>{SPORT_EMOJI[s.sport]} {s.title}</p>
-                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{s.time}</p>
-                    {s.blocks.length>0 && <div style={{ display:'flex',gap:1,marginTop:2,height:4,borderRadius:1,overflow:'hidden' }}>{s.blocks.map(b=><div key={b.id} style={{ flex:b.durationMin,background:ZONE_COLORS[b.zone-1],opacity:0.8 }}/>)}</div>}
+                    <div style={{ display:'flex',alignItems:'center',gap:3,paddingLeft:8 }}>
+                      <SportBadge sport={s.sport} size="xs"/>
+                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{s.title}</p>
+                    </div>
+                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace',paddingLeft:8 }}>{s.time} · {formatHM(s.durationMin)}</p>
+                    {s.blocks.length>0 && <div style={{ display:'flex',gap:1,marginTop:2,height:6,borderRadius:1,overflow:'hidden' }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.8 }}/> })}</div>}
                   </div>
                 ))}
                 {ws===currentWeekStart&&<button onClick={()=>setAddModal({dayIndex:i,plan:plan??activePlan})} style={{ marginTop:2,padding:'3px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer',width:'100%' }}>+</button>}
@@ -716,12 +871,12 @@ function TrainingTab() {
               borderColor:compareMode?'#ffb340':'var(--border)',
               background:compareMode?'rgba(255,179,64,0.12)':'var(--bg-card)',
               color:compareMode?'#ffb340':'var(--text-mid)' }}>
-            ⇄ Comparer
+            Comparer
           </button>
           <button onClick={analyzePlanning} disabled={analyzeLoading}
             style={{ padding:'6px 14px',borderRadius:9,border:'1px solid #22c55e',fontSize:12,cursor:analyzeLoading?'default':'pointer',fontWeight:600,
               background:'rgba(34,197,94,0.10)',color:'#22c55e',opacity:analyzeLoading?0.6:1,whiteSpace:'nowrap' as const }}>
-            {analyzeLoading?'⏳ Analyse…':'🔍 Analyser ma semaine'}
+            {analyzeLoading?'Analyse en cours…':'Analyser la semaine'}
           </button>
         </div>
       </div>
@@ -779,12 +934,12 @@ function TrainingTab() {
               border:`1.5px solid ${compareMode?'#ffb340':'var(--border)'}`,
               background:compareMode?'rgba(255,179,64,0.12)':'transparent',
               color:compareMode?'#ffb340':'var(--text-mid)' }}>
-            ⇄ Comparer les deux plans
+            Comparer les deux plans
           </button>
           <button onClick={analyzePlanning} disabled={analyzeLoading}
             style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:analyzeLoading?'default':'pointer',fontWeight:700,textAlign:'left' as const,
               border:'1.5px solid #22c55e',background:'rgba(34,197,94,0.10)',color:'#22c55e',opacity:analyzeLoading?0.6:1 }}>
-            {analyzeLoading?'⏳ Analyse en cours…':'🔍 Analyser ma semaine'}
+            {analyzeLoading?'Analyse en cours…':'Analyser la semaine'}
           </button>
         </div>
       </div>
@@ -801,8 +956,8 @@ function TrainingTab() {
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Volume</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatDur(plannedMin)}</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#00c8e0',margin:'0 0 8px' }}>{formatDur(doneMin)}</p>
+          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatHM(plannedMin)}</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#00c8e0',margin:'0 0 8px' }}>{formatHM(doneMin)}</p>
           <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#00c8e0" height={5} className="mb-1.5" />
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
         </div>
@@ -812,7 +967,7 @@ function TrainingTab() {
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#ffb340',margin:'0 0 8px' }}><CountUp value={doneN} /></p>
           <AnimatedBar pct={plannedN?Math.min(doneN/plannedN*100,100):0} color="#ffb340" height={5} className="mb-1.5" />
           <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:4 }}>
-            {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:SPORT_BORDER[s.sport],fontFamily:'DM Mono,monospace' }}>{SPORT_EMOJI[s.sport]} {s.done}/{s.planned}</span>)}
+            {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:SPORT_BORDER[s.sport],fontFamily:'DM Mono,monospace',display:'flex',alignItems:'center',gap:3 }}><SportBadge sport={s.sport} size="xs"/> {s.done}/{s.planned}</span>)}
           </div>
         </div>
         <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
@@ -833,7 +988,7 @@ function TrainingTab() {
           {sportStats.map(s=>{ const pct=s.plannedH>0?Math.min(s.doneH/s.plannedH*100,100):0; const c=SPORT_BORDER[s.sport]; return (
             <div key={s.sport} style={{ marginBottom:10 }}>
               <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4 }}>
-                <span style={{ fontSize:12,display:'flex',alignItems:'center',gap:5 }}><span>{SPORT_EMOJI[s.sport]}</span><span style={{ fontWeight:500,color:'var(--text-mid)' }}>{SPORT_LABEL[s.sport]}</span></span>
+                <span style={{ fontSize:12,display:'flex',alignItems:'center',gap:5 }}><SportBadge sport={s.sport} size="xs"/><span style={{ fontWeight:500,color:'var(--text-mid)' }}>{SPORT_LABEL[s.sport]}</span></span>
                 <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:c,fontWeight:600 }}>{s.doneH.toFixed(1)}h <span style={{ color:'var(--text-dim)',fontWeight:400 }}>/ {s.plannedH.toFixed(1)}h</span></span>
               </div>
               <AnimatedBar pct={pct} gradient={`linear-gradient(90deg,${c}bb,${c})`} height={6} />
@@ -845,15 +1000,15 @@ function TrainingTab() {
       {/* Aujourd'hui */}
       {todaySessions.length>0 && (
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 10px' }}>📍 Aujourd'hui — {week[todayIdx]?.day} {week[todayIdx]?.date}</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 10px' }}>Aujourd'hui — {week[todayIdx]?.day} {week[todayIdx]?.date}</p>
           {todaySessions.map(s=>(
             <div key={s.id} onClick={()=>setDetailModal(s)} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRadius:10,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',marginBottom:7 }}>
-              <span style={{ fontSize:20 }}>{SPORT_EMOJI[s.sport]}</span>
+              <SportBadge sport={s.sport} size="sm"/>
               <div style={{ flex:1 }}>
                 <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0 }}>{s.title}</p>
-                <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.time} · {formatDur(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
+                <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
               </div>
-              <span style={{ padding:'4px 10px',borderRadius:20,background:s.status==='done'?`${SPORT_BORDER[s.sport]}22`:'var(--bg-card2)',border:`1px solid ${s.status==='done'?SPORT_BORDER[s.sport]:'var(--border)'}`,color:s.status==='done'?SPORT_BORDER[s.sport]:'var(--text-dim)',fontSize:10,fontWeight:600 }}>{s.status==='done'?'✓ Fait':'À faire'}</span>
+              <span style={{ padding:'4px 10px',borderRadius:20,background:s.status==='done'?`${SPORT_BORDER[s.sport]}22`:'var(--bg-card2)',border:`1px solid ${s.status==='done'?SPORT_BORDER[s.sport]:'var(--border)'}`,color:s.status==='done'?SPORT_BORDER[s.sport]:'var(--text-dim)',fontSize:10,fontWeight:600 }}>{s.status==='done'?'FAIT':'À faire'}</span>
             </div>
           ))}
         </div>
@@ -870,7 +1025,7 @@ function TrainingTab() {
           {/* En-tête score */}
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:10 }}>
             <div>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:'0 0 4px' }}>🔍 Analyse IA de la semaine</p>
+              <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:'0 0 4px' }}>Analyse IA — Semaine</p>
               <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>{analyzeResult.summary}</p>
             </div>
             <div style={{ textAlign:'center' as const,flexShrink:0 }}>
@@ -906,8 +1061,7 @@ function TrainingTab() {
               <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Suggestions</p>
               <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
                 {analyzeResult.suggestions.map((s,i)=>(
-                  <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'8px 12px',borderRadius:9,background:'rgba(91,111,255,0.07)',border:'1px solid rgba(91,111,255,0.2)' }}>
-                    <span style={{ fontSize:14,flexShrink:0,marginTop:-1 }}>💡</span>
+                  <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'8px 12px',borderRadius:9,background:'rgba(91,111,255,0.07)',border:'1px solid rgba(91,111,255,0.2)',borderLeft:'3px solid #5b6fff' }}>
                     <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{s}</p>
                   </div>
                 ))}
@@ -924,14 +1078,14 @@ function TrainingTab() {
                   <div key={i} style={{ padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',minWidth:110 }}>
                     <p style={{ fontSize:10,fontWeight:700,color:'#00c8e0',margin:'0 0 2px' }}>{p.day}</p>
                     <p style={{ fontSize:11,fontWeight:600,margin:'0 0 1px' }}>{p.title}</p>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontFamily:'DM Mono,monospace' }}>{formatDur(p.durationMin)}</p>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontFamily:'DM Mono,monospace' }}>{formatHM(p.durationMin)}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <button onClick={()=>setAnalyzeResult(null)} style={{ alignSelf:'flex-end' as const,padding:'5px 12px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer' }}>✕ Fermer</button>
+          <button onClick={()=>setAnalyzeResult(null)} style={{ alignSelf:'flex-end' as const,padding:'5px 12px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer' }}>Fermer</button>
         </div>
       )}
 
@@ -979,35 +1133,36 @@ function TrainingTab() {
                 <button onClick={()=>setAddModal({dayIndex:i,plan:activePlan})} style={{ padding:'4px 9px',borderRadius:7,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)',color:'#00c8e0',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
               </div>
               {/* Activities from Training */}
-              {d.activities.map(a=>{ const sp=normalizeSportType(a.sport); return (
-                <div key={a.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:9,background:`${SPORT_BORDER[sp]}14`,borderLeft:`3px solid ${SPORT_BORDER[sp]}`,marginBottom:5,opacity:0.85 }}>
-                  <span style={{ fontSize:13 }}>{SPORT_EMOJI[sp]}</span>
+              {d.activities.map(a=>{ const sp=normalizeSportType(a.sport); const matchedSession=matchActivity(a,d.sessions); return (
+                <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:9,background:`${SPORT_BORDER[sp]}14`,borderLeft:`3px solid ${SPORT_BORDER[sp]}`,marginBottom:5,opacity:0.85,cursor:'pointer' }}>
+                  <SportBadge sport={sp} size="sm"/>
                   <div style={{ flex:1 }}>
                     <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                      <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{a.name}</p>
-                      <span style={{ fontSize:8,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>✓ Réalisé</span>
+                      <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{matchedSession?matchedSession.title:a.name}</p>
+                      <span style={{ fontSize:8,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>Réalisé</span>
+                      {matchedSession&&<span style={{ fontSize:8,fontWeight:700,color:matchStatus(matchedSession.durationMin,Math.round(a.elapsedTime/60)).color }}>{matchStatus(matchedSession.durationMin,Math.round(a.elapsedTime/60)).label}</span>}
                     </div>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatDur(Math.round(a.elapsedTime/60))}{a.distance?` · ${(a.distance/1000).toFixed(1)}km`:''}</p>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}{a.distance?` · ${(a.distance/1000).toFixed(1)}km`:''}{matchedSession?` · Prévu ${formatHM(matchedSession.durationMin)}`:''}</p>
                   </div>
                 </div>
               )})}
-              {d.sessions.length>0 ? d.sessions.map(s=>(
+              {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
                 <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={()=>onTouchStart(s.id,i)} onClick={()=>setDetailModal(s)}
                   style={{ display:'flex',flexDirection:'column',padding:'8px 10px',borderRadius:9,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',opacity:s.status==='done'?0.75:1,marginBottom:5 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:7 }}>
-                    <span style={{ fontSize:14 }}>{SPORT_EMOJI[s.sport]}</span>
+                    <SportBadge sport={s.sport} size="sm"/>
                     <div style={{ flex:1 }}>
                       <div style={{ display:'flex',alignItems:'center',gap:5 }}>
                         <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{s.title}</p>
-                        {s.status==='done'&&<span style={{ fontSize:8,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>✓</span>}
+                        {s.status==='done'&&<span style={{ fontSize:8,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>FAIT</span>}
                         <span style={{ fontSize:9,fontWeight:700,color:s.planVariant==='B'?'#a78bfa':'#00c8e0',marginLeft:4 }}>Plan {s.planVariant}</span>
                       </div>
-                      <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatDur(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
+                      <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
                     </div>
                   </div>
-                  {s.blocks.length>0 && <div style={{ display:'flex',gap:1,height:8,borderRadius:2,overflow:'hidden',marginTop:5 }}>{s.blocks.map(b=><div key={b.id} style={{ flex:b.durationMin,background:ZONE_COLORS[b.zone-1],opacity:0.75 }}/>)}</div>}
+                  {s.blocks.length>0 && <div style={{ display:'flex',gap:1,height:6,borderRadius:2,overflow:'hidden',marginTop:5 }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.75 }}/> })}</div>}
                 </div>
-              )) : d.activities.length===0&&<p style={{ fontSize:11,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Jour de repos</p>}
+              ))}{d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).length===0&&d.activities.length===0&&<p style={{ fontSize:11,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Jour de repos</p>}
             </div>
           )})}
         </div>
@@ -1018,34 +1173,102 @@ function TrainingTab() {
 
 // ── Add Session Modal ─────────────────────────────
 function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; plan:PlanVariant; onClose:()=>void; onAdd:(i:number,s:Session)=>void }) {
-  const [sport, setSport]   = useState<SportType>('run')
-  const [title, setTitle]   = useState('')
-  const [time,  setTime]    = useState('09:00')
-  const [dur,   setDur]     = useState('60')
-  const [rpe,   setRpe]     = useState(5)
-  const [notes, setNotes]   = useState('')
-  const [blocks,setBlocks]  = useState<Block[]>([])
-  const [selPlan,setSelPlan]= useState<PlanVariant>(plan)
+  const [sport,      setSport]      = useState<SportType>('run')
+  const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
+  const [trainingType,setTrainingType]= useState<string|null>(null)
+  const [title,      setTitle]      = useState('')
+  const [time,       setTime]       = useState('09:00')
+  const [durH,       setDurH]       = useState(1)
+  const [durM,       setDurM]       = useState(0)
+  const [rpe,        setRpe]        = useState(5)
+  const [notes,      setNotes]      = useState('')
+  const [blocks,     setBlocks]     = useState<Block[]>([])
+  const [selPlan,    setSelPlan]    = useState<PlanVariant>(plan)
   const isEnd = ['run','bike','swim'].includes(sport)
-  const tss = calcTSS(blocks,sport)
-  const totalMin = blocks.reduce((s,b)=>s+b.durationMin,0)
+  const totalMinFromBlocks = blocks.reduce((s,b)=>{
+    if(b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin) return s+b.reps*(b.effortMin+b.recoveryMin)
+    return s+b.durationMin
+  },0)
+  const totalMin = totalMinFromBlocks>0 ? totalMinFromBlocks : hMinToMin(durH,durM)
+  const tss = calcTSS(blocks, sport, totalMin, rpe)
+  const trainTypes = TRAINING_TYPES[sport] ?? []
+
+  function handleSportChange(s:SportType) {
+    setSport(s); setBlocks([]); setTrainingType(null)
+  }
+  function handleTrainingTypeClick(t:string) {
+    if(trainingType===t) { setTrainingType(null) }
+    else {
+      setTrainingType(t)
+      if(!title) setTitle(`${SPORT_LABEL[s]} ${t}`.trim().replace(/^(\w)/, m => m))
+    }
+  }
+  // Fix: close over sport correctly
+  const s = sport
+
   return (
     <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:520,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
         <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Nouvelle séance</h3>
-        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
       </div>
-      <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:14 }}>
-        {(Object.keys(SPORT_LABEL) as SportType[]).map(s=>(
-          <button key={s} onClick={()=>{setSport(s);setBlocks([])}} style={{ padding:'5px 10px',borderRadius:8,border:'1px solid',borderColor:sport===s?SPORT_BORDER[s]:'var(--border)',background:sport===s?SPORT_BG[s]:'var(--bg-card2)',color:sport===s?SPORT_BORDER[s]:'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:sport===s?600:400 }}>
-            {SPORT_EMOJI[s]} {SPORT_LABEL[s]}
+      {/* Sport selector — horizontal scrollable */}
+      <div style={{ display:'flex',gap:5,overflowX:'auto',marginBottom:10,paddingBottom:2 }}>
+        {(Object.keys(SPORT_LABEL) as SportType[]).map(sp=>(
+          <button key={sp} onClick={()=>handleSportChange(sp)}
+            style={{ padding:'5px 10px',borderRadius:8,border:'1px solid',borderColor:sport===sp?SPORT_BORDER[sp]:'var(--border)',
+              background:sport===sp?SPORT_BG[sp]:'var(--bg-card2)',color:sport===sp?SPORT_BORDER[sp]:'var(--text-mid)',
+              fontSize:11,cursor:'pointer',fontWeight:sport===sp?600:400,whiteSpace:'nowrap' as const,
+              borderLeft:sport===sp?`3px solid ${SPORT_BORDER[sp]}`:undefined }}>
+            {SPORT_ABBR[sp]} {SPORT_LABEL[sp]}
           </button>
         ))}
       </div>
-      <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:9,marginBottom:11 }}>
-        <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p><input value={title} onChange={e=>setTitle(e.target.value)} placeholder={`${SPORT_LABEL[sport]} Z2`} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
+      {/* Cycling sub-type */}
+      {sport==='bike' && (
+        <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:10 }}>
+          {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub=>(
+            <button key={sub} onClick={()=>setCyclingSub(sub)}
+              style={{ padding:'4px 8px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',
+                borderColor:cyclingSub===sub?SPORT_BORDER.bike:'var(--border)',
+                background:cyclingSub===sub?`${SPORT_BORDER.bike}22`:'var(--bg-card2)',
+                color:cyclingSub===sub?SPORT_BORDER.bike:'var(--text-mid)',fontWeight:cyclingSub===sub?600:400 }}>
+              {CYCLING_SUB_LABEL[sub]}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Training types */}
+      {trainTypes.length>0 && (
+        <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:12 }}>
+          {trainTypes.map(t=>(
+            <button key={t} onClick={()=>handleTrainingTypeClick(t)}
+              style={{ padding:'4px 8px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',
+                borderColor:trainingType===t?SPORT_BORDER[sport]:'var(--border)',
+                background:trainingType===t?SPORT_BG[sport]:'transparent',
+                color:trainingType===t?SPORT_BORDER[sport]:'var(--text-dim)',fontWeight:trainingType===t?700:400 }}>
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:11 }}>
+        <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p><input value={title} onChange={e=>setTitle(e.target.value)} placeholder={trainingType?`${SPORT_LABEL[sport]} ${trainingType}`:`${SPORT_LABEL[sport]} Z2`} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
         <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heure</p><input value={time} onChange={e=>setTime(e.target.value)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-        <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Durée (min)</p><input type="number" value={dur} onChange={e=>setDur(e.target.value)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+      </div>
+      {/* Duration h + m */}
+      <div style={{ display:'flex',gap:8,marginBottom:11 }}>
+        <div style={{ flex:1 }}>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heures</p>
+          <input type="number" min={0} max={12} value={durH} onChange={e=>setDurH(parseInt(e.target.value)||0)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+        </div>
+        <div style={{ flex:1 }}>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Minutes</p>
+          <input type="number" min={0} max={59} value={durM} onChange={e=>setDurM(parseInt(e.target.value)||0)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+        </div>
+        <div style={{ flex:1,display:'flex',alignItems:'flex-end',paddingBottom:4 }}>
+          <span style={{ fontSize:12,fontWeight:700,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>{formatHM(hMinToMin(durH,durM))}</span>
+        </div>
       </div>
       <div style={{ marginBottom:11 }}>
         <div style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>
@@ -1053,8 +1276,9 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
           <span style={{ fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:rpe<=3?'#22c55e':rpe<=6?'#ffb340':'#ef4444' }}>{rpe.toFixed(1)}/10</span>
         </div>
         <input type="range" min={0} max={10} step={0.5} value={rpe} onChange={e=>setRpe(parseFloat(e.target.value))} style={{ width:'100%',accentColor:'#00c8e0',cursor:'pointer' }}/>
+        {blocks.length===0 && <p style={{ fontSize:10,color:'var(--text-dim)',margin:'4px 0 0',fontFamily:'DM Mono,monospace' }}>TSS estimé (RPE) : <strong style={{ color:SPORT_BORDER[sport] }}>{tss} pts</strong></p>}
       </div>
-      {isEnd && <div style={{ marginBottom:11 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:8 }}>Blocs d'intensité</p><BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>{blocks.length>0 && <div style={{ display:'flex',gap:14,marginTop:6,fontSize:10,color:'var(--text-dim)' }}><span>Durée : <strong style={{ color:'var(--text)',fontFamily:'DM Mono,monospace' }}>{formatDur(totalMin)}</strong></span><span>TSS : <strong style={{ color:SPORT_BORDER[sport],fontFamily:'DM Mono,monospace' }}>{tss} pts</strong></span></div>}</div>}
+      {isEnd && <div style={{ marginBottom:11 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:8 }}>Blocs d'intensité</p><BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>{blocks.length>0 && <div style={{ display:'flex',gap:14,marginTop:6,fontSize:10,color:'var(--text-dim)' }}><span>Durée : <strong style={{ color:'var(--text)',fontFamily:'DM Mono,monospace' }}>{formatHM(totalMinFromBlocks)}</strong></span><span>TSS : <strong style={{ color:SPORT_BORDER[sport],fontFamily:'DM Mono,monospace' }}>{tss} pts</strong></span></div>}</div>}
       <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Notes</p><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
       {/* Plan selector */}
       <div style={{ marginBottom:11 }}>
@@ -1072,7 +1296,12 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
       </div>
       <div style={{ display:'flex',gap:8 }}>
         <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
-        <button onClick={()=>{ onAdd(dayIndex,{id:'',dayIndex,sport,title:title||SPORT_LABEL[sport],time,durationMin:totalMin||parseInt(dur)||60,tss:tss||undefined,status:'planned',notes:notes||undefined,blocks,rpe,planVariant:selPlan}); onClose() }} style={{ flex:2,padding:10,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>+ Ajouter</button>
+        <button onClick={()=>{
+          const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
+          const subLabel = sport==='bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
+          onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:tss||undefined,status:'planned',notes:notes||undefined,blocks,rpe,planVariant:selPlan})
+          onClose()
+        }} style={{ flex:2,padding:10,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>+ Ajouter</button>
       </div>
     </div>
   )
@@ -1089,18 +1318,18 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
     <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:540,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
         <div style={{ display:'flex',alignItems:'center',gap:9 }}>
-          <div style={{ width:34,height:34,borderRadius:9,background:SPORT_BG[session.sport],display:'flex',alignItems:'center',justifyContent:'center',fontSize:16 }}>{SPORT_EMOJI[session.sport]}</div>
+          <div style={{ width:34,height:34,borderRadius:9,background:SPORT_BG[session.sport],border:`1px solid ${SPORT_BORDER[session.sport]}44`,display:'flex',alignItems:'center',justifyContent:'center' }}><SportBadge sport={session.sport} size="sm"/></div>
           <div>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0 }}>{session.title}</p>
-            <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{session.time} · {formatDur(session.durationMin)}{session.tss?` · ${session.tss} TSS`:''}</p>
+            <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{session.time} · {formatHM(session.durationMin)}{session.tss?` · ${session.tss} TSS`:''}</p>
           </div>
         </div>
-        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
       </div>
       <div style={{ display:'flex',gap:5,marginBottom:16 }}>
         {(['view','edit','validate'] as const).map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===t?SPORT_BORDER[session.sport]:'var(--border)',background:tab===t?SPORT_BG[session.sport]:'var(--bg-card2)',color:tab===t?SPORT_BORDER[session.sport]:'var(--text-mid)',fontSize:11,fontWeight:tab===t?600:400,cursor:'pointer' }}>
-            {t==='view'?'📊 Graphique':t==='edit'?'✏️ Modifier':'✅ Valider'}
+            {t==='view'?'Graphique':t==='edit'?'Modifier':'Valider'}
           </button>
         ))}
       </div>
@@ -1117,7 +1346,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
             <div key={b.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 9px',borderRadius:7,background:`${ZONE_COLORS[b.zone-1]}11`,borderLeft:`2px solid ${ZONE_COLORS[b.zone-1]}`,marginBottom:4 }}>
               <span style={{ fontSize:9,fontWeight:700,color:ZONE_COLORS[b.zone-1],width:17,flexShrink:0 }}>Z{b.zone}</span>
               <span style={{ flex:1,fontSize:11 }}>{b.label}</span>
-              <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{formatDur(b.durationMin)}</span>
+              <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?`${b.reps}×${b.effortMin}'`:formatHM(b.durationMin)}</span>
               {b.value && <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:ZONE_COLORS[b.zone-1] }}>{b.value}{session.sport==='bike'?'W':''}</span>}
             </div>
           ))}
@@ -1125,10 +1354,16 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
       )}
       {tab==='edit' && (
         <>
-          <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:9,marginBottom:11 }}>
-            {[{k:'title',l:'Titre'},{k:'time',l:'Heure'},{k:'durationMin',l:'Durée (min)'}].map(f=>(
+          <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:11 }}>
+            {[{k:'title',l:'Titre'},{k:'time',l:'Heure'}].map(f=>(
               <div key={f.k}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{f.l}</p><input value={(form as any)[f.k]??''} onChange={e=>setForm({...form,[f.k]:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
             ))}
+          </div>
+          <div style={{ display:'flex',gap:8,marginBottom:11 }}>
+            {(()=>{ const {h,m}=minToHMin(form.durationMin||0); return (<>
+              <div style={{ flex:1 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heures</p><input type="number" min={0} max={12} value={h} onChange={e=>setForm({...form,durationMin:hMinToMin(parseInt(e.target.value)||0,m)})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+              <div style={{ flex:1 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Minutes</p><input type="number" min={0} max={59} value={m} onChange={e=>setForm({...form,durationMin:hMinToMin(h,parseInt(e.target.value)||0)})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+            </>) })()}
           </div>
           <div style={{ marginBottom:11 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Notes</p><textarea value={form.notes??''} onChange={e=>setForm({...form,notes:e.target.value})} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
           {isEnd && <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:8 }}>Blocs</p><BlockBuilder sport={session.sport} blocks={form.blocks} onChange={blocks=>setForm({...form,blocks,tss:calcTSS(blocks,session.sport)})}/></div>}
@@ -1147,7 +1382,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
             <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Dénivelé (m)</p><input value={form.vElevation??''} onChange={e=>setForm({...form,vElevation:e.target.value})} placeholder="0" style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
             {form.vDuration&&form.vDistance&&<><div style={{ padding:'7px 10px',borderRadius:8,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)' }}><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Vitesse</p><p style={{ fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'#00c8e0',margin:0 }}>{speed}</p></div>{session.sport==='run'&&<div style={{ padding:'7px 10px',borderRadius:8,background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.2)' }}><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Allure</p><p style={{ fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'#22c55e',margin:0 }}>{pace}</p></div>}</>}
           </div>
-          <button onClick={()=>{ const done=parseInt(form.vDuration||'0'); const pct=session.durationMin&&done?Math.min(Math.round((done/session.durationMin)*100),100):100; onValidate({...form,status:'done',vSpeed:speed,vPace:pace}) }} style={{ width:'100%',padding:12,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[session.sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>✓ Confirmer</button>
+          <button onClick={()=>{ const done=parseInt(form.vDuration||'0'); const _pct=session.durationMin&&done?Math.min(Math.round((done/session.durationMin)*100),100):100; onValidate({...form,status:'done',vSpeed:speed,vPace:pace}) }} style={{ width:'100%',padding:12,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[session.sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>Confirmer</button>
         </>
       )}
     </div>
@@ -1174,7 +1409,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const touchTargetRef = useRef<number|null>(null)
 
   const trainingTasks: WeekTask[] = trainingWeek.map(s=>({
-    id:`tr_${s.id}`, title:`${SPORT_EMOJI[s.sport as SportType]} ${s.title}`, type:'sport' as TaskType,
+    id:`tr_${s.id}`, title:`[${SPORT_ABBR[s.sport as SportType]}] ${s.title}`, type:'sport' as TaskType,
     dayIndex:s.dayIndex, startHour:parseInt(s.time.split(':')[0])||6, startMin:parseInt(s.time.split(':')[1])||0,
     durationMin:s.durationMin, fromTraining:true, color:SPORT_BORDER[s.sport as SportType],
   }))
@@ -1202,9 +1437,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     return (
       <div key={t.id} onClick={e=>{e.stopPropagation();if(!t.fromTraining)setEditModal(t)}}
         style={{ borderRadius:5,padding:'3px 5px',background:t.fromTraining?`${border}22`:cfg.bg,borderLeft:`2px solid ${border}`,cursor:t.fromTraining?'default':'pointer',position:'relative',marginBottom:2 }}>
-        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8 }}>⭐</span>}
+        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
         <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:t.fromTraining?border:'var(--text)',paddingRight:t.priority?10:0 }}>{t.title}</p>
-        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatDur(t.durationMin)}</p>
+        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatHM(t.durationMin)}</p>
       </div>
     )
   }
@@ -1252,7 +1487,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
               {mainTasks.map(mt=>(
                 <div key={mt.id} onClick={e=>{e.stopPropagation();setEditModal(mt)}}
                   style={{ marginTop:3,padding:'2px 5px',borderRadius:5,background:'rgba(255,179,64,0.15)',border:'1px solid #ffb34055',cursor:'pointer' }}>
-                  <p style={{ fontSize:8,fontWeight:600,color:'#ffb340',margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>⭐ {mt.title}</p>
+                  <p style={{ fontSize:8,fontWeight:600,color:'#ffb340',margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>• {mt.title}</p>
                 </div>
               ))}
             </div>
@@ -1298,10 +1533,10 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       <div key={a.id} onClick={e=>{e.stopPropagation();setActivityDetail(a)}}
                         style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer',zIndex:1 }}>
                         <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                          <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>✓</span>
-                          <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{SPORT_EMOJI[sp]} {a.name}</p>
+                          <SportBadge sport={sp} size="xs"/>
+                          <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
                         </div>
-                        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatDur(Math.round(a.elapsedTime/60))}</p>
+                        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
                       </div>
                     )
                   })}
@@ -1318,7 +1553,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                         onTouchEnd={onTaskTouchEnd}
                         onClick={e=>{e.stopPropagation();if(!t.fromTraining)setEditModal(t)}}
                         style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:t.fromTraining?`${border}22`:cfg.bg,borderLeft:`2px solid ${border}`,cursor:t.fromTraining?'default':'pointer',zIndex:1 }}>
-                        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8 }}>⭐</span>}
+                        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
                         <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:t.fromTraining?border:'var(--text)',paddingRight:t.priority?10:0 }}>{t.title}</p>
                         {t.startMin>0&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(hour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')}</p>}
                         <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatDur(t.durationMin)}</p>
@@ -1353,7 +1588,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           <div style={{ display:'flex',alignItems:'center',gap:10,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:'10px 14px',minHeight:46 }}>
             {todayMainTasks.length>0
               ? <>
-                  <span style={{ fontSize:11,color:'#ffb340',fontWeight:700,whiteSpace:'nowrap' as const }}>⭐ Focus du jour</span>
+                  <span style={{ fontSize:11,color:'#ffb340',fontWeight:700,whiteSpace:'nowrap' as const }}>• Focus du jour</span>
                   <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6,flex:1 }}>
                     {todayMainTasks.map(t=>(
                       <span key={t.id} onClick={()=>setEditModal(t)}
@@ -1417,7 +1652,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
       {mainTaskModal&&<div onClick={()=>setMainTaskModal(null)} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
         <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:16,border:'1px solid #ffb34066',padding:22,maxWidth:380,width:'100%',boxShadow:'0 0 0 1px #ffb34033' }}>
           <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:14 }}>
-            <span style={{ fontSize:18 }}>⭐</span>
+            <span style={{ fontSize:18,color:'#ffb340',fontWeight:900 }}>•</span>
             <div>
               <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color:'#ffb340' }}>Main Task — {DAY_NAMES[mainTaskModal.dayIndex]} {dates[mainTaskModal.dayIndex]}</h3>
               <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>Focus principal de la journée</p>
@@ -1430,7 +1665,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             style={{ width:'100%',padding:'10px 12px',borderRadius:9,border:'1px solid #ffb34066',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',marginBottom:12 }}/>
           <div style={{ display:'flex',gap:8 }}>
             <button onClick={()=>setMainTaskModal(null)} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
-            <button onClick={()=>handleAddMainTask(mainTaskModal.dayIndex)} style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#ffb340,#f97316)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>⭐ Ajouter</button>
+            <button onClick={()=>handleAddMainTask(mainTaskModal.dayIndex)} style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#ffb340,#f97316)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>Ajouter</button>
           </div>
         </div>
       </div>}
@@ -1445,7 +1680,7 @@ function TaskModal({ dayIndex, startHour, onClose, onSave }:{ dayIndex:number; s
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Nouvelle tâche</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
         <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:12 }}>
           {(Object.entries(TASK_CONFIG) as [TaskType,{label:string;color:string;bg:string}][]).map(([t,cfg])=>(
@@ -1460,7 +1695,7 @@ function TaskModal({ dayIndex, startHour, onClose, onSave }:{ dayIndex:number; s
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:14,cursor:'pointer' }} onClick={()=>setPriority(!priority)}>
           <div style={{ width:20,height:20,borderRadius:5,border:`2px solid ${priority?'#ffb340':'var(--border)'}`,background:priority?'#ffb340':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>{priority&&<span style={{ color:'#fff',fontSize:12 }}>✓</span>}</div>
-          <p style={{ fontSize:13,fontWeight:500,margin:0,color:priority?'#ffb340':'var(--text-mid)' }}>⭐ Tâche prioritaire</p>
+          <p style={{ fontSize:13,fontWeight:500,margin:0,color:priority?'#ffb340':'var(--text-mid)' }}>Tâche prioritaire</p>
         </div>
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
@@ -1478,7 +1713,7 @@ function TaskEditModal({ task, onClose, onSave, onDelete }:{ task:WeekTask; onCl
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:400,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Modifier la tâche</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
         <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:12 }}>
@@ -1487,7 +1722,7 @@ function TaskEditModal({ task, onClose, onSave, onDelete }:{ task:WeekTask; onCl
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:14,cursor:'pointer' }} onClick={()=>setForm({...form,priority:!form.priority})}>
           <div style={{ width:20,height:20,borderRadius:5,border:`2px solid ${form.priority?'#ffb340':'var(--border)'}`,background:form.priority?'#ffb340':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>{form.priority&&<span style={{ color:'#fff',fontSize:12 }}>✓</span>}</div>
-          <p style={{ fontSize:13,margin:0,color:form.priority?'#ffb340':'var(--text-mid)' }}>⭐ Prioritaire</p>
+          <p style={{ fontSize:13,margin:0,color:form.priority?'#ffb340':'var(--text-mid)' }}>Prioritaire</p>
         </div>
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={()=>onDelete(task.id)} style={{ padding:'9px 12px',borderRadius:10,background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:12,cursor:'pointer' }}>Supprimer</button>
@@ -1635,7 +1870,7 @@ function RaceYearTab() {
                   </div>
                   <div style={{ flex:1,minWidth:0,cursor:'pointer' }} onClick={()=>setDetailModal(r)}>
                     <p style={{ fontSize:12,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{r.name}</p>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} · {SPORT_EMOJI[r.sport as SportType]}</p>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} · {SPORT_LABEL[r.sport as SportType]}</p>
                     {r.goal && <p style={{ fontSize:9,color:'var(--text-mid)',margin:'1px 0 0' }}>🎯 {r.goal}</p>}
                   </div>
                   <button onClick={()=>setEditModal(r)} style={{ padding:'4px 8px',borderRadius:7,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>✏️</button>
@@ -1651,7 +1886,7 @@ function RaceYearTab() {
               <div style={{ display:'flex',gap:14,flexWrap:'wrap' as const }}>
                 {sportCounts.map(x=>(
                   <div key={x.sport} style={{ display:'flex',alignItems:'center',gap:6 }}>
-                    <span style={{ fontSize:14 }}>{SPORT_EMOJI[x.sport as SportType]}</span>
+                    <SportBadge sport={x.sport as SportType} size="sm"/>
                     <span style={{ fontSize:12,color:'var(--text-mid)' }}>{SPORT_LABEL[x.sport as SportType]}</span>
                     <span style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,color:'var(--text)' }}>{x.count}</span>
                   </div>
@@ -1689,11 +1924,11 @@ function RaceAddModal({ month, day, year, onClose, onSave }:{ month:number; day?
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Ajouter une course</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Sport</p>
         <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:14 }}>
-          {RACE_SPORTS.map(s=><button key={s} onClick={()=>{setSport(s);setHyroxCat('');setHyroxLvl('');setHyroxGen('')}} style={{ padding:'5px 9px',borderRadius:8,border:'1px solid',borderColor:sport===s?SPORT_BORDER[s]:'var(--border)',background:sport===s?SPORT_BG[s]:'var(--bg-card2)',color:sport===s?SPORT_BORDER[s]:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{SPORT_EMOJI[s]} {RSL[s]}</button>)}
+          {RACE_SPORTS.map(s=>{ const rc=RACE_SPORT_COLOR[s]; return <button key={s} onClick={()=>{setSport(s);setHyroxCat('');setHyroxLvl('');setHyroxGen('')}} style={{ padding:'5px 9px',borderRadius:8,border:'1px solid',borderColor:sport===s?rc.border:'var(--border)',background:sport===s?rc.bg:'var(--bg-card2)',color:sport===s?rc.border:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{RSL[s]}</button> })}
         </div>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Niveau</p>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:14 }}>
@@ -1723,7 +1958,7 @@ function RaceEditModal({ race, onClose, onSave }:{ race:Race; onClose:()=>void; 
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Modifier</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
         <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Nom</p><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
         <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Date</p><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
@@ -1759,17 +1994,17 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
               {race.hyroxCategory && <span style={{ fontSize:9,color:'var(--text-dim)' }}>{race.hyroxCategory} · {race.hyroxLevel} · {race.hyroxGender}</span>}
             </div>
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{race.name}</h3>
-            <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{SPORT_EMOJI[race.sport as SportType]} · {new Date(race.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+            <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{SPORT_LABEL[race.sport as SportType] ?? race.sport} · {new Date(race.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
             {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>📏 {race.runDistance} — {RUN_KM[race.runDistance]}km</p>}
             {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>🔱 {race.triDistance} · 🏊{TRI_SWIM[race.triDistance]} 🚴{TRI_BIKE[race.triDistance]} 🏃{TRI_RUN[race.triDistance]}</p>}
           </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
 
         {/* Tabs */}
         <div style={{ display:'flex',gap:5,marginBottom:14 }}>
           {(['detail','validate'] as const).map(t=>(
-            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===t?SPORT_BORDER[race.sport as SportType]:'var(--border)',background:tab===t?SPORT_BG[race.sport as SportType]:'var(--bg-card2)',color:tab===t?SPORT_BORDER[race.sport as SportType]:'var(--text-mid)',fontSize:11,fontWeight:tab===t?600:400,cursor:'pointer' }}>
+            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===t?RACE_SPORT_COLOR[race.sport].border:'var(--border)',background:tab===t?RACE_SPORT_COLOR[race.sport].bg:'var(--bg-card2)',color:tab===t?RACE_SPORT_COLOR[race.sport].border:'var(--text-mid)',fontSize:11,fontWeight:tab===t?600:400,cursor:'pointer' }}>
               {t==='detail'?'📊 Détail':'✅ Valider résultats'}
             </button>
           ))}
@@ -1875,7 +2110,7 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
               </div>
             )}
 
-            <button onClick={()=>onValidate({...form,validated:true,validationData:{...vd,vSpeed:speed}})} style={{ width:'100%',padding:11,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[race.sport as SportType]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',marginTop:4 }}>✓ Valider les résultats</button>
+            <button onClick={()=>onValidate({...form,validated:true,validationData:{...vd,vSpeed:speed}})} style={{ width:'100%',padding:11,borderRadius:10,background:`linear-gradient(135deg,${RACE_SPORT_COLOR[race.sport].border},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',marginTop:4 }}>Valider les résultats</button>
           </div>
         )}
       </div>

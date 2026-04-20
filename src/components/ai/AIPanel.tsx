@@ -1443,6 +1443,41 @@ function AnalyzeTestFlow({ onSend, onCancel }: { onSend: (prompt: string) => voi
 }
 
 // ══════════════════════════════════════════════════════════════
+// ATTACHMENT
+// ══════════════════════════════════════════════════════════════
+
+interface AttachedFile {
+  name:      string
+  mediaType: string   // 'image/jpeg' | 'image/png' | 'application/pdf' | …
+  data:      string   // base64 sans préfixe data:...;base64,
+  preview?:  string   // data URL pour aperçu image
+  isImage:   boolean
+}
+
+// Convertit un File en AttachedFile (base64 + preview)
+function fileToAttachment(file: File): Promise<AttachedFile> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      // dataUrl = "data:<mediaType>;base64,<data>"
+      const [meta, b64] = dataUrl.split(',')
+      const mediaType = file.type || 'application/octet-stream'
+      const isImage = mediaType.startsWith('image/')
+      resolve({
+        name:      file.name,
+        mediaType,
+        data:      b64,
+        preview:   isImage ? dataUrl : undefined,
+        isImage,
+      })
+    }
+    reader.onerror = () => reject(new Error('Lecture fichier échouée'))
+    reader.readAsDataURL(file)
+  })
+}
+
+// ══════════════════════════════════════════════════════════════
 // PLUS MENU
 // ══════════════════════════════════════════════════════════════
 
@@ -1508,10 +1543,16 @@ function PlusMenu({
   onPrompt,
   onFlow,
   onClose,
+  onCamera,
+  onPhotos,
+  onFiles,
 }: {
   onPrompt: (p: string) => void
-  onFlow: (f: FlowId) => void
-  onClose: () => void
+  onFlow:   (f: FlowId) => void
+  onClose:  () => void
+  onCamera: () => void
+  onPhotos: () => void
+  onFiles:  () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -1523,23 +1564,96 @@ function PlusMenu({
     return () => document.removeEventListener('mousedown', h)
   }, [onClose])
 
+  // Cartes d'attachement — style iOS sombre
+  const ATTACH_CARDS: { label: string; icon: React.ReactNode; onClick: () => void }[] = [
+    {
+      label: 'Caméra',
+      onClick: () => { onClose(); setTimeout(onCamera, 80) },
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      ),
+    },
+    {
+      label: 'Photos',
+      onClick: () => { onClose(); setTimeout(onPhotos, 80) },
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+      ),
+    },
+    {
+      label: 'Fichiers',
+      onClick: () => { onClose(); setTimeout(onFiles, 80) },
+      icon: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6M12 12v6M9 15h6"/>
+        </svg>
+      ),
+    },
+  ]
+
   return (
     <div ref={ref} style={{
       position: 'absolute', bottom: '100%', left: 0, right: 0,
       background: 'var(--ai-bg)',
       border: '1px solid var(--ai-border)',
       borderRadius: '14px 14px 0 0',
-      boxShadow: '0 -12px 40px rgba(0,0,0,0.18)',
+      boxShadow: '0 -12px 40px rgba(0,0,0,0.22)',
       zIndex: 30,
-      maxHeight: '70vh',
+      maxHeight: '72vh',
       overflowY: 'auto',
-      padding: '6px 0 8px',
+      padding: '0 0 8px',
     }}>
       {/* Handle */}
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 10px' }}>
-        <div style={{ width: 32, height: 3, borderRadius: 2, background: 'var(--ai-border)' }} />
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 14px' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ai-border)' }} />
       </div>
 
+      {/* ── Grille Joindre — style iOS ── */}
+      <div style={{ padding: '0 14px 16px' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 4px 10px' }}>
+          Joindre
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+          {ATTACH_CARDS.map(card => (
+            <button
+              key={card.label}
+              onClick={card.onClick}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 10, padding: '18px 8px',
+                borderRadius: 16,
+                background: 'rgba(28,28,30,0.92)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                transition: 'transform 0.1s, opacity 0.1s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+              onMouseDown={e  => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.94)' }}
+              onMouseUp={e    => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
+            >
+              {card.icon}
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.92)', letterSpacing: '0.01em' }}>
+                {card.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Séparateur */}
+      <div style={{ height: 1, background: 'var(--ai-border)', margin: '0 14px 8px' }} />
+
+      {/* ── Liste actions ── */}
       {PLUS_CATS.map((cat, ci) => (
         <div key={ci}>
           <div style={{
@@ -1887,6 +2001,8 @@ export default function AIPanel({
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
+  const [attachment,  setAttachment]  = useState<AttachedFile | null>(null)
+  const [attachErr,   setAttachErr]   = useState<string | null>(null)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -1895,6 +2011,10 @@ export default function AIPanel({
   const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
   const selPopupRef = useRef<HTMLDivElement>(null)
+  // File inputs for attachment
+  const cameraRef  = useRef<HTMLInputElement>(null)
+  const photosRef  = useRef<HTMLInputElement>(null)
+  const filesRef   = useRef<HTMLInputElement>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
 
@@ -2033,12 +2153,31 @@ export default function AIPanel({
     } catch { setSelPopup(null) }
   }, [])
 
+  // Handler fichier sélectionné (caméra / photos / fichiers)
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''   // reset pour permettre re-sélection
+    setAttachErr(null)
+    try {
+      const attached = await fileToAttachment(file)
+      setAttachment(attached)
+      areaRef.current?.focus()
+    } catch {
+      setAttachErr('Impossible de lire ce fichier.')
+      setTimeout(() => setAttachErr(null), 4000)
+    }
+  }, [])
+
   // SEND MESSAGE
   const send = useCallback(async (preset?: string) => {
     const txt = (preset ?? input).trim()
-    if (!txt || loading) return
+    const hasAttachment = !!attachment
+    if (!txt && !hasAttachment || loading) return
 
+    const displayText = txt || (attachment ? `[${attachment.name}]` : '')
     setInput('')
+    setAttachment(null)
     setActiveFlow(null)
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
@@ -2049,17 +2188,17 @@ export default function AIPanel({
     if (!conv) {
       conv = {
         id: genId(),
-        title: txt.slice(0, 46) + (txt.length > 46 ? '…' : ''),
+        title: displayText.slice(0, 46) + (displayText.length > 46 ? '…' : ''),
         createdAt: Date.now(), updatedAt: Date.now(), msgs: [],
       }
       isNew = true
     }
 
-    const userMsg: AIMsg = { id: genId(), role: 'user', content: txt, ts: Date.now() }
+    const userMsg: AIMsg = { id: genId(), role: 'user', content: displayText, ts: Date.now() }
     const updated: AIConv = {
       ...conv,
       msgs: [...conv.msgs, userMsg],
-      title: conv.msgs.length === 0 ? (txt.slice(0, 46) + (txt.length > 46 ? '…' : '')) : conv.title,
+      title: conv.msgs.length === 0 ? (displayText.slice(0, 46) + (displayText.length > 46 ? '…' : '')) : conv.title,
       updatedAt: Date.now(),
     }
 
@@ -2073,6 +2212,23 @@ export default function AIPanel({
     const cid      = updated.id
     const snapshot = model   // capture le modèle au moment du send
 
+    // Construire le contenu du dernier message utilisateur
+    // Les messages précédents restent en texte ; le dernier peut avoir un bloc image/doc
+    type MsgForApi = { role: string; content: string | { type: string; [k: string]: unknown }[] }
+    const apiMsgs: MsgForApi[] = updated.msgs.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
+    if (hasAttachment && attachment) {
+      const blocks: { type: string; [k: string]: unknown }[] = []
+      if (attachment.isImage) {
+        blocks.push({ type: 'image', mediaType: attachment.mediaType, data: attachment.data })
+      } else {
+        blocks.push({ type: 'document', mediaType: attachment.mediaType, data: attachment.data, name: attachment.name })
+      }
+      if (txt) blocks.push({ type: 'text', text: txt })
+      apiMsgs.push({ role: 'user', content: blocks })
+    } else {
+      apiMsgs.push({ role: 'user', content: displayText })
+    }
+
     try {
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
@@ -2080,7 +2236,7 @@ export default function AIPanel({
         body: JSON.stringify({
           agentId: 'central',
           modelId: snapshot,
-          messages: updated.msgs.map(m => ({ role: m.role, content: m.content })),
+          messages: apiMsgs,
           context: context ?? {},
         }),
       })
@@ -2611,8 +2767,16 @@ export default function AIPanel({
                 onPrompt={p => { setPlusOpen(false); void send(p) }}
                 onFlow={f => { setPlusOpen(false); setActiveFlow(f) }}
                 onClose={() => setPlusOpen(false)}
+                onCamera={() => cameraRef.current?.click()}
+                onPhotos={() => photosRef.current?.click()}
+                onFiles={() => filesRef.current?.click()}
               />
             )}
+
+            {/* Hidden file inputs */}
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileSelected} />
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
@@ -2621,6 +2785,29 @@ export default function AIPanel({
               borderRadius: 18,
               transition: 'border-color 0.15s',
             }}>
+
+              {/* Attachment preview */}
+              {attachment && (
+                <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {attachment.isImage && attachment.preview
+                    ? <img src={attachment.preview} alt={attachment.name} style={{ height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
+                    : (
+                      <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span>📄</span><span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
+                      </div>
+                    )
+                  }
+                  <button
+                    onClick={() => setAttachment(null)}
+                    style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--ai-mid)', color: 'var(--ai-bg)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >×</button>
+                </div>
+              )}
+
+              {/* Attachment error */}
+              {attachErr && (
+                <p style={{ fontSize: 11, color: '#ef4444', margin: '4px 12px 0', padding: 0 }}>{attachErr}</p>
+              )}
 
               {/* Textarea */}
               <textarea
@@ -2676,18 +2863,18 @@ export default function AIPanel({
                 {/* Envoyer */}
                 <button
                   onClick={() => void send()}
-                  disabled={!input.trim() || loading}
+                  disabled={(!input.trim() && !attachment) || loading}
                   style={{
                     width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                     border: 'none',
-                    background: input.trim() && !loading ? 'var(--ai-text)' : 'var(--ai-border)',
-                    cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
+                    background: (input.trim() || attachment) && !loading ? 'var(--ai-text)' : 'var(--ai-border)',
+                    cursor: (input.trim() || attachment) && !loading ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'background 0.15s',
                   }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke={input.trim() && !loading ? 'var(--ai-bg)' : 'var(--ai-dim)'}
+                    stroke={(input.trim() || attachment) && !loading ? 'var(--ai-bg)' : 'var(--ai-dim)'}
                     strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
                   </svg>

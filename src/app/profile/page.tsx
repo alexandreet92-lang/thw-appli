@@ -200,7 +200,7 @@ function useConnections() {
 
 function useProfile() {
   const supabase = createClient()
-  const [data, setData] = useState({ full_name:'', bio:'', height_cm:'', weight_kg:'', email:'' })
+  const [data, setData] = useState({ full_name:'', bio:'', height_cm:'', weight_kg:'', email:'', avatar_url:'' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -209,11 +209,12 @@ function useProfile() {
       if (!user) return
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setData({
-        full_name: p?.full_name  ?? '',
-        bio:       p?.bio        ?? '',
-        height_cm: p?.height_cm  ? String(p.height_cm) : '',
-        weight_kg: p?.weight_kg  ? String(p.weight_kg) : '',
-        email:     user.email    ?? '',
+        full_name:  p?.full_name  ?? '',
+        bio:        p?.bio        ?? '',
+        height_cm:  p?.height_cm  ? String(p.height_cm) : '',
+        weight_kg:  p?.weight_kg  ? String(p.weight_kg) : '',
+        email:      user.email    ?? '',
+        avatar_url: p?.avatar_url ?? '',
       })
     }
     load()
@@ -229,6 +230,7 @@ function useProfile() {
       bio:       data.bio       || null,
       height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
       weight_kg: data.weight_kg ? parseFloat(data.weight_kg) : null,
+      avatar_url: data.avatar_url || null,
       updated_at: new Date().toISOString(),
     })
     setSaving(false)
@@ -242,7 +244,11 @@ function useProfile() {
     const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert:true })
     if (error) return null
     const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
-    return urlData.publicUrl
+    const url = urlData.publicUrl
+    // Persist URL in profiles table
+    await supabase.from('profiles').upsert({ id: user.id, avatar_url: url, updated_at: new Date().toISOString() })
+    setData(prev => ({ ...prev, avatar_url: url }))
+    return url
   }
 
   return { data, setData, saving, save, uploadAvatar }
@@ -288,11 +294,17 @@ function ProfilBloc() {
   const { sports, add: addSport, remove: removeSport } = useAthleteSports()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [photo, setPhoto]     = useState<string|null>(null)
-  const [editing, setEditing] = useState(false)
+  const [photo, setPhoto]       = useState<string|null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [editing, setEditing]   = useState(false)
   const [newSport, setNewSport] = useState('run')
   const [newSince, setNewSince] = useState('')
-  const [toast, setToast]     = useState<{msg:string;ok:boolean}|null>(null)
+  const [toast, setToast]       = useState<{msg:string;ok:boolean}|null>(null)
+
+  // Init photo from persisted avatar_url once profile loads
+  useEffect(() => {
+    if (profileData.avatar_url && !photo) setPhoto(profileData.avatar_url)
+  }, [profileData.avatar_url])
 
   useEffect(() => {
     const status = searchParams.get('oauth'); const provider = searchParams.get('provider') ?? ''
@@ -307,8 +319,17 @@ function ProfilBloc() {
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return
+    // Show local preview immediately
     const r = new FileReader(); r.onload = ev => setPhoto(ev.target?.result as string); r.readAsDataURL(f)
-    const url = await uploadAvatar(f); if (url) setPhoto(url)
+    setUploading(true)
+    const url = await uploadAvatar(f)
+    setUploading(false)
+    if (url) {
+      setPhoto(url)
+    } else {
+      setToast({ msg:"Erreur lors de l'envoi de la photo.", ok:false })
+      setTimeout(() => setToast(null), 4000)
+    }
   }
 
   async function handleSave() {
@@ -330,11 +351,16 @@ function ProfilBloc() {
       <Card>
         <div style={{ display:'flex', alignItems:'flex-start', gap:16, marginBottom:22 }}>
           {/* Avatar */}
-          <div onClick={()=>fileRef.current?.click()} style={{ width:76, height:76, borderRadius:22, background:'var(--bg-card2)', border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', flexDirection:'column' as const }}>
+          <div onClick={()=>fileRef.current?.click()} style={{ width:76, height:76, borderRadius:22, background:'var(--bg-card2)', border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', flexDirection:'column' as const, position:'relative' }}>
             {photo
               ? <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
               : <><div style={{ fontSize:24 }}>📷</div><p style={{ fontSize:8, color:'var(--text-dim)', margin:'3px 0 0' }}>Photo</p></>
             }
+            {uploading && (
+              <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', animation:'spin 0.7s linear infinite' }}/>
+              </div>
+            )}
             <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
           </div>
 

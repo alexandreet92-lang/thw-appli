@@ -181,10 +181,30 @@ export function buildChatParams(input: ChatInput) {
     ? formatContextForAgent(agentId, context)
     : ''
   const systemPrompt = contextBlock ? `${baseSystem}\n\n${contextBlock}` : baseSystem
-  const anthropicMessages = messages.map(m => ({
-    role: m.role as 'user' | 'assistant',
-    content: m.content,
-  }))
+  const anthropicMessages = messages.map(m => {
+    if (typeof m.content === 'string') {
+      return { role: m.role as 'user' | 'assistant', content: m.content }
+    }
+    // Contenu multimodal — on mappe chaque bloc vers le format Anthropic
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blocks: any[] = m.content.map(block => {
+      if (block.type === 'text') {
+        return { type: 'text', text: block.text }
+      }
+      if (block.type === 'image') {
+        return {
+          type: 'image',
+          source: { type: 'base64', media_type: block.mediaType, data: block.data },
+        }
+      }
+      // document (PDF)
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: block.mediaType, data: block.data },
+      }
+    })
+    return { role: m.role as 'user' | 'assistant', content: blocks }
+  })
   return { systemPrompt, anthropicMessages }
 }
 

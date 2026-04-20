@@ -298,9 +298,15 @@ export interface NutritionOutput {
 
 // ── CHAT AGENT ────────────────────────────────────────────────
 
+// Blocs de contenu pour messages multimodaux (texte + image + PDF)
+export interface TextBlock     { type: 'text';     text: string }
+export interface ImageBlock    { type: 'image';    mediaType: string; data: string }  // base64 sans préfixe
+export interface DocumentBlock { type: 'document'; mediaType: string; data: string; name?: string }
+export type ContentBlock = TextBlock | ImageBlock | DocumentBlock
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
-  content: string
+  content: string | ContentBlock[]   // string pour rétro-compat, array pour multimodal
 }
 
 // Modèles IA disponibles dans l'IA centrale

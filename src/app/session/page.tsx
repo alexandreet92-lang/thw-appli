@@ -11,7 +11,7 @@ import { usePlanning } from '@/hooks/usePlanning'
 // ══════════════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════════════
-type Sport      = 'muscu' | 'running' | 'velo' | 'natation' | 'hyrox'
+type Sport      = 'muscu' | 'running' | 'velo' | 'natation' | 'hyrox' | 'aviron' | 'triathlon'
 type PageMode   = 'library' | 'build' | 'execute'
 type Zone       = 1 | 2 | 3 | 4 | 5
 type Intensity  = 'low' | 'moderate' | 'high' | 'max'
@@ -20,24 +20,31 @@ type Intensity  = 'low' | 'moderate' | 'high' | 'max'
 interface Exercise {
   id: string; name: string; sets: number; reps: number
   restSec: number; note?: string; circuitId?: string
+  weightKg?: number          // default weight for all series
+  loadPerSet?: number[]      // override per series (length = sets)
 }
 interface Circuit {
   id: string; name: string; rounds: number; restBetweenRoundsSec: number
 }
 
-// — Endurance blocks (Running, Vélo, HT)
+// — Endurance blocks (Running, Vélo, Aviron, Triathlon)
 interface EnduranceBlock {
   id: string; name: string; durationMin: number
   zone: Zone; reps: number; restSec: number
   targetPace?: string   // "4:30/km"
   targetWatts?: number
   note?: string
+  // Interval type
+  intervalType?: 'time' | 'distance'   // for rep blocks
+  distanceM?: number                   // if intervalType = 'distance'
+  durationMmSs?: string                // if intervalType = 'time', format "mm:ss" like "1:30"
 }
 
 // — Natation
 interface SwimSet {
   id: string; reps: number; distanceM: number
   zone: Zone; restSec: number; note?: string
+  targetPacePer100m?: string   // "1:35" format
 }
 
 // — Hyrox
@@ -68,6 +75,7 @@ interface SessionTemplate {
   endurance?: EnduranceSession
   natation?: NatationSession
   hyrox?: HyroxSession
+  rpe?: number   // 1–10 target RPE
 }
 
 // — Execute state
@@ -79,12 +87,24 @@ interface ExecState {
 // ══════════════════════════════════════════════════════════════════
 // SPORT CONFIG
 // ══════════════════════════════════════════════════════════════════
+const SESSION_TYPES: Record<string, string[]> = {
+  running:    ['1500m','5k','10k','Semi','Marathon','VMA','Aérobie','SL1','SL2','Hills','Mixte'],
+  velo:       ['Aérobie','SL1','SL2','PMA','Mixte','Sprints'],
+  muscu:      ['Strength','Strength endurance','Explosivité','Push','Pull','Legs','Full body','Abdos / gainage'],
+  natation:   ['Technique','Seuil','Sprints'],
+  hyrox:      ['Compromised Run','Ergo','Spé wall ball','Spé ergo','Spé sled','Simulation'],
+  aviron:     ['EF','Travail technique','Seuil','Vo2max','Sprints','Race pace'],
+  triathlon:  ['Brick Run','Simulation complète'],
+}
+
 const SPORTS: { id: Sport; label: string; sub: string; color: string }[] = [
   { id:'muscu',    label:'Muscu / Renfo',  sub:'Circuits, séries, reps',   color:'#5b6fff' },
   { id:'running',  label:'Running',        sub:'Blocs, intervalles, allure',color:'#22c55e' },
   { id:'velo',     label:'Vélo / Home trainer', sub:'Watts, zones, blocs',  color:'#f97316' },
   { id:'natation', label:'Natation',       sub:'Séries, distances, zones',  color:'#00c8e0' },
   { id:'hyrox',    label:'Hyrox',          sub:'Ateliers, circuits, runs',  color:'#ef4444' },
+  { id:'aviron',   label:'Aviron',         sub:'Blocs, seuil, distance',    color:'#14b8a6' },
+  { id:'triathlon',label:'Triathlon',      sub:'Brick, simulation',         color:'#a855f7' },
 ]
 
 const ZONE_COLOR: Record<Zone, string> = {
@@ -131,7 +151,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
         { id:'e1', name:'Squat barre', sets:4, reps:5, restSec:180, circuitId:'c1' },
         { id:'e2', name:'Soulevé de terre', sets:4, reps:4, restSec:180, circuitId:'c1' },
         { id:'e3', name:'Developpé couché', sets:4, reps:6, restSec:150, circuitId:'c1' },
-        { id:'e4', name:'Tractions lestees', sets:3, reps:6, restSec:120, circuitId:'c2' },
+        { id:'e4', name:'Tractions lestées', sets:3, reps:6, restSec:120, circuitId:'c2' },
         { id:'e5', name:'Rowing barre', sets:3, reps:8, restSec:90, circuitId:'c2' },
         { id:'e6', name:'Dips', sets:3, reps:10, restSec:90, circuitId:'c2' },
       ],
@@ -239,6 +259,50 @@ function sportLabel(s: Sport): string {
   return SPORTS.find(x => x.id===s)?.label ?? s
 }
 
+function parseMMSS(s: string): number {
+  const parts = s.replace(',', ':').split(':')
+  return (parseInt(parts[0])||0)*60 + (parseInt(parts[1])||0)
+}
+function toMMSS(sec: number): string {
+  return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TSS ESTIMATION
+// ══════════════════════════════════════════════════════════════════
+function estimateTSS(
+  sport: Sport,
+  durationMin: number,
+  intensity: Intensity,
+  endurance?: EnduranceSession,
+  muscu?: MusculaireSession
+): number {
+  const SPORT_FACTOR: Record<Sport, number> = {
+    running: 0.9, velo: 1.0, natation: 0.85, hyrox: 1.05, muscu: 0.65, aviron: 0.95, triathlon: 0.9
+  }
+  const IF_BY_INTENSITY: Record<Intensity, number> = {
+    low: 0.60, moderate: 0.72, high: 0.85, max: 1.00
+  }
+  const sf = SPORT_FACTOR[sport] ?? 0.9
+
+  // If endurance blocks available — use zones
+  if (endurance && endurance.blocks.length > 0) {
+    const IF_BY_ZONE = [0.55, 0.70, 0.83, 0.95, 1.10]
+    return Math.round(endurance.blocks.reduce((total, b) => {
+      const IF = IF_BY_ZONE[b.zone - 1] ?? 0.70
+      const dur = b.durationMin * b.reps
+      return total + (dur / 60) * IF * IF * 100 * sf
+    }, 0))
+  }
+
+  // Suppress unused warning
+  void muscu
+
+  // Fallback — duration + intensity
+  const IF = IF_BY_INTENSITY[intensity] ?? 0.72
+  return Math.round((durationMin / 60) * IF * IF * 100 * sf)
+}
+
 // ══════════════════════════════════════════════════════════════════
 // COUNTDOWN HOOK
 // ══════════════════════════════════════════════════════════════════
@@ -313,8 +377,7 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: R
 // INTENSITY PROFILE SVG
 // ══════════════════════════════════════════════════════════════════
 function IntensityProfile({ blocks }: { blocks: EnduranceBlock[] }) {
-  const totalMin = blocks.reduce((a,b) => a + b.durationMin * b.reps, 0) || 1
-  const H = 100; const PAD = 4; const GAP = 2
+  const H = 100; const GAP = 2
 
   // Expand repeated blocks
   const expanded: { block: EnduranceBlock; rep: number }[] = []
@@ -336,21 +399,23 @@ function IntensityProfile({ blocks }: { blocks: EnduranceBlock[] }) {
           const bH = ZONE_HEIGHT[b.zone]
           const y = H - bH
           const c = ZONE_COLOR[b.zone]
+          const isFirst = rep === 0
+          const blockLabel = b.reps > 1 && isFirst ? `Z${b.zone}×${b.reps}` : `Z${b.zone}`
           return (
             <g key={`${b.id}-${rep}`}>
               <rect x={x} y={y} width={slotW} height={bH} rx={2}
                 fill={c} opacity={0.85}
                 style={{ filter:`drop-shadow(0 0 3px ${c}55)` }}/>
-              {slotW > 8 && bH > 20 && (
+              {slotW > 8 && bH > 20 && isFirst && (
                 <text x={x + slotW/2} y={y + bH/2 + 4} textAnchor="middle"
                   fontSize={Math.min(7, slotW * 0.7)} fill="#fff" fontFamily="DM Sans,sans-serif" fontWeight={700}>
-                  Z{b.zone}
+                  {blockLabel}
                 </text>
               )}
-              {slotW > 6 && (
+              {slotW > 6 && isFirst && (
                 <text x={x + slotW/2} y={H+13} textAnchor="middle"
                   fontSize={Math.min(6.5, slotW * 0.65)} fill="var(--text-dim)" fontFamily="DM Sans,sans-serif">
-                  {b.durationMin}'
+                  {b.durationMin >= 1 ? `${b.durationMin}'` : `${Math.round(b.durationMin * 60)}"`}
                 </text>
               )}
             </g>
@@ -371,6 +436,28 @@ function IntensityProfile({ blocks }: { blocks: EnduranceBlock[] }) {
     </div>
   )
 }
+
+// ══════════════════════════════════════════════════════════════════
+// EXERCISE DATABASE
+// ══════════════════════════════════════════════════════════════════
+const EXERCISE_DB = [
+  // Push
+  'Développé couché','Développé incliné','Développé militaire','Dips','Pompes',
+  'Écarté poulie haute','Extensions triceps',
+  // Pull
+  'Tractions pronation','Tractions supination','Tractions lestées','Rowing barre',
+  'Rowing haltère','Tirage vertical','Curl biceps barre','Curl marteau',
+  // Legs
+  'Squat barre','Squat gobelet','Fentes','Presse à cuisses','Leg extension',
+  'Leg curl couché','Hip thrust','Soulevé de terre','Soulevé de terre roumain',
+  'Mollets debout',
+  // Core / Gainage
+  'Gainage frontal','Gainage latéral','Crunchs','Relevés de jambes','Russian twist',
+  'Roue abdominale','Bird dog',
+  // Hyrox
+  'Wall Balls','Farmer Carry','Sled Push','Sled Pull','SkiErg','Burpee Broad Jump',
+  'Rowing ergomètre','Sandbag Lunges',
+]
 
 // ══════════════════════════════════════════════════════════════════
 // MUSCU BUILDER
@@ -444,7 +531,8 @@ function MusculaireBuilder({ data, onChange }: {
               )}
               {exs.map((ex, idx) => (
                 <div key={ex.id} style={{ background:'var(--bg-main,var(--bg-card))', border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', marginBottom:8 }}>
-                  <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                  {/* Row 1: name + reorder + delete */}
+                  <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
                     {/* Reorder */}
                     <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 }}>
                       <button onClick={() => moveExercise(ex.id,-1)} disabled={idx===0}
@@ -453,13 +541,27 @@ function MusculaireBuilder({ data, onChange }: {
                         style={{ background:'none', border:'none', color:idx===exs.length-1?'var(--border)':'var(--text-dim)', cursor:idx===exs.length-1?'default':'pointer', padding:0, lineHeight:1, fontSize:13 }}>&#8595;</button>
                     </div>
                     <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace', width:16, textAlign:'center', flexShrink:0 }}>{idx+1}</span>
-                    <input value={ex.name} onChange={e => updExercise(ex.id, { name:e.target.value })}
-                      placeholder="Nom de l'exercice" style={{ ...inp }}/>
+                    <input list={`exo-list-${ex.id}`} value={ex.name} onChange={e => updExercise(ex.id, { name:e.target.value })}
+                      placeholder="Exercice..." style={{ ...inp }}/>
+                    <datalist id={`exo-list-${ex.id}`}>
+                      {EXERCISE_DB.map(n => <option key={n} value={n}/>)}
+                    </datalist>
+                    <button onClick={() => rmExercise(ex.id)}
+                      style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:16, padding:'4px', lineHeight:1, flexShrink:0 }}>×</button>
+                  </div>
+                  {/* Row 2: numeric fields grid */}
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(80px,1fr))', gap:8 }}>
                     <NumInput label="Series" value={ex.sets} onChange={v => updExercise(ex.id, { sets:v })} min={1} max={20}/>
                     <NumInput label="Reps" value={ex.reps} onChange={v => updExercise(ex.id, { reps:v })} min={1} max={100}/>
                     <NumInput label="Repos (s)" value={ex.restSec} onChange={v => updExercise(ex.id, { restSec:v })} min={0} max={600}/>
-                    <button onClick={() => rmExercise(ex.id)}
-                      style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:16, padding:'4px', lineHeight:1, flexShrink:0 }}>×</button>
+                    <div>
+                      <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Charge (kg)</label>
+                      <input type="number" value={ex.weightKg ?? ''} min={0} max={999} step={0.5}
+                        onChange={e => updExercise(ex.id, { weightKg: +e.target.value || undefined })}
+                        placeholder="—"
+                        style={{ width:60, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)',
+                          color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                    </div>
                   </div>
                   {/* Optional note */}
                   <input value={ex.note||''} onChange={e => updExercise(ex.id, { note:e.target.value })}
@@ -485,7 +587,12 @@ function MusculaireBuilder({ data, onChange }: {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ENDURANCE BUILDER (Running / Vélo / HT)
+// SWIM DISTANCES
+// ══════════════════════════════════════════════════════════════════
+const SWIM_DISTANCES = [25, 50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1500, 2000]
+
+// ══════════════════════════════════════════════════════════════════
+// ENDURANCE BUILDER (Running / Vélo / Aviron / Triathlon)
 // ══════════════════════════════════════════════════════════════════
 function EnduranceBuilder({ data, sport, onChange }: {
   data: EnduranceSession; sport: Sport
@@ -524,9 +631,10 @@ function EnduranceBuilder({ data, sport, onChange }: {
 
       {blocks.map((b, idx) => (
         <div key={b.id} style={{ border:'1px solid var(--border)', borderRadius:14, padding:'12px 14px', marginBottom:8, background:'var(--bg-card2)' }}>
-          <div style={{ display:'flex', gap:8, alignItems:'flex-start', flexWrap:'wrap' }}>
+          {/* Row 1: name + zone + reorder + delete */}
+          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
             {/* Reorder */}
-            <div style={{ display:'flex', flexDirection:'column', gap:2, paddingTop:2, flexShrink:0 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 }}>
               <button onClick={()=>moveBlock(b.id,-1)} disabled={idx===0}
                 style={{ background:'none', border:'none', color:idx===0?'var(--border)':'var(--text-dim)', cursor:idx===0?'default':'pointer', padding:0, fontSize:12 }}>&#8593;</button>
               <button onClick={()=>moveBlock(b.id,1)} disabled={idx===blocks.length-1}
@@ -534,7 +642,7 @@ function EnduranceBuilder({ data, sport, onChange }: {
             </div>
             {/* Name */}
             <input value={b.name} onChange={e=>updBlock(b.id,{name:e.target.value})}
-              placeholder="Nom du bloc" style={{ minWidth:120, flex:1, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13 }}/>
+              placeholder="Nom du bloc" style={{ minWidth:100, flex:1, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13 }}/>
             {/* Zone select */}
             <div>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Zone</label>
@@ -542,24 +650,83 @@ function EnduranceBuilder({ data, sport, onChange }: {
                 {([1,2,3,4,5] as Zone[]).map(z => <option key={z} value={z}>{ZONE_LABEL[z]}</option>)}
               </select>
             </div>
-            <NumInput label="Duree (min)" value={b.durationMin} onChange={v=>updBlock(b.id,{durationMin:v})} min={1} max={300}/>
-            <NumInput label="Repetitions" value={b.reps} onChange={v=>updBlock(b.id,{reps:v})} min={1} max={50}/>
-            <NumInput label="Repos (s)" value={b.restSec} onChange={v=>updBlock(b.id,{restSec:v})} min={0} max={1800}/>
+            <button onClick={()=>rmBlock(b.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1, flexShrink:0, marginTop:14 }}>×</button>
+          </div>
+          {/* Row 2: numeric fields grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(80px,1fr))', gap:8, marginBottom:8 }}>
+            <NumInput label="Durée" value={b.durationMin} onChange={v=>updBlock(b.id,{durationMin:v})} min={1} max={300}/>
+            <NumInput label="Reps" value={b.reps} onChange={v=>updBlock(b.id,{reps:v})} min={1} max={50}/>
+            <div>
+              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Repos</label>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <input type="number" value={b.restSec} min={0} max={1800}
+                  onChange={e=>updBlock(b.id,{restSec:Math.min(1800,Math.max(0,+e.target.value))})}
+                  style={{ width:56, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13, textAlign:'center' as const, boxSizing:'border-box' as const }}/>
+                <span style={{ fontSize:9, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{toMMSS(b.restSec)}</span>
+              </div>
+            </div>
             {/* Target */}
             <div>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>
-                {isRun ? 'Allure' : 'Watts'}
+                Allure
               </label>
               {isRun ? (
                 <input value={b.targetPace||''} onChange={e=>updBlock(b.id,{targetPace:e.target.value})}
                   placeholder="4:30/km" style={{ width:80, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12 }}/>
               ) : (
                 <input type="number" value={b.targetWatts||''} onChange={e=>updBlock(b.id,{targetWatts:+e.target.value||undefined})}
-                  placeholder="280" style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                  placeholder="280W" style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
               )}
             </div>
-            <button onClick={()=>rmBlock(b.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1, flexShrink:0, marginTop:16 }}>×</button>
           </div>
+
+          {/* Interval section (shown when reps > 1) */}
+          {b.reps > 1 && (
+            <div style={{ borderTop:'1px solid var(--border)', paddingTop:8, marginTop:4 }}>
+              <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center' }}>
+                <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:700 }}>Intervalle</span>
+                <button
+                  onClick={() => updBlock(b.id, { intervalType: b.intervalType==='time' ? 'distance' : 'time' })}
+                  style={{ padding:'3px 10px', borderRadius:99, fontSize:10, fontWeight:600, cursor:'pointer',
+                    border:`1px solid ${b.intervalType ? color : 'var(--border)'}`,
+                    background: b.intervalType ? `${color}15` : 'transparent',
+                    color: b.intervalType ? color : 'var(--text-dim)' }}>
+                  {b.intervalType === 'distance' ? 'Par distance' : 'Par temps'}
+                </button>
+              </div>
+              {b.intervalType === 'time' && (
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <div>
+                    <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Durée effort (mm:ss)</label>
+                    <input value={b.durationMmSs||''} onChange={e => {
+                      const val = e.target.value
+                      updBlock(b.id, {
+                        durationMmSs: val,
+                        durationMin: val ? Math.max(1, Math.round((b.reps * parseMMSS(val)) / 60)) : b.durationMin
+                      })
+                    }}
+                      placeholder="1:30"
+                      style={{ width:72, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12 }}/>
+                  </div>
+                  {b.durationMmSs && (
+                    <span style={{ fontSize:10, color:'var(--text-dim)', marginTop:16 }}>
+                      Total : {toMMSS(b.reps * parseMMSS(b.durationMmSs))}
+                    </span>
+                  )}
+                </div>
+              )}
+              {b.intervalType === 'distance' && isRun && (
+                <div>
+                  <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Distance (m)</label>
+                  <input type="number" value={b.distanceM||''} min={0} max={42195}
+                    onChange={e=>updBlock(b.id,{distanceM:+e.target.value||undefined})}
+                    placeholder="400"
+                    style={{ width:80, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                </div>
+              )}
+            </div>
+          )}
+
           <input value={b.note||''} onChange={e=>updBlock(b.id,{note:e.target.value})}
             placeholder="Note / consigne"
             style={{ marginTop:6, width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'DM Sans,sans-serif', fontSize:11, boxSizing:'border-box' as const }}/>
@@ -599,9 +766,15 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
         <div key={s.id} style={{ border:'1px solid var(--border)', borderRadius:14, padding:'12px 14px', marginBottom:8, background:'var(--bg-card2)' }}>
           <div style={{ display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap' }}>
             <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:'var(--text-dim)', width:18, flexShrink:0, paddingBottom:8 }}>{idx+1}</span>
-            <NumInput label="Repetitions" value={s.reps} onChange={v=>updSet(s.id,{reps:v})} min={1} max={50}/>
+            <NumInput label="Reps" value={s.reps} onChange={v=>updSet(s.id,{reps:v})} min={1} max={50}/>
             <span style={{ fontSize:18, color:'var(--text-dim)', paddingBottom:6, fontWeight:300 }}>×</span>
-            <NumInput label="Distance (m)" value={s.distanceM} onChange={v=>updSet(s.id,{distanceM:v})} min={25} max={5000}/>
+            <div>
+              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Distance</label>
+              <select value={s.distanceM} onChange={e=>updSet(s.id,{distanceM:+e.target.value})}
+                style={sel}>
+                {SWIM_DISTANCES.map(d=><option key={d} value={d}>{d}m</option>)}
+              </select>
+            </div>
             <div>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Zone</label>
               <select value={s.zone} onChange={e=>updSet(s.id,{zone:+e.target.value as Zone})} style={sel}>
@@ -609,7 +782,12 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
               </select>
             </div>
             <NumInput label="Repos (s)" value={s.restSec} onChange={v=>updSet(s.id,{restSec:v})} min={0} max={300}/>
-            <div style={{ flex:1, minWidth:120 }}>
+            <div>
+              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Allure /100m</label>
+              <input value={s.targetPacePer100m||''} onChange={e=>updSet(s.id,{targetPacePer100m:e.target.value})}
+                placeholder="1:35" style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12 }}/>
+            </div>
+            <div style={{ flex:1, minWidth:100 }}>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Note</label>
               <input value={s.note||''} onChange={e=>updSet(s.id,{note:e.target.value})} placeholder="Nage libre, technique..."
                 style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, boxSizing:'border-box' as const }}/>
@@ -617,10 +795,11 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
             <button onClick={()=>rmSet(s.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1, paddingBottom:8 }}>×</button>
           </div>
           {/* Preview line */}
-          <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <span style={{ fontFamily:'DM Mono,monospace', fontWeight:700, color:ZONE_COLOR[s.zone], fontSize:14 }}>{s.reps}×{s.distanceM}m</span>
             <ZoneBadge zone={s.zone}/>
             <span style={{ fontSize:11, color:'var(--text-dim)' }}>repos {s.restSec}s</span>
+            {s.targetPacePer100m && <span style={{ fontSize:11, color:ZONE_COLOR[s.zone], fontFamily:'DM Mono,monospace' }}>{s.targetPacePer100m}/100m</span>}
             {s.note && <span style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>{s.note}</span>}
           </div>
         </div>
@@ -672,7 +851,7 @@ function HyroxBuilder({ data, onChange }: { data: HyroxSession; onChange:(d:Hyro
               <NumInput label="Distance (m)" value={s.distanceM} onChange={v=>updStation(s.id,{distanceM:v})} min={0} max={10000}/>
             )}
             {s.reps !== undefined && (
-              <NumInput label="Repetitions" value={s.reps} onChange={v=>updStation(s.id,{reps:v})} min={0} max={500}/>
+              <NumInput label="Reps" value={s.reps} onChange={v=>updStation(s.id,{reps:v})} min={0} max={500}/>
             )}
             <NumInput label="Repos (s)" value={s.restSec} onChange={v=>updStation(s.id,{restSec:v})} min={0} max={300}/>
             <div style={{ flex:1, minWidth:100 }}>
@@ -803,7 +982,7 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
           </div>
 
           <div style={{ fontSize:18, fontFamily:'DM Mono,monospace', fontWeight:700, color:'var(--text-main)', marginBottom:20 }}>
-            {exercise.reps} reps
+            {exercise.reps} reps{exercise.weightKg ? ` @ ${exercise.weightKg}kg` : ''}
           </div>
 
           {/* Timer ring (shown during rest) */}
@@ -881,7 +1060,7 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
 
       <SectionCard>
         <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'0 0 12px' }}>Detail des blocs</p>
-        {endurance.blocks.map((b, i) => (
+        {endurance.blocks.map((b) => (
           <div key={b.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
             <div>
               <span style={{ fontSize:13, fontWeight:600, color:'var(--text-main)' }}>{b.name}</span>
@@ -930,6 +1109,10 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
             {intensityLabel(t.intensity)}
           </span>
           <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{t.durationMin} min</span>
+          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'#5b6fff' }}>
+            ~{estimateTSS(t.sport, t.durationMin, t.intensity, t.endurance, t.muscu)} TSS
+          </span>
+          {t.rpe && <span style={{ fontSize:10, color:'var(--text-dim)' }}>RPE cible {t.rpe}/10</span>}
         </div>
       </div>
       {/* Stats */}
@@ -986,59 +1169,35 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
 // ══════════════════════════════════════════════════════════════════
 // BUILD MODE — full session form + sport builder
 // ══════════════════════════════════════════════════════════════════
-// ── Types pour l'agent IA session ────────────────────────────
-interface AISessionBlock { type:'warmup'|'effort'|'recovery'|'cooldown'; zone:number; durationMin:number; label:string; description?:string }
-interface AISessionResult { title:string; blocks:AISessionBlock[]; totalDurationMin:number; estimatedTSS:number; coachNotes:string }
-
 function BuildMode({ initial, onSave, onCancel }: {
   initial?: SessionTemplate
   onSave: (t: SessionTemplate) => void
   onCancel: () => void
 }) {
-  const [sport,     setSport]     = useState<Sport>(initial?.sport ?? 'muscu')
-  const [name,      setName]      = useState(initial?.name ?? '')
-  const [duration,  setDuration]  = useState(initial?.durationMin ?? 60)
-  const [intensity, setIntensity] = useState<Intensity>(initial?.intensity ?? 'moderate')
-  const [tagsStr,   setTagsStr]   = useState((initial?.tags??[]).join(', '))
-  const [notes,     setNotes]     = useState(initial?.notes ?? '')
+  const { addSession } = usePlanning()
+  const [sport,       setSport]       = useState<Sport>(initial?.sport ?? 'muscu')
+  const [name,        setName]        = useState(initial?.name ?? '')
+  const [duration,    setDuration]    = useState(initial?.durationMin ?? 60)
+  const [intensity,   setIntensity]   = useState<Intensity>(initial?.intensity ?? 'moderate')
+  const [tagsStr,     setTagsStr]     = useState((initial?.tags??[]).join(', '))
+  const [notes,       setNotes]       = useState(initial?.notes ?? '')
+  const [sessionType, setSessionType] = useState<string>('')
+  const [rpeTarget,   setRpeTarget]   = useState<number>(initial?.rpe ?? 6)
+  const [planDate,    setPlanDate]    = useState('')
+  const [planTime,    setPlanTime]    = useState('09:00')
+  const [planSuccess, setPlanSuccess] = useState(false)
 
-  const [aiLoading,   setAiLoading]   = useState(false)
-  const [aiResult,    setAiResult]    = useState<AISessionResult | null>(null)
-  const [aiError,     setAiError]     = useState<string | null>(null)
-
-  async function generateWithAI() {
-    setAiLoading(true); setAiResult(null); setAiError(null)
-    const sportToApi: Record<Sport, string> = { muscu:'gym', running:'run', velo:'bike', natation:'swim', hyrox:'hyrox' }
-    const intensityToType: Record<Intensity, string> = { low:'recovery', moderate:'endurance', high:'intervals', max:'intervals' }
-    try {
-      const res = await fetch('/api/coach-engine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'build_session',
-          payload: {
-            sport: sportToApi[sport],
-            type: intensityToType[intensity],
-            targetDurationMin: duration,
-            context: notes || `${sportLabel(sport)} — ${intensityLabel(intensity)}`,
-          },
-        }),
-      })
-      const data = await res.json()
-      if (!data.ok) throw new Error(data.error ?? 'Erreur agent')
-      setAiResult(data.result)
-      if (data.result.title && !name) setName(data.result.title)
-    } catch (e: unknown) {
-      setAiError(e instanceof Error ? e.message : 'Erreur inconnue')
-    } finally {
-      setAiLoading(false)
-    }
-  }
+  // Reset session type when sport changes
+  useEffect(() => { setSessionType('') }, [sport])
 
   const [muscu,    setMuscu]    = useState<MusculaireSession>(initial?.muscu    ?? { circuits:[], exercises:[] })
   const [endur,    setEndur]    = useState<EnduranceSession>(initial?.endurance ?? { blocks:[] })
   const [swim,     setSwim]     = useState<NatationSession>(initial?.natation   ?? { sets:[] })
   const [hyrox,    setHyrox]    = useState<HyroxSession>(initial?.hyrox         ?? { stations: HYROX_STATIONS_DEFAULT.map((s,i)=>({...s,id:`nh${i}`})) })
+
+  const isEnduranceSport = sport==='running'||sport==='velo'||sport==='aviron'||sport==='triathlon'
+
+  const estimatedTSS = estimateTSS(sport, duration, intensity, isEnduranceSport ? endur : undefined, sport==='muscu' ? muscu : undefined)
 
   function save() {
     const t: SessionTemplate = {
@@ -1047,8 +1206,9 @@ function BuildMode({ initial, onSave, onCancel }: {
       sport, durationMin: duration, intensity,
       tags: tagsStr.split(',').map(s=>s.trim()).filter(Boolean),
       notes: notes || undefined,
+      rpe: rpeTarget,
       muscu:    sport==='muscu'    ? muscu    : undefined,
-      endurance:sport==='running'||sport==='velo' ? endur : undefined,
+      endurance: isEnduranceSport  ? endur    : undefined,
       natation: sport==='natation' ? swim     : undefined,
       hyrox:    sport==='hyrox'    ? hyrox    : undefined,
     }
@@ -1071,48 +1231,12 @@ function BuildMode({ initial, onSave, onCancel }: {
             </h2>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={generateWithAI} disabled={aiLoading}
-              style={{ padding:'7px 14px', borderRadius:9, background:'rgba(91,111,255,0.10)', border:'1px solid rgba(91,111,255,0.35)', color:'#5b6fff', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:700, cursor:aiLoading?'default':'pointer', opacity:aiLoading?0.6:1, whiteSpace:'nowrap' as const }}>
-              {aiLoading ? '⏳ Génération…' : '✨ Générer avec l\'IA'}
-            </button>
             <button onClick={onCancel}
               style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', cursor:'pointer', color:'var(--text-dim)', fontSize:13, fontFamily:'DM Sans,sans-serif' }}>
               Annuler
             </button>
           </div>
         </div>
-
-        {/* ── Résultat IA ── */}
-        {aiError && (
-          <div style={{ marginBottom:14, padding:'10px 14px', borderRadius:10, background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.25)', color:'#ef4444', fontSize:12 }}>
-            ⚠️ {aiError}
-          </div>
-        )}
-        {aiResult && (
-          <div style={{ marginBottom:20, padding:'16px', borderRadius:14, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.2)' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-              <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'#5b6fff' }}>✨ {aiResult.title}</p>
-              <span style={{ fontSize:10, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{aiResult.totalDurationMin}min · TSS ~{aiResult.estimatedTSS}</span>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
-              {aiResult.blocks.map((b, i) => {
-                const zoneColors = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
-                const c = zoneColors[Math.min(b.zone - 1, 4)] ?? '#9ca3af'
-                return (
-                  <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 12px', borderRadius:8, background:'var(--bg-card2)', borderLeft:`3px solid ${c}` }}>
-                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:10, color:c, fontWeight:700, minWidth:26 }}>Z{b.zone}</span>
-                    <span style={{ fontSize:11, fontWeight:600, flex:1 }}>{b.label}</span>
-                    <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{b.durationMin}min</span>
-                  </div>
-                )
-              })}
-            </div>
-            {aiResult.coachNotes && (
-              <p style={{ fontSize:11, color:'var(--text-mid)', margin:'0 0 10px', fontStyle:'italic' as const }}>💬 {aiResult.coachNotes}</p>
-            )}
-            <button onClick={() => setAiResult(null)} style={{ padding:'4px 10px', borderRadius:7, background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>✕ Fermer</button>
-          </div>
-        )}
 
         {/* Nom */}
         <div style={{ marginBottom:14 }}>
@@ -1135,6 +1259,37 @@ function BuildMode({ initial, onSave, onCancel }: {
             ))}
           </div>
         </div>
+
+        {/* Session type selector */}
+        {SESSION_TYPES[sport] && (
+          <div style={{ marginBottom:14 }}>
+            <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:8 }}>
+              Type de séance
+            </label>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {SESSION_TYPES[sport].map(t => (
+                <button key={t} onClick={() => { setSessionType(t); if(!name) setName(`${sportLabel(sport)} — ${t}`) }}
+                  style={{
+                    padding:'5px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
+                    border:`1px solid ${sessionType===t ? sportColor(sport) : 'var(--border)'}`,
+                    background: sessionType===t ? `${sportColor(sport)}18` : 'transparent',
+                    color: sessionType===t ? sportColor(sport) : 'var(--text-dim)',
+                  }}>
+                  {t}
+                </button>
+              ))}
+              {/* Custom type button */}
+              <button
+                onClick={() => {
+                  const custom = prompt('Nom du type personnalisé :')
+                  if (custom?.trim()) { setSessionType(custom.trim()); if(!name) setName(`${sportLabel(sport)} — ${custom.trim()}`) }
+                }}
+                style={{ padding:'5px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', border:'1px dashed var(--border)', color:'var(--text-dim)', background:'transparent' }}>
+                + Personnalisé
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Duree + Intensite */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
@@ -1159,17 +1314,47 @@ function BuildMode({ initial, onSave, onCancel }: {
           </div>
         </div>
 
+        {/* TSS estimate display */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ padding:'6px 12px', borderRadius:8, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.18)', display:'inline-flex', gap:8, alignItems:'center' }}>
+            <span style={{ fontSize:10, color:'var(--text-dim)' }}>TSS estimé</span>
+            <span style={{ fontFamily:'DM Mono,monospace', fontWeight:700, fontSize:13, color:'#5b6fff' }}>{estimatedTSS} pts</span>
+            <span style={{ fontSize:9, color:'var(--text-dim)' }}>(estimation)</span>
+          </div>
+        </div>
+
+        {/* RPE Gauge */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+            <label style={{ fontSize:11, color:'var(--text-dim)' }}>RPE cible</label>
+            <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700,
+              color: rpeTarget<=3?'#22c55e':rpeTarget<=6?'#f97316':'#ef4444' }}>
+              {rpeTarget}/10
+            </span>
+          </div>
+          <input type="range" min={1} max={10} step={0.5} value={rpeTarget}
+            onChange={e=>setRpeTarget(parseFloat(e.target.value))}
+            style={{ width:'100%', accentColor:'#5b6fff', cursor:'pointer' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:2 }}>
+            <span style={{ fontSize:9, color:'#22c55e' }}>Récup</span>
+            <span style={{ fontSize:9, color:'#f97316' }}>Modéré</span>
+            <span style={{ fontSize:9, color:'#ef4444' }}>Max</span>
+          </div>
+        </div>
+
         {/* Tags */}
         <div style={{ marginBottom:14 }}>
           <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Tags (virgule)</label>
           <input value={tagsStr} onChange={e=>setTagsStr(e.target.value)} placeholder="Force, VMA, Endurance..." style={inp}/>
         </div>
 
-        {/* Notes */}
+        {/* Notes / Description */}
         <div>
-          <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Notes / objectif</label>
-          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Objectif de la seance, contexte..."
-            style={{ ...inp, resize:'none' as const, lineHeight:1.5 }}/>
+          <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>
+            Description / Consignes du coach
+          </label>
+          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
+            placeholder="Objectifs, consignes d'exécution, points d'attention..." style={{ ...inp, resize:'none' as const, lineHeight:1.5 }}/>
         </div>
       </SectionCard>
 
@@ -1179,10 +1364,65 @@ function BuildMode({ initial, onSave, onCancel }: {
         <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:'0 0 20px', color:sportColor(sport) }}>
           {sportLabel(sport)}
         </h3>
-        {sport==='muscu'   && <MusculaireBuilder data={muscu} onChange={setMuscu}/>}
-        {(sport==='running'||sport==='velo') && <EnduranceBuilder data={endur} sport={sport} onChange={setEndur}/>}
+        {sport==='muscu'    && <MusculaireBuilder data={muscu} onChange={setMuscu}/>}
+        {isEnduranceSport   && <EnduranceBuilder data={endur} sport={sport} onChange={setEndur}/>}
         {sport==='natation' && <NatationBuilder data={swim} onChange={setSwim}/>}
         {sport==='hyrox'    && <HyroxBuilder data={hyrox} onChange={setHyrox}/>}
+      </SectionCard>
+
+      {/* Ajouter au planning */}
+      <SectionCard>
+        <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 12px' }}>
+          Ajouter au planning
+        </p>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+          <div>
+            <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Date</label>
+            <input type="date" value={planDate} onChange={e=>setPlanDate(e.target.value)}
+              style={{ ...inp, fontFamily:'DM Mono,monospace' }}/>
+          </div>
+          <div>
+            <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Heure</label>
+            <input type="time" value={planTime} onChange={e=>setPlanTime(e.target.value)}
+              style={{ ...inp, fontFamily:'DM Mono,monospace' }}/>
+          </div>
+        </div>
+        {planSuccess && (
+          <div style={{ marginBottom:10, padding:'8px 12px', borderRadius:8, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', color:'#22c55e', fontSize:12 }}>
+            Séance ajoutée au planning.
+          </div>
+        )}
+        <button
+          disabled={!planDate}
+          onClick={async () => {
+            if (!planDate) return
+            const dateObj = new Date(planDate)
+            const dow = dateObj.getDay() === 0 ? 6 : dateObj.getDay() - 1
+            const sportMap: Record<Sport, string> = { muscu:'gym', running:'run', velo:'bike', natation:'swim', hyrox:'hyrox', aviron:'rowing', triathlon:'run' }
+            await addSession(dow, {
+              day_index: dow,
+              sport: sportMap[sport],
+              title: name || `${sportLabel(sport)}`,
+              time: planTime,
+              duration_min: duration,
+              tss: estimatedTSS,
+              status: 'planned',
+              intensity: intensity,
+              notes: notes || undefined,
+              blocks: [],
+              validation_data: {},
+            })
+            setPlanSuccess(true)
+            setTimeout(() => setPlanSuccess(false), 3000)
+          }}
+          style={{ width:'100%', padding:'11px', borderRadius:12, border:'none',
+            background: planDate ? 'linear-gradient(135deg,#22c55e,#00c8e0)' : 'var(--bg-card2)',
+            color: planDate ? '#fff' : 'var(--text-dim)',
+            fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700,
+            cursor: planDate ? 'pointer' : 'not-allowed',
+            opacity: planDate ? 1 : 0.5 }}>
+          Ajouter au planning
+        </button>
       </SectionCard>
 
       {/* Save */}
@@ -1209,10 +1449,10 @@ function LibraryMode({ templates, onNew, onEdit, onStart }: {
   onEdit: (t: SessionTemplate) => void
   onStart: (t: SessionTemplate) => void
 }) {
-  const [filter, setFilter] = useState<Sport|'all'>('all')
+  const [filter, setFilter] = useState<Sport>('muscu')
   const [toast,  setToast]  = useState('')
 
-  const displayed = filter==='all' ? templates : templates.filter(t=>t.sport===filter)
+  const displayed = templates.filter(t=>t.sport===filter)
 
   function sendToPlanning(t: SessionTemplate) {
     // TODO: wire to Planning — insert into planning_sessions or session_templates
@@ -1243,7 +1483,6 @@ function LibraryMode({ templates, onNew, onEdit, onStart }: {
 
         {/* Sport filter */}
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <Pill active={filter==='all'} color="#00c8e0" onClick={()=>setFilter('all')}>Toutes</Pill>
           {SPORTS.map(s => <Pill key={s.id} active={filter===s.id} color={s.color} onClick={()=>setFilter(s.id)}>{s.label}</Pill>)}
         </div>
       </SectionCard>
@@ -1383,7 +1622,7 @@ export default function SessionPage() {
           {execTarget.sport === 'muscu' && (
             <ExecuteMuscu template={execTarget} onExit={()=>setMode('library')}/>
           )}
-          {(execTarget.sport==='running'||execTarget.sport==='velo') && (
+          {(execTarget.sport==='running'||execTarget.sport==='velo'||execTarget.sport==='aviron'||execTarget.sport==='triathlon') && (
             <ExecuteEndurance template={execTarget} onExit={()=>setMode('library')}/>
           )}
           {(execTarget.sport==='natation'||execTarget.sport==='hyrox') && (

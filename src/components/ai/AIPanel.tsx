@@ -115,6 +115,14 @@ function fmtDate(ts: number) {
 
 // ── Markdown renderer ──────────────────────────────────────────
 
+const HEADING_STYLES: Record<number, React.CSSProperties> = {
+  1: { fontSize: 16, fontWeight: 800, lineHeight: 1.3,  marginTop: 20, marginBottom: 8  },
+  2: { fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginTop: 16, marginBottom: 6  },
+  3: { fontSize: 13, fontWeight: 600, lineHeight: 1.4,  marginTop: 12, marginBottom: 4  },
+  4: { fontSize: 12, fontWeight: 500, lineHeight: 1.4,  marginTop: 8,  marginBottom: 3,
+       color: 'var(--ai-mid)', letterSpacing: '0.02em' },
+}
+
 function MsgContent({ text }: { text: string }) {
   const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
@@ -124,23 +132,17 @@ function MsgContent({ text }: { text: string }) {
     const raw = lines[i]
     const line = raw.trimEnd()
 
-    if (!line.trim()) { blocks.push(<div key={i} style={{ height: 7 }} />); i++; continue }
+    if (!line.trim()) { blocks.push(<div key={i} style={{ height: 10 }} />); i++; continue }
     if (/^[-=]{3,}$/.test(line.trim())) { i++; continue }
 
     const hMatch = line.match(/^(#{1,4})\s+(.+)/)
     if (hMatch) {
-      const lvl = hMatch[1].length
+      const lvl = Math.min(hMatch[1].length, 4) as 1 | 2 | 3 | 4
       blocks.push(
         <div key={i} style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 700,
-          fontSize: lvl <= 2 ? 14 : 12,
-          color: 'inherit',
-          marginTop: lvl <= 2 ? 14 : 10, marginBottom: 5,
-          letterSpacing: lvl >= 3 ? '0.05em' : undefined,
-          textTransform: lvl >= 3 ? 'uppercase' as const : undefined,
-          opacity: lvl >= 3 ? 0.5 : 1,
-          borderBottom: lvl === 1 ? '1px solid rgba(91,111,255,0.2)' : undefined,
-          paddingBottom: lvl === 1 ? 6 : undefined,
+          fontFamily: 'Syne, sans-serif',
+          color: 'var(--ai-text)',
+          ...HEADING_STYLES[lvl],
         }}>
           {parseBold(hMatch[2])}
         </div>
@@ -151,11 +153,11 @@ function MsgContent({ text }: { text: string }) {
     const nMatch = line.match(/^(\d+)[.)]\s+(.+)/)
     if (nMatch) {
       blocks.push(
-        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
-          <span style={{ color: '#5b6fff', minWidth: 18, fontSize: 12, fontWeight: 600, flexShrink: 0, marginTop: 2 }}>
+        <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 5 }}>
+          <span style={{ color: 'var(--ai-dim)', minWidth: 18, fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3, fontFamily: 'DM Mono,monospace' }}>
             {nMatch[1]}.
           </span>
-          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(nMatch[2])}</span>
+          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
         </div>
       )
       i++; continue
@@ -164,16 +166,16 @@ function MsgContent({ text }: { text: string }) {
     const bMatch = line.match(/^[-•*]\s+(.+)/)
     if (bMatch) {
       blocks.push(
-        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
-          <span style={{ color: '#5b6fff', flexShrink: 0, fontSize: 9, marginTop: 5 }}>▸</span>
-          <span style={{ fontSize: 13, lineHeight: 1.6 }}>{parseBold(bMatch[1])}</span>
+        <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 5 }}>
+          <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: 8, marginTop: 6, lineHeight: 1 }}>●</span>
+          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(bMatch[1])}</span>
         </div>
       )
       i++; continue
     }
 
     blocks.push(
-      <p key={i} style={{ fontSize: 13, lineHeight: 1.65, margin: '0 0 5px 0' }}>
+      <p key={i} style={{ fontSize: 13.5, lineHeight: 1.75, margin: '0 0 6px 0', color: 'var(--ai-text)' }}>
         {parseBold(line)}
       </p>
     )
@@ -186,7 +188,10 @@ function MsgContent({ text }: { text: string }) {
 function parseBold(text: string): React.ReactNode {
   const parts = text.split(/\*\*([^*]+)\*\*/g)
   if (parts.length === 1) return text
-  return <>{parts.map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : <span key={j}>{p}</span>)}</>
+  return <>{parts.map((p, j) => j % 2 === 1
+    ? <strong key={j} style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{p}</strong>
+    : <span key={j}>{p}</span>
+  )}</>
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -710,10 +715,11 @@ function Dots() {
 // MODEL EFFIGY — SVG animé identifiant le modèle actif
 // ══════════════════════════════════════════════════════════════
 
-function ModelEffigy({ model, isAnimating, size = 18 }: {
+function ModelEffigy({ model, isAnimating, size = 18, color }: {
   model: THWModel
   isAnimating: boolean
   size?: number
+  color?: string   // override couleur (ex: 'var(--ai-mid)' pour monochrome)
 }) {
   const cfg = MODEL_CONFIGS[model]
   const animName  = isAnimating ? `${model}_effigy_on` : `${model}_effigy_off`
@@ -722,7 +728,7 @@ function ModelEffigy({ model, isAnimating, size = 18 }: {
     : (model === 'zeus' ? '2.5s' : '3.5s')
 
   const svgStyle: React.CSSProperties = {
-    color: cfg.color,
+    color: color ?? cfg.color,
     display: 'block',
     flexShrink: 0,
     animation: `${animName} ${animSpeed} ease-in-out infinite`,
@@ -770,69 +776,116 @@ function ModelEffigy({ model, isAnimating, size = 18 }: {
   )
 }
 
-// ── ModelPicker — sélecteur des 3 modèles ────────────────────
+// ── ModelPicker — bouton rond + dropdown monochrome ──────────
 
 function ModelPicker({ model, onChange }: {
   model: THWModel
   onChange: (m: THWModel) => void
 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+
   const models: THWModel[] = ['hermes', 'athena', 'zeus']
+  const cfg = MODEL_CONFIGS[model]
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 3,
-      padding: '0 1px 8px',
-    }}>
-      <span style={{
-        fontSize: 10, color: 'var(--ai-dim)',
-        fontFamily: 'DM Sans,sans-serif', marginRight: 3, flexShrink: 0,
-        letterSpacing: '0.03em',
-      }}>
-        Modèle
-      </span>
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
 
-      <div style={{ display: 'flex', gap: 2, flex: 1 }}>
-        {models.map(m => {
-          const cfg = MODEL_CONFIGS[m]
-          const isActive = model === m
-          return (
-            <button
-              key={m}
-              onClick={() => onChange(m)}
-              title={`${cfg.name} — ${cfg.desc}`}
-              className="aip-model-pill"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '4px 10px', borderRadius: 16,
-                border: `1px solid ${isActive ? cfg.color + '70' : 'transparent'}`,
-                background: isActive ? cfg.colorBg : 'transparent',
-                cursor: 'pointer', transition: 'all 0.15s',
-                // CSS var for hover bg
-                ['--pill-hover' as string]: isActive ? cfg.colorBg : 'rgba(0,0,0,0.04)',
-              }}
-            >
-              <ModelEffigy model={m} isAnimating={false} size={12} />
-              <span style={{
-                fontSize: 11, fontFamily: 'Syne,sans-serif',
-                fontWeight: isActive ? 700 : 400,
-                color: isActive ? cfg.color : 'var(--ai-dim)',
-                letterSpacing: '0.01em',
-                lineHeight: 1,
-              }}>
-                {cfg.name}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      {/* Bouton trigger — rond, monochrome */}
+      <button
+        onClick={() => setOpen(p => !p)}
+        title={`Modèle : ${cfg.name}`}
+        style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
+          background: open ? 'var(--ai-bg2)' : 'transparent',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.12s',
+        }}
+      >
+        <ModelEffigy model={model} isAnimating={false} size={14} color="var(--ai-mid)" />
+      </button>
 
-      <span style={{
-        fontSize: 10, color: MODEL_CONFIGS[model].color,
-        fontFamily: 'DM Sans,sans-serif', flexShrink: 0,
-        opacity: 0.75, letterSpacing: '0.02em',
-      }}>
-        {MODEL_CONFIGS[model].hint}
-      </span>
+      {/* Dropdown */}
+      {open && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(100% + 10px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'var(--ai-bg)',
+          border: '1px solid var(--ai-border)',
+          borderRadius: 13,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.13)',
+          overflow: 'hidden',
+          minWidth: 188,
+          zIndex: 50,
+          animation: 'ai_slidein 0.14s ease',
+        }}>
+          <div style={{
+            padding: '10px 14px 6px',
+            fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            fontFamily: 'DM Sans,sans-serif',
+          }}>
+            Modèle IA
+          </div>
+          {models.map(m => {
+            const mc  = MODEL_CONFIGS[m]
+            const isA = model === m
+            return (
+              <button
+                key={m}
+                onClick={() => { onChange(m); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '9px 14px',
+                  border: 'none',
+                  background: isA ? 'var(--ai-bg2)' : 'transparent',
+                  cursor: 'pointer', textAlign: 'left',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+              >
+                <ModelEffigy model={m} isAnimating={false} size={15}
+                  color={isA ? 'var(--ai-text)' : 'var(--ai-dim)'}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12, fontWeight: isA ? 700 : 500,
+                    color: isA ? 'var(--ai-text)' : 'var(--ai-mid)',
+                    fontFamily: 'Syne,sans-serif', lineHeight: 1.2,
+                  }}>
+                    {mc.name}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: 'var(--ai-dim)',
+                    fontFamily: 'DM Sans,sans-serif', marginTop: 2,
+                  }}>
+                    {mc.desc}
+                  </div>
+                </div>
+                {isA && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M20 6L9 17l-5-5"/>
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -1833,12 +1886,15 @@ export default function AIPanel({
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
+  const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
   const initMsgRef = useRef<string | undefined>(undefined)
   // Swipe tracking (mobile)
   const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
+  // Selection popup ref (pour détecter clic extérieur)
+  const selPopupRef = useRef<HTMLDivElement>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
 
@@ -1901,6 +1957,17 @@ export default function AIPanel({
     return () => window.removeEventListener('keydown', h)
   }, [onClose, plusOpen, histOpen, activeFlow, fullscr])
 
+  // Fermer la sélection popup au clic extérieur
+  useEffect(() => {
+    if (!selPopup) return
+    const h = (e: MouseEvent) => {
+      if (selPopupRef.current && selPopupRef.current.contains(e.target as Node)) return
+      setSelPopup(null)
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [selPopup])
+
   // ── Handlers ──────────────────────────────────────────────
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1952,6 +2019,19 @@ export default function AIPanel({
     if (dx > 0 && !histOpen) setHistOpen(true)
     if (dx < 0 && histOpen)  setHistOpen(false)
   }, [isDesktop, histOpen])
+
+  // Sélection de texte → popup "Demander à THW"
+  const handleMsgMouseUp = useCallback(() => {
+    const sel = window.getSelection()
+    const txt = sel?.toString().trim() ?? ''
+    if (txt.length < 5) { setSelPopup(null); return }
+    try {
+      const range = sel!.getRangeAt(0)
+      const rect  = range.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) return
+      setSelPopup({ text: txt, x: rect.left + rect.width / 2, y: rect.top })
+    } catch { setSelPopup(null) }
+  }, [])
 
   // SEND MESSAGE
   const send = useCallback(async (preset?: string) => {
@@ -2119,7 +2199,15 @@ export default function AIPanel({
 
         /* Textarea font — 16px min pour éviter zoom Safari */
         .aip-textarea { font-size: 16px !important; }
-        @media (min-width: 768px) { .aip-textarea { font-size: 13px !important; } }
+        @media (min-width: 768px) { .aip-textarea { font-size: 14px !important; } }
+
+        /* Focus : bordure du conteneur input */
+        .aip-input-wrap:focus-within {
+          border-color: rgba(0,0,0,0.18) !important;
+        }
+        html.dark .aip-input-wrap:focus-within {
+          border-color: rgba(255,255,255,0.18) !important;
+        }
 
         /* Messages scroll */
         .aip-messages {
@@ -2316,7 +2404,7 @@ export default function AIPanel({
           >
 
           {/* ── MESSAGES ───────────────────────────────────── */}
-          <div className="aip-messages" style={{ padding: '16px 16px 0' }}>
+          <div className="aip-messages" style={{ padding: '16px 16px 0' }} onMouseUp={handleMsgMouseUp}>
 
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
@@ -2432,46 +2520,49 @@ export default function AIPanel({
 
             {/* ── Messages ── */}
             {active && active.msgs.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
                 {active.msgs.map((msg, idx) => (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {/* Bulle */}
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+
+                    {/* Message row */}
                     <div style={{
                       display: 'flex',
                       justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start', gap: 8,
+                      alignItems: 'flex-start', gap: 10,
                     }}>
+                      {/* Avatar IA — neutre */}
                       {msg.role === 'assistant' && (() => {
-                        const m   = msg.modelId ?? 'athena'
-                        const mcfg = MODEL_CONFIGS[m]
+                        const m = msg.modelId ?? 'athena'
                         const isStreaming = loading && idx === active.msgs.length - 1
                         return (
                           <div style={{
                             width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                            background: mcfg.colorBg,
-                            border: `1px solid ${mcfg.color}35`,
+                            background: 'var(--ai-bg2)',
+                            border: '1px solid var(--ai-border)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             marginTop: 2,
                           }}>
-                            <ModelEffigy model={m} isAnimating={isStreaming} size={16} />
+                            <ModelEffigy model={m} isAnimating={isStreaming} size={15} color="var(--ai-mid)" />
                           </div>
                         )
                       })()}
-                      <div style={{
-                        maxWidth: '84%',
-                        padding: msg.role === 'user' ? '9px 13px' : '11px 14px',
-                        borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                        background: msg.role === 'user'
-                          ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                          : 'var(--ai-bg2)',
-                        border: msg.role === 'user' ? 'none' : '1px solid var(--ai-border)',
-                        color: msg.role === 'user' ? '#fff' : 'var(--ai-text)',
-                      }}>
-                        {msg.role === 'user'
-                          ? <span style={{ fontSize: 13, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
-                          : <MsgContent text={msg.content} />
-                        }
-                      </div>
+
+                      {/* Bulle user / texte IA libre */}
+                      {msg.role === 'user' ? (
+                        <div style={{
+                          maxWidth: '78%',
+                          padding: '9px 14px',
+                          borderRadius: '14px 14px 4px 14px',
+                          background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                          color: '#fff',
+                        }}>
+                          <span style={{ fontSize: 13.5, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
+                        </div>
+                      ) : (
+                        <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+                          <MsgContent text={msg.content} />
+                        </div>
+                      )}
                     </div>
                     {/* Session card */}
                     {msg.role === 'assistant' && (
@@ -2484,27 +2575,24 @@ export default function AIPanel({
                 ))}
 
                 {/* Typing indicator */}
-                {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (() => {
-                  const mcfg = MODEL_CONFIGS[model]
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <div style={{
-                        width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                        background: mcfg.colorBg,
-                        border: `1px solid ${mcfg.color}35`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <ModelEffigy model={model} isAnimating={true} size={16} />
-                      </div>
-                      <div style={{
-                        padding: '10px 14px', borderRadius: '14px 14px 14px 4px',
-                        background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
-                      }}>
-                        <Dots />
-                      </div>
+                {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                      background: 'var(--ai-bg2)',
+                      border: '1px solid var(--ai-border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <ModelEffigy model={model} isAnimating={true} size={15} color="var(--ai-mid)" />
                     </div>
-                  )
-                })()}
+                    <div style={{
+                      padding: '10px 14px', borderRadius: '14px 14px 14px 4px',
+                      background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                    }}>
+                      <Dots />
+                    </div>
+                  </div>
+                )}
                 <div ref={endRef} />
               </div>
             )}
@@ -2517,9 +2605,6 @@ export default function AIPanel({
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
-            {/* Model picker */}
-            <ModelPicker model={model} onChange={setModel} />
-
             {/* Plus menu */}
             {plusOpen && (
               <PlusMenu
@@ -2529,28 +2614,13 @@ export default function AIPanel({
               />
             )}
 
-            <div style={{
-              display: 'flex', gap: 7, alignItems: 'flex-end',
-              background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
-              borderRadius: 13, padding: '7px 7px 7px 8px',
+            {/* ── Conteneur principal de saisie ── */}
+            <div className="aip-input-wrap" style={{
+              background: 'var(--ai-bg2)',
+              border: '1px solid var(--ai-border)',
+              borderRadius: 18,
+              transition: 'border-color 0.15s',
             }}>
-              {/* + button */}
-              <button
-                onClick={() => setPlusOpen(p => !p)}
-                title="Plus d'options"
-                style={{
-                  width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                  border: `1px solid ${plusOpen ? 'rgba(91,111,255,0.4)' : 'var(--ai-border)'}`,
-                  background: plusOpen ? 'rgba(91,111,255,0.1)' : 'transparent',
-                  cursor: 'pointer', color: plusOpen ? '#5b6fff' : 'var(--ai-dim)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.12s',
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </button>
 
               {/* Textarea */}
               <textarea
@@ -2559,37 +2629,70 @@ export default function AIPanel({
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
-                placeholder="Posez votre question…"
+                placeholder="Pose ta question…"
                 rows={1}
                 style={{
-                  flex: 1, background: 'transparent',
+                  display: 'block', width: '100%',
+                  background: 'transparent',
                   border: 'none', outline: 'none', resize: 'none',
                   fontFamily: 'DM Sans, sans-serif',
-                  lineHeight: 1.5, color: 'var(--ai-text)',
-                  minHeight: 22, maxHeight: 130,
-                  overflowY: 'auto', paddingTop: 2,
+                  lineHeight: 1.55, color: 'var(--ai-text)',
+                  padding: '14px 16px 6px',
+                  minHeight: 26, maxHeight: 130,
+                  overflowY: 'auto',
+                  boxSizing: 'border-box',
                 }}
               />
 
-              {/* Send */}
-              <button
-                onClick={() => void send()}
-                disabled={!input.trim() || loading}
-                style={{
-                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-                  border: 'none',
-                  background: input.trim() && !loading
-                    ? 'linear-gradient(135deg,#00c8e0,#5b6fff)'
-                    : 'var(--ai-border)',
-                  cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.15s',
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
-                </svg>
-              </button>
+              {/* Ligne basse : + · modèle · [spacer] · envoyer */}
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                padding: '4px 8px 8px', gap: 5,
+              }}>
+                {/* + button */}
+                <button
+                  onClick={() => setPlusOpen(p => !p)}
+                  title="Actions"
+                  style={{
+                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                    border: `1px solid ${plusOpen ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
+                    background: plusOpen ? 'var(--ai-bg)' : 'transparent',
+                    cursor: 'pointer', color: 'var(--ai-dim)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.12s',
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+
+                {/* Sélecteur modèle */}
+                <ModelPicker model={model} onChange={setModel} />
+
+                {/* Spacer */}
+                <div style={{ flex: 1 }} />
+
+                {/* Envoyer */}
+                <button
+                  onClick={() => void send()}
+                  disabled={!input.trim() || loading}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                    border: 'none',
+                    background: input.trim() && !loading ? 'var(--ai-text)' : 'var(--ai-border)',
+                    cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke={input.trim() && !loading ? 'var(--ai-bg)' : 'var(--ai-dim)'}
+                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
@@ -2601,6 +2704,54 @@ export default function AIPanel({
         {/* /body */}
         </div>
       </div>
+
+      {/* ── Popup sélection de texte ──────────────────────── */}
+      {selPopup && (
+        <div
+          ref={selPopupRef}
+          style={{
+            position: 'fixed',
+            left: selPopup.x,
+            top: selPopup.y - 52,
+            transform: 'translateX(-50%)',
+            zIndex: 9998,
+            pointerEvents: 'auto',
+            animation: 'ai_slidein 0.12s ease',
+          }}
+        >
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => {
+              const excerpt = selPopup.text.length > 250
+                ? selPopup.text.slice(0, 250) + '…'
+                : selPopup.text
+              setInput(`Approfondis ce point : "${excerpt}"`)
+              setSelPopup(null)
+              window.getSelection()?.removeAllRanges()
+              setTimeout(() => areaRef.current?.focus(), 80)
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '7px 14px 7px 12px',
+              borderRadius: 20,
+              background: 'var(--ai-text)',
+              color: 'var(--ai-bg)',
+              border: 'none',
+              fontSize: 12, fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'DM Sans,sans-serif',
+              boxShadow: '0 4px 22px rgba(0,0,0,0.22)',
+              whiteSpace: 'nowrap',
+              transition: 'opacity 0.12s',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+            Demander à THW
+          </button>
+        </div>
+      )}
     </>,
     document.body
   )

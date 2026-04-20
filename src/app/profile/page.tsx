@@ -411,6 +411,20 @@ function ProfilBloc() {
   const [sleepDur, setSleepDur] = useState<string|null>(null)
   const [toast, setToast] = useState<{msg:string;ok:boolean}|null>(null)
   const trialLeft = 9; const trialDays = 14
+  const dailyUsed = 23;  const dailyMax = 80
+  const weekUsed  = 87;  const weekMax  = 400
+  const [aiDefaultModel, setAiDefaultModel] = useState<'hermes'|'athena'|'zeus'>('athena')
+  const [aiContextInject, setAiContextInject] = useState(true)
+  const [aiResponseLen, setAiResponseLen] = useState<'short'|'balanced'|'detailed'>('balanced')
+
+  useEffect(() => {
+    const m = localStorage.getItem('thw_ai_default_model')
+    const l = localStorage.getItem('thw_ai_resp_len')
+    const c = localStorage.getItem('thw_ai_context_inject')
+    if (m === 'hermes' || m === 'athena' || m === 'zeus') setAiDefaultModel(m)
+    if (l === 'short' || l === 'balanced' || l === 'detailed') setAiResponseLen(l)
+    if (c !== null) setAiContextInject(c !== 'false')
+  }, [])
 
   useEffect(() => {
     const status = searchParams.get('oauth'); const provider = searchParams.get('provider') ?? ''
@@ -539,6 +553,75 @@ function ProfilBloc() {
       </Card>
 
       <Card>
+        <SectionTitle>Modèles IA</SectionTitle>
+        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+          {([
+            {
+              id:'hermes', name:'Hermès', color:'#d4a017',
+              role:'Rapide & direct',
+              uses:['Questions rapides','Récap du jour','Réponse express'],
+              cost:1,
+              effigy:(
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="3" x2="12" y2="21"/>
+                  <path d="M8.5 6.5 Q12 4 15.5 6.5"/>
+                  <path d="M9.5 10 Q10.5 13.5 12 11.5 Q13.5 9.5 14.5 13 Q13 16 12 14 Q10.5 12 9.5 10"/>
+                </svg>
+              ),
+            },
+            {
+              id:'athena', name:'Athéna', color:'#5b6fff',
+              role:'Analyse & expertise',
+              uses:['Analyse hebdo','Construction de séance','Nutrition sportive'],
+              cost:3,
+              effigy:(
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="9" r="3.5"/>
+                  <path d="M6.5 8.5 Q4.5 6 5.5 3.5 Q8.5 2 12 4.5"/>
+                  <path d="M17.5 8.5 Q19.5 6 18.5 3.5 Q15.5 2 12 4.5"/>
+                  <path d="M9 12.5 Q8.5 16.5 10.5 18.5 Q12 20 13.5 18.5 Q15.5 16.5 15 12.5"/>
+                </svg>
+              ),
+            },
+            {
+              id:'zeus', name:'Zeus', color:'#8b5cf6',
+              role:'Vision stratégique',
+              uses:['Planification long terme','Analyse multi-facteurs','Cycles et progression'],
+              cost:8,
+              effigy:(
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                  <polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.9"/>
+                </svg>
+              ),
+            },
+          ] as const).map(m=>(
+            <div key={m.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 13px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${m.color}18`, border:`1px solid ${m.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:m.color, flexShrink:0 }}>
+                {m.effigy}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:5 }}>
+                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:m.color }}>{m.name}</span>
+                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>—</span>
+                  <span style={{ fontSize:11, color:'var(--text-mid)', fontWeight:500 }}>{m.role}</span>
+                </div>
+                <div style={{ display:'flex', flexWrap:'wrap' as const, gap:5 }}>
+                  {m.uses.map((u,i)=>(
+                    <span key={i} style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-dim)' }}>{u}</span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, flexShrink:0, paddingTop:2 }}>
+                <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:m.color }}>{m.cost}</span>
+                <span style={{ fontSize:9, color:'var(--text-dim)' }}>crédit{m.cost>1?'s':''}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'10px 0 0', textAlign:'center' as const, fontStyle:'italic' }}>Tous les abonnements donnent accès aux 3 modèles</p>
+      </Card>
+
+      <Card>
         <SectionTitle>Abonnement</SectionTitle>
         <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(255,179,64,0.08)', border:'1px solid rgba(255,179,64,0.25)', marginBottom:12 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -562,6 +645,26 @@ function ProfilBloc() {
           <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
         </div>
         <p style={{ fontSize:10, color:'var(--text-dim)', margin:'5px 0 0', textAlign:'right' as const }}>{trialLeft} jours restants</p>
+
+        <div style={{ marginTop:14, padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+          <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Utilisation IA</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {([
+              { label:'Aujourd\'hui', used:dailyUsed, max:dailyMax, color:'#5b6fff' },
+              { label:'Cette semaine', used:weekUsed,  max:weekMax,  color:'#a855f7' },
+            ] as const).map(g=>(
+              <div key={g.label}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                  <span style={{ fontSize:11, color:'var(--text-mid)', fontWeight:600 }}>{g.label}</span>
+                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{g.used} / {g.max}</span>
+                </div>
+                <div style={{ height:4, borderRadius:999, background:'var(--border)', overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${Math.min(100,(g.used/g.max)*100)}%`, background:`linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius:999, transition:'width 0.3s' }}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {upgradeOpen && (
           <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
@@ -591,6 +694,59 @@ function ProfilBloc() {
             </div>
           </div>
         )}
+      </Card>
+
+      <Card>
+        <SectionTitle>Réglages IA</SectionTitle>
+        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+
+          <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+            <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Modèle par défaut</p>
+            <div style={{ display:'flex', gap:6 }}>
+              {([
+                ['hermes','Hermès','#d4a017'],
+                ['athena','Athéna','#5b6fff'],
+                ['zeus',  'Zeus',  '#8b5cf6'],
+              ] as const).map(([id,label,color])=>{
+                const active = aiDefaultModel===id
+                return (
+                  <button key={id} onClick={()=>{ setAiDefaultModel(id); localStorage.setItem('thw_ai_default_model',id) }}
+                    style={{ flex:1, padding:'8px 4px', borderRadius:9, border:`1px solid ${active?`${color}55`:'var(--border)'}`, background:active?`${color}18`:'transparent', color:active?color:'var(--text-dim)', fontSize:11, fontWeight:active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit' }}>
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+            <div>
+              <p style={{ fontSize:12, fontWeight:600, color:'var(--text)', margin:'0 0 2px' }}>Contexte automatique</p>
+              <p style={{ fontSize:10, color:'var(--text-dim)', margin:0 }}>L'IA reçoit tes données d'entraînement à chaque message</p>
+            </div>
+            <Toggle value={aiContextInject} onChange={v=>{ setAiContextInject(v); localStorage.setItem('thw_ai_context_inject',String(v)) }}/>
+          </div>
+
+          <div style={{ padding:'12px 14px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+            <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 10px' }}>Longueur des réponses</p>
+            <div style={{ display:'flex', gap:6 }}>
+              {([
+                ['short','Courte'],
+                ['balanced','Équilibrée'],
+                ['detailed','Détaillée'],
+              ] as const).map(([id,label])=>{
+                const active = aiResponseLen===id
+                return (
+                  <button key={id} onClick={()=>{ setAiResponseLen(id); localStorage.setItem('thw_ai_resp_len',id) }}
+                    style={{ flex:1, padding:'8px 4px', borderRadius:9, border:`1px solid ${active?'rgba(120,120,150,0.5)':'var(--border)'}`, background:active?'var(--bg-card)':'transparent', color:active?'var(--text)':'var(--text-dim)', fontSize:11, fontWeight:active?600:400, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit' }}>
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+        </div>
       </Card>
 
       <Card>

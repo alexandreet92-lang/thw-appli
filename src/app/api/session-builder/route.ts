@@ -91,6 +91,49 @@ export async function POST(req: NextRequest) {
 
   let userPrompt: string
 
+  // Build sport-specific profil context
+  const buildProfilContext = (sp: string, p?: typeof profil): string => {
+    if (!p) return 'Profil non configuré — utilise des valeurs relatives (zones)'
+
+    let context = ''
+
+    if (sp === 'running') {
+      context = `- SL1 (Seuil lactique) : ${p.sl1 || 'non configuré'}
+- SL2 (Seuil anaérobie) : ${p.sl2 || 'non configuré'}
+- Zones d'intensité définies : ${p.zones ? Object.entries(p.zones).map(([k, v]) => `${k}=${v}`).join(', ') : 'non configurées'}
+NOTES :
+  • Utilise SL1/SL2 pour recommander allure_cible en minutes/km
+  • La zone Z1 est environ +20s/km au-dessus de SL2, Z2 est SL1 à SL2, Z3 est SL2, Z4/Z5 sont en-dessous de Z2
+  • Si zones sont configurées, utilise-les pour dériver les allures correspondantes
+  • Chaque bloc doit avoir une allure_cible explicite basée sur l'athlète`
+    } else if (sp === 'cycling' || sp === 'vélo') {
+      context = `- FTP (Functional Threshold Power) : ${p.ftp || 'non configuré'}W
+- Zones d'intensité définies : ${p.zones ? Object.entries(p.zones).map(([k, v]) => `${k}=${v}%FTP`).join(', ') : 'non configurées'}
+NOTES :
+  • Utilise FTP pour calculer les watts cibles
+  • Si zones sont configurées (ex: Z3=85-105% FTP), recommande des watts dans ces plages
+  • Chaque bloc de puissance doit avoir watts explicite : watts = FTP × pourcentage_zone / 100
+  • Évite d'utiliser des watts génériques — base-toi sur le FTP de l'athlète`
+    } else if (sp === 'hyrox') {
+      context = `- Configuration disponible : ${p.zones ? 'zones d\'intensité' : 'générique'}
+NOTES :
+  • Hyrox combine course + stations spécialisées
+  • Utilise les zones disponibles pour structurer l'effort
+  • Chaque bloc doit spécifier la zone_effort précise`
+    } else if (sp === 'gym' || sp === 'natation' || sp === 'swimming') {
+      context = `- Configuration disponible : ${p.zones ? 'zones d\'intensité' : 'générique'}
+NOTES :
+  • Utilise les zones ou seuils disponibles pour structurer l'intensité
+  • Pour gym/renfo : duree_effort = durée d'une série, recup = repos
+  • Chaque bloc doit avoir zone_effort et cadence/consignes précises`
+    } else {
+      context = `- FTP/SL1/SL2 : ${p.ftp ? 'FTP ' + p.ftp + 'W' : ''}${p.sl1 ? ', SL1 ' + p.sl1 : ''}${p.sl2 ? ', SL2 ' + p.sl2 : ''}
+- Zones : ${p.zones ? JSON.stringify(p.zones) : 'non configurées'}`
+    }
+
+    return context
+  }
+
   if (modification && sessionActuelle) {
     // Mode modification
     userPrompt = `Tu as précédemment généré cette séance :
@@ -102,7 +145,8 @@ L'athlète souhaite la modifier ainsi :
 Génère une nouvelle version modifiée selon ses demandes.
 Conserve ce qui n'est pas explicitement modifié.
 
-Profil athlète :${profil?.ftp ? `\n- FTP : ${profil.ftp}W` : ''}${profil?.sl1 ? `\n- SL1 run : ${profil.sl1}` : ''}${profil?.sl2 ? `\n- SL2 run : ${profil.sl2}` : ''}${profil?.zones ? `\n- Zones : ${JSON.stringify(profil.zones)}` : ''}
+Profil athlète (Sport: ${sport}) :
+${buildProfilContext(sport, profil)}
 
 Retourne UNIQUEMENT ce JSON :
 ${JSON_SCHEMA}`
@@ -113,16 +157,21 @@ ${JSON_SCHEMA}`
 Sport : ${sport}${sousType ? `\nSous-type : ${sousType}` : ''}
 Types de séance : ${typesSeance.join(', ')}${descriptionLibre ? `\nDescription libre de l'athlète : "${descriptionLibre}"` : ''}
 
-Profil athlète :${profil?.ftp ? `\n- FTP vélo : ${profil.ftp}W` : ''}${profil?.sl1 ? `\n- SL1 run : ${profil.sl1}` : ''}${profil?.sl2 ? `\n- SL2 run : ${profil.sl2}` : ''}${profil?.zones ? `\n- Zones : ${JSON.stringify(profil.zones)}` : ''}
-${!profil?.ftp && !profil?.sl1 ? '- Profil non configuré — utilise des valeurs relatives (zones)' : ''}
+Profil athlète (Sport: ${sport}) :
+${buildProfilContext(sport, profil)}
 
-Règles :
-- Inclure systématiquement un bloc échauffement et un retour au calme
-- Les intensités doivent être précises (zones, watts, allures si disponibles)
-- TSS estimé cohérent avec la durée et l'intensité
-- RPE cible cohérent avec l'intensité
-- Les blocs doivent être dans l'ordre chronologique
-- Pour muscu/renfo : duree_effort = durée d'un circuit ou série, recup = repos entre séries
+Règles prioritaires :
+1. Adapte la séance au profil de l'athlète (pas de données génériques)
+2. Inclure systématiquement un bloc échauffement et un retour au calme
+3. Les intensités doivent être précises :
+   - Running : allure_cible en min/km, zone_effort basées sur SL1/SL2
+   - Cycling : watts cibles basés sur FTP, zone_effort en % FTP
+   - Autres : zone_effort précises selon les zones disponibles
+4. TSS estimé cohérent avec la durée et l'intensité
+5. RPE cible cohérent avec l'intensité
+6. Les blocs doivent être dans l'ordre chronologique
+7. Pour muscu/renfo : duree_effort = durée d'un circuit ou série, recup = repos entre séries
+8. JAMAIS de valeurs génériques — TOUJOURS utiliser les données du profil de l'athlète
 
 Retourne UNIQUEMENT ce JSON :
 ${JSON_SCHEMA}`

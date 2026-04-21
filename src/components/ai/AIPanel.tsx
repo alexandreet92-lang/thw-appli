@@ -1635,17 +1635,38 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
         .eq('user_id', user.id)
         .eq('is_current', true)
       if (!data?.length) return {}
+
       const bike = data.find((r: { sport: string }) => r.sport === 'bike')
       const run  = data.find((r: { sport: string }) => r.sport === 'run')
       const result: { ftp?: number; sl1?: string; sl2?: string; zones?: Record<string, string> } = {}
+
+      // Collect FTP from bike
       if (bike?.ftp_watts) result.ftp = bike.ftp_watts as number
+
+      // Collect SL1/SL2 from running
       if (run?.sl1)  result.sl1 = run.sl1 as string
       if (run?.sl2)  result.sl2 = run.sl2 as string
+
+      // Collect ALL zone values (Z1-Z5) from ALL sports for full context
       const zones: Record<string, string> = {}
       for (const row of data) {
-        const r = row as { sport: string; z1_value?: string; z2_value?: string; z3_value?: string; z4_value?: string; z5_value?: string }
+        const r = row as {
+          sport: string
+          z1_value?: string; z2_value?: string; z3_value?: string; z4_value?: string; z5_value?: string
+          sl1?: string; sl2?: string; ftp_watts?: number
+        }
+        // Collect all zone values for all sports
+        if (r.z1_value) zones[`${r.sport}_z1`] = r.z1_value
+        if (r.z2_value) zones[`${r.sport}_z2`] = r.z2_value
         if (r.z3_value) zones[`${r.sport}_z3`] = r.z3_value
         if (r.z4_value) zones[`${r.sport}_z4`] = r.z4_value
+        if (r.z5_value) zones[`${r.sport}_z5`] = r.z5_value
+
+        // Also collect SL1/SL2 for other sports if available
+        if (r.sport !== 'run') {
+          if (r.sl1) zones[`${r.sport}_sl1`] = r.sl1
+          if (r.sl2) zones[`${r.sport}_sl2`] = r.sl2
+        }
       }
       if (Object.keys(zones).length) result.zones = zones
       return result

@@ -78,6 +78,7 @@ interface HyroxSession {
 interface SessionTemplate {
   id: string; name: string; sport: Sport
   durationMin: number; intensity: Intensity
+  typeSeance?: string[]   // from SESSION_TYPES
   tags: string[]; notes?: string
   muscu?: MusculaireSession
   endurance?: EnduranceSession
@@ -149,7 +150,7 @@ const HYROX_STATIONS_DEFAULT: Omit<HyroxStation, 'id'>[] = [
 const MOCK_TEMPLATES: SessionTemplate[] = [
   {
     id:'s1', name:'Full Body Force', sport:'muscu', durationMin:60,
-    intensity:'high', tags:['Force','Polyarticulaire'],
+    intensity:'high', typeSeance:['Strength','Full body'], tags:['Force','Polyarticulaire'],
     muscu: {
       circuits:[
         { id:'c1', name:'Circuit A — Force', rounds:4, restBetweenRoundsSec:120 },
@@ -167,7 +168,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
   },
   {
     id:'s2', name:'Upper Body Hypertrophie', sport:'muscu', durationMin:50,
-    intensity:'moderate', tags:['Hypertrophie','Haut du corps'],
+    intensity:'moderate', typeSeance:['Push','Pull'], tags:['Hypertrophie','Haut du corps'],
     muscu: {
       circuits:[
         { id:'c3', name:'Circuit A — Push', rounds:4, restBetweenRoundsSec:75 },
@@ -185,7 +186,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
   },
   {
     id:'s3', name:'Fractionne 10x400m', sport:'running', durationMin:55,
-    intensity:'high', tags:['VMA','Fractionne'],
+    intensity:'high', typeSeance:['VMA'], tags:['VMA','Fractionne'],
     endurance: {
       blocks:[
         { id:'b1', name:'Echauffement',    reps:1, intervalType:'time' as const, effortMmSs:'15:00', zone:2 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone },
@@ -196,7 +197,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
   },
   {
     id:'s4', name:'Sortie longue Z2', sport:'running', durationMin:90,
-    intensity:'low', tags:['Endurance','Aerobie'],
+    intensity:'low', typeSeance:['Aérobie'], tags:['Endurance','Aerobie'],
     endurance: {
       blocks:[
         { id:'b4', name:'Z2 continu', reps:1, intervalType:'time' as const, effortMmSs:'90:00', zone:2 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone, targetPace:"5:10/km" },
@@ -205,7 +206,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
   },
   {
     id:'s5', name:'Sweet Spot 2x20min', sport:'velo', durationMin:70,
-    intensity:'high', tags:['Sweet Spot','FTP'],
+    intensity:'high', typeSeance:['SL2'], tags:['Sweet Spot','FTP'],
     endurance: {
       blocks:[
         { id:'b5', name:'Echauffement',  reps:1, intervalType:'time' as const, effortMmSs:'15:00', zone:2 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone },
@@ -216,7 +217,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
   },
   {
     id:'s6', name:'Endurance 3000m', sport:'natation', durationMin:60,
-    intensity:'moderate', tags:['Endurance','Aerobie'],
+    intensity:'moderate', typeSeance:['Seuil'], tags:['Endurance','Aerobie'],
     natation: {
       sets:[
         { id:'n1', reps:1,  distanceM:400, zone:2, restSec:30,  note:'Echauffement nage libre' },
@@ -229,7 +230,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
   },
   {
     id:'s7', name:'Hyrox Race Simulation', sport:'hyrox', durationMin:70,
-    intensity:'max', tags:['Race','Simulation'],
+    intensity:'max', typeSeance:['Simulation'], tags:['Race','Simulation'],
     hyrox: {
       stations: HYROX_STATIONS_DEFAULT.map((s,i) => ({ ...s, id:`h${i+1}` })),
     },
@@ -1288,32 +1289,51 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
 // ══════════════════════════════════════════════════════════════════
 // TEMPLATE CARD
 // ══════════════════════════════════════════════════════════════════
-function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>void; onEdit:()=>void }) {
+function TemplateCard({ t, onStart, onEdit, onPlan }: {
+  t: SessionTemplate
+  onStart: () => void
+  onEdit:  () => void
+  onPlan:  () => void
+}) {
   const color = sportColor(t.sport)
-  const ic = intensityColor(t.intensity)
+  const ic    = intensityColor(t.intensity)
+  const tss   = estimateTSS(t.sport, t.durationMin, t.intensity, t.endurance)
+
   return (
     <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16,
-      padding:'18px 20px', display:'flex', flexDirection:'column', gap:12, transition:'border-color .15s',
-      cursor:'pointer' }} onClick={onEdit}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div>
-          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color, display:'block', marginBottom:4 }}>
-            {sportLabel(t.sport)}
-          </span>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>{t.name}</h3>
+      padding:'18px 20px', display:'flex', flexDirection:'column', gap:12 }}>
+
+      {/* Row 1 — nom + méta droite */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+        <div style={{ minWidth:0 }}>
+          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:'0 0 8px', lineHeight:1.3 }}>{t.name}</h3>
+          {/* Sport badge + type badges */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+            <span style={{ padding:'2px 8px', borderRadius:99, background:`${color}20`, border:`1px solid ${color}55`,
+              fontSize:10, fontWeight:700, color, whiteSpace:'nowrap' }}>
+              {sportLabel(t.sport)}
+            </span>
+            {(t.typeSeance ?? []).map(tp => (
+              <span key={tp} style={{ padding:'2px 8px', borderRadius:99, background:'var(--bg-card2)',
+                border:'1px solid var(--border)', fontSize:10, fontWeight:600, color:'var(--text-mid)', whiteSpace:'nowrap' }}>
+                {tp}
+              </span>
+            ))}
+          </div>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
-          <span style={{ padding:'3px 8px', borderRadius:99, background:`${ic}15`, color:ic, fontSize:10, fontWeight:700 }}>
+
+        {/* Méta — intensité + durée + TSS */}
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:5, flexShrink:0 }}>
+          <span style={{ padding:'3px 9px', borderRadius:99, background:`${ic}18`, color:ic, fontSize:10, fontWeight:700 }}>
             {intensityLabel(t.intensity)}
           </span>
           <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{t.durationMin} min</span>
-          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'#5b6fff' }}>
-            ~{estimateTSS(t.sport, t.durationMin, t.intensity, t.endurance)} TSS
-          </span>
-          {t.rpe && <span style={{ fontSize:10, color:'var(--text-dim)' }}>RPE cible {t.rpe}/10</span>}
+          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'#5b6fff', fontWeight:700 }}>~{tss} TSS</span>
+          {t.rpe && <span style={{ fontSize:10, color:'var(--text-dim)' }}>RPE {t.rpe}/10</span>}
         </div>
       </div>
-      {/* Stats */}
+
+      {/* Contenu résumé */}
       <div style={{ fontSize:11, color:'var(--text-dim)', display:'flex', gap:10, flexWrap:'wrap' }}>
         {t.muscu && (
           <>
@@ -1335,42 +1355,43 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
         )}
         {t.hyrox && <span>{t.hyrox.stations.length} ateliers</span>}
       </div>
-      {/* Tags */}
-      {t.tags.length > 0 && (
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {t.tags.map(tag => (
-            <span key={tag} style={{ padding:'2px 8px', borderRadius:99, background:'var(--bg-card2)', border:'1px solid var(--border)', fontSize:10, color:'var(--text-dim)' }}>{tag}</span>
-          ))}
-        </div>
-      )}
-      {/* Block summary */}
+
+      {/* Block summary + profil */}
       {t.endurance && t.endurance.blocks.length > 0 && (
-        <div style={{ fontSize:11, color:'var(--text-dim)', display:'flex', flexDirection:'column', gap:2, marginTop:2 }}>
-          {t.endurance.blocks.slice(0, 4).map(b => (
-            <span key={b.id} style={{ fontFamily:'DM Mono,monospace', fontSize:10 }}>
-              {b.reps > 1 ? `${b.reps}×` : ''}{b.effortMmSs}
-              {b.targetPace ? ` @ ${b.targetPace}` : b.targetWatts ? ` @ ${b.targetWatts}W` : ''}
-              {parseMMSS(b.recoveryMmSs) > 0 ? ` / ${b.recoveryMmSs} récup` : ''}
-            </span>
-          ))}
-          {t.endurance.blocks.length > 4 && <span style={{ color:'var(--text-dim)' }}>+{t.endurance.blocks.length - 4} blocs</span>}
-        </div>
+        <>
+          <div style={{ fontSize:11, color:'var(--text-dim)', display:'flex', flexDirection:'column', gap:2 }}>
+            {t.endurance.blocks.slice(0, 4).map(b => (
+              <span key={b.id} style={{ fontFamily:'DM Mono,monospace', fontSize:10 }}>
+                {b.reps > 1 ? `${b.reps}×` : ''}{b.effortMmSs}
+                {b.targetPace ? ` @ ${b.targetPace}` : b.targetWatts ? ` @ ${b.targetWatts}W` : ''}
+                {parseMMSS(b.recoveryMmSs) > 0 ? ` / ${b.recoveryMmSs} récup` : ''}
+              </span>
+            ))}
+            {t.endurance.blocks.length > 4 && <span>+{t.endurance.blocks.length - 4} blocs</span>}
+          </div>
+          <div style={{ pointerEvents:'none', opacity:0.7 }}>
+            <IntensityProfile blocks={t.endurance.blocks} sport={t.sport}/>
+          </div>
+        </>
       )}
-      {/* Intensity profile preview */}
-      {t.endurance && t.endurance.blocks.length > 0 && (
-        <div style={{ pointerEvents:'none', opacity:0.7 }}>
-          <IntensityProfile blocks={t.endurance.blocks} sport={t.sport}/>
-        </div>
-      )}
+
       {/* Actions */}
-      <div style={{ display:'flex', gap:8, marginTop:4 }}>
-        <button onClick={e=>{ e.stopPropagation(); onStart() }}
-          style={{ flex:2, padding:'9px 0', borderRadius:10, border:'none', background:`linear-gradient(135deg,${color},${color}bb)`, color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          Demarrer
+      <div style={{ display:'flex', gap:7, marginTop:2 }}>
+        <button onClick={onStart}
+          style={{ flex:2, padding:'9px 0', borderRadius:10, border:'none',
+            background:`linear-gradient(135deg,${color},${color}bb)`,
+            color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          Démarrer
         </button>
-        <button onClick={e=>{ e.stopPropagation(); onEdit() }}
-          style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+        <button onClick={onEdit}
+          style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
+            background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
           Modifier
+        </button>
+        <button onClick={onPlan}
+          style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
+            background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:11, cursor:'pointer' }}>
+          → Planifier
         </button>
       </div>
     </div>
@@ -1715,69 +1736,173 @@ function BuildMode({ initial, onSave, onCancel }: {
 // ══════════════════════════════════════════════════════════════════
 function LibraryMode({ templates, onNew, onEdit, onStart }: {
   templates: SessionTemplate[]
-  onNew: () => void
+  onNew:  () => void
   onEdit: (t: SessionTemplate) => void
-  onStart: (t: SessionTemplate) => void
+  onStart:(t: SessionTemplate) => void
 }) {
-  const [filter, setFilter] = useState<Sport>('muscu')
-  const [toast,  setToast]  = useState('')
+  const [sportFilter, setSportFilter] = useState<Sport | 'all'>('all')
+  const [typeFilters, setTypeFilters]  = useState<string[]>([])
+  const [toast,       setToast]        = useState('')
 
-  const displayed = templates.filter(t=>t.sport===filter)
+  function selectSport(s: Sport | 'all') {
+    setSportFilter(s)
+    setTypeFilters([])
+  }
+
+  function toggleType(tp: string) {
+    setTypeFilters(prev => prev.includes(tp) ? prev.filter(x => x !== tp) : [...prev, tp])
+  }
 
   function sendToPlanning(t: SessionTemplate) {
-    // TODO: wire to Planning — insert into planning_sessions or session_templates
-    setToast(`"${t.name}" envoyee au Planning`)
+    setToast(`"${t.name}" envoyée au Planning`)
     setTimeout(() => setToast(''), 3000)
   }
+
+  // Types disponibles pour le sport sélectionné
+  const availableTypes: string[] = sportFilter !== 'all' ? (SESSION_TYPES[sportFilter] ?? []) : []
+
+  // Filtrage des séances
+  const displayed = templates.filter(t => {
+    if (sportFilter !== 'all' && t.sport !== sportFilter) return false
+    if (typeFilters.length > 0) {
+      const templateTypes = t.typeSeance ?? []
+      if (!typeFilters.some(f => templateTypes.includes(f))) return false
+    }
+    return true
+  })
+
+  // Style tab sport
+  function tabStyle(active: boolean, color: string): React.CSSProperties {
+    return {
+      padding: '7px 16px',
+      borderRadius: 10,
+      border: `1px solid ${active ? color : 'var(--border)'}`,
+      background: active ? color : 'transparent',
+      color: active ? '#fff' : 'var(--text-dim)',
+      fontFamily: 'DM Sans,sans-serif',
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: 'pointer',
+      whiteSpace: 'nowrap' as const,
+      transition: 'all .15s',
+    }
+  }
+
+  // Style badge type filtre
+  function typeStyle(active: boolean, sportCol: string): React.CSSProperties {
+    return {
+      padding: '4px 12px',
+      borderRadius: 99,
+      border: `1px solid ${active ? sportCol : 'var(--border)'}`,
+      background: active ? `${sportCol}22` : 'transparent',
+      color: active ? sportCol : 'var(--text-dim)',
+      fontFamily: 'DM Sans,sans-serif',
+      fontSize: 11,
+      fontWeight: 600,
+      cursor: 'pointer',
+      whiteSpace: 'nowrap' as const,
+      transition: 'all .12s',
+    }
+  }
+
+  const sportCol = sportFilter !== 'all' ? sportColor(sportFilter) : '#5b6fff'
 
   return (
     <div>
       {/* Toast */}
       {toast && (
-        <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background:'#22c55e', color:'#fff', padding:'10px 22px', borderRadius:12, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, zIndex:200, boxShadow:'0 4px 20px rgba(34,197,94,0.4)' }}>
+        <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)',
+          background:'#22c55e', color:'#fff', padding:'10px 22px', borderRadius:12,
+          fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, zIndex:200,
+          boxShadow:'0 4px 20px rgba(34,197,94,0.4)', pointerEvents:'none' }}>
           {toast}
         </div>
       )}
 
       <SectionCard>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
+        {/* Header */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18, flexWrap:'wrap', gap:10 }}>
           <div>
-            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Bibliotheque</p>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>Seances types</h2>
+            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Bibliothèque</p>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>Séances types</h2>
           </div>
           <button onClick={onNew}
-            style={{ padding:'9px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 12px rgba(0,200,224,0.3)' }}>
-            + Nouvelle seance
+            style={{ padding:'9px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)',
+              color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer',
+              boxShadow:'0 2px 12px rgba(0,200,224,0.3)' }}>
+            + Nouvelle séance
           </button>
         </div>
 
-        {/* Sport filter */}
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          {SPORTS.map(s => <Pill key={s.id} active={filter===s.id} color={s.color} onClick={()=>setFilter(s.id)}>{s.label}</Pill>)}
+        {/* Niveau 1 — Tabs sport (scrollable) */}
+        <div style={{ overflowX:'auto', paddingBottom:2 }}>
+          <div style={{ display:'flex', gap:7, minWidth:'max-content' }}>
+            <button style={tabStyle(sportFilter==='all','#5b6fff')} onClick={()=>selectSport('all')}>Toutes</button>
+            {SPORTS.map(s => (
+              <button key={s.id} style={tabStyle(sportFilter===s.id, s.color)} onClick={()=>selectSport(s.id)}>
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Niveau 2 — Filtres par type (badges multi-select) */}
+        {availableTypes.length > 0 && (
+          <div style={{ marginTop:14, overflowX:'auto', paddingBottom:2 }}>
+            <div style={{ display:'flex', gap:6, minWidth:'max-content', alignItems:'center' }}>
+              <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.08em', marginRight:4, whiteSpace:'nowrap' }}>Type</span>
+              {availableTypes.map(tp => (
+                <button key={tp} style={typeStyle(typeFilters.includes(tp), sportCol)} onClick={()=>toggleType(tp)}>
+                  {tp}
+                </button>
+              ))}
+              {typeFilters.length > 0 && (
+                <button onClick={()=>setTypeFilters([])}
+                  style={{ padding:'4px 10px', borderRadius:99, border:'none', background:'transparent',
+                    color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:10, cursor:'pointer',
+                    textDecoration:'underline', marginLeft:4 }}>
+                  Effacer
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </SectionCard>
 
-      {displayed.length === 0 && (
+      {/* Grille */}
+      {displayed.length === 0 ? (
         <div style={{ textAlign:'center', padding:'48px 20px', color:'var(--text-dim)' }}>
-          <p style={{ fontSize:14, marginBottom:16 }}>Aucune seance dans cette categorie.</p>
-          <button onClick={onNew}
-            style={{ padding:'11px 28px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            Creer une seance
-          </button>
+          <p style={{ fontSize:14, marginBottom:16 }}>
+            {typeFilters.length > 0 ? 'Aucune séance pour ces types.' : 'Aucune séance dans cette catégorie.'}
+          </p>
+          {typeFilters.length > 0 ? (
+            <button onClick={()=>setTypeFilters([])}
+              style={{ padding:'10px 24px', borderRadius:12, border:'1px solid var(--border)', background:'transparent',
+                color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+              Effacer les filtres
+            </button>
+          ) : (
+            <button onClick={onNew}
+              style={{ padding:'11px 28px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)',
+                color:'#fff', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Créer une séance
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:14 }} id="session-grid">
+          {displayed.map(t => (
+            <TemplateCard
+              key={t.id}
+              t={t}
+              onStart={() => onStart(t)}
+              onEdit={()  => onEdit(t)}
+              onPlan={() => sendToPlanning(t)}
+            />
+          ))}
         </div>
       )}
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:14 }} id="session-grid">
-        {displayed.map(t => (
-          <div key={t.id} style={{ position:'relative' }}>
-            <TemplateCard t={t} onStart={()=>onStart(t)} onEdit={()=>onEdit(t)}/>
-            <button onClick={()=>sendToPlanning(t)}
-              style={{ position:'absolute', top:14, right:14, padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:10, cursor:'pointer', fontWeight:600 }}>
-              → Planning
-            </button>
-          </div>
-        ))}
-      </div>
 
       <style>{`
         @media (max-width:600px) { #session-grid { grid-template-columns: 1fr !important; } }

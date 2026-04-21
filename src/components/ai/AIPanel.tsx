@@ -1616,23 +1616,6 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
   const [saving,       setSaving]       = useState(false)
   const [savedId,      setSavedId]      = useState<string | null>(null)
   const [error,        setError]        = useState<string | null>(null)
-  const [zeusCheckDone, setZeusCheckDone] = useState(false)
-  const [isZeus,        setIsZeus]        = useState(false)
-
-  useEffect(() => {
-    async function checkZeus() {
-      try {
-        const { createClient } = await import('@/lib/supabase/client')
-        const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) { setIsZeus(false); setZeusCheckDone(true); return }
-        const { data } = await sb.from('profiles').select('plan').eq('id', user.id).single()
-        setIsZeus((data as { plan: string } | null)?.plan === 'expert')
-      } catch { setIsZeus(false) }
-      setZeusCheckDone(true)
-    }
-    void checkZeus()
-  }, [])
 
   function toggleType(t: string) {
     setTypesSeance(prev =>
@@ -1745,60 +1728,6 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
       setPhase('saved')
     } catch { /* silently handle */ }
     setSaving(false)
-  }
-
-  // Zeus gate
-  if (!zeusCheckDone) {
-    return (
-      <div style={{ padding: '32px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <Dots />
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif' }}>Vérification…</p>
-      </div>
-    )
-  }
-  if (!isZeus) {
-    return (
-      <div style={{ padding: '8px 0 4px' }}>
-        <div style={{
-          padding: '20px 16px', borderRadius: 12,
-          border: '1px solid rgba(139,92,246,0.3)',
-          background: 'rgba(139,92,246,0.06)',
-          marginBottom: 14,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, color: '#8b5cf6' }}>
-              <path d="M12.5 1.5 L5.5 11 L10.5 11 L7.5 18.5 L14.5 9 L9.5 9 Z"
-                stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round"
-                fill="currentColor" fillOpacity="0.2"/>
-            </svg>
-            <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--ai-text)' }}>
-              Fonctionnalité Zeus
-            </span>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5 }}>
-            Cette fonctionnalité est réservée au modèle Zeus.
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5 }}>
-            Passe à Zeus pour créer des séances avec l'IA.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{
-            flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)',
-            background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-          }}>Fermer</button>
-          <a href="/profile" style={{
-            flex: 2, padding: '9px', borderRadius: 9, border: 'none',
-            background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
-            color: '#fff', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-            textDecoration: 'none', textAlign: 'center' as const,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>Découvrir Zeus ⚡</a>
-        </div>
-      </div>
-    )
   }
 
   // ── Phase : sport ──────────────────────────────────────────────

@@ -35,6 +35,12 @@ interface AIConv {
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | null
 
+interface ActiveQuickAction {
+  label: string
+  apiPrompt: string   // enriched prompt that goes to AI — never shown to user as-is
+  model: THWModel
+}
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -898,8 +904,9 @@ function ModelPicker({ model, onChange }: {
 
 const WP_SPORTS = ['Cyclisme', 'Running', 'Natation', 'Hyrox', 'Musculation', 'Aviron', 'Trail']
 
-function WeakpointsFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; onCancel: () => void }) {
+function WeakpointsFlow({ onSend, onCancel }: { onSend: (apiPrompt: string, displayText: string) => void; onCancel: () => void }) {
   const [selected, setSelected] = useState<string[]>([])
+  const [userContext, setUserContext] = useState('')
 
   function toggle(s: string) {
     setSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
@@ -908,12 +915,14 @@ function WeakpointsFlow({ onSend, onCancel }: { onSend: (prompt: string) => void
   function submit() {
     if (selected.length === 0) return
     const sports = selected.join(', ')
-    onSend(
+    const apiPrompt =
       `Analyse mes points faibles dans les sports suivants : ${sports}. ` +
       `Pour chaque discipline, identifie les lacunes spécifiques (technique, endurance, puissance, récupération, etc.) ` +
       `en te basant sur mes données réelles disponibles dans l'application. ` +
-      `Propose ensuite des axes de travail concrets et priorisés pour progresser.`
-    )
+      `Propose ensuite des axes de travail concrets et priorisés pour progresser.` +
+      (userContext.trim() ? `\n\nContexte de l'utilisateur : "${userContext.trim()}"` : '')
+    const displayText = userContext.trim() || `Analyse mes points faibles — ${selected.join(', ')}`
+    onSend(apiPrompt, displayText)
   }
 
   return (
@@ -941,6 +950,29 @@ function WeakpointsFlow({ onSend, onCancel }: { onSend: (prompt: string) => void
             </button>
           )
         })}
+      </div>
+      {/* Contexte utilisateur — toujours présent */}
+      <div style={{ marginBottom: 12 }}>
+        <p style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)',
+          margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          Ajoute du contexte <span style={{ color: 'var(--ai-dim)', fontWeight: 400 }}>(optionnel — recommandé)</span>
+        </p>
+        <textarea
+          value={userContext}
+          onChange={e => setUserContext(e.target.value)}
+          placeholder="Ex : je me sens fatigué depuis 3 jours, ma charge a augmenté récemment…"
+          rows={2}
+          style={{
+            width: '100%', padding: '9px 11px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+            color: 'var(--ai-text)', fontSize: 12,
+            fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5,
+            outline: 'none', resize: 'none', boxSizing: 'border-box',
+          }}
+        />
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={onCancel} style={{
@@ -1011,9 +1043,10 @@ const NUTRITION_STEPS: NutritionStep[] = [
   },
 ]
 
-function NutritionFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; onCancel: () => void }) {
+function NutritionFlow({ onSend, onCancel }: { onSend: (apiPrompt: string, displayText: string) => void; onCancel: () => void }) {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<string[][]>(Array(NUTRITION_STEPS.length).fill([]))
+  const [userContext, setUserContext] = useState('')
 
   const cur = NUTRITION_STEPS[step]
 
@@ -1034,11 +1067,13 @@ function NutritionFlow({ onSend, onCancel }: { onSend: (prompt: string) => void;
     } else {
       // Build comprehensive prompt
       const parts = NUTRITION_STEPS.map((s, i) => `${s.question} → ${answers[i].join(', ') || 'Non précisé'}`)
-      onSend(
+      const apiPrompt =
         `Crée un plan nutritionnel personnalisé basé sur mes réponses :\n${parts.join('\n')}\n\n` +
         `Appuie-toi sur mes données réelles disponibles dans l'application (activités, poids, objectifs). ` +
-        `Sois précis et pratique.`
-      )
+        `Sois précis et pratique.` +
+        (userContext.trim() ? `\n\nContexte de l'utilisateur : "${userContext.trim()}"` : '')
+      const displayText = userContext.trim() || 'Plan nutritionnel personnalisé'
+      onSend(apiPrompt, displayText)
     }
   }
 
@@ -1091,6 +1126,32 @@ function NutritionFlow({ onSend, onCancel }: { onSend: (prompt: string) => void;
         })}
       </div>
 
+      {/* Contexte utilisateur — toujours présent sur la dernière étape */}
+      {isLast && (
+        <div style={{ marginBottom: 12 }}>
+          <p style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)',
+            margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            Ajoute du contexte <span style={{ color: 'var(--ai-dim)', fontWeight: 400 }}>(optionnel — recommandé)</span>
+          </p>
+          <textarea
+            value={userContext}
+            onChange={e => setUserContext(e.target.value)}
+            placeholder="Ex : je me sens fatigué depuis 3 jours, ma charge a augmenté récemment…"
+            rows={2}
+            style={{
+              width: '100%', padding: '9px 11px', borderRadius: 9,
+              border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+              color: 'var(--ai-text)', fontSize: 12,
+              fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5,
+              outline: 'none', resize: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8 }}>
         {step > 0 && (
           <button onClick={() => setStep(s => s - 1)} style={{
@@ -1128,27 +1189,30 @@ function NutritionFlow({ onSend, onCancel }: { onSend: (prompt: string) => void;
 
 // ── RechargeFlow ───────────────────────────────────────────────
 
-function RechargeFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; onCancel: () => void }) {
+function RechargeFlow({ onSend, onCancel }: { onSend: (apiPrompt: string, displayText: string) => void; onCancel: () => void }) {
   const [type,     setType]     = useState<'competition' | 'training' | null>(null)
   const [intensity, setIntensity] = useState('')
   const [date,     setDate]     = useState('')
+  const [userContext, setUserContext] = useState('')
 
   function submit() {
     if (!type) return
+    let apiPrompt: string
     if (type === 'competition') {
-      onSend(
+      apiPrompt =
         `Crée-moi un plan de recharge glucidique pour une compétition${date ? ` le ${date}` : ''}.` +
         ` Indique les quantités précises de glucides jour par jour avant l'épreuve, les aliments recommandés, ` +
         `le timing des repas et les points de vigilance. Base-toi sur mes données d'entraînement et mon profil.`
-      )
     } else {
-      onSend(
+      apiPrompt =
         `Crée-moi un plan de recharge glucidique pour une session d'entraînement de haute intensité.` +
         `${intensity ? ` Intensité prévue : ${intensity}.` : ''}` +
         ` Explique comment charger avant, comment gérer l'apport pendant et la récupération après. ` +
         `Adapte les quantités à mon profil et mes données disponibles dans l'application.`
-      )
     }
+    if (userContext.trim()) apiPrompt += `\n\nContexte de l'utilisateur : "${userContext.trim()}"`
+    const displayText = userContext.trim() || 'Plan de recharge glucidique'
+    onSend(apiPrompt, displayText)
   }
 
   return (
@@ -1217,6 +1281,29 @@ function RechargeFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; 
         </div>
       )}
 
+      {/* Contexte utilisateur — toujours présent */}
+      <div style={{ marginBottom: 12 }}>
+        <p style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)',
+          margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          Ajoute du contexte <span style={{ color: 'var(--ai-dim)', fontWeight: 400 }}>(optionnel — recommandé)</span>
+        </p>
+        <textarea
+          value={userContext}
+          onChange={e => setUserContext(e.target.value)}
+          placeholder="Ex : je me sens fatigué depuis 3 jours, ma charge a augmenté récemment…"
+          rows={2}
+          style={{
+            width: '100%', padding: '9px 11px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+            color: 'var(--ai-text)', fontSize: 12,
+            fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5,
+            outline: 'none', resize: 'none', boxSizing: 'border-box',
+          }}
+        />
+      </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={onCancel} style={{
           padding: '9px 16px', borderRadius: 9,
@@ -1258,11 +1345,12 @@ interface TestResultRow {
   test_definitions: { nom: string; sport: string } | null
 }
 
-function AnalyzeTestFlow({ onSend, onCancel }: { onSend: (prompt: string) => void; onCancel: () => void }) {
+function AnalyzeTestFlow({ onSend, onCancel }: { onSend: (apiPrompt: string, displayText: string) => void; onCancel: () => void }) {
   const [step,     setStep]     = useState<'sport' | 'results'>('sport')
   const [sport,    setSport]    = useState<string | null>(null)
   const [tests,    setTests]    = useState<TestResultRow[] | null>(null)
   const [loadingT, setLoadingT] = useState(false)
+  const [userContext, setUserContext] = useState('')
 
   async function loadTests(sp: string) {
     setLoadingT(true)
@@ -1315,12 +1403,14 @@ function AnalyzeTestFlow({ onSend, onCancel }: { onSend: (prompt: string) => voi
       return `- ${nom} (${t.date}) : ${vals}${t.notes ? ` — Notes: ${t.notes}` : ''}`
     }).join('\n')
 
-    onSend(
+    const apiPrompt =
       `Analyse mes résultats de tests en ${sportLabel}.\n\n` +
       `Résultats disponibles :\n${testLines}\n\n` +
       `Interprète ces données : progression, niveaux atteints, points forts, faiblesses identifiées. ` +
-      `Propose des axes de travail concrets basés sur ces mesures réelles.`
-    )
+      `Propose des axes de travail concrets basés sur ces mesures réelles.` +
+      (userContext.trim() ? `\n\nContexte de l'utilisateur : "${userContext.trim()}"` : '')
+    const displayText = userContext.trim() || `Analyse mes tests — ${sportLabel}`
+    onSend(apiPrompt, displayText)
   }
 
   // ── Étape 1 : sélection du sport ──
@@ -1427,6 +1517,29 @@ function AnalyzeTestFlow({ onSend, onCancel }: { onSend: (prompt: string) => voi
             </div>
           </div>
         ))}
+      </div>
+      {/* Contexte utilisateur — toujours présent */}
+      <div style={{ marginBottom: 12 }}>
+        <p style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)',
+          margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          Ajoute du contexte <span style={{ color: 'var(--ai-dim)', fontWeight: 400 }}>(optionnel — recommandé)</span>
+        </p>
+        <textarea
+          value={userContext}
+          onChange={e => setUserContext(e.target.value)}
+          placeholder="Ex : je me sens fatigué depuis 3 jours, ma charge a augmenté récemment…"
+          rows={2}
+          style={{
+            width: '100%', padding: '9px 11px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+            color: 'var(--ai-text)', fontSize: 12,
+            fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5,
+            outline: 'none', resize: 'none', boxSizing: 'border-box',
+          }}
+        />
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
@@ -1998,6 +2111,7 @@ export default function AIPanel({
   const [histOpen,    setHistOpen]    = useState(false)
   const [plusOpen,    setPlusOpen]    = useState(false)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
+  const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
@@ -2069,13 +2183,14 @@ export default function AIPanel({
         if (plusOpen)   { setPlusOpen(false) }
         else if (histOpen)  { setHistOpen(false) }
         else if (activeFlow) { setActiveFlow(null) }
+        else if (activeQA)  { setActiveQA(null) }
         else if (fullscr)   { setFullscr(false) }
         else                { onClose() }
       }
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose, plusOpen, histOpen, activeFlow, fullscr])
+  }, [onClose, plusOpen, histOpen, activeFlow, activeQA, fullscr])
 
   // Fermer la sélection popup au clic extérieur
   useEffect(() => {
@@ -2170,15 +2285,19 @@ export default function AIPanel({
   }, [])
 
   // SEND MESSAGE
-  const send = useCallback(async (preset?: string) => {
-    const txt = (preset ?? input).trim()
+  const send = useCallback(async (presetDisplay?: string, presetApi?: string) => {
+    const txt = (presetDisplay ?? input).trim()
     const hasAttachment = !!attachment
-    if (!txt && !hasAttachment || loading) return
+    if (!txt && !hasAttachment && !activeQA || loading) return
 
-    const displayText = txt || (attachment ? `[${attachment.name}]` : '')
+    const displayText = txt || (activeQA ? activeQA.label : '') || (attachment ? `[${attachment.name}]` : '')
+    if (!displayText && !hasAttachment) return
+
     setInput('')
     setAttachment(null)
     setActiveFlow(null)
+    const qaForSend = activeQA   // capture before clearing
+    setActiveQA(null)
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
 
@@ -2216,6 +2335,19 @@ export default function AIPanel({
     // Les messages précédents restent en texte ; le dernier peut avoir un bloc image/doc
     type MsgForApi = { role: string; content: string | { type: string; [k: string]: unknown }[] }
     const apiMsgs: MsgForApi[] = updated.msgs.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
+
+    // Build the API content (enriched with QA context if active)
+    const apiContentText: string = (() => {
+      if (presetApi) return presetApi  // flow already built full prompt
+      if (qaForSend) {
+        // Prepend action context to user's message
+        return txt
+          ? `${qaForSend.apiPrompt}\n\nContexte ajouté par l'utilisateur : "${txt}"`
+          : qaForSend.apiPrompt
+      }
+      return displayText
+    })()
+
     if (hasAttachment && attachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
       if (attachment.isImage) {
@@ -2223,10 +2355,10 @@ export default function AIPanel({
       } else {
         blocks.push({ type: 'document', mediaType: attachment.mediaType, data: attachment.data, name: attachment.name })
       }
-      if (txt) blocks.push({ type: 'text', text: txt })
+      if (apiContentText) blocks.push({ type: 'text', text: apiContentText })
       apiMsgs.push({ role: 'user', content: blocks })
     } else {
-      apiMsgs.push({ role: 'user', content: displayText })
+      apiMsgs.push({ role: 'user', content: apiContentText })
     }
 
     try {
@@ -2274,7 +2406,7 @@ export default function AIPanel({
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model])
+  }, [input, loading, active, context, model, activeQA])
 
   // SSR guard
   if (!mounted) return null
@@ -2592,8 +2724,15 @@ export default function AIPanel({
                         key={i}
                         onClick={() => {
                           setModel(qa.model)
-                          if (qa.flow) setActiveFlow(qa.flow)
-                          else if (qa.prompt) void send(qa.prompt)
+                          if (qa.flow) {
+                            setActiveFlow(qa.flow)
+                            setActiveQA(null)
+                          } else if (qa.prompt) {
+                            // NEW: set intermediate state, never send directly
+                            setActiveQA({ label: qa.label, apiPrompt: qa.prompt, model: qa.model })
+                            setActiveFlow(null)
+                            setTimeout(() => areaRef.current?.focus(), 60)
+                          }
                         }}
                         disabled={loading}
                         style={{
@@ -2649,25 +2788,25 @@ export default function AIPanel({
               <div style={{ animation: 'ai_slidein 0.2s ease', paddingBottom: 16 }}>
                 {activeFlow === 'weakpoints' && (
                   <WeakpointsFlow
-                    onSend={p => void send(p)}
+                    onSend={(apiPrompt, displayText) => void send(displayText, apiPrompt)}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
                 {activeFlow === 'nutrition' && (
                   <NutritionFlow
-                    onSend={p => void send(p)}
+                    onSend={(apiPrompt, displayText) => void send(displayText, apiPrompt)}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
                 {activeFlow === 'analyzetest' && (
                   <AnalyzeTestFlow
-                    onSend={p => void send(p)}
+                    onSend={(apiPrompt, displayText) => void send(displayText, apiPrompt)}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
                 {activeFlow === 'recharge' && (
                   <RechargeFlow
-                    onSend={p => void send(p)}
+                    onSend={(apiPrompt, displayText) => void send(displayText, apiPrompt)}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
@@ -2809,6 +2948,39 @@ export default function AIPanel({
                 <p style={{ fontSize: 11, color: '#ef4444', margin: '4px 12px 0', padding: 0 }}>{attachErr}</p>
               )}
 
+              {/* Active Quick Action chip */}
+              {activeQA && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 12px',
+                  background: 'rgba(0,200,224,0.07)',
+                  borderBottom: '1px solid rgba(0,200,224,0.15)',
+                }}>
+                  {/* Lightning icon */}
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#00c8e0" stroke="none">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  <span style={{
+                    flex: 1, fontSize: 11, fontWeight: 600, color: '#00c8e0',
+                    fontFamily: 'DM Sans, sans-serif',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {activeQA.label}
+                  </span>
+                  <button
+                    onClick={() => setActiveQA(null)}
+                    title="Annuler"
+                    style={{
+                      width: 18, height: 18, borderRadius: '50%', border: 'none',
+                      background: 'rgba(0,200,224,0.15)', color: '#00c8e0',
+                      cursor: 'pointer', fontSize: 13, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      lineHeight: 1,
+                    }}
+                  >×</button>
+                </div>
+              )}
+
               {/* Textarea */}
               <textarea
                 ref={areaRef}
@@ -2816,7 +2988,9 @@ export default function AIPanel({
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
-                placeholder="Pose ta question…"
+                placeholder={activeQA
+                  ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
+                  : 'Pose ta question…'}
                 rows={1}
                 style={{
                   display: 'block', width: '100%',
@@ -2863,18 +3037,18 @@ export default function AIPanel({
                 {/* Envoyer */}
                 <button
                   onClick={() => void send()}
-                  disabled={(!input.trim() && !attachment) || loading}
+                  disabled={(!input.trim() && !attachment && !activeQA) || loading}
                   style={{
                     width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                     border: 'none',
-                    background: (input.trim() || attachment) && !loading ? 'var(--ai-text)' : 'var(--ai-border)',
-                    cursor: (input.trim() || attachment) && !loading ? 'pointer' : 'not-allowed',
+                    background: (input.trim() || attachment || activeQA) && !loading ? 'var(--ai-text)' : 'var(--ai-border)',
+                    cursor: (input.trim() || attachment || activeQA) && !loading ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'background 0.15s',
                   }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke={(input.trim() || attachment) && !loading ? 'var(--ai-bg)' : 'var(--ai-dim)'}
+                    stroke={(input.trim() || attachment || activeQA) && !loading ? 'var(--ai-bg)' : 'var(--ai-dim)'}
                     strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
                   </svg>

@@ -98,22 +98,26 @@ export async function POST(req: NextRequest) {
     let context = ''
 
     if (sp === 'running') {
+      const runZones = p.zones ? Object.entries(p.zones).filter(([k]) => k.startsWith('run_')).map(([k, v]) => `${k.replace('run_', '')}=${v}`).join(', ') : ''
       context = `- SL1 (Seuil lactique) : ${p.sl1 || 'non configuré'}
 - SL2 (Seuil anaérobie) : ${p.sl2 || 'non configuré'}
-- Zones d'intensité définies : ${p.zones ? Object.entries(p.zones).map(([k, v]) => `${k}=${v}`).join(', ') : 'non configurées'}
+- Zones d'intensité définies : ${runZones || 'non configurées'}
 NOTES :
-  • Utilise SL1/SL2 pour recommander allure_cible en minutes/km
-  • La zone Z1 est environ +20s/km au-dessus de SL2, Z2 est SL1 à SL2, Z3 est SL2, Z4/Z5 sont en-dessous de Z2
-  • Si zones sont configurées, utilise-les pour dériver les allures correspondantes
-  • Chaque bloc doit avoir une allure_cible explicite basée sur l'athlète`
+  • SL1 et SL2 sont des seuils clés — utilise-les pour recommander les allures_cible
+  • Les zones run_z1 à run_z5 définissent les fourchettes précises de chaque intensité
+  • Recommande des allures_cible qui correspondent EXACTEMENT aux zones ou seuils de l'athlète
+  • Chaque bloc d'effort doit avoir une allure_cible explicite dans une zone de l'athlète
+  • Ne jamais inventer des allures — utilise uniquement les seuils/zones fournis`
     } else if (sp === 'cycling' || sp === 'vélo') {
+      const bikeZones = p.zones ? Object.entries(p.zones).filter(([k]) => k.startsWith('bike_')).map(([k, v]) => `${k.replace('bike_', '')}=${v}`).join(', ') : ''
       context = `- FTP (Functional Threshold Power) : ${p.ftp || 'non configuré'}W
-- Zones d'intensité définies : ${p.zones ? Object.entries(p.zones).map(([k, v]) => `${k}=${v}%FTP`).join(', ') : 'non configurées'}
+- Zones d'intensité définies : ${bikeZones || 'non configurées'}
 NOTES :
-  • Utilise FTP pour calculer les watts cibles
-  • Si zones sont configurées (ex: Z3=85-105% FTP), recommande des watts dans ces plages
-  • Chaque bloc de puissance doit avoir watts explicite : watts = FTP × pourcentage_zone / 100
-  • Évite d'utiliser des watts génériques — base-toi sur le FTP de l'athlète`
+  • FTP est la puissance de référence — utilise-la pour calculer les watts cibles
+  • Les zones bike_z1 à bike_z5 définissent les fourchettes précises en % de FTP
+  • Recommande des watts_cible qui correspondent EXACTEMENT aux zones de l'athlète
+  • Chaque bloc doit avoir watts explicite : cherche la fourchette dans la zone correspondante
+  • Ne jamais inventer des watts génériques — utilise uniquement le FTP et zones fournis`
     } else if (sp === 'hyrox') {
       context = `- Configuration disponible : ${p.zones ? 'zones d\'intensité' : 'générique'}
 NOTES :

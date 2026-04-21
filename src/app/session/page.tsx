@@ -29,15 +29,23 @@ interface Circuit {
 
 // — Endurance blocks (Running, Vélo, Aviron, Triathlon)
 interface EnduranceBlock {
-  id: string; name: string; durationMin: number
-  zone: Zone; reps: number; restSec: number
-  targetPace?: string   // "4:30/km"
-  targetWatts?: number
+  id: string
+  name: string
+  // — Effort
+  reps: number                         // number of repetitions (default 1)
+  intervalType: 'time' | 'distance'    // time = duration-based, distance = distance-based
+  effortMmSs: string                   // effort duration as "mm:ss" (e.g. "4:00", "1:30")
+  effortDistanceM?: number             // if intervalType='distance': distance in meters
+  zone: Zone                           // effort zone (1-5)
+  targetPace?: string                  // "4:30/km" (running, aviron)
+  targetWatts?: number                 // watts (velo)
+  targetHrAvg?: number                 // target FC moyenne bpm
+  targetHrMax?: number                 // FC max à ne pas dépasser bpm
+  cadenceRpm?: number                  // RPM (velo) or CPM (aviron)
+  // — Recovery
+  recoveryMmSs: string                 // recovery duration as "mm:ss" (e.g. "1:00")
+  recoveryZone: Zone                   // recovery zone (default 1)
   note?: string
-  // Interval type
-  intervalType?: 'time' | 'distance'   // for rep blocks
-  distanceM?: number                   // if intervalType = 'distance'
-  durationMmSs?: string                // if intervalType = 'time', format "mm:ss" like "1:30"
 }
 
 // — Natation
@@ -180,9 +188,9 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
     intensity:'high', tags:['VMA','Fractionne'],
     endurance: {
       blocks:[
-        { id:'b1', name:'Echauffement',    durationMin:15, zone:2, reps:1, restSec:0 },
-        { id:'b2', name:'400m rapide',     durationMin:2,  zone:5, reps:10, restSec:90, targetPace:"3:45/km" },
-        { id:'b3', name:'Retour au calme', durationMin:10, zone:1, reps:1, restSec:0 },
+        { id:'b1', name:'Echauffement',    reps:1, intervalType:'time' as const, effortMmSs:'15:00', zone:2 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone },
+        { id:'b2', name:'400m rapide',     reps:10, intervalType:'time' as const, effortMmSs:'2:00', zone:5 as Zone, recoveryMmSs:'1:30', recoveryZone:1 as Zone, targetPace:"3:45/km" },
+        { id:'b3', name:'Retour au calme', reps:1, intervalType:'time' as const, effortMmSs:'10:00', zone:1 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone },
       ],
     },
   },
@@ -191,7 +199,7 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
     intensity:'low', tags:['Endurance','Aerobie'],
     endurance: {
       blocks:[
-        { id:'b4', name:'Z2 continu', durationMin:90, zone:2, reps:1, restSec:0, targetPace:"5:10/km" },
+        { id:'b4', name:'Z2 continu', reps:1, intervalType:'time' as const, effortMmSs:'90:00', zone:2 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone, targetPace:"5:10/km" },
       ],
     },
   },
@@ -200,9 +208,9 @@ const MOCK_TEMPLATES: SessionTemplate[] = [
     intensity:'high', tags:['Sweet Spot','FTP'],
     endurance: {
       blocks:[
-        { id:'b5', name:'Echauffement',  durationMin:15, zone:2, reps:1, restSec:0 },
-        { id:'b6', name:'Sweet Spot',    durationMin:20, zone:4, reps:2, restSec:300, targetWatts:280 },
-        { id:'b7', name:'Retour calme',  durationMin:10, zone:1, reps:1, restSec:0 },
+        { id:'b5', name:'Echauffement',  reps:1, intervalType:'time' as const, effortMmSs:'15:00', zone:2 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone },
+        { id:'b6', name:'Sweet Spot',    reps:2, intervalType:'time' as const, effortMmSs:'20:00', zone:4 as Zone, recoveryMmSs:'5:00', recoveryZone:1 as Zone, targetWatts:280 },
+        { id:'b7', name:'Retour calme',  reps:1, intervalType:'time' as const, effortMmSs:'10:00', zone:1 as Zone, recoveryMmSs:'0:00', recoveryZone:1 as Zone },
       ],
     },
   },
@@ -238,8 +246,38 @@ function fmtTime(sec: number): string {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
 }
 
+// — Block computed helpers
+function blockEffortMin(b: EnduranceBlock): number {
+  return parseMMSS(b.effortMmSs) / 60
+}
+function blockRecoveryMin(b: EnduranceBlock): number {
+  return parseMMSS(b.recoveryMmSs) / 60
+}
+function blockTotalMin(b: EnduranceBlock): number {
+  return b.reps * (blockEffortMin(b) + blockRecoveryMin(b))
+}
 function totalEnduranceDuration(blocks: EnduranceBlock[]): number {
-  return blocks.reduce((a,b) => a + b.durationMin * b.reps + Math.ceil(b.restSec * Math.max(0, b.reps-1) / 60), 0)
+  return Math.round(blocks.reduce((a, b) => a + blockTotalMin(b), 0))
+}
+
+// — Smart input formatters
+function formatPaceInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  if (digits.length <= 2) return digits
+  if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`
+  if (digits.length === 4) return `${digits.slice(0,2)}:${digits.slice(2)}`
+  return `${digits.slice(0,2)}:${digits.slice(2,4)}`
+}
+
+function formatMmSsInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  if (digits.length === 1) return digits
+  if (digits.length === 2) return `0:${digits}`
+  if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`
+  if (digits.length === 4) return `${digits.slice(0,2)}:${digits.slice(2)}`
+  return `${digits.slice(0,2)}:${digits.slice(2,4)}`
 }
 function totalSwimDistance(sets: SwimSet[]): number {
   return sets.reduce((a,s) => a + s.reps * s.distanceM, 0)
@@ -274,8 +312,7 @@ function estimateTSS(
   sport: Sport,
   durationMin: number,
   intensity: Intensity,
-  endurance?: EnduranceSession,
-  muscu?: MusculaireSession
+  endurance?: EnduranceSession
 ): number {
   const SPORT_FACTOR: Record<Sport, number> = {
     running: 0.9, velo: 1.0, natation: 0.85, hyrox: 1.05, muscu: 0.65, aviron: 0.95, triathlon: 0.9
@@ -283,22 +320,21 @@ function estimateTSS(
   const IF_BY_INTENSITY: Record<Intensity, number> = {
     low: 0.60, moderate: 0.72, high: 0.85, max: 1.00
   }
+  const IF_BY_ZONE = [0.55, 0.70, 0.83, 0.95, 1.10]
   const sf = SPORT_FACTOR[sport] ?? 0.9
 
-  // If endurance blocks available — use zones
   if (endurance && endurance.blocks.length > 0) {
-    const IF_BY_ZONE = [0.55, 0.70, 0.83, 0.95, 1.10]
     return Math.round(endurance.blocks.reduce((total, b) => {
-      const IF = IF_BY_ZONE[b.zone - 1] ?? 0.70
-      const dur = b.durationMin * b.reps
-      return total + (dur / 60) * IF * IF * 100 * sf
+      const effortIF = IF_BY_ZONE[b.zone - 1] ?? 0.70
+      const recovIF  = IF_BY_ZONE[(b.recoveryZone ?? 1) - 1] ?? 0.55
+      const effortDur = blockEffortMin(b) * b.reps
+      const recovDur  = blockRecoveryMin(b) * b.reps
+      return total
+        + (effortDur / 60) * effortIF * effortIF * 100 * sf
+        + (recovDur  / 60) * recovIF  * recovIF  * 100 * sf
     }, 0))
   }
 
-  // Suppress unused warning
-  void muscu
-
-  // Fallback — duration + intensity
   const IF = IF_BY_INTENSITY[intensity] ?? 0.72
   return Math.round((durationMin / 60) * IF * IF * 100 * sf)
 }
@@ -373,66 +409,117 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: R
   )
 }
 
+function MmSsInput({
+  label, value, onChange, placeholder = '0:00', style: extraStyle
+}: {
+  label: string; value: string; onChange: (v: string) => void
+  placeholder?: string; style?: React.CSSProperties
+}) {
+  return (
+    <div>
+      <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>{label}</label>
+      <input
+        value={value}
+        onChange={e => onChange(formatMmSsInput(e.target.value))}
+        placeholder={placeholder}
+        style={{
+          width:64, borderRadius:8, border:'1px solid var(--border)',
+          background:'var(--bg-card2)', color:'var(--text-main)',
+          padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13,
+          textAlign:'center', boxSizing:'border-box' as const, ...extraStyle
+        }}/>
+    </div>
+  )
+}
+
+function PaceInput({ label, value, onChange }: { label:string; value:string; onChange:(v:string)=>void }) {
+  return (
+    <div>
+      <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>{label}</label>
+      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+        <input
+          value={value.replace('/km','').replace('/100m','').trim()}
+          onChange={e => onChange(formatPaceInput(e.target.value))}
+          placeholder="4:30"
+          style={{ width:56, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 6px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center', boxSizing:'border-box' as const }}/>
+        <span style={{ fontSize:10, color:'var(--text-dim)', whiteSpace:'nowrap' }}>/km</span>
+      </div>
+    </div>
+  )
+}
+
+function SectionHeader({ label, title, color }: { label:string; title:string; color:string }) {
+  return (
+    <div style={{ marginBottom:16 }}>
+      <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
+      <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color }}>{title}</h3>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════════
 // INTENSITY PROFILE SVG
 // ══════════════════════════════════════════════════════════════════
-function IntensityProfile({ blocks }: { blocks: EnduranceBlock[] }) {
-  const H = 100; const GAP = 2
+function IntensityProfile({
+  blocks,
+  sport,
+}: {
+  blocks: EnduranceBlock[]
+  sport?: Sport
+}) {
+  const H = 80
+  const GAP = 1.5
 
-  // Expand repeated blocks
-  const expanded: { block: EnduranceBlock; rep: number }[] = []
-  for (const b of blocks) {
-    for (let r = 0; r < b.reps; r++) expanded.push({ block:b, rep:r })
+  interface Bar {
+    type: 'effort' | 'recovery'
+    durationMin: number
+    zone: Zone
+    blockId: string
   }
 
-  const totalSlots = expanded.length
-  const slotW = totalSlots > 0 ? (100 - (totalSlots-1)*GAP) / totalSlots : 100
+  const bars: Bar[] = []
+  for (const b of blocks) {
+    const effortMin = blockEffortMin(b)
+    const recoveryMin = blockRecoveryMin(b)
+    for (let r = 0; r < b.reps; r++) {
+      bars.push({ type:'effort', durationMin: effortMin, zone: b.zone, blockId: b.id })
+      if (recoveryMin > 0) {
+        bars.push({ type:'recovery', durationMin: recoveryMin, zone: b.recoveryZone, blockId: b.id })
+      }
+    }
+  }
+
+  const totalMin = bars.reduce((a, bar) => a + bar.durationMin, 0) || 1
+
+  const EFFORT_HEIGHTS: Record<Zone, number> = { 1:15, 2:30, 3:50, 4:70, 5:90 }
+  const RECOVERY_HEIGHT = 12
+
+  const sportCol = sport ? sportColor(sport) : '#5b6fff'
+
+  if (bars.length === 0) return null
 
   return (
     <div>
-      <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'0 0 10px' }}>
-        Profil d'intensite
-      </p>
-      <svg width="100%" height={H+20} viewBox={`0 0 100 ${H+20}`} preserveAspectRatio="none" style={{ overflow:'visible' }}>
-        {expanded.map(({ block:b, rep }, i) => {
-          const x = i * (slotW + GAP)
-          const bH = ZONE_HEIGHT[b.zone]
-          const y = H - bH
-          const c = ZONE_COLOR[b.zone]
-          const isFirst = rep === 0
-          const blockLabel = b.reps > 1 && isFirst ? `Z${b.zone}×${b.reps}` : `Z${b.zone}`
-          return (
-            <g key={`${b.id}-${rep}`}>
-              <rect x={x} y={y} width={slotW} height={bH} rx={2}
-                fill={c} opacity={0.85}
-                style={{ filter:`drop-shadow(0 0 3px ${c}55)` }}/>
-              {slotW > 8 && bH > 20 && isFirst && (
-                <text x={x + slotW/2} y={y + bH/2 + 4} textAnchor="middle"
-                  fontSize={Math.min(7, slotW * 0.7)} fill="#fff" fontFamily="DM Sans,sans-serif" fontWeight={700}>
-                  {blockLabel}
-                </text>
-              )}
-              {slotW > 6 && isFirst && (
-                <text x={x + slotW/2} y={H+13} textAnchor="middle"
-                  fontSize={Math.min(6.5, slotW * 0.65)} fill="var(--text-dim)" fontFamily="DM Sans,sans-serif">
-                  {b.durationMin >= 1 ? `${b.durationMin}'` : `${Math.round(b.durationMin * 60)}"`}
-                </text>
-              )}
-            </g>
-          )
-        })}
-        {/* Baseline */}
-        <line x1={0} y1={H+1} x2={100} y2={H+1} stroke="var(--border)" strokeWidth={0.5}/>
+      <svg width="100%" height={H + 4} viewBox={`0 0 100 ${H + 4}`} preserveAspectRatio="none" style={{ overflow:'visible' }}>
+        {(() => {
+          let xCursor = 0
+          return bars.map((bar, i) => {
+            const w = (bar.durationMin / totalMin) * 100 - GAP * 0.5
+            const h = bar.type === 'effort' ? EFFORT_HEIGHTS[bar.zone] : RECOVERY_HEIGHT
+            const y = H - h
+            const fill = bar.type === 'effort' ? sportCol : '#6b7280'
+            const opacity = bar.type === 'effort' ? 0.85 : 0.35
+            const x = xCursor
+            xCursor += (bar.durationMin / totalMin) * 100
+            return (
+              <rect key={`${bar.blockId}-${bar.type}-${i}`}
+                x={x} y={y} width={Math.max(w, 0.5)} height={h} rx={1.5}
+                fill={fill} opacity={opacity}/>
+            )
+          })
+        })()}
+        <line x1={0} y1={H} x2={100} y2={H} stroke="var(--border)" strokeWidth={0.4}/>
       </svg>
-      {/* Legend */}
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:8 }}>
-        {([1,2,3,4,5] as Zone[]).filter(z => blocks.some(b => b.zone===z)).map(z => (
-          <span key={z} style={{ display:'flex', alignItems:'center', gap:4, fontSize:9, color:'var(--text-dim)' }}>
-            <span style={{ width:10, height:10, borderRadius:2, background:ZONE_COLOR[z], display:'inline-block' }}/>
-            {ZONE_LABEL[z]}
-          </span>
-        ))}
-      </div>
     </div>
   )
 }
@@ -594,144 +681,237 @@ const SWIM_DISTANCES = [25, 50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000
 // ══════════════════════════════════════════════════════════════════
 // ENDURANCE BUILDER (Running / Vélo / Aviron / Triathlon)
 // ══════════════════════════════════════════════════════════════════
-function EnduranceBuilder({ data, sport, onChange }: {
-  data: EnduranceSession; sport: Sport
+function EnduranceBuilder({
+  data, sport, onChange, zones
+}: {
+  data: EnduranceSession
+  sport: Sport
   onChange: (d: EnduranceSession) => void
+  zones?: { ftp?: number; runThresholdPace?: string; runZ2?: string; bikeZ4?: string }
 }) {
   const { blocks } = data
-  const isRun = sport==='running'
+  const isRun = sport === 'running'
+  const isVelo = sport === 'velo'
+  const isAviron = sport === 'aviron'
   const color = sportColor(sport)
 
-  function upd(b: EnduranceBlock[]) { onChange({ blocks:b }) }
+  const supportsDistance = isRun || isAviron
+  const supportsCadence = isVelo || isAviron
+  const cadenceLabel = isAviron ? 'CPM' : 'RPM'
+
+  const dragIdx = useRef<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+
+  function upd(b: EnduranceBlock[]) { onChange({ blocks: b }) }
   function addBlock() {
-    upd([...blocks, { id:uid(), name:'Bloc', durationMin:10, zone:3 as Zone, reps:1, restSec:60 }])
+    upd([...blocks, {
+      id: uid(), name: 'Bloc',
+      reps: 1, intervalType: 'time' as const,
+      effortMmSs: '10:00', zone: 2 as Zone,
+      recoveryMmSs: '0:00', recoveryZone: 1 as Zone,
+    }])
   }
-  function rmBlock(id: string) { upd(blocks.filter(b => b.id!==id)) }
-  function updBlock(id: string, patch: Partial<EnduranceBlock>) { upd(blocks.map(b => b.id===id ? { ...b, ...patch } : b)) }
-  function moveBlock(id: string, dir: -1|1) {
-    const list = [...blocks]; const i=list.findIndex(b=>b.id===id); if(i<0) return
-    const j=i+dir; if(j<0||j>=list.length) return; [list[i],list[j]]=[list[j],list[i]]; upd(list)
+  function rmBlock(id: string) { upd(blocks.filter(b => b.id !== id)) }
+  function updBlock(id: string, patch: Partial<EnduranceBlock>) {
+    upd(blocks.map(b => b.id === id ? { ...b, ...patch } : b))
   }
 
-  const sel: React.CSSProperties = { borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }
+  function onDragStart(i: number) { dragIdx.current = i }
+  function onDragOver(e: React.DragEvent, i: number) { e.preventDefault(); setDragOverIdx(i) }
+  function onDrop(i: number) {
+    if (dragIdx.current === null || dragIdx.current === i) { setDragOverIdx(null); return }
+    const list = [...blocks]
+    const [item] = list.splice(dragIdx.current, 1)
+    list.splice(i, 0, item)
+    upd(list)
+    dragIdx.current = null
+    setDragOverIdx(null)
+  }
+
+  const totalMin = totalEnduranceDuration(blocks)
+
+  const zonePills = (selected: Zone, onZoneChange: (z: Zone) => void) => (
+    <div style={{ display:'flex', gap:3 }}>
+      {([1,2,3,4,5] as Zone[]).map(z => (
+        <button key={z} onClick={() => onZoneChange(z)}
+          style={{
+            width:24, height:24, borderRadius:6, border:'none', cursor:'pointer',
+            background: selected === z ? ZONE_COLOR[z] : `${ZONE_COLOR[z]}22`,
+            color: selected === z ? '#fff' : ZONE_COLOR[z],
+            fontFamily:'DM Mono,monospace', fontSize:9, fontWeight:700,
+          }}>Z{z}</button>
+      ))}
+    </div>
+  )
 
   return (
     <div>
+      {/* Athlete zones banner */}
+      {zones && (zones.ftp || zones.runThresholdPace || zones.runZ2 || zones.bikeZ4) && (
+        <div style={{ padding:'8px 12px', borderRadius:9, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.15)', marginBottom:12, fontSize:11, color:'var(--text-mid)', display:'flex', gap:16, flexWrap:'wrap' }}>
+          {zones.ftp && <span>FTP : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.ftp}W</strong></span>}
+          {zones.runThresholdPace && <span>Seuil run : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.runThresholdPace}/km</strong></span>}
+          {zones.runZ2 && <span>Z2 run : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.runZ2}/km</strong></span>}
+          {zones.bikeZ4 && <span>Z4 vélo : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.bikeZ4}</strong></span>}
+        </div>
+      )}
+
+      {/* Intensity profile preview */}
       {blocks.length > 0 && (
-        <div style={{ marginBottom:20 }}>
-          <IntensityProfile blocks={blocks}/>
+        <div style={{ marginBottom:20, padding:'14px 16px', background:'var(--bg-card2)', borderRadius:14, border:'1px solid var(--border)' }}>
+          <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'0 0 10px' }}>
+            Profil d'intensité · {totalMin}min total
+          </p>
+          <IntensityProfile blocks={blocks} sport={sport}/>
         </div>
       )}
 
       {blocks.length === 0 && (
         <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-dim)', fontSize:13, marginBottom:12 }}>
-          Ajoute des blocs pour construire le profil d'intensite.
+          Ajoute des blocs pour construire le profil.
         </div>
       )}
 
-      {blocks.map((b, idx) => (
-        <div key={b.id} style={{ border:'1px solid var(--border)', borderRadius:14, padding:'12px 14px', marginBottom:8, background:'var(--bg-card2)' }}>
-          {/* Row 1: name + zone + reorder + delete */}
-          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
-            {/* Reorder */}
-            <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 }}>
-              <button onClick={()=>moveBlock(b.id,-1)} disabled={idx===0}
-                style={{ background:'none', border:'none', color:idx===0?'var(--border)':'var(--text-dim)', cursor:idx===0?'default':'pointer', padding:0, fontSize:12 }}>&#8593;</button>
-              <button onClick={()=>moveBlock(b.id,1)} disabled={idx===blocks.length-1}
-                style={{ background:'none', border:'none', color:idx===blocks.length-1?'var(--border)':'var(--text-dim)', cursor:idx===blocks.length-1?'default':'pointer', padding:0, fontSize:12 }}>&#8595;</button>
-            </div>
-            {/* Name */}
-            <input value={b.name} onChange={e=>updBlock(b.id,{name:e.target.value})}
-              placeholder="Nom du bloc" style={{ minWidth:100, flex:1, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13 }}/>
-            {/* Zone select */}
-            <div>
-              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Zone</label>
-              <select value={b.zone} onChange={e=>updBlock(b.id,{zone:+e.target.value as Zone})} style={sel}>
-                {([1,2,3,4,5] as Zone[]).map(z => <option key={z} value={z}>{ZONE_LABEL[z]}</option>)}
-              </select>
-            </div>
-            <button onClick={()=>rmBlock(b.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1, flexShrink:0, marginTop:14 }}>×</button>
-          </div>
-          {/* Row 2: numeric fields grid */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(80px,1fr))', gap:8, marginBottom:8 }}>
-            <NumInput label="Durée" value={b.durationMin} onChange={v=>updBlock(b.id,{durationMin:v})} min={1} max={300}/>
-            <NumInput label="Reps" value={b.reps} onChange={v=>updBlock(b.id,{reps:v})} min={1} max={50}/>
-            <div>
-              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Repos</label>
-              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                <input type="number" value={b.restSec} min={0} max={1800}
-                  onChange={e=>updBlock(b.id,{restSec:Math.min(1800,Math.max(0,+e.target.value))})}
-                  style={{ width:56, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13, textAlign:'center' as const, boxSizing:'border-box' as const }}/>
-                <span style={{ fontSize:9, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{toMMSS(b.restSec)}</span>
-              </div>
-            </div>
-            {/* Target */}
-            <div>
-              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>
-                Allure
-              </label>
-              {isRun ? (
-                <input value={b.targetPace||''} onChange={e=>updBlock(b.id,{targetPace:e.target.value})}
-                  placeholder="4:30/km" style={{ width:80, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12 }}/>
-              ) : (
-                <input type="number" value={b.targetWatts||''} onChange={e=>updBlock(b.id,{targetWatts:+e.target.value||undefined})}
-                  placeholder="280W" style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
-              )}
-            </div>
-          </div>
+      {/* Block list */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+        {blocks.map((b, idx) => {
+          const effortMin = blockEffortMin(b)
+          const recoveryMin = blockRecoveryMin(b)
+          const totalBlock = blockTotalMin(b)
 
-          {/* Interval section (shown when reps > 1) */}
-          {b.reps > 1 && (
-            <div style={{ borderTop:'1px solid var(--border)', paddingTop:8, marginTop:4 }}>
-              <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center' }}>
-                <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:700 }}>Intervalle</span>
-                <button
-                  onClick={() => updBlock(b.id, { intervalType: b.intervalType==='time' ? 'distance' : 'time' })}
-                  style={{ padding:'3px 10px', borderRadius:99, fontSize:10, fontWeight:600, cursor:'pointer',
-                    border:`1px solid ${b.intervalType ? color : 'var(--border)'}`,
-                    background: b.intervalType ? `${color}15` : 'transparent',
-                    color: b.intervalType ? color : 'var(--text-dim)' }}>
-                  {b.intervalType === 'distance' ? 'Par distance' : 'Par temps'}
-                </button>
-              </div>
-              {b.intervalType === 'time' && (
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div>
-                    <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Durée effort (mm:ss)</label>
-                    <input value={b.durationMmSs||''} onChange={e => {
-                      const val = e.target.value
-                      updBlock(b.id, {
-                        durationMmSs: val,
-                        durationMin: val ? Math.max(1, Math.round((b.reps * parseMMSS(val)) / 60)) : b.durationMin
-                      })
-                    }}
-                      placeholder="1:30"
-                      style={{ width:72, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12 }}/>
-                  </div>
-                  {b.durationMmSs && (
-                    <span style={{ fontSize:10, color:'var(--text-dim)', marginTop:16 }}>
-                      Total : {toMMSS(b.reps * parseMMSS(b.durationMmSs))}
-                    </span>
-                  )}
+          return (
+            <div key={b.id}
+              draggable
+              onDragStart={() => onDragStart(idx)}
+              onDragOver={e => onDragOver(e, idx)}
+              onDrop={() => onDrop(idx)}
+              onDragEnd={() => setDragOverIdx(null)}
+              style={{
+                border:`1px solid ${dragOverIdx === idx ? color : 'var(--border)'}`,
+                borderLeft:`3px solid ${ZONE_COLOR[b.zone]}`,
+                borderRadius:14, padding:'12px 14px',
+                background: dragOverIdx === idx ? `${color}06` : 'var(--bg-card2)',
+                cursor:'grab', transition:'border-color .15s',
+              }}>
+              {/* Row 1: reorder + name + zone + delete */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:1, flexShrink:0 }}>
+                  <button onClick={() => { const l=[...blocks]; if(idx>0){[l[idx-1],l[idx]]=[l[idx],l[idx-1]];upd(l)} }}
+                    disabled={idx===0}
+                    style={{ background:'none', border:'none', color:idx===0?'var(--border)':'var(--text-dim)', cursor:idx===0?'default':'pointer', padding:0, fontSize:11, lineHeight:1 }}>▲</button>
+                  <button onClick={() => { const l=[...blocks]; if(idx<l.length-1){[l[idx],l[idx+1]]=[l[idx+1],l[idx]];upd(l)} }}
+                    disabled={idx===blocks.length-1}
+                    style={{ background:'none', border:'none', color:idx===blocks.length-1?'var(--border)':'var(--text-dim)', cursor:idx===blocks.length-1?'default':'pointer', padding:0, fontSize:11, lineHeight:1 }}>▼</button>
                 </div>
-              )}
-              {b.intervalType === 'distance' && isRun && (
+                <input value={b.name} onChange={e => updBlock(b.id, { name:e.target.value })}
+                  placeholder="Nom du bloc"
+                  style={{ flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13 }}/>
                 <div>
-                  <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Distance (m)</label>
-                  <input type="number" value={b.distanceM||''} min={0} max={42195}
-                    onChange={e=>updBlock(b.id,{distanceM:+e.target.value||undefined})}
-                    placeholder="400"
-                    style={{ width:80, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Zone effort</p>
+                  {zonePills(b.zone, z => updBlock(b.id, { zone: z }))}
                 </div>
-              )}
-            </div>
-          )}
+                <button onClick={() => rmBlock(b.id)}
+                  style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:'2px 4px', lineHeight:1, flexShrink:0 }}>×</button>
+              </div>
 
-          <input value={b.note||''} onChange={e=>updBlock(b.id,{note:e.target.value})}
-            placeholder="Note / consigne"
-            style={{ marginTop:6, width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'DM Sans,sans-serif', fontSize:11, boxSizing:'border-box' as const }}/>
-        </div>
-      ))}
+              {/* Row 2: Reps + interval type */}
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+                <div>
+                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Répétitions</p>
+                  <input type="number" min={1} max={50} value={b.reps}
+                    onChange={e => updBlock(b.id, { reps: Math.max(1, parseInt(e.target.value)||1) })}
+                    style={{ width:52, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13, textAlign:'center' as const }}/>
+                </div>
+                {supportsDistance && (
+                  <div style={{ display:'flex', gap:4 }}>
+                    {(['time','distance'] as const).map(t => (
+                      <button key={t} onClick={() => updBlock(b.id, { intervalType:t })}
+                        style={{ padding:'4px 10px', borderRadius:7, fontSize:10, fontWeight:600, cursor:'pointer',
+                          border:`1px solid ${b.intervalType===t ? color : 'var(--border)'}`,
+                          background: b.intervalType===t ? `${color}15` : 'transparent',
+                          color: b.intervalType===t ? color : 'var(--text-dim)' }}>
+                        {t==='time' ? 'Durée' : 'Distance'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 3: Effort fields */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(80px, 1fr))', gap:8, marginBottom:8 }}>
+                {b.intervalType === 'time' ? (
+                  <MmSsInput label="Durée effort" value={b.effortMmSs} onChange={v => updBlock(b.id, { effortMmSs:v })}/>
+                ) : (
+                  <div>
+                    <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Distance (m)</p>
+                    <input type="number" min={25} max={100000} step={25} value={b.effortDistanceM ?? 400}
+                      onChange={e => updBlock(b.id, { effortDistanceM: parseInt(e.target.value)||400 })}
+                      style={{ width:72, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                  </div>
+                )}
+
+                {(isRun || isAviron) && (
+                  <PaceInput label="Allure" value={b.targetPace ?? ''} onChange={v => updBlock(b.id, { targetPace: v })}/>
+                )}
+                {isVelo && (
+                  <div>
+                    <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Watts</p>
+                    <input type="number" min={0} max={2000} value={b.targetWatts ?? ''} placeholder="250"
+                      onChange={e => updBlock(b.id, { targetWatts: parseInt(e.target.value)||undefined })}
+                      style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                  </div>
+                )}
+
+                <div>
+                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>FC cible</p>
+                  <input type="number" min={0} max={250} value={b.targetHrAvg ?? ''} placeholder="165"
+                    onChange={e => updBlock(b.id, { targetHrAvg: parseInt(e.target.value)||undefined })}
+                    style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                </div>
+                <div>
+                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>FC max</p>
+                  <input type="number" min={0} max={250} value={b.targetHrMax ?? ''} placeholder="178"
+                    onChange={e => updBlock(b.id, { targetHrMax: parseInt(e.target.value)||undefined })}
+                    style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                </div>
+
+                {supportsCadence && (
+                  <div>
+                    <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Cadence ({cadenceLabel})</p>
+                    <input type="number" min={0} max={250} value={b.cadenceRpm ?? ''} placeholder={isAviron ? '28' : '90'}
+                      onChange={e => updBlock(b.id, { cadenceRpm: parseInt(e.target.value)||undefined })}
+                      style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 4: Recovery */}
+              <div style={{ display:'flex', alignItems:'flex-end', gap:10, padding:'8px 10px', borderRadius:9, background:`rgba(107,114,128,0.08)`, border:'1px solid rgba(107,114,128,0.15)', marginBottom:6 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:'var(--text-dim)', whiteSpace:'nowrap', paddingBottom:4 }}>Récup</div>
+                <MmSsInput label="Durée" value={b.recoveryMmSs} onChange={v => updBlock(b.id, { recoveryMmSs:v })} placeholder="0:00"/>
+                <div>
+                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Zone</p>
+                  {zonePills(b.recoveryZone, z => updBlock(b.id, { recoveryZone: z }))}
+                </div>
+              </div>
+
+              {/* Summary line */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, fontWeight:700, color }}>
+                  {b.reps > 1
+                    ? `${b.reps} × (${b.effortMmSs} + ${b.recoveryMmSs} récup) = ${Math.round(totalBlock)}min`
+                    : `${b.effortMmSs}${recoveryMin > 0 ? ` + ${b.recoveryMmSs} récup` : ''}`}
+                </span>
+              </div>
+
+              {/* Note */}
+              <input value={b.note ?? ''} onChange={e => updBlock(b.id, { note:e.target.value })}
+                placeholder="Consigne / note"
+                style={{ width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'DM Sans,sans-serif', fontSize:11, boxSizing:'border-box' as const }}/>
+            </div>
+          )
+        })}
+      </div>
 
       <button onClick={addBlock}
         style={{ width:'100%', padding:'11px', borderRadius:12, border:`1px dashed ${color}`, background:`${color}08`, color, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
@@ -739,9 +919,10 @@ function EnduranceBuilder({ data, sport, onChange }: {
       </button>
 
       {blocks.length > 0 && (
-        <div style={{ display:'flex', gap:16, marginTop:14, fontSize:12, color:'var(--text-dim)', flexWrap:'wrap' }}>
-          <span>Duree totale : <strong style={{ color:'var(--text-main)' }}>{totalEnduranceDuration(blocks)} min</strong></span>
-          <span>Blocs : <strong style={{ color:'var(--text-main)' }}>{blocks.reduce((a,b)=>a+b.reps,0)}</strong></span>
+        <div style={{ display:'flex', gap:16, marginTop:12, fontSize:12, color:'var(--text-dim)', flexWrap:'wrap' }}>
+          <span>Durée totale : <strong style={{ color:'var(--text-main)', fontFamily:'DM Mono,monospace' }}>{totalMin}min</strong></span>
+          <span>Blocs : <strong style={{ color:'var(--text-main)' }}>{blocks.length}</strong></span>
+          <span>Séquences : <strong style={{ color:'var(--text-main)' }}>{blocks.reduce((a,b)=>a+b.reps,0)}</strong></span>
         </div>
       )}
     </div>
@@ -1060,23 +1241,40 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
 
       <SectionCard>
         <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'0 0 12px' }}>Detail des blocs</p>
-        {endurance.blocks.map((b) => (
-          <div key={b.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
-            <div>
-              <span style={{ fontSize:13, fontWeight:600, color:'var(--text-main)' }}>{b.name}</span>
-              {b.reps > 1 && <span style={{ fontSize:11, color:'var(--text-dim)', marginLeft:6 }}>&times;{b.reps}</span>}
-              {(b.targetPace||b.targetWatts) && (
-                <span style={{ fontSize:11, color, marginLeft:8, fontFamily:'DM Mono,monospace' }}>
-                  {b.targetPace||`${b.targetWatts}W`}
-                </span>
+        {endurance.blocks.map((b) => {
+          const recoveryMin = blockRecoveryMin(b)
+          return (
+            <div key={b.id} style={{ padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div>
+                  <span style={{ fontSize:13, fontWeight:600, color:'var(--text-main)' }}>{b.name}</span>
+                  {b.reps > 1 && <span style={{ fontSize:11, color:'var(--text-dim)', marginLeft:6 }}>&times;{b.reps}</span>}
+                </div>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color:'var(--text-main)' }}>{b.effortMmSs}</span>
+                  {(b.targetPace || b.targetWatts) && (
+                    <span style={{ fontSize:11, color, fontFamily:'DM Mono,monospace' }}>
+                      {b.targetPace || `${b.targetWatts}W`}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {(b.targetHrAvg || b.targetHrMax || b.cadenceRpm) && (
+                <div style={{ display:'flex', gap:10, marginTop:4, fontSize:11, color:'var(--text-dim)' }}>
+                  {b.targetHrAvg && <span>FC cible <strong style={{ color:'var(--text-main)' }}>{b.targetHrAvg}bpm</strong></span>}
+                  {b.targetHrMax && <span>FC max <strong style={{ color:'#ef4444' }}>{b.targetHrMax}bpm</strong></span>}
+                  {b.cadenceRpm && <span>Cadence <strong style={{ color:'var(--text-main)' }}>{b.cadenceRpm}</strong></span>}
+                </div>
               )}
+              {recoveryMin > 0 && (
+                <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>
+                  Récup <strong style={{ fontFamily:'DM Mono,monospace' }}>{b.recoveryMmSs}</strong>
+                </div>
+              )}
+              {b.note && <p style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic', margin:'4px 0 0' }}>{b.note}</p>}
             </div>
-            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-              <ZoneBadge zone={b.zone}/>
-              <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color:'var(--text-main)' }}>{b.durationMin}'</span>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </SectionCard>
 
       <button onClick={onExit}
@@ -1110,7 +1308,7 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
           </span>
           <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{t.durationMin} min</span>
           <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'#5b6fff' }}>
-            ~{estimateTSS(t.sport, t.durationMin, t.intensity, t.endurance, t.muscu)} TSS
+            ~{estimateTSS(t.sport, t.durationMin, t.intensity, t.endurance)} TSS
           </span>
           {t.rpe && <span style={{ fontSize:10, color:'var(--text-dim)' }}>RPE cible {t.rpe}/10</span>}
         </div>
@@ -1125,7 +1323,7 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
         )}
         {t.endurance && (
           <>
-            <span>{t.endurance.blocks.reduce((a,b)=>a+b.reps,0)} blocs</span>
+            <span>{t.endurance.blocks.length} blocs</span>
             <span>{totalEnduranceDuration(t.endurance.blocks)} min estimees</span>
           </>
         )}
@@ -1145,10 +1343,23 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
           ))}
         </div>
       )}
+      {/* Block summary */}
+      {t.endurance && t.endurance.blocks.length > 0 && (
+        <div style={{ fontSize:11, color:'var(--text-dim)', display:'flex', flexDirection:'column', gap:2, marginTop:2 }}>
+          {t.endurance.blocks.slice(0, 4).map(b => (
+            <span key={b.id} style={{ fontFamily:'DM Mono,monospace', fontSize:10 }}>
+              {b.reps > 1 ? `${b.reps}×` : ''}{b.effortMmSs}
+              {b.targetPace ? ` @ ${b.targetPace}` : b.targetWatts ? ` @ ${b.targetWatts}W` : ''}
+              {parseMMSS(b.recoveryMmSs) > 0 ? ` / ${b.recoveryMmSs} récup` : ''}
+            </span>
+          ))}
+          {t.endurance.blocks.length > 4 && <span style={{ color:'var(--text-dim)' }}>+{t.endurance.blocks.length - 4} blocs</span>}
+        </div>
+      )}
       {/* Intensity profile preview */}
       {t.endurance && t.endurance.blocks.length > 0 && (
         <div style={{ pointerEvents:'none', opacity:0.7 }}>
-          <IntensityProfile blocks={t.endurance.blocks}/>
+          <IntensityProfile blocks={t.endurance.blocks} sport={t.sport}/>
         </div>
       )}
       {/* Actions */}
@@ -1167,6 +1378,18 @@ function TemplateCard({ t, onStart, onEdit }: { t: SessionTemplate; onStart:()=>
 }
 
 // ══════════════════════════════════════════════════════════════════
+// CYCLING SUB-TYPES
+// ══════════════════════════════════════════════════════════════════
+type CyclingSub = 'velo' | 'ht' | 'elliptique' | 'vtt' | 'cyclocross'
+const CYCLING_SUB: { id: CyclingSub; label: string }[] = [
+  { id:'velo',       label:'Vélo route' },
+  { id:'ht',         label:'Home Trainer' },
+  { id:'elliptique', label:'Elliptique' },
+  { id:'vtt',        label:'VTT' },
+  { id:'cyclocross', label:'Cyclocross' },
+]
+
+// ══════════════════════════════════════════════════════════════════
 // BUILD MODE — full session form + sport builder
 // ══════════════════════════════════════════════════════════════════
 function BuildMode({ initial, onSave, onCancel }: {
@@ -1175,7 +1398,9 @@ function BuildMode({ initial, onSave, onCancel }: {
   onCancel: () => void
 }) {
   const { addSession } = usePlanning()
+  const { zones: trainingZones } = useTrainingZones()
   const [sport,       setSport]       = useState<Sport>(initial?.sport ?? 'muscu')
+  const [cyclingSub,  setCyclingSub]  = useState<CyclingSub>('velo')
   const [name,        setName]        = useState(initial?.name ?? '')
   const [duration,    setDuration]    = useState(initial?.durationMin ?? 60)
   const [intensity,   setIntensity]   = useState<Intensity>(initial?.intensity ?? 'moderate')
@@ -1197,7 +1422,15 @@ function BuildMode({ initial, onSave, onCancel }: {
 
   const isEnduranceSport = sport==='running'||sport==='velo'||sport==='aviron'||sport==='triathlon'
 
-  const estimatedTSS = estimateTSS(sport, duration, intensity, isEnduranceSport ? endur : undefined, sport==='muscu' ? muscu : undefined)
+  const estimatedTSS = estimateTSS(sport, duration, intensity, isEnduranceSport ? endur : undefined)
+
+  // Build athlete zones for endurance builder
+  const athleteZones = {
+    ftp: trainingZones.bike?.ftp_watts ?? undefined,
+    runThresholdPace: trainingZones.run?.sl2 || undefined,
+    runZ2: trainingZones.run?.z2_value || undefined,
+    bikeZ4: trainingZones.bike?.z4_value || undefined,
+  }
 
   function save() {
     const t: SessionTemplate = {
@@ -1258,6 +1491,19 @@ function BuildMode({ initial, onSave, onCancel }: {
               </button>
             ))}
           </div>
+          {sport === 'velo' && (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
+              {CYCLING_SUB.map(s => (
+                <button key={s.id} onClick={() => setCyclingSub(s.id)}
+                  style={{ padding:'4px 10px', borderRadius:8, fontSize:10, fontWeight:600, cursor:'pointer',
+                    border:`1px solid ${cyclingSub===s.id ? '#f97316' : 'var(--border)'}`,
+                    background: cyclingSub===s.id ? 'rgba(249,115,22,0.12)' : 'transparent',
+                    color: cyclingSub===s.id ? '#f97316' : 'var(--text-dim)' }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Session type selector */}
@@ -1360,12 +1606,9 @@ function BuildMode({ initial, onSave, onCancel }: {
 
       {/* Sport-specific builder */}
       <SectionCard>
-        <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 4px' }}>Construction</p>
-        <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:'0 0 20px', color:sportColor(sport) }}>
-          {sportLabel(sport)}
-        </h3>
+        <SectionHeader label="Construction" title={sportLabel(sport)} color={sportColor(sport)}/>
         {sport==='muscu'    && <MusculaireBuilder data={muscu} onChange={setMuscu}/>}
-        {isEnduranceSport   && <EnduranceBuilder data={endur} sport={sport} onChange={setEndur}/>}
+        {isEnduranceSport   && <EnduranceBuilder data={endur} sport={sport} onChange={setEndur} zones={athleteZones}/>}
         {sport==='natation' && <NatationBuilder data={swim} onChange={setSwim}/>}
         {sport==='hyrox'    && <HyroxBuilder data={hyrox} onChange={setHyrox}/>}
       </SectionCard>
@@ -1399,6 +1642,33 @@ function BuildMode({ initial, onSave, onCancel }: {
             const dateObj = new Date(planDate)
             const dow = dateObj.getDay() === 0 ? 6 : dateObj.getDay() - 1
             const sportMap: Record<Sport, string> = { muscu:'gym', running:'run', velo:'bike', natation:'swim', hyrox:'hyrox', aviron:'rowing', triathlon:'run' }
+            const planningBlocks = isEnduranceSport ? endur.blocks.flatMap(b => {
+              const effortMin = blockEffortMin(b)
+              const recoveryMin = blockRecoveryMin(b)
+              const efforts = Array.from({ length: b.reps }, (_, i) => ({
+                id: `${b.id}_e${i}`,
+                mode: 'single' as const,
+                type: 'effort' as const,
+                zone: b.zone,
+                durationMin: effortMin,
+                value: b.targetPace ?? (b.targetWatts ? String(b.targetWatts) : ''),
+                hrAvg: b.targetHrAvg ? String(b.targetHrAvg) : '',
+                label: b.name,
+              }))
+              const recoveries = recoveryMin > 0
+                ? Array.from({ length: b.reps }, (_, i) => ({
+                    id: `${b.id}_r${i}`,
+                    mode: 'single' as const,
+                    type: 'recovery' as const,
+                    zone: b.recoveryZone,
+                    durationMin: recoveryMin,
+                    value: '',
+                    hrAvg: '',
+                    label: 'Récup',
+                  }))
+                : []
+              return efforts.flatMap((e, i) => recoveries[i] ? [e, recoveries[i]] : [e])
+            }) : []
             await addSession(dow, {
               day_index: dow,
               sport: sportMap[sport],
@@ -1409,7 +1679,7 @@ function BuildMode({ initial, onSave, onCancel }: {
               status: 'planned',
               intensity: intensity,
               notes: notes || undefined,
-              blocks: [],
+              blocks: planningBlocks,
               validation_data: {},
             })
             setPlanSuccess(true)

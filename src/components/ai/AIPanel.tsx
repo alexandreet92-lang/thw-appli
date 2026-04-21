@@ -47,6 +47,7 @@ interface Props {
   initialAgent?: string              // gardé pour compat — non affiché
   context?: Record<string, unknown>
   prefillMessage?: string
+  initialFlow?: FlowId
   initialUserLabel?: string
   initialAssistantMsg?: string
 }
@@ -1017,9 +1018,38 @@ const NUTRITION_STEPS: NutritionStep[] = [
   },
 ]
 
+interface TemplateForPrompt {
+  nom: string
+  type_repas: string
+  description: string | null
+  kcal: number | null
+  proteines: number | null
+  glucides: number | null
+  lipides: number | null
+}
+
 function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<string[][]>(Array(NUTRITION_STEPS.length).fill([]))
+  const [activeTemplates, setActiveTemplates] = useState<TemplateForPrompt[]>([])
+
+  useEffect(() => {
+    async function loadTemplates() {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb
+          .from('nutrition_meal_templates')
+          .select('nom,type_repas,description,kcal,proteines,glucides,lipides')
+          .eq('user_id', user.id)
+          .eq('actif', true)
+        setActiveTemplates((data ?? []) as TemplateForPrompt[])
+      } catch { /* silently ignore */ }
+    }
+    void loadTemplates()
+  }, [])
 
   const cur = NUTRITION_STEPS[step]
 
@@ -1039,8 +1069,15 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
       setStep(s => s + 1)
     } else {
       const parts = NUTRITION_STEPS.map((s, i) => `${s.question} → ${answers[i].join(', ') || 'Non précisé'}`)
+      let templatesBlock = ''
+      if (activeTemplates.length > 0) {
+        const lines = activeTemplates.map(t =>
+          `- [${t.type_repas}] ${t.nom}${t.description ? ` — ${t.description}` : ''} | ${t.kcal ?? 0} kcal | P:${t.proteines ?? 0}g G:${t.glucides ?? 0}g L:${t.lipides ?? 0}g`
+        )
+        templatesBlock = `\n\nRepas types actifs de l'athlète à intégrer dans le plan :\n${lines.join('\n')}\nBase le plan sur ces repas ou fais-les légèrement évoluer selon l'objectif. Ne jamais ignorer un repas type actif.`
+      }
       const apiPrompt =
-        `Crée un plan nutritionnel personnalisé basé sur mes réponses :\n${parts.join('\n')}\n\n` +
+        `Crée un plan nutritionnel personnalisé basé sur mes réponses :\n${parts.join('\n')}${templatesBlock}\n\n` +
         `Appuie-toi sur mes données réelles disponibles dans l'application (activités, poids, objectifs). ` +
         `Sois précis et pratique.`
       onPrepare(apiPrompt, 'Plan nutritionnel personnalisé')
@@ -1989,6 +2026,7 @@ export default function AIPanel({
   onClose,
   context,
   prefillMessage,
+  initialFlow,
   initialUserLabel,
   initialAssistantMsg,
 }: Props) {
@@ -2031,6 +2069,16 @@ export default function AIPanel({
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
+
+  // Déclenche le flow initial si fourni (ex: depuis la page Nutrition)
+  const initialFlowSetRef = useRef<boolean>(false)
+  useEffect(() => {
+    if (open && initialFlow && !initialFlowSetRef.current) {
+      setActiveFlow(initialFlow)
+      initialFlowSetRef.current = true
+    }
+    if (!open) initialFlowSetRef.current = false
+  }, [open, initialFlow])
 
   // Détection desktop — sidebar persistante
   useEffect(() => {

@@ -2,6 +2,22 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+export type MealKey = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
+
+export interface MealTemplate {
+  id: string
+  user_id?: string
+  nom: string
+  type_repas: MealKey
+  description: string | null
+  kcal: number | null
+  proteines: number | null
+  glucides: number | null
+  lipides: number | null
+  actif: boolean
+  created_at: string
+}
+
 export interface NutritionPlan {
   id: string
   type: 'minimal' | 'maximal' | 'manuel'
@@ -118,4 +134,44 @@ export function useNutrition() {
   }
 
   return { activePlan, dailyLogs, weightLogs, loading, savePlan, saveDailyLog, saveWeightLog, reload: load }
+}
+
+export function useNutritionTemplates() {
+  const supabase = createClient()
+  const [templates, setTemplates] = useState<MealTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+    const { data } = await supabase
+      .from('nutrition_meal_templates')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    setTemplates((data ?? []) as MealTemplate[])
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => { void load() }, [load])
+
+  async function addTemplate(t: Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('nutrition_meal_templates').insert({ user_id: user.id, ...t })
+    await load()
+  }
+
+  async function updateTemplate(id: string, t: Partial<Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>>): Promise<void> {
+    await supabase.from('nutrition_meal_templates').update(t).eq('id', id)
+    await load()
+  }
+
+  async function deleteTemplate(id: string): Promise<void> {
+    await supabase.from('nutrition_meal_templates').delete().eq('id', id)
+    await load()
+  }
+
+  return { templates, loading, addTemplate, updateTemplate, deleteTemplate, reload: load }
 }

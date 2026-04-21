@@ -3,11 +3,12 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamicImport from 'next/dynamic'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
-import { useNutrition } from '@/hooks/useNutrition'
-import { useProfile } from '@/hooks/useProfile'
+import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import type { NutritionPlanData, PlanDay, MealSet, DailyLog, WeightLog } from '@/hooks/useNutrition'
+const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -17,13 +18,6 @@ type WeightMetric = 'poids' | 'mg' | 'mm'
 type HistRange    = '7j' | '14j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
-
-interface NutritionPlanGeneratedResponse {
-  plan_minimal: NutritionPlanData
-  plan_maximal: NutritionPlanData
-  warnings: string[]
-  resume: string
-}
 
 // ══════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -375,35 +369,460 @@ const sectionTitle: React.CSSProperties = {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// MEAL TEMPLATES SECTION
+// ══════════════════════════════════════════════════════════════════
+
+const TEMPLATE_MEAL_LABELS: Record<MealKey, string> = {
+  petit_dejeuner:       'Petit-déjeuner',
+  collation_matin:      'Collation matin',
+  dejeuner:             'Déjeuner',
+  collation_apres_midi: 'Collation après-midi',
+  diner:                'Dîner',
+  collation_soir:       'Collation soir',
+}
+
+interface TemplateFormData {
+  nom: string
+  type_repas: MealKey
+  description: string
+  kcal: string
+  proteines: string
+  glucides: string
+  lipides: string
+}
+
+const EMPTY_FORM: TemplateFormData = {
+  nom: '',
+  type_repas: 'petit_dejeuner',
+  description: '',
+  kcal: '',
+  proteines: '',
+  glucides: '',
+  lipides: '',
+}
+
+function TemplateForm({
+  form, setForm, saving, onSave, onCancel, isEdit, inputStyle, labelStyle
+}: {
+  form: TemplateFormData
+  setForm: React.Dispatch<React.SetStateAction<TemplateFormData>>
+  saving: boolean
+  onSave: () => Promise<void>
+  onCancel: () => void
+  isEdit: boolean
+  inputStyle: React.CSSProperties
+  labelStyle: React.CSSProperties
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <p style={labelStyle}>Nom du repas</p>
+        <input
+          value={form.nom}
+          onChange={e => setForm(prev => ({ ...prev, nom: e.target.value }))}
+          placeholder="ex: Porridge avoine banane"
+          style={inputStyle}
+        />
+      </div>
+      <div>
+        <p style={labelStyle}>Description (optionnel)</p>
+        <input
+          value={form.description}
+          onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+          placeholder="Ingrédients, quantités..."
+          style={inputStyle}
+        />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+        {[
+          { key: 'kcal' as const, label: 'Kcal', placeholder: '350' },
+          { key: 'proteines' as const, label: 'Prot (g)', placeholder: '20' },
+          { key: 'glucides' as const, label: 'Gluc (g)', placeholder: '45' },
+          { key: 'lipides' as const, label: 'Lip (g)', placeholder: '8' },
+        ].map(({ key, label, placeholder }) => (
+          <div key={key}>
+            <p style={labelStyle}>{label}</p>
+            <input
+              type="number"
+              value={form[key]}
+              onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
+              placeholder={placeholder}
+              style={{ ...inputStyle, textAlign: 'center' }}
+            />
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <button
+          onClick={onCancel}
+          style={{
+            padding: '8px 14px', borderRadius: 8,
+            border: '1px solid var(--border)', background: 'transparent',
+            color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          Annuler
+        </button>
+        <button
+          onClick={() => void onSave()}
+          disabled={saving || !form.nom.trim()}
+          style={{
+            flex: 1, padding: '8px', borderRadius: 8, border: 'none',
+            background: form.nom.trim() ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--border)',
+            color: '#fff', fontSize: 12, fontWeight: 700,
+            cursor: form.nom.trim() && !saving ? 'pointer' : 'not-allowed',
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          {saving ? 'Sauvegarde...' : isEdit ? 'Modifier' : 'Ajouter'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MealTemplatesSection({
+  templates,
+  loading,
+  onAdd,
+  onUpdate,
+  onDelete,
+  onClose,
+}: {
+  templates: MealTemplate[]
+  loading: boolean
+  onAdd: (t: Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>) => Promise<void>
+  onUpdate: (id: string, t: Partial<Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [form, setForm] = useState<TemplateFormData>(EMPTY_FORM)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [addingFor, setAddingFor] = useState<MealKey | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  function startAdd(mealKey: MealKey) {
+    setForm({ ...EMPTY_FORM, type_repas: mealKey })
+    setEditingId(null)
+    setAddingFor(mealKey)
+  }
+
+  function startEdit(t: MealTemplate) {
+    setForm({
+      nom: t.nom,
+      type_repas: t.type_repas,
+      description: t.description ?? '',
+      kcal: t.kcal?.toString() ?? '',
+      proteines: t.proteines?.toString() ?? '',
+      glucides: t.glucides?.toString() ?? '',
+      lipides: t.lipides?.toString() ?? '',
+    })
+    setEditingId(t.id)
+    setAddingFor(t.type_repas)
+  }
+
+  function cancelForm() {
+    setForm(EMPTY_FORM)
+    setEditingId(null)
+    setAddingFor(null)
+  }
+
+  async function handleSave() {
+    if (!form.nom.trim()) return
+    setSaving(true)
+    const data = {
+      nom: form.nom.trim(),
+      type_repas: form.type_repas,
+      description: form.description.trim() || null,
+      kcal: form.kcal ? parseFloat(form.kcal) : null,
+      proteines: form.proteines ? parseFloat(form.proteines) : null,
+      glucides: form.glucides ? parseFloat(form.glucides) : null,
+      lipides: form.lipides ? parseFloat(form.lipides) : null,
+      actif: true,
+    }
+    if (editingId) {
+      await onUpdate(editingId, data)
+    } else {
+      await onAdd(data)
+    }
+    setSaving(false)
+    cancelForm()
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Supprimer ce repas type ?')) return
+    await onDelete(id)
+  }
+
+  async function handleToggle(t: MealTemplate) {
+    await onUpdate(t.id, { actif: !t.actif })
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-card2)',
+    color: 'var(--text)',
+    fontSize: 13,
+    fontFamily: 'DM Sans,sans-serif',
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    color: 'var(--text-dim)',
+    marginBottom: 4,
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        padding: 0,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 640, maxHeight: '90vh',
+          background: 'var(--bg-card)',
+          borderRadius: '16px 16px 0 0',
+          overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 -20px 60px rgba(0,0,0,0.25)',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0,
+        }}>
+          <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>
+            Mes repas types
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, borderRadius: '50%',
+              border: '1px solid var(--border)', background: 'transparent',
+              color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px 24px' }}>
+          {loading ? (
+            <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Chargement...</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {(Object.keys(TEMPLATE_MEAL_LABELS) as MealKey[]).map(mealKey => {
+                const groupTemplates = templates.filter(t => t.type_repas === mealKey)
+                const isAddingHere = addingFor === mealKey && !editingId
+
+                return (
+                  <div key={mealKey}>
+                    {/* Group header */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      marginBottom: 8,
+                    }}>
+                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                        {TEMPLATE_MEAL_LABELS[mealKey]}
+                      </span>
+                      {addingFor !== mealKey && (
+                        <button
+                          onClick={() => startAdd(mealKey)}
+                          style={{
+                            padding: '4px 10px', borderRadius: 7,
+                            border: '1px solid var(--border)',
+                            background: 'transparent',
+                            color: 'var(--text-dim)', fontSize: 11,
+                            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                          }}
+                        >
+                          + Ajouter
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Templates in this group */}
+                    {groupTemplates.length === 0 && !isAddingHere && (
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 4px', fontStyle: 'italic' }}>
+                        Aucun repas type
+                      </p>
+                    )}
+
+                    {groupTemplates.map(t => {
+                      const isEditingThis = editingId === t.id
+
+                      if (isEditingThis) {
+                        return (
+                          <div key={t.id} style={{
+                            background: 'var(--bg-card2)', border: '1px solid rgba(91,111,255,0.3)',
+                            borderRadius: 10, padding: 14, marginBottom: 8,
+                          }}>
+                            <TemplateForm
+                              form={form}
+                              setForm={setForm}
+                              saving={saving}
+                              onSave={handleSave}
+                              onCancel={cancelForm}
+                              isEdit
+                              inputStyle={inputStyle}
+                              labelStyle={labelStyle}
+                            />
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div key={t.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 12px', borderRadius: 10,
+                          background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                          marginBottom: 6,
+                          opacity: t.actif ? 1 : 0.5,
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: 'DM Sans,sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
+                              {t.nom}
+                            </div>
+                            {t.description && (
+                              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{t.description}</div>
+                            )}
+                            <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 3 }}>
+                              {t.kcal != null ? `${t.kcal} kcal` : '—'}
+                              {t.proteines != null ? ` · P:${t.proteines}g` : ''}
+                              {t.glucides != null ? ` G:${t.glucides}g` : ''}
+                              {t.lipides != null ? ` L:${t.lipides}g` : ''}
+                            </div>
+                          </div>
+                          {/* Toggle actif */}
+                          <button
+                            onClick={() => void handleToggle(t)}
+                            title={t.actif ? 'Désactiver' : 'Activer'}
+                            style={{
+                              width: 32, height: 18, borderRadius: 9,
+                              border: 'none',
+                              background: t.actif ? '#22c55e' : 'var(--border)',
+                              cursor: 'pointer', flexShrink: 0, position: 'relative',
+                              transition: 'background 0.15s',
+                            }}
+                          >
+                            <div style={{
+                              position: 'absolute', top: 2,
+                              left: t.actif ? 16 : 2,
+                              width: 14, height: 14, borderRadius: '50%',
+                              background: '#fff',
+                              transition: 'left 0.15s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                            }} />
+                          </button>
+                          {/* Edit */}
+                          <button
+                            onClick={() => startEdit(t)}
+                            style={{
+                              width: 28, height: 28, borderRadius: 7,
+                              border: '1px solid var(--border)', background: 'transparent',
+                              color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                          </button>
+                          {/* Delete */}
+                          <button
+                            onClick={() => void handleDelete(t.id)}
+                            style={{
+                              width: 28, height: 28, borderRadius: 7,
+                              border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
+                              color: '#ef4444', cursor: 'pointer', fontSize: 13,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                              <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                            </svg>
+                          </button>
+                        </div>
+                      )
+                    })}
+
+                    {/* Add form for this group */}
+                    {isAddingHere && (
+                      <div style={{
+                        background: 'var(--bg-card2)', border: '1px solid rgba(91,111,255,0.3)',
+                        borderRadius: 10, padding: 14, marginBottom: 8,
+                      }}>
+                        <TemplateForm
+                          form={form}
+                          setForm={setForm}
+                          saving={saving}
+                          onSave={handleSave}
+                          onCancel={cancelForm}
+                          isEdit={false}
+                          inputStyle={inputStyle}
+                          labelStyle={labelStyle}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function NutritionPage() {
   const today = new Date().toISOString().split('T')[0]
 
-  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, savePlan, saveDailyLog, saveWeightLog } = useNutrition()
-  const { profile } = useProfile()
-  const { sessions, races } = usePlanning()
+  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog } = useNutrition()
+  const { templates, loading: templatesLoading, addTemplate, updateTemplate, deleteTemplate } = useNutritionTemplates()
+  const { sessions } = usePlanning()
 
   // ── State ──────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
   const [weightMetric, setWeightMetric] = useState<WeightMetric>('poids')
-  const [generatingPlan, setGeneratingPlan] = useState<boolean>(false)
-  const [generatedPlans, setGeneratedPlans] = useState<NutritionPlanGeneratedResponse | null>(null)
-  const [planWarning, setPlanWarning] = useState<boolean>(false)
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [savingLog, setSavingLog] = useState<boolean>(false)
   const [weightInputDate, setWeightInputDate] = useState<string>(today)
   const [weightInput, setWeightInput] = useState<string>('')
   const [mgInput, setMgInput] = useState<string>('')
   const [mmInput, setMmInput] = useState<string>('')
-  const [importingType, setImportingType] = useState<'minimal' | 'maximal' | null>(null)
   const [manualMeals, setManualMeals] = useState<Partial<Record<MealKey, string>>>({})
   const [manualKcal, setManualKcal] = useState<string>('')
   const [manualP, setManualP] = useState<string>('')
   const [manualG, setManualG] = useState<string>('')
   const [manualL, setManualL] = useState<string>('')
+  const [aiPanelOpen, setAiPanelOpen] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
 
   // ── Today's data ───────────────────────────────────────────────
   const todaySessions = sessions.filter(s => {
@@ -433,44 +852,6 @@ export default function NutritionPage() {
   // ── Selected date data ─────────────────────────────────────────
   const selectedPlanDay = activePlan?.plan_data?.jours?.find(j => j.date === selectedDate) ?? null
   const selectedLog = dailyLogs.find(l => l.date === selectedDate)
-
-  // ── Generate plan ──────────────────────────────────────────────
-  const handleGeneratePlan = useCallback(async (confirmed = false) => {
-    if (!confirmed && sessions.length < 7) {
-      setPlanWarning(true)
-      return
-    }
-    setGeneratingPlan(true)
-    setPlanWarning(false)
-    try {
-      const res = await fetch('/api/nutrition-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profile: { weight_kg: profile?.weight_kg, full_name: profile?.full_name },
-          sessions: sessions.slice(0, 20),
-          races: races.slice(0, 10),
-          historyLogs: dailyLogs.slice(0, 14),
-        }),
-      })
-      const data = await res.json() as { plan?: NutritionPlanGeneratedResponse; error?: string }
-      if (data.plan) setGeneratedPlans(data.plan)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setGeneratingPlan(false)
-    }
-  }, [sessions, races, profile, dailyLogs])
-
-  // ── Import plan ────────────────────────────────────────────────
-  const handleImportPlan = useCallback(async (type: 'minimal' | 'maximal') => {
-    if (!generatedPlans) return
-    setImportingType(type)
-    const data = type === 'minimal' ? generatedPlans.plan_minimal : generatedPlans.plan_maximal
-    await savePlan(data, type)
-    setImportingType(null)
-    setGeneratedPlans(null)
-  }, [generatedPlans, savePlan])
 
   // ── Toggle meal consumed ───────────────────────────────────────
   const handleMealToggle = useCallback(async (mealKey: MealKey, consumed: boolean) => {
@@ -658,15 +1039,17 @@ export default function NutritionPage() {
         <div style={cardStyle}>
           <p style={sectionTitle}>Plan nutritionnel</p>
 
-          {/* 3A. Generate button */}
-          {!generatingPlan && !generatedPlans && (
+          {/* 3A. Ouvrir le plan IA */}
+          {!activePlan && (
             <button
-              onClick={() => void handleGeneratePlan(false)}
-              disabled={generatingPlan}
+              onClick={() => setAiPanelOpen(true)}
               style={{
-                padding: '10px 18px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg,rgba(0,200,224,0.15),rgba(91,111,255,0.20))',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '12px 18px',
+                borderRadius: 12,
+                background: 'linear-gradient(135deg,rgba(0,200,224,0.12),rgba(91,111,255,0.18))',
                 border: '1px solid rgba(91,111,255,0.35)',
                 color: 'var(--text)',
                 fontFamily: 'Syne,sans-serif',
@@ -674,131 +1057,23 @@ export default function NutritionPage() {
                 fontSize: 13,
                 cursor: 'pointer',
                 marginBottom: 12,
+                transition: 'opacity 0.15s',
               }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
             >
-              Creer mon plan avec l&apos;IA
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 2a10 10 0 110 20 10 10 0 010-20z" opacity="0.2" fill="currentColor" stroke="none"/>
+                <path d="M12 8v4l3 3"/>
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+              Créer mon plan avec l&apos;IA
             </button>
-          )}
-
-          {generatingPlan && (
-            <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: '12px 0' }}>
-              Generation en cours...
-            </div>
-          )}
-
-          {/* Warning modal */}
-          {planWarning && (
-            <div style={{
-              background: 'rgba(234,179,8,0.10)',
-              border: '1px solid #eab308',
-              borderRadius: 10,
-              padding: 16,
-              marginBottom: 12,
-            }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text)' }}>
-                Votre planning contient peu de seances ({sessions.length}). Le plan sera moins precis. Continuer ?
-              </p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => void handleGeneratePlan(true)}
-                  style={{
-                    padding: '7px 14px', borderRadius: 8,
-                    background: '#eab308', border: 'none',
-                    color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                  }}
-                >
-                  Continuer quand meme
-                </button>
-                <button
-                  onClick={() => setPlanWarning(false)}
-                  style={{
-                    padding: '7px 14px', borderRadius: 8,
-                    background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                    color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-                  }}
-                >
-                  Annuler
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 3B. Generated plan preview */}
-          {generatedPlans && (
-            <div>
-              {generatedPlans.warnings.length > 0 && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid #ef4444',
-                  borderRadius: 8, padding: 10, marginBottom: 12,
-                }}>
-                  {generatedPlans.warnings.map((w, i) => (
-                    <div key={i} style={{ fontSize: 12, color: '#ef4444' }}>{w}</div>
-                  ))}
-                </div>
-              )}
-              {generatedPlans.resume && (
-                <p style={{ fontSize: 13, color: 'var(--text-mid)', marginBottom: 16, fontStyle: 'italic' }}>
-                  {generatedPlans.resume}
-                </p>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                {(['minimal', 'maximal'] as const).map(type => {
-                  const plan = type === 'minimal' ? generatedPlans.plan_minimal : generatedPlans.plan_maximal
-                  return (
-                    <div key={type} style={{
-                      background: 'var(--bg-card2)', borderRadius: 12,
-                      border: '1px solid var(--border)', padding: 14,
-                    }}>
-                      <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, marginBottom: 6, textTransform: 'capitalize' }}>
-                        Plan {type}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 8 }}>
-                        {plan.description}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
-                        {[
-                          { label: 'Low', val: plan.calories_low },
-                          { label: 'Mid', val: plan.calories_mid },
-                          { label: 'Hard', val: plan.calories_hard },
-                        ].map(row => (
-                          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{row.label}</span>
-                            <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{row.val} kcal</span>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => void handleImportPlan(type)}
-                        disabled={importingType !== null}
-                        style={{
-                          width: '100%', padding: '7px 0',
-                          borderRadius: 8, border: '1px solid rgba(91,111,255,0.35)',
-                          background: importingType === type ? 'rgba(91,111,255,0.2)' : 'rgba(91,111,255,0.10)',
-                          color: 'var(--text)', fontSize: 12,
-                          fontFamily: 'Syne,sans-serif', fontWeight: 700, cursor: 'pointer',
-                        }}
-                      >
-                        {importingType === type ? 'Importation...' : `Importer le plan ${type}`}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-              <button
-                onClick={() => setGeneratedPlans(null)}
-                style={{
-                  fontSize: 12, color: 'var(--text-dim)', background: 'none',
-                  border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0,
-                }}
-              >
-                Fermer
-              </button>
-            </div>
           )}
 
           {/* 3C. 14-day calendar grid */}
           {activePlan && (
-            <div style={{ marginTop: generatedPlans ? 16 : 0 }}>
+            <div style={{ marginTop: 0 }}>
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
                 Plan actif : {activePlan.type} — {formatDate(today)}
               </div>
@@ -1308,6 +1583,44 @@ export default function NutritionPage() {
           </div>
         </div>
       )}
+
+      {/* Bouton Mes repas types */}
+      <div style={{ padding: '8px 16px 24px', textAlign: 'center' }}>
+        <button
+          onClick={() => setShowTemplates(true)}
+          style={{
+            padding: '8px 18px',
+            borderRadius: 9,
+            border: '1px solid var(--border)',
+            background: 'transparent',
+            color: 'var(--text-dim)',
+            fontSize: 12,
+            cursor: 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          Mes repas types
+        </button>
+      </div>
+
+      {/* Templates modal */}
+      {showTemplates && (
+        <MealTemplatesSection
+          templates={templates}
+          loading={templatesLoading}
+          onAdd={addTemplate}
+          onUpdate={updateTemplate}
+          onDelete={deleteTemplate}
+          onClose={() => setShowTemplates(false)}
+        />
+      )}
+
+      {/* AI Panel — déclenche le flow nutrition */}
+      <AIPanel
+        open={aiPanelOpen}
+        onClose={() => setAiPanelOpen(false)}
+        initialFlow="nutrition"
+      />
     </div>
   )
 }

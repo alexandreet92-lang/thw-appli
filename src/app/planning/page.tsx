@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
@@ -1173,6 +1174,7 @@ function TrainingTab() {
 
 // ── Add Session Modal ─────────────────────────────
 function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; plan:PlanVariant; onClose:()=>void; onAdd:(i:number,s:Session)=>void }) {
+  const router = useRouter()
   const [sport,      setSport]      = useState<SportType>('run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
   const [trainingType,setTrainingType]= useState<string|null>(null)
@@ -1182,19 +1184,13 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   const [durM,       setDurM]       = useState(0)
   const [rpe,        setRpe]        = useState(5)
   const [notes,      setNotes]      = useState('')
-  const [blocks,     setBlocks]     = useState<Block[]>([])
   const [selPlan,    setSelPlan]    = useState<PlanVariant>(plan)
-  const isEnd = ['run','bike','swim'].includes(sport)
-  const totalMinFromBlocks = blocks.reduce((s,b)=>{
-    if(b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin) return s+b.reps*(b.effortMin+b.recoveryMin)
-    return s+b.durationMin
-  },0)
-  const totalMin = totalMinFromBlocks>0 ? totalMinFromBlocks : hMinToMin(durH,durM)
-  const tss = calcTSS(blocks, sport, totalMin, rpe)
+  const totalMin = hMinToMin(durH,durM)
+  const tss = calcTSS([], sport, totalMin, rpe)
   const trainTypes = TRAINING_TYPES[sport] ?? []
 
   function handleSportChange(s:SportType) {
-    setSport(s); setBlocks([]); setTrainingType(null)
+    setSport(s); setTrainingType(null)
   }
   function handleTrainingTypeClick(t:string) {
     if(trainingType===t) { setTrainingType(null) }
@@ -1276,9 +1272,20 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
           <span style={{ fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:rpe<=3?'#22c55e':rpe<=6?'#ffb340':'#ef4444' }}>{rpe.toFixed(1)}/10</span>
         </div>
         <input type="range" min={0} max={10} step={0.5} value={rpe} onChange={e=>setRpe(parseFloat(e.target.value))} style={{ width:'100%',accentColor:'#00c8e0',cursor:'pointer' }}/>
-        {blocks.length===0 && <p style={{ fontSize:10,color:'var(--text-dim)',margin:'4px 0 0',fontFamily:'DM Mono,monospace' }}>TSS estimé (RPE) : <strong style={{ color:SPORT_BORDER[sport] }}>{tss} pts</strong></p>}
+        <p style={{ fontSize:10,color:'var(--text-dim)',margin:'4px 0 0',fontFamily:'DM Mono,monospace' }}>TSS estimé (RPE) : <strong style={{ color:SPORT_BORDER[sport] }}>{tss} pts</strong></p>
       </div>
-      {isEnd && <div style={{ marginBottom:11 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:8 }}>Blocs d'intensité</p><BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>{blocks.length>0 && <div style={{ display:'flex',gap:14,marginTop:6,fontSize:10,color:'var(--text-dim)' }}><span>Durée : <strong style={{ color:'var(--text)',fontFamily:'DM Mono,monospace' }}>{formatHM(totalMinFromBlocks)}</strong></span><span>TSS : <strong style={{ color:SPORT_BORDER[sport],fontFamily:'DM Mono,monospace' }}>{tss} pts</strong></span></div>}</div>}
+      {/* Construire la séance → redirige vers le builder détaillé */}
+      <div style={{ marginBottom:11, padding:'12px 14px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+        <div>
+          <p style={{ margin:0, fontSize:11, fontWeight:600, color:'var(--text)' }}>Blocs d'intensité</p>
+          <p style={{ margin:'2px 0 0', fontSize:10, color:'var(--text-dim)' }}>Construit dans la page Séances</p>
+        </div>
+        <button
+          onClick={()=>{ onClose(); router.push('/session') }}
+          style={{ padding:'7px 12px', borderRadius:8, background:`linear-gradient(135deg,${SPORT_BORDER[sport]}22,#5b6fff22)`, border:`1px solid ${SPORT_BORDER[sport]}55`, color:SPORT_BORDER[sport], fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const, display:'flex', alignItems:'center', gap:5 }}>
+          Construire la séance →
+        </button>
+      </div>
       <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Notes</p><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
       {/* Plan selector */}
       <div style={{ marginBottom:11 }}>
@@ -1299,7 +1306,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
         <button onClick={()=>{
           const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
           const subLabel = sport==='bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
-          onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:tss||undefined,status:'planned',notes:notes||undefined,blocks,rpe,planVariant:selPlan})
+          onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:tss||undefined,status:'planned',notes:notes||undefined,blocks:[],rpe,planVariant:selPlan})
           onClose()
         }} style={{ flex:2,padding:10,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>+ Ajouter</button>
       </div>

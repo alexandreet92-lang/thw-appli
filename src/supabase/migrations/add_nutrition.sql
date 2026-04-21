@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS nutrition_plans (
 );
 CREATE INDEX IF NOT EXISTS idx_nutrition_plans_user_id ON nutrition_plans(user_id);
 ALTER TABLE nutrition_plans ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nutrition_plans_own" ON nutrition_plans FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "nutrition_plans_own" ON nutrition_plans;
+CREATE POLICY "nutrition_plans_own" ON nutrition_plans FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 2. nutrition_daily_logs
 CREATE TABLE IF NOT EXISTS nutrition_daily_logs (
@@ -32,7 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_nutrition_daily_logs_user_id   ON nutrition_daily
 CREATE INDEX IF NOT EXISTS idx_nutrition_daily_logs_date      ON nutrition_daily_logs(date);
 CREATE INDEX IF NOT EXISTS idx_nutrition_daily_logs_user_date ON nutrition_daily_logs(user_id, date DESC);
 ALTER TABLE nutrition_daily_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nutrition_daily_logs_own" ON nutrition_daily_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "nutrition_daily_logs_own" ON nutrition_daily_logs;
+CREATE POLICY "nutrition_daily_logs_own" ON nutrition_daily_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 3. nutrition_meal_logs  (référence nutrition_daily_logs — doit venir après)
 CREATE TABLE IF NOT EXISTS nutrition_meal_logs (
@@ -53,7 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_nutrition_meal_logs_date       ON nutrition_meal_
 CREATE INDEX IF NOT EXISTS idx_nutrition_meal_logs_user_date  ON nutrition_meal_logs(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_nutrition_meal_logs_daily_log  ON nutrition_meal_logs(daily_log_id);
 ALTER TABLE nutrition_meal_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nutrition_meal_logs_own" ON nutrition_meal_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "nutrition_meal_logs_own" ON nutrition_meal_logs;
+CREATE POLICY "nutrition_meal_logs_own" ON nutrition_meal_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 4. nutrition_meal_templates
 CREATE TABLE IF NOT EXISTS nutrition_meal_templates (
@@ -72,7 +75,8 @@ CREATE TABLE IF NOT EXISTS nutrition_meal_templates (
 CREATE INDEX IF NOT EXISTS idx_nutrition_meal_templates_user_id   ON nutrition_meal_templates(user_id);
 CREATE INDEX IF NOT EXISTS idx_nutrition_meal_templates_user_date ON nutrition_meal_templates(user_id, created_at DESC);
 ALTER TABLE nutrition_meal_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nutrition_meal_templates_own" ON nutrition_meal_templates FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "nutrition_meal_templates_own" ON nutrition_meal_templates;
+CREATE POLICY "nutrition_meal_templates_own" ON nutrition_meal_templates FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 5. nutrition_weight_logs
 CREATE TABLE IF NOT EXISTS nutrition_weight_logs (
@@ -89,4 +93,5 @@ CREATE INDEX IF NOT EXISTS idx_nutrition_weight_logs_user_id   ON nutrition_weig
 CREATE INDEX IF NOT EXISTS idx_nutrition_weight_logs_date      ON nutrition_weight_logs(date);
 CREATE INDEX IF NOT EXISTS idx_nutrition_weight_logs_user_date ON nutrition_weight_logs(user_id, date DESC);
 ALTER TABLE nutrition_weight_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nutrition_weight_logs_own" ON nutrition_weight_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "nutrition_weight_logs_own" ON nutrition_weight_logs;
+CREATE POLICY "nutrition_weight_logs_own" ON nutrition_weight_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

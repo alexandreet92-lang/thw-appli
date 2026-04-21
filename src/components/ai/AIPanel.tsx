@@ -1543,7 +1543,67 @@ interface SBSession {
   blocs: SBBloc[]
 }
 
-function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
+// ── SBIntensityChart — profil d'intensité SVG pour blocs SBSession ──
+const SB_ZONE_COLORS_CHART = ['#9ca3af', '#3b82f6', '#22c55e', '#f97316', '#ef4444'] // Z1→Z5
+const SB_ZONE_HEIGHTS_CHART = [12, 28, 48, 68, 90] // % du H, Z1→Z5
+
+function parseSBZoneIdx(zones: string[]): number {
+  if (!zones.length) return 1
+  const m = zones[0].match(/\d/)
+  return m ? Math.min(4, Math.max(0, parseInt(m[0]) - 1)) : 1
+}
+
+function SBIntensityChart({ blocs }: { blocs: SBBloc[] }) {
+  const H = 60
+  const GAP = 0.8
+
+  interface SBBar { durationMin: number; zoneIdx: number; isRecup: boolean }
+
+  const bars: SBBar[] = []
+  for (const b of blocs) {
+    const effortZ = parseSBZoneIdx(b.zone_effort)
+    const recupZ  = parseSBZoneIdx(b.zone_recup.length ? b.zone_recup : ['Z1'])
+    const reps = Math.max(1, b.repetitions)
+    for (let i = 0; i < reps; i++) {
+      if (b.duree_effort > 0) bars.push({ durationMin: b.duree_effort, zoneIdx: effortZ, isRecup: false })
+      if (b.recup > 0)       bars.push({ durationMin: b.recup,        zoneIdx: recupZ,  isRecup: true  })
+    }
+  }
+
+  const totalMin = bars.reduce((a, b) => a + b.durationMin, 0)
+  if (totalMin === 0 || bars.length === 0) return null
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 6px', fontFamily: 'DM Sans,sans-serif' }}>
+        Profil d'intensité
+      </p>
+      <svg width="100%" height={H + 4} viewBox={`0 0 100 ${H + 4}`} preserveAspectRatio="none"
+        style={{ overflow: 'visible', display: 'block' }}>
+        {(() => {
+          let xCursor = 0
+          return bars.map((bar, i) => {
+            const w = Math.max((bar.durationMin / totalMin) * 100 - GAP * 0.5, 0.5)
+            const hPct = bar.isRecup ? 10 : SB_ZONE_HEIGHTS_CHART[bar.zoneIdx]
+            const h = (hPct / 100) * H
+            const y = H - h
+            const fill = SB_ZONE_COLORS_CHART[bar.zoneIdx]
+            const opacity = bar.isRecup ? 0.38 : 0.88
+            const x = xCursor
+            xCursor += (bar.durationMin / totalMin) * 100
+            return <rect key={i} x={x} y={y} width={w} height={h} rx={1} fill={fill} opacity={opacity} />
+          })
+        })()}
+        <line x1={0} y1={H} x2={100} y2={H} stroke="var(--ai-border)" strokeWidth={0.5} />
+      </svg>
+    </div>
+  )
+}
+
+function SessionBuilderFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
   type Phase = 'sport' | 'type' | 'generating' | 'result' | 'modify' | 'saved'
 
   const [phase,        setPhase]        = useState<Phase>('sport')
@@ -1556,6 +1616,23 @@ function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
   const [saving,       setSaving]       = useState(false)
   const [savedId,      setSavedId]      = useState<string | null>(null)
   const [error,        setError]        = useState<string | null>(null)
+  const [zeusCheckDone, setZeusCheckDone] = useState(false)
+  const [isZeus,        setIsZeus]        = useState(false)
+
+  useEffect(() => {
+    async function checkZeus() {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setIsZeus(false); setZeusCheckDone(true); return }
+        const { data } = await sb.from('profiles').select('plan').eq('id', user.id).single()
+        setIsZeus((data as { plan: string } | null)?.plan === 'expert')
+      } catch { setIsZeus(false) }
+      setZeusCheckDone(true)
+    }
+    void checkZeus()
+  }, [])
 
   function toggleType(t: string) {
     setTypesSeance(prev =>
@@ -1614,7 +1691,26 @@ function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
       })
       const data = await res.json() as { session?: SBSession; error?: string }
       if (data.error) { setError(data.error); setPhase(session ? 'result' : 'type'); return }
-      setSession(data.session ?? null)
+      const generated = data.session ?? null
+      setSession(generated)
+      if (generated && onRecordConv) {
+        const sportLabel = SB_SPORTS.find(s => s.id === sport)?.label ?? sport ?? ''
+        const userMsg = `Créer une séance ${sportLabel} — ${typesSeance.join(', ')}`
+        const aiMsg = [
+          `**${generated.nom}**`,
+          '',
+          generated.description,
+          '',
+          `**Structure — ${generated.blocs.length} blocs :**`,
+          ...generated.blocs.map((b, i) =>
+            `${i + 1}. **${b.nom}** — ${b.repetitions > 1 ? `${b.repetitions}×` : ''}${b.duree_effort} min` +
+            (b.recup > 0 ? ` / ${b.recup} min récup` : '') +
+            (b.zone_effort.length ? ` · ${b.zone_effort.join('/')}` : '') +
+            `\n${b.consigne}`
+          ),
+        ].join('\n')
+        onRecordConv(userMsg, aiMsg)
+      }
       setPhase('result')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur réseau')
@@ -1649,6 +1745,60 @@ function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
       setPhase('saved')
     } catch { /* silently handle */ }
     setSaving(false)
+  }
+
+  // Zeus gate
+  if (!zeusCheckDone) {
+    return (
+      <div style={{ padding: '32px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <Dots />
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif' }}>Vérification…</p>
+      </div>
+    )
+  }
+  if (!isZeus) {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <div style={{
+          padding: '20px 16px', borderRadius: 12,
+          border: '1px solid rgba(139,92,246,0.3)',
+          background: 'rgba(139,92,246,0.06)',
+          marginBottom: 14,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, color: '#8b5cf6' }}>
+              <path d="M12.5 1.5 L5.5 11 L10.5 11 L7.5 18.5 L14.5 9 L9.5 9 Z"
+                stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round"
+                fill="currentColor" fillOpacity="0.2"/>
+            </svg>
+            <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--ai-text)' }}>
+              Fonctionnalité Zeus
+            </span>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5 }}>
+            Cette fonctionnalité est réservée au modèle Zeus.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5 }}>
+            Passe à Zeus pour créer des séances avec l'IA.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{
+            flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          }}>Fermer</button>
+          <a href="/profile" style={{
+            flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+            background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+            color: '#fff', fontSize: 12, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            textDecoration: 'none', textAlign: 'center' as const,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>Découvrir Zeus ⚡</a>
+        </div>
+      </div>
+    )
   }
 
   // ── Phase : sport ──────────────────────────────────────────────
@@ -1823,7 +1973,7 @@ function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
       <div style={{ padding: '16px 0', textAlign: 'center' }}>
         <div style={{ fontSize: 28, marginBottom: 10 }}>✅</div>
         <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--ai-text)' }}>
-          Séance sauvegardée
+          Séance ajoutée ✓
         </p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', fontFamily: 'DM Sans,sans-serif' }}>
           {session?.nom} a été ajoutée à ta bibliothèque.
@@ -1945,6 +2095,9 @@ function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
               </div>
             ))}
           </div>
+
+          {/* Profil d'intensité SVG */}
+          <SBIntensityChart blocs={session.blocs} />
 
           {/* Description */}
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' }}>
@@ -3302,7 +3455,23 @@ export default function AIPanel({
                   />
                 )}
                 {activeFlow === 'sessionbuilder' && (
-                  <SessionBuilderFlow onCancel={() => setActiveFlow(null)} />
+                  <SessionBuilderFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,  ts: Date.now() + 1, modelId: 'zeus' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
+                  />
                 )}
               </div>
             )}

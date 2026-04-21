@@ -1911,17 +1911,134 @@ function LibraryMode({ templates, onNew, onEdit, onStart }: {
   )
 }
 
+// ── Chargement session_library ─────────────────────────────────
+interface SBLibRow {
+  id: string
+  nom: string
+  sport: string
+  type_seance: string[] | null
+  duree_estimee: number
+  intensite: string | null
+  tss_estime: number | null
+  rpe_cible: number | null
+  tags: string[] | null
+  description: string | null
+  blocs: {
+    nom: string; repetitions: number; duree_effort: number; recup: number
+    zone_effort: string[]; zone_recup: string[]
+    watts: number | null; allure_cible: string | null
+    fc_cible: number | null; fc_max: number | null; cadence: number | null
+    consigne: string
+  }[] | null
+}
+
+function normalizeSport(s: string): Sport | null {
+  const m: Record<string, Sport> = {
+    natation: 'natation', swimming: 'natation',
+    running: 'running', 'course à pied': 'running', course: 'running',
+    velo: 'velo', vélo: 'velo', cycling: 'velo', cyclisme: 'velo',
+    muscu: 'muscu', musculation: 'muscu', renfo: 'muscu', gym: 'muscu',
+    hyrox: 'hyrox',
+    aviron: 'aviron', rowing: 'aviron',
+    triathlon: 'triathlon',
+  }
+  return m[s.toLowerCase()] ?? null
+}
+
+function normalizeIntensity(s: string | null): Intensity {
+  if (!s) return 'moderate'
+  const m: Record<string, Intensity> = {
+    faible: 'low', low: 'low',
+    'modéré': 'moderate', moderate: 'moderate', moyen: 'moderate',
+    'élevé': 'high', high: 'high',
+    maximum: 'max', max: 'max',
+  }
+  return m[s.toLowerCase()] ?? 'moderate'
+}
+
+function zoneFromSBStr(zones: string[]): Zone {
+  if (!zones.length) return 2 as Zone
+  const n = zones[0].match(/\d/)
+  return n ? Math.min(5, Math.max(1, parseInt(n[0]))) as Zone : 2 as Zone
+}
+
+function sbRowToTemplate(row: SBLibRow): SessionTemplate | null {
+  const sport = normalizeSport(row.sport)
+  if (!sport) return null
+  const intensity = normalizeIntensity(row.intensite)
+  const blocs = row.blocs ?? []
+  const isEnduranceLike = ['running', 'velo', 'aviron', 'triathlon', 'natation'].includes(sport)
+  let endurance: EnduranceSession | undefined
+  if (isEnduranceLike && blocs.length > 0) {
+    endurance = {
+      blocks: blocs.map((b, i) => ({
+        id: `lib-${row.id}-${i}`,
+        name: b.nom,
+        reps: Math.max(1, b.repetitions),
+        intervalType: 'time' as const,
+        effortMmSs: toMMSS(b.duree_effort * 60),
+        zone: zoneFromSBStr(b.zone_effort),
+        targetPace: b.allure_cible ?? undefined,
+        targetWatts: b.watts ?? undefined,
+        targetHrAvg: b.fc_cible ?? undefined,
+        targetHrMax: b.fc_max ?? undefined,
+        cadenceRpm: b.cadence ?? undefined,
+        recoveryMmSs: b.recup > 0 ? toMMSS(b.recup * 60) : '0:00',
+        recoveryZone: zoneFromSBStr(b.zone_recup.length ? b.zone_recup : ['Z1']),
+        note: b.consigne || undefined,
+      })),
+    }
+  }
+  return {
+    id: row.id,
+    name: row.nom,
+    sport,
+    typeSeance: row.type_seance ?? [],
+    durationMin: row.duree_estimee,
+    intensity,
+    tags: row.tags ?? [],
+    notes: row.description ?? undefined,
+    rpe: row.rpe_cible ?? undefined,
+    ...(endurance && { endurance }),
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function SessionPage() {
-  /* TODO: charger depuis Supabase session_templates */
   const [templates,     setTemplates]     = useState<SessionTemplate[]>(MOCK_TEMPLATES)
   const [mode,          setMode]          = useState<PageMode>('library')
   const [editTarget,    setEditTarget]    = useState<SessionTemplate|undefined>()
   const [execTarget,    setExecTarget]    = useState<SessionTemplate|undefined>()
   const { zones }                         = useTrainingZones()
   const { races }                         = usePlanning()
+
+  // Charger les séances depuis session_library (IA)
+  useEffect(() => {
+    async function loadLibrary() {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb
+          .from('session_library')
+          .select('id,nom,sport,type_seance,duree_estimee,intensite,tss_estime,rpe_cible,tags,description,blocs')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+        if (!data?.length) return
+        const aiTemplates = (data as SBLibRow[]).map(sbRowToTemplate).filter((t): t is SessionTemplate => t !== null)
+        if (!aiTemplates.length) return
+        setTemplates(prev => {
+          const aiIds = new Set(aiTemplates.map(t => t.id))
+          const base = prev.filter(t => !aiIds.has(t.id))
+          return [...aiTemplates, ...base]
+        })
+      } catch { /* silently ignore */ }
+    }
+    void loadLibrary()
+  }, [])
 
   function handleNew() { setEditTarget(undefined); setMode('build') }
   function handleEdit(t: SessionTemplate) { setEditTarget(t); setMode('build') }

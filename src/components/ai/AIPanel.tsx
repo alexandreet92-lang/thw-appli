@@ -33,7 +33,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | null
 
 interface ActiveQuickAction {
   label: string
@@ -1484,6 +1484,557 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
   )
 }
 
+// ── SessionBuilderFlow ─────────────────────────────────────────
+
+const SB_SPORTS: { id: string; label: string; color: string }[] = [
+  { id: 'muscu',     label: 'Muscu / Renfo',      color: '#5b6fff' },
+  { id: 'running',   label: 'Running',             color: '#22c55e' },
+  { id: 'velo',      label: 'Vélo / Home trainer', color: '#f97316' },
+  { id: 'natation',  label: 'Natation',            color: '#00c8e0' },
+  { id: 'hyrox',     label: 'Hyrox',               color: '#ef4444' },
+  { id: 'aviron',    label: 'Aviron',              color: '#14b8a6' },
+  { id: 'triathlon', label: 'Triathlon',           color: '#a855f7' },
+]
+
+const SB_TYPES: Record<string, string[]> = {
+  muscu:     ['Strength','Strength endurance','Explosivité','Push','Pull','Legs','Full body','Abdos / gainage'],
+  running:   ['1500m','5k','10k','Semi','Marathon','VMA','Aérobie','SL1','SL2','Hills','Mixte'],
+  velo:      ['Aérobie','SL1','SL2','PMA','Mixte','Sprints'],
+  natation:  ['Technique','Seuil','Sprints'],
+  hyrox:     ['Compromised Run','Ergo','Spé wall ball','Spé ergo','Spé sled','Simulation'],
+  aviron:    ['EF','Travail technique','Seuil','Vo2max','Sprints','Race pace'],
+  triathlon: ['Brick Run','Simulation complète'],
+}
+
+const SB_VELO_SOUS_TYPES = ['Vélo route','Home Trainer','Elliptique','VTT','Cyclocross']
+
+const INTENSITE_COLOR: Record<string, string> = {
+  'Faible':  '#22c55e',
+  'Modéré':  '#eab308',
+  'Élevé':   '#f97316',
+  'Maximum': '#ef4444',
+}
+
+interface SBBloc {
+  nom: string
+  repetitions: number
+  duree_effort: number
+  recup: number
+  zone_effort: string[]
+  zone_recup: string[]
+  watts: number | null
+  fc_cible: number | null
+  fc_max: number | null
+  cadence: number | null
+  allure_cible: string | null
+  consigne: string
+}
+
+interface SBSession {
+  nom: string
+  sport: string
+  type_seance: string[]
+  duree_estimee: number
+  intensite: 'Faible' | 'Modéré' | 'Élevé' | 'Maximum'
+  tss_estime: number
+  rpe_cible: number
+  tags: string[]
+  description: string
+  blocs: SBBloc[]
+}
+
+function SessionBuilderFlow({ onCancel }: { onCancel: () => void }) {
+  type Phase = 'sport' | 'type' | 'generating' | 'result' | 'modify' | 'saved'
+
+  const [phase,        setPhase]        = useState<Phase>('sport')
+  const [sport,        setSport]        = useState<string | null>(null)
+  const [sousType,     setSousType]     = useState<string | null>(null)
+  const [typesSeance,  setTypesSeance]  = useState<string[]>([])
+  const [freeText,     setFreeText]     = useState('')
+  const [session,      setSession]      = useState<SBSession | null>(null)
+  const [modifyText,   setModifyText]   = useState('Voici ce que je veux changer : ')
+  const [saving,       setSaving]       = useState(false)
+  const [savedId,      setSavedId]      = useState<string | null>(null)
+  const [error,        setError]        = useState<string | null>(null)
+
+  function toggleType(t: string) {
+    setTypesSeance(prev =>
+      prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+    )
+  }
+
+  async function fetchProfil(): Promise<{ ftp?: number; sl1?: string; sl2?: string; zones?: Record<string, string> }> {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return {}
+      const { data } = await sb
+        .from('training_zones')
+        .select('sport,ftp_watts,sl1,sl2,z1_value,z2_value,z3_value,z4_value,z5_value')
+        .eq('user_id', user.id)
+        .eq('is_current', true)
+      if (!data?.length) return {}
+      const bike = data.find((r: { sport: string }) => r.sport === 'bike')
+      const run  = data.find((r: { sport: string }) => r.sport === 'run')
+      const result: { ftp?: number; sl1?: string; sl2?: string; zones?: Record<string, string> } = {}
+      if (bike?.ftp_watts) result.ftp = bike.ftp_watts as number
+      if (run?.sl1)  result.sl1 = run.sl1 as string
+      if (run?.sl2)  result.sl2 = run.sl2 as string
+      const zones: Record<string, string> = {}
+      for (const row of data) {
+        const r = row as { sport: string; z1_value?: string; z2_value?: string; z3_value?: string; z4_value?: string; z5_value?: string }
+        if (r.z3_value) zones[`${r.sport}_z3`] = r.z3_value
+        if (r.z4_value) zones[`${r.sport}_z4`] = r.z4_value
+      }
+      if (Object.keys(zones).length) result.zones = zones
+      return result
+    } catch { return {} }
+  }
+
+  async function generate(modification?: string) {
+    if (!sport || typesSeance.length === 0) return
+    setPhase('generating')
+    setError(null)
+    try {
+      const profil = await fetchProfil()
+      const body: Record<string, unknown> = {
+        sport, typesSeance, profil,
+        sousType: sousType ?? undefined,
+        descriptionLibre: freeText.trim() || undefined,
+      }
+      if (modification && session) {
+        body.modification   = modification
+        body.sessionActuelle = session
+      }
+      const res = await fetch('/api/session-builder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json() as { session?: SBSession; error?: string }
+      if (data.error) { setError(data.error); setPhase(session ? 'result' : 'type'); return }
+      setSession(data.session ?? null)
+      setPhase('result')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur réseau')
+      setPhase(session ? 'result' : 'type')
+    }
+  }
+
+  async function save() {
+    if (!session) return
+    setSaving(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setSaving(false); return }
+      const { data, error: dbErr } = await sb.from('session_library').insert({
+        user_id:       user.id,
+        nom:           session.nom,
+        sport:         session.sport,
+        type_seance:   session.type_seance,
+        sous_type:     sousType ?? null,
+        duree_estimee: session.duree_estimee,
+        intensite:     session.intensite,
+        tss_estime:    session.tss_estime,
+        rpe_cible:     session.rpe_cible,
+        tags:          session.tags,
+        description:   session.description,
+        blocs:         session.blocs,
+        source:        'ai',
+      }).select('id').single()
+      if (!dbErr && data) setSavedId(data.id as string)
+      setPhase('saved')
+    } catch { /* silently handle */ }
+    setSaving(false)
+  }
+
+  // ── Phase : sport ──────────────────────────────────────────────
+  if (phase === 'sport') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          Créer une séance
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Choisis le sport
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+          {SB_SPORTS.map(s => (
+            <button key={s.id} onClick={() => { setSport(s.id); setSousType(null); setTypesSeance([]); setPhase('type') }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 14px', borderRadius: 10, textAlign: 'left',
+                border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                cursor: 'pointer', transition: 'all 0.12s', width: '100%',
+              }}
+              onMouseEnter={e => {
+                const b = e.currentTarget as HTMLButtonElement
+                b.style.borderColor = s.color
+                b.style.background = `${s.color}18`
+              }}
+              onMouseLeave={e => {
+                const b = e.currentTarget as HTMLButtonElement
+                b.style.borderColor = 'var(--ai-border)'
+                b.style.background = 'var(--ai-bg2)'
+              }}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                {s.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <button onClick={onCancel} style={{
+          padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)',
+          background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
+          cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+        }}>Annuler</button>
+      </div>
+    )
+  }
+
+  // ── Phase : type ───────────────────────────────────────────────
+  if (phase === 'type' && sport) {
+    const sportLabel = SB_SPORTS.find(s => s.id === sport)?.label ?? sport
+    const sportColor = SB_SPORTS.find(s => s.id === sport)?.color ?? '#5b6fff'
+    const types      = SB_TYPES[sport] ?? []
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        {/* Back + sport label */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <button onClick={() => setPhase('sport')} style={{
+            width: 26, height: 26, borderRadius: 6, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>←</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+              {sportLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Sous-type vélo */}
+        {sport === 'velo' && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+              Sous-type
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+              {SB_VELO_SOUS_TYPES.map(st => (
+                <button key={st} onClick={() => setSousType(sousType === st ? null : st)} style={{
+                  padding: '6px 12px', borderRadius: 20,
+                  border: `1px solid ${sousType === st ? '#f97316' : 'var(--ai-border)'}`,
+                  background: sousType === st ? 'rgba(249,115,22,0.12)' : 'var(--ai-bg2)',
+                  color: sousType === st ? '#f97316' : 'var(--ai-mid)',
+                  fontSize: 12, fontWeight: sousType === st ? 600 : 400,
+                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                }}>{st}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Types de séance */}
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+          Type de séance
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 14 }}>
+          {types.map(t => {
+            const on = typesSeance.includes(t)
+            return (
+              <button key={t} onClick={() => toggleType(t)} style={{
+                padding: '7px 13px', borderRadius: 20,
+                border: `1px solid ${on ? sportColor : 'var(--ai-border)'}`,
+                background: on ? `${sportColor}1a` : 'var(--ai-bg2)',
+                color: on ? sportColor : 'var(--ai-mid)',
+                fontSize: 12, fontWeight: on ? 600 : 400,
+                cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'DM Sans,sans-serif',
+              }}>{t}</button>
+            )
+          })}
+        </div>
+
+        {/* Description libre */}
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+          Précisions (optionnel)
+        </p>
+        <textarea
+          value={freeText}
+          onChange={e => setFreeText(e.target.value)}
+          placeholder="Ex : séance marathon spécifique montagne avec 3×2km en côte à allure SL2"
+          rows={2}
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+            color: 'var(--ai-text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif',
+            resize: 'none' as const, outline: 'none', boxSizing: 'border-box' as const,
+            marginBottom: 14,
+          }}
+        />
+
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{
+            padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          }}>Annuler</button>
+          <button
+            onClick={() => void generate()}
+            disabled={typesSeance.length === 0}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: typesSeance.length > 0 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              cursor: typesSeance.length > 0 ? 'pointer' : 'not-allowed',
+              fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
+            }}
+          >
+            Générer la séance
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase : generating ─────────────────────────────────────────
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+        <Dots />
+        <p style={{ fontSize: 13, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', margin: 0 }}>
+          {session ? 'Modification en cours…' : 'Génération en cours…'}
+        </p>
+      </div>
+    )
+  }
+
+  // ── Phase : saved ──────────────────────────────────────────────
+  if (phase === 'saved') {
+    return (
+      <div style={{ padding: '16px 0', textAlign: 'center' }}>
+        <div style={{ fontSize: 28, marginBottom: 10 }}>✅</div>
+        <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--ai-text)' }}>
+          Séance sauvegardée
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', fontFamily: 'DM Sans,sans-serif' }}>
+          {session?.nom} a été ajoutée à ta bibliothèque.
+        </p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button onClick={onCancel} style={{
+            padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          }}>Fermer</button>
+          <a href="/session" style={{
+            display: 'inline-flex', alignItems: 'center',
+            padding: '8px 16px', borderRadius: 9, border: 'none',
+            background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            color: '#fff', fontSize: 12, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            textDecoration: 'none',
+          }}>
+            Voir dans Session →
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase : modify ─────────────────────────────────────────────
+  if (phase === 'modify') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <button onClick={() => setPhase('result')} style={{
+            width: 26, height: 26, borderRadius: 6, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>←</button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+            Modifier la séance
+          </span>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif' }}>
+          Décris les changements souhaités
+        </p>
+        <textarea
+          value={modifyText}
+          onChange={e => setModifyText(e.target.value)}
+          rows={4}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+            color: 'var(--ai-text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif',
+            resize: 'none' as const, outline: 'none', boxSizing: 'border-box' as const,
+            marginBottom: 12,
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('result')} style={{
+            padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          }}>Annuler</button>
+          <button
+            onClick={() => void generate(modifyText)}
+            disabled={modifyText.trim().length < 10}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: modifyText.trim().length >= 10 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              cursor: modifyText.trim().length >= 10 ? 'pointer' : 'not-allowed',
+              fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            Régénérer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase : result ─────────────────────────────────────────────
+  if (phase === 'result' && session) {
+    const sportObj = SB_SPORTS.find(s => s.id === sport)
+    const color    = sportObj?.color ?? '#5b6fff'
+
+    return (
+      <div style={{ padding: '4px 0' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 5px', lineHeight: 1.2 }}>
+                {session.nom}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+                <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${color}22`, color, fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+                  {sportObj?.label ?? session.sport}
+                </span>
+                <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${INTENSITE_COLOR[session.intensite] ?? '#5b6fff'}22`, color: INTENSITE_COLOR[session.intensite] ?? '#5b6fff', fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+                  {session.intensite}
+                </span>
+                {session.tags.slice(0, 3).map(tag => (
+                  <span key={tag} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: 'var(--ai-bg2)', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Métriques */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+            {[
+              { label: 'Durée', val: `${session.duree_estimee} min` },
+              { label: 'TSS',   val: String(session.tss_estime) },
+              { label: 'RPE',   val: `${session.rpe_cible}/10` },
+            ].map(({ label, val }) => (
+              <div key={label} style={{ textAlign: 'center', padding: '8px 6px', borderRadius: 9, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                <div style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Description */}
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' }}>
+            {session.description}
+          </p>
+        </div>
+
+        {/* Blocs */}
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
+          Structure — {session.blocs.length} blocs
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+          {session.blocs.map((bloc, i) => (
+            <div key={i} style={{
+              padding: '10px 12px', borderRadius: 10,
+              border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                  {bloc.nom}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>
+                  {bloc.repetitions > 1 ? `${bloc.repetitions}×` : ''}{bloc.duree_effort}min
+                  {bloc.recup > 0 ? ` / ${bloc.recup}min récup` : ''}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 4 }}>
+                {bloc.zone_effort.map(z => (
+                  <span key={z} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, fontFamily: 'DM Mono,monospace' }}>
+                    {z}
+                  </span>
+                ))}
+                {bloc.watts != null && (
+                  <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(249,115,22,0.15)', color: '#f97316', fontFamily: 'DM Mono,monospace' }}>
+                    {bloc.watts}W
+                  </span>
+                )}
+                {bloc.allure_cible && (
+                  <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>
+                    {bloc.allure_cible}
+                  </span>
+                )}
+                {bloc.fc_cible != null && (
+                  <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>
+                    {bloc.fc_cible}bpm
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4 }}>
+                {bloc.consigne}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => { setModifyText('Voici ce que je veux changer : '); setPhase('modify') }}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9,
+              border: '1px solid var(--ai-border)', background: 'transparent',
+              color: 'var(--ai-mid)', fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            Modifier
+          </button>
+          <button
+            onClick={() => void save()}
+            disabled={saving}
+            style={{
+              flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+              background: saving ? 'var(--ai-border)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            {saving ? 'Sauvegarde…' : '+ Ajouter à la bibliothèque'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
 // ══════════════════════════════════════════════════════════════
 // ATTACHMENT
 // ══════════════════════════════════════════════════════════════
@@ -1537,7 +2088,7 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Entraînement',
     items: [
-      { label: 'Créer une séance', prompt: 'Crée-moi une séance d\'entraînement adaptée à mon état de forme actuel et mes objectifs. Structure-la avec un échauffement, un corps de séance et un retour au calme, avec les durées et intensités précises.' },
+      { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
       { label: 'Analyser ma semaine', prompt: 'Analyse ma semaine d\'entraînement en cours. Évalue la répartition des charges, les intensités et l\'équilibre global. Donne des recommandations concrètes pour la suite.' },
       { label: 'Ajuster mon plan', prompt: 'Mon plan d\'entraînement actuel nécessite-t-il des ajustements selon mon état de forme et ma fatigue actuels ? Propose des modifications concrètes si nécessaire.' },
     ],
@@ -2749,6 +3300,9 @@ export default function AIPanel({
                     onPrepare={(apiPrompt, label) => { setActiveFlow(null); setActiveQA({ label, apiPrompt, model }); setTimeout(() => areaRef.current?.focus(), 60) }}
                     onCancel={() => setActiveFlow(null)}
                   />
+                )}
+                {activeFlow === 'sessionbuilder' && (
+                  <SessionBuilderFlow onCancel={() => setActiveFlow(null)} />
                 )}
               </div>
             )}

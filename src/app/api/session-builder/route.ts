@@ -91,35 +91,16 @@ interface ValidationResult {
 function validateSession(session: GeneratedSession, expectedSport: string): ValidationResult {
   const reasons: string[] = []
 
-  // (1) Sport must match exactly
+  // Only check sport — this is the only check worth retrying.
+  //
+  // Duration check (#2) was removed: Claude's recovery counting for reps=1 blocs is
+  // inconsistent with any formula we can write (sometimes included in duree_estimee,
+  // sometimes not). Any tolerance we pick causes false positives → retry → Claude
+  // returns a simplified/wrong session (e.g. "muscu · 29 min" for a running request).
+  //
+  // Merged-repetitions check (#3) was also removed earlier for the same reason.
   if (session.sport !== expectedSport) {
     reasons.push(`sport "${session.sport}" ne correspond pas au sport attendu "${expectedSport}"`)
-  }
-
-  // (2) Total bloc duration must be within 5 min of duree_estimee.
-  //
-  // Recovery counting rules — must match SBIntensityChart exactly:
-  //   reps=1 : recovery is added once (rest before the next bloc)
-  //   reps>1 : recovery added between reps only → (reps-1) times
-  //
-  // NOTE: check #3 (merged-repetitions detection via divisibility) was removed.
-  // It caused catastrophic false positives: reps=5,duree_effort=10 → flagged as
-  // "should be 2 min per rep" → retry generates a 30-min session instead of 170 min.
-  // Divisibility alone cannot distinguish merged from legitimate intervals.
-  const totalMin = session.blocs.reduce((sum, b) => {
-    const reps         = Math.max(1, b.repetitions ?? 1)
-    const effort       = (b.duree_effort ?? 0) * reps
-    // For reps=1: count recovery once (matches chart behaviour)
-    // For reps>1: count recovery between reps only
-    const recoveryMult = reps === 1 ? 1 : reps - 1
-    const recovery     = (b.recup ?? 0) * recoveryMult
-    return sum + effort + recovery
-  }, 0)
-  const diff = Math.abs(totalMin - session.duree_estimee)
-  if (diff > 5) {
-    reasons.push(
-      `durée totale des blocs (${totalMin} min) diffère de duree_estimee (${session.duree_estimee} min) de ${diff} min (tolérance : 5 min)`
-    )
   }
 
   return { valid: reasons.length === 0, reasons }

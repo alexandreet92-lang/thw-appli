@@ -1919,7 +1919,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           ...generated.blocs.map((b, i) =>
             `${i + 1}. **${b.nom}** — ${b.repetitions > 1 ? `${b.repetitions}×` : ''}${b.duree_effort} min` +
             (b.recup > 0 ? ` / ${b.recup} min récup` : '') +
-            (b.zone_effort.length ? ` · ${b.zone_effort.join('/')}` : '') +
+            (Array.isArray(b.zone_effort) && b.zone_effort.length ? ` · ${b.zone_effort.join('/')}` : '') +
             `\n${b.consigne}`
           ),
         ].join('\n')

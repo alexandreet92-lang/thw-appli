@@ -215,6 +215,7 @@ interface SessionBlock {
   zone: number
   intensity: string
   notes: string
+  rawValue?: number  // watts (cycling) or speed m/s (running/swim/row) — for continuous height
 }
 interface ParsedSession {
   title: string
@@ -269,6 +270,34 @@ function detectSport(text: string): string {
   return 'running'
 }
 
+// Extracts a continuous intensity value from text for height calculation.
+// Returns watts (cycling) or speed in m/s (running/swim/row). Recovery → 0.
+function extractRawValue(text: string, sport: string): number | undefined {
+  const isRecup = /r[eé]cup|retour au calme|cool.?down/i.test(text)
+  if (isRecup) return 0
+
+  const isCycling = /cycling|velo|vélo|aviron|rowing/.test(sport)
+  const isRunLike  = /running|natation|swim|run/.test(sport)
+
+  if (isCycling) {
+    // Priority: explicit watt value like "320W" or "~320W" or "320 W"
+    const wm = text.match(/~?(\d{2,4})\s*W(?:\b|[^h])/i)
+    if (wm) return parseInt(wm[1])
+    // Fallback: percentage of FTP like "112% FTP" → FTP unknown, keep undefined
+  }
+
+  if (isRunLike) {
+    // Pace like "4:30/km" or "4'30/km" → convert to speed m/s (higher = more intense)
+    const pm = text.match(/(\d+)[:'′](\d{2})\s*\/\s*(?:km|100m)/i)
+    if (pm) {
+      const totalSec = parseInt(pm[1]) * 60 + parseInt(pm[2])
+      if (totalSec > 0) return 1000 / totalSec  // m/s: faster pace → higher value
+    }
+  }
+
+  return undefined
+}
+
 function mapBlockType(label: string): string {
   const l = label.toLowerCase()
   if (/échauffement|warm.?up|activation/.test(l)) return 'warmup'
@@ -306,6 +335,8 @@ function parseSession(text: string): ParsedSession | null {
     return PHASE_RE.test(s.headingText) && durFromText(combined) > 0
   })
 
+  const parsedSport = detectSport(text)
+
   if (phaseSections.length >= 2) {
     const blocks: SessionBlock[] = []
     for (const s of phaseSections) {
@@ -317,6 +348,7 @@ function parseSession(text: string): ParsedSession | null {
         .map(l => l.replace(/^[-•*]\s*/, '').trim())
         .filter(l => l && !/^\d+\s*min/.test(l))[0] ?? ''
       const baseLabel = s.headingText.replace(/^\d+[.):\s]+/, '').trim()
+      const rawValue  = extractRawValue(combined, parsedSport)
 
       // Expand repeated blocs into individual effort+recovery pairs
       const repM   = combined.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
@@ -327,23 +359,24 @@ function parseSession(text: string): ParsedSession | null {
         const recupDur  = recupM ? parseInt(recupM[1]) : 0
         if (effortDur > 0) {
           for (let r = 0; r < reps; r++) {
-            blocks.push({ label: baseLabel, duration_min: effortDur, zone, intensity, notes })
+            blocks.push({ label: baseLabel, duration_min: effortDur, zone, intensity, notes, rawValue })
             if (recupDur > 0) {
-              blocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '' })
+              blocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '', rawValue: 0 })
             }
           }
           continue
         }
       }
 
-      blocks.push({ label: baseLabel, duration_min: durFromText(combined), zone, intensity, notes })
+      blocks.push({ label: baseLabel, duration_min: durFromText(combined), zone, intensity, notes, rawValue })
     }
     const total = blocks.reduce((s, b) => s + b.duration_min, 0)
-    return { title: 'Séance proposée', sport: detectSport(text), total_min: total, blocks }
+    return { title: 'Séance proposée', sport: parsedSport, total_min: total, blocks }
   }
 
   const boldBlocks: SessionBlock[] = []
-  for (const line of lines) {
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li]
     if (!/\*\*[^*]+\*\*/.test(line)) continue
     if (!PHASE_RE.test(line)) continue
     const labelM = line.match(/\*\*([^*]+)\*\*/)
@@ -354,6 +387,9 @@ function parseSession(text: string): ParsedSession | null {
     const notes = line
       .replace(/\*\*[^*]+\*\*/, '').replace(/\d+\s*min/ig, '')
       .replace(/[-•*:·]/g, '').trim().slice(0, 80)
+    // Look ahead: consigne is on the next non-empty line (no bold markers)
+    const nextLine = lines.slice(li + 1, li + 3).find(l => l.trim() && !/\*\*/.test(l)) ?? ''
+    const rawValue = extractRawValue(line + ' ' + nextLine, parsedSport)
 
     // Detect repetitions: "5×3 min / 3 min récup" → expand into N effort+recovery pairs
     const repM   = line.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
@@ -364,9 +400,9 @@ function parseSession(text: string): ParsedSession | null {
       const recupDur  = recupM ? parseInt(recupM[1]) : 0
       if (!effortDur) continue
       for (let r = 0; r < reps; r++) {
-        boldBlocks.push({ label, duration_min: effortDur, zone, intensity, notes })
+        boldBlocks.push({ label, duration_min: effortDur, zone, intensity, notes, rawValue })
         if (recupDur > 0) {
-          boldBlocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '' })
+          boldBlocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '', rawValue: 0 })
         }
       }
       continue
@@ -374,12 +410,12 @@ function parseSession(text: string): ParsedSession | null {
 
     const dur = durFromText(line)
     if (!dur) continue
-    boldBlocks.push({ label, duration_min: dur, zone, intensity, notes })
+    boldBlocks.push({ label, duration_min: dur, zone, intensity, notes, rawValue })
   }
 
   if (boldBlocks.length >= 2) {
     const total = boldBlocks.reduce((s, b) => s + b.duration_min, 0)
-    return { title: 'Séance proposée', sport: detectSport(text), total_min: total, blocks: boldBlocks }
+    return { title: 'Séance proposée', sport: parsedSport, total_min: total, blocks: boldBlocks }
   }
 
   return null
@@ -389,6 +425,27 @@ function parseSession(text: string): ParsedSession | null {
 
 function SessionBlockChart({ blocks, total }: { blocks: SessionBlock[]; total: number }) {
   const [hovIdx, setHovIdx] = useState<number | null>(null)
+
+  // Compute height percentages — continuous scale from rawValue when available
+  const CHART_H = 52  // px, total chart area height
+  const effortVals = blocks
+    .filter(b => b.rawValue !== undefined && b.rawValue > 0)
+    .map(b => b.rawValue as number)
+  const hasRaw = effortVals.length > 0
+  const rawMax = hasRaw ? Math.max(...effortVals) : 1
+  // Floor at 80% of min value so even close values show visible difference
+  const rawFloor = hasRaw ? Math.min(...effortVals) * 0.80 : 0
+
+  function barHeightPct(b: SessionBlock): number {
+    if (b.rawValue === 0) return 22  // recovery: always short
+    if (b.rawValue !== undefined && hasRaw) {
+      const norm = (b.rawValue - rawFloor) / (rawMax - rawFloor)  // 0..1
+      return 22 + norm * 78  // 22%..100%
+    }
+    // Zone fallback: [1,2,3,4,5] → [22,38,55,75,100]
+    const zoneMap = [22, 38, 55, 75, 100]
+    return zoneMap[Math.min(b.zone - 1, 4)]
+  }
 
   return (
     <div style={{ position: 'relative', userSelect: 'none' }}>
@@ -409,23 +466,29 @@ function SessionBlockChart({ blocks, total }: { blocks: SessionBlock[]; total: n
           </span>
         </div>
       )}
-      <div style={{ display: 'flex', height: 38, borderRadius: 8, overflow: 'hidden', marginBottom: 5 }}>
+      {/* Variable-height bars aligned to the bottom */}
+      <div style={{ display: 'flex', height: CHART_H, alignItems: 'flex-end', gap: 2, marginBottom: 5 }}>
         {blocks.map((b, i) => {
-          const pct = total > 0 ? (b.duration_min / total) * 100 : 100 / blocks.length
+          const widthPct = total > 0 ? (b.duration_min / total) * 100 : 100 / blocks.length
+          const heightPct = barHeightPct(b)
           const col = SESSION_ZONE_COLORS[(b.zone - 1) % 5]
           const isHov = hovIdx === i
           return (
             <div key={i}
               style={{
-                width: `${pct}%`, background: isHov ? col : `${col}cc`,
+                width: `${widthPct}%`,
+                height: `${heightPct}%`,
+                background: isHov ? col : `${col}cc`,
+                borderRadius: '3px 3px 0 0',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'default', transition: 'background 0.1s',
-                borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+                cursor: 'default',
+                transition: 'background 0.1s, height 0.2s',
+                flexShrink: 0,
               }}
               onMouseEnter={() => setHovIdx(i)}
               onMouseLeave={() => setHovIdx(null)}
             >
-              {pct > 12 && (
+              {widthPct > 12 && heightPct > 40 && (
                 <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.03em' }}>
                   {b.duration_min}′
                 </span>

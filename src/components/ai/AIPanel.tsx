@@ -1547,13 +1547,15 @@ interface SBSession {
 const SB_ZONE_COLORS_CHART = ['#9ca3af', '#3b82f6', '#22c55e', '#f97316', '#ef4444', '#a855f7'] // Z1→Z5, SL2/MAX
 const SB_ZONE_HEIGHTS_CHART = [20, 35, 50, 70, 85, 100] // % du H — Z1=20%…Z5=85%, SL2/MAX=100%
 
-function parseSBZoneIdx(zones: string[]): number {
-  if (!zones.length) return 1
+function parseSBZoneIdx(zones: string[] | null | undefined): number {
+  // Claude sometimes returns null for array fields — guard against it
+  if (!zones || !zones.length) return 1
   // SL2 / MAX → index 5 (100% height, purple)
   // SL1       → index 4 (85% height, red — same as Z5)
   // Z1–Z5     → index 0–4
   let max = 0
   for (const z of zones) {
+    if (!z) continue
     const up = z.toUpperCase()
     if (/SL2|MAX/.test(up)) { max = Math.max(max, 5); continue }
     if (/SL1/.test(up))     { max = Math.max(max, 4); continue }
@@ -1592,8 +1594,11 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
   const MIN_DUR = 2
   const barsRaw: SBBarRaw[] = []
   for (const b of blocs) {
-    const effortZIdx = parseSBZoneIdx(b.zone_effort)
-    const recupZIdx  = parseSBZoneIdx(b.zone_recup.length ? b.zone_recup : ['Z1'])
+    // Claude may return null for array fields — coerce to [] before use
+    const zoneEffort = Array.isArray(b.zone_effort) ? b.zone_effort : []
+    const zoneRecup  = Array.isArray(b.zone_recup)  ? b.zone_recup  : []
+    const effortZIdx = parseSBZoneIdx(zoneEffort)
+    const recupZIdx  = parseSBZoneIdx(zoneRecup.length ? zoneRecup : ['Z1'])
     const reps = Math.max(1, b.repetitions ?? 1)
     const effortDur = (b.duree_effort > 0) ? b.duree_effort : MIN_DUR
     const isLastRep = (i: number) => i === reps - 1
@@ -1622,7 +1627,7 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
   // Sport detection for tooltip data
   const sportLow = sport.toLowerCase()
   const isRun   = /running|triathlon/.test(sportLow)
-  const isCycle = /cycling|vélo|aviron|rowing/.test(sportLow)
+  const isCycle = /cycling|velo|v\u00e9lo|aviron|rowing/.test(sportLow) // 'velo' = UI id, 'vélo' = alt
 
   const hovBar = hovIdx !== null ? bars[hovIdx] : null
 

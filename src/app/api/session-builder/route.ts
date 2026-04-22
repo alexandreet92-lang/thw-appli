@@ -51,9 +51,9 @@ Tu réponds UNIQUEMENT avec un objet JSON valide selon le schéma fourni.
 Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.
 Si une valeur n'est pas applicable, utilise null.`
 
-const JSON_SCHEMA = `{
+function buildJsonSchema(sport: string): string { return `{
   "nom": "string — nom court et précis de la séance",
-  "sport": "string — sport de la séance",
+  "sport": "string — EXACTEMENT la valeur reçue en entrée, soit : '${sport}' — ne jamais changer le sport",
   "type_seance": ["string[]"],
   "duree_estimee": "number — durée totale en minutes",
   "intensite": "Faible | Modéré | Élevé | Maximum",
@@ -77,7 +77,7 @@ const JSON_SCHEMA = `{
       "consigne": "string — consigne coach détaillée pour ce bloc"
     }
   ]
-}`
+`}
 
 export async function POST(req: NextRequest) {
   let body: SessionBuilderRequestBody
@@ -153,12 +153,13 @@ Profil athlète (Sport: ${sport}) :
 ${buildProfilContext(sport, profil)}
 
 Retourne UNIQUEMENT ce JSON :
-${JSON_SCHEMA}`
+${buildJsonSchema(sport)}`
   } else {
     // Mode génération initiale
     userPrompt = `Crée une séance d'entraînement structurée avec les paramètres suivants :
 
-Sport : ${sport}${sousType ? `\nSous-type : ${sousType}` : ''}
+Sport : ${sport}
+IMPORTANT : le champ sport dans le JSON doit être EXACTEMENT "${sport}"${sousType ? `\nSous-type : ${sousType}` : ''}
 Types de séance : ${typesSeance.join(', ')}${descriptionLibre ? `\nDescription libre de l'athlète : "${descriptionLibre}"` : ''}
 
 Profil athlète (Sport: ${sport}) :
@@ -178,7 +179,7 @@ Règles prioritaires :
 8. JAMAIS de valeurs génériques — TOUJOURS utiliser les données du profil de l'athlète
 
 Retourne UNIQUEMENT ce JSON :
-${JSON_SCHEMA}`
+${buildJsonSchema(sport)}`
   }
 
   try {

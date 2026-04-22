@@ -1634,10 +1634,10 @@ function BuildMode({ initial, onSave, onCancel }: {
         {sport==='hyrox'    && <HyroxBuilder data={hyrox} onChange={setHyrox}/>}
       </SectionCard>
 
-      {/* Ajouter au planning */}
+      {/* Ajouter à la bibliothèque */}
       <SectionCard>
         <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 12px' }}>
-          Ajouter au planning
+          Ajouter à la bibliothèque
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
           <div>
@@ -1712,7 +1712,7 @@ function BuildMode({ initial, onSave, onCancel }: {
             fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700,
             cursor: planDate ? 'pointer' : 'not-allowed',
             opacity: planDate ? 1 : 0.5 }}>
-          Ajouter au planning
+          Ajouter à la bibliothèque
         </button>
       </SectionCard>
 

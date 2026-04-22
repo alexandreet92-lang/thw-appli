@@ -1544,16 +1544,21 @@ interface SBSession {
 }
 
 // ── SBIntensityChart — profil d'intensité SVG pour blocs SBSession ──
-const SB_ZONE_COLORS_CHART = ['#9ca3af', '#3b82f6', '#22c55e', '#f97316', '#ef4444'] // Z1→Z5
-const SB_ZONE_HEIGHTS_CHART = [10, 28, 48, 68, 90] // % du H, Z1→Z5
+const SB_ZONE_COLORS_CHART = ['#9ca3af', '#3b82f6', '#22c55e', '#f97316', '#ef4444', '#a855f7'] // Z1→Z5, SL2/MAX
+const SB_ZONE_HEIGHTS_CHART = [20, 35, 50, 70, 85, 100] // % du H — Z1=20%…Z5=85%, SL2/MAX=100%
 
 function parseSBZoneIdx(zones: string[]): number {
   if (!zones.length) return 1
-  // Take the highest zone number among listed zones
-  let max = 1
+  // SL2 / MAX → index 5 (100% height, purple)
+  // SL1       → index 4 (85% height, red — same as Z5)
+  // Z1–Z5     → index 0–4
+  let max = 0
   for (const z of zones) {
+    const up = z.toUpperCase()
+    if (/SL2|MAX/.test(up)) { max = Math.max(max, 5); continue }
+    if (/SL1/.test(up))     { max = Math.max(max, 4); continue }
     const m = z.match(/\d/)
-    if (m) max = Math.max(max, Math.min(5, Math.max(1, parseInt(m[0]))) - 1)
+    if (m) max = Math.max(max, Math.min(4, Math.max(0, parseInt(m[0]) - 1)))
   }
   return max
 }
@@ -1566,7 +1571,11 @@ type SBBarRaw = {
 }
 type SBBarData = SBBarRaw & { xPct: number; wPct: number }
 
-function SBIntensityChart({ blocs, sport }: { blocs: SBBloc[]; sport: string }) {
+function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
+  blocs: SBBloc[]
+  sport: string
+  onClickEffortBloc?: (bloc: SBBloc) => void
+}) {
   const [hovIdx, setHovIdx] = useState<number | null>(null)
   const H = 64
   const GAP = 0.5
@@ -1680,19 +1689,22 @@ function SBIntensityChart({ blocs, sport }: { blocs: SBBloc[]; sport: string }) 
         style={{ overflow: 'visible', display: 'block', cursor: 'default' }}
       >
         {bars.map((bar, i) => {
-          const hPct = bar.isRecup ? 8 : SB_ZONE_HEIGHTS_CHART[bar.zoneIdx]
+          const hPct = SB_ZONE_HEIGHTS_CHART[Math.min(bar.zoneIdx, SB_ZONE_HEIGHTS_CHART.length - 1)]
           const h = (hPct / 100) * H
           const y = H - h
-          const fill = SB_ZONE_COLORS_CHART[bar.zoneIdx]
+          const fill = SB_ZONE_COLORS_CHART[Math.min(bar.zoneIdx, SB_ZONE_COLORS_CHART.length - 1)]
           const w = Math.max(bar.wPct - GAP, 0.3)
           const isHov = hovIdx === i
+          const clickable = !bar.isRecup && !!onClickEffortBloc
           return (
             <rect key={i}
               x={bar.xPct} y={y} width={w} height={h} rx={0.8}
               fill={fill}
-              opacity={bar.isRecup ? 0.28 : (isHov ? 1 : 0.82)}
+              opacity={bar.isRecup ? 0.30 : (isHov ? 1 : 0.82)}
+              style={{ cursor: clickable ? 'pointer' : 'default' }}
               onMouseEnter={() => setHovIdx(i)}
               onMouseLeave={() => setHovIdx(null)}
+              onClick={() => { if (clickable) onClickEffortBloc!(bar.bloc) }}
             />
           )
         })}
@@ -1702,9 +1714,26 @@ function SBIntensityChart({ blocs, sport }: { blocs: SBBloc[]; sport: string }) 
       {/* Labels below each segment */}
       <div style={{ position: 'relative', height: 16, marginTop: 2, overflow: 'hidden' }}>
         {bars.map((bar, i) => {
-          if (bar.wPct < 5.5) return null
+          if (bar.wPct < 4) return null
           const isHov = hovIdx === i
-          const col = isHov ? SB_ZONE_COLORS_CHART[bar.zoneIdx] : 'var(--ai-dim)'
+          const zoneColor = SB_ZONE_COLORS_CHART[Math.min(bar.zoneIdx, SB_ZONE_COLORS_CHART.length - 1)]
+          const col = bar.isRecup
+            ? (isHov ? '#9ca3af' : 'var(--ai-dim)')
+            : (isHov ? zoneColor : 'var(--ai-mid)')
+
+          // Label content: effort bars → allure / watts / fc; recovery → duration
+          let label: string
+          if (bar.isRecup) {
+            label = `${bar.durationMin}′`
+          } else {
+            const b = bar.bloc
+            if (isRun && b.allure_cible)         label = b.allure_cible
+            else if (isCycle && b.watts != null)  label = `${b.watts}W`
+            else if (b.fc_cible != null)          label = `${b.fc_cible}bpm`
+            else if (b.allure_cible)              label = b.allure_cible
+            else                                  label = `${bar.durationMin}′`
+          }
+
           return (
             <div key={i} style={{
               position: 'absolute',
@@ -1719,12 +1748,13 @@ function SBIntensityChart({ blocs, sport }: { blocs: SBBloc[]; sport: string }) 
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap' as const,
               transition: 'color 0.12s',
-              cursor: 'default',
+              cursor: !bar.isRecup && onClickEffortBloc ? 'pointer' : 'default',
             }}
               onMouseEnter={() => setHovIdx(i)}
               onMouseLeave={() => setHovIdx(null)}
+              onClick={() => { if (!bar.isRecup && onClickEffortBloc) onClickEffortBloc(bar.bloc) }}
             >
-              {bar.durationMin}′{!bar.isRecup ? ` Z${bar.zoneIdx + 1}` : ''}
+              {label}
             </div>
           )
         })}
@@ -1749,6 +1779,48 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
   const [saving,       setSaving]       = useState(false)
   const [savedId,      setSavedId]      = useState<string | null>(null)
   const [error,        setError]        = useState<string | null>(null)
+
+  // ── Edit-bloc modal ────────────────────────────────────────────
+  const [editBloc,    setEditBloc]    = useState<SBBloc | null>(null)
+  const [editDuree,   setEditDuree]   = useState('')
+  const [editZone,    setEditZone]    = useState('')
+  const [editFc,      setEditFc]      = useState('')
+  const [editAllure,  setEditAllure]  = useState('')
+  const [editWatts,   setEditWatts]   = useState('')
+
+  const sportLow = (sport ?? '').toLowerCase()
+  const isRunSport   = /running|triathlon/.test(sportLow)
+  const isCycleSport = /cycling|velo|vélo|aviron|rowing/.test(sportLow)
+
+  function openEditBloc(bloc: SBBloc) {
+    setEditBloc(bloc)
+    setEditDuree(String(bloc.duree_effort ?? ''))
+    setEditZone(bloc.zone_effort.join('/'))
+    setEditFc(bloc.fc_cible != null ? String(bloc.fc_cible) : '')
+    setEditAllure(bloc.allure_cible ?? '')
+    setEditWatts(bloc.watts != null ? String(bloc.watts) : '')
+  }
+
+  function applyBlocEdit() {
+    if (!editBloc) return
+    const parts: string[] = []
+    const newDuree = Number(editDuree)
+    if (!isNaN(newDuree) && newDuree > 0 && newDuree !== editBloc.duree_effort)
+      parts.push(`durée d'effort → ${newDuree} min`)
+    if (editZone.trim() && editZone.trim() !== editBloc.zone_effort.join('/'))
+      parts.push(`zone → ${editZone.trim()}`)
+    const newFc = Number(editFc)
+    if (editFc.trim() && !isNaN(newFc) && newFc !== (editBloc.fc_cible ?? null))
+      parts.push(`FC cible → ${newFc} bpm`)
+    if (isRunSport && editAllure.trim() && editAllure.trim() !== (editBloc.allure_cible ?? ''))
+      parts.push(`allure → ${editAllure.trim()}`)
+    const newWatts = Number(editWatts)
+    if (isCycleSport && editWatts.trim() && !isNaN(newWatts) && newWatts !== (editBloc.watts ?? null))
+      parts.push(`puissance → ${newWatts}W`)
+    setEditBloc(null)
+    if (!parts.length) return
+    void generate(`Pour le bloc "${editBloc.nom}" : ${parts.join(', ')}`)
+  }
 
   function toggleType(t: string) {
     setTypesSeance(prev =>
@@ -2180,7 +2252,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           </div>
 
           {/* Profil d'intensité SVG */}
-          <SBIntensityChart blocs={session.blocs} sport={session.sport} />
+          <SBIntensityChart blocs={session.blocs} sport={session.sport} onClickEffortBloc={openEditBloc} />
 
           {/* Description */}
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' }}>
@@ -2264,6 +2336,98 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             {saving ? 'Sauvegarde…' : '+ Ajouter à la bibliothèque'}
           </button>
         </div>
+
+        {/* ── Edit-bloc modal ────────────────────────────────── */}
+        {editBloc && (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)' }}
+            onClick={() => setEditBloc(null)}
+          >
+            <div
+              style={{ background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 16, padding: '20px 20px 16px', width: 300, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', fontFamily: 'Syne,sans-serif', color: 'var(--ai-text)' }}>
+                Modifier le bloc
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 16px', fontFamily: 'DM Sans,sans-serif' }}>
+                {editBloc.nom}
+              </p>
+
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                Durée d&apos;effort (min)
+              </label>
+              <input
+                type="number" min={1} value={editDuree}
+                onChange={e => setEditDuree(e.target.value)}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+              />
+
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                Zone effort
+              </label>
+              <input
+                type="text" value={editZone}
+                onChange={e => setEditZone(e.target.value)}
+                placeholder="ex: Z4 ou Z4/Z5"
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+              />
+
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                FC cible (bpm)
+              </label>
+              <input
+                type="number" min={0} value={editFc}
+                onChange={e => setEditFc(e.target.value)}
+                placeholder="ex: 158"
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+              />
+
+              {isRunSport && (
+                <>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                    Allure cible
+                  </label>
+                  <input
+                    type="text" value={editAllure}
+                    onChange={e => setEditAllure(e.target.value)}
+                    placeholder="ex: 4:08/km"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                  />
+                </>
+              )}
+
+              {isCycleSport && (
+                <>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                    Puissance (watts)
+                  </label>
+                  <input
+                    type="number" min={0} value={editWatts}
+                    onChange={e => setEditWatts(e.target.value)}
+                    placeholder="ex: 280"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                  />
+                </>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  onClick={() => setEditBloc(null)}
+                  style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={applyBlocEdit}
+                  style={{ flex: 2, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                >
+                  Appliquer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

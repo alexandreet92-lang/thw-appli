@@ -96,13 +96,23 @@ function validateSession(session: GeneratedSession, expectedSport: string): Vali
     reasons.push(`sport "${session.sport}" ne correspond pas au sport attendu "${expectedSport}"`)
   }
 
-  // (2) Total bloc duration must be within 5 min of duree_estimee
-  // Total = Σ blocs [ repetitions × duree_effort + max(repetitions-1, 0) × recup ]
-  // (recovery counted between reps only, not after last rep — matches chart logic)
+  // (2) Total bloc duration must be within 5 min of duree_estimee.
+  //
+  // Recovery counting rules — must match SBIntensityChart exactly:
+  //   reps=1 : recovery is added once (rest before the next bloc)
+  //   reps>1 : recovery added between reps only → (reps-1) times
+  //
+  // NOTE: check #3 (merged-repetitions detection via divisibility) was removed.
+  // It caused catastrophic false positives: reps=5,duree_effort=10 → flagged as
+  // "should be 2 min per rep" → retry generates a 30-min session instead of 170 min.
+  // Divisibility alone cannot distinguish merged from legitimate intervals.
   const totalMin = session.blocs.reduce((sum, b) => {
-    const reps      = Math.max(1, b.repetitions ?? 1)
-    const effort    = (b.duree_effort ?? 0) * reps
-    const recovery  = (b.recup ?? 0) * Math.max(0, reps - 1)
+    const reps         = Math.max(1, b.repetitions ?? 1)
+    const effort       = (b.duree_effort ?? 0) * reps
+    // For reps=1: count recovery once (matches chart behaviour)
+    // For reps>1: count recovery between reps only
+    const recoveryMult = reps === 1 ? 1 : reps - 1
+    const recovery     = (b.recup ?? 0) * recoveryMult
     return sum + effort + recovery
   }, 0)
   const diff = Math.abs(totalMin - session.duree_estimee)
@@ -110,27 +120,6 @@ function validateSession(session: GeneratedSession, expectedSport: string): Vali
     reasons.push(
       `durée totale des blocs (${totalMin} min) diffère de duree_estimee (${session.duree_estimee} min) de ${diff} min (tolérance : 5 min)`
     )
-  }
-
-  // (3) Detect "merged" repetitions: a bloc with repetitions > 1 whose duree_effort
-  // equals (repetitions × a suspiciously round unit), i.e. duree_effort is divisible
-  // by repetitions and the quotient is a plausible effort duration (≥ 1 min).
-  // This catches cases like repetitions=3, duree_effort=24 (= 3×8) that should be
-  // repetitions=3, duree_effort=8.
-  for (const b of session.blocs) {
-    const reps = Math.max(1, b.repetitions ?? 1)
-    if (reps <= 1) continue
-    const effort = b.duree_effort ?? 0
-    if (effort > 0 && effort % reps === 0) {
-      const unitDur = effort / reps
-      // Only flag if unitDur >= 1 min (genuine merge, not rounding artifact)
-      if (unitDur >= 1) {
-        reasons.push(
-          `bloc "${b.nom}" semble avoir des répétitions fusionnées : repetitions=${reps}, duree_effort=${effort} min` +
-          ` (= ${reps}×${unitDur} min). Chaque répétition doit avoir duree_effort=${unitDur} min`
-        )
-      }
-    }
   }
 
   return { valid: reasons.length === 0, reasons }
@@ -167,7 +156,7 @@ NOTES :
   • Recommande des allures_cible qui correspondent EXACTEMENT aux zones ou seuils de l'athlète
   • Chaque bloc d'effort doit avoir une allure_cible explicite dans une zone de l'athlète
   • Ne jamais inventer des allures — utilise uniquement les seuils/zones fournis`
-    } else if (sp === 'cycling' || sp === 'vélo') {
+    } else if (sp === 'cycling' || sp === 'velo' || sp === 'vélo') {
       const bikeZones = p.zones ? Object.entries(p.zones).filter(([k]) => k.startsWith('bike_')).map(([k, v]) => `${k.replace('bike_', '')}=${v}`).join(', ') : ''
       context = `- FTP (Functional Threshold Power) : ${p.ftp || 'non configuré'}W
 - Zones d'intensité définies : ${bikeZones || 'non configurées'}

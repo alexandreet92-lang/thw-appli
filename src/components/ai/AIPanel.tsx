@@ -2209,7 +2209,9 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
 
   // ── Phase : result ─────────────────────────────────────────────
   if (phase === 'result' && session) {
-    const sportObj = SB_SPORTS.find(s => s.id === sport)
+    // Prefer the state variable (user's selection), fallback to session.sport (API response)
+    // so the label is always correct even if Claude returned a wrong sport field.
+    const sportObj = SB_SPORTS.find(s => s.id === sport) ?? SB_SPORTS.find(s => s.id === session.sport)
     const color    = sportObj?.color ?? '#5b6fff'
 
     return (

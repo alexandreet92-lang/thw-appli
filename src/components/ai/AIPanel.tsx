@@ -273,7 +273,10 @@ function detectSport(text: string): string {
 // Extracts a continuous intensity value from text for height calculation.
 // Returns watts (cycling) or speed in m/s (running/swim/row). Recovery → 0.
 function extractRawValue(text: string, sport: string): number | undefined {
-  const isRecup = /r[eé]cup|retour au calme|cool.?down/i.test(text)
+  // Only treat as recovery if the LABEL starts with "récup" or the block is a cooldown.
+  // Do NOT match "/ 3 min récup" patterns (recovery info embedded in an effort bloc header).
+  const trimmed = text.trim()
+  const isRecup = /^r[eé]cup/i.test(trimmed) || /retour au calme|cool.?down/i.test(text)
   if (isRecup) return 0
 
   const isCycling = /cycling|velo|vélo|aviron|rowing/.test(sport)

@@ -98,9 +98,9 @@ interface ExecState {
 // ══════════════════════════════════════════════════════════════════
 const SESSION_TYPES: Record<string, string[]> = {
   running:    ['1500m','5k','10k','Semi','Marathon','VMA','Aérobie','SL1','SL2','Hills','Mixte'],
-  velo:       ['Aérobie','SL1','SL2','PMA','Mixte','Sprints'],
+  velo:       ['Aérobie','SL1','SL2','PMA','Force','Vélocité','Mixte','Sprints'],
   muscu:      ['Strength','Strength endurance','Explosivité','Push','Pull','Legs','Full body','Abdos / gainage'],
-  natation:   ['Technique','Seuil','Sprints'],
+  natation:   ['Technique','Seuil','Sprints','M','70.3','Ironman'],
   hyrox:      ['Compromised Run','Ergo','Spé wall ball','Spé ergo','Spé sled','Simulation'],
   aviron:     ['EF','Travail technique','Seuil','Vo2max','Sprints','Race pace'],
   triathlon:  ['Brick Run','Simulation complète'],
@@ -1427,14 +1427,14 @@ function BuildMode({ initial, onSave, onCancel }: {
   const [intensity,   setIntensity]   = useState<Intensity>(initial?.intensity ?? 'moderate')
   const [tagsStr,     setTagsStr]     = useState((initial?.tags??[]).join(', '))
   const [notes,       setNotes]       = useState(initial?.notes ?? '')
-  const [sessionType, setSessionType] = useState<string>('')
-  const [rpeTarget,   setRpeTarget]   = useState<number>(initial?.rpe ?? 6)
-  const [planDate,    setPlanDate]    = useState('')
-  const [planTime,    setPlanTime]    = useState('09:00')
-  const [planSuccess, setPlanSuccess] = useState(false)
+  const [sessionTypes, setSessionTypes] = useState<string[]>(initial?.typeSeance ?? [])
+  const [rpeTarget,    setRpeTarget]    = useState<number>(initial?.rpe ?? 6)
+  const [planDate,     setPlanDate]     = useState('')
+  const [planTime,     setPlanTime]     = useState('09:00')
+  const [planSuccess,  setPlanSuccess]  = useState(false)
 
-  // Reset session type when sport changes
-  useEffect(() => { setSessionType('') }, [sport])
+  // Reset session types when sport changes
+  useEffect(() => { setSessionTypes([]) }, [sport])
 
   const [muscu,    setMuscu]    = useState<MusculaireSession>(initial?.muscu    ?? { circuits:[], exercises:[] })
   const [endur,    setEndur]    = useState<EnduranceSession>(initial?.endurance ?? { blocks:[] })
@@ -1458,6 +1458,7 @@ function BuildMode({ initial, onSave, onCancel }: {
       id: initial?.id ?? uid(),
       name: name || 'Seance sans titre',
       sport, durationMin: duration, intensity,
+      typeSeance: sessionTypes.length > 0 ? sessionTypes : undefined,
       tags: tagsStr.split(',').map(s=>s.trim()).filter(Boolean),
       notes: notes || undefined,
       rpe: rpeTarget,
@@ -1527,29 +1528,39 @@ function BuildMode({ initial, onSave, onCancel }: {
           )}
         </div>
 
-        {/* Session type selector */}
+        {/* Session type selector — multi-select */}
         {SESSION_TYPES[sport] && (
           <div style={{ marginBottom:14 }}>
             <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:8 }}>
-              Type de séance
+              Type de séance <span style={{ fontWeight:400, color:'var(--text-dim)', opacity:0.6 }}>(plusieurs choix possibles)</span>
             </label>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {SESSION_TYPES[sport].map(t => (
-                <button key={t} onClick={() => { setSessionType(t); if(!name) setName(`${sportLabel(sport)} — ${t}`) }}
-                  style={{
-                    padding:'5px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
-                    border:`1px solid ${sessionType===t ? sportColor(sport) : 'var(--border)'}`,
-                    background: sessionType===t ? `${sportColor(sport)}18` : 'transparent',
-                    color: sessionType===t ? sportColor(sport) : 'var(--text-dim)',
-                  }}>
-                  {t}
-                </button>
-              ))}
-              {/* Custom type button */}
+              {SESSION_TYPES[sport].map(tp => {
+                const active = sessionTypes.includes(tp)
+                return (
+                  <button key={tp}
+                    onClick={() => {
+                      setSessionTypes(prev => prev.includes(tp) ? prev.filter(x => x !== tp) : [...prev, tp])
+                      if (!name && !active) setName(`${sportLabel(sport)} — ${tp}`)
+                    }}
+                    style={{
+                      padding:'5px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
+                      border:`1px solid ${active ? sportColor(sport) : 'var(--border)'}`,
+                      background: active ? `${sportColor(sport)}18` : 'transparent',
+                      color: active ? sportColor(sport) : 'var(--text-dim)',
+                    }}>
+                    {tp}
+                  </button>
+                )
+              })}
+              {/* Custom type */}
               <button
                 onClick={() => {
                   const custom = prompt('Nom du type personnalisé :')
-                  if (custom?.trim()) { setSessionType(custom.trim()); if(!name) setName(`${sportLabel(sport)} — ${custom.trim()}`) }
+                  if (custom?.trim()) {
+                    setSessionTypes(prev => prev.includes(custom.trim()) ? prev : [...prev, custom.trim()])
+                    if (!name) setName(`${sportLabel(sport)} — ${custom.trim()}`)
+                  }
                 }}
                 style={{ padding:'5px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', border:'1px dashed var(--border)', color:'var(--text-dim)', background:'transparent' }}>
                 + Personnalisé
@@ -1634,10 +1645,10 @@ function BuildMode({ initial, onSave, onCancel }: {
         {sport==='hyrox'    && <HyroxBuilder data={hyrox} onChange={setHyrox}/>}
       </SectionCard>
 
-      {/* Ajouter à la bibliothèque */}
+      {/* Ajouter au planning */}
       <SectionCard>
         <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 12px' }}>
-          Ajouter à la bibliothèque
+          Ajouter au planning
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
           <div>
@@ -1712,7 +1723,7 @@ function BuildMode({ initial, onSave, onCancel }: {
             fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700,
             cursor: planDate ? 'pointer' : 'not-allowed',
             opacity: planDate ? 1 : 0.5 }}>
-          Ajouter à la bibliothèque
+          Ajouter au planning
         </button>
       </SectionCard>
 

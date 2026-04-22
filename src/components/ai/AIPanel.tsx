@@ -348,6 +348,12 @@ function parseSession(text: string): ParsedSession | null {
 
   const lines = text.split('\n')
 
+  // Extract real session title: first standalone **bold** line (not a numbered item)
+  const titleLine = lines.find(l => /^\*\*[^*]+\*\*$/.test(l.trim()) && !/^\d+[.)]\s/.test(l.trim()))
+  const sessionTitle = titleLine
+    ? titleLine.replace(/\*\*/g, '').trim()
+    : (lines.find(l => /\*\*[^*]+\*\*/.test(l) && !/^\d+[.)]\s/.test(l))?.replace(/\*\*/g, '').trim() ?? 'Séance proposée')
+
   type Sec = { headingText: string; bodyLines: string[] }
   const sections: Sec[] = []
   let cur: Sec | null = null
@@ -404,7 +410,7 @@ function parseSession(text: string): ParsedSession | null {
       blocks.push({ label: baseLabel, duration_min: durFromText(combined), zone, intensity, notes, rawValue, cadence })
     }
     const total = blocks.reduce((s, b) => s + b.duration_min, 0)
-    return { title: 'Séance proposée', sport: parsedSport, total_min: total, blocks }
+    return { title: sessionTitle, sport: parsedSport, total_min: total, blocks }
   }
 
   const boldBlocks: SessionBlock[] = []
@@ -450,7 +456,7 @@ function parseSession(text: string): ParsedSession | null {
 
   if (boldBlocks.length >= 2) {
     const total = boldBlocks.reduce((s, b) => s + b.duration_min, 0)
-    return { title: 'Séance proposée', sport: parsedSport, total_min: total, blocks: boldBlocks }
+    return { title: sessionTitle, sport: parsedSport, total_min: total, blocks: boldBlocks }
   }
 
   return null
@@ -596,42 +602,70 @@ function dayIdxOf(dateStr: string): number {
   return dow === 0 ? 6 : dow - 1
 }
 
-function AddToPlanningModal({ session, onClose }: { session: ParsedSession; onClose: () => void }) {
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
-  const [date,   setDate]   = useState(tomorrow.toISOString().slice(0, 10))
-  const [time,   setTime]   = useState('09:00')
-  const [sport,  setSport]  = useState(session.sport)
-  const [plan,   setPlan]   = useState<'A' | 'B'>('A')
+function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClose: () => void }) {
+  const [nom,    setNom]    = useState(session.title !== 'Séance proposée' ? session.title : '')
   const [saving, setSaving] = useState(false)
   const [done,   setDone]   = useState(false)
   const [errMsg, setErrMsg] = useState('')
 
+  const isCycling = /cycling|velo|vélo|aviron|rowing/.test(session.sport)
+  const isRunLike  = /running|natation|swim|run/.test(session.sport)
+
+  // Derive intensite from max zone across effort blocks
+  function deriveIntensite(): string {
+    const maxZone = session.blocks
+      .filter(b => b.rawValue !== 0)
+      .reduce((m, b) => Math.max(m, b.zone), 1)
+    if (maxZone >= 5) return 'Maximum'
+    if (maxZone >= 4) return 'Élevé'
+    if (maxZone >= 3) return 'Modéré'
+    return 'Faible'
+  }
+
   async function save() {
+    if (!nom.trim()) { setErrMsg('Nom requis'); return }
     setSaving(true); setErrMsg('')
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { setErrMsg('Non connecté'); setSaving(false); return }
-      const planBlocks = session.blocks.map((b, i) => ({
-        id: `ai-${Date.now()}-${i}`,
-        type: mapBlockType(b.label),
-        durationMin: b.duration_min,
-        zone: b.zone,
-        value: '',
-        hrAvg: '',
-        label: b.label,
-      }))
-      const { error } = await sb.from('planned_sessions').insert({
-        user_id: user.id,
-        week_start: weekStartOf(date),
-        day_index: dayIdxOf(date),
-        sport, title: session.title, time,
-        duration_min: session.total_min,
-        tss: null, status: 'planned',
-        notes: `Générée par Coach IA · Plan ${plan}`,
-        rpe: null, blocks: planBlocks,
-        validation_data: { plan, source: 'ai_coach', at: new Date().toISOString() },
+
+      // Map ParsedSession blocks → session_library blocs format
+      const blocs = session.blocks.map(b => {
+        const isRecup = b.rawValue === 0
+        const watts = (isCycling && b.rawValue && b.rawValue > 0) ? Math.round(b.rawValue) : null
+        const allure = (isRunLike && b.rawValue && b.rawValue > 0) ? formatRawValue(b.rawValue, session.sport) : null
+        return {
+          nom:          b.label,
+          repetitions:  1,
+          duree_effort: b.duration_min,
+          recup:        0,
+          zone_effort:  isRecup ? ['Z1'] : [b.intensity.split(' ')[0]],
+          zone_recup:   [],
+          watts,
+          allure_cible: allure,
+          fc_cible:     null,
+          fc_max:       null,
+          cadence:      b.cadence ?? null,
+          consigne:     b.notes || '',
+        }
+      })
+
+      const { error } = await sb.from('session_library').insert({
+        user_id:       user.id,
+        nom:           nom.trim(),
+        sport:         session.sport,
+        type_seance:   [],
+        sous_type:     null,
+        duree_estimee: session.total_min,
+        intensite:     deriveIntensite(),
+        tss_estime:    null,
+        rpe_cible:     null,
+        tags:          [],
+        description:   null,
+        blocs,
+        source:        'ai',
       })
       if (error) { setErrMsg(error.message); setSaving(false); return }
       setDone(true)
@@ -654,9 +688,9 @@ function AddToPlanningModal({ session, onClose }: { session: ParsedSession; onCl
         {done ? (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>Séance ajoutée !</p>
+            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>Ajouté à la bibliothèque !</p>
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 16px' }}>
-              Plan {plan} · {new Date(date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              Retrouve-la dans Session → Bibliothèque
             </p>
             <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Fermer
@@ -666,38 +700,27 @@ function AddToPlanningModal({ session, onClose }: { session: ParsedSession; onCl
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--ai-text)' }}>
-                Ajouter au Planning
+                Ajouter à la bibliothèque
               </h3>
               <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Plan</p>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {(['A', 'B'] as const).map(p => (
-                    <button key={p} onClick={() => setPlan(p)} style={{
-                      flex: 1, padding: '7px', borderRadius: 8,
-                      border: `1px solid ${plan === p ? '#5b6fff' : 'var(--ai-border)'}`,
-                      background: plan === p ? 'rgba(91,111,255,0.12)' : 'var(--ai-bg2)',
-                      color: plan === p ? '#5b6fff' : 'var(--ai-mid)',
-                      fontSize: 13, fontWeight: plan === p ? 700 : 400, cursor: 'pointer',
-                    }}>Plan {p}</button>
-                  ))}
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Nom de la séance</p>
+                <input
+                  value={nom}
+                  onChange={e => setNom(e.target.value)}
+                  placeholder="Ex: Sortie marathon tempo"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}
+                />
+              </div>
+              <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.15)' }}>
+                <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginBottom: 4 }}>
+                  {SPORT_LABELS_FR[session.sport] ?? session.sport} · {formatDuration(session.total_min)} · {session.blocks.filter(b => b.rawValue !== 0).length} blocs d'effort
                 </div>
-              </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Date</p>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Heure</p>
-                <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Sport</p>
-                <select value={sport} onChange={e => setSport(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', cursor: 'pointer', boxSizing: 'border-box' }}>
-                  {Object.entries(SPORT_LABELS_FR).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                <div style={{ fontSize: 10, color: 'var(--ai-mid)' }}>
+                  Intensité {deriveIntensite().toLowerCase()}
+                </div>
               </div>
               {errMsg && <p style={{ fontSize: 11, color: '#ef4444', margin: 0 }}>{errMsg}</p>}
               <button onClick={() => void save()} disabled={saving} style={{
@@ -706,7 +729,7 @@ function AddToPlanningModal({ session, onClose }: { session: ParsedSession; onCl
                 color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: saving ? 'not-allowed' : 'pointer',
               }}>
-                {saving ? 'Ajout…' : `Ajouter au Plan ${plan}`}
+                {saving ? 'Enregistrement…' : 'Ajouter à la bibliothèque'}
               </button>
             </div>
           </>
@@ -889,7 +912,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
                 Modifier
               </button>
               <button onClick={() => setShowModal(true)} style={{ flex: 2, padding: '7px 10px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                + Ajouter au Planning
+                + Ajouter à la bibliothèque
               </button>
             </>
           )}
@@ -897,7 +920,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
       </div>
 
       {showModal && (
-        <AddToPlanningModal
+        <AddToLibraryModal
           session={{ ...session, blocks: editMode ? editedBlocks : session.blocks }}
           onClose={() => setShowModal(false)}
         />

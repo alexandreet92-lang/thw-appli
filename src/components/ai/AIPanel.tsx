@@ -307,7 +307,8 @@ function parseSession(text: string): ParsedSession | null {
   })
 
   if (phaseSections.length >= 2) {
-    const blocks: SessionBlock[] = phaseSections.map(s => {
+    const blocks: SessionBlock[] = []
+    for (const s of phaseSections) {
       const combined = s.headingText + ' ' + s.bodyLines.join(' ')
       const zone = zoneFromText(combined)
       const pctM = combined.match(/(\d+[-–]\d+)%/)
@@ -315,12 +316,28 @@ function parseSession(text: string): ParsedSession | null {
       const notes = s.bodyLines
         .map(l => l.replace(/^[-•*]\s*/, '').trim())
         .filter(l => l && !/^\d+\s*min/.test(l))[0] ?? ''
-      return {
-        label: s.headingText.replace(/^\d+[.):\s]+/, '').trim(),
-        duration_min: durFromText(combined),
-        zone, intensity, notes,
+      const baseLabel = s.headingText.replace(/^\d+[.):\s]+/, '').trim()
+
+      // Expand repeated blocs into individual effort+recovery pairs
+      const repM   = combined.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
+      const recupM = combined.match(/\/\s*(\d+)\s*min\s*r[eé]cup/i)
+      if (repM) {
+        const reps      = parseInt(repM[1])
+        const effortDur = parseInt(repM[2])
+        const recupDur  = recupM ? parseInt(recupM[1]) : 0
+        if (effortDur > 0) {
+          for (let r = 0; r < reps; r++) {
+            blocks.push({ label: baseLabel, duration_min: effortDur, zone, intensity, notes })
+            if (recupDur > 0) {
+              blocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '' })
+            }
+          }
+          continue
+        }
       }
-    })
+
+      blocks.push({ label: baseLabel, duration_min: durFromText(combined), zone, intensity, notes })
+    }
     const total = blocks.reduce((s, b) => s + b.duration_min, 0)
     return { title: 'Séance proposée', sport: detectSport(text), total_min: total, blocks }
   }
@@ -329,8 +346,6 @@ function parseSession(text: string): ParsedSession | null {
   for (const line of lines) {
     if (!/\*\*[^*]+\*\*/.test(line)) continue
     if (!PHASE_RE.test(line)) continue
-    const dur = durFromText(line)
-    if (!dur) continue
     const labelM = line.match(/\*\*([^*]+)\*\*/)
     const label = labelM ? labelM[1] : line.slice(0, 30)
     const zone = zoneFromText(line)
@@ -339,6 +354,26 @@ function parseSession(text: string): ParsedSession | null {
     const notes = line
       .replace(/\*\*[^*]+\*\*/, '').replace(/\d+\s*min/ig, '')
       .replace(/[-•*:·]/g, '').trim().slice(0, 80)
+
+    // Detect repetitions: "5×3 min / 3 min récup" → expand into N effort+recovery pairs
+    const repM   = line.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
+    const recupM = line.match(/\/\s*(\d+)\s*min\s*r[eé]cup/i)
+    if (repM) {
+      const reps      = parseInt(repM[1])
+      const effortDur = parseInt(repM[2])
+      const recupDur  = recupM ? parseInt(recupM[1]) : 0
+      if (!effortDur) continue
+      for (let r = 0; r < reps; r++) {
+        boldBlocks.push({ label, duration_min: effortDur, zone, intensity, notes })
+        if (recupDur > 0) {
+          boldBlocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '' })
+        }
+      }
+      continue
+    }
+
+    const dur = durFromText(line)
+    if (!dur) continue
     boldBlocks.push({ label, duration_min: dur, zone, intensity, notes })
   }
 

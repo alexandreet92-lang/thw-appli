@@ -1572,17 +1572,28 @@ function SBIntensityChart({ blocs, sport }: { blocs: SBBloc[]; sport: string }) 
   const GAP = 0.5
 
   // Build raw bars: decompose each bloc by its repetitions.
-  // Recovery is placed BETWEEN reps only — not after the last one.
+  //
+  // Recovery rules:
+  //   - reps=1  → show recovery after the effort (it's the rest before the next bloc)
+  //   - reps>1  → show recovery BETWEEN reps only, NOT after the last rep
+  //     e.g. 3×20'/4' → effort/recup/effort/recup/effort  (no trailing recovery)
+  //
+  // Fallback: if duree_effort is 0 or null, use 2 min minimum so the bloc is
+  // still visible in the chart (e.g. gym sets with no explicit duration).
+  const MIN_DUR = 2
   const barsRaw: SBBarRaw[] = []
   for (const b of blocs) {
     const effortZIdx = parseSBZoneIdx(b.zone_effort)
     const recupZIdx  = parseSBZoneIdx(b.zone_recup.length ? b.zone_recup : ['Z1'])
-    const reps = Math.max(1, b.repetitions)
+    const reps = Math.max(1, b.repetitions ?? 1)
+    const effortDur = (b.duree_effort > 0) ? b.duree_effort : MIN_DUR
+    const isLastRep = (i: number) => i === reps - 1
     for (let i = 0; i < reps; i++) {
-      if (b.duree_effort > 0)
-        barsRaw.push({ durationMin: b.duree_effort, zoneIdx: effortZIdx, isRecup: false, bloc: b })
-      // Recovery only between reps, not after the last one
-      if (b.recup > 0 && i < reps - 1)
+      barsRaw.push({ durationMin: effortDur, zoneIdx: effortZIdx, isRecup: false, bloc: b })
+      // Recovery:
+      //   reps=1 → always (rest after bloc before next effort)
+      //   reps>1 → only between reps (not after last)
+      if (b.recup > 0 && (reps === 1 || !isLastRep(i)))
         barsRaw.push({ durationMin: b.recup, zoneIdx: recupZIdx, isRecup: true, bloc: b })
     }
   }

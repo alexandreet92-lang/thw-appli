@@ -1289,12 +1289,14 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
 // ══════════════════════════════════════════════════════════════════
 // TEMPLATE CARD
 // ══════════════════════════════════════════════════════════════════
-function TemplateCard({ t, onStart, onEdit, onPlan }: {
+function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
   t: SessionTemplate
-  onStart: () => void
-  onEdit:  () => void
-  onPlan:  () => void
+  onStart:  () => void
+  onEdit:   () => void
+  onPlan:   () => void
+  onDelete: () => void
 }) {
+  const [confirmDel, setConfirmDel] = useState(false)
   const color = sportColor(t.sport)
   const ic    = intensityColor(t.intensity)
   const tss   = estimateTSS(t.sport, t.durationMin, t.intensity, t.endurance)
@@ -1376,24 +1378,46 @@ function TemplateCard({ t, onStart, onEdit, onPlan }: {
       )}
 
       {/* Actions */}
-      <div style={{ display:'flex', gap:7, marginTop:2 }}>
-        <button onClick={onStart}
-          style={{ flex:2, padding:'9px 0', borderRadius:10, border:'none',
-            background:`linear-gradient(135deg,${color},${color}bb)`,
-            color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          Démarrer
-        </button>
-        <button onClick={onEdit}
-          style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
-            background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
-          Modifier
-        </button>
-        <button onClick={onPlan}
-          style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
-            background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:11, cursor:'pointer' }}>
-          → Planifier
-        </button>
-      </div>
+      {confirmDel ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:7, marginTop:2, padding:'10px 12px', borderRadius:10, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.05)' }}>
+          <p style={{ margin:0, fontSize:12, color:'var(--text-main)', fontWeight:600 }}>Supprimer cette séance ?</p>
+          <p style={{ margin:0, fontSize:11, color:'var(--text-dim)' }}>Cette action est irréversible.</p>
+          <div style={{ display:'flex', gap:7 }}>
+            <button onClick={() => setConfirmDel(false)}
+              style={{ flex:1, padding:'8px 0', borderRadius:9, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+              Annuler
+            </button>
+            <button onClick={onDelete}
+              style={{ flex:2, padding:'8px 0', borderRadius:9, border:'none', background:'#ef4444', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              Oui, supprimer
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display:'flex', gap:7, marginTop:2 }}>
+          <button onClick={onStart}
+            style={{ flex:2, padding:'9px 0', borderRadius:10, border:'none',
+              background:`linear-gradient(135deg,${color},${color}bb)`,
+              color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+            Démarrer
+          </button>
+          <button onClick={onEdit}
+            style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
+              background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+            Modifier
+          </button>
+          <button onClick={onPlan}
+            style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
+              background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:11, cursor:'pointer' }}>
+            → Planifier
+          </button>
+          <button onClick={() => setConfirmDel(true)}
+            style={{ padding:'9px 10px', borderRadius:10, border:'1px solid rgba(239,68,68,0.35)',
+              background:'transparent', color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontSize:11, cursor:'pointer', flexShrink:0 }}>
+            🗑
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1745,11 +1769,12 @@ function BuildMode({ initial, onSave, onCancel }: {
 // ══════════════════════════════════════════════════════════════════
 // LIBRARY MODE
 // ══════════════════════════════════════════════════════════════════
-function LibraryMode({ templates, onNew, onEdit, onStart }: {
+function LibraryMode({ templates, onNew, onEdit, onStart, onDelete }: {
   templates: SessionTemplate[]
-  onNew:  () => void
-  onEdit: (t: SessionTemplate) => void
-  onStart:(t: SessionTemplate) => void
+  onNew:    () => void
+  onEdit:   (t: SessionTemplate) => void
+  onStart:  (t: SessionTemplate) => void
+  onDelete: (t: SessionTemplate) => void
 }) {
   const [sportFilter, setSportFilter] = useState<Sport | 'all'>('all')
   const [typeFilters, setTypeFilters]  = useState<string[]>([])
@@ -1910,6 +1935,7 @@ function LibraryMode({ templates, onNew, onEdit, onStart }: {
               onStart={() => onStart(t)}
               onEdit={()  => onEdit(t)}
               onPlan={() => sendToPlanning(t)}
+              onDelete={() => onDelete(t)}
             />
           ))}
         </div>
@@ -2060,8 +2086,21 @@ export default function SessionPage() {
       const exists = prev.find(x=>x.id===t.id)
       return exists ? prev.map(x=>x.id===t.id?t:x) : [...prev,t]
     })
-    // TODO: await supabase.from('session_templates').upsert({ user_id, ...t })
     setMode('library')
+  }
+
+  async function handleDelete(t: SessionTemplate) {
+    // Remove from local state immediately
+    setTemplates(prev => prev.filter(x => x.id !== t.id))
+    // Also delete from session_library in Supabase (AI sessions have UUID ids)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.id)
+    if (isUUID) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        await sb.from('session_library').delete().eq('id', t.id)
+      } catch { /* silently ignore */ }
+    }
   }
 
   const titleMap: Record<PageMode,string> = {
@@ -2129,6 +2168,7 @@ export default function SessionPage() {
           onNew={handleNew}
           onEdit={handleEdit}
           onStart={handleStart}
+          onDelete={handleDelete}
         />
       )}
 

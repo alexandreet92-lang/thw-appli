@@ -2950,15 +2950,16 @@ function HistoryDrawer({
   onClose: () => void
   persistent?: boolean
 }) {
-  const [menuId, setMenuId] = useState<string | null>(null)
-  const [renId,  setRenId]  = useState<string | null>(null)
-  const [renVal, setRenVal] = useState('')
+  const [menuId,   setMenuId]   = useState<string | null>(null)
+  const [renId,    setRenId]    = useState<string | null>(null)
+  const [renVal,   setRenVal]   = useState('')
+  const [confirmId, setConfirmId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!menuId) return
+    if (!menuId) { setConfirmId(null); return }
     const h = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuId(null)
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) { setMenuId(null); setConfirmId(null) }
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
@@ -3078,18 +3079,36 @@ function HistoryDrawer({
                       position: 'absolute', right: 0, top: '100%', zIndex: 60,
                       background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
                       borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
-                      overflow: 'hidden', minWidth: 120,
+                      overflow: 'hidden', minWidth: 148,
                     }}>
                       <button onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
                         style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >Renommer</button>
-                      <button onClick={() => { onDelete(conv.id); setMenuId(null) }}
-                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                      >Supprimer</button>
+                      {confirmId === conv.id ? (
+                        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--ai-border)' }}>
+                          <p style={{ margin: '0 0 7px', fontSize: 11, color: 'var(--ai-mid)' }}>Supprimer cette conversation ?</p>
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <button
+                              onClick={() => { setConfirmId(null); setMenuId(null) }}
+                              style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                              Annuler
+                            </button>
+                            <button
+                              onClick={() => { onDelete(conv.id); setConfirmId(null); setMenuId(null) }}
+                              style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                              Oui
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmId(conv.id)}
+                          style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                        >Supprimer…</button>
+                      )}
                     </div>
                   )}
                 </div>

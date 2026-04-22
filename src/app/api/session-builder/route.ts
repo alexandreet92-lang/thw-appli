@@ -49,7 +49,10 @@ interface GeneratedSession {
 const SYSTEM = `Tu es un coach expert en planification de séances d'entraînement sportif.
 Tu réponds UNIQUEMENT avec un objet JSON valide selon le schéma fourni.
 Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.
-Si une valeur n'est pas applicable, utilise null.`
+Si une valeur n'est pas applicable, utilise null.
+
+Avant de générer ta réponse, calcule mentalement la somme exacte des durées de tous les blocs (en tenant compte des répétitions et des récupérations) et vérifie qu'elle correspond à duree_estimee.
+Ne jamais fusionner des répétitions en un seul bloc — chaque répétition doit rester distincte avec son effort et sa récupération. Si une séance contient 3×8min, le bloc doit avoir repetitions=3 et duree_effort=8, jamais repetitions=1 et duree_effort=24.`
 
 function buildJsonSchema(sport: string): string { return `{
   "nom": "string — nom court et précis de la séance",
@@ -78,6 +81,62 @@ function buildJsonSchema(sport: string): string { return `{
     }
   ]
 `}
+
+// ── Validation ────────────────────────────────────────────────
+interface ValidationResult {
+  valid: boolean
+  reasons: string[]
+}
+
+function validateSession(session: GeneratedSession, expectedSport: string): ValidationResult {
+  const reasons: string[] = []
+
+  // (1) Sport must match exactly
+  if (session.sport !== expectedSport) {
+    reasons.push(`sport "${session.sport}" ne correspond pas au sport attendu "${expectedSport}"`)
+  }
+
+  // (2) Total bloc duration must be within 5 min of duree_estimee
+  // Total = Σ blocs [ repetitions × duree_effort + max(repetitions-1, 0) × recup ]
+  // (recovery counted between reps only, not after last rep — matches chart logic)
+  const totalMin = session.blocs.reduce((sum, b) => {
+    const reps      = Math.max(1, b.repetitions ?? 1)
+    const effort    = (b.duree_effort ?? 0) * reps
+    const recovery  = (b.recup ?? 0) * Math.max(0, reps - 1)
+    return sum + effort + recovery
+  }, 0)
+  const diff = Math.abs(totalMin - session.duree_estimee)
+  if (diff > 5) {
+    reasons.push(
+      `durée totale des blocs (${totalMin} min) diffère de duree_estimee (${session.duree_estimee} min) de ${diff} min (tolérance : 5 min)`
+    )
+  }
+
+  // (3) Detect "merged" repetitions: a bloc with repetitions > 1 whose duree_effort
+  // equals (repetitions × a suspiciously round unit), i.e. duree_effort is divisible
+  // by repetitions and the quotient is a plausible effort duration (≥ 1 min).
+  // This catches cases like repetitions=3, duree_effort=24 (= 3×8) that should be
+  // repetitions=3, duree_effort=8.
+  for (const b of session.blocs) {
+    const reps = Math.max(1, b.repetitions ?? 1)
+    if (reps <= 1) continue
+    const effort = b.duree_effort ?? 0
+    if (effort > 0 && effort % reps === 0) {
+      const unitDur = effort / reps
+      // Only flag if unitDur >= 1 min (genuine merge, not rounding artifact)
+      if (unitDur >= 1) {
+        reasons.push(
+          `bloc "${b.nom}" semble avoir des répétitions fusionnées : repetitions=${reps}, duree_effort=${effort} min` +
+          ` (= ${reps}×${unitDur} min). Chaque répétition doit avoir duree_effort=${unitDur} min`
+        )
+      }
+    }
+  }
+
+  return { valid: reasons.length === 0, reasons }
+}
+
+// ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   let body: SessionBuilderRequestBody
@@ -182,19 +241,42 @@ Retourne UNIQUEMENT ce JSON :
 ${buildJsonSchema(sport)}`
   }
 
-  try {
+  async function callModel(prompt: string): Promise<GeneratedSession | null> {
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.balanced,
       max_tokens: 3000,
       system: SYSTEM,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: 'user', content: prompt }],
     })
     const text = resp.content.find(b => b.type === 'text')
-    if (!text || text.type !== 'text') {
+    if (!text || text.type !== 'text') return null
+    return parseJsonResponse<GeneratedSession>(text.text)
+  }
+
+  try {
+    // ── Premier appel ──────────────────────────────────────────
+    const session = await callModel(userPrompt)
+    if (!session) {
       return NextResponse.json({ error: 'No response from model' }, { status: 500 })
     }
-    const session = parseJsonResponse<GeneratedSession>(text.text)
+
+    // ── Validation + retry si nécessaire ──────────────────────
+    const validation = validateSession(session, sport)
+    if (!validation.valid) {
+      const retryPrompt = userPrompt +
+        `\n\nATTENTION — ta réponse précédente contenait les erreurs suivantes, corrige-les :\n` +
+        validation.reasons.map(r => `• ${r}`).join('\n') +
+        `\n\nGénère une nouvelle version corrigée en respectant strictement toutes les contraintes.`
+
+      const retried = await callModel(retryPrompt)
+      if (retried) {
+        return NextResponse.json({ session: retried, _retried: true })
+      }
+      // Si le retry échoue, on retourne quand même la première réponse avec un avertissement
+      return NextResponse.json({ session, _validation_warnings: validation.reasons })
+    }
+
     return NextResponse.json({ session })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

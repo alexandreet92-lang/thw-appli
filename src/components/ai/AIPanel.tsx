@@ -141,6 +141,8 @@ function MsgContent({ text }: { text: string }) {
 
     if (!line.trim()) { blocks.push(<div key={i} style={{ height: 10 }} />); i++; continue }
     if (/^[-=]{3,}$/.test(line.trim())) { i++; continue }
+    // Hidden metadata tag (e.g. sport:running) — skip rendering
+    if (/^sport:[a-z_]+$/.test(line.trim())) { i++; continue }
 
     const hMatch = line.match(/^(#{1,4})\s+(.+)/)
     if (hMatch) {
@@ -221,7 +223,7 @@ interface ParsedSession {
   blocks: SessionBlock[]
 }
 
-const PHASE_RE = /échauffement|warm.?up|retour au calme|cool.?down|intervalle|récupér|fractionné|effort|tempo|seuil|vma|vo2\s*max|progressif|activation/i
+const PHASE_RE = /échauffement|warm.?up|retour au calme|cool.?down|intervalle|récupér|fractionné|effort|tempo|seuil|vma|vo2\s*max|progressif|activation|transition|bloc|phase/i
 
 function zoneFromText(text: string): number {
   const t = text.toLowerCase()
@@ -247,18 +249,23 @@ function zoneFromText(text: string): number {
 
 function durFromText(text: string): number {
   const rep = text.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
+  // Return total bloc duration (reps × effort) for proportional chart widths
   if (rep) return parseInt(rep[1]) * parseInt(rep[2])
   const min = text.match(/(\d+)\s*min/i)
   return min ? parseInt(min[1]) : 0
 }
 
 function detectSport(text: string): string {
+  // Explicit sport tag embedded in aiMsg takes absolute priority
+  const tagM = text.match(/^sport:([a-z_]+)/m)
+  if (tagM) return tagM[1]
+  // Fallback heuristic (legacy messages without sport tag)
   const t = text.toLowerCase()
   if (/\bcyclisme\b|vélo|watt|ftp/.test(t)) return 'cycling'
   if (/\bnatation\b|piscine|nage|css/.test(t)) return 'swim'
   if (/\baviron\b|rowing|ergomètre/.test(t)) return 'rowing'
   if (/\bhyrox\b|skierg|sled|wall ball/.test(t)) return 'hyrox'
-  if (/muscu|squat|bench|deadlift/.test(t)) return 'gym'
+  if (/\bmuscu\b|\bsquat\b|\bbench\b|\bdeadlift\b/.test(t)) return 'gym'
   return 'running'
 }
 
@@ -1911,6 +1918,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
         const sportLabel = SB_SPORTS.find(s => s.id === sport)?.label ?? sport ?? ''
         const userMsg = `Créer une séance ${sportLabel} — ${typesSeance.join(', ')}`
         const aiMsg = [
+          `sport:${sport}`,
           `**${generated.nom}**`,
           '',
           generated.description,

@@ -1545,57 +1545,179 @@ interface SBSession {
 
 // ── SBIntensityChart — profil d'intensité SVG pour blocs SBSession ──
 const SB_ZONE_COLORS_CHART = ['#9ca3af', '#3b82f6', '#22c55e', '#f97316', '#ef4444'] // Z1→Z5
-const SB_ZONE_HEIGHTS_CHART = [12, 28, 48, 68, 90] // % du H, Z1→Z5
+const SB_ZONE_HEIGHTS_CHART = [10, 28, 48, 68, 90] // % du H, Z1→Z5
 
 function parseSBZoneIdx(zones: string[]): number {
   if (!zones.length) return 1
-  const m = zones[0].match(/\d/)
-  return m ? Math.min(4, Math.max(0, parseInt(m[0]) - 1)) : 1
+  // Take the highest zone number among listed zones
+  let max = 1
+  for (const z of zones) {
+    const m = z.match(/\d/)
+    if (m) max = Math.max(max, Math.min(5, Math.max(1, parseInt(m[0]))) - 1)
+  }
+  return max
 }
 
-function SBIntensityChart({ blocs }: { blocs: SBBloc[] }) {
-  const H = 60
-  const GAP = 0.8
+type SBBarRaw = {
+  durationMin: number
+  zoneIdx: number
+  isRecup: boolean
+  bloc: SBBloc
+}
+type SBBarData = SBBarRaw & { xPct: number; wPct: number }
 
-  interface SBBar { durationMin: number; zoneIdx: number; isRecup: boolean }
+function SBIntensityChart({ blocs, sport }: { blocs: SBBloc[]; sport: string }) {
+  const [hovIdx, setHovIdx] = useState<number | null>(null)
+  const H = 64
+  const GAP = 0.5
 
-  const bars: SBBar[] = []
+  // Build raw bars: decompose each bloc by its repetitions.
+  // Recovery is placed BETWEEN reps only — not after the last one.
+  const barsRaw: SBBarRaw[] = []
   for (const b of blocs) {
-    const effortZ = parseSBZoneIdx(b.zone_effort)
-    const recupZ  = parseSBZoneIdx(b.zone_recup.length ? b.zone_recup : ['Z1'])
+    const effortZIdx = parseSBZoneIdx(b.zone_effort)
+    const recupZIdx  = parseSBZoneIdx(b.zone_recup.length ? b.zone_recup : ['Z1'])
     const reps = Math.max(1, b.repetitions)
     for (let i = 0; i < reps; i++) {
-      if (b.duree_effort > 0) bars.push({ durationMin: b.duree_effort, zoneIdx: effortZ, isRecup: false })
-      if (b.recup > 0)       bars.push({ durationMin: b.recup,        zoneIdx: recupZ,  isRecup: true  })
+      if (b.duree_effort > 0)
+        barsRaw.push({ durationMin: b.duree_effort, zoneIdx: effortZIdx, isRecup: false, bloc: b })
+      // Recovery only between reps, not after the last one
+      if (b.recup > 0 && i < reps - 1)
+        barsRaw.push({ durationMin: b.recup, zoneIdx: recupZIdx, isRecup: true, bloc: b })
     }
   }
 
-  const totalMin = bars.reduce((a, b) => a + b.durationMin, 0)
-  if (totalMin === 0 || bars.length === 0) return null
+  const totalMin = barsRaw.reduce((sum, b) => sum + b.durationMin, 0)
+  if (totalMin === 0 || barsRaw.length === 0) return null
+
+  // Compute absolute x positions (% of total width)
+  let xCursor = 0
+  const bars: SBBarData[] = barsRaw.map(bar => {
+    const wPct = (bar.durationMin / totalMin) * 100
+    const data: SBBarData = { ...bar, xPct: xCursor, wPct }
+    xCursor += wPct
+    return data
+  })
+
+  // Sport detection for tooltip data
+  const sportLow = sport.toLowerCase()
+  const isRun   = /running|triathlon/.test(sportLow)
+  const isCycle = /cycling|vélo|aviron|rowing/.test(sportLow)
+
+  const hovBar = hovIdx !== null ? bars[hovIdx] : null
 
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 14, position: 'relative' }}>
       <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 6px', fontFamily: 'DM Sans,sans-serif' }}>
         Profil d'intensité
       </p>
-      <svg width="100%" height={H + 4} viewBox={`0 0 100 ${H + 4}`} preserveAspectRatio="none"
-        style={{ overflow: 'visible', display: 'block' }}>
-        {(() => {
-          let xCursor = 0
-          return bars.map((bar, i) => {
-            const w = Math.max((bar.durationMin / totalMin) * 100 - GAP * 0.5, 0.5)
-            const hPct = bar.isRecup ? 10 : SB_ZONE_HEIGHTS_CHART[bar.zoneIdx]
-            const h = (hPct / 100) * H
-            const y = H - h
-            const fill = SB_ZONE_COLORS_CHART[bar.zoneIdx]
-            const opacity = bar.isRecup ? 0.38 : 0.88
-            const x = xCursor
-            xCursor += (bar.durationMin / totalMin) * 100
-            return <rect key={i} x={x} y={y} width={w} height={h} rx={1} fill={fill} opacity={opacity} />
-          })
-        })()}
+
+      {/* Tooltip */}
+      {hovBar && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(100% - 4px)',
+          left: `clamp(5%, ${hovBar.xPct + hovBar.wPct / 2}%, 95%)`,
+          transform: 'translateX(-50%)',
+          background: 'var(--ai-bg)',
+          border: '1px solid var(--ai-border)',
+          borderRadius: 8,
+          padding: '7px 11px',
+          zIndex: 30,
+          fontSize: 11,
+          whiteSpace: 'nowrap',
+          marginBottom: 6,
+          boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+          pointerEvents: 'none',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          <div style={{ fontWeight: 700, color: 'var(--ai-text)', marginBottom: 4, fontSize: 12 }}>
+            {hovBar.isRecup ? 'Récupération' : hovBar.bloc.nom}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+            <span style={{ color: 'var(--ai-mid)' }}>
+              {hovBar.durationMin} min
+              <span style={{ margin: '0 5px', color: 'var(--ai-border)' }}>·</span>
+              <span style={{ color: SB_ZONE_COLORS_CHART[hovBar.zoneIdx], fontWeight: 700 }}>
+                Z{hovBar.zoneIdx + 1}
+              </span>
+            </span>
+            {!hovBar.isRecup && hovBar.bloc.fc_cible != null && (
+              <span style={{ color: 'var(--ai-mid)' }}>FC cible : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.fc_cible} bpm</strong></span>
+            )}
+            {!hovBar.isRecup && hovBar.bloc.fc_max != null && (
+              <span style={{ color: 'var(--ai-mid)' }}>FC max : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.fc_max} bpm</strong></span>
+            )}
+            {!hovBar.isRecup && isRun && hovBar.bloc.allure_cible != null && (
+              <span style={{ color: 'var(--ai-mid)' }}>Allure : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.allure_cible}</strong></span>
+            )}
+            {!hovBar.isRecup && isCycle && hovBar.bloc.watts != null && (
+              <span style={{ color: 'var(--ai-mid)' }}>Puissance : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.watts} W</strong></span>
+            )}
+            {!hovBar.isRecup && hovBar.bloc.cadence != null && (
+              <span style={{ color: 'var(--ai-mid)' }}>Cadence : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.cadence}</strong></span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SVG Bars */}
+      <svg
+        width="100%" height={H}
+        viewBox={`0 0 100 ${H}`}
+        preserveAspectRatio="none"
+        style={{ overflow: 'visible', display: 'block', cursor: 'default' }}
+      >
+        {bars.map((bar, i) => {
+          const hPct = bar.isRecup ? 8 : SB_ZONE_HEIGHTS_CHART[bar.zoneIdx]
+          const h = (hPct / 100) * H
+          const y = H - h
+          const fill = SB_ZONE_COLORS_CHART[bar.zoneIdx]
+          const w = Math.max(bar.wPct - GAP, 0.3)
+          const isHov = hovIdx === i
+          return (
+            <rect key={i}
+              x={bar.xPct} y={y} width={w} height={h} rx={0.8}
+              fill={fill}
+              opacity={bar.isRecup ? 0.28 : (isHov ? 1 : 0.82)}
+              onMouseEnter={() => setHovIdx(i)}
+              onMouseLeave={() => setHovIdx(null)}
+            />
+          )
+        })}
         <line x1={0} y1={H} x2={100} y2={H} stroke="var(--ai-border)" strokeWidth={0.5} />
       </svg>
+
+      {/* Labels below each segment */}
+      <div style={{ position: 'relative', height: 16, marginTop: 2, overflow: 'hidden' }}>
+        {bars.map((bar, i) => {
+          if (bar.wPct < 5.5) return null
+          const isHov = hovIdx === i
+          const col = isHov ? SB_ZONE_COLORS_CHART[bar.zoneIdx] : 'var(--ai-dim)'
+          return (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${bar.xPct}%`,
+              width: `${bar.wPct}%`,
+              textAlign: 'center' as const,
+              fontSize: 8,
+              lineHeight: '16px',
+              color: col,
+              fontFamily: 'DM Mono, monospace',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap' as const,
+              transition: 'color 0.12s',
+              cursor: 'default',
+            }}
+              onMouseEnter={() => setHovIdx(i)}
+              onMouseLeave={() => setHovIdx(null)}
+            >
+              {bar.durationMin}′{!bar.isRecup ? ` Z${bar.zoneIdx + 1}` : ''}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -2047,7 +2169,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           </div>
 
           {/* Profil d'intensité SVG */}
-          <SBIntensityChart blocs={session.blocs} />
+          <SBIntensityChart blocs={session.blocs} sport={session.sport} />
 
           {/* Description */}
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' }}>

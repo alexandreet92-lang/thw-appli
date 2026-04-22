@@ -216,6 +216,7 @@ interface SessionBlock {
   intensity: string
   notes: string
   rawValue?: number  // watts (cycling) or speed m/s (running/swim/row) — for continuous height
+  cadence?: number   // RPM (cycling) or SPM (running)
 }
 interface ParsedSession {
   title: string
@@ -268,6 +269,34 @@ function detectSport(text: string): string {
   if (/\bhyrox\b|skierg|sled|wall ball/.test(t)) return 'hyrox'
   if (/\bmuscu\b|\bsquat\b|\bbench\b|\bdeadlift\b/.test(t)) return 'gym'
   return 'running'
+}
+
+function formatDuration(min: number): string {
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+}
+
+function formatRawValue(rv: number, sport: string): string {
+  if (/cycling|velo|vélo|aviron|rowing/.test(sport)) return `${Math.round(rv)}W`
+  if (/running|natation|swim|run/.test(sport)) {
+    const secPerKm = Math.round(1000 / rv)
+    const min = Math.floor(secPerKm / 60)
+    const sec = secPerKm % 60
+    return `${min}:${String(sec).padStart(2, '0')}/km`
+  }
+  return `${Math.round(rv)}`
+}
+
+function extractCadence(text: string): number | undefined {
+  const m = text.match(/(\d{2,3})\s*(?:rpm|spm)/i)
+          ?? text.match(/cadence[^0-9]*?(\d{2,3})/i)
+  if (m) {
+    const v = parseInt(m[1])
+    if (v >= 30 && v <= 300) return v  // sanity range: 30-300
+  }
+  return undefined
 }
 
 // Extracts a continuous intensity value from text for height calculation.
@@ -352,6 +381,7 @@ function parseSession(text: string): ParsedSession | null {
         .filter(l => l && !/^\d+\s*min/.test(l))[0] ?? ''
       const baseLabel = s.headingText.replace(/^\d+[.):\s]+/, '').trim()
       const rawValue  = extractRawValue(combined, parsedSport)
+      const cadence   = extractCadence(combined)
 
       // Expand repeated blocs into individual effort+recovery pairs
       const repM   = combined.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
@@ -362,7 +392,7 @@ function parseSession(text: string): ParsedSession | null {
         const recupDur  = recupM ? parseInt(recupM[1]) : 0
         if (effortDur > 0) {
           for (let r = 0; r < reps; r++) {
-            blocks.push({ label: baseLabel, duration_min: effortDur, zone, intensity, notes, rawValue })
+            blocks.push({ label: baseLabel, duration_min: effortDur, zone, intensity, notes, rawValue, cadence })
             if (recupDur > 0) {
               blocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '', rawValue: 0 })
             }
@@ -371,7 +401,7 @@ function parseSession(text: string): ParsedSession | null {
         }
       }
 
-      blocks.push({ label: baseLabel, duration_min: durFromText(combined), zone, intensity, notes, rawValue })
+      blocks.push({ label: baseLabel, duration_min: durFromText(combined), zone, intensity, notes, rawValue, cadence })
     }
     const total = blocks.reduce((s, b) => s + b.duration_min, 0)
     return { title: 'Séance proposée', sport: parsedSport, total_min: total, blocks }
@@ -392,7 +422,9 @@ function parseSession(text: string): ParsedSession | null {
       .replace(/[-•*:·]/g, '').trim().slice(0, 80)
     // Look ahead: consigne is on the next non-empty line (no bold markers)
     const nextLine = lines.slice(li + 1, li + 3).find(l => l.trim() && !/\*\*/.test(l)) ?? ''
-    const rawValue = extractRawValue(line + ' ' + nextLine, parsedSport)
+    const combined = line + ' ' + nextLine
+    const rawValue = extractRawValue(combined, parsedSport)
+    const cadence  = extractCadence(combined)
 
     // Detect repetitions: "5×3 min / 3 min récup" → expand into N effort+recovery pairs
     const repM   = line.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i)
@@ -403,7 +435,7 @@ function parseSession(text: string): ParsedSession | null {
       const recupDur  = recupM ? parseInt(recupM[1]) : 0
       if (!effortDur) continue
       for (let r = 0; r < reps; r++) {
-        boldBlocks.push({ label, duration_min: effortDur, zone, intensity, notes, rawValue })
+        boldBlocks.push({ label, duration_min: effortDur, zone, intensity, notes, rawValue, cadence })
         if (recupDur > 0) {
           boldBlocks.push({ label: 'Récup', duration_min: recupDur, zone: 1, intensity: 'Z1', notes: '', rawValue: 0 })
         }
@@ -413,7 +445,7 @@ function parseSession(text: string): ParsedSession | null {
 
     const dur = durFromText(line)
     if (!dur) continue
-    boldBlocks.push({ label, duration_min: dur, zone, intensity, notes, rawValue })
+    boldBlocks.push({ label, duration_min: dur, zone, intensity, notes, rawValue, cadence })
   }
 
   if (boldBlocks.length >= 2) {
@@ -426,7 +458,7 @@ function parseSession(text: string): ParsedSession | null {
 
 // ── Session Block Chart ────────────────────────────────────────
 
-function SessionBlockChart({ blocks, total }: { blocks: SessionBlock[]; total: number }) {
+function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; total: number; sport: string }) {
   const [hovIdx, setHovIdx] = useState<number | null>(null)
 
   // Compute height percentages — continuous scale from rawValue when available
@@ -452,23 +484,40 @@ function SessionBlockChart({ blocks, total }: { blocks: SessionBlock[]; total: n
 
   return (
     <div style={{ position: 'relative', userSelect: 'none' }}>
-      {hovIdx !== null && (
-        <div style={{
-          position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-          borderRadius: 7, padding: '5px 10px', zIndex: 20,
-          fontSize: 11, whiteSpace: 'nowrap', marginBottom: 6,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.20)', pointerEvents: 'none',
-        }}>
-          <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{blocks[hovIdx].label}</span>
-          <span style={{ color: 'var(--ai-dim)', margin: '0 5px' }}>·</span>
-          <span style={{ color: 'var(--ai-text)' }}>{blocks[hovIdx].duration_min} min</span>
-          <span style={{ color: 'var(--ai-dim)', margin: '0 5px' }}>·</span>
-          <span style={{ color: SESSION_ZONE_COLORS[(blocks[hovIdx].zone - 1) % 5], fontWeight: 600 }}>
-            {blocks[hovIdx].intensity}
-          </span>
-        </div>
-      )}
+      {hovIdx !== null && (() => {
+        const hb = blocks[hovIdx]
+        const col = SESSION_ZONE_COLORS[(hb.zone - 1) % 5]
+        return (
+          <div style={{
+            position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+            background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
+            borderRadius: 7, padding: '5px 11px', zIndex: 20,
+            fontSize: 11, whiteSpace: 'nowrap', marginBottom: 6,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.20)', pointerEvents: 'none',
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{hb.label}</span>
+            <span style={{ color: 'var(--ai-dim)' }}>·</span>
+            <span style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{hb.duration_min}′</span>
+            <span style={{ color: 'var(--ai-dim)' }}>·</span>
+            <span style={{ color: col, fontWeight: 700 }}>{hb.intensity.split(' ')[0]}</span>
+            {hb.rawValue !== undefined && hb.rawValue > 0 && (
+              <>
+                <span style={{ color: 'var(--ai-dim)' }}>·</span>
+                <span style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+                  {formatRawValue(hb.rawValue, sport)}
+                </span>
+              </>
+            )}
+            {hb.cadence !== undefined && (
+              <>
+                <span style={{ color: 'var(--ai-dim)' }}>·</span>
+                <span style={{ color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{hb.cadence} rpm</span>
+              </>
+            )}
+          </div>
+        )
+      })()}
       {/* Variable-height bars aligned to the bottom */}
       <div style={{ display: 'flex', height: CHART_H, alignItems: 'flex-end', gap: 2, marginBottom: 5 }}>
         {blocks.map((b, i) => {
@@ -688,6 +737,18 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
   const total = displayBlocks.reduce((s, b) => s + b.duration_min, 0)
   const sportLabel = SPORT_LABELS_FR[session.sport] ?? session.sport
 
+  // ── Average metrics (effort blocks only, rawValue > 0) ──────
+  const effortBs = displayBlocks.filter(b => b.rawValue !== undefined && b.rawValue > 0)
+  const totalEffortMin = effortBs.reduce((s, b) => s + b.duration_min, 0)
+  const avgRaw = totalEffortMin > 0
+    ? effortBs.reduce((s, b) => s + (b.rawValue ?? 0) * b.duration_min, 0) / totalEffortMin
+    : null
+  const cadenceBs = effortBs.filter(b => b.cadence !== undefined)
+  const totalCadMin = cadenceBs.reduce((s, b) => s + b.duration_min, 0)
+  const avgCadence = totalCadMin > 0
+    ? Math.round(cadenceBs.reduce((s, b) => s + (b.cadence ?? 0) * b.duration_min, 0) / totalCadMin)
+    : null
+
   function updateBlock(i: number, field: keyof SessionBlock, value: string | number) {
     setEditedBlocks(prev => prev.map((b, j) => j === i ? { ...b, [field]: value } : b))
   }
@@ -713,7 +774,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
-              {sportLabel} · {total} min
+              {sportLabel} · {formatDuration(total)}
             </span>
             <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, letterSpacing: '0.05em' }}>
               SÉANCE
@@ -727,7 +788,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
         </div>
 
         <div style={{ padding: '12px 14px 8px' }}>
-          <SessionBlockChart blocks={displayBlocks} total={total} />
+          <SessionBlockChart blocks={displayBlocks} total={total} sport={session.sport} />
         </div>
 
         <div style={{ padding: '2px 10px 10px' }}>
@@ -763,19 +824,54 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {displayBlocks.map((b, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 6 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: SESSION_ZONE_COLORS[(b.zone - 1) % 5], flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 12, color: 'var(--ai-text)', lineHeight: 1.3 }}>{b.label}</span>
-                  <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-mid)', minWidth: 32, textAlign: 'right' }}>{b.duration_min}′</span>
-                  <span style={{ fontSize: 10, color: SESSION_ZONE_COLORS[(b.zone - 1) % 5], fontWeight: 700, minWidth: 20, textAlign: 'right' }}>
-                    {b.intensity.split(' ')[0]}
-                  </span>
-                </div>
-              ))}
+              {displayBlocks.map((b, i) => {
+                const zCol = SESSION_ZONE_COLORS[(b.zone - 1) % 5]
+                const isRecupRow = b.rawValue === 0
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 6 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: zCol, flexShrink: 0, opacity: isRecupRow ? 0.4 : 1 }} />
+                    <span style={{ flex: 1, fontSize: 11.5, color: isRecupRow ? 'var(--ai-dim)' : 'var(--ai-text)', lineHeight: 1.3 }}>{b.label}</span>
+                    <span style={{ fontSize: 10.5, fontFamily: 'DM Mono,monospace', color: 'var(--ai-mid)', flexShrink: 0 }}>{b.duration_min}′</span>
+                    <span style={{ fontSize: 10, color: zCol, fontWeight: 700, minWidth: 22, textAlign: 'right', flexShrink: 0 }}>
+                      {b.intensity.split(' ')[0]}
+                    </span>
+                    {b.rawValue !== undefined && b.rawValue > 0 && (
+                      <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', minWidth: 44, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
+                        {formatRawValue(b.rawValue, session.sport)}
+                      </span>
+                    )}
+                    {b.cadence !== undefined && (
+                      <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)', minWidth: 42, textAlign: 'right', flexShrink: 0 }}>
+                        {b.cadence} rpm
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
+
+        {/* Average metrics row */}
+        {(avgRaw !== null || avgCadence !== null) && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '6px 18px 8px',
+            borderTop: '1px solid var(--ai-border)',
+          }}>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Moy. cible</span>
+            {avgRaw !== null && (
+              <span style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--ai-text)' }}>
+                {formatRawValue(avgRaw, session.sport)}
+              </span>
+            )}
+            {avgCadence !== null && (
+              <span style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', color: 'var(--ai-mid)' }}>
+                {avgCadence} rpm
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 6, padding: '0 10px 11px' }}>
           {editMode ? (

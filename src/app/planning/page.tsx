@@ -1344,9 +1344,49 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
         <div>
           {session.blocks.length>0 ? (
             <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 14px',marginBottom:12 }}>
-              <div style={{ display:'flex',alignItems:'flex-end',gap:2,height:70 }}>
-                {session.blocks.map(b=>{ const total=session.blocks.reduce((s,x)=>s+x.durationMin,0); const hp=((b.zone/5)*0.85+0.05)*100,wp=(b.durationMin/total)*100,c=ZONE_COLORS[b.zone-1]; return <div key={b.id} style={{ width:`${wp}%`,height:`${hp}%`,background:`linear-gradient(180deg,${c}ee,${c}55)`,borderRadius:'4px 4px 0 0',border:`1px solid ${c}88`,minWidth:5 }}/> })}
-              </div>
+              {(()=>{
+                // Expand each block into sub-bars.
+                // mode='interval' → reps × (effort sub-bar + recovery sub-bar)
+                // mode='single'   → one sub-bar
+                type SBar = { key:string; min:number; color:string; hp:number; info?:string }
+                const sbars:SBar[] = []
+                for (const b of session.blocks) {
+                  const c  = ZONE_COLORS[b.zone-1]
+                  const hp = ((b.zone/5)*0.85+0.05)*100
+                  const info = [
+                    b.value  ? `${b.value}${session.sport==='bike'?'W':''}` : null,
+                    b.hrAvg  ? `${b.hrAvg}` : null,
+                  ].filter(Boolean).join(' · ') || undefined
+                  if (b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin) {
+                    const rz = b.recoveryZone??1
+                    const rc = ZONE_COLORS[rz-1]
+                    const rhp = ((rz/5)*0.85+0.05)*100
+                    for (let i=0; i<b.reps; i++) {
+                      sbars.push({ key:`${b.id}_e${i}`, min:b.effortMin,   color:c,  hp,   info })
+                      sbars.push({ key:`${b.id}_r${i}`, min:b.recoveryMin, color:rc, hp:rhp })
+                    }
+                  } else {
+                    sbars.push({ key:b.id, min:b.durationMin, color:c, hp, info })
+                  }
+                }
+                const total = sbars.reduce((a,s)=>a+s.min,0)||1
+                return (
+                  <div style={{ display:'flex',alignItems:'flex-end',gap:2,height:70 }}>
+                    {sbars.map(sb=>{
+                      const wp=(sb.min/total)*100
+                      return (
+                        <div key={sb.key} style={{ width:`${wp}%`,height:`${sb.hp}%`,background:`linear-gradient(180deg,${sb.color}ee,${sb.color}55)`,borderRadius:'4px 4px 0 0',border:`1px solid ${sb.color}88`,minWidth:5,position:'relative' as const,overflow:'hidden' }}>
+                          {sb.info && wp>5 && (
+                            <span style={{ position:'absolute' as const,bottom:2,left:2,right:2,fontSize:7,color:'rgba(255,255,255,0.9)',fontFamily:'DM Mono,monospace',fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>
+                              {sb.info}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           ) : <p style={{ fontSize:12,color:'var(--text-dim)',textAlign:'center' as const,padding:'14px 0' }}>Aucun bloc — modifier pour en ajouter.</p>}
           {session.blocks.map(b=>(

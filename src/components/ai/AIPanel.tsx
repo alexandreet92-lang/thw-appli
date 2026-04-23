@@ -33,7 +33,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | null
 
 interface ActiveQuickAction {
   label: string
@@ -1711,6 +1711,1372 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
   )
 }
 
+// ── TrainingPlanFlow ───────────────────────────────────────────
+
+interface TrainingPlanForm {
+  // Bloc 0
+  sport_principal: string
+  sports_hybride: { sport: string; importance: 'principal' | 'secondaire' | 'complementaire' }[]
+  course_cible_nom: string
+  course_cible_date: string
+  courses_secondaires: { nom: string; date: string; importance: 'B' | 'C' }[]
+  niveau_vise: 'finisher' | 'chrono' | 'perf' | ''
+  chrono_cible: string
+  precision_objectif: string
+  // Bloc 1
+  experience: '< 1 an' | '1-3 ans' | '3-5 ans' | '> 5 ans' | ''
+  volume_actuel: number
+  meilleure_performance: string
+  programme_precedent: boolean
+  programme_precedent_detail: string
+  forme_actuelle: 'tres_bonne' | 'bonne' | 'moyenne' | 'mauvaise' | ''
+  precision_profil: string
+  // Bloc 2
+  seances_par_semaine: number
+  heures_par_semaine: number
+  jours_repos: string[]
+  contraintes_horaires: 'matin' | 'soir' | 'midi' | 'flexible' | ''
+  precision_dispo: string
+  // Bloc 3
+  equipements: string[]
+  precision_equipement: string
+  // Bloc 4
+  blessures_passees: boolean
+  blessures_detail: string
+  gene_recente: boolean
+  gene_detail: string
+  contraintes_permanentes: boolean
+  contraintes_detail: string
+  antecedents: boolean
+  antecedents_detail: string
+  precision_sante: string
+  // Bloc 5
+  blocs_custom: boolean
+  blocs_custom_detail: { nom: string; type: string; duree_semaines: number }[]
+  entree_programme: 'prudent' | 'intense' | ''
+  reaction_volume: 'tres_bien' | 'bien' | 'mal' | ''
+  reaction_intensite: 'rapide' | '48h' | 'saturation' | ''
+  type_seances: 'courtes' | 'longues' | 'mixte' | ''
+  connaissance_de_soi: string
+  precision_methode: string
+  // Bloc 6
+  sommeil_heures: number
+  fatigue_travail: 'physique' | 'mental' | 'les_deux' | 'faible' | ''
+  stress_annee: 'aucun' | 'quelques_semaines' | 'recurrent' | ''
+  stress_detail: string
+  outils_recuperation: string[]
+  precision_recup: string
+  // Bloc 7
+  plan_nutritionnel: 'structure' | 'intuitif' | 'non' | ''
+  contraintes_alimentaires: string[]
+  complements: string[]
+  precision_nutrition: string
+}
+
+interface TpPlanBloc {
+  nom: string
+  duree_min: number
+  zone: number
+  repetitions: number
+  recup_min: number
+  watts: number | null
+  allure: string | null
+  consigne: string
+}
+
+interface TpPlanSeance {
+  jour: number
+  sport: string
+  titre: string
+  duree_min: number
+  tss: number
+  intensite: 'low' | 'moderate' | 'high' | 'max'
+  heure: string
+  notes: string
+  rpe: number
+  blocs: TpPlanBloc[]
+}
+
+interface TpPlanSemaine {
+  numero: number
+  type: string
+  volume_h: number
+  tss_semaine: number
+  theme: string
+  seances: TpPlanSeance[]
+}
+
+interface TpPlanPeriodisation {
+  nom: string
+  type: 'Base' | 'Intensité' | 'Spécifique' | 'Deload' | 'Compétition'
+  semaine_debut: number
+  semaine_fin: number
+  description: string
+  volume_hebdo_h: number
+}
+
+interface GeneratedTrainingPlan {
+  nom: string
+  duree_semaines: number
+  objectif_principal: string
+  blocs_periodisation: TpPlanPeriodisation[]
+  semaines: TpPlanSemaine[]
+  conseils_adaptation: string[]
+  points_cles: string[]
+}
+
+const TP_JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const TP_JOURS_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
+const TP_BLOC_COLORS: Record<string, string> = {
+  'Base': '#3b82f6',
+  'Intensité': '#f97316',
+  'Spécifique': '#ef4444',
+  'Deload': '#22c55e',
+  'Compétition': '#a855f7',
+}
+
+const TP_INTENSITE_COLORS: Record<string, string> = {
+  low: '#22c55e',
+  moderate: '#eab308',
+  high: '#f97316',
+  max: '#ef4444',
+}
+
+function tpPillStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '6px 14px',
+    borderRadius: 99,
+    fontSize: 11,
+    fontWeight: 600,
+    cursor: 'pointer',
+    border: `1px solid ${active ? '#8b5cf6' : 'var(--ai-border)'}`,
+    background: active ? 'rgba(139,92,246,0.12)' : 'transparent',
+    color: active ? '#8b5cf6' : 'var(--ai-dim)',
+    transition: 'all 0.15s',
+    whiteSpace: 'nowrap' as const,
+  }
+}
+
+function tpInputStyle(): React.CSSProperties {
+  return {
+    padding: '8px 10px',
+    borderRadius: 8,
+    border: '1px solid var(--ai-border)',
+    background: 'var(--ai-bg2)',
+    color: 'var(--ai-text)',
+    fontSize: 12,
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    outline: 'none',
+  }
+}
+
+function tpLabelStyle(): React.CSSProperties {
+  return {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--ai-text)',
+    marginBottom: 8,
+    display: 'block',
+  }
+}
+
+const DEFAULT_FORM: TrainingPlanForm = {
+  sport_principal: '',
+  sports_hybride: [],
+  course_cible_nom: '',
+  course_cible_date: '',
+  courses_secondaires: [],
+  niveau_vise: '',
+  chrono_cible: '',
+  precision_objectif: '',
+  experience: '',
+  volume_actuel: 8,
+  meilleure_performance: '',
+  programme_precedent: false,
+  programme_precedent_detail: '',
+  forme_actuelle: '',
+  precision_profil: '',
+  seances_par_semaine: 5,
+  heures_par_semaine: 8,
+  jours_repos: [],
+  contraintes_horaires: '',
+  precision_dispo: '',
+  equipements: [],
+  precision_equipement: '',
+  blessures_passees: false,
+  blessures_detail: '',
+  gene_recente: false,
+  gene_detail: '',
+  contraintes_permanentes: false,
+  contraintes_detail: '',
+  antecedents: false,
+  antecedents_detail: '',
+  precision_sante: '',
+  blocs_custom: false,
+  blocs_custom_detail: [],
+  entree_programme: '',
+  reaction_volume: '',
+  reaction_intensite: '',
+  type_seances: '',
+  connaissance_de_soi: '',
+  precision_methode: '',
+  sommeil_heures: 7,
+  fatigue_travail: '',
+  stress_annee: '',
+  stress_detail: '',
+  outils_recuperation: [],
+  precision_recup: '',
+  plan_nutritionnel: '',
+  contraintes_alimentaires: [],
+  complements: [],
+  precision_nutrition: '',
+}
+
+function getNextMonday(): string {
+  const d = new Date()
+  const day = d.getDay()
+  const diff = day === 0 ? 1 : 8 - day
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().slice(0, 10)
+}
+
+function addWeeks(dateStr: string, weeks: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + weeks * 7)
+  return d.toISOString().slice(0, 10)
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function TrainingPlanFlow({
+  model,
+  onCancel,
+  onRecordConv,
+}: {
+  model: THWModel
+  onCancel: () => void
+  onRecordConv: (userMsg: string, aiMsg: string) => void
+}) {
+  type TpPhase = 'gate' | 'questionnaire' | 'generating' | 'result' | 'modifying'
+
+  const [phase, setPhase] = useState<TpPhase>(model === 'zeus' ? 'questionnaire' : 'gate')
+  const [step, setStep] = useState(0)
+  const [form, setForm] = useState<TrainingPlanForm>(DEFAULT_FORM)
+  const [program, setProgram] = useState<GeneratedTrainingPlan | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [showAllWeeks, setShowAllWeeks] = useState(false)
+  const [modifyText, setModifyText] = useState('')
+  const [modifyChecks, setModifyChecks] = useState<string[]>([])
+  const [startDate, setStartDate] = useState(getNextMonday())
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [conflictInfo, setConflictInfo] = useState<{ count: number; ids: string[] } | null>(null)
+
+  function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
+    setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  function toggleArr<T>(arr: T[], val: T): T[] {
+    return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
+  }
+
+  // ── Supabase context fetch ─────────────────────────────────────
+  async function fetchAthleteContext() {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return { profil: null, zones: null, activities: [], calendrier: [], sante: [], userId: null }
+
+      const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+      const today = new Date().toISOString().slice(0, 10)
+
+      const [profil, zones, activities, events, health] = await Promise.all([
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).single().then(r => r.data ?? null),
+        sb.from('athlete_zones').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single().then(r => r.data ?? null),
+        sb.from('activities').select('id,sport,date,duration,distance,load').eq('user_id', user.id).gte('date', cutoff).order('date', { ascending: false }).limit(50).then(r => r.data ?? []),
+        sb.from('calendar_events').select('*').eq('user_id', user.id).gte('date', today).limit(20).then(r => r.data ?? []),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(14).then(r => r.data ?? []),
+      ])
+
+      return { profil, zones, activities, calendrier: events, sante: health, userId: user.id }
+    } catch {
+      return { profil: null, zones: null, activities: [], calendrier: [], sante: [], userId: null }
+    }
+  }
+
+  // ── Generate program ───────────────────────────────────────────
+  async function generate(modification?: string) {
+    setPhase('generating')
+    setError(null)
+    try {
+      const ctx = await fetchAthleteContext()
+      const body: Record<string, unknown> = {
+        questionnaire: form,
+        profil: ctx.profil ?? null,
+        zones: ctx.zones ?? null,
+        historique_90j: ctx.activities ?? [],
+        calendrier_objectifs: ctx.calendrier ?? [],
+        sante: ctx.sante ?? [],
+      }
+      if (modification && program) {
+        body.modification = modification
+        body.programme_actuel = program as unknown as Record<string, unknown>
+      }
+      const res = await fetch('/api/training-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
+      if (data.error || !data.program) {
+        setError(data.error ?? 'Erreur de génération')
+        setPhase(program ? 'result' : 'questionnaire')
+        return
+      }
+      setProgram(data.program)
+      setShowAllWeeks(false)
+      // Record conversation
+      const p = data.program
+      const totalSeances = p.semaines.reduce((s, w) => s + w.seances.length, 0)
+      const userMsg = `Créer un plan d'entraînement — ${form.sport_principal} — ${p.duree_semaines} semaines — ${form.course_cible_nom || form.niveau_vise}`
+      const aiMsg = `**${p.nom}**\n\n${p.objectif_principal}\n\n**${p.duree_semaines} semaines · ${totalSeances} séances au total**\n\n${p.conseils_adaptation.slice(0, 3).map(c => `• ${c}`).join('\n')}`
+      onRecordConv(userMsg, aiMsg)
+      setPhase('result')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur réseau')
+      setPhase(program ? 'result' : 'questionnaire')
+    }
+  }
+
+  // ── Save to planned_sessions ───────────────────────────────────
+  async function saveToPlanning(forceReplace = false) {
+    if (!program) return
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setSaving(false); setSaveMsg('Non connecté'); return }
+
+      const firstWeekStart = startDate
+      const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
+
+      if (!forceReplace) {
+        const { data: existing } = await sb
+          .from('planned_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .gte('week_start', firstWeekStart)
+          .lte('week_start', lastWeekStart)
+        if (existing && existing.length > 0) {
+          setConflictInfo({ count: existing.length, ids: existing.map(r => r.id as string) })
+          setSaving(false)
+          return
+        }
+      } else if (conflictInfo) {
+        await sb.from('planned_sessions').delete().in('id', conflictInfo.ids)
+        setConflictInfo(null)
+      }
+
+      // Build rows
+      const rows: Record<string, unknown>[] = []
+      for (const semaine of program.semaines) {
+        const weekStart = addWeeks(startDate, semaine.numero - 1)
+        for (const seance of semaine.seances) {
+          const seanceDate = addDays(weekStart, seance.jour)
+          rows.push({
+            user_id: user.id,
+            week_start: weekStart,
+            date: seanceDate,
+            sport: seance.sport,
+            titre: seance.titre,
+            duree_min: seance.duree_min,
+            tss: seance.tss,
+            intensite: seance.intensite,
+            heure: seance.heure,
+            notes: seance.notes,
+            rpe: seance.rpe,
+            blocs: seance.blocs,
+            source: 'training_plan',
+          })
+        }
+      }
+
+      const { error: insertErr } = await sb.from('planned_sessions').insert(rows)
+      if (insertErr) {
+        setSaveMsg(`Erreur : ${insertErr.message}`)
+      } else {
+        setSaveMsg(`Programme créé — ${rows.length} séances ajoutées au Planning`)
+      }
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : 'Erreur réseau')
+    }
+    setSaving(false)
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PHASE : gate
+  // ─────────────────────────────────────────────────────────────
+  if (phase === 'gate') {
+    return (
+      <div style={{ padding: '16px 0 4px' }}>
+        <div style={{
+          borderRadius: 12,
+          border: '1px solid rgba(139,92,246,0.3)',
+          background: 'rgba(139,92,246,0.06)',
+          padding: 20,
+          marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+            Zeus requis
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
+            La création de programme d&apos;entraînement complet nécessite <strong>Zeus</strong>, le modèle le plus puissant de THW Coach. Il analyse en profondeur ton profil, tes données historiques et tes objectifs pour générer un programme périodisé sur-mesure.
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 16px', lineHeight: 1.5 }}>
+            Active Zeus depuis le sélecteur de modèle (icône ⚡ dans l&apos;en-tête), puis relance cette action.
+          </p>
+          <button
+            onClick={onCancel}
+            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PHASE : generating
+  // ─────────────────────────────────────────────────────────────
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '32px 0', textAlign: 'center' }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: '50%',
+          border: '3px solid rgba(139,92,246,0.2)',
+          borderTop: '3px solid #8b5cf6',
+          animation: 'ai_spin 0.8s linear infinite',
+          margin: '0 auto 16px',
+        }} />
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px' }}>
+          Génération en cours…
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
+          Analyse de ton profil et création du programme personnalisé…
+        </p>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PHASE : result
+  // ─────────────────────────────────────────────────────────────
+  if (phase === 'result' && program) {
+    const totalSeances = program.semaines.reduce((s, w) => s + w.seances.length, 0)
+    const totalDuree = program.blocs_periodisation.reduce((s, b) => s + b.semaine_fin - b.semaine_debut + 1, 0)
+    const weeksToShow = showAllWeeks ? program.semaines : program.semaines.slice(0, 2)
+
+    return (
+      <div style={{ padding: '8px 0 4px', overflow: 'auto' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            {program.nom}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0 }}>
+            {program.objectif_principal} · {program.duree_semaines} semaines · {totalSeances} séances · {totalDuree} blocs
+          </p>
+        </div>
+
+        {/* Blocs de périodisation */}
+        {program.blocs_periodisation.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+              Périodisation
+            </p>
+            <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 12, marginBottom: 8 }}>
+              {program.blocs_periodisation.map((b, i) => {
+                const width = (b.semaine_fin - b.semaine_debut + 1) / program.duree_semaines * 100
+                return (
+                  <div key={i} style={{
+                    width: `${width}%`,
+                    background: TP_BLOC_COLORS[b.type] ?? '#6b7280',
+                  }} title={`${b.nom} (S${b.semaine_debut}→S${b.semaine_fin})`} />
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {program.blocs_periodisation.map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: TP_BLOC_COLORS[b.type] ?? '#6b7280', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{b.nom} · S{b.semaine_debut}-S{b.semaine_fin}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Semaines */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+            {showAllWeeks ? 'Toutes les semaines' : '2 premières semaines'}
+          </p>
+          {weeksToShow.map(semaine => (
+            <div key={semaine.numero} style={{
+              borderRadius: 10,
+              border: '1px solid var(--ai-border)',
+              background: 'var(--ai-bg2)',
+              padding: 12,
+              marginBottom: 10,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
+                  Semaine {semaine.numero} — {semaine.theme}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
+                  {semaine.volume_h}h · TSS {semaine.tss_semaine}
+                </span>
+              </div>
+              {semaine.seances.map((seance, si) => (
+                <div key={si} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 0',
+                  borderTop: si > 0 ? '1px solid var(--ai-border)' : 'none',
+                }}>
+                  {/* Jour */}
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)', minWidth: 28, fontWeight: 600 }}>
+                    {TP_JOURS[seance.jour] ?? '?'}
+                  </span>
+                  {/* Sport pill */}
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99,
+                    background: 'rgba(139,92,246,0.12)', color: '#8b5cf6',
+                  }}>
+                    {seance.sport}
+                  </span>
+                  {/* Titre */}
+                  <span style={{ fontSize: 12, color: 'var(--ai-text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {seance.titre}
+                  </span>
+                  {/* Durée */}
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0 }}>
+                    {seance.duree_min}min
+                  </span>
+                  {/* TSS badge */}
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 99,
+                    background: 'rgba(0,0,0,0.15)', color: 'var(--ai-mid)', flexShrink: 0,
+                  }}>
+                    TSS {seance.tss}
+                  </span>
+                  {/* Intensité dot */}
+                  <div style={{
+                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                    background: TP_INTENSITE_COLORS[seance.intensite] ?? '#6b7280',
+                  }} title={seance.intensite} />
+                  {/* Mini SVG intensity bars */}
+                  {seance.blocs.length > 0 && (
+                    <svg width={48} height={18} style={{ flexShrink: 0 }}>
+                      {seance.blocs.map((b, bi) => {
+                        const x = bi * (48 / Math.max(seance.blocs.length, 1))
+                        const w = Math.max(1, 48 / Math.max(seance.blocs.length, 1) - 1)
+                        const h = Math.max(2, (b.zone / 5) * 18)
+                        const colors = ['#9ca3af','#3b82f6','#22c55e','#f97316','#ef4444','#a855f7']
+                        return (
+                          <rect key={bi} x={x} y={18 - h} width={w} height={h} fill={colors[b.zone] ?? '#9ca3af'} rx={1} />
+                        )
+                      })}
+                    </svg>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+          {program.semaines.length > 2 && (
+            <button
+              onClick={() => setShowAllWeeks(v => !v)}
+              style={{ fontSize: 12, color: '#8b5cf6', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600 }}
+            >
+              {showAllWeeks ? '▲ Masquer' : `▼ Voir toutes les ${program.semaines.length} semaines`}
+            </button>
+          )}
+        </div>
+
+        {/* Points clés */}
+        {program.points_cles.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+              Points clés
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {program.points_cles.map((pt, i) => (
+                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.5 }}>{pt}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Conseils adaptation */}
+        {program.conseils_adaptation.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+              Conseils d&apos;adaptation
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {program.conseils_adaptation.map((c, i) => (
+                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.5 }}>{c}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Enregistrement planning */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid var(--ai-border)',
+          background: 'var(--ai-bg2)',
+          padding: 14,
+          marginBottom: 12,
+        }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px' }}>
+            Ajouter au planning
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>Date de début :</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              style={{ ...tpInputStyle(), width: 'auto' }}
+            />
+          </div>
+          {conflictInfo && (
+            <div style={{
+              borderRadius: 8,
+              border: '1px solid #f97316',
+              background: 'rgba(249,115,22,0.08)',
+              padding: 10,
+              marginBottom: 10,
+            }}>
+              <p style={{ fontSize: 12, color: '#f97316', margin: '0 0 8px' }}>
+                {conflictInfo.count} séance{conflictInfo.count > 1 ? 's' : ''} déjà planifiée{conflictInfo.count > 1 ? 's' : ''} sur cette période.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => saveToPlanning(true)}
+                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: '#f97316', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  Remplacer tout
+                </button>
+                <button onClick={() => setConflictInfo(null)}
+                  style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+          {saveMsg && (
+            <p style={{ fontSize: 12, color: saveMsg.startsWith('Erreur') ? '#ef4444' : '#22c55e', margin: '0 0 8px' }}>
+              {saveMsg}
+              {saveMsg.includes('Programme créé') && (
+                <a href="/planning" style={{ marginLeft: 8, color: '#8b5cf6', textDecoration: 'underline' }}>Voir le planning →</a>
+              )}
+            </p>
+          )}
+          {!conflictInfo && (
+            <button
+              onClick={() => saveToPlanning(false)}
+              disabled={saving}
+              style={{
+                padding: '9px 16px', borderRadius: 9, border: 'none',
+                background: saving ? 'rgba(139,92,246,0.3)' : 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+                color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
+              }}
+            >
+              {saving ? 'Enregistrement…' : 'Générer le planning'}
+            </button>
+          )}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => { setModifyText(''); setModifyChecks([]); setPhase('modifying') }}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
+          >
+            Modifier
+          </button>
+          <button
+            onClick={onCancel}
+            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PHASE : modifying
+  // ─────────────────────────────────────────────────────────────
+  if (phase === 'modifying') {
+    const modifyOptions = ['La durée', 'Distribution des sports', 'Volume hebdo', 'Intensité', 'Types de séances', 'Un bloc spécifique']
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 16px', fontFamily: 'Syne,sans-serif' }}>
+          Modifier le programme
+        </p>
+
+        <p style={{ ...tpLabelStyle(), marginBottom: 10 }}>Que souhaitez-vous modifier ?</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {modifyOptions.map(opt => (
+            <button key={opt} onClick={() => setModifyChecks(prev => toggleArr(prev, opt))} style={tpPillStyle(modifyChecks.includes(opt))}>
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        <p style={{ ...tpLabelStyle() }}>Décrivez précisément ce que vous voulez changer * <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(obligatoire)</span></p>
+        <textarea
+          value={modifyText}
+          onChange={e => setModifyText(e.target.value)}
+          placeholder="Ex: Je veux réduire le volume de la semaine 3, ajouter plus de séances longues le week-end, enlever les séances de natation..."
+          rows={4}
+          style={{
+            ...tpInputStyle(),
+            resize: 'vertical',
+            marginBottom: 16,
+          }}
+        />
+
+        {error && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setPhase('result')}
+            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
+          >
+            ← Retour
+          </button>
+          <button
+            onClick={() => {
+              const fullModif = modifyChecks.length ? `Domaines : ${modifyChecks.join(', ')}. ${modifyText}` : modifyText
+              void generate(fullModif)
+            }}
+            disabled={!modifyText.trim()}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: modifyText.trim() ? 'linear-gradient(135deg,#8b5cf6,#5b6fff)' : 'rgba(139,92,246,0.2)',
+              color: '#fff', fontSize: 12, fontWeight: 700, cursor: modifyText.trim() ? 'pointer' : 'default',
+            }}
+          >
+            Relancer la génération
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PHASE : questionnaire
+  // ─────────────────────────────────────────────────────────────
+
+  function renderStep() {
+    switch (step) {
+      // ── BLOC 0 : Objectif ────────────────────────────────────
+      case 0: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Objectif et course cible
+          </p>
+
+          {/* Sport principal */}
+          <div>
+            <span style={tpLabelStyle()}>Sport principal</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {['Running', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox', 'Triathlon', 'Hybride'].map(s => (
+                <button key={s} onClick={() => setField('sport_principal', s)} style={tpPillStyle(form.sport_principal === s)}>{s}</button>
+              ))}
+            </div>
+            {form.sport_principal === 'Hybride' && (
+              <div style={{ marginTop: 10 }}>
+                <span style={{ ...tpLabelStyle(), marginBottom: 6 }}>Sports et importance :</span>
+                {(['Running', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox'] as const).map(sp => {
+                  const entry = form.sports_hybride.find(e => e.sport === sp)
+                  return (
+                    <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--ai-mid)', minWidth: 64 }}>{sp}</span>
+                      {(['principal', 'secondaire', 'complementaire'] as const).map(imp => (
+                        <button key={imp} onClick={() => {
+                          const filtered = form.sports_hybride.filter(e => e.sport !== sp)
+                          if (entry?.importance === imp) {
+                            setField('sports_hybride', filtered)
+                          } else {
+                            setField('sports_hybride', [...filtered, { sport: sp, importance: imp }])
+                          }
+                        }} style={tpPillStyle(entry?.importance === imp)}>
+                          {imp === 'principal' ? 'Principal' : imp === 'secondaire' ? 'Secondaire' : 'Compl.'}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Course cible */}
+          <div>
+            <span style={tpLabelStyle()}>Course ou événement cible</span>
+            <input
+              type="text"
+              placeholder="Ex: Marathon de Paris, Ironman Nice..."
+              value={form.course_cible_nom}
+              onChange={e => setField('course_cible_nom', e.target.value)}
+              style={{ ...tpInputStyle(), marginBottom: 6 }}
+            />
+            <input
+              type="date"
+              value={form.course_cible_date}
+              onChange={e => setField('course_cible_date', e.target.value)}
+              style={tpInputStyle()}
+            />
+          </div>
+
+          {/* Courses secondaires */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ ...tpLabelStyle(), margin: 0 }}>Autres courses (B/C)</span>
+              {form.courses_secondaires.length < 5 && (
+                <button
+                  onClick={() => setField('courses_secondaires', [...form.courses_secondaires, { nom: '', date: '', importance: 'B' }])}
+                  style={{ fontSize: 11, color: '#8b5cf6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  + Ajouter
+                </button>
+              )}
+            </div>
+            {form.courses_secondaires.map((c, i) => (
+              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Nom course"
+                  value={c.nom}
+                  onChange={e => {
+                    const next = [...form.courses_secondaires]
+                    next[i] = { ...next[i], nom: e.target.value }
+                    setField('courses_secondaires', next)
+                  }}
+                  style={{ ...tpInputStyle(), flex: 2 }}
+                />
+                <input
+                  type="date"
+                  value={c.date}
+                  onChange={e => {
+                    const next = [...form.courses_secondaires]
+                    next[i] = { ...next[i], date: e.target.value }
+                    setField('courses_secondaires', next)
+                  }}
+                  style={{ ...tpInputStyle(), flex: 1 }}
+                />
+                {(['B', 'C'] as const).map(imp => (
+                  <button key={imp} onClick={() => {
+                    const next = [...form.courses_secondaires]
+                    next[i] = { ...next[i], importance: imp }
+                    setField('courses_secondaires', next)
+                  }} style={tpPillStyle(c.importance === imp)}>{imp}</button>
+                ))}
+                <button onClick={() => setField('courses_secondaires', form.courses_secondaires.filter((_, j) => j !== i))}
+                  style={{ fontSize: 14, color: 'var(--ai-dim)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px' }}>×</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Niveau visé */}
+          <div>
+            <span style={tpLabelStyle()}>Niveau visé</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {([['finisher', 'Finisher'], ['chrono', 'Chrono cible'], ['perf', 'Performance maximale']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('niveau_vise', val)} style={tpPillStyle(form.niveau_vise === val)}>{label}</button>
+              ))}
+            </div>
+            {form.niveau_vise === 'chrono' && (
+              <input
+                type="text"
+                placeholder="Ex: 3h30 au marathon"
+                value={form.chrono_cible}
+                onChange={e => setField('chrono_cible', e.target.value)}
+                style={tpInputStyle()}
+              />
+            )}
+          </div>
+
+          {/* Précision */}
+          <div>
+            <span style={tpLabelStyle()}>Précisions supplémentaires <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_objectif} onChange={e => setField('precision_objectif', e.target.value)}
+              placeholder="Contexte supplémentaire sur vos objectifs..." rows={2}
+              style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 1 : Profil ──────────────────────────────────────
+      case 1: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Profil et historique
+          </p>
+
+          <div>
+            <span style={tpLabelStyle()}>Expérience sportive</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {(['< 1 an', '1-3 ans', '3-5 ans', '> 5 ans'] as const).map(e => (
+                <button key={e} onClick={() => setField('experience', e)} style={tpPillStyle(form.experience === e)}>{e}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Volume actuel : {form.volume_actuel}h/semaine</span>
+            <input type="range" min={2} max={25} value={form.volume_actuel} onChange={e => setField('volume_actuel', Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#8b5cf6' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
+              <span>2h</span><span>25h</span>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Meilleure performance</span>
+            <input type="text" placeholder="Ex: 3h45 marathon, 5h ironman..." value={form.meilleure_performance}
+              onChange={e => setField('meilleure_performance', e.target.value)} style={tpInputStyle()} />
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Programme précédent suivi</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.programme_precedent ? 8 : 0 }}>
+              <button onClick={() => setField('programme_precedent', true)} style={tpPillStyle(form.programme_precedent)}>Oui</button>
+              <button onClick={() => setField('programme_precedent', false)} style={tpPillStyle(!form.programme_precedent)}>Non</button>
+            </div>
+            {form.programme_precedent && (
+              <input type="text" placeholder="Quel programme ? Durée ? Résultats ?" value={form.programme_precedent_detail}
+                onChange={e => setField('programme_precedent_detail', e.target.value)} style={tpInputStyle()} />
+            )}
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Forme actuelle</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['tres_bonne', 'Très bonne'], ['bonne', 'Bonne'], ['moyenne', 'Moyenne'], ['mauvaise', 'Mauvaise']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('forme_actuelle', val)} style={tpPillStyle(form.forme_actuelle === val)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_profil} onChange={e => setField('precision_profil', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 2 : Disponibilité ───────────────────────────────
+      case 2: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Disponibilité
+          </p>
+
+          <div>
+            <span style={tpLabelStyle()}>Séances par semaine : {form.seances_par_semaine}</span>
+            <input type="range" min={3} max={12} value={form.seances_par_semaine} onChange={e => setField('seances_par_semaine', Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#8b5cf6' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
+              <span>3</span><span>12</span>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Heures disponibles par semaine : {form.heures_par_semaine}h</span>
+            <input type="range" min={3} max={25} value={form.heures_par_semaine} onChange={e => setField('heures_par_semaine', Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#8b5cf6' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
+              <span>3h</span><span>25h</span>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Jours impossibles</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {TP_JOURS_FULL.map(j => (
+                <button key={j} onClick={() => setField('jours_repos', toggleArr(form.jours_repos, j))} style={tpPillStyle(form.jours_repos.includes(j))}>{j}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Contraintes horaires</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['matin', 'Matin uniquement'], ['soir', 'Soir uniquement'], ['midi', 'Midi possible'], ['flexible', 'Flexible']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('contraintes_horaires', val)} style={tpPillStyle(form.contraintes_horaires === val)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_dispo} onChange={e => setField('precision_dispo', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 3 : Équipement ──────────────────────────────────
+      case 3: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Équipement et accès
+          </p>
+
+          <div>
+            <span style={tpLabelStyle()}>Équipements disponibles</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {['Piscine', 'Home trainer', 'Salle de musculation', 'Capteur de puissance vélo', 'Montre GPS', 'Ergomètre aviron', 'Matériel Hyrox'].map(eq => (
+                <button key={eq} onClick={() => setField('equipements', toggleArr(form.equipements, eq))} style={tpPillStyle(form.equipements.includes(eq))}>{eq}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_equipement} onChange={e => setField('precision_equipement', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 4 : Blessures ───────────────────────────────────
+      case 4: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Blessures et contraintes
+          </p>
+
+          {([
+            ['blessures_passees', 'blessures_detail', 'Blessures passées importantes', 'Décrivez les blessures passées...'],
+            ['gene_recente', 'gene_detail', 'Gêne ou douleur récente', 'Décrivez la gêne actuelle...'],
+            ['contraintes_permanentes', 'contraintes_detail', 'Contraintes permanentes', 'Contraintes anatomiques ou physiologiques...'],
+            ['antecedents', 'antecedents_detail', 'Antécédents médicaux', 'Antécédents cardiaques, pathologies...'],
+          ] as [keyof TrainingPlanForm, keyof TrainingPlanForm, string, string][]).map(([boolKey, textKey, label, ph]) => (
+            <div key={boolKey}>
+              <span style={tpLabelStyle()}>{label}</span>
+              <div style={{ display: 'flex', gap: 6, marginBottom: (form[boolKey] as boolean) ? 8 : 0 }}>
+                <button onClick={() => setField(boolKey, true as TrainingPlanForm[typeof boolKey])} style={tpPillStyle(form[boolKey] as boolean)}>Oui</button>
+                <button onClick={() => setField(boolKey, false as TrainingPlanForm[typeof boolKey])} style={tpPillStyle(!(form[boolKey] as boolean))}>Non</button>
+              </div>
+              {(form[boolKey] as boolean) && (
+                <textarea value={form[textKey] as string} onChange={e => setField(textKey, e.target.value as TrainingPlanForm[typeof textKey])}
+                  placeholder={ph} rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+              )}
+            </div>
+          ))}
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_sante} onChange={e => setField('precision_sante', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 5 : Méthodes ────────────────────────────────────
+      case 5: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Méthodes et périodisation
+          </p>
+
+          <div>
+            <span style={tpLabelStyle()}>Blocs custom</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.blocs_custom ? 10 : 0 }}>
+              <button onClick={() => setField('blocs_custom', false)} style={tpPillStyle(!form.blocs_custom)}>Laisser l&apos;IA décider</button>
+              <button onClick={() => setField('blocs_custom', true)} style={tpPillStyle(form.blocs_custom)}>Définir mes blocs</button>
+            </div>
+            {form.blocs_custom && (
+              <div>
+                {form.blocs_custom_detail.map((b, i) => (
+                  <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                      <input type="text" placeholder="Nom du bloc" value={b.nom} onChange={e => {
+                        const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], nom: e.target.value }; setField('blocs_custom_detail', next)
+                      }} style={{ ...tpInputStyle(), flex: 1 }} />
+                      <button onClick={() => setField('blocs_custom_detail', form.blocs_custom_detail.filter((_, j) => j !== i))}
+                        style={{ fontSize: 14, color: 'var(--ai-dim)', background: 'transparent', border: 'none', cursor: 'pointer' }}>×</button>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                      {(['Base', 'VMA', 'Seuil', 'Spécifique', 'Deload'] as const).map(t => (
+                        <button key={t} onClick={() => {
+                          const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], type: t }; setField('blocs_custom_detail', next)
+                        }} style={tpPillStyle(b.type === t)}>{t}</button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>Durée : {b.duree_semaines} sem.</span>
+                      <input type="range" min={1} max={12} value={b.duree_semaines} onChange={e => {
+                        const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], duree_semaines: Number(e.target.value) }; setField('blocs_custom_detail', next)
+                      }} style={{ flex: 1, accentColor: '#8b5cf6' }} />
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => setField('blocs_custom_detail', [...form.blocs_custom_detail, { nom: '', type: 'Base', duree_semaines: 4 }])}
+                  style={{ fontSize: 12, color: '#8b5cf6', background: 'transparent', border: '1px dashed rgba(139,92,246,0.4)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', width: '100%' }}>
+                  + Ajouter un bloc
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Entrée dans le programme</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => setField('entree_programme', 'prudent')} style={tpPillStyle(form.entree_programme === 'prudent')}>Progressif — montée en charge douce</button>
+              <button onClick={() => setField('entree_programme', 'intense')} style={tpPillStyle(form.entree_programme === 'intense')}>Direct — je suis prêt à charger</button>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Réaction au volume</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => setField('reaction_volume', 'tres_bien')} style={tpPillStyle(form.reaction_volume === 'tres_bien')}>Très bien — je récupère vite</button>
+              <button onClick={() => setField('reaction_volume', 'bien')} style={tpPillStyle(form.reaction_volume === 'bien')}>Bien — récupération normale</button>
+              <button onClick={() => setField('reaction_volume', 'mal')} style={tpPillStyle(form.reaction_volume === 'mal')}>Mal — je sature vite</button>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Réaction à l&apos;intensité</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => setField('reaction_intensite', 'rapide')} style={tpPillStyle(form.reaction_intensite === 'rapide')}>Progressions rapides</button>
+              <button onClick={() => setField('reaction_intensite', '48h')} style={tpPillStyle(form.reaction_intensite === '48h')}>48h pour récupérer</button>
+              <button onClick={() => setField('reaction_intensite', 'saturation')} style={tpPillStyle(form.reaction_intensite === 'saturation')}>Saturation rapide</button>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Type de séances préféré</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => setField('type_seances', 'courtes')} style={tpPillStyle(form.type_seances === 'courtes')}>Courtes et intenses</button>
+              <button onClick={() => setField('type_seances', 'longues')} style={tpPillStyle(form.type_seances === 'longues')}>Longues et progressives</button>
+              <button onClick={() => setField('type_seances', 'mixte')} style={tpPillStyle(form.type_seances === 'mixte')}>Mixte</button>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Connaissance de soi * <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(obligatoire)</span></span>
+            <textarea
+              value={form.connaissance_de_soi}
+              onChange={e => setField('connaissance_de_soi', e.target.value)}
+              placeholder="Décrivez comment vous réagissez à l'entraînement, vos points forts, vos faiblesses, ce qui vous motive, vos difficultés habituelles, les types d'effort que vous aimez ou détestez..."
+              rows={4}
+              style={{ ...tpInputStyle(), resize: 'vertical' }}
+            />
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_methode} onChange={e => setField('precision_methode', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 6 : Récupération ────────────────────────────────
+      case 6: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Récupération et mode de vie
+          </p>
+
+          <div>
+            <span style={tpLabelStyle()}>Sommeil habituel : {form.sommeil_heures}h/nuit</span>
+            <input type="range" min={5} max={10} value={form.sommeil_heures} onChange={e => setField('sommeil_heures', Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#8b5cf6' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
+              <span>5h</span><span>10h</span>
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Fatigue au travail</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['physique', 'Physiquement fatigant'], ['mental', 'Mentalement fatigant'], ['les_deux', 'Les deux'], ['faible', 'Faible impact']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('fatigue_travail', val)} style={tpPillStyle(form.fatigue_travail === val)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Périodes de stress dans l&apos;année</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: form.stress_annee !== 'aucun' && form.stress_annee !== '' ? 8 : 0 }}>
+              {([['aucun', 'Aucune'], ['quelques_semaines', 'Quelques semaines'], ['recurrent', 'Récurrent']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('stress_annee', val)} style={tpPillStyle(form.stress_annee === val)}>{label}</button>
+              ))}
+            </div>
+            {form.stress_annee !== 'aucun' && form.stress_annee !== '' && (
+              <textarea value={form.stress_detail} onChange={e => setField('stress_detail', e.target.value)}
+                placeholder="Quand ? Durée estimée ?" rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+            )}
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Outils de récupération utilisés</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {['Massage', 'Bain froid', 'Compression', 'Sommeil optimisé', 'Aucun', 'Autres'].map(t => (
+                <button key={t} onClick={() => setField('outils_recuperation', toggleArr(form.outils_recuperation, t))} style={tpPillStyle(form.outils_recuperation.includes(t))}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_recup} onChange={e => setField('precision_recup', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      // ── BLOC 7 : Nutrition ───────────────────────────────────
+      case 7: return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+            Nutrition
+          </p>
+
+          <div>
+            <span style={tpLabelStyle()}>Plan nutritionnel</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['structure', 'Oui, structuré'], ['intuitif', 'Intuitif'], ['non', 'Non']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('plan_nutritionnel', val)} style={tpPillStyle(form.plan_nutritionnel === val)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Contraintes alimentaires</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {['Aucune', 'Végétarien', 'Végétalien', 'Sans gluten', 'Sans lactose', 'Autres'].map(c => (
+                <button key={c} onClick={() => setField('contraintes_alimentaires', toggleArr(form.contraintes_alimentaires, c))} style={tpPillStyle(form.contraintes_alimentaires.includes(c))}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Compléments utilisés</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {['Caféine', 'Protéines', 'Électrolytes', 'Créatine', 'Aucun', 'Autres'].map(c => (
+                <button key={c} onClick={() => setField('complements', toggleArr(form.complements, c))} style={tpPillStyle(form.complements.includes(c))}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <textarea value={form.precision_nutrition} onChange={e => setField('precision_nutrition', e.target.value)}
+              rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+        </div>
+      )
+
+      default: return null
+    }
+  }
+
+  const BLOC_TITLES = [
+    'Objectif et course cible',
+    'Profil et historique',
+    'Disponibilité',
+    'Équipement',
+    'Blessures et santé',
+    'Méthodes',
+    'Récupération',
+    'Nutrition',
+  ]
+
+  return (
+    <div style={{ padding: '8px 0 4px', overflow: 'auto' }}>
+      {/* Progress bar */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>Étape {step + 1}/8 — {BLOC_TITLES[step]}</span>
+          <span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 700 }}>{Math.round((step + 1) / 8 * 100)}%</span>
+        </div>
+        <div style={{ height: 3, borderRadius: 99, background: 'var(--ai-border)' }}>
+          <div style={{ height: '100%', borderRadius: 99, background: '#8b5cf6', width: `${(step + 1) / 8 * 100}%`, transition: 'width 0.3s' }} />
+        </div>
+      </div>
+
+      {/* Step content */}
+      {renderStep()}
+
+      {/* Error */}
+      {error && <p style={{ fontSize: 12, color: '#ef4444', margin: '12px 0 0' }}>{error}</p>}
+
+      {/* Navigation */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+        <button
+          onClick={step === 0 ? onCancel : () => setStep(s => s - 1)}
+          style={{
+            padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
+          }}
+        >
+          {step === 0 ? 'Annuler' : '← Précédent'}
+        </button>
+        {step < 7 ? (
+          <button
+            onClick={() => setStep(s => s + 1)}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+              color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Suivant →
+          </button>
+        ) : (
+          <button
+            onClick={() => void generate()}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+              color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Générer le programme ✦
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── SessionBuilderFlow ─────────────────────────────────────────
 
 const SB_SPORTS: { id: string; label: string; color: string }[] = [
@@ -3200,7 +4566,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Créer un plan d\'entraînement',
     sub: 'Plan structuré adapté à tes objectifs',
     model: 'zeus',
-    prompt: 'Crée un plan d\'entraînement structuré adapté à mes objectifs et mon niveau actuel. Tiens compte de mes courses planifiées, ma charge hebdomadaire disponible et mon état de forme. Détaille les grandes phases et la logique de progression.',
+    flow: 'training_plan' as FlowId,
   },
   {
     label: 'Identifier mes points faibles',
@@ -3967,6 +5333,26 @@ export default function AIPanel({
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
                           { id: genId(), role: 'assistant', content: aiMsg,  ts: Date.now() + 1, modelId: 'zeus' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
+                  />
+                )}
+                {activeFlow === 'training_plan' && (
+                  <TrainingPlanFlow
+                    model={model}
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'zeus' as THWModel },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))

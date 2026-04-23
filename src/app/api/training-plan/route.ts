@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
+import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -44,7 +44,10 @@ interface PlanSemaine {
   volume_h: number
   tss_semaine: number
   theme: string
-  seances: PlanSeance[]
+  // Semaines détaillées (S1-S2)
+  seances?: PlanSeance[]
+  // Semaines résumées (S3+)
+  note_coach?: string
 }
 
 interface PlanPeriodisation {
@@ -73,7 +76,7 @@ Tu crées des programmes structurés, périodisés et personnalisés.
 Tu réponds UNIQUEMENT avec un objet JSON valide selon le schéma fourni.
 Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.`
 
-// ── JSON schema string ─────────────────────────────────────────
+// ── JSON schema ────────────────────────────────────────────────
 
 const JSON_SCHEMA = `{
   "nom": "string — nom du programme",
@@ -85,47 +88,143 @@ const JSON_SCHEMA = `{
       "type": "Base | Intensité | Spécifique | Deload | Compétition",
       "semaine_debut": "number",
       "semaine_fin": "number",
-      "description": "string",
+      "description": "string (1 phrase)",
       "volume_hebdo_h": "number"
     }
   ],
   "semaines": [
     {
-      "numero": "number",
-      "type": "string",
-      "volume_h": "number",
-      "tss_semaine": "number",
-      "theme": "string",
-      "seances": [
-        {
-          "jour": "number (0=lundi, 6=dimanche)",
-          "sport": "string",
-          "titre": "string",
-          "duree_min": "number",
-          "tss": "number",
-          "intensite": "low | moderate | high | max",
-          "heure": "string (ex: 06:30)",
-          "notes": "string",
-          "rpe": "number",
-          "blocs": [
-            {
-              "nom": "string",
-              "duree_min": "number",
-              "zone": "number (1-5)",
-              "repetitions": "number",
-              "recup_min": "number",
-              "watts": "number | null",
-              "allure": "string | null",
-              "consigne": "string"
-            }
-          ]
-        }
-      ]
+      "SEMAINES 1 et 2 — format détaillé": {
+        "numero": "number",
+        "type": "string",
+        "volume_h": "number",
+        "tss_semaine": "number",
+        "theme": "string (1 phrase courte)",
+        "seances": [
+          {
+            "jour": "number (0=lundi, 6=dimanche)",
+            "sport": "string",
+            "titre": "string",
+            "duree_min": "number",
+            "tss": "number",
+            "intensite": "low | moderate | high | max",
+            "heure": "string (ex: 06:30)",
+            "notes": "string (1 phrase)",
+            "rpe": "number",
+            "blocs": [
+              {
+                "nom": "string",
+                "duree_min": "number",
+                "zone": "number (1-5)",
+                "repetitions": "number",
+                "recup_min": "number",
+                "watts": "number | null",
+                "allure": "string | null",
+                "consigne": "string (1 phrase)"
+              }
+            ]
+          }
+        ]
+      },
+      "SEMAINES 3+ — format résumé UNIQUEMENT": {
+        "numero": "number",
+        "type": "string",
+        "volume_h": "number",
+        "tss_semaine": "number",
+        "theme": "string (1 phrase courte)",
+        "note_coach": "string (1 phrase)"
+      }
     }
   ],
-  "conseils_adaptation": ["string"],
-  "points_cles": ["string"]
+  "conseils_adaptation": ["string (3 max)"],
+  "points_cles": ["string (3 max)"]
 }`
+
+// ── repairJSON ────────────────────────────────────────────────
+// Tente de réparer un JSON tronqué en trouvant le dernier
+// objet complet et en fermant proprement les crochets manquants.
+
+function repairJSON(raw: string): string {
+  // Nettoyer markdown et trouver le début JSON
+  let text = raw.trim()
+  const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (mdMatch) text = mdMatch[1].trim()
+  const start = text.search(/[{[]/)
+  if (start > 0) text = text.slice(start)
+
+  // Tenter le parse direct
+  try { JSON.parse(text); return text } catch { /* repair needed */ }
+
+  // Scanner pour trouver le dernier endroit "propre" à couper
+  // et la séquence de fermeture manquante
+  const stack: string[] = []
+  let inStr = false
+  let esc = false
+  let lastSafeClose = -1
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (esc)                  { esc = false; continue }
+    if (c === '\\' && inStr)  { esc = true;  continue }
+    if (c === '"')            { inStr = !inStr; continue }
+    if (inStr)                continue
+
+    if (c === '{' || c === '[') {
+      stack.push(c === '{' ? '}' : ']')
+    } else if (c === '}' || c === ']') {
+      stack.pop()
+      // Enregistrer les positions où on ferme un élément imbriqué
+      // (pas à la racine = stack non vide après le pop)
+      if (stack.length >= 1) lastSafeClose = i
+    }
+  }
+
+  // Si le JSON est déjà équilibré mais invalide → rien à faire
+  if (stack.length === 0) return text
+
+  // Tronquer au dernier endroit propre
+  let repaired = lastSafeClose >= 0
+    ? text.slice(0, lastSafeClose + 1)
+    : text
+
+  // Supprimer une éventuelle virgule finale orpheline
+  repaired = repaired.replace(/,\s*$/, '')
+
+  // Ajouter les fermetures manquantes dans l'ordre inverse
+  repaired += stack.reverse().join('')
+
+  // Vérifier que le résultat est valide
+  try { JSON.parse(repaired); return repaired } catch { return text }
+}
+
+// ─────────────────────────────────────────────────────────────
+
+function parseAndRepair<T>(raw: string): T {
+  console.log('[training-plan] raw response length:', raw.length)
+  console.log('[training-plan] raw response tail (200 chars):', raw.slice(-200))
+
+  let text = raw.trim()
+
+  // Strip markdown code block
+  const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (mdMatch) text = mdMatch[1].trim()
+
+  // Find first { or [
+  const start = text.search(/[{[]/)
+  if (start > 0) text = text.slice(start)
+
+  // First attempt: direct parse
+  try {
+    return JSON.parse(text) as T
+  } catch (e) {
+    console.log('[training-plan] Direct parse failed:', e instanceof Error ? e.message : String(e))
+  }
+
+  // Second attempt: repair truncated JSON
+  const repaired = repairJSON(raw)
+  console.log('[training-plan] Attempting repaired JSON parse, length:', repaired.length)
+  return JSON.parse(repaired) as T
+}
 
 // ─────────────────────────────────────────────────────────────
 
@@ -148,7 +247,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     programme_actuel,
   } = body
 
-  const userPrompt = `Crée un programme d'entraînement complet avec ces informations :
+  const userPrompt = `Crée un programme d'entraînement avec ces informations :
 
 QUESTIONNAIRE ATHLÈTE :
 ${JSON.stringify(questionnaire, null, 2)}
@@ -168,49 +267,54 @@ ${JSON.stringify(calendrier_objectifs ?? [], null, 2)}
 DONNÉES SANTÉ RÉCENTES :
 ${JSON.stringify(sante ?? [], null, 2)}
 
-${modification ? `MODIFICATION DEMANDÉE (sur le programme existant) :\n${modification}\n\nPROGRAMME EXISTANT :\n${JSON.stringify(programme_actuel ?? null, null, 2)}` : ''}
+${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTANT :\n${JSON.stringify(programme_actuel ?? null, null, 2)}` : ''}
 
-Génère le programme complet selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
+INSTRUCTIONS CRITIQUES POUR LA TAILLE DE LA RÉPONSE :
+- Génère UNIQUEMENT les 2 premières semaines avec le détail complet des séances et des blocs.
+- Pour les semaines 3 et suivantes, inclure UNIQUEMENT : numero, type, volume_h, tss_semaine, theme, note_coach. SANS les séances ni les blocs.
+- Limite conseils_adaptation à 3 éléments maximum.
+- Limite points_cles à 3 éléments maximum.
+- Chaque "consigne" et "notes" doivent tenir en 1 phrase courte.
+- Cette contrainte est OBLIGATOIRE pour éviter la troncature du JSON.
+
+Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}
 
 RÈGLES :
 1. Programme réaliste adapté au niveau et au temps disponible
 2. Progression logique et périodisation intelligente
-3. Semaine de deload toutes les 3-4 semaines selon réaction au volume
+3. Semaine de deload toutes les 3-4 semaines
 4. TSS cohérent avec la durée et l'intensité
-5. Respect des jours de repos demandés
-6. Conseils d'adaptation détaillés et personnalisés
-7. IMPORTANT : génère UNIQUEMENT les 4 premières semaines en détail dans le tableau "semaines". Les semaines suivantes seront générées à la demande. Cela permet de produire un JSON complet et non tronqué.`
+5. Respect des jours de repos demandés`
 
   try {
     const client = getAnthropicClient()
-
-    // Try agent first, fallback to model
     const AGENT_ID = 'agent_011Ca8Ar5a3gyowSA6fQ94UT'
     let plan: GeneratedPlan | null = null
 
     try {
       const resp = await client.messages.create({
         model: AGENT_ID,
-        max_tokens: 8000,
+        max_tokens: 16000,
         system: SYSTEM,
         messages: [{ role: 'user', content: userPrompt }],
       })
-      const text = resp.content.find(b => b.type === 'text')
-      if (text && text.type === 'text') {
-        plan = parseJsonResponse<GeneratedPlan>(text.text)
+      const textBlock = resp.content.find(b => b.type === 'text')
+      if (textBlock && textBlock.type === 'text') {
+        plan = parseAndRepair<GeneratedPlan>(textBlock.text)
       }
-    } catch {
+    } catch (agentErr) {
+      console.log('[training-plan] Agent failed, falling back to model:', agentErr instanceof Error ? agentErr.message : String(agentErr))
       // Fallback to powerful model
       const resp = await client.messages.create({
         model: MODELS.powerful,
-        max_tokens: 8000,
+        max_tokens: 16000,
         system: SYSTEM,
         messages: [{ role: 'user', content: userPrompt }],
       })
-      const text = resp.content.find(b => b.type === 'text')
-      if (text && text.type === 'text') {
-        plan = parseJsonResponse<GeneratedPlan>(text.text)
+      const textBlock = resp.content.find(b => b.type === 'text')
+      if (textBlock && textBlock.type === 'text') {
+        plan = parseAndRepair<GeneratedPlan>(textBlock.text)
       }
     }
 
@@ -221,6 +325,7 @@ RÈGLES :
     return NextResponse.json({ program: plan })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    console.log('[training-plan] Fatal error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

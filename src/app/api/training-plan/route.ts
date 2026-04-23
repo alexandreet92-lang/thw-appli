@@ -179,7 +179,8 @@ RÈGLES :
 3. Semaine de deload toutes les 3-4 semaines selon réaction au volume
 4. TSS cohérent avec la durée et l'intensité
 5. Respect des jours de repos demandés
-6. Conseils d'adaptation détaillés et personnalisés`
+6. Conseils d'adaptation détaillés et personnalisés
+7. IMPORTANT : génère UNIQUEMENT les 4 premières semaines en détail dans le tableau "semaines". Les semaines suivantes seront générées à la demande. Cela permet de produire un JSON complet et non tronqué.`
 
   try {
     const client = getAnthropicClient()

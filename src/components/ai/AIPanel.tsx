@@ -1970,6 +1970,7 @@ function TrainingPlanFlow({
   const [form, setForm] = useState<TrainingPlanForm>(DEFAULT_FORM)
   const [program, setProgram] = useState<GeneratedTrainingPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryable, setRetryable] = useState(false)
   const [showAllWeeks, setShowAllWeeks] = useState(false)
   const [modifyText, setModifyText] = useState('')
   const [modifyChecks, setModifyChecks] = useState<string[]>([])
@@ -2015,6 +2016,7 @@ function TrainingPlanFlow({
   async function generate(modification?: string) {
     setPhase('generating')
     setError(null)
+    setRetryable(false)
     try {
       const ctx = await fetchAthleteContext()
       const body: Record<string, unknown> = {
@@ -2036,7 +2038,9 @@ function TrainingPlanFlow({
       })
       const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
       if (data.error || !data.program) {
-        setError(data.error ?? 'Erreur de génération')
+        const isParseErr = (data.error ?? '').toLowerCase().includes('json') || (data.error ?? '').toLowerCase().includes('parse') || (data.error ?? '').toLowerCase().includes('unterminated')
+        setError(isParseErr ? 'La génération a rencontré un problème.' : (data.error ?? 'Erreur de génération'))
+        setRetryable(isParseErr)
         setPhase(program ? 'result' : 'questionnaire')
         return
       }
@@ -2050,7 +2054,10 @@ function TrainingPlanFlow({
       onRecordConv(userMsg, aiMsg)
       setPhase('result')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur réseau')
+      const msg = e instanceof Error ? e.message : 'Erreur réseau'
+      const isParseErr = msg.toLowerCase().includes('json') || msg.toLowerCase().includes('parse') || msg.toLowerCase().includes('unterminated')
+      setError(isParseErr ? 'La génération a rencontré un problème.' : msg)
+      setRetryable(isParseErr)
       setPhase(program ? 'result' : 'questionnaire')
     }
   }
@@ -2170,10 +2177,10 @@ function TrainingPlanFlow({
           margin: '0 auto 16px',
         }} />
         <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px' }}>
-          Génération en cours…
+          Ton programme est en cours de création…
         </p>
         <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
-          Analyse de ton profil et création du programme personnalisé…
+          Analyse de ton profil et construction du plan personnalisé. Cela peut prendre quelques secondes.
         </p>
       </div>
     )
@@ -3036,7 +3043,23 @@ function TrainingPlanFlow({
       {renderStep()}
 
       {/* Error */}
-      {error && <p style={{ fontSize: 12, color: '#ef4444', margin: '12px 0 0' }}>{error}</p>}
+      {error && (
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>
+          {retryable && (
+            <button
+              onClick={() => void generate()}
+              style={{
+                padding: '8px 16px', borderRadius: 9, border: 'none',
+                background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+                color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Réessayer
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Navigation */}
       <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>

@@ -1979,6 +1979,9 @@ function TrainingPlanFlow({
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [conflictInfo, setConflictInfo] = useState<{ count: number; ids: string[] } | null>(null)
+  const [planStep, setPlanStep] = useState<'idle'|'conflict'|'confirm'|'inserting'|'success'|'error'>('idle')
+  const [planStats, setPlanStats] = useState<{created: number; errors: number}>({created:0, errors:0})
+  const [showMergeChoice, setShowMergeChoice] = useState(false)
 
   function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -2071,70 +2074,95 @@ function TrainingPlanFlow({
   }
 
   // ── Save to planned_sessions ───────────────────────────────────
-  async function saveToPlanning(forceReplace = false) {
+  async function saveToPlanning(mode: 'check'|'replace'|'merge') {
     if (!program) return
-    setSaving(true)
-    setSaveMsg(null)
+
+    // MODE CHECK : vérifier les conflits
+    if (mode === 'check') {
+      setSaving(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setSaving(false); return }
+        const firstWeekStart = startDate
+        const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
+        const { data: existing } = await sb.from('planned_sessions').select('id').eq('user_id', user.id).gte('week_start', firstWeekStart).lte('week_start', lastWeekStart)
+        if (existing && existing.length > 0) {
+          setConflictInfo({ count: existing.length, ids: existing.map(r => r.id as string) })
+          setPlanStep('conflict')
+        } else {
+          setPlanStep('confirm')
+        }
+      } catch { setPlanStep('confirm') }
+      setSaving(false)
+      return
+    }
+
+    // MODE REPLACE ou MERGE : insérer
+    setPlanStep('inserting')
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setSaving(false); setSaveMsg('Non connecté'); return }
+      if (!user) { setPlanStep('error'); return }
 
-      const firstWeekStart = startDate
-      const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
-
-      if (!forceReplace) {
-        const { data: existing } = await sb
-          .from('planned_sessions')
-          .select('id')
-          .eq('user_id', user.id)
-          .gte('week_start', firstWeekStart)
-          .lte('week_start', lastWeekStart)
-        if (existing && existing.length > 0) {
-          setConflictInfo({ count: existing.length, ids: existing.map(r => r.id as string) })
-          setSaving(false)
-          return
-        }
-      } else if (conflictInfo) {
+      // Si replace : supprimer les existants
+      if (mode === 'replace' && conflictInfo) {
         await sb.from('planned_sessions').delete().in('id', conflictInfo.ids)
-        setConflictInfo(null)
       }
 
-      // Build rows
-      const rows: Record<string, unknown>[] = []
+      // Construire la liste des séances à insérer
+      // Si merge : récupérer les jours déjà occupés
+      let occupiedKeys = new Set<string>()
+      if (mode === 'merge') {
+        const firstWeekStart = startDate
+        const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
+        const { data: existing2 } = await sb.from('planned_sessions').select('week_start,day_index').eq('user_id', user.id).gte('week_start', firstWeekStart).lte('week_start', lastWeekStart)
+        if (existing2) {
+          occupiedKeys = new Set(existing2.map(r => `${r.week_start as string}_${r.day_index as number}`))
+        }
+      }
+
+      let created = 0
+      let errors = 0
+
       for (const semaine of program.semaines) {
         const weekStart = addWeeks(startDate, semaine.numero - 1)
         for (const seance of (semaine.seances ?? [])) {
-          const seanceDate = addDays(weekStart, seance.jour)
-          rows.push({
+          // Si merge, skip si le jour est déjà occupé
+          if (mode === 'merge' && occupiedKeys.has(`${weekStart}_${seance.jour}`)) continue
+
+          const row = {
             user_id: user.id,
             week_start: weekStart,
-            date: seanceDate,
+            day_index: seance.jour,
             sport: seance.sport,
-            titre: seance.titre,
-            duree_min: seance.duree_min,
-            tss: seance.tss,
-            intensite: seance.intensite,
-            heure: seance.heure,
-            notes: seance.notes,
-            rpe: seance.rpe,
-            blocs: seance.blocs,
+            title: seance.titre,
+            time: seance.heure ?? null,
+            duration_min: seance.duree_min,
+            tss: seance.tss ?? null,
+            status: 'planned',
+            intensity: seance.intensite ?? null,
+            notes: seance.notes ?? null,
+            rpe: seance.rpe ?? null,
+            blocks: seance.blocs ?? [],
+            plan_variant: 'A',
+            validation_data: {},
             source: 'training_plan',
-          })
+          }
+          const { error: insertErr } = await sb.from('planned_sessions').insert(row)
+          if (insertErr) { errors++ } else { created++ }
         }
       }
 
-      const { error: insertErr } = await sb.from('planned_sessions').insert(rows)
-      if (insertErr) {
-        setSaveMsg(`Erreur : ${insertErr.message}`)
-      } else {
-        setSaveMsg(`Programme créé — ${rows.length} séances ajoutées au Planning`)
-      }
+      setPlanStats({ created, errors })
+      setConflictInfo(null)
+      setPlanStep(errors > 0 && created === 0 ? 'error' : 'success')
     } catch (e) {
-      setSaveMsg(e instanceof Error ? e.message : 'Erreur réseau')
+      console.error('[saveToPlanning]', e)
+      setPlanStep('error')
     }
-    setSaving(false)
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -2197,244 +2225,251 @@ function TrainingPlanFlow({
   // ─────────────────────────────────────────────────────────────
   // PHASE : result
   // ─────────────────────────────────────────────────────────────
+
+  function formatDate(dateStr: string): string {
+    try {
+      return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    } catch { return dateStr }
+  }
+
   if (phase === 'result' && program) {
     const totalSeances = program.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
-    const totalDuree = program.blocs_periodisation.reduce((s, b) => s + b.semaine_fin - b.semaine_debut + 1, 0)
     const weeksToShow = showAllWeeks ? program.semaines : program.semaines.slice(0, 2)
 
+    // Déduire les sports depuis la semaine 1
+    const sportsS1 = Array.from(new Set(
+      (program.semaines[0]?.seances ?? []).map(s => s.sport)
+    ))
+    const sportsLabel = sportsS1.length > 0 ? sportsS1.join(' · ') : form.sport_principal
+
+    // Couleur badge selon type de semaine
+    function weekBadgeStyle(type: string): React.CSSProperties {
+      const t = type.toLowerCase()
+      if (t.includes('deload')) return { background: 'rgba(107,114,128,0.12)', color: '#6b7280' }
+      if (t.includes('base')) return { background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }
+      if (t.includes('intensit')) return { background: 'rgba(249,115,22,0.12)', color: '#f97316' }
+      if (t.includes('spécif') || t.includes('specif')) return { background: 'rgba(239,68,68,0.12)', color: '#ef4444' }
+      return { background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }
+    }
+
+    const modalCard: React.CSSProperties = {
+      background: 'var(--ai-bg)',
+      borderRadius: 14,
+      padding: 24,
+      maxWidth: 340,
+      width: '90%',
+    }
+    const modalOverlay: React.CSSProperties = {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.5)',
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }
+
     return (
-      <div style={{ padding: '8px 0 4px', overflow: 'auto' }}>
-        {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+      <div style={{ padding: '8px 0 16px' }}>
+
+        {/* ── HEADER ─────────────────────────────────── */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
             {program.nom}
           </p>
-          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0 }}>
-            {program.objectif_principal} · {program.duree_semaines} semaines · {totalSeances} séances · {totalDuree} blocs
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px' }}>
+            {program.objectif_principal}
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+              {program.duree_semaines} semaines
+            </span>
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+              {totalSeances} séances
+            </span>
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+              {sportsLabel}
+            </span>
+          </div>
         </div>
 
-        {/* Blocs de périodisation */}
-        {program.blocs_periodisation.length > 0 && (
+        {/* ── BLOCS PÉRIODISATION ──────────────────────── */}
+        {(program.blocs_periodisation ?? []).length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Périodisation
             </p>
-            <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 12, marginBottom: 8 }}>
-              {program.blocs_periodisation.map((b, i) => {
+            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
+              {(program.blocs_periodisation ?? []).map((b, i) => {
                 const width = (b.semaine_fin - b.semaine_debut + 1) / program.duree_semaines * 100
                 return (
-                  <div key={i} style={{
-                    width: `${width}%`,
-                    background: TP_BLOC_COLORS[b.type] ?? '#6b7280',
-                  }} title={`${b.nom} (S${b.semaine_debut}→S${b.semaine_fin})`} />
+                  <div key={i} style={{ width: `${width}%`, background: TP_BLOC_COLORS[b.type] ?? '#6b7280' }}
+                    title={`S${b.semaine_debut}→S${b.semaine_fin}`} />
                 )
               })}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {program.blocs_periodisation.map((b, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: 2, background: TP_BLOC_COLORS[b.type] ?? '#6b7280', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{b.nom} · S{b.semaine_debut}-S{b.semaine_fin}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {(program.blocs_periodisation ?? []).map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: TP_BLOC_COLORS[b.type] ?? '#6b7280', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
+                    {b.nom} · S{b.semaine_debut}-S{b.semaine_fin} · {b.semaine_fin - b.semaine_debut + 1}sem · {b.volume_hebdo_h}h/sem
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Semaines */}
+        {/* ── DATE DE DÉBUT ─────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>Début du programme :</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            style={{ ...tpInputStyle(), width: 'auto' }}
+          />
+        </div>
+
+        {/* ── SEMAINES DÉTAILLÉES ──────────────────────── */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
-            {showAllWeeks ? 'Toutes les semaines' : '2 premières semaines'}
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Programme détaillé
           </p>
           {weeksToShow.map(semaine => (
             <div key={semaine.numero} style={{
-              borderRadius: 10,
               border: '1px solid var(--ai-border)',
+              borderRadius: 10,
               background: 'var(--ai-bg2)',
               padding: 12,
               marginBottom: 10,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
-                  Semaine {semaine.numero} — {semaine.theme}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
-                  {semaine.volume_h}h · TSS {semaine.tss_semaine}
-                </span>
+              {/* Header card */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
+                    Semaine {semaine.numero}
+                  </span>
+                  {' '}
+                  <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>{semaine.theme}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                    ...weekBadgeStyle(semaine.type),
+                  }}>
+                    {semaine.type}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
+                    {semaine.volume_h}h · TSS {semaine.tss_semaine}
+                  </span>
+                </div>
               </div>
-              {/* Semaines résumées (S3+) : afficher note_coach */}
-              {(!semaine.seances || semaine.seances.length === 0) && semaine.note_coach && (
-                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, fontStyle: 'italic' }}>
-                  {semaine.note_coach}
-                </p>
-              )}
-              {/* Semaines détaillées (S1-S2) : liste des séances */}
-              {(semaine.seances ?? []).map((seance, si) => (
+
+              {/* Séances */}
+              {(semaine.seances ?? []).length > 0 && (semaine.seances ?? []).map((seance, si) => (
                 <div key={si} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '6px 0',
                   borderTop: si > 0 ? '1px solid var(--ai-border)' : 'none',
                 }}>
-                  {/* Jour */}
-                  <span style={{ fontSize: 11, color: 'var(--ai-dim)', minWidth: 28, fontWeight: 600 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)', minWidth: 28 }}>
                     {TP_JOURS[seance.jour] ?? '?'}
                   </span>
-                  {/* Sport pill */}
                   <span style={{
                     fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99,
                     background: 'rgba(139,92,246,0.12)', color: '#8b5cf6',
                   }}>
                     {seance.sport}
                   </span>
-                  {/* Titre */}
                   <span style={{ fontSize: 12, color: 'var(--ai-text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {seance.titre}
                   </span>
-                  {/* Durée */}
                   <span style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0 }}>
                     {seance.duree_min}min
                   </span>
-                  {/* TSS badge */}
-                  <span style={{
-                    fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 99,
-                    background: 'rgba(0,0,0,0.15)', color: 'var(--ai-mid)', flexShrink: 0,
-                  }}>
-                    TSS {seance.tss}
-                  </span>
-                  {/* Intensité dot */}
+                  {seance.tss > 0 && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 99,
+                      background: 'rgba(0,0,0,0.12)', color: 'var(--ai-mid)', flexShrink: 0,
+                    }}>
+                      TSS {seance.tss}
+                    </span>
+                  )}
                   <div style={{
                     width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
                     background: TP_INTENSITE_COLORS[seance.intensite] ?? '#6b7280',
                   }} title={seance.intensite} />
-                  {/* Mini SVG intensity bars */}
-                  {seance.blocs.length > 0 && (
+                  {(seance.blocs ?? []).length > 0 && (
                     <svg width={48} height={18} style={{ flexShrink: 0 }}>
-                      {seance.blocs.map((b, bi) => {
-                        const x = bi * (48 / Math.max(seance.blocs.length, 1))
-                        const w = Math.max(1, 48 / Math.max(seance.blocs.length, 1) - 1)
+                      {(seance.blocs ?? []).map((b, bi) => {
+                        const barsCount = Math.max((seance.blocs ?? []).length, 1)
+                        const x = bi * (48 / barsCount)
+                        const w = Math.max(1, 48 / barsCount - 1)
                         const h = Math.max(2, (b.zone / 5) * 18)
                         const colors = ['#9ca3af','#3b82f6','#22c55e','#f97316','#ef4444','#a855f7']
+                        const titleStr = b.watts != null ? `${b.nom} - ${b.watts}W` : b.allure ? `${b.nom} - ${b.allure}` : b.nom
                         return (
-                          <rect key={bi} x={x} y={18 - h} width={w} height={h} fill={colors[b.zone] ?? '#9ca3af'} rx={1} />
+                          <rect key={bi} x={x} y={18 - h} width={w} height={h} fill={colors[b.zone] ?? '#9ca3af'} rx={1}>
+                            <title>{titleStr}</title>
+                          </rect>
                         )
                       })}
                     </svg>
                   )}
                 </div>
               ))}
+
+              {/* Note coach (semaines résumées) */}
+              {(semaine.seances ?? []).length === 0 && semaine.note_coach && (
+                <p style={{ fontStyle: 'italic', fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}>
+                  {semaine.note_coach}
+                </p>
+              )}
             </div>
           ))}
+
           {program.semaines.length > 2 && (
             <button
               onClick={() => setShowAllWeeks(v => !v)}
               style={{ fontSize: 12, color: '#8b5cf6', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600 }}
             >
-              {showAllWeeks ? '▲ Masquer' : `▼ Voir toutes les ${program.semaines.length} semaines`}
+              {showAllWeeks ? '▲ Masquer' : `▼ Voir les ${program.semaines.length - 2} semaines suivantes`}
             </button>
           )}
         </div>
 
-        {/* Points clés */}
-        {program.points_cles.length > 0 && (
+        {/* ── CONSEILS ADAPTATION ──────────────────────── */}
+        {(program.conseils_adaptation ?? []).length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
-              Points clés
-            </p>
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
-              {program.points_cles.map((pt, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.5 }}>{pt}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Conseils adaptation */}
-        {program.conseils_adaptation.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Conseils d&apos;adaptation
             </p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
-              {program.conseils_adaptation.map((c, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.5 }}>{c}</li>
+              {(program.conseils_adaptation ?? []).map((c, i) => (
+                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.6 }}>{c}</li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Enregistrement planning */}
-        <div style={{
-          borderRadius: 10,
-          border: '1px solid var(--ai-border)',
-          background: 'var(--ai-bg2)',
-          padding: 14,
-          marginBottom: 12,
-        }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px' }}>
-            Ajouter au planning
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>Date de début :</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              style={{ ...tpInputStyle(), width: 'auto' }}
-            />
-          </div>
-          {conflictInfo && (
-            <div style={{
-              borderRadius: 8,
-              border: '1px solid #f97316',
-              background: 'rgba(249,115,22,0.08)',
-              padding: 10,
-              marginBottom: 10,
-            }}>
-              <p style={{ fontSize: 12, color: '#f97316', margin: '0 0 8px' }}>
-                {conflictInfo.count} séance{conflictInfo.count > 1 ? 's' : ''} déjà planifiée{conflictInfo.count > 1 ? 's' : ''} sur cette période.
-              </p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => saveToPlanning(true)}
-                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: '#f97316', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  Remplacer tout
-                </button>
-                <button onClick={() => setConflictInfo(null)}
-                  style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-                  Annuler
-                </button>
-              </div>
-            </div>
-          )}
-          {saveMsg && (
-            <p style={{ fontSize: 12, color: saveMsg.startsWith('Erreur') ? '#ef4444' : '#22c55e', margin: '0 0 8px' }}>
-              {saveMsg}
-              {saveMsg.includes('Programme créé') && (
-                <a href="/planning" style={{ marginLeft: 8, color: '#8b5cf6', textDecoration: 'underline' }}>Voir le planning →</a>
-              )}
+        {/* ── POINTS CLÉS ──────────────────────────────── */}
+        {(program.points_cles ?? []).length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Points clés
             </p>
-          )}
-          {!conflictInfo && (
-            <button
-              onClick={() => saveToPlanning(false)}
-              disabled={saving}
-              style={{
-                padding: '9px 16px', borderRadius: 9, border: 'none',
-                background: saving ? 'rgba(139,92,246,0.3)' : 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
-                color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
-              }}
-            >
-              {saving ? 'Enregistrement…' : 'Générer le planning'}
-            </button>
-          )}
-        </div>
-
-        {/* Error */}
-        {error && (
-          <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {(program.points_cles ?? []).map((pt, i) => (
+                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.6 }}>{pt}</li>
+              ))}
+            </ul>
+          </div>
         )}
 
-        {/* Actions */}
+        {/* ── BOUTONS ACTIONS ── */}
+        <div style={{ borderTop: '1px solid var(--ai-border)', marginTop: 16, marginBottom: 12 }} />
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => { setModifyText(''); setModifyChecks([]); setPhase('modifying') }}
@@ -2443,12 +2478,168 @@ function TrainingPlanFlow({
             Modifier
           </button>
           <button
-            onClick={onCancel}
-            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}
+            onClick={() => void saveToPlanning('check')}
+            disabled={saving}
+            style={{
+              flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+              background: saving ? 'rgba(139,92,246,0.3)' : 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+              color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
+            }}
           >
-            Fermer
+            {saving ? 'Vérification…' : 'Générer le programme ✦'}
           </button>
         </div>
+
+        {/* ── MODALS PLANNING ──────────────────────────── */}
+
+        {/* conflict */}
+        {planStep === 'conflict' && conflictInfo && (
+          <div style={modalOverlay}>
+            <div style={modalCard}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+                Séances existantes détectées
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                Des séances existent déjà sur cette période ({conflictInfo.count} séance{conflictInfo.count > 1 ? 's' : ''}). Que souhaitez-vous faire ?
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button
+                  onClick={() => void saveToPlanning('replace')}
+                  style={{ background: '#ef4444', color: '#fff', padding: '10px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Remplacer tout
+                </button>
+                <button
+                  onClick={() => void saveToPlanning('merge')}
+                  style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', padding: '10px', borderRadius: 9, border: '1px solid #8b5cf6', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Fusionner
+                </button>
+                <button
+                  onClick={() => { setPlanStep('idle'); setConflictInfo(null) }}
+                  style={{ background: 'transparent', color: 'var(--ai-mid)', padding: '10px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* confirm */}
+        {planStep === 'confirm' && (
+          <div style={modalOverlay}>
+            <div style={modalCard}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+                Ajouter au Planning
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px' }}>
+                Programme : <strong style={{ color: 'var(--ai-text)' }}>{program.nom}</strong>
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px' }}>
+                {program.duree_semaines} semaines · {totalSeances} séances
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px' }}>
+                Du {formatDate(startDate)} au {formatDate(addWeeks(startDate, program.duree_semaines - 1))}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setPlanStep('idle')}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => void saveToPlanning('replace')}
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Confirmer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* inserting */}
+        {planStep === 'inserting' && (
+          <div style={modalOverlay}>
+            <div style={{ ...modalCard, textAlign: 'center' }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                border: '3px solid rgba(139,92,246,0.2)',
+                borderTop: '3px solid #8b5cf6',
+                animation: 'ai_spin 0.8s linear infinite',
+                margin: '0 auto 14px',
+              }} />
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: 0 }}>
+                Ajout des séances en cours…
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* success */}
+        {planStep === 'success' && (
+          <div style={modalOverlay}>
+            <div style={{ ...modalCard, textAlign: 'center' }}>
+              <p style={{ fontSize: 32, margin: '0 0 10px', color: '#22c55e' }}>✓</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+                Programme ajouté avec succès
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px' }}>
+                {planStats.created} séances créées dans le Planning
+              </p>
+              {planStats.errors > 0 && (
+                <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 4px' }}>
+                  ({planStats.errors} erreurs ignorées)
+                </p>
+              )}
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px' }}>
+                Du {formatDate(startDate)} au {formatDate(addWeeks(startDate, program.duree_semaines - 1))}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setPlanStep('idle')}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                >
+                  Fermer
+                </button>
+                <button
+                  onClick={() => { window.location.href = '/planning' }}
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Voir le Planning →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* error */}
+        {planStep === 'error' && (
+          <div style={modalOverlay}>
+            <div style={modalCard}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: '#ef4444', margin: '0 0 16px', fontFamily: 'Syne,sans-serif' }}>
+                Erreur lors de l&apos;insertion
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setPlanStep('idle')}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => void saveToPlanning('replace')}
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Réessayer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     )
   }

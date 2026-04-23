@@ -227,6 +227,45 @@ function parseAndRepair<T>(raw: string): T {
 }
 
 // ─────────────────────────────────────────────────────────────
+// normalizePlan — accepte les variations de clés renvoyées par l'agent
+// (programme/program, semaines/weeks, blocs/blocks/blocs_periodisation)
+// et ramène vers la forme GeneratedPlan attendue par le front.
+// ─────────────────────────────────────────────────────────────
+
+function normalizePlan(raw: unknown): GeneratedPlan {
+  const r = (raw ?? {}) as Record<string, unknown>
+
+  // Unwrap si l'agent double-wrap : { programme: {...} } ou { program: {...} }
+  const inner = (r.programme && typeof r.programme === 'object') ? r.programme as Record<string, unknown>
+              : (r.program   && typeof r.program   === 'object') ? r.program   as Record<string, unknown>
+              : r
+
+  // Aliases top-level
+  const semainesRaw = (inner.semaines ?? inner.weeks) as unknown[] | undefined
+  const blocsRaw    = (inner.blocs_periodisation ?? inner.blocs ?? inner.blocks) as unknown[] | undefined
+
+  // Normaliser chaque semaine : seances/sessions, et chaque seance : blocs/blocks
+  const semaines = Array.isArray(semainesRaw) ? semainesRaw.map(w => {
+    const wr = (w ?? {}) as Record<string, unknown>
+    const seancesRaw = (wr.seances ?? wr.sessions) as unknown[] | undefined
+    const seances = Array.isArray(seancesRaw) ? seancesRaw.map(s => {
+      const sr = (s ?? {}) as Record<string, unknown>
+      const blocsSeance = (sr.blocs ?? sr.blocks) as unknown[] | undefined
+      return { ...sr, blocs: Array.isArray(blocsSeance) ? blocsSeance : [] }
+    }) : undefined
+    return seances ? { ...wr, seances } : { ...wr }
+  }) : []
+
+  return {
+    ...(inner as unknown as GeneratedPlan),
+    semaines: semaines as GeneratedPlan['semaines'],
+    blocs_periodisation: (Array.isArray(blocsRaw) ? blocsRaw : []) as GeneratedPlan['blocs_periodisation'],
+    conseils_adaptation: Array.isArray(inner.conseils_adaptation) ? inner.conseils_adaptation as string[] : [],
+    points_cles: Array.isArray(inner.points_cles) ? inner.points_cles as string[] : [],
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: TrainingPlanRequestBody
@@ -322,7 +361,15 @@ RÈGLES :
       return NextResponse.json({ error: 'No response from model' }, { status: 500 })
     }
 
-    return NextResponse.json({ program: plan })
+    // Log brut reçu de l'agent (pour debug des variations de clés)
+    console.log('FULL DATA RAW:', JSON.stringify(plan, null, 2))
+
+    // Normalisation : l'agent peut renvoyer les données avec des clés alternatives
+    // (programme vs program, weeks vs semaines, blocs/blocks vs blocs_periodisation).
+    // On ramène tout vers le schéma attendu par le front.
+    const normalized = normalizePlan(plan)
+
+    return NextResponse.json({ program: normalized })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.log('[training-plan] Fatal error:', message)

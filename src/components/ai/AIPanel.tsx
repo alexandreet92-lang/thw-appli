@@ -1966,7 +1966,9 @@ function TrainingPlanFlow({
 }) {
   type TpPhase = 'gate' | 'questionnaire' | 'generating' | 'result' | 'modifying'
 
-  const [phase, setPhase] = useState<TpPhase>(model === 'zeus' ? 'questionnaire' : 'gate')
+  // TEMP: gate Zeus désactivée — tous les utilisateurs accèdent à la feature
+  // À réactiver : useState<TpPhase>(model === 'zeus' ? 'questionnaire' : 'gate')
+  const [phase, setPhase] = useState<TpPhase>('questionnaire')
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<TrainingPlanForm>(DEFAULT_FORM)
   const [program, setProgram] = useState<GeneratedTrainingPlan | null>(null)
@@ -2042,7 +2044,11 @@ function TrainingPlanFlow({
       })
       const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
       console.log('FULL DATA:', JSON.stringify(data, null, 2))
-      console.log('PROGRAMME:', data?.program)
+      console.log('PROGRAMME:', data?.programme)
+      console.log('BLOCS:', data?.programme?.blocs)
+      console.log('SEMAINES:', data?.semaines?.length)
+      console.log('--- clés correctes (data.program.*) ---')
+      console.log('PROGRAM:', data?.program)
       console.log('BLOCS PERIODISATION:', data?.program?.blocs_periodisation)
       console.log('SEMAINES COUNT:', data?.program?.semaines?.length)
       console.log('SEMAINE 0:', JSON.stringify(data?.program?.semaines?.[0], null, 2))
@@ -2050,8 +2056,21 @@ function TrainingPlanFlow({
       // Validation du JSON reçu
       console.log('[training-plan] program received:', JSON.stringify(data.program, null, 2))
 
-      const prog = data.program
-      const structureInvalid = !prog || !Array.isArray(prog.semaines) || prog.semaines.length === 0
+      // Normalisation défensive : certains agents peuvent renvoyer des clés
+      // alternatives (weeks/blocks en anglais, ou double-wrap {programme: {...}}).
+      // On accepte les deux formats avant validation.
+      const rawProg = data.program as unknown as Record<string, unknown> | null | undefined
+      const maybeWrapped = rawProg && typeof rawProg === 'object' && 'programme' in rawProg
+        ? (rawProg.programme as Record<string, unknown>)
+        : rawProg
+      const prog = maybeWrapped ? ({
+        ...maybeWrapped,
+        semaines: maybeWrapped.semaines ?? maybeWrapped.weeks,
+        blocs_periodisation: maybeWrapped.blocs_periodisation ?? maybeWrapped.blocs ?? maybeWrapped.blocks,
+      } as unknown as GeneratedTrainingPlan) : null
+
+      const semainesArr = prog && Array.isArray(prog.semaines) ? prog.semaines : null
+      const structureInvalid = !prog || !semainesArr || semainesArr.length === 0
 
       if (data.error || structureInvalid) {
         const errMsg = data.error ?? 'Erreur de génération'
@@ -2171,8 +2190,9 @@ function TrainingPlanFlow({
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PHASE : gate
+  // PHASE : gate (TEMPORAIREMENT DÉSACTIVÉE — à réactiver plus tard)
   // ─────────────────────────────────────────────────────────────
+  /*
   if (phase === 'gate') {
     return (
       <div style={{ padding: '16px 0 4px' }}>
@@ -2203,6 +2223,7 @@ function TrainingPlanFlow({
       </div>
     )
   }
+  */
 
   // ─────────────────────────────────────────────────────────────
   // PHASE : generating

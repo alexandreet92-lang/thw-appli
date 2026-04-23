@@ -1803,7 +1803,8 @@ interface TpPlanSemaine {
   volume_h: number
   tss_semaine: number
   theme: string
-  seances: TpPlanSeance[]
+  seances?: TpPlanSeance[]   // undefined pour les semaines résumées (S3+)
+  note_coach?: string        // résumé pour les semaines S3+
 }
 
 interface TpPlanPeriodisation {
@@ -2037,20 +2038,27 @@ function TrainingPlanFlow({
         body: JSON.stringify(body),
       })
       const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
-      if (data.error || !data.program) {
-        const isParseErr = (data.error ?? '').toLowerCase().includes('json') || (data.error ?? '').toLowerCase().includes('parse') || (data.error ?? '').toLowerCase().includes('unterminated')
-        setError(isParseErr ? 'La génération a rencontré un problème.' : (data.error ?? 'Erreur de génération'))
+
+      // Validation du JSON reçu
+      console.log('[training-plan] program received:', JSON.stringify(data.program, null, 2))
+
+      const prog = data.program
+      const structureInvalid = !prog || !Array.isArray(prog.semaines) || prog.semaines.length === 0
+
+      if (data.error || structureInvalid) {
+        const errMsg = data.error ?? 'Erreur de génération'
+        const isParseErr = errMsg.toLowerCase().includes('json') || errMsg.toLowerCase().includes('parse') || errMsg.toLowerCase().includes('unterminated') || structureInvalid
+        setError(isParseErr ? 'La génération a rencontré un problème.' : errMsg)
         setRetryable(isParseErr)
         setPhase(program ? 'result' : 'questionnaire')
         return
       }
-      setProgram(data.program)
+      setProgram(prog)
       setShowAllWeeks(false)
       // Record conversation
-      const p = data.program
-      const totalSeances = p.semaines.reduce((s, w) => s + w.seances.length, 0)
-      const userMsg = `Créer un plan d'entraînement — ${form.sport_principal} — ${p.duree_semaines} semaines — ${form.course_cible_nom || form.niveau_vise}`
-      const aiMsg = `**${p.nom}**\n\n${p.objectif_principal}\n\n**${p.duree_semaines} semaines · ${totalSeances} séances au total**\n\n${p.conseils_adaptation.slice(0, 3).map(c => `• ${c}`).join('\n')}`
+      const totalSeances = prog.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
+      const userMsg = `Créer un plan d'entraînement — ${form.sport_principal} — ${prog.duree_semaines} semaines — ${form.course_cible_nom || form.niveau_vise}`
+      const aiMsg = `**${prog.nom}**\n\n${prog.objectif_principal}\n\n**${prog.duree_semaines} semaines · ${totalSeances} séances au total**\n\n${prog.conseils_adaptation.slice(0, 3).map(c => `• ${c}`).join('\n')}`
       onRecordConv(userMsg, aiMsg)
       setPhase('result')
     } catch (e) {
@@ -2097,7 +2105,7 @@ function TrainingPlanFlow({
       const rows: Record<string, unknown>[] = []
       for (const semaine of program.semaines) {
         const weekStart = addWeeks(startDate, semaine.numero - 1)
-        for (const seance of semaine.seances) {
+        for (const seance of (semaine.seances ?? [])) {
           const seanceDate = addDays(weekStart, seance.jour)
           rows.push({
             user_id: user.id,
@@ -2190,7 +2198,7 @@ function TrainingPlanFlow({
   // PHASE : result
   // ─────────────────────────────────────────────────────────────
   if (phase === 'result' && program) {
-    const totalSeances = program.semaines.reduce((s, w) => s + w.seances.length, 0)
+    const totalSeances = program.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
     const totalDuree = program.blocs_periodisation.reduce((s, b) => s + b.semaine_fin - b.semaine_debut + 1, 0)
     const weeksToShow = showAllWeeks ? program.semaines : program.semaines.slice(0, 2)
 
@@ -2255,7 +2263,14 @@ function TrainingPlanFlow({
                   {semaine.volume_h}h · TSS {semaine.tss_semaine}
                 </span>
               </div>
-              {semaine.seances.map((seance, si) => (
+              {/* Semaines résumées (S3+) : afficher note_coach */}
+              {(!semaine.seances || semaine.seances.length === 0) && semaine.note_coach && (
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, fontStyle: 'italic' }}>
+                  {semaine.note_coach}
+                </p>
+              )}
+              {/* Semaines détaillées (S1-S2) : liste des séances */}
+              {(semaine.seances ?? []).map((seance, si) => (
                 <div key={si} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '6px 0',

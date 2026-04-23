@@ -2041,6 +2041,11 @@ function TrainingPlanFlow({
         body: JSON.stringify(body),
       })
       const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
+      console.log('FULL DATA:', JSON.stringify(data, null, 2))
+      console.log('PROGRAMME:', data?.program)
+      console.log('BLOCS PERIODISATION:', data?.program?.blocs_periodisation)
+      console.log('SEMAINES COUNT:', data?.program?.semaines?.length)
+      console.log('SEMAINE 0:', JSON.stringify(data?.program?.semaines?.[0], null, 2))
 
       // Validation du JSON reçu
       console.log('[training-plan] program received:', JSON.stringify(data.program, null, 2))
@@ -2299,18 +2304,50 @@ function TrainingPlanFlow({
             <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Périodisation
             </p>
-            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
-              {(program.blocs_periodisation ?? []).map((b, i) => {
-                const width = (b.semaine_fin - b.semaine_debut + 1) / program.duree_semaines * 100
-                return (
-                  <div key={i} style={{ width: `${width}%`, background: TP_BLOC_COLORS[b.type] ?? '#6b7280' }}
-                    title={`S${b.semaine_debut}→S${b.semaine_fin}`} />
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <svg
+              width="100%" viewBox="0 0 400 56"
+              preserveAspectRatio="none"
+              style={{ display: 'block', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}
+            >
+              {(() => {
+                const blocs = program.blocs_periodisation ?? []
+                const total = program.duree_semaines || 1
+                let offsetX = 0
+                return blocs.map((b, i) => {
+                  const dur = b.semaine_fin - b.semaine_debut + 1
+                  const widthPct = dur / total
+                  const x = offsetX * 400
+                  const w = widthPct * 400
+                  offsetX += widthPct
+                  const color = TP_BLOC_COLORS[b.type] ?? '#6b7280'
+                  const label = `${b.nom} · ${dur}sem`
+                  const fontSize = w > 80 ? 11 : w > 50 ? 9 : 0 // 0 = hide text
+                  return (
+                    <g key={i}>
+                      <rect x={x} y={0} width={w} height={56} fill={color} opacity={0.85}>
+                        <title>{`${b.nom} — ${b.type}\nS${b.semaine_debut} à S${b.semaine_fin} (${dur} sem)\n${b.description}`}</title>
+                      </rect>
+                      {fontSize > 0 && (
+                        <text
+                          x={x + w / 2} y={32}
+                          textAnchor="middle"
+                          fontSize={fontSize}
+                          fill="#fff"
+                          fontWeight="600"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {label}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })
+              })()}
+            </svg>
+            {/* Légendes */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {(program.blocs_periodisation ?? []).map((b, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: TP_BLOC_COLORS[b.type] ?? '#6b7280', flexShrink: 0 }} />
                   <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
                     {b.nom} · S{b.semaine_debut}-S{b.semaine_fin} · {b.semaine_fin - b.semaine_debut + 1}sem · {b.volume_hebdo_h}h/sem
@@ -2467,6 +2504,85 @@ function TrainingPlanFlow({
             </ul>
           </div>
         )}
+
+        {/* ── GRAPHIQUE VOLUME ──────────────────────── */}
+        {program.semaines.length > 0 && (() => {
+          const semaines = program.semaines
+          const maxH = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
+          const chartH = 80
+          const chartW = 400
+          const barW = Math.max(2, chartW / semaines.length - 2)
+          const stepX = chartW / semaines.length
+
+          function getBarColor(type: string): string {
+            const t = type.toLowerCase()
+            if (t.includes('deload')) return '#86efac'
+            if (t.includes('base')) return '#2563eb'
+            if (t.includes('intensit')) return '#f97316'
+            if (t.includes('spécif') || t.includes('specif')) return '#ef4444'
+            return '#8b5cf6'
+          }
+
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Volume hebdomadaire
+              </p>
+              <svg width="100%" viewBox={`0 0 ${chartW} ${chartH + 20}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+                {/* Axe Y guides */}
+                {[0, 0.5, 1].map((frac, i) => {
+                  const y = chartH - frac * chartH
+                  return (
+                    <line key={i} x1={0} y1={y} x2={chartW} y2={y}
+                      stroke="rgba(107,114,128,0.2)" strokeWidth={1} strokeDasharray="4 3" />
+                  )
+                })}
+                {/* Barres */}
+                {semaines.map((sem, i) => {
+                  const h = Math.max(2, ((sem.volume_h ?? 0) / maxH) * chartH)
+                  const x = i * stepX + (stepX - barW) / 2
+                  const y = chartH - h
+                  const color = getBarColor(sem.type)
+                  const label = semaines.length <= 16 ? `S${sem.numero}` : (i % 2 === 0 ? `S${sem.numero}` : '')
+                  return (
+                    <g key={i}>
+                      <rect x={x} y={y} width={barW} height={h} fill={color} opacity={0.8} rx={2}>
+                        <title>{`S${sem.numero} — ${sem.theme}\n${sem.volume_h}h · TSS ${sem.tss_semaine}`}</title>
+                      </rect>
+                      {label && (
+                        <text x={i * stepX + stepX / 2} y={chartH + 14} textAnchor="middle" fontSize={9} fill="var(--ai-dim)">
+                          {label}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+          )
+        })()}
+
+        {/* ── PROGRAMME ADAPTATIF ──────────────────── */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid var(--ai-border)',
+          background: 'var(--ai-bg2)',
+          padding: 16,
+          marginBottom: 20,
+        }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+            Un programme qui évolue avec toi
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px', lineHeight: 1.7 }}>
+            Ce programme n&apos;est pas figé. Il s&apos;adapte en permanence à ta progression, ta fatigue, ton sommeil et aux aléas de ta vie.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px', lineHeight: 1.7 }}>
+            Si tu rates une séance, si tu te blesses, si tu surperformes — le programme se recalibrera. Plus tu fournis de retours, plus il devient précis.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.7 }}>
+            Chaque semaine, l&apos;IA analysera tes données (TSB, HRV, RPE réel vs prévu, qualité du sommeil) pour ajuster la semaine suivante automatiquement.
+          </p>
+        </div>
 
         {/* ── BOUTONS ACTIONS ── */}
         <div style={{ borderTop: '1px solid var(--ai-border)', marginTop: 16, marginBottom: 12 }} />
@@ -2648,33 +2764,30 @@ function TrainingPlanFlow({
   // PHASE : modifying
   // ─────────────────────────────────────────────────────────────
   if (phase === 'modifying') {
-    const modifyOptions = ['La durée', 'Distribution des sports', 'Volume hebdo', 'Intensité', 'Types de séances', 'Un bloc spécifique']
-
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 16px', fontFamily: 'Syne,sans-serif' }}>
-          Modifier le programme
-        </p>
-
-        <p style={{ ...tpLabelStyle(), marginBottom: 10 }}>Que souhaitez-vous modifier ?</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-          {modifyOptions.map(opt => (
-            <button key={opt} onClick={() => setModifyChecks(prev => toggleArr(prev, opt))} style={tpPillStyle(modifyChecks.includes(opt))}>
-              {opt}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <button
+            onClick={() => setPhase('result')}
+            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ←
+          </button>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif' }}>
+            Que veux-tu changer ?
+          </p>
         </div>
 
-        <p style={{ ...tpLabelStyle() }}>Décrivez précisément ce que vous voulez changer * <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(obligatoire)</span></p>
         <textarea
           value={modifyText}
           onChange={e => setModifyText(e.target.value)}
-          placeholder="Ex: Je veux réduire le volume de la semaine 3, ajouter plus de séances longues le week-end, enlever les séances de natation..."
-          rows={4}
+          placeholder={`Décris librement ce que tu veux modifier...\nEx: Je veux moins de séances par semaine,\nou je veux plus de volume vélo,\nou décale le début de 2 semaines,\nou supprime les séances du dimanche`}
+          rows={6}
           style={{
             ...tpInputStyle(),
             resize: 'vertical',
             marginBottom: 16,
+            lineHeight: 1.6,
           }}
         />
 
@@ -2685,13 +2798,10 @@ function TrainingPlanFlow({
             onClick={() => setPhase('result')}
             style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
           >
-            ← Retour
+            Retour
           </button>
           <button
-            onClick={() => {
-              const fullModif = modifyChecks.length ? `Domaines : ${modifyChecks.join(', ')}. ${modifyText}` : modifyText
-              void generate(fullModif)
-            }}
+            onClick={() => { if (modifyText.trim()) void generate(modifyText.trim()) }}
             disabled={!modifyText.trim()}
             style={{
               flex: 1, padding: '9px', borderRadius: 9, border: 'none',
@@ -2699,7 +2809,7 @@ function TrainingPlanFlow({
               color: '#fff', fontSize: 12, fontWeight: 700, cursor: modifyText.trim() ? 'pointer' : 'default',
             }}
           >
-            Relancer la génération
+            Appliquer les modifications
           </button>
         </div>
       </div>

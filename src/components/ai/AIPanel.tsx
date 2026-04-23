@@ -2043,10 +2043,16 @@ function TrainingPlanFlow({
         body: JSON.stringify(body),
       })
       const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
+      // Diagnostic : on inspecte aussi les clés alternatives que l'agent
+      // pourrait renvoyer (programme/semaines/blocs au top-level), via cast ciblé.
+      const rawData = data as unknown as {
+        programme?: { blocs?: unknown }
+        semaines?: unknown[]
+      }
       console.log('FULL DATA:', JSON.stringify(data, null, 2))
-      console.log('PROGRAMME:', data?.programme)
-      console.log('BLOCS:', data?.programme?.blocs)
-      console.log('SEMAINES:', data?.semaines?.length)
+      console.log('PROGRAMME:', rawData.programme)
+      console.log('BLOCS:', rawData.programme?.blocs)
+      console.log('SEMAINES:', rawData.semaines?.length)
       console.log('--- clés correctes (data.program.*) ---')
       console.log('PROGRAM:', data?.program)
       console.log('BLOCS PERIODISATION:', data?.program?.blocs_periodisation)

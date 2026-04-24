@@ -220,15 +220,12 @@ export default function BriefingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
-  const [userId, setUserId]       = useState<string | null>(null)
   const [sessions, setSessions]   = useState<PlannedSession[]>([])
   const [tasks, setTasks]         = useState<WeekTask[]>([])
   const [briefing, setBriefing]   = useState<Briefing | null>(null)
+  const [isCreator, setIsCreator] = useState(false)
 
   const [activeTab, setActiveTab] = useState<TabKey>('ia_tech')
-
-  const creatorId = process.env.NEXT_PUBLIC_CREATOR_USER_ID ?? null
-  const isCreator = Boolean(userId && creatorId && userId === creatorId)
 
   // ── Fetch ────────────────────────────────────────────────
   useEffect(() => {
@@ -242,7 +239,6 @@ export default function BriefingPage() {
           return
         }
         if (cancelled) return
-        setUserId(user.id)
 
         const weekStart = mondayIso()
         const dayIdx    = currentDayIndex()
@@ -272,26 +268,30 @@ export default function BriefingPage() {
         setSessions((sessionsRes.data ?? []) as PlannedSession[])
         setTasks((tasksRes.data ?? []) as WeekTask[])
 
-        // Section 3 : briefing — uniquement si l'utilisateur EST le créateur.
-        // (On évite un fetch inutile pour les autres.)
-        if (user.id === creatorId) {
-          try {
-            const res = await fetch('/api/briefing', { cache: 'no-store' })
-            if (res.ok) {
-              const json = await res.json() as { briefing: Briefing | null }
-              if (!cancelled && json.briefing) {
-                const cleaned: Briefing = {
-                  ...json.briefing,
-                  content: sanitizeContent(json.briefing.content),
-                }
-                setBriefing(cleaned)
-                if (!cleaned.lu) {
-                  void fetch('/api/briefing', { method: 'PATCH' }).catch(() => {})
-                }
+        // Section 3 : on appelle toujours /api/briefing qui renvoie
+        // à la fois `briefing` (null pour les non-créateurs via RLS)
+        // et `isCreator` (comparé côté serveur avec process.env.CREATOR_USER_ID).
+        try {
+          const res = await fetch('/api/briefing', { cache: 'no-store' })
+          if (res.ok) {
+            const json = await res.json() as {
+              briefing: Briefing | null
+              isCreator: boolean
+            }
+            if (cancelled) return
+            setIsCreator(Boolean(json.isCreator))
+            if (json.briefing) {
+              const cleaned: Briefing = {
+                ...json.briefing,
+                content: sanitizeContent(json.briefing.content),
+              }
+              setBriefing(cleaned)
+              if (!cleaned.lu && json.isCreator) {
+                void fetch('/api/briefing', { method: 'PATCH' }).catch(() => {})
               }
             }
-          } catch { /* silent, on laisse briefing=null */ }
-        }
+          }
+        } catch { /* silent, section 3 reste masquée */ }
 
         if (!cancelled) setLoading(false)
       } catch (e) {
@@ -301,7 +301,7 @@ export default function BriefingPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [creatorId])
+  }, [])
 
   const readingMinutes = useMemo(
     () => briefing ? computeReadingMinutes(briefing.content) : 0,
@@ -553,7 +553,7 @@ export default function BriefingPage() {
       {isCreator && (
         <section>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
-            <p style={{ ...sectionLabel, margin: 0 }}>Actu du jour</p>
+            <p style={{ ...sectionLabel, margin: 0 }}>Actus du jour</p>
             {briefing && (
               <span style={{
                 fontSize: 11,
@@ -580,8 +580,7 @@ export default function BriefingPage() {
                 Pas encore disponible
               </p>
               <p style={{ margin: 0, color: 'var(--text-mid)', fontSize: 13, lineHeight: 1.7 }}>
-                Le briefing de ce matin n&apos;est pas encore disponible.<br />
-                Il sera généré automatiquement à 7h00.
+                Le briefing sera disponible à 7h00.
               </p>
             </div>
           ) : (

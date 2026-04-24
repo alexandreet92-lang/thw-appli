@@ -28,6 +28,11 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
+  // Check créateur côté SERVEUR — process.env.CREATOR_USER_ID n'est
+  // pas exposé au browser, donc le client doit s'en remettre à ce flag.
+  const creatorId = process.env.CREATOR_USER_ID ?? ''
+  const isCreator = Boolean(creatorId) && user.id === creatorId
+
   const date = todayIso()
 
   const { data, error } = await sb
@@ -42,7 +47,7 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ briefing: data ?? null })
+  return NextResponse.json({ briefing: data ?? null, isCreator })
 }
 
 // ── PATCH ────────────────────────────────────────────────────

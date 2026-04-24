@@ -1977,7 +1977,12 @@ function TrainingPlanFlow({
   const [showAllWeeks, setShowAllWeeks] = useState(false)
   const [modifyText, setModifyText] = useState('')
   const [modifyChecks, setModifyChecks] = useState<string[]>([])
-  const [startDate, setStartDate] = useState(getNextMonday())
+  // Lazy initializer : getNextMonday() appelle new Date() et sa valeur
+  // change entre la passe de rendu. Avec useState(getNextMonday()) eager,
+  // le calcul tournait à chaque rerender (waste) et pouvait diverger entre
+  // le premier render client et un éventuel double-invoke strict mode.
+  // La forme () => ... garantit une exécution unique au mount.
+  const [startDate, setStartDate] = useState(() => getNextMonday())
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [conflictInfo, setConflictInfo] = useState<{ count: number; ids: string[] } | null>(null)
@@ -4794,7 +4799,7 @@ function HistoryDrawer({
                     {conv.title}
                   </div>
                   <div style={{ fontSize: 9, color: 'var(--ai-dim)', marginTop: 1 }}>
-                    {fmtDate(conv.updatedAt)}
+                    {mounted ? fmtDate(conv.updatedAt) : ''}
                   </div>
                 </div>
 
@@ -5592,7 +5597,7 @@ export default function AIPanel({
                   fontSize: 16, fontWeight: 700, color: 'var(--ai-text)',
                   fontFamily: 'Syne,sans-serif', lineHeight: 1.3,
                 }}>
-                  Bonjour, bon {getGreeting()} !
+                  Bonjour, bon {mounted ? getGreeting() : 'matin'} !
                 </p>
                 <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 22px' }}>
                   Comment puis-je t'aider ?

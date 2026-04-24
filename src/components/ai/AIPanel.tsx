@@ -2680,7 +2680,7 @@ function TrainingPlanFlow({
                     <g key={i}>
                       <line x1={yPad} y1={y} x2={chartW + yPad} y2={y}
                         stroke="rgba(107,114,128,0.2)" strokeWidth={1} strokeDasharray="4 3" />
-                      <text x={yPad - 3} y={y + 3} textAnchor="end" fontSize={9} fill="var(--ai-dim)" fontVariantNumeric="tabular-nums">
+                      <text x={yPad - 3} y={y + 3} textAnchor="end" fontSize={9} fill="var(--ai-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {value}h
                       </text>
                     </g>

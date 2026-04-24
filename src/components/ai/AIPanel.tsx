@@ -1989,6 +1989,8 @@ function TrainingPlanFlow({
   const [planStep, setPlanStep] = useState<'idle'|'conflict'|'confirm'|'inserting'|'success'|'error'>('idle')
   const [planStats, setPlanStats] = useState<{created: number; errors: number}>({created:0, errors:0})
   const [showMergeChoice, setShowMergeChoice] = useState(false)
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null)
+  const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied'>('idle')
 
   function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -2106,6 +2108,7 @@ function TrainingPlanFlow({
       }
       setProgram(prog)
       setShowAllWeeks(false)
+      setGeneratedAt(new Date())
       // Record conversation
       const totalSeances = prog.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
       const userMsg = `Créer un plan d'entraînement — ${form.sport_principal} — ${prog.duree_semaines} semaines — ${form.course_cible_nom || form.niveau_vise}`
@@ -2304,6 +2307,60 @@ function TrainingPlanFlow({
       return { background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }
     }
 
+    // Copie en markdown du programme complet dans le clipboard.
+    // On balaye toutes les semaines ; celles avec seances détaillées
+    // produisent des bullets, celles résumées produisent juste le
+    // note_coach.
+    async function copyPlan(): Promise<void> {
+      if (!program) return
+      const lines: string[] = []
+      lines.push(`# ${program.nom}`)
+      if (program.objectif_principal) lines.push(`*${program.objectif_principal}*`)
+      lines.push('')
+      lines.push(`**${program.duree_semaines} semaines · ${totalSeances} séances détaillées · ${sportsLabel}**`)
+      lines.push(`Du ${formatDate(startDate)} au ${formatDate(addWeeks(startDate, program.duree_semaines - 1))}`)
+      lines.push('')
+      if ((program.blocs_periodisation ?? []).length > 0) {
+        lines.push('## Périodisation')
+        for (const b of program.blocs_periodisation ?? []) {
+          lines.push(`- **${b.nom}** (${b.type}) · S${b.semaine_debut}-S${b.semaine_fin} · ${b.volume_hebdo_h}h/sem`)
+        }
+        lines.push('')
+      }
+      lines.push('## Programme')
+      for (const sem of program.semaines ?? []) {
+        lines.push(`### Semaine ${sem.numero} — ${sem.theme} [${sem.type}] — ${sem.volume_h}h · TSS ${sem.tss_semaine}`)
+        if ((sem.seances ?? []).length > 0) {
+          for (const s of sem.seances ?? []) {
+            const day = TP_JOURS_FULL[s.jour] ?? `J${s.jour}`
+            const extras = [s.duree_min ? `${s.duree_min}min` : null, s.tss ? `TSS ${s.tss}` : null, s.intensite ?? null].filter(Boolean).join(' · ')
+            lines.push(`- **${day}** · ${s.sport} — ${s.titre}${extras ? ` (${extras})` : ''}`)
+            if (s.notes) lines.push(`  _${s.notes}_`)
+          }
+        } else if (sem.note_coach) {
+          lines.push(`_${sem.note_coach}_`)
+        }
+        lines.push('')
+      }
+      if ((program.conseils_adaptation ?? []).length > 0) {
+        lines.push('## Conseils d\'adaptation')
+        for (const c of program.conseils_adaptation ?? []) lines.push(`- ${c}`)
+        lines.push('')
+      }
+      if ((program.points_cles ?? []).length > 0) {
+        lines.push('## Points clés')
+        for (const pt of program.points_cles ?? []) lines.push(`- ${pt}`)
+      }
+      const md = lines.join('\n')
+      try {
+        await navigator.clipboard.writeText(md)
+        setCopyFeedback('copied')
+        setTimeout(() => setCopyFeedback('idle'), 2000)
+      } catch (e) {
+        console.log('[training-plan] clipboard failed:', e instanceof Error ? e.message : String(e))
+      }
+    }
+
     const modalCard: React.CSSProperties = {
       background: 'var(--ai-bg)',
       borderRadius: 14,
@@ -2322,7 +2379,8 @@ function TrainingPlanFlow({
     }
 
     return (
-      <div style={{ padding: '8px 0 16px' }}>
+      <div style={{ padding: '8px 0 16px', animation: 'tp_fadein 0.35s ease-out' }}>
+        <style>{`@keyframes tp_fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
         {/* ── HEADER ─────────────────────────────────── */}
         <div style={{ marginBottom: 16 }}>
@@ -2336,12 +2394,23 @@ function TrainingPlanFlow({
             <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
               {program.duree_semaines} semaines
             </span>
-            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
-              {totalSeances} séances
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }} title="Séances détaillées sur S1 et S2 uniquement. Les semaines suivantes sont résumées.">
+              {totalSeances} séances détaillées
             </span>
             <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
               {sportsLabel}
             </span>
+          </div>
+          {/* Date range + generated at */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
+              Du {formatDate(startDate)} au {formatDate(addWeeks(startDate, program.duree_semaines - 1))}
+            </span>
+            {generatedAt && (
+              <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.8 }}>
+                · Généré le {generatedAt.toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
         </div>
 
@@ -2425,19 +2494,21 @@ function TrainingPlanFlow({
           <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Programme détaillé
           </p>
-          {weeksToShow.map(semaine => (
+          {weeksToShow.map(semaine => {
+            const hasSeances = (semaine.seances ?? []).length > 0
+            return (
             <div key={semaine.numero} style={{
               border: '1px solid var(--ai-border)',
               borderRadius: 10,
               background: 'var(--ai-bg2)',
-              padding: 12,
-              marginBottom: 10,
+              padding: hasSeances ? 12 : '8px 12px',
+              marginBottom: hasSeances ? 10 : 4,
             }}>
               {/* Header card */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: hasSeances ? 8 : 0, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
-                    Semaine {semaine.numero}
+                    S{semaine.numero}
                   </span>
                   {' '}
                   <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>{semaine.theme}</span>
@@ -2449,7 +2520,7 @@ function TrainingPlanFlow({
                   }}>
                     {semaine.type}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)', fontVariantNumeric: 'tabular-nums' }}>
                     {semaine.volume_h}h · TSS {semaine.tss_semaine}
                   </span>
                 </div>
@@ -2509,14 +2580,15 @@ function TrainingPlanFlow({
                 </div>
               ))}
 
-              {/* Note coach (semaines résumées) */}
-              {(semaine.seances ?? []).length === 0 && semaine.note_coach && (
-                <p style={{ fontStyle: 'italic', fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}>
+              {/* Note coach (semaines résumées) — version compacte, inline */}
+              {!hasSeances && semaine.note_coach && (
+                <p style={{ fontStyle: 'italic', fontSize: 11, color: 'var(--ai-mid)', margin: '4px 0 0', lineHeight: 1.4 }}>
                   {semaine.note_coach}
                 </p>
               )}
             </div>
-          ))}
+            )
+          })}
 
           {program.semaines.length > 2 && (
             <button
@@ -2534,9 +2606,16 @@ function TrainingPlanFlow({
             <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Conseils d&apos;adaptation
             </p>
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {(program.conseils_adaptation ?? []).map((c, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.6 }}>{c}</li>
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--ai-mid)', lineHeight: 1.6 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 3 }}>
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span>{c}</span>
+                </li>
               ))}
             </ul>
           </div>
@@ -2548,9 +2627,16 @@ function TrainingPlanFlow({
             <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Points clés
             </p>
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {(program.points_cles ?? []).map((pt, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', marginBottom: 4, lineHeight: 1.6 }}>{pt}</li>
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--ai-mid)', lineHeight: 1.6 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00c8e0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 3 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" fill="#00c8e0" />
+                  </svg>
+                  <span>{pt}</span>
+                </li>
               ))}
             </ul>
           </div>
@@ -2574,24 +2660,36 @@ function TrainingPlanFlow({
             return '#8b5cf6'
           }
 
+          const yPad = 24 // espace à gauche pour les labels d'heures
           return (
             <div style={{ marginBottom: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Volume hebdomadaire
-              </p>
-              <svg width="100%" viewBox={`0 0 ${chartW} ${chartH + 20}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-                {/* Axe Y guides */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Volume hebdomadaire
+                </p>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>
+                  max {Math.round(maxH)}h · moy {Math.round(semaines.reduce((s, w) => s + (w.volume_h ?? 0), 0) / Math.max(semaines.length, 1))}h
+                </span>
+              </div>
+              <svg width="100%" viewBox={`0 0 ${chartW + yPad} ${chartH + 20}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+                {/* Axe Y guides + labels */}
                 {[0, 0.5, 1].map((frac, i) => {
                   const y = chartH - frac * chartH
+                  const value = Math.round(maxH * frac)
                   return (
-                    <line key={i} x1={0} y1={y} x2={chartW} y2={y}
-                      stroke="rgba(107,114,128,0.2)" strokeWidth={1} strokeDasharray="4 3" />
+                    <g key={i}>
+                      <line x1={yPad} y1={y} x2={chartW + yPad} y2={y}
+                        stroke="rgba(107,114,128,0.2)" strokeWidth={1} strokeDasharray="4 3" />
+                      <text x={yPad - 3} y={y + 3} textAnchor="end" fontSize={9} fill="var(--ai-dim)" fontVariantNumeric="tabular-nums">
+                        {value}h
+                      </text>
+                    </g>
                   )
                 })}
                 {/* Barres */}
                 {semaines.map((sem, i) => {
                   const h = Math.max(2, ((sem.volume_h ?? 0) / maxH) * chartH)
-                  const x = i * stepX + (stepX - barW) / 2
+                  const x = yPad + i * stepX + (stepX - barW) / 2
                   const y = chartH - h
                   const color = getBarColor(sem.type)
                   const label = semaines.length <= 16 ? `S${sem.numero}` : (i % 2 === 0 ? `S${sem.numero}` : '')
@@ -2601,7 +2699,7 @@ function TrainingPlanFlow({
                         <title>{`S${sem.numero} — ${sem.theme}\n${sem.volume_h}h · TSS ${sem.tss_semaine}`}</title>
                       </rect>
                       {label && (
-                        <text x={i * stepX + stepX / 2} y={chartH + 14} textAnchor="middle" fontSize={9} fill="var(--ai-dim)">
+                        <text x={yPad + i * stepX + stepX / 2} y={chartH + 14} textAnchor="middle" fontSize={9} fill="var(--ai-dim)">
                           {label}
                         </text>
                       )}
@@ -2645,6 +2743,12 @@ function TrainingPlanFlow({
             Modifier
           </button>
           <button
+            onClick={() => { void copyPlan() }}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: copyFeedback === 'copied' ? '#22c55e' : 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', transition: 'color 0.14s' }}
+          >
+            {copyFeedback === 'copied' ? 'Copié ✓' : 'Copier'}
+          </button>
+          <button
             onClick={() => void saveToPlanning('check')}
             disabled={saving}
             style={{
@@ -2653,7 +2757,7 @@ function TrainingPlanFlow({
               color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
             }}
           >
-            {saving ? 'Vérification…' : 'Générer le programme ✦'}
+            {saving ? 'Vérification…' : 'Ajouter au Planning'}
           </button>
         </div>
 

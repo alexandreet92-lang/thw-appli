@@ -11,6 +11,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server'
+import type Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient, parseJsonResponse } from '@/lib/agents/base'
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -219,9 +220,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Avec web_search, le modèle peut émettre plusieurs blocs (tool_use
     // intercalés). Le JSON final est dans le DERNIER bloc de type text.
-    const textBlocks = resp.content.filter(
-      (b): b is { type: 'text'; text: string } => b.type === 'text',
-    )
+    // On évite le type predicate (incompatible avec ContentBlock qui
+    // inclut `citations`) en castant vers le type exact du SDK.
+    const textBlocks = resp.content.filter(b => b.type === 'text') as Anthropic.TextBlock[]
     const finalText = textBlocks[textBlocks.length - 1]?.text
     if (!finalText) {
       console.log('[briefing/generate] No text block in response. Stop reason:', resp.stop_reason)

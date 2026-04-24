@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
@@ -598,7 +598,20 @@ function Last10WeeksModal({ onClose }:{ onClose:()=>void }) {
 // TRAINING TAB
 // ════════════════════════════════════════════════
 function TrainingTab() {
-  const [weekOffset,  setWeekOffset]  = useState(0)
+  // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
+  // weekOffset initial — utile après "Ajouter au Planning" depuis le
+  // Coach IA, qui redirige sur la semaine de début du programme.
+  const searchParams = useSearchParams()
+  const [weekOffset,  setWeekOffset]  = useState(() => {
+    const weekParam = searchParams?.get('week') ?? null
+    if (!weekParam) return 0
+    try {
+      const target  = new Date(weekParam + 'T00:00:00')
+      const current = new Date(getWeekStart() + 'T00:00:00')
+      const diffMs  = target.getTime() - current.getTime()
+      return Math.round(diffMs / (7 * 86400000))
+    } catch { return 0 }
+  })
   const [weekRange,   setWeekRange]   = useState<WeekRange>(1)
   const [activePlan,  setActivePlan]  = useState<PlanVariant>('A')
   const [compareMode, setCompareMode] = useState(false)

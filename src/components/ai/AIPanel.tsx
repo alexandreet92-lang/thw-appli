@@ -2876,7 +2876,7 @@ function TrainingPlanFlow({
                   Fermer
                 </button>
                 <button
-                  onClick={() => { window.location.href = '/planning' }}
+                  onClick={() => { window.location.href = `/planning?week=${encodeURIComponent(startDate)}` }}
                   style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Voir le Planning →

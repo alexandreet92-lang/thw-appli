@@ -2109,7 +2109,7 @@ function TrainingPlanFlow({
       // Record conversation
       const totalSeances = prog.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
       const userMsg = `Créer un plan d'entraînement — ${form.sport_principal} — ${prog.duree_semaines} semaines — ${form.course_cible_nom || form.niveau_vise}`
-      const aiMsg = `**${prog.nom}**\n\n${prog.objectif_principal}\n\n**${prog.duree_semaines} semaines · ${totalSeances} séances au total**\n\n${prog.conseils_adaptation.slice(0, 3).map(c => `• ${c}`).join('\n')}`
+      const aiMsg = `**${prog.nom}**\n\n${prog.objectif_principal}\n\n**${prog.duree_semaines} semaines · ${totalSeances} séances au total**\n\n${(prog.conseils_adaptation ?? []).slice(0, 3).map(c => `• ${c}`).join('\n')}`
       onRecordConv(userMsg, aiMsg)
       setPhase('result')
     } catch (e) {

@@ -5683,8 +5683,14 @@ export default function AIPanel({
               </div>
             )}
 
-            {/* ── Flow UI (replace empty state) ── */}
-            {showEmpty && activeFlow && (
+            {/* ── Flow UI ──
+                Rendu dès qu'un flow est actif, INDÉPENDAMMENT de l'état
+                des conversations. Avant on gatait sur `showEmpty` aussi,
+                mais si un setActiveId se glissait (ex. cache, initialAssistantMsg,
+                select conv restauré), showEmpty passait à false et le flow
+                était démonté EN PLEIN GENERATE — faisant disparaître les
+                semaines détaillées et les graphiques du résultat. */}
+            {activeFlow && (
               <div style={{ animation: 'ai_slidein 0.2s ease', paddingBottom: 16 }}>
                 {activeFlow === 'weakpoints' && (
                   <WeakpointsFlow
@@ -5758,8 +5764,12 @@ export default function AIPanel({
               </div>
             )}
 
-            {/* ── Messages ── */}
-            {active && active.msgs.length > 0 && (
+            {/* ── Messages ──
+                On masque la section messages tant qu'un flow est actif
+                pour éviter un double rendu (flow + chat bubble) quand le
+                flow a créé une conv via onRecordConv. Le flow reprend la
+                main tout seul. */}
+            {active && active.msgs.length > 0 && !activeFlow && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
                 {active.msgs.map((msg, idx) => (
                   <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

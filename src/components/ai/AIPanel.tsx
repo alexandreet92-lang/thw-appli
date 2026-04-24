@@ -4704,6 +4704,9 @@ function HistoryDrawer({
   const [renId,    setRenId]    = useState<string | null>(null)
   const [renVal,   setRenVal]   = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  // Gate SSR-safety pour fmtDate() qui utilise Date.now() au render.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

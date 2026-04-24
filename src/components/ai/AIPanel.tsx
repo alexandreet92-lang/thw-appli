@@ -2292,9 +2292,11 @@ function TrainingPlanFlow({
     ))
     const sportsLabel = sportsS1.length > 0 ? sportsS1.join(' · ') : form.sport_principal
 
-    // Couleur badge selon type de semaine
-    function weekBadgeStyle(type: string): React.CSSProperties {
-      const t = type.toLowerCase()
+    // Couleur badge selon type de semaine — null-safe : si l'agent omet
+    // le champ `type` sur une semaine, le .toLowerCase() throw et casse
+    // tout le map des semaines.
+    function weekBadgeStyle(type: string | null | undefined): React.CSSProperties {
+      const t = (type ?? '').toLowerCase()
       if (t.includes('deload')) return { background: 'rgba(107,114,128,0.12)', color: '#6b7280' }
       if (t.includes('base')) return { background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }
       if (t.includes('intensit')) return { background: 'rgba(249,115,22,0.12)', color: '#f97316' }
@@ -2559,8 +2561,8 @@ function TrainingPlanFlow({
           const barW = Math.max(2, chartW / semaines.length - 2)
           const stepX = chartW / semaines.length
 
-          function getBarColor(type: string): string {
-            const t = type.toLowerCase()
+          function getBarColor(type: string | null | undefined): string {
+            const t = (type ?? '').toLowerCase()
             if (t.includes('deload')) return '#86efac'
             if (t.includes('base')) return '#2563eb'
             if (t.includes('intensit')) return '#f97316'

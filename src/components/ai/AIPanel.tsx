@@ -2367,8 +2367,12 @@ function TrainingPlanFlow({
                   const w = widthPct * 400
                   offsetX += widthPct
                   const color = TP_BLOC_COLORS[b.type] ?? '#6b7280'
-                  const label = `${b.nom} · ${dur}sem`
-                  const fontSize = w > 80 ? 11 : w > 50 ? 9 : 0 // 0 = hide text
+                  // Label court : uniquement le type ("Base", "Intensité", etc.)
+                  // + nombre de semaines. La légende en dessous a le nom complet.
+                  // On cache entièrement si la barre est trop étroite.
+                  const label = `${b.type} · ${dur}s`
+                  const fontSize = w > 60 ? 11 : w > 36 ? 9 : 0
+                  // Deuxième ligne optionnelle : numéro séquentiel
                   return (
                     <g key={i}>
                       <rect x={x} y={0} width={w} height={56} fill={color} opacity={0.85}>
@@ -2380,7 +2384,7 @@ function TrainingPlanFlow({
                           textAnchor="middle"
                           fontSize={fontSize}
                           fill="#fff"
-                          fontWeight="600"
+                          fontWeight="700"
                           style={{ pointerEvents: 'none' }}
                         >
                           {label}

@@ -6,6 +6,51 @@ import { useTheme } from '@/hooks/useTheme'
 import { useProfile } from '@/hooks/useProfile'
 import { useState, useEffect, useRef } from 'react'
 
+// ── Briefing hook inline (compte d'articles non lus) ───────────
+
+interface BriefingSummary {
+  lu: boolean
+  unreadCount: number
+}
+
+function useBriefingBadge(): BriefingSummary {
+  const [summary, setSummary] = useState<BriefingSummary>({ lu: true, unreadCount: 0 })
+  const pathname = usePathname()
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/briefing', { cache: 'no-store' })
+        if (!res.ok || cancelled) return
+        const json = await res.json() as {
+          briefing: { lu: boolean; content: unknown } | null
+        }
+        if (cancelled) return
+        if (!json.briefing) { setSummary({ lu: true, unreadCount: 0 }); return }
+        if (json.briefing.lu) { setSummary({ lu: true, unreadCount: 0 }); return }
+
+        // Compter les articles toutes catégories confondues
+        let total = 0
+        const content = json.briefing.content
+        if (content && typeof content === 'object') {
+          const cats = (content as { categories?: unknown }).categories
+          if (cats && typeof cats === 'object') {
+            for (const arr of Object.values(cats as Record<string, unknown>)) {
+              if (Array.isArray(arr)) total += arr.length
+            }
+          }
+        }
+        setSummary({ lu: false, unreadCount: total > 0 ? total : 1 })
+      } catch { /* silent */ }
+    })()
+    return () => { cancelled = true }
+    // Re-check quand l'utilisateur navigue (le PATCH de /briefing peut changer l'état)
+  }, [pathname])
+
+  return summary
+}
+
 // ── Nav items ──────────────────────────────────────────────────
 
 const NAV = [
@@ -220,6 +265,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const { mode, toggleTheme, label } = useTheme()
   const { profile } = useProfile()
+  const briefing = useBriefingBadge()
+  const briefingActive = pathname === '/briefing'
 
   return (
     <div style={{
@@ -296,6 +343,63 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         display: 'flex', flexDirection: 'column', gap: 2,
         flexShrink: 0,
       }}>
+        {/* Briefing du jour */}
+        <Link
+          href="/briefing"
+          onClick={onClose}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            textDecoration: 'none',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: 13,
+            fontWeight: briefingActive ? 600 : 400,
+            color: briefingActive ? '#00c8e0' : 'var(--text-mid)',
+            background: briefingActive ? 'rgba(0,200,224,0.10)' : 'transparent',
+            borderLeft: `3px solid ${briefingActive ? '#00c8e0' : 'transparent'}`,
+            transition: 'background 0.14s, color 0.14s',
+          }}
+          onMouseEnter={e => {
+            if (!briefingActive) {
+              (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--text)'
+            }
+          }}
+          onMouseLeave={e => {
+            if (!briefingActive) {
+              (e.currentTarget as HTMLElement).style.background = 'transparent'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-mid)'
+            }
+          }}
+        >
+          <span style={{ flexShrink: 0, opacity: briefingActive ? 1 : 0.6, display: 'flex' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="8" y1="13" x2="16" y2="13" />
+              <line x1="8" y1="17" x2="13" y2="17" />
+            </svg>
+          </span>
+          <span style={{ flex: 1 }}>Briefing du jour</span>
+          {!briefing.lu && briefing.unreadCount > 0 && (
+            <span style={{
+              flexShrink: 0,
+              minWidth: 18,
+              height: 18,
+              padding: '0 6px',
+              borderRadius: 99,
+              background: '#ef4444',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1,
+            }}>
+              {briefing.unreadCount > 99 ? '99+' : briefing.unreadCount}
+            </span>
+          )}
+        </Link>
+
         <button
           onClick={toggleTheme}
           style={{

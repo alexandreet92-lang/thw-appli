@@ -23,15 +23,33 @@ interface Article {
   titre: string
   importance: ImportanceLevel
   resume: string
-  source: string
+  source_nom: string
+  source_date: string
 }
 
-type TabKey = 'ia_tech' | 'business' | 'bourse' | 'sport' | 'tech_innovation'
+interface SubTheme {
+  nom: string
+  articles: Article[]
+}
+
+type TabKey =
+  | 'ia_tech'
+  | 'business'
+  | 'bourse'
+  | 'international'
+  | 'sport'
+  | 'tech_innovation'
+
+interface Category {
+  key: TabKey
+  nom: string
+  sous_themes: SubTheme[]
+}
 
 interface BriefingContent {
   a_retenir?: string[]
   temps_lecture_min?: number
-  categories?: Partial<Record<TabKey, Article[]>>
+  categories: Category[]
 }
 
 interface Briefing {
@@ -73,9 +91,36 @@ const TABS: readonly TabDef[] = [
   { key: 'ia_tech',         label: 'IA & Tech' },
   { key: 'business',        label: 'Business' },
   { key: 'bourse',          label: 'Bourse' },
+  { key: 'international',   label: 'International' },
   { key: 'sport',           label: 'Sport' },
   { key: 'tech_innovation', label: 'Tech & Innovation' },
 ] as const
+
+const KEY_LABELS: Record<TabKey, string> = {
+  ia_tech:         'IA & Tech',
+  business:        'Business',
+  bourse:          'Bourse',
+  international:   'International',
+  sport:           'Sport',
+  tech_innovation: 'Tech & Innovation',
+}
+
+// Priority-ordered mapping nom libre → TabKey canonique.
+function mapNomToKey(nom: string, positionIndex: number): TabKey {
+  const n = (nom ?? '').toLowerCase()
+  if (/\bia\b/.test(n) || n.includes('intelligence artificielle')) return 'ia_tech'
+  if (n.includes('international') || n.includes('geopolit') || n.includes('géopolit')) return 'international'
+  if (n.includes('bourse') || n.includes('cac') || n.includes('nasdaq') ||
+      n.includes('sp500') || n.includes('s&p') || n.includes('finance')) return 'bourse'
+  if (n.includes('sport') || n.includes('endurance') ||
+      n.includes('hybride') || n.includes('hyrox')) return 'sport'
+  if (n.includes('business') || n.includes('economi') || n.includes('économi')) return 'business'
+  if (n.includes('tech') || n.includes('innovation')) return 'tech_innovation'
+  const ORDER: readonly TabKey[] = [
+    'ia_tech', 'business', 'bourse', 'international', 'sport', 'tech_innovation',
+  ]
+  return ORDER[Math.min(Math.max(positionIndex, 0), ORDER.length - 1)]
+}
 
 // ── Helpers dates ─────────────────────────────────────────────
 
@@ -132,10 +177,12 @@ function computeReadingMinutes(content: BriefingContent): number {
   }
   let words = 0
   for (const bullet of content.a_retenir ?? []) words += countWords(bullet)
-  for (const articles of Object.values(content.categories ?? {})) {
-    if (!Array.isArray(articles)) continue
-    for (const a of articles) {
-      words += countWords(a.titre) + countWords(a.resume) + countWords(a.source)
+  for (const cat of content.categories) {
+    for (const st of cat.sous_themes) {
+      for (const a of st.articles) {
+        words += countWords(a.titre) + countWords(a.resume)
+          + countWords(a.source_nom) + countWords(a.source_date)
+      }
     }
   }
   return Math.max(1, Math.ceil(words / 200))
@@ -159,15 +206,42 @@ function sanitizeArticle(raw: unknown): Article | null {
   const titre = typeof o.titre === 'string' ? o.titre : null
   const resume = typeof o.resume === 'string' ? o.resume : null
   if (!titre || !resume) return null
+
+  // Nouveau format : source_nom + source_date séparés.
+  // Compat : si l'ancien champ `source` est seul, on le reporte dans source_nom.
+  let source_nom = typeof o.source_nom === 'string' ? o.source_nom : ''
+  let source_date = typeof o.source_date === 'string' ? o.source_date : ''
+  if (!source_nom && !source_date && typeof o.source === 'string') {
+    source_nom = o.source
+  }
+
   return {
     titre, resume,
-    source: typeof o.source === 'string' ? o.source : '',
+    source_nom, source_date,
     importance: isImportance(o.importance) ? o.importance : 'A suivre',
   }
 }
 
+function sanitizeSubTheme(raw: unknown): SubTheme | null {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as { nom?: unknown; articles?: unknown }
+  const nom = typeof s.nom === 'string' && s.nom.trim() ? s.nom.trim() : 'Général'
+  const articles = Array.isArray(s.articles)
+    ? s.articles.map(sanitizeArticle).filter((a): a is Article => a !== null)
+    : []
+  if (articles.length === 0) return null
+  return { nom, articles }
+}
+
+// Normalise dans la forme canonique :
+//   categories: [{ key, nom, sous_themes: [{ nom, articles }] }]
+//
+// Accepte les 3 formes sources :
+//   (A) NEW  array   : [{ nom, sous_themes: [{nom, articles}] }]
+//   (B) OLD  array   : [{ nom, articles: [...] }]            → wrap en un seul sous-thème
+//   (C) OLD  keyed   : { ia_tech: [...], business: [...] }   → wrap idem
 function sanitizeContent(raw: unknown): BriefingContent {
-  const out: BriefingContent = { categories: {} }
+  const out: BriefingContent = { categories: [] }
   if (!raw || typeof raw !== 'object') return out
   const o = raw as Record<string, unknown>
 
@@ -177,18 +251,55 @@ function sanitizeContent(raw: unknown): BriefingContent {
   if (typeof o.temps_lecture_min === 'number') {
     out.temps_lecture_min = o.temps_lecture_min
   }
-  const cats = (typeof o.categories === 'object' && o.categories !== null)
-    ? o.categories as Record<string, unknown>
-    : {}
-  for (const tab of TABS) {
-    const arr = cats[tab.key]
-    if (Array.isArray(arr)) {
-      const cleaned = arr.map(sanitizeArticle).filter((a): a is Article => a !== null)
-      if (cleaned.length > 0) {
-        out.categories = { ...out.categories, [tab.key]: cleaned }
+
+  const rawCats = o.categories
+
+  if (Array.isArray(rawCats)) {
+    rawCats.forEach((cat, i) => {
+      if (!cat || typeof cat !== 'object') return
+      const c = cat as { nom?: unknown; sous_themes?: unknown; articles?: unknown }
+      const nom = typeof c.nom === 'string' ? c.nom : ''
+      const key = mapNomToKey(nom, i)
+
+      let sous_themes: SubTheme[] = []
+      if (Array.isArray(c.sous_themes) && c.sous_themes.length > 0) {
+        // (A) forme NEW
+        sous_themes = c.sous_themes
+          .map(sanitizeSubTheme)
+          .filter((s): s is SubTheme => s !== null)
+      } else if (Array.isArray(c.articles)) {
+        // (B) forme OLD array sans sous_themes
+        const arts = c.articles.map(sanitizeArticle).filter((a): a is Article => a !== null)
+        if (arts.length > 0) {
+          sous_themes = [{ nom: nom || KEY_LABELS[key], articles: arts }]
+        }
+      }
+
+      if (sous_themes.length > 0) {
+        out.categories.push({ key, nom: nom || KEY_LABELS[key], sous_themes })
+      }
+    })
+  } else if (rawCats && typeof rawCats === 'object') {
+    // (C) forme OLD keyed : { ia_tech: [...], business: [...], ... }
+    const obj = rawCats as Record<string, unknown>
+    const ORDER: readonly TabKey[] = [
+      'ia_tech', 'business', 'bourse', 'international', 'sport', 'tech_innovation',
+    ]
+    for (const key of ORDER) {
+      const arr = obj[key]
+      if (Array.isArray(arr)) {
+        const arts = arr.map(sanitizeArticle).filter((a): a is Article => a !== null)
+        if (arts.length > 0) {
+          out.categories.push({
+            key,
+            nom: KEY_LABELS[key],
+            sous_themes: [{ nom: KEY_LABELS[key], articles: arts }],
+          })
+        }
       }
     }
   }
+
   return out
 }
 
@@ -225,7 +336,11 @@ export default function BriefingPage() {
   const [briefing, setBriefing]   = useState<Briefing | null>(null)
   const [isCreator, setIsCreator] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<TabKey>('ia_tech')
+  const [activeTab, setActiveTab]           = useState<TabKey>('ia_tech')
+  const [activeSubIndex, setActiveSubIndex] = useState(0)
+
+  // Reset du sous-tab quand on change de catégorie principale
+  useEffect(() => { setActiveSubIndex(0) }, [activeTab])
 
   // ── Fetch ────────────────────────────────────────────────
   useEffect(() => {
@@ -308,7 +423,13 @@ export default function BriefingPage() {
     [briefing],
   )
 
-  const activeArticles = briefing?.content.categories?.[activeTab] ?? []
+  const activeCategory = briefing?.content.categories.find(c => c.key === activeTab) ?? null
+  const subThemesCount = activeCategory?.sous_themes.length ?? 0
+  const safeSubIndex   = subThemesCount > 0
+    ? Math.min(Math.max(activeSubIndex, 0), subThemesCount - 1)
+    : 0
+  const activeSubTheme = activeCategory?.sous_themes[safeSubIndex] ?? null
+  const activeArticles = activeSubTheme?.articles ?? []
 
   // ── Toggle tâche ────────────────────────────────────────
   async function toggleTask(taskId: string, nextCompleted: boolean) {
@@ -621,15 +742,16 @@ export default function BriefingPage() {
                 </div>
               )}
 
-              {/* Tabs */}
+              {/* Main tabs */}
               <div style={{
                 display: 'flex', gap: 4, flexWrap: 'wrap',
-                marginBottom: 16,
+                marginBottom: activeCategory && subThemesCount > 1 ? 10 : 16,
                 borderBottom: '1px solid var(--border, rgba(0,0,0,0.08))',
               }}>
                 {TABS.map(tab => {
                   const active = tab.key === activeTab
-                  const count = briefing.content.categories?.[tab.key]?.length ?? 0
+                  const cat = briefing.content.categories.find(c => c.key === tab.key)
+                  const count = cat?.sous_themes.reduce((s, st) => s + st.articles.length, 0) ?? 0
                   return (
                     <button
                       key={tab.key}
@@ -662,6 +784,51 @@ export default function BriefingPage() {
                 })}
               </div>
 
+              {/* Sub-tabs — dynamiques selon la catégorie active.
+                  Masquées si une seule sous-catégorie (cas "Général" unique). */}
+              {activeCategory && subThemesCount > 1 && (
+                <div style={{
+                  display: 'flex', gap: 6, flexWrap: 'wrap',
+                  marginBottom: 16,
+                }}>
+                  {activeCategory.sous_themes.map((st, idx) => {
+                    const active = idx === safeSubIndex
+                    return (
+                      <button
+                        key={`${activeTab}-${idx}-${st.nom}`}
+                        onClick={() => setActiveSubIndex(idx)}
+                        style={{
+                          cursor: 'pointer',
+                          padding: '5px 11px',
+                          borderRadius: 99,
+                          fontFamily: 'DM Sans, sans-serif',
+                          fontSize: 12,
+                          fontWeight: active ? 700 : 500,
+                          border: active
+                            ? '1px solid #00c8e0'
+                            : '1px solid var(--border, rgba(0,0,0,0.08))',
+                          background: active ? 'rgba(0,200,224,0.10)' : 'transparent',
+                          color: active ? '#00c8e0' : 'var(--text-mid)',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          transition: 'all 0.14s',
+                        }}
+                      >
+                        {st.nom}
+                        <span style={{
+                          fontSize: 10, fontWeight: 600,
+                          padding: '0 6px', borderRadius: 99, minWidth: 16,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: active ? 'rgba(0,200,224,0.18)' : 'var(--bg2, rgba(0,0,0,0.05))',
+                          color: active ? '#00c8e0' : 'var(--text-dim)',
+                        }}>
+                          {st.articles.length}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               {/* Articles */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {activeArticles.length === 0 && (
@@ -673,6 +840,8 @@ export default function BriefingPage() {
                 )}
                 {activeArticles.map((a, i) => {
                   const c = importanceColors(a.importance)
+                  const sourceParts = [a.source_nom, a.source_date].filter(s => s && s.trim())
+                  const sourceLabel = sourceParts.join(' · ')
                   return (
                     <article key={i} style={{ ...card, padding: 18 }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -702,14 +871,13 @@ export default function BriefingPage() {
                       }}>
                         {a.resume}
                       </p>
-                      {a.source && (
+                      {sourceLabel && (
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <span style={{
                             fontSize: 11,
                             color: 'var(--text-dim)',
-                            fontStyle: 'italic',
                           }}>
-                            Source : {a.source}
+                            {sourceLabel}
                           </span>
                         </div>
                       )}

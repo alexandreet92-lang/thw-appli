@@ -30,12 +30,29 @@ function useBriefingBadge(): BriefingSummary {
         if (!json.briefing) { setSummary({ lu: true, unreadCount: 0 }); return }
         if (json.briefing.lu) { setSummary({ lu: true, unreadCount: 0 }); return }
 
-        // Compter les articles toutes catégories confondues
+        // Compter les articles toutes catégories confondues — supporte
+        // les 3 formes de content.categories :
+        //   (A) NEW  array  : [{ sous_themes: [{ articles }] }]
+        //   (B) OLD  array  : [{ articles: [...] }]
+        //   (C) OLD  keyed  : { ia_tech: [...], business: [...] }
         let total = 0
         const content = json.briefing.content
         if (content && typeof content === 'object') {
           const cats = (content as { categories?: unknown }).categories
-          if (cats && typeof cats === 'object') {
+          if (Array.isArray(cats)) {
+            for (const cat of cats) {
+              if (!cat || typeof cat !== 'object') continue
+              const c = cat as { sous_themes?: unknown; articles?: unknown }
+              if (Array.isArray(c.sous_themes)) {
+                for (const st of c.sous_themes) {
+                  const articles = (st as { articles?: unknown })?.articles
+                  if (Array.isArray(articles)) total += articles.length
+                }
+              } else if (Array.isArray(c.articles)) {
+                total += c.articles.length
+              }
+            }
+          } else if (cats && typeof cats === 'object') {
             for (const arr of Object.values(cats as Record<string, unknown>)) {
               if (Array.isArray(arr)) total += arr.length
             }

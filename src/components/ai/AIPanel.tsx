@@ -2059,6 +2059,19 @@ function TrainingPlanFlow({
       console.log('SEMAINES COUNT:', data?.program?.semaines?.length)
       console.log('SEMAINE 0:', JSON.stringify(data?.program?.semaines?.[0], null, 2))
 
+      // === Logs diagnostic explicitement demandés pour le shape check ===
+      // Placés AVANT le gate structureInvalid (= premier rendu conditionnel
+      // qui peut court-circuiter la suite) pour qu'ils apparaissent toujours.
+      const trainingPlanData = data as unknown as Record<string, unknown>
+      console.log('=== TRAINING PLAN DATA ===')
+      console.log(JSON.stringify(trainingPlanData, null, 2))
+      console.log('type:', typeof trainingPlanData)
+      console.log('keys:', trainingPlanData ? Object.keys(trainingPlanData) : 'null')
+      console.log('programme:', trainingPlanData?.programme)
+      console.log('semaines:', trainingPlanData?.semaines)
+      console.log('program:', trainingPlanData?.program)
+      console.log('weeks:', trainingPlanData?.weeks)
+
       // Validation du JSON reçu
       console.log('[training-plan] program received:', JSON.stringify(data.program, null, 2))
 

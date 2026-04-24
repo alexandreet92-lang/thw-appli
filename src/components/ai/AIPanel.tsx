@@ -5734,6 +5734,12 @@ export default function AIPanel({
                     model={model}
                     onCancel={() => setActiveFlow(null)}
                     onRecordConv={(userMsg, aiMsg) => {
+                      // On enregistre la conv dans l'historique (drawer) MAIS
+                      // on NE fait PAS setActiveId : activer la conv
+                      // rendrait showEmpty = false → TrainingPlanFlow serait
+                      // démonté AVANT de pouvoir afficher son result view
+                      // (semaines détaillées, volume chart, boutons Modifier
+                      // / Générer). Ici l'utilisateur reste sur la vue riche.
                       const conv: AIConv = {
                         id: genId(),
                         title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
@@ -5745,7 +5751,7 @@ export default function AIPanel({
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
-                      setActiveId(conv.id)
+                      // setActiveId(conv.id) ← volontairement omis (cf. note ci-dessus)
                     }}
                   />
                 )}

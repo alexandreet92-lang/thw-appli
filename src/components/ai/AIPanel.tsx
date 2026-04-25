@@ -2236,12 +2236,24 @@ function TrainingPlanFlow({
             blocs:        seance.blocs ?? [],
           }
 
+          // Normalise les noms de sport (sortie IA en français) vers les codes SportType valides
+          const sportMap: Record<string,string> = {
+            'Running':'run','Course':'run','Course à pied':'run','Trail':'run','Trail running':'run',
+            'Cyclisme':'bike','Vélo':'bike','Velo':'bike','Cycling':'bike','Virtual ride':'bike',
+            'Natation':'swim','Swimming':'swim',
+            'Musculation':'gym','Gym':'gym','Fitness':'gym',
+            'Hyrox':'hyrox',
+            'Rowing':'rowing','Aviron':'rowing',
+          }
+          const normSport = (raw:string):string =>
+            sportMap[raw] ?? sportMap[raw?.trim()] ?? raw?.toLowerCase()
+
           const row = {
             user_id:          user.id,
             plan_id:          planId,
             week_start:       weekStart,
             day_index:        seance.jour,
-            sport:            seance.sport,
+            sport:            normSport(seance.sport),
             title:            seance.titre,
             time:             seance.heure ?? null,
             duration_min:     seance.duree_min,

@@ -2163,12 +2163,51 @@ function TrainingPlanFlow({
         await sb.from('planned_sessions').delete().in('id', conflictInfo.ids)
       }
 
-      // Construire la liste des séances à insérer
+      // 1. Archiver les plans actifs existants (un seul plan actif à la fois)
+      await sb.from('training_plans')
+        .update({ status: 'archived', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+
+      // 2. Créer le training_plan parent
+      const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
+      const endDateSunday = addDays(lastWeekStart, 6)
+      const sportsAcrossWeeks = Array.from(new Set(
+        (program.semaines ?? [])
+          .flatMap(w => (w.seances ?? []).map(s => s.sport))
+          .filter((s): s is string => typeof s === 'string' && s.length > 0)
+      ))
+      const { data: planRow, error: planErr } = await sb.from('training_plans').insert({
+        user_id:             user.id,
+        name:                program.nom,
+        objectif_principal:  program.objectif_principal ?? null,
+        duree_semaines:      program.duree_semaines,
+        start_date:          startDate,
+        end_date:            endDateSunday,
+        sports:              sportsAcrossWeeks,
+        blocs_periodisation: program.blocs_periodisation ?? [],
+        conseils_adaptation: program.conseils_adaptation ?? [],
+        points_cles:         program.points_cles ?? [],
+        ai_context: {
+          questionnaire: form,
+          program,
+          generated_at: (generatedAt ?? new Date()).toISOString(),
+        },
+        status: 'active',
+      }).select('id').single()
+
+      if (planErr || !planRow) {
+        console.log('[saveToPlanning] training_plans insert failed:', planErr?.message)
+        setPlanStep('error')
+        return
+      }
+      const planId = planRow.id as string
+
+      // 3. Construire la liste des séances à insérer
       // Si merge : récupérer les jours déjà occupés
       let occupiedKeys = new Set<string>()
       if (mode === 'merge') {
         const firstWeekStart = startDate
-        const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
         const { data: existing2 } = await sb.from('planned_sessions').select('week_start,day_index').eq('user_id', user.id).gte('week_start', firstWeekStart).lte('week_start', lastWeekStart)
         if (existing2) {
           occupiedKeys = new Set(existing2.map(r => `${r.week_start as string}_${r.day_index as number}`))
@@ -2184,23 +2223,38 @@ function TrainingPlanFlow({
           // Si merge, skip si le jour est déjà occupé
           if (mode === 'merge' && occupiedKeys.has(`${weekStart}_${seance.jour}`)) continue
 
-          const row = {
-            user_id: user.id,
-            week_start: weekStart,
-            day_index: seance.jour,
-            sport: seance.sport,
-            title: seance.titre,
-            time: seance.heure ?? null,
+          // Snapshot immuable de la version IA pour calcul de diff ultérieur
+          const originalContent = {
+            sport:        seance.sport,
+            titre:        seance.titre,
+            time:         seance.heure ?? null,
             duration_min: seance.duree_min,
-            tss: seance.tss ?? null,
-            status: 'planned',
-            intensity: seance.intensite ?? null,
-            notes: seance.notes ?? null,
-            rpe: seance.rpe ?? null,
-            blocks: seance.blocs ?? [],
-            plan_variant: 'A',
-            validation_data: {},
-            source: 'training_plan',
+            tss:          seance.tss ?? null,
+            intensity:    seance.intensite ?? null,
+            notes:        seance.notes ?? null,
+            rpe:          seance.rpe ?? null,
+            blocs:        seance.blocs ?? [],
+          }
+
+          const row = {
+            user_id:          user.id,
+            plan_id:          planId,
+            week_start:       weekStart,
+            day_index:        seance.jour,
+            sport:            seance.sport,
+            title:            seance.titre,
+            time:             seance.heure ?? null,
+            duration_min:     seance.duree_min,
+            tss:              seance.tss ?? null,
+            status:           'planned',
+            intensity:        seance.intensite ?? null,
+            notes:            seance.notes ?? null,
+            rpe:              seance.rpe ?? null,
+            blocks:           seance.blocs ?? [],
+            plan_variant:     'A',
+            validation_data:  {},
+            source:           'training_plan',
+            original_content: originalContent,
           }
           const { error: insertErr } = await sb.from('planned_sessions').insert(row)
           if (insertErr) { errors++ } else { created++ }

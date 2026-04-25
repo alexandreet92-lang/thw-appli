@@ -379,7 +379,7 @@ function usePlanning(weekStartParam?:string) {
         .gte('started_at',weekStart+'T00:00:00').lt('started_at',weekEndStr+'T00:00:00'),
     ])
     setSessions((s.data??[]).map((r:any):Session=>({
-      id:r.id, dayIndex:r.day_index, sport:r.sport, title:r.title,
+      id:r.id, dayIndex:r.day_index, sport:normalizeSportType(r.sport), title:r.title,
       time:r.time??'09:00', durationMin:r.duration_min, tss:r.tss,
       status:r.status, notes:r.notes, rpe:r.rpe, blocks:normalizeBlocks(r.blocks), main:false,
       planVariant:r.plan_variant??'A',

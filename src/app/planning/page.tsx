@@ -26,8 +26,8 @@ type RaceSport     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 type CyclingSub    = 'velo' | 'vtt' | 'ht' | 'elliptique'
 
 // ── Constants ─────────────────────────────────────
-const SPORT_BG: Record<SportType,string>     = { swim:'rgba(56,189,248,0.13)', run:'rgba(34,197,94,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(249,115,22,0.13)', rowing:'rgba(20,184,166,0.13)' }
-const SPORT_BORDER: Record<SportType,string> = { swim:'#38bdf8', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6' }
+const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(236,72,153,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)' }
+const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#f97316', bike:'#3b82f6', hyrox:'#ec4899', gym:'#8b5cf6', rowing:'#14b8a6' }
 const SPORT_EMOJI: Record<SportType,string>  = { run:'🏃', bike:'🚴', swim:'🏊', hyrox:'🏋️', gym:'💪', rowing:'🚣' }
 const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron' }
 const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW' }
@@ -54,10 +54,10 @@ const RACE_CONFIG: Record<RaceLevel,{label:string;color:string;bg:string;border:
   gty:       { label:'GTY',        color:'var(--gty-text)', bg:'var(--gty-bg)', border:'var(--gty-border)', emoji:'⚫' },
 }
 const RACE_SPORT_COLOR: Record<RaceSport,{border:string;bg:string}> = {
-  run:     { border:'#22c55e', bg:'rgba(34,197,94,0.13)'   },
+  run:     { border:'#f97316', bg:'rgba(249,115,22,0.13)'  },
   bike:    { border:'#3b82f6', bg:'rgba(59,130,246,0.13)'  },
-  swim:    { border:'#38bdf8', bg:'rgba(56,189,248,0.13)'  },
-  hyrox:   { border:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
+  swim:    { border:'#06b6d4', bg:'rgba(6,182,212,0.13)'   },
+  hyrox:   { border:'#ec4899', bg:'rgba(236,72,153,0.13)'  },
   triathlon:{ border:'#a855f7',bg:'rgba(168,85,247,0.13)'  },
   rowing:  { border:'#14b8a6', bg:'rgba(20,184,166,0.13)'  },
 }

@@ -107,17 +107,17 @@ const SESSION_TYPES: Record<string, string[]> = {
 }
 
 const SPORTS: { id: Sport; label: string; sub: string; color: string }[] = [
-  { id:'muscu',    label:'Muscu / Renfo',  sub:'Circuits, séries, reps',   color:'#5b6fff' },
-  { id:'running',  label:'Running',        sub:'Blocs, intervalles, allure',color:'#22c55e' },
-  { id:'velo',     label:'Vélo / Home trainer', sub:'Watts, zones, blocs',  color:'#f97316' },
-  { id:'natation', label:'Natation',       sub:'Séries, distances, zones',  color:'#00c8e0' },
-  { id:'hyrox',    label:'Hyrox',          sub:'Ateliers, circuits, runs',  color:'#ef4444' },
+  { id:'muscu',    label:'Muscu / Renfo',  sub:'Circuits, séries, reps',   color:'#8b5cf6' },
+  { id:'running',  label:'Running',        sub:'Blocs, intervalles, allure',color:'#f97316' },
+  { id:'velo',     label:'Vélo / Home trainer', sub:'Watts, zones, blocs',  color:'#3b82f6' },
+  { id:'natation', label:'Natation',       sub:'Séries, distances, zones',  color:'#06b6d4' },
+  { id:'hyrox',    label:'Hyrox',          sub:'Ateliers, circuits, runs',  color:'#ec4899' },
   { id:'aviron',   label:'Aviron',         sub:'Blocs, seuil, distance',    color:'#14b8a6' },
   { id:'triathlon',label:'Triathlon',      sub:'Brick, simulation',         color:'#a855f7' },
 ]
 
 const ZONE_COLOR: Record<Zone, string> = {
-  1:'#5b6fff', 2:'#00c8e0', 3:'#22c55e', 4:'#f97316', 5:'#ef4444',
+  1:'#9ca3af', 2:'#22c55e', 3:'#eab308', 4:'#f97316', 5:'#ef4444',
 }
 const ZONE_LABEL: Record<Zone, string> = {
   1:'Z1 — Récup', 2:'Z2 — Endurance', 3:'Z3 — Tempo', 4:'Z4 — Seuil', 5:'Z5 — VO2max',

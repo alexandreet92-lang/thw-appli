@@ -4,6 +4,29 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* ── Sport colors — fixes, immuables ─────────── */
+  --sport-run:    #f97316;
+  --sport-bike:   #3b82f6;
+  --sport-swim:   #06b6d4;
+  --sport-gym:    #8b5cf6;
+  --sport-hyrox:  #ec4899;
+  --sport-rowing: #14b8a6;
+
+  /* ── Zone colors — fixes, immuables ──────────── */
+  --zone-1: #9ca3af; /* Récupération */
+  --zone-2: #22c55e; /* Endurance    */
+  --zone-3: #eab308; /* Tempo        */
+  --zone-4: #f97316; /* Seuil        */
+  --zone-5: #ef4444; /* VO2max       */
+
+  /* ── Brand ────────────────────────────────────── */
+  --primary:      #00c8e0;
+  --primary-dim:  rgba(0,200,224,0.12);
+  --ai-accent:    #8b5cf6;
+  --ai-accent-dim:rgba(139,92,246,0.12);
+}
+
 :root, .light {
   --bg:          #eef2f7;
   --bg-alt:      #e4eaf2;

@@ -139,8 +139,8 @@ function normalizeSport(sport: string): string {
 }
 
 const SPORT_COLOR: Record<SportType, string> = {
-  run: '#22c55e', trail_run: '#f97316', bike: '#3b82f6', virtual_bike: '#60a5fa',
-  swim: '#38bdf8', rowing: '#14b8a6', hyrox: '#ef4444', gym: '#ffb340', other: '#94a3b8',
+  run: '#f97316', trail_run: '#f97316', bike: '#3b82f6', virtual_bike: '#60a5fa',
+  swim: '#06b6d4', rowing: '#14b8a6', hyrox: '#ec4899', gym: '#8b5cf6', other: '#94a3b8',
 }
 
 const TIME_FILTER_LABEL: Record<TimeFilter, string> = {
@@ -689,7 +689,7 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
 
       {idx !== null && (
         <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600, fontFamily: T.fontMono }}>Réelle {fmtPace(pace[idx])}</span>
+          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>Réelle {fmtPace(pace[idx])}</span>
           <span style={{ fontSize: 11, color: '#86efac', fontWeight: 600, fontFamily: T.fontMono }}>GAP {fmtPace(gap[idx])}</span>
           {gap[idx] > 0 && pace[idx] > 0 && Math.abs(gap[idx] - pace[idx]) > 3 && (
             <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>
@@ -712,7 +712,7 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
           </defs>
           <path d={buildPath(gap, true)} fill="url(#gapFill)"/>
           <path d={buildPath(gap, false)} fill="none" stroke="#86efac" strokeWidth="1.5" strokeLinejoin="round"/>
-          <path d={buildPath(pace, false)} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round"/>
+          <path d={buildPath(pace, false)} fill="none" stroke="#f97316" strokeWidth="2" strokeLinejoin="round"/>
           {pct !== null && (
             <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
@@ -721,7 +721,7 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
 
       <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#22c55e', display: 'inline-block', borderRadius: 1 }}/>Allure réelle
+          <span style={{ width: 12, height: 2, background: '#f97316', display: 'inline-block', borderRadius: 1 }}/>Allure réelle
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
           <span style={{ width: 12, height: 2, background: '#86efac', display: 'inline-block', borderRadius: 1 }}/>Allure ajustée (GAP)
@@ -1030,7 +1030,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     alt    ? { label: 'Altitude', data: alt, color: '#94a3b8', unit: 'm',     H: 64, isAlt: true, formatY: (v: number) => `${Math.round(v)} m` } : null,
     hr     ? { label: 'FC',       data: hr,  color: '#ef4444', unit: 'bpm',   H: 64, isHr: true,  formatY: (v: number) => `${Math.round(v)} bpm` } : null,
     isBike && watts    ? { label: 'Puissance', data: watts,    color: '#5b6fff', unit: 'W',     H: 72, formatY: (v: number) => `${Math.round(v)} W` } : null,
-    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#22c55e', unit: 's/km', H: 72, invertY: true, formatY: (v: number) => fmtPace(v) } : null,
+    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#f97316', unit: 's/km', H: 72, invertY: true, formatY: (v: number) => fmtPace(v) } : null,
     cadence ? { label: 'Cadence', data: cadence, color: '#00c8e0', unit: 'rpm', H: 48, formatY: (v: number) => `${Math.round(v)} rpm` } : null,
   ] as (Track|null)[]).filter((t): t is Track => t !== null)
 
@@ -1072,7 +1072,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
           background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
           {hr     && <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>FC {Math.round(hr[cursor])} bpm</span>}
           {isBike && watts && <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(watts[cursor])} W</span>}
-          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600, fontFamily: T.fontMono }}>{fmtPace(1000/velocity[cursor])}</span>}
+          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>{fmtPace(1000/velocity[cursor])}</span>}
           {cadence && <span style={{ fontSize: 11, color: '#00c8e0', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(cadence[cursor])} rpm</span>}
           {alt && <span style={{ fontSize: 11, color: T.textSub, fontWeight: 500, fontFamily: T.fontMono }}>{Math.round(alt[cursor])} m</span>}
           <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 'auto', fontFamily: T.fontMono }}>

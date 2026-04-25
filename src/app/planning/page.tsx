@@ -1911,23 +1911,121 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
   const speed = calcSpeed(form.vDistance||'', form.vDuration||'')
   const pace  = calcPaceStr(form.vDistance||'', form.vDuration||'')
   return (
-    <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:540,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
-        <div style={{ display:'flex',alignItems:'center',gap:9 }}>
-          <div style={{ width:34,height:34,borderRadius:9,background:SPORT_BG[session.sport],border:`1px solid ${SPORT_BORDER[session.sport]}44`,display:'flex',alignItems:'center',justifyContent:'center' }}><SportBadge sport={session.sport} size="sm"/></div>
-          <div>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0 }}>{session.title}</p>
-            <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{session.time} · {formatHM(session.durationMin)}{session.tss?` · ${session.tss} TSS`:''}</p>
+    <div onClick={e=>e.stopPropagation()} style={{
+      background:'var(--bg-card)',
+      borderRadius:16,
+      border:'1px solid var(--border)',
+      padding:'24px 26px',
+      maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto',
+      boxShadow:'0 20px 50px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.06)',
+    }}>
+      {/* HEADER refondu — hiérarchie titre / métadonnées / fermeture */}
+      <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:18 }}>
+        <div style={{ display:'flex',alignItems:'flex-start',gap:12,flex:1,minWidth:0 }}>
+          <div style={{
+            width:44,height:44,borderRadius:11,
+            background:SPORT_BG[session.sport],
+            border:`1px solid ${SPORT_BORDER[session.sport]}55`,
+            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
+          }}>
+            <SportBadge sport={session.sport} size="sm"/>
+          </div>
+          <div style={{ flex:1,minWidth:0 }}>
+            <p style={{
+              fontFamily:'Syne,sans-serif',
+              fontSize:18, fontWeight:800,
+              color:'var(--text)',
+              margin:'2px 0 6px',
+              lineHeight:1.25,
+              letterSpacing:'-0.01em',
+              wordBreak:'break-word' as const,
+            }}>
+              {session.title}
+            </p>
+            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' as const }}>
+              <span style={{
+                fontSize:11, fontFamily:'DM Mono,monospace', fontWeight:700,
+                color:SPORT_BORDER[session.sport],
+                padding:'2px 8px', borderRadius:99,
+                background:SPORT_BG[session.sport],
+                border:`1px solid ${SPORT_BORDER[session.sport]}33`,
+              }}>
+                {session.time}
+              </span>
+              <span style={{
+                fontSize:11, fontFamily:'DM Mono,monospace', fontWeight:600,
+                color:'var(--text-mid)',
+                padding:'2px 8px', borderRadius:99,
+                background:'var(--bg-card2)',
+                border:'1px solid var(--border)',
+              }}>
+                {formatHM(session.durationMin)}
+              </span>
+              {session.tss != null && session.tss > 0 && (
+                <span style={{
+                  fontSize:11, fontFamily:'DM Mono,monospace', fontWeight:600,
+                  color:'#8b5cf6',
+                  padding:'2px 8px', borderRadius:99,
+                  background:'rgba(139,92,246,0.10)',
+                  border:'1px solid rgba(139,92,246,0.22)',
+                }}>
+                  TSS {session.tss}
+                </span>
+              )}
+              {session.status === 'done' && (
+                <span style={{
+                  fontSize:10, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' as const,
+                  color:'#22c55e',
+                  padding:'2px 8px', borderRadius:99,
+                  background:'rgba(34,197,94,0.10)',
+                  border:'1px solid rgba(34,197,94,0.25)',
+                }}>
+                  ✓ Validée
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+        <button
+          onClick={onClose}
+          style={{
+            background:'transparent', border:'1px solid var(--border)', borderRadius:9,
+            width:32, height:32, padding:0, cursor:'pointer',
+            color:'var(--text-mid)', fontSize:18, lineHeight:1, flexShrink:0,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            transition:'background 0.12s, color 0.12s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent';     (e.currentTarget as HTMLElement).style.color = 'var(--text-mid)' }}
+        >×</button>
       </div>
-      <div style={{ display:'flex',gap:5,marginBottom:16 }}>
-        {(['view','edit','validate'] as const).map(t=>(
-          <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===t?SPORT_BORDER[session.sport]:'var(--border)',background:tab===t?SPORT_BG[session.sport]:'var(--bg-card2)',color:tab===t?SPORT_BORDER[session.sport]:'var(--text-mid)',fontSize:11,fontWeight:tab===t?600:400,cursor:'pointer' }}>
-            {t==='view'?'Graphique':t==='edit'?'Modifier':'Valider'}
-          </button>
-        ))}
+
+      {/* TABS — pills style cyan accent uniforme, plus aérées */}
+      <div style={{ display:'flex',gap:4,marginBottom:20,padding:4,background:'var(--bg-card2)',borderRadius:11,border:'1px solid var(--border)' }}>
+        {(['view','edit','validate'] as const).map(t=>{
+          const label = t==='view'?'Graphique':t==='edit'?'Modifier':'Valider'
+          const active = tab===t
+          return (
+            <button
+              key={t}
+              onClick={()=>setTab(t)}
+              style={{
+                flex:1,
+                padding:'9px 10px',
+                borderRadius:8, border:'none',
+                background: active ? 'var(--bg-card)' : 'transparent',
+                color: active ? '#00c8e0' : 'var(--text-mid)',
+                fontSize:12, fontWeight: active ? 700 : 500,
+                cursor:'pointer',
+                fontFamily:'DM Sans, sans-serif',
+                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                transition:'background 0.14s, color 0.14s',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
       {tab==='view' && (
         <div>

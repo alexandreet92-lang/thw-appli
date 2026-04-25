@@ -1836,55 +1836,87 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
                 // Expand each block into sub-bars.
                 // mode='interval' → reps × (effort sub-bar + recovery sub-bar)
                 // mode='single'   → one sub-bar
-                type SBar = { key:string; min:number; color:string; hp:number; info?:string }
+                type SBar = { key:string; min:number; color:string; hp:number; valueLabel?:string; isRecovery?:boolean }
                 const sbars:SBar[] = []
                 for (const b of session.blocks) {
                   const c  = ZONE_COLORS[b.zone-1]
                   const hp = ((b.zone/5)*0.85+0.05)*100
-                  const info = [
-                    b.value  ? `${b.value}${session.sport==='bike'?'W':''}` : null,
-                    b.hrAvg  ? `${b.hrAvg}` : null,
+                  const valueLabel = [
+                    b.value ? `${b.value}${session.sport==='bike'?'W':''}` : null,
+                    b.hrAvg ? `${b.hrAvg}bpm` : null,
                   ].filter(Boolean).join(' · ') || undefined
                   if (b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin) {
                     const rz = b.recoveryZone??1
                     const rc = ZONE_COLORS[rz-1]
                     const rhp = ((rz/5)*0.85+0.05)*100
                     for (let i=0; i<b.reps; i++) {
-                      sbars.push({ key:`${b.id}_e${i}`, min:b.effortMin,   color:c,  hp,   info })
-                      sbars.push({ key:`${b.id}_r${i}`, min:b.recoveryMin, color:rc, hp:rhp })
+                      sbars.push({ key:`${b.id}_e${i}`, min:b.effortMin,   color:c,  hp,   valueLabel })
+                      sbars.push({ key:`${b.id}_r${i}`, min:b.recoveryMin, color:rc, hp:rhp, isRecovery:true })
                     }
                   } else {
-                    sbars.push({ key:b.id, min:b.durationMin, color:c, hp, info })
+                    sbars.push({ key:b.id, min:b.durationMin, color:c, hp, valueLabel })
                   }
                 }
-                const total = sbars.reduce((a,s)=>a+s.min,0)||1
                 return (
-                  <div style={{ display:'flex',alignItems:'flex-end',gap:2,height:70 }}>
-                    {sbars.map(sb=>{
-                      const wp=(sb.min/total)*100
-                      return (
-                        <div key={sb.key} style={{ width:`${wp}%`,height:`${sb.hp}%`,background:`linear-gradient(180deg,${sb.color}ee,${sb.color}55)`,borderRadius:'4px 4px 0 0',border:`1px solid ${sb.color}88`,minWidth:5,position:'relative' as const,overflow:'hidden' }}>
-                          {sb.info && wp>5 && (
-                            <span style={{ position:'absolute' as const,bottom:2,left:2,right:2,fontSize:7,color:'rgba(255,255,255,0.9)',fontFamily:'DM Mono,monospace',fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>
-                              {sb.info}
+                  <div style={{ overflowX:'auto' as const, marginRight:-4, paddingRight:4 }}>
+                    <div style={{ display:'flex',alignItems:'flex-end',gap:3,minHeight:110,paddingBottom:2 }}>
+                      {sbars.map(sb=>{
+                        // Min-width par sous-barre + flex proportionnel à la durée → bars
+                        // toujours lisibles même sur sessions à 20+ intervalles.
+                        const tooltipText = `${formatHM(sb.min)}${sb.valueLabel ? ' · ' + sb.valueLabel : ''}${sb.isRecovery ? ' (récup)' : ''}`
+                        return (
+                          <div
+                            key={sb.key}
+                            title={tooltipText}
+                            style={{
+                              minWidth:34,
+                              flex:`${Math.max(sb.min,1)} ${Math.max(sb.min,1)} auto`,
+                              height:`${sb.hp}%`, minHeight:30,
+                              background:`linear-gradient(180deg,${sb.color}f0,${sb.color}66)`,
+                              border:`1px solid ${sb.color}aa`,
+                              borderRadius:'5px 5px 0 0',
+                              display:'flex', flexDirection:'column' as const,
+                              alignItems:'center', justifyContent:'flex-end',
+                              padding:'3px 3px 4px', overflow:'hidden',
+                              color:'#fff', lineHeight:1.15, gap:1,
+                              opacity: sb.isRecovery ? 0.85 : 1,
+                            }}
+                          >
+                            <span style={{ fontSize:9, fontWeight:700, opacity:0.95, fontFamily:'DM Mono,monospace', whiteSpace:'nowrap' as const, textShadow:'0 1px 1px rgba(0,0,0,0.25)' }}>
+                              {formatHM(sb.min)}
                             </span>
-                          )}
-                        </div>
-                      )
-                    })}
+                            {sb.valueLabel && (
+                              <span style={{ fontSize:8, fontWeight:600, opacity:0.9, fontFamily:'DM Mono,monospace', whiteSpace:'nowrap' as const, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis' }}>
+                                {sb.valueLabel}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )
               })()}
             </div>
           ) : <p style={{ fontSize:12,color:'var(--text-dim)',textAlign:'center' as const,padding:'14px 0' }}>Aucun bloc — modifier pour en ajouter.</p>}
-          {session.blocks.map(b=>(
-            <div key={b.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 9px',borderRadius:7,background:`${ZONE_COLORS[b.zone-1]}11`,borderLeft:`2px solid ${ZONE_COLORS[b.zone-1]}`,marginBottom:4 }}>
-              <span style={{ fontSize:9,fontWeight:700,color:ZONE_COLORS[b.zone-1],width:17,flexShrink:0 }}>Z{b.zone}</span>
-              <span style={{ flex:1,fontSize:11 }}>{b.label}</span>
-              <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?`${b.reps}×${b.effortMin}'`:formatHM(b.durationMin)}</span>
-              {b.value && <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:ZONE_COLORS[b.zone-1] }}>{b.value}{session.sport==='bike'?'W':''}</span>}
-            </div>
-          ))}
+          {session.blocks.map(b=>{
+            const isInterval = b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin
+            const durLabel = isInterval ? `${b.reps}×${b.effortMin}min · récup ${b.recoveryMin}min` : formatHM(b.durationMin)
+            const valueLabel = b.value ? `${b.value}${session.sport==='bike'?'W':''}` : null
+            return (
+              <div key={b.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:8,background:`${ZONE_COLORS[b.zone-1]}11`,borderLeft:`3px solid ${ZONE_COLORS[b.zone-1]}`,marginBottom:5 }}>
+                <span style={{ fontSize:10,fontWeight:800,color:ZONE_COLORS[b.zone-1],minWidth:22,flexShrink:0,fontFamily:'DM Mono,monospace' }}>Z{b.zone}</span>
+                <span style={{ flex:1,fontSize:12,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:'var(--text)' }}>{b.label}</span>
+                <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',flexShrink:0 }}>{durLabel}</span>
+                {valueLabel && (
+                  <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',fontWeight:700,color:ZONE_COLORS[b.zone-1],flexShrink:0 }}>{valueLabel}</span>
+                )}
+                {b.hrAvg && (
+                  <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'#ef4444',flexShrink:0 }}>{b.hrAvg}bpm</span>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
       {tab==='edit' && (

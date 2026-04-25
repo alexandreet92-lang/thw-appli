@@ -1109,6 +1109,18 @@ function TrainingTab() {
   const [dragOver, setDragOver] = useState<number|null>(null)
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
+  // Day index dont le picker d'intensité est ouvert (null = fermé)
+  const [intensityPickerDay, setIntensityPickerDay] = useState<number|null>(null)
+  // Fermeture au clic hors du picker
+  useEffect(() => {
+    if (intensityPickerDay === null) return
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null
+      if (!t || !t.closest('[data-intensity-picker]')) setIntensityPickerDay(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [intensityPickerDay])
   const dragRef  = useRef<{id:string;from:number}|null>(null)
   const touchRef = useRef<{id:string;from:number}|null>(null)
   const todayIdx = getTodayIdx()
@@ -1287,13 +1299,56 @@ function TrainingTab() {
         </div>}
         <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card2)',minWidth:520 }}>
           <div style={{ padding:'10px 8px' }}/>
-          {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; return (
+          {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
             <div key={d.day} style={{ padding:'8px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)',minWidth:68 }}>
               <p style={{ fontSize:10,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.06em',margin:'0 0 2px',fontWeight:500 }}>{d.day}</p>
-              <p style={{ fontSize:14,fontWeight:700,margin:'0 0 4px',color:i===todayIdx&&ws===currentWeekStart?'#00c8e0':'var(--text)' }}>{wDates[i]}</p>
-              <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:3 }}>
-                <button onClick={()=>setIntensityModal(d.intensity)} style={{ padding:'1px 6px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:9,fontWeight:700,cursor:'pointer' }}>{cfg.label}</button>
-                {ws===currentWeekStart&&<button onClick={()=>handleChangeIntensity(i)} style={{ width:13,height:13,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:8,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>}
+              <p style={{ fontSize:14,fontWeight:700,margin:'0 0 4px',color:i===todayIdx&&isCurrent?'#00c8e0':'var(--text)' }}>{wDates[i]}</p>
+              <div data-intensity-picker style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative' as const }}>
+                <button
+                  onClick={()=>{ if (isCurrent) setIntensityPickerDay(isPickerOpen?null:i); else setIntensityModal(d.intensity) }}
+                  title={isCurrent?'Changer l\'intensité du jour':cfg.label}
+                  style={{ padding:'2px 9px 2px 7px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:9,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
+                  {cfg.label}
+                  {isCurrent && (
+                    <svg width={7} height={7} viewBox="0 0 10 10" style={{ opacity:0.7,transform:isPickerOpen?'rotate(180deg)':'none',transition:'transform 0.12s' }}>
+                      <path d="M2 4 L5 7 L8 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                {isPickerOpen && (
+                  <div data-intensity-picker style={{
+                    position:'absolute' as const, top:'calc(100% + 4px)', left:'50%', transform:'translateX(-50%)',
+                    zIndex:60, minWidth:90,
+                    background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:9,
+                    padding:4, boxShadow:'0 8px 20px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)',
+                    display:'flex', flexDirection:'column' as const, gap:2,
+                  }}>
+                    {INTENSITY_ORDER.map(intensity => {
+                      const c = INTENSITY_CONFIG[intensity]
+                      const active = d.intensity === intensity
+                      return (
+                        <button
+                          key={intensity}
+                          onClick={()=>{ setDayIntensity(i, intensity); setIntensityPickerDay(null) }}
+                          style={{
+                            padding:'6px 10px', borderRadius:6,
+                            background: active ? c.bg : 'transparent',
+                            border: active ? `1px solid ${c.border}` : '1px solid transparent',
+                            color: c.color, fontSize:11, fontWeight: active ? 700 : 500,
+                            cursor:'pointer', textAlign:'left' as const,
+                            display:'flex', alignItems:'center', gap:6,
+                            fontFamily:'DM Sans, sans-serif',
+                          }}
+                          onMouseEnter={e=>{ if (!active) (e.currentTarget as HTMLElement).style.background = c.bg }}
+                          onMouseLeave={e=>{ if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                        >
+                          <span style={{ width:7, height:7, borderRadius:'50%', background:c.color, flexShrink:0 }} />
+                          {c.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )})}

@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/hooks/useTheme'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -3338,15 +3339,15 @@ export default function TrainingPage() {
           {loading && !error && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[80, 120, 80, 100].map((h, i) => (
-                <div key={i} style={{ background: T.surface, borderRadius: T.radius, height: h, border: `1px solid ${T.border}`, opacity: 0.7 }} />
+                <div key={i} className="skeleton-shimmer" style={{ borderRadius: T.radius, height: h }} />
               ))}
             </div>
           )}
 
           {/* Sections */}
-          {!loading && !error && section === 'donnees'     && <SectionDonnees activities={activities} zones={zones} profile={profile} />}
-          {!loading && !error && section === 'analyse'     && <SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} />}
-          {!loading && !error && section === 'progression' && <SectionProgression activities={activities} />}
+          {!loading && !error && section === 'donnees'     && <ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal>}
+          {!loading && !error && section === 'analyse'     && <ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} /></ScrollReveal>}
+          {!loading && !error && section === 'progression' && <ScrollReveal><SectionProgression activities={activities} /></ScrollReveal>}
         </main>
       </div>
 

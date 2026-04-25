@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -30,6 +33,27 @@ const sizes = {
   lg: 'px-5 py-2.5 text-sm gap-2 rounded-btn',
 }
 
+// Pulsing dots used in loading state — no spinner
+function LoadingDots() {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          style={{
+            width: 4, height: 4,
+            borderRadius: '50%',
+            background: 'currentColor',
+            display: 'inline-block',
+          }}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1, repeat: Infinity, delay: i * 0.2, ease: 'easeInOut' }}
+        />
+      ))}
+    </span>
+  )
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -40,7 +64,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   return (
-    <button
+    <motion.button
       disabled={disabled || loading}
       className={cn(
         'inline-flex items-center font-medium transition-all duration-200 cursor-pointer border-none',
@@ -49,17 +73,17 @@ export function Button({
         sizes[size],
         className
       )}
-      {...props}
+      whileTap={disabled || loading ? {} : { scale: 0.96 }}
+      whileHover={disabled || loading ? {} : { scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+      {...(props as React.ComponentPropsWithoutRef<typeof motion.button>)}
     >
       {loading ? (
         <>
-          <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-          Chargement…
+          <LoadingDots />
+          <span>Chargement…</span>
         </>
       ) : children}
-    </button>
+    </motion.button>
   )
 }

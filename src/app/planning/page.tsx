@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
+import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
+import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -1430,7 +1432,7 @@ function TrainingTab() {
     )
   }
 
-  if (loading) return <div style={{ padding:20,textAlign:'center',color:'var(--text-dim)',fontSize:13 }}>Chargement...</div>
+  if (loading) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
@@ -1558,8 +1560,8 @@ function TrainingTab() {
       `}</style>
 
       {/* KPI */}
-      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
-        <div className="card-enter" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
+      <ScrollRevealGroup style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
+        <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Volume</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
@@ -1568,8 +1570,8 @@ function TrainingTab() {
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#00c8e0',margin:'0 0 8px' }}>{formatHM(doneMin)}</p>
           <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#00c8e0" height={5} className="mb-1.5" />
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
-        </div>
-        <div className="card-enter card-enter-1" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
+        </ScrollRevealItem>
+        <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Séances</p>
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedN}</p>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#ffb340',margin:'0 0 8px' }}><CountUp value={doneN} /></p>
@@ -1577,8 +1579,8 @@ function TrainingTab() {
           <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:4 }}>
             {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:SPORT_BORDER[s.sport],fontFamily:'DM Mono,monospace',display:'flex',alignItems:'center',gap:3 }}><SportBadge sport={s.sport} size="xs"/> {s.done}/{s.planned}</span>)}
           </div>
-        </div>
-        <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
+        </ScrollRevealItem>
+        <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(91,111,255,0.10)',border:'1px solid rgba(91,111,255,0.25)',color:'#5b6fff',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
@@ -1586,8 +1588,8 @@ function TrainingTab() {
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedTSS} pts</p>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#5b6fff',margin:'0 0 8px' }}><CountUp value={doneTSS} /> pts</p>
           <AnimatedBar pct={plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0} color="#5b6fff" height={5} />
-        </div>
-      </div>
+        </ScrollRevealItem>
+      </ScrollRevealGroup>
 
       {/* Volume par discipline */}
       {sportStats.length>0 && (
@@ -1710,8 +1712,8 @@ function TrainingTab() {
       {/* COMPARE MODE — Plan A stacked above Plan B */}
       {compareMode && (
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
-          <WeekGrid ws={currentWeekStart} plan="A" labelTag="Plan A — Optimal"/>
-          <WeekGrid ws={currentWeekStart} plan="B" labelTag="Plan B — Minimal"/>
+          <ScrollReveal><WeekGrid ws={currentWeekStart} plan="A" labelTag="Plan A — Optimal"/></ScrollReveal>
+          <ScrollReveal delay={0.08}><WeekGrid ws={currentWeekStart} plan="B" labelTag="Plan B — Minimal"/></ScrollReveal>
         </div>
       )}
 
@@ -1719,7 +1721,9 @@ function TrainingTab() {
       {!compareMode && (weekRange>1 || view==='vertical') && (
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {allWeekStarts.map((ws,wi)=>(
-            <WeekGrid key={ws} ws={ws} plan={activePlan} labelTag={weekRange>1?`Semaine ${wi+1} — ${getWeekLabel(ws)}`:undefined}/>
+            <ScrollReveal key={ws} delay={Math.min(wi * 0.06, 0.3)}>
+              <WeekGrid ws={ws} plan={activePlan} labelTag={weekRange>1?`Semaine ${wi+1} — ${getWeekLabel(ws)}`:undefined}/>
+            </ScrollReveal>
           ))}
         </div>
       )}

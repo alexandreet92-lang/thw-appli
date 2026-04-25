@@ -132,6 +132,69 @@ function formatHM(totalMin:number):string {
 function formatDur(min:number):string { return formatHM(min) }
 function daysUntil(d:string):number { return Math.ceil((new Date(d).getTime()-Date.now())/(1000*60*60*24)) }
 function calcSpeed(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; return `${(d/(m/60)).toFixed(1)} km/h` }
+
+// Normalise un bloc en provenance de planned_sessions.blocks (JSONB) vers
+// le shape Block utilisé en UI. Le Coach IA stocke les blocs au format
+// agent (français : nom, duree_min, zone, repetitions, recup_min, watts,
+// allure, consigne). Sans cette conversion, formatHM(undefined) produit
+// "NaNhNaN" et value/hrAvg sont vides.
+// Compat : si le bloc est déjà au shape Block (id + durationMin présents),
+// on le retourne tel quel.
+function normalizeBlock(raw:unknown):Block|null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string,unknown>
+
+  // Déjà au shape Block (édition manuelle, BlockBuilder)
+  if (typeof r.id === 'string' && typeof r.durationMin === 'number') {
+    return r as unknown as Block
+  }
+
+  // Shape agent (training-plan)
+  const dureeMin    = typeof r.duree_min    === 'number' ? r.duree_min    : 0
+  const zone        = typeof r.zone         === 'number' ? Math.max(1, Math.min(5, r.zone)) : 1
+  const repetitions = typeof r.repetitions  === 'number' ? r.repetitions  : 0
+  const recupMin    = typeof r.recup_min    === 'number' ? r.recup_min    : 0
+  const watts       = typeof r.watts        === 'number' ? r.watts        : null
+  const allure      = typeof r.allure       === 'string' ? r.allure       : null
+  const nom         = typeof r.nom          === 'string' ? r.nom          : 'Bloc'
+  const consigne    = typeof r.consigne     === 'string' ? r.consigne     : ''
+
+  // Détection interval vs single
+  let mode:BlockMode = 'single'
+  let durationMin = dureeMin
+  let reps:number|undefined; let effortMin:number|undefined; let recoveryMin:number|undefined; let recoveryZone:number|undefined
+  if (repetitions > 1 && dureeMin > 0) {
+    mode = 'interval'
+    reps = repetitions
+    effortMin = dureeMin
+    recoveryMin = recupMin
+    recoveryZone = 1
+    durationMin = repetitions * (dureeMin + recupMin)
+  }
+
+  // Détection type (warmup/effort/recovery/cooldown) depuis le nom
+  let type:BlockType = 'effort'
+  const ln = nom.toLowerCase()
+  if (ln.includes('échauffe') || ln.includes('echauffe') || ln.includes('warm')) type = 'warmup'
+  else if (ln.includes('retour au calme') || ln.includes('cool') || ln.includes('cooldown')) type = 'cooldown'
+  else if (zone <= 1 && ln.includes('récup')) type = 'recovery'
+
+  // value = watts (bike) ou allure (run/swim) — sinon vide
+  const value = watts != null ? String(watts) : (allure ?? '')
+
+  // Label = nom court ; consigne ajoutée en infobulle si dispo
+  const label = consigne ? `${nom} — ${consigne}` : nom
+
+  // ID synthétique stable pour React keys (basé sur nom + zone + duree)
+  const id = `b_${nom.replace(/\s+/g,'_').slice(0,16)}_${zone}_${dureeMin}_${repetitions}_${Math.random().toString(36).slice(2,6)}`
+
+  return { id, mode, type, durationMin, zone, value, hrAvg:'', label, reps, effortMin, recoveryMin, recoveryZone }
+}
+
+function normalizeBlocks(raw:unknown):Block[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(normalizeBlock).filter((b):b is Block => b !== null)
+}
 function calcPaceStr(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; const s=m*60/d; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` }
 function parsePace(s:string):number { const p=s.replace(',',':').split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0) }
 function getWeekStart():string { const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1; const m=new Date(now); m.setDate(now.getDate()-dow); return m.toISOString().split('T')[0] }
@@ -270,7 +333,7 @@ function usePlanning(weekStartParam?:string) {
     setSessions((s.data??[]).map((r:any):Session=>({
       id:r.id, dayIndex:r.day_index, sport:r.sport, title:r.title,
       time:r.time??'09:00', durationMin:r.duration_min, tss:r.tss,
-      status:r.status, notes:r.notes, rpe:r.rpe, blocks:r.blocks??[], main:false,
+      status:r.status, notes:r.notes, rpe:r.rpe, blocks:normalizeBlocks(r.blocks), main:false,
       planVariant:r.plan_variant??'A',
       ...(r.validation_data??{}),
     })))
@@ -1051,7 +1114,7 @@ function TrainingTab() {
         if(!grouped[r.week_start])grouped[r.week_start]=[]
         grouped[r.week_start].push({id:r.id,dayIndex:r.day_index,sport:r.sport,title:r.title,
           time:r.time??'09:00',durationMin:r.duration_min,tss:r.tss,status:r.status,
-          notes:r.notes,rpe:r.rpe,blocks:r.blocks??[],main:false,planVariant:r.plan_variant??'A',
+          notes:r.notes,rpe:r.rpe,blocks:normalizeBlocks(r.blocks),main:false,planVariant:r.plan_variant??'A',
           ...(r.validation_data??{})})
       })
       setExtraSessions(grouped)

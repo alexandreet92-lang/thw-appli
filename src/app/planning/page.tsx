@@ -1102,6 +1102,22 @@ function TrainingTab() {
   const [activePlan,  setActivePlan]  = useState<PlanVariant>('A')
   const [compareMode, setCompareMode] = useState(false)
   const [showRangeDd, setShowRangeDd] = useState(false)
+
+  // ── Sync weekOffset depuis l'URL au mount client (corrige le décalage
+  //    SSR/hydratation quand searchParams est vide côté serveur Next.js 15)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const weekParam = params.get('week')
+    if (!weekParam) return
+    try {
+      const target  = new Date(weekParam + 'T00:00:00')
+      const current = new Date(getWeekStart() + 'T00:00:00')
+      const diffMs  = target.getTime() - current.getTime()
+      const newOffset = Math.round(diffMs / (7 * 86400000))
+      setWeekOffset(prev => prev === newOffset ? prev : newOffset)
+    } catch { /* ignore malformed date */ }
+  }, []) // Runs once on client mount — window.location is always correct here
+
   const currentWeekStart = getWeekStartFromOffset(weekOffset)
   const { sessions, intensities, activities, loading, addSession, updateSession, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
   const [view, setView] = useState<TrainingView>('vertical')

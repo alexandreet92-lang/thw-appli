@@ -1903,309 +1903,521 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   )
 }
 
-// ── Session Detail Modal ──────────────────────────
+// ── Session Detail — page unique fullscreen ──────────────────────
+// Remplace l'ancien modal à 3 onglets (Graphique / Modifier / Valider)
+// par une page unique scrollable avec :
+//   Header : titre + métadonnées + jauge RPE éditable
+//   Chart  : profil d'intensité visuel (clic bloc → expand inline)
+//   Blocs  : liste inline-editable, ajout/suppression
+//   Validation : 2 boutons (manuel / via Strava-Training)
+//   Footer : Supprimer + Fermer + Enregistrer
+
+function rpeColor(level: number): string {
+  if (level <= 3) return '#22c55e'
+  if (level <= 5) return '#eab308'
+  if (level <= 7) return '#f97316'
+  return '#ef4444'
+}
+
+const ZONE_HEIGHTS_PCT: Record<number, number> = { 1: 18, 2: 32, 3: 52, 4: 72, 5: 92 }
+
+function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
+  block: Block; sport: SportType
+  isExpanded: boolean
+  onToggle: () => void
+  onPatch: (patch: Partial<Block>) => void
+  onDelete: () => void
+}) {
+  const c = ZONE_COLORS[block.zone-1]
+  const isInterval = block.mode === 'interval' && !!block.reps && !!block.effortMin && !!block.recoveryMin
+  const durLabel = isInterval
+    ? `${block.reps}×${block.effortMin}min · récup ${block.recoveryMin}min`
+    : formatHM(block.durationMin)
+  const valueLabel = block.value ? `${block.value}${sport==='bike'?'W':''}` : null
+  const inputStyle: React.CSSProperties = {
+    width:'100%', padding:'7px 10px', borderRadius:7,
+    border:'1px solid var(--border)', background:'var(--bg-card)',
+    color:'var(--text)', fontSize:12, outline:'none' as const,
+  }
+  const labelStyle: React.CSSProperties = {
+    fontSize:10, fontWeight:600, textTransform:'uppercase' as const,
+    letterSpacing:'0.06em', color:'var(--text-dim)', display:'block',
+    margin:'10px 0 4px',
+  }
+  const { h: dh, m: dm } = minToHMin(block.durationMin || 0)
+
+  return (
+    <div style={{
+      borderRadius:9,
+      background:`${c}11`,
+      borderLeft:`3px solid ${c}`,
+      border:`1px solid ${c}22`,
+      overflow:'hidden' as const,
+    }}>
+      {/* Summary row */}
+      <div onClick={onToggle} style={{
+        display:'flex', alignItems:'center', gap:9,
+        padding:'9px 12px', cursor:'pointer',
+      }}>
+        <span style={{ fontSize:10,fontWeight:800,color:c,minWidth:22,fontFamily:'DM Mono,monospace' }}>Z{block.zone}</span>
+        <span style={{ flex:1, fontSize:12, minWidth:0, overflow:'hidden', textOverflow:'ellipsis' as const, whiteSpace:'nowrap' as const, color:'var(--text)' }}>
+          {block.label}
+        </span>
+        <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:'var(--text-mid)', flexShrink:0 }}>{durLabel}</span>
+        {valueLabel && (
+          <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,color:c,flexShrink:0 }}>{valueLabel}</span>
+        )}
+        <span style={{ color:'var(--text-dim)',fontSize:10,flexShrink:0,transform:isExpanded?'rotate(90deg)':'none',transition:'transform 0.14s' }}>▸</span>
+      </div>
+
+      {isExpanded && (
+        <div style={{ padding:'4px 14px 14px', borderTop:`1px solid ${c}22`, background:'var(--bg-card2)' }}>
+          <label style={labelStyle}>Description</label>
+          <input value={block.label} onChange={e=>onPatch({ label:e.target.value })} style={inputStyle} />
+
+          <label style={labelStyle}>Zone d'intensité</label>
+          <div style={{ display:'flex', gap:4 }}>
+            {[1,2,3,4,5].map(z => {
+              const zc = ZONE_COLORS[z-1]
+              const active = block.zone === z
+              return (
+                <button key={z} onClick={()=>onPatch({ zone: z })} style={{
+                  flex:1, padding:'8px 0', borderRadius:6,
+                  border: active ? `2px solid ${zc}` : '1px solid var(--border)',
+                  background: active ? `${zc}26` : 'var(--bg-card)',
+                  color: active ? zc : 'var(--text-mid)',
+                  fontSize:11, fontWeight:700, fontFamily:'DM Mono,monospace', cursor:'pointer',
+                }}>
+                  Z{z}
+                </button>
+              )
+            })}
+          </div>
+
+          <label style={labelStyle}>Type</label>
+          <div style={{ display:'flex', gap:4 }}>
+            {(['single','interval'] as const).map(m => {
+              const active = block.mode === m
+              return (
+                <button key={m} onClick={()=>onPatch({ mode:m })} style={{
+                  flex:1, padding:'8px 0', borderRadius:6,
+                  border: active ? '2px solid #00c8e0' : '1px solid var(--border)',
+                  background: active ? 'rgba(0,200,224,0.10)' : 'var(--bg-card)',
+                  color: active ? '#00c8e0' : 'var(--text-mid)',
+                  fontSize:11, fontWeight:600, cursor:'pointer',
+                }}>
+                  {m==='single' ? 'Bloc continu' : 'Intervalles (N×)'}
+                </button>
+              )
+            })}
+          </div>
+
+          {block.mode === 'single' ? (
+            <>
+              <label style={labelStyle}>Durée</label>
+              <div style={{ display:'flex', gap:8 }}>
+                <div style={{ flex:1 }}>
+                  <input type="number" min={0} max={12} value={dh}
+                    onChange={e=>onPatch({ durationMin: hMinToMin(parseInt(e.target.value)||0, dm) })}
+                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>heures</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <input type="number" min={0} max={59} value={dm}
+                    onChange={e=>onPatch({ durationMin: hMinToMin(dh, parseInt(e.target.value)||0) })}
+                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>minutes</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <label style={labelStyle}>Répétitions × Effort × Récup</label>
+              <div style={{ display:'flex', gap:8 }}>
+                <div style={{ flex:1 }}>
+                  <input type="number" min={1} max={50} value={block.reps ?? 1}
+                    onChange={e=>onPatch({ reps: Math.max(1, parseInt(e.target.value)||1) })}
+                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>reps</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <input type="number" min={0} max={120} value={block.effortMin ?? 0}
+                    onChange={e=>onPatch({ effortMin: Math.max(0, parseInt(e.target.value)||0) })}
+                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>effort (min)</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <input type="number" min={0} max={60} value={block.recoveryMin ?? 0}
+                    onChange={e=>onPatch({ recoveryMin: Math.max(0, parseInt(e.target.value)||0) })}
+                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>récup (min)</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {sport !== 'gym' && (
+            <>
+              <label style={labelStyle}>
+                {sport === 'bike' ? 'Puissance cible' : sport === 'run' ? 'Allure cible' : 'Cible'}
+              </label>
+              <input
+                value={block.value} onChange={e=>onPatch({ value:e.target.value })}
+                placeholder={sport === 'bike' ? '220 (en watts)' : sport === 'run' ? "4'30/km" : '—'}
+                style={inputStyle} />
+            </>
+          )}
+
+          <div style={{ display:'flex', gap:8, marginTop:14 }}>
+            <button onClick={onDelete} style={{
+              padding:'8px 12px', borderRadius:8,
+              background:'rgba(255,95,95,0.10)', border:'1px solid rgba(255,95,95,0.25)',
+              color:'#ff5f5f', fontSize:11, cursor:'pointer', fontWeight:600,
+            }}>Supprimer ce bloc</button>
+            <div style={{ flex:1 }} />
+            <button onClick={onToggle} style={{
+              padding:'8px 14px', borderRadius:8,
+              background:'var(--bg-card)', border:'1px solid var(--border)',
+              color:'var(--text-mid)', fontSize:11, cursor:'pointer',
+            }}>Replier</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{ session:Session; onClose:()=>void; onSave:(s:Session)=>void; onValidate:(s:Session)=>void; onDelete:(id:string)=>void }) {
-  const [tab,  setTab]  = useState<'view'|'edit'|'validate'>('view')
+  const router = useRouter()
   const [form, setForm] = useState<Session>({...session, blocks:[...session.blocks]})
-  const isEnd = ['run','bike','swim'].includes(session.sport)
-  const speed = calcSpeed(form.vDistance||'', form.vDuration||'')
-  const pace  = calcPaceStr(form.vDistance||'', form.vDuration||'')
+  const [expandedBlockId, setExpandedBlockId] = useState<string|null>(null)
+
+  const isDirty = JSON.stringify({
+    title:form.title, time:form.time, durationMin:form.durationMin,
+    notes:form.notes, rpe:form.rpe, blocks:form.blocks,
+  }) !== JSON.stringify({
+    title:session.title, time:session.time, durationMin:session.durationMin,
+    notes:session.notes, rpe:session.rpe, blocks:session.blocks,
+  })
+
+  function patchForm<K extends keyof Session>(key:K, value:Session[K]) {
+    setForm(f => ({ ...f, [key]:value }))
+  }
+  function patchBlock(id:string, patch:Partial<Block>) {
+    setForm(f => ({ ...f, blocks: f.blocks.map(b => b.id === id ? { ...b, ...patch } : b) }))
+  }
+  function deleteBlock(id:string) {
+    setForm(f => ({ ...f, blocks: f.blocks.filter(b => b.id !== id) }))
+    if (expandedBlockId === id) setExpandedBlockId(null)
+  }
+  function addBlock() {
+    const newBlock: Block = {
+      id: 'b_' + Math.random().toString(36).slice(2, 10),
+      mode: 'single', type: 'effort',
+      durationMin: 10, zone: 2, value: '', hrAvg: '', label: 'Nouveau bloc',
+    }
+    setForm(f => ({ ...f, blocks:[...f.blocks, newBlock] }))
+    setExpandedBlockId(newBlock.id)
+  }
+  function handleSave() {
+    const tss = calcTSS(form.blocks, session.sport, form.durationMin, form.rpe)
+    onSave({ ...form, tss })
+  }
+  function handleValidateStrava() {
+    onClose()
+    router.push('/activities')
+  }
+  function handleValidateManual() {
+    // Phase 2 — formulaire complet (à valider avec user). Placeholder :
+    // confirme et marque comme done avec valeurs prévues = valeurs réelles.
+    if (window.confirm('Validation manuelle complète à venir. Marquer la séance comme effectuée avec les valeurs prévues ?')) {
+      onValidate({ ...form, status:'done' })
+    }
+  }
   return (
     <div onClick={e=>e.stopPropagation()} style={{
       background:'var(--bg-card)',
-      borderRadius:16,
+      borderRadius:18,
       border:'1px solid var(--border)',
-      padding:'24px 26px',
-      maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto',
-      boxShadow:'0 20px 50px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.06)',
+      maxWidth:880, width:'100%', maxHeight:'94vh',
+      display:'flex', flexDirection:'column' as const,
+      boxShadow:'0 24px 60px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.08)',
+      overflow:'hidden' as const,
     }}>
-      {/* HEADER refondu — hiérarchie titre / métadonnées / fermeture */}
-      <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:18 }}>
-        <div style={{ display:'flex',alignItems:'flex-start',gap:12,flex:1,minWidth:0 }}>
+      {/* ── HEADER (sticky top) ─────────────────────────────── */}
+      <header style={{ padding:'22px 28px 18px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+        <div style={{ display:'flex',alignItems:'flex-start',gap:14 }}>
           <div style={{
-            width:44,height:44,borderRadius:11,
+            width:48,height:48,borderRadius:12,
             background:SPORT_BG[session.sport],
             border:`1px solid ${SPORT_BORDER[session.sport]}55`,
             display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
           }}>
             <SportBadge sport={session.sport} size="sm"/>
           </div>
-          <div style={{ flex:1,minWidth:0 }}>
-            <p style={{
-              fontFamily:'Syne,sans-serif',
-              fontSize:18, fontWeight:800,
-              color:'var(--text)',
-              margin:'2px 0 6px',
-              lineHeight:1.25,
-              letterSpacing:'-0.01em',
-              wordBreak:'break-word' as const,
-            }}>
-              {session.title}
-            </p>
-            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' as const }}>
-              <span style={{
-                fontSize:11, fontFamily:'DM Mono,monospace', fontWeight:700,
-                color:SPORT_BORDER[session.sport],
-                padding:'2px 8px', borderRadius:99,
-                background:SPORT_BG[session.sport],
-                border:`1px solid ${SPORT_BORDER[session.sport]}33`,
-              }}>
-                {session.time}
+          <div style={{ flex:1, minWidth:0 }}>
+            <input
+              value={form.title}
+              onChange={e=>patchForm('title', e.target.value)}
+              placeholder="Titre de la séance"
+              style={{
+                fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:800,
+                color:'var(--text)',background:'transparent',border:'none',outline:'none' as const,
+                width:'100%',padding:0,letterSpacing:'-0.01em',lineHeight:1.2,
+              }}
+            />
+            <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:8,alignItems:'center' }}>
+              <input
+                value={form.time}
+                onChange={e=>patchForm('time', e.target.value)}
+                placeholder="07:00"
+                style={{
+                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
+                  color:SPORT_BORDER[session.sport],
+                  padding:'2px 8px',borderRadius:99,
+                  background:SPORT_BG[session.sport],
+                  border:`1px solid ${SPORT_BORDER[session.sport]}33`,
+                  width:60, textAlign:'center' as const, outline:'none' as const,
+                }}
+              />
+              <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,color:'var(--text-mid)',padding:'2px 8px',borderRadius:99,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                {formatHM(form.durationMin)}
               </span>
-              <span style={{
-                fontSize:11, fontFamily:'DM Mono,monospace', fontWeight:600,
-                color:'var(--text-mid)',
-                padding:'2px 8px', borderRadius:99,
-                background:'var(--bg-card2)',
-                border:'1px solid var(--border)',
-              }}>
-                {formatHM(session.durationMin)}
-              </span>
-              {session.tss != null && session.tss > 0 && (
-                <span style={{
-                  fontSize:11, fontFamily:'DM Mono,monospace', fontWeight:600,
-                  color:'#8b5cf6',
-                  padding:'2px 8px', borderRadius:99,
-                  background:'rgba(139,92,246,0.10)',
-                  border:'1px solid rgba(139,92,246,0.22)',
-                }}>
-                  TSS {session.tss}
+              {form.tss != null && form.tss > 0 && (
+                <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,color:'#8b5cf6',padding:'2px 8px',borderRadius:99,background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.22)' }}>
+                  TSS {form.tss}
                 </span>
               )}
-              {session.status === 'done' && (
-                <span style={{
-                  fontSize:10, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' as const,
-                  color:'#22c55e',
-                  padding:'2px 8px', borderRadius:99,
-                  background:'rgba(34,197,94,0.10)',
-                  border:'1px solid rgba(34,197,94,0.25)',
-                }}>
+              {form.status === 'done' && (
+                <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase' as const,color:'#22c55e',padding:'2px 8px',borderRadius:99,background:'rgba(34,197,94,0.10)',border:'1px solid rgba(34,197,94,0.25)' }}>
                   ✓ Validée
                 </span>
               )}
             </div>
           </div>
+          <button
+            onClick={onClose}
+            style={{
+              background:'transparent',border:'1px solid var(--border)',borderRadius:9,
+              width:32,height:32,padding:0,cursor:'pointer',
+              color:'var(--text-mid)',fontSize:18,lineHeight:1,flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center',
+            }}
+          >×</button>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            background:'transparent', border:'1px solid var(--border)', borderRadius:9,
-            width:32, height:32, padding:0, cursor:'pointer',
-            color:'var(--text-mid)', fontSize:18, lineHeight:1, flexShrink:0,
-            display:'flex', alignItems:'center', justifyContent:'center',
-            transition:'background 0.12s, color 0.12s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent';     (e.currentTarget as HTMLElement).style.color = 'var(--text-mid)' }}
-        >×</button>
-      </div>
 
-      {/* TABS — pills style cyan accent uniforme, plus aérées */}
-      <div style={{ display:'flex',gap:4,marginBottom:20,padding:4,background:'var(--bg-card2)',borderRadius:11,border:'1px solid var(--border)' }}>
-        {(['view','edit','validate'] as const).map(t=>{
-          const label = t==='view'?'Graphique':t==='edit'?'Modifier':'Valider'
-          const active = tab===t
-          return (
-            <button
-              key={t}
-              onClick={()=>setTab(t)}
-              style={{
-                flex:1,
-                padding:'9px 10px',
-                borderRadius:8, border:'none',
-                background: active ? 'var(--bg-card)' : 'transparent',
-                color: active ? '#00c8e0' : 'var(--text-mid)',
-                fontSize:12, fontWeight: active ? 700 : 500,
-                cursor:'pointer',
-                fontFamily:'DM Sans, sans-serif',
-                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                transition:'background 0.14s, color 0.14s',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
-      {tab==='view' && (
-        <div>
-          {/* MUSCU — liste structurée exercice / séries × reps / charge */}
-          {session.sport === 'gym' && session.blocks.length > 0 ? (
-            <div style={{ display:'flex',flexDirection:'column' as const,gap:6,marginBottom:12 }}>
-              <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 4px' }}>
-                Exercices
-              </p>
-              {session.blocks.map((b, i) => {
-                const ex = parseGymExercise(b)
-                return (
-                  <div key={b.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                    <span style={{ fontSize:10,fontWeight:700,color:'#f97316',minWidth:22,fontFamily:'DM Mono,monospace' }}>
-                      {String(i+1).padStart(2,'0')}
-                    </span>
-                    <div style={{ flex:1,minWidth:0 }}>
-                      <p style={{ fontSize:13,fontWeight:600,color:'var(--text)',margin:0,lineHeight:1.3 }}>
-                        {ex.nom}
-                      </p>
-                      {ex.consigne && (
-                        <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0',fontStyle:'italic' as const,lineHeight:1.4 }}>
-                          {ex.consigne}
-                        </p>
-                      )}
-                    </div>
-                    {(ex.sets != null && ex.reps != null) && (
-                      <span style={{ fontSize:11,fontWeight:700,padding:'4px 9px',borderRadius:6,background:'rgba(249,115,22,0.12)',color:'#f97316',fontFamily:'DM Mono,monospace',flexShrink:0,whiteSpace:'nowrap' as const }}>
-                        {ex.sets} × {ex.reps}
-                      </span>
-                    )}
-                    {(ex.sets == null && ex.reps != null) && (
-                      <span style={{ fontSize:11,fontWeight:700,padding:'4px 9px',borderRadius:6,background:'rgba(249,115,22,0.12)',color:'#f97316',fontFamily:'DM Mono,monospace',flexShrink:0 }}>
-                        × {ex.reps}
-                      </span>
-                    )}
-                    {ex.charge && (
-                      <span style={{ fontSize:11,fontWeight:700,padding:'4px 9px',borderRadius:6,background:'rgba(139,92,246,0.12)',color:'#8b5cf6',fontFamily:'DM Mono,monospace',flexShrink:0,whiteSpace:'nowrap' as const }}>
-                        {ex.charge}
-                      </span>
-                    )}
-                    {ex.duree != null && ex.duree > 0 && ex.sets == null && ex.reps == null && (
-                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',flexShrink:0 }}>
-                        {formatHM(ex.duree)}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          ) : session.blocks.length>0 ? (
-            <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 14px',marginBottom:12 }}>
-              {(()=>{
-                // Expand each block into sub-bars.
-                // mode='interval' → reps × (effort sub-bar + recovery sub-bar)
-                // mode='single'   → one sub-bar
-                type SBar = { key:string; min:number; color:string; hp:number; valueLabel?:string; isRecovery?:boolean }
-                const sbars:SBar[] = []
-                for (const b of session.blocks) {
-                  const c  = ZONE_COLORS[b.zone-1]
-                  const hp = ((b.zone/5)*0.85+0.05)*100
-                  const valueLabel = [
-                    b.value ? `${b.value}${session.sport==='bike'?'W':''}` : null,
-                    b.hrAvg ? `${b.hrAvg}bpm` : null,
-                  ].filter(Boolean).join(' · ') || undefined
-                  if (b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin) {
-                    const rz = b.recoveryZone??1
-                    const rc = ZONE_COLORS[rz-1]
-                    const rhp = ((rz/5)*0.85+0.05)*100
-                    for (let i=0; i<b.reps; i++) {
-                      sbars.push({ key:`${b.id}_e${i}`, min:b.effortMin,   color:c,  hp,   valueLabel })
-                      sbars.push({ key:`${b.id}_r${i}`, min:b.recoveryMin, color:rc, hp:rhp, isRecovery:true })
-                    }
-                  } else {
-                    sbars.push({ key:b.id, min:b.durationMin, color:c, hp, valueLabel })
-                  }
-                }
-                return (
-                  <div style={{ overflowX:'auto' as const, marginRight:-4, paddingRight:4 }}>
-                    <div style={{ display:'flex',alignItems:'flex-end',gap:3,minHeight:110,paddingBottom:2 }}>
-                      {sbars.map(sb=>{
-                        // Min-width par sous-barre + flex proportionnel à la durée → bars
-                        // toujours lisibles même sur sessions à 20+ intervalles.
-                        const tooltipText = `${formatHM(sb.min)}${sb.valueLabel ? ' · ' + sb.valueLabel : ''}${sb.isRecovery ? ' (récup)' : ''}`
-                        return (
-                          <div
-                            key={sb.key}
-                            title={tooltipText}
-                            style={{
-                              minWidth:34,
-                              flex:`${Math.max(sb.min,1)} ${Math.max(sb.min,1)} auto`,
-                              height:`${sb.hp}%`, minHeight:30,
-                              background:`linear-gradient(180deg,${sb.color}f0,${sb.color}66)`,
-                              border:`1px solid ${sb.color}aa`,
-                              borderRadius:'5px 5px 0 0',
-                              display:'flex', flexDirection:'column' as const,
-                              alignItems:'center', justifyContent:'flex-end',
-                              padding:'3px 3px 4px', overflow:'hidden',
-                              color:'#fff', lineHeight:1.15, gap:1,
-                              opacity: sb.isRecovery ? 0.85 : 1,
-                            }}
-                          >
-                            <span style={{ fontSize:9, fontWeight:700, opacity:0.95, fontFamily:'DM Mono,monospace', whiteSpace:'nowrap' as const, textShadow:'0 1px 1px rgba(0,0,0,0.25)' }}>
-                              {formatHM(sb.min)}
-                            </span>
-                            {sb.valueLabel && (
-                              <span style={{ fontSize:8, fontWeight:600, opacity:0.9, fontFamily:'DM Mono,monospace', whiteSpace:'nowrap' as const, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis' }}>
-                                {sb.valueLabel}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          ) : <p style={{ fontSize:12,color:'var(--text-dim)',textAlign:'center' as const,padding:'14px 0' }}>Aucun bloc — modifier pour en ajouter.</p>}
-          {/* Bar list — uniquement pour les sports endurance (la muscu a sa propre liste exercices ci-dessus). */}
-          {session.sport !== 'gym' && session.blocks.map(b=>{
-            const isInterval = b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin
-            const durLabel = isInterval ? `${b.reps}×${b.effortMin}min · récup ${b.recoveryMin}min` : formatHM(b.durationMin)
-            const valueLabel = b.value ? `${b.value}${session.sport==='bike'?'W':''}` : null
-            return (
-              <div key={b.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:8,background:`${ZONE_COLORS[b.zone-1]}11`,borderLeft:`3px solid ${ZONE_COLORS[b.zone-1]}`,marginBottom:5 }}>
-                <span style={{ fontSize:10,fontWeight:800,color:ZONE_COLORS[b.zone-1],minWidth:22,flexShrink:0,fontFamily:'DM Mono,monospace' }}>Z{b.zone}</span>
-                <span style={{ flex:1,fontSize:12,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:'var(--text)' }}>{b.label}</span>
-                <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',flexShrink:0 }}>{durLabel}</span>
-                {valueLabel && (
-                  <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',fontWeight:700,color:ZONE_COLORS[b.zone-1],flexShrink:0 }}>{valueLabel}</span>
-                )}
-                {b.hrAvg && (
-                  <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:'#ef4444',flexShrink:0 }}>{b.hrAvg}bpm</span>
-                )}
-              </div>
-            )
-          })}
+        {/* RPE GAUGE */}
+        <div style={{ marginTop:14, background:'var(--bg-card2)',borderRadius:11,padding:'10px 14px',border:'1px solid var(--border)' }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+            <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>
+              RPE — Perception de l'effort
+            </span>
+            <span style={{ fontSize:13,fontWeight:700,color: form.rpe != null ? rpeColor(form.rpe) : 'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>
+              {form.rpe != null ? `${form.rpe}/10` : '—'}
+            </span>
+          </div>
+          <div style={{ display:'flex',gap:3,alignItems:'flex-end' }}>
+            {Array.from({length:11},(_,i)=>i).map(i => {
+              const active = form.rpe === i
+              const inRange = form.rpe != null && i <= form.rpe
+              return (
+                <button
+                  key={i}
+                  onClick={()=>patchForm('rpe', i)}
+                  style={{
+                    flex:1, height: active ? 30 : 20, minWidth:18,
+                    borderRadius:5, border:'none', cursor:'pointer',
+                    background: inRange ? rpeColor(i) : 'var(--border)',
+                    color: inRange ? '#fff' : 'var(--text-dim)',
+                    fontSize: active ? 11 : 9, fontWeight:700,fontFamily:'DM Mono,monospace',
+                    transition:'height 0.14s, background 0.14s',
+                  }}
+                >
+                  {i}
+                </button>
+              )
+            })}
+          </div>
         </div>
-      )}
-      {tab==='edit' && (
-        <>
-          <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:11 }}>
-            {[{k:'title',l:'Titre'},{k:'time',l:'Heure'}].map(f=>(
-              <div key={f.k}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{f.l}</p><input value={(form as any)[f.k]??''} onChange={e=>setForm({...form,[f.k]:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-            ))}
+      </header>
+
+      {/* ── CONTENT (scroll) ───────────────────────────────── */}
+      <main style={{ flex:1, overflowY:'auto' as const, padding:'22px 28px' }}>
+
+        {/* Profil d'intensité (endurance only) */}
+        {session.sport !== 'gym' && form.blocks.length > 0 && (
+          <section style={{ marginBottom:24 }}>
+            <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 10px' }}>
+              Profil d'intensité
+            </p>
+            <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:12,padding:'16px 14px 12px' }}>
+              <svg width="100%" height={120} viewBox="0 0 100 105" preserveAspectRatio="none" style={{ overflow:'visible' as const, display:'block' }}>
+                {(() => {
+                  type SBar = { blockId:string; isRecovery:boolean; min:number; zone:number }
+                  const bars:SBar[] = []
+                  for (const b of form.blocks) {
+                    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
+                      for (let i=0; i<b.reps; i++) {
+                        bars.push({ blockId:b.id, isRecovery:false, min:b.effortMin,   zone:b.zone })
+                        bars.push({ blockId:b.id, isRecovery:true,  min:b.recoveryMin, zone:b.recoveryZone ?? 1 })
+                      }
+                    } else {
+                      bars.push({ blockId:b.id, isRecovery:false, min:b.durationMin, zone:b.zone })
+                    }
+                  }
+                  const total = bars.reduce((a,bar)=>a+bar.min, 0) || 1
+                  let xCursor = 0
+                  const sportCol = SPORT_BORDER[session.sport]
+                  return bars.map((bar, i) => {
+                    const w = (bar.min / total) * 100
+                    const h = bar.isRecovery ? 12 : (ZONE_HEIGHTS_PCT[bar.zone] ?? 32)
+                    const y = 100 - h
+                    const fill = bar.isRecovery ? '#9ca3af' : sportCol
+                    const opacity = bar.isRecovery ? 0.30 : 0.85
+                    const x = xCursor
+                    xCursor += w
+                    const gap = w > 1 ? 0.4 : 0
+                    return (
+                      <rect key={i}
+                        x={x} y={y} width={Math.max(w - gap, 0.3)} height={h} rx={1.5}
+                        fill={fill} opacity={opacity}
+                        onClick={()=>setExpandedBlockId(bar.blockId)}
+                        style={{ cursor:'pointer' }}
+                      >
+                        <title>{`Z${bar.zone} · ${formatHM(bar.min)}${bar.isRecovery ? ' (récup)' : ''}`}</title>
+                      </rect>
+                    )
+                  })
+                })()}
+                <line x1={0} y1={100} x2={100} y2={100} stroke="var(--border)" strokeWidth={0.4}/>
+              </svg>
+              <div style={{ display:'flex',justifyContent:'space-between',marginTop:8,fontSize:9,color:'var(--text-dim)' }}>
+                <span>Z1 = bas · Z5 = haut</span>
+                <span>Clic sur un bloc pour le modifier</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Blocs (liste éditable inline) */}
+        <section style={{ marginBottom:24 }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+            <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:0 }}>
+              {session.sport === 'gym' ? 'Exercices' : 'Blocs d\'effort'}
+            </p>
+            <button onClick={addBlock} style={{
+              padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',
+              background:'var(--bg-card2)',color:'var(--text-mid)',
+              fontSize:11,cursor:'pointer',fontWeight:600,
+            }}>+ Ajouter</button>
           </div>
-          <div style={{ display:'flex',gap:8,marginBottom:11 }}>
-            {(()=>{ const {h,m}=minToHMin(form.durationMin||0); return (<>
-              <div style={{ flex:1 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heures</p><input type="number" min={0} max={12} value={h} onChange={e=>setForm({...form,durationMin:hMinToMin(parseInt(e.target.value)||0,m)})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-              <div style={{ flex:1 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Minutes</p><input type="number" min={0} max={59} value={m} onChange={e=>setForm({...form,durationMin:hMinToMin(h,parseInt(e.target.value)||0)})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-            </>) })()}
+          {form.blocks.length === 0 ? (
+            <p style={{ fontSize:12,color:'var(--text-dim)',padding:'14px 0',textAlign:'center' as const }}>
+              Aucun bloc — clique "+ Ajouter" pour en créer un.
+            </p>
+          ) : (
+            <div style={{ display:'flex',flexDirection:'column' as const,gap:6 }}>
+              {form.blocks.map(b => (
+                <BlockRow key={b.id}
+                  block={b} sport={session.sport}
+                  isExpanded={expandedBlockId === b.id}
+                  onToggle={()=>setExpandedBlockId(expandedBlockId === b.id ? null : b.id)}
+                  onPatch={p=>patchBlock(b.id, p)}
+                  onDelete={()=>deleteBlock(b.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Notes */}
+        <section style={{ marginBottom:24 }}>
+          <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 8px' }}>
+            Notes du coach
+          </p>
+          <textarea
+            value={form.notes ?? ''}
+            onChange={e=>patchForm('notes', e.target.value)}
+            placeholder="Conseils, sensations attendues, points d'attention…"
+            rows={3}
+            style={{
+              width:'100%',padding:'10px 12px',borderRadius:9,
+              border:'1px solid var(--border)',background:'var(--bg-card2)',
+              color:'var(--text)',fontSize:12,outline:'none' as const,resize:'vertical' as const,
+              fontFamily:'DM Sans, sans-serif', lineHeight:1.5,
+            }}
+          />
+        </section>
+
+        {/* Validation */}
+        <section style={{ marginBottom:8 }}>
+          <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 10px' }}>
+            Validation
+          </p>
+          <div style={{ display:'flex',gap:10,flexWrap:'wrap' as const }}>
+            <button onClick={handleValidateManual} style={{
+              flex:'1 1 200px', padding:'12px 14px', borderRadius:10,
+              border:'1px solid var(--border)', background:'var(--bg-card2)',
+              color:'var(--text)', fontSize:12, fontWeight:600, cursor:'pointer',
+              fontFamily:'DM Sans, sans-serif', textAlign:'left' as const,
+            }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
+                <span style={{ fontSize:14 }}>✏</span>
+                <span>Valider manuellement</span>
+              </div>
+              <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontWeight:400,lineHeight:1.4 }}>
+                Saisir durée réelle, RPE, FC, notes
+              </p>
+            </button>
+            <button onClick={handleValidateStrava} style={{
+              flex:'1 1 200px', padding:'12px 14px', borderRadius:10,
+              border:'1px solid #fc4c02', background:'rgba(252,76,2,0.06)',
+              color:'#fc4c02', fontSize:12, fontWeight:600, cursor:'pointer',
+              fontFamily:'DM Sans, sans-serif', textAlign:'left' as const,
+            }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
+                <span style={{ fontSize:14 }}>↗</span>
+                <span>Valider via Strava / Training</span>
+              </div>
+              <p style={{ fontSize:10,color:'#fc4c02aa',margin:0,fontWeight:400,lineHeight:1.4 }}>
+                Importer l'activité depuis la page Training
+              </p>
+            </button>
           </div>
-          <div style={{ marginBottom:11 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Notes</p><textarea value={form.notes??''} onChange={e=>setForm({...form,notes:e.target.value})} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
-          {isEnd && <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:8 }}>Blocs</p><BlockBuilder sport={session.sport} blocks={form.blocks} onChange={blocks=>setForm({...form,blocks,tss:calcTSS(blocks,session.sport)})}/></div>}
-          <div style={{ display:'flex',gap:8 }}>
-            <button onClick={()=>onDelete(session.id)} style={{ padding:'9px 12px',borderRadius:10,background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:12,cursor:'pointer' }}>Supprimer</button>
-            <button onClick={()=>onSave(form)} style={{ flex:1,padding:10,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[session.sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>Sauvegarder</button>
-          </div>
-        </>
-      )}
-      {tab==='validate' && (
-        <>
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:14 }}>
-            <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Durée (min)</p><input value={form.vDuration??''} onChange={e=>setForm({...form,vDuration:e.target.value})} placeholder={String(session.durationMin)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-            <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Distance (km)</p><input value={form.vDistance??''} onChange={e=>setForm({...form,vDistance:e.target.value})} placeholder="10" style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-            <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>FC moyenne</p><input value={form.vHrAvg??''} onChange={e=>setForm({...form,vHrAvg:e.target.value})} placeholder="158bpm" style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-            <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Dénivelé (m)</p><input value={form.vElevation??''} onChange={e=>setForm({...form,vElevation:e.target.value})} placeholder="0" style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-            {form.vDuration&&form.vDistance&&<><div style={{ padding:'7px 10px',borderRadius:8,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)' }}><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Vitesse</p><p style={{ fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'#00c8e0',margin:0 }}>{speed}</p></div>{session.sport==='run'&&<div style={{ padding:'7px 10px',borderRadius:8,background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.2)' }}><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Allure</p><p style={{ fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'#22c55e',margin:0 }}>{pace}</p></div>}</>}
-          </div>
-          <button onClick={()=>{ const done=parseInt(form.vDuration||'0'); const _pct=session.durationMin&&done?Math.min(Math.round((done/session.durationMin)*100),100):100; onValidate({...form,status:'done',vSpeed:speed,vPace:pace}) }} style={{ width:'100%',padding:12,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[session.sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>Confirmer</button>
-        </>
-      )}
+        </section>
+      </main>
+
+      {/* ── FOOTER (sticky bottom) ─────────────────────────── */}
+      <footer style={{
+        padding:'14px 28px',borderTop:'1px solid var(--border)',
+        background:'var(--bg-card2)', flexShrink:0,
+        display:'flex',gap:10,alignItems:'center',
+      }}>
+        <button onClick={()=>onDelete(session.id)} style={{
+          padding:'9px 14px', borderRadius:9,
+          background:'rgba(255,95,95,0.10)', border:'1px solid rgba(255,95,95,0.25)',
+          color:'#ff5f5f', fontSize:12, cursor:'pointer', fontWeight:600,
+        }}>Supprimer la séance</button>
+        <div style={{ flex:1 }} />
+        <button onClick={onClose} style={{
+          padding:'9px 16px', borderRadius:9,
+          background:'transparent', border:'1px solid var(--border)',
+          color:'var(--text-mid)', fontSize:12, cursor:'pointer',
+        }}>Fermer</button>
+        <button onClick={handleSave} disabled={!isDirty} style={{
+          padding:'9px 18px', borderRadius:9, border:'none',
+          background: isDirty ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'rgba(107,114,128,0.20)',
+          color: isDirty ? '#fff' : 'var(--text-dim)',
+          fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12,
+          cursor: isDirty ? 'pointer' : 'default',
+          boxShadow: isDirty ? '0 4px 12px rgba(0,200,224,0.25)' : 'none',
+          transition:'box-shadow 0.14s',
+        }}>Enregistrer</button>
+      </footer>
     </div>
   )
 }
 
-// ════════════════════════════════════════════════
-// WEEK TAB
-// ════════════════════════════════════════════════
 function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>['sessions'] }) {
   const { tasks, activities, intensities, addTask, updateTask, deleteTask } = usePlanning()
   const [taskModal,       setTaskModal]       = useState<{dayIndex:number;startHour:number}|null>(null)

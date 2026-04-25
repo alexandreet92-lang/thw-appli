@@ -102,6 +102,7 @@ interface Session {
   vHyroxStations?: Record<string,string>; vHyroxRuns?: string[]
   vSwimTime?:string; vBikeTime?:string; vRunTime?:string; vT1?:string; vT2?:string
   vRpe?:number; vSplits?:string[]; vTempMax?:string; vHumidity?:string; vAltMax?:string; vNotes?:string
+  vWattsAvg?:string; vWattsWeighted?:string; vCadenceAvg?:string; vCadenceMax?:string
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -2099,6 +2100,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
     vDurationMin:number; vRpe:number|null; vHrAvg:string; vDistance:string
     vElevation:string; vTempMax:string; vHumidity:string; vAltMax:string
     vSplits:string; vNotes:string
+    vWattsAvg:string; vWattsWeighted:string; vCadenceAvg:string; vCadenceMax:string
   }>({
     vDurationMin: session.vDuration ? (parseInt(session.vDuration)||0) : 0,
     vRpe: session.vRpe ?? null,
@@ -2110,6 +2112,10 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
     vAltMax: session.vAltMax ?? '',
     vSplits: (session.vSplits ?? []).join('\n'),
     vNotes: session.vNotes ?? '',
+    vWattsAvg: session.vWattsAvg ?? '',
+    vWattsWeighted: session.vWattsWeighted ?? '',
+    vCadenceAvg: session.vCadenceAvg ?? '',
+    vCadenceMax: session.vCadenceMax ?? '',
   })
 
   const isDirty = JSON.stringify({
@@ -2168,6 +2174,10 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
       vAltMax: d.vAltMax||undefined,
       vSplits: d.vSplits.trim() ? d.vSplits.trim().split('\n').filter(Boolean) : undefined,
       vNotes: d.vNotes||undefined,
+      vWattsAvg: d.vWattsAvg||undefined,
+      vWattsWeighted: d.vWattsWeighted||undefined,
+      vCadenceAvg: d.vCadenceAvg||undefined,
+      vCadenceMax: d.vCadenceMax||undefined,
     }
     onValidate(validated)
     setValidPanel('compare')
@@ -2291,29 +2301,52 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
             <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:12,padding:'16px 14px 12px' }}>
               <svg width="100%" height={120} viewBox="0 0 100 105" preserveAspectRatio="none" style={{ overflow:'visible' as const, display:'block' }}>
                 {(() => {
-                  type SBar = { blockId:string; isRecovery:boolean; min:number; zone:number }
+                  // Parse la valeur d'un bloc en "intensité normalisable" :
+                  // - vélo/rowing : watts (plus haut = plus fort)
+                  // - run/hyrox/swim : 10000/secondes-par-km (plus vite = plus fort)
+                  const parseRaw = (val:string): number|null => {
+                    if (!val?.trim()) return null
+                    const sp = session.sport
+                    if (sp==='bike'||sp==='rowing') { const w=parseFloat(val); return isNaN(w)?null:w }
+                    const m = val.match(/(\d+):(\d+)/); if (!m) return null
+                    const secs = parseInt(m[1])*60+parseInt(m[2]); return secs>0 ? 10000/secs : null
+                  }
+                  type SBar = { blockId:string; isRecovery:boolean; min:number; zone:number; rawVal:number|null }
                   const bars:SBar[] = []
                   for (const b of form.blocks) {
+                    const rv = parseRaw(b.value)
                     if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
                       for (let i=0; i<b.reps; i++) {
-                        bars.push({ blockId:b.id, isRecovery:false, min:b.effortMin,   zone:b.zone })
-                        bars.push({ blockId:b.id, isRecovery:true,  min:b.recoveryMin, zone:b.recoveryZone ?? 1 })
+                        bars.push({ blockId:b.id, isRecovery:false, min:b.effortMin,   zone:b.zone, rawVal:rv })
+                        bars.push({ blockId:b.id, isRecovery:true,  min:b.recoveryMin, zone:b.recoveryZone??1, rawVal:null })
                       }
                     } else {
-                      bars.push({ blockId:b.id, isRecovery:false, min:b.durationMin, zone:b.zone })
+                      bars.push({ blockId:b.id, isRecovery:false, min:b.durationMin, zone:b.zone, rawVal:rv })
                     }
                   }
+                  // Normalisation : min→14 max→88 sur les blocs d'effort avec valeur
+                  const effortVals = bars.filter(b=>!b.isRecovery&&b.rawVal!=null).map(b=>b.rawVal!)
+                  const maxRaw = effortVals.length ? Math.max(...effortVals) : 0
+                  const minRaw = effortVals.length ? Math.min(...effortVals) : 0
+                  const rawRange = maxRaw>minRaw ? maxRaw-minRaw : null
                   const total = bars.reduce((a,bar)=>a+bar.min, 0) || 1
                   let xCursor = 0
                   return bars.map((bar, i) => {
                     const w = (bar.min / total) * 100
-                    const h = bar.isRecovery ? 10 : (ZONE_HEIGHTS_PCT[bar.zone] ?? 32)
+                    const h = bar.isRecovery ? 10
+                      : bar.rawVal!=null && rawRange!=null
+                        ? Math.round(14 + ((bar.rawVal-minRaw)/rawRange)*74)
+                        : bar.rawVal!=null ? 52  // valeur unique → hauteur médiane
+                        : (ZONE_HEIGHTS_PCT[bar.zone] ?? 32)
                     const y = 100 - h
                     const fill = bar.isRecovery ? '#6b7280' : (ZONE_COLORS[bar.zone - 1] ?? '#9ca3af')
                     const opacity = bar.isRecovery ? 0.35 : 0.88
                     const x = xCursor
                     xCursor += w
                     const gap = w > 1 ? 0.5 : 0
+                    const valLabel = bar.rawVal!=null
+                      ? (session.sport==='bike'||session.sport==='rowing') ? `${Math.round(bar.rawVal)}w` : (()=>{ const secs=Math.round(10000/bar.rawVal!); return `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}/km` })()
+                      : ''
                     return (
                       <rect key={i}
                         x={x} y={y} width={Math.max(w - gap, 0.3)} height={h} rx={1.5}
@@ -2321,7 +2354,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
                         onClick={()=>setExpandedBlockId(bar.blockId)}
                         style={{ cursor:'pointer' }}
                       >
-                        <title>{`Z${bar.zone} · ${formatHM(bar.min)}${bar.isRecovery ? ' (récup)' : ''}`}</title>
+                        <title>{`Z${bar.zone} · ${formatHM(bar.min)}${valLabel?' · '+valLabel:''}${bar.isRecovery?' (récup)':''}`}</title>
                       </rect>
                     )
                   })
@@ -2439,159 +2472,174 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
             </div>
           )}
 
-          {validPanel === 'form' && (
-            <div>
-              {/* Grille de champs métriques */}
-              <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:14 }}>
-                {/* Durée réelle */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Durée (min)</label>
-                  <input type="number" min={0} max={600}
-                    value={vDraft.vDurationMin || ''}
-                    onChange={e=>setVDraft(d=>({...d,vDurationMin:parseInt(e.target.value)||0}))}
-                    placeholder={String(session.durationMin)}
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                  {vDraft.vDurationMin > 0 && <span style={{ fontSize:10,color:'var(--text-dim)',marginTop:2,display:'block' }}>{formatHM(vDraft.vDurationMin)}</span>}
-                </div>
-                {/* FC moy */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>FC moy (bpm)</label>
-                  <input type="number" min={40} max={220}
-                    value={vDraft.vHrAvg}
-                    onChange={e=>setVDraft(d=>({...d,vHrAvg:e.target.value}))}
-                    placeholder="ex: 155"
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                </div>
-                {/* Distance */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Distance (km)</label>
-                  <input type="number" min={0} step={0.1}
-                    value={vDraft.vDistance}
-                    onChange={e=>setVDraft(d=>({...d,vDistance:e.target.value}))}
-                    placeholder="ex: 12.5"
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                </div>
-                {/* Dénivelé */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Dénivelé (m)</label>
-                  <input type="number" min={0}
-                    value={vDraft.vElevation}
-                    onChange={e=>setVDraft(d=>({...d,vElevation:e.target.value}))}
-                    placeholder="ex: 450"
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                </div>
-                {/* Altitude max */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Altitude max (m)</label>
-                  <input type="number" min={0}
-                    value={vDraft.vAltMax}
-                    onChange={e=>setVDraft(d=>({...d,vAltMax:e.target.value}))}
-                    placeholder="ex: 1250"
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                </div>
-                {/* Température max */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Temp. max (°C)</label>
-                  <input type="number" min={-20} max={55}
-                    value={vDraft.vTempMax}
-                    onChange={e=>setVDraft(d=>({...d,vTempMax:e.target.value}))}
-                    placeholder="ex: 24"
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                </div>
-                {/* Humidité */}
-                <div>
-                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Humidité (%)</label>
-                  <input type="number" min={0} max={100}
-                    value={vDraft.vHumidity}
-                    onChange={e=>setVDraft(d=>({...d,vHumidity:e.target.value}))}
-                    placeholder="ex: 65"
-                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
-                  />
-                </div>
-                {/* Vitesse / Allure calculées */}
-                {parseFloat(vDraft.vDistance) > 0 && vDraft.vDurationMin > 0 && (
-                  <div>
-                    <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Vitesse / Allure</label>
-                    <div style={{ padding:'6px 10px',borderRadius:8,border:'1px solid rgba(0,200,224,0.25)',background:'rgba(0,200,224,0.06)',fontSize:11,fontFamily:'DM Mono,monospace',color:'#00c8e0' }}>
-                      {(parseFloat(vDraft.vDistance)/(vDraft.vDurationMin/60)).toFixed(1)} km/h
-                      {['run','hyrox'].includes(session.sport) && (()=>{
-                        const p = vDraft.vDurationMin/parseFloat(vDraft.vDistance)
-                        const pm = Math.floor(p), ps = Math.round((p-pm)*60)
-                        return <span style={{ display:'block',marginTop:2,fontSize:10,color:'var(--text-dim)' }}>{pm}:{String(ps).padStart(2,'0')} /km</span>
-                      })()}
+          {validPanel === 'form' && (()=>{
+            const inp = { width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }
+            const ls  = { fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }
+            const calc= { padding:'6px 10px',borderRadius:8,border:'1px solid rgba(0,200,224,0.25)',background:'rgba(0,200,224,0.06)',fontSize:11,fontFamily:'DM Mono,monospace',color:'#00c8e0',minHeight:32,display:'flex',alignItems:'center' as const }
+            const grp = { border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',background:'rgba(0,0,0,0.08)' }
+            const gl  = { fontSize:9,fontWeight:800,letterSpacing:'0.1em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 10px' }
+            const gr  = { display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(116px,1fr))',gap:8 }
+            const dist= parseFloat(vDraft.vDistance), dur = vDraft.vDurationMin
+            const sp  = session.sport
+            return (
+              <div style={{ display:'flex',flexDirection:'column' as const,gap:10 }}>
+
+                {/* ① Effort de base */}
+                <div style={grp}>
+                  <p style={gl}>① Effort de base</p>
+                  <div style={gr}>
+                    <div>
+                      <label style={ls}>Durée (min)</label>
+                      <input type="number" min={0} max={600} value={vDraft.vDurationMin||''} onChange={e=>setVDraft(d=>({...d,vDurationMin:parseInt(e.target.value)||0}))} placeholder={String(session.durationMin)} style={inp}/>
+                      {vDraft.vDurationMin>0 && <span style={{ fontSize:10,color:'var(--text-dim)',marginTop:2,display:'block' }}>{formatHM(vDraft.vDurationMin)}</span>}
+                    </div>
+                    <div>
+                      <label style={ls}>FC moy (bpm)</label>
+                      <input type="number" min={40} max={220} value={vDraft.vHrAvg} onChange={e=>setVDraft(d=>({...d,vHrAvg:e.target.value}))} placeholder="155" style={inp}/>
+                    </div>
+                    <div>
+                      <label style={ls}>Distance (km)</label>
+                      <input type="number" min={0} step={0.01} value={vDraft.vDistance} onChange={e=>setVDraft(d=>({...d,vDistance:e.target.value}))} placeholder="12.5" style={inp}/>
+                    </div>
+                    <div>
+                      <label style={ls}>Dénivelé (m)</label>
+                      <input type="number" min={0} value={vDraft.vElevation} onChange={e=>setVDraft(d=>({...d,vElevation:e.target.value}))} placeholder="450" style={inp}/>
                     </div>
                   </div>
+                </div>
+
+                {/* ② Allure / Vitesse */}
+                {sp !== 'gym' && (
+                  <div style={grp}>
+                    <p style={gl}>② Allure / Vitesse</p>
+                    {/* Course / Hyrox → allure /km calculée auto */}
+                    {(sp==='run'||sp==='hyrox') && (
+                      <div>
+                        <label style={ls}>Allure moy — auto (min/km)</label>
+                        <div style={calc}>
+                          {dist>0&&dur>0
+                            ? (()=>{ const p=dur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
+                            : <span style={{ color:'var(--text-dim)',fontSize:10 }}>Saisir durée + distance</span>}
+                        </div>
+                      </div>
+                    )}
+                    {/* Vélo / Rowing → vitesse auto + watts manuels */}
+                    {(sp==='bike'||sp==='rowing') && (
+                      <div style={gr}>
+                        <div>
+                          <label style={ls}>Vitesse — auto (km/h)</label>
+                          <div style={calc}>
+                            {dist>0&&dur>0
+                              ? `${(dist/(dur/60)).toFixed(1)} km/h`
+                              : <span style={{ color:'var(--text-dim)',fontSize:10 }}>...</span>}
+                          </div>
+                        </div>
+                        <div>
+                          <label style={ls}>Watts moyens</label>
+                          <input type="number" min={0} max={2000} value={vDraft.vWattsAvg} onChange={e=>setVDraft(d=>({...d,vWattsAvg:e.target.value}))} placeholder="230" style={inp}/>
+                        </div>
+                        <div>
+                          <label style={ls}>Watts pondérés</label>
+                          <input type="number" min={0} max={2000} value={vDraft.vWattsWeighted} onChange={e=>setVDraft(d=>({...d,vWattsWeighted:e.target.value}))} placeholder="240" style={inp}/>
+                        </div>
+                      </div>
+                    )}
+                    {/* Natation → allure /100m calculée auto */}
+                    {sp==='swim' && (
+                      <div>
+                        <label style={ls}>Allure — auto (min/100m)</label>
+                        <div style={calc}>
+                          {dist>0&&dur>0
+                            ? (()=>{ const p=dur/(dist*10); const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /100m` })()
+                            : <span style={{ color:'var(--text-dim)',fontSize:10 }}>Saisir durée + distance</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
 
-              {/* RPE réel */}
-              <div style={{ marginBottom:14,background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px',border:'1px solid var(--border)' }}>
-                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-                  <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>RPE réel</span>
-                  <span style={{ fontSize:13,fontWeight:700,color:vDraft.vRpe!=null?rpeColor(vDraft.vRpe):'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>
-                    {vDraft.vRpe!=null?`${vDraft.vRpe}/10`:'—'}
-                  </span>
+                {/* ③ Métriques avancées */}
+                <div style={grp}>
+                  <p style={gl}>③ Métriques avancées</p>
+                  <div style={gr}>
+                    <div>
+                      <label style={ls}>Cadence moy (rpm)</label>
+                      <input type="number" min={0} max={300} value={vDraft.vCadenceAvg} onChange={e=>setVDraft(d=>({...d,vCadenceAvg:e.target.value}))} placeholder="85" style={inp}/>
+                    </div>
+                    <div>
+                      <label style={ls}>Cadence max (rpm)</label>
+                      <input type="number" min={0} max={300} value={vDraft.vCadenceMax} onChange={e=>setVDraft(d=>({...d,vCadenceMax:e.target.value}))} placeholder="95" style={inp}/>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display:'flex',gap:3,alignItems:'flex-end' }}>
-                  {Array.from({length:11},(_,i)=>i).map(i=>{
-                    const active = vDraft.vRpe===i, inRange = vDraft.vRpe!=null && i<=vDraft.vRpe
-                    return (
-                      <button key={i} onClick={()=>setVDraft(d=>({...d,vRpe:i}))} style={{
-                        flex:1,height:active?28:18,minWidth:16,borderRadius:4,border:'none',cursor:'pointer',
-                        background:inRange?rpeColor(i):'var(--border)',
-                        color:inRange?'#fff':'var(--text-dim)',
-                        fontSize:active?10:8,fontWeight:700,fontFamily:'DM Mono,monospace',
-                        transition:'height 0.12s,background 0.12s',
-                      }}>{i}</button>
-                    )
-                  })}
+
+                {/* ④ Conditions */}
+                <div style={grp}>
+                  <p style={gl}>④ Conditions</p>
+                  <div style={gr}>
+                    <div>
+                      <label style={ls}>Temp. max (°C)</label>
+                      <input type="number" min={-20} max={55} value={vDraft.vTempMax} onChange={e=>setVDraft(d=>({...d,vTempMax:e.target.value}))} placeholder="24" style={inp}/>
+                    </div>
+                    <div>
+                      <label style={ls}>Humidité (%)</label>
+                      <input type="number" min={0} max={100} value={vDraft.vHumidity} onChange={e=>setVDraft(d=>({...d,vHumidity:e.target.value}))} placeholder="65" style={inp}/>
+                    </div>
+                    <div>
+                      <label style={ls}>Altitude max (m)</label>
+                      <input type="number" min={0} value={vDraft.vAltMax} onChange={e=>setVDraft(d=>({...d,vAltMax:e.target.value}))} placeholder="1250" style={inp}/>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Splits par km */}
-              <div style={{ marginBottom:14 }}>
-                <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>
-                  Splits par km (1 par ligne)
-                </label>
-                <textarea
-                  value={vDraft.vSplits}
-                  onChange={e=>setVDraft(d=>({...d,vSplits:e.target.value}))}
-                  placeholder={'4:52\n4:48\n5:01'}
-                  rows={4}
-                  style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const,lineHeight:1.7 }}
-                />
-              </div>
+                {/* RPE réel */}
+                <div style={{ background:'rgba(0,0,0,0.08)',borderRadius:10,padding:'10px 12px',border:'1px solid var(--border)' }}>
+                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+                    <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>RPE réel</span>
+                    <span style={{ fontSize:13,fontWeight:700,color:vDraft.vRpe!=null?rpeColor(vDraft.vRpe):'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>
+                      {vDraft.vRpe!=null?`${vDraft.vRpe}/10`:'—'}
+                    </span>
+                  </div>
+                  <div style={{ display:'flex',gap:3,alignItems:'flex-end' }}>
+                    {Array.from({length:11},(_,i)=>i).map(i=>{
+                      const active=vDraft.vRpe===i, inRange=vDraft.vRpe!=null&&i<=vDraft.vRpe
+                      return (
+                        <button key={i} onClick={()=>setVDraft(d=>({...d,vRpe:i}))} style={{
+                          flex:1,height:active?28:18,minWidth:16,borderRadius:4,border:'none',cursor:'pointer',
+                          background:inRange?rpeColor(i):'var(--border)',color:inRange?'#fff':'var(--text-dim)',
+                          fontSize:active?10:8,fontWeight:700,fontFamily:'DM Mono,monospace',
+                          transition:'height 0.12s,background 0.12s',
+                        }}>{i}</button>
+                      )
+                    })}
+                  </div>
+                </div>
 
-              {/* Notes de séance */}
-              <div style={{ marginBottom:16 }}>
-                <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>
-                  Notes de séance
-                </label>
-                <textarea
-                  value={vDraft.vNotes}
-                  onChange={e=>setVDraft(d=>({...d,vNotes:e.target.value}))}
-                  placeholder="Sensations, conditions, remarques…"
-                  rows={3}
-                  style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Sans,sans-serif',boxSizing:'border-box' as const,lineHeight:1.5 }}
-                />
-              </div>
+                {/* Splits par km */}
+                <div>
+                  <label style={ls}>Splits par km (1 par ligne)</label>
+                  <textarea value={vDraft.vSplits} onChange={e=>setVDraft(d=>({...d,vSplits:e.target.value}))} placeholder={'4:52\n4:48\n5:01'} rows={4}
+                    style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const,lineHeight:1.7 }}
+                  />
+                </div>
 
-              <button onClick={submitValidation} style={{
-                width:'100%',padding:'12px',borderRadius:10,border:'none',
-                background:'linear-gradient(135deg,#22c55e,#16a34a)',
-                color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,
-                cursor:'pointer',boxShadow:'0 4px 12px rgba(34,197,94,0.28)',
-              }}>
-                ✓ Valider la séance
-              </button>
-            </div>
-          )}
+                {/* Notes de séance */}
+                <div>
+                  <label style={ls}>Notes de séance</label>
+                  <textarea value={vDraft.vNotes} onChange={e=>setVDraft(d=>({...d,vNotes:e.target.value}))} placeholder="Sensations, conditions, remarques…" rows={3}
+                    style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Sans,sans-serif',boxSizing:'border-box' as const,lineHeight:1.5 }}
+                  />
+                </div>
+
+                <button onClick={submitValidation} style={{
+                  width:'100%',padding:'12px',borderRadius:10,border:'none',
+                  background:'linear-gradient(135deg,#22c55e,#16a34a)',
+                  color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,
+                  cursor:'pointer',boxShadow:'0 4px 12px rgba(34,197,94,0.28)',
+                }}>✓ Valider la séance</button>
+              </div>
+            )
+          })()}
 
           {validPanel === 'compare' && (()=>{
             const planDur = session.durationMin
@@ -2602,8 +2650,12 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
             const rpeDelta = planRpe!=null && realRpe!=null ? realRpe-planRpe : null
             const dist = parseFloat(vDraft.vDistance)
             const computedSpeed = dist && realDur ? `${(dist/(realDur/60)).toFixed(1)} km/h` : ''
-            const computedPace = dist && realDur && ['run','hyrox'].includes(session.sport)
-              ? (()=>{ const p=realDur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
+            const computedPace = dist && realDur
+              ? session.sport==='swim'
+                ? (()=>{ const p=realDur/(dist*10); const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /100m` })()
+                : ['run','hyrox'].includes(session.sport)
+                ? (()=>{ const p=realDur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
+                : ''
               : ''
             const fmtDelta = (d:number|null, fmtFn:(v:number)=>string) => {
               if(d==null) return null
@@ -2618,9 +2670,13 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
               { label:'Dénivelé', plan:'—',                                   real:vDraft.vElevation?`${vDraft.vElevation} m`:'—', delta:null },
               ...(computedSpeed ? [{ label:'Vitesse', plan:'—', real:computedSpeed, delta:null }] : []),
               ...(computedPace  ? [{ label:'Allure',  plan:'—', real:computedPace,  delta:null }] : []),
-              ...(vDraft.vAltMax   ? [{ label:'Altitude max', plan:'—', real:`${vDraft.vAltMax} m`,   delta:null }] : []),
-              ...(vDraft.vTempMax  ? [{ label:'Température',  plan:'—', real:`${vDraft.vTempMax}°C`,  delta:null }] : []),
-              ...(vDraft.vHumidity ? [{ label:'Humidité',     plan:'—', real:`${vDraft.vHumidity}%`,  delta:null }] : []),
+              ...(vDraft.vWattsAvg      ? [{ label:'Watts moy',      plan:'—', real:`${vDraft.vWattsAvg} W`,      delta:null }] : []),
+              ...(vDraft.vWattsWeighted ? [{ label:'Watts pondérés', plan:'—', real:`${vDraft.vWattsWeighted} W`, delta:null }] : []),
+              ...(vDraft.vCadenceAvg    ? [{ label:'Cadence moy',    plan:'—', real:`${vDraft.vCadenceAvg} rpm`,  delta:null }] : []),
+              ...(vDraft.vCadenceMax    ? [{ label:'Cadence max',    plan:'—', real:`${vDraft.vCadenceMax} rpm`,  delta:null }] : []),
+              ...(vDraft.vAltMax        ? [{ label:'Altitude max',   plan:'—', real:`${vDraft.vAltMax} m`,        delta:null }] : []),
+              ...(vDraft.vTempMax       ? [{ label:'Température',    plan:'—', real:`${vDraft.vTempMax}°C`,       delta:null }] : []),
+              ...(vDraft.vHumidity      ? [{ label:'Humidité',       plan:'—', real:`${vDraft.vHumidity}%`,       delta:null }] : []),
             ]
             const splitLines = vDraft.vSplits.trim().split('\n').filter(Boolean)
             return (

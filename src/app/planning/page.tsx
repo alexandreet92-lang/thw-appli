@@ -195,6 +195,52 @@ function normalizeBlocks(raw:unknown):Block[] {
   if (!Array.isArray(raw)) return []
   return raw.map(normalizeBlock).filter((b):b is Block => b !== null)
 }
+
+// Parse un bloc muscu pour en extraire la structure exercice :
+//   nom, sets × reps, charge si présente.
+// Le Coach IA produit des labels libres type "Squat 4×10 @100kg" ou
+// "Développé couché 3 séries × 8 reps". Si rien ne matche, on retourne
+// le label brut comme nom.
+function parseGymExercise(b:Block): {
+  nom:string; sets?:number; reps?:number; charge?:string; duree?:number; consigne?:string
+} {
+  let label = (b.label ?? '').trim()
+  // La consigne (texte après " — ") a été agrégée dans label par normalizeBlock.
+  // On la sépare pour l'afficher distinctement.
+  let consigne:string|undefined
+  const dashSplit = label.split(/\s+—\s+/)
+  if (dashSplit.length > 1) {
+    consigne = dashSplit.slice(1).join(' — ')
+    label = dashSplit[0]
+  }
+
+  // Pattern N × M (séries × reps) — accepte ×, x, *, X
+  let sets:number|undefined; let reps:number|undefined
+  const m = label.match(/(\d+)\s*[×xX*]\s*(\d+)/)
+  if (m) {
+    sets = parseInt(m[1], 10)
+    reps = parseInt(m[2], 10)
+    label = label.replace(m[0], '').trim()
+  } else if (b.reps && b.reps > 0) {
+    // Fallback : si l'agent a posé repetitions sur le bloc directement.
+    sets = b.reps
+  }
+
+  // Pattern charge : "@100kg", "100kg", "à 80kg"
+  let charge:string|undefined
+  const w = label.match(/(?:@|à\s+)?\s*([\d]+(?:[.,]\d+)?\s*(?:kg|lbs?|%))/i)
+  if (w) {
+    charge = w[1].replace(/\s+/g,'').replace(',','.')
+    label = label.replace(w[0], '').trim()
+  }
+
+  // Nettoyage : tirets, espaces, : en fin de label
+  label = label.replace(/[—–\-:]+$/g, '').trim()
+  // Si trop court après cleanup, on ressort le label original
+  if (!label) label = (b.label ?? '').trim() || 'Exercice'
+
+  return { nom:label, sets, reps, charge, duree:b.durationMin, consigne }
+}
 function calcPaceStr(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; const s=m*60/d; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` }
 function parsePace(s:string):number { const p=s.replace(',',':').split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0) }
 function getWeekStart():string { const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1; const m=new Date(now); m.setDate(now.getDate()-dow); return m.toISOString().split('T')[0] }
@@ -1830,7 +1876,54 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
       </div>
       {tab==='view' && (
         <div>
-          {session.blocks.length>0 ? (
+          {/* MUSCU — liste structurée exercice / séries × reps / charge */}
+          {session.sport === 'gym' && session.blocks.length > 0 ? (
+            <div style={{ display:'flex',flexDirection:'column' as const,gap:6,marginBottom:12 }}>
+              <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 4px' }}>
+                Exercices
+              </p>
+              {session.blocks.map((b, i) => {
+                const ex = parseGymExercise(b)
+                return (
+                  <div key={b.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                    <span style={{ fontSize:10,fontWeight:700,color:'#f97316',minWidth:22,fontFamily:'DM Mono,monospace' }}>
+                      {String(i+1).padStart(2,'0')}
+                    </span>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <p style={{ fontSize:13,fontWeight:600,color:'var(--text)',margin:0,lineHeight:1.3 }}>
+                        {ex.nom}
+                      </p>
+                      {ex.consigne && (
+                        <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0',fontStyle:'italic' as const,lineHeight:1.4 }}>
+                          {ex.consigne}
+                        </p>
+                      )}
+                    </div>
+                    {(ex.sets != null && ex.reps != null) && (
+                      <span style={{ fontSize:11,fontWeight:700,padding:'4px 9px',borderRadius:6,background:'rgba(249,115,22,0.12)',color:'#f97316',fontFamily:'DM Mono,monospace',flexShrink:0,whiteSpace:'nowrap' as const }}>
+                        {ex.sets} × {ex.reps}
+                      </span>
+                    )}
+                    {(ex.sets == null && ex.reps != null) && (
+                      <span style={{ fontSize:11,fontWeight:700,padding:'4px 9px',borderRadius:6,background:'rgba(249,115,22,0.12)',color:'#f97316',fontFamily:'DM Mono,monospace',flexShrink:0 }}>
+                        × {ex.reps}
+                      </span>
+                    )}
+                    {ex.charge && (
+                      <span style={{ fontSize:11,fontWeight:700,padding:'4px 9px',borderRadius:6,background:'rgba(139,92,246,0.12)',color:'#8b5cf6',fontFamily:'DM Mono,monospace',flexShrink:0,whiteSpace:'nowrap' as const }}>
+                        {ex.charge}
+                      </span>
+                    )}
+                    {ex.duree != null && ex.duree > 0 && ex.sets == null && ex.reps == null && (
+                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text-mid)',flexShrink:0 }}>
+                        {formatHM(ex.duree)}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : session.blocks.length>0 ? (
             <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 14px',marginBottom:12 }}>
               {(()=>{
                 // Expand each block into sub-bars.
@@ -1899,7 +1992,8 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
               })()}
             </div>
           ) : <p style={{ fontSize:12,color:'var(--text-dim)',textAlign:'center' as const,padding:'14px 0' }}>Aucun bloc — modifier pour en ajouter.</p>}
-          {session.blocks.map(b=>{
+          {/* Bar list — uniquement pour les sports endurance (la muscu a sa propre liste exercices ci-dessus). */}
+          {session.sport !== 'gym' && session.blocks.map(b=>{
             const isInterval = b.mode==='interval' && b.reps && b.effortMin && b.recoveryMin
             const durLabel = isInterval ? `${b.reps}×${b.effortMin}min · récup ${b.recoveryMin}min` : formatHM(b.durationMin)
             const valueLabel = b.value ? `${b.value}${session.sport==='bike'?'W':''}` : null

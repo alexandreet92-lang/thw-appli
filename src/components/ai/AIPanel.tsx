@@ -2196,12 +2196,12 @@ function TrainingPlanFlow({
         status: 'active',
       }).select('id').single()
 
+      // training_plans insert is best-effort — sessions are always created even
+      // if the plan row fails (plan_id will be null, display still works).
       if (planErr || !planRow) {
-        console.log('[saveToPlanning] training_plans insert failed:', planErr?.message)
-        setPlanStep('error')
-        return
+        console.warn('[saveToPlanning] training_plans insert failed (non-fatal):', planErr?.message)
       }
-      const planId = planRow.id as string
+      const planId = planRow?.id as string | undefined
 
       // 3. Construire la liste des séances à insérer
       // Si merge : récupérer les jours déjà occupés
@@ -2250,7 +2250,7 @@ function TrainingPlanFlow({
 
           const row = {
             user_id:          user.id,
-            plan_id:          planId,
+            plan_id:          planId ?? null,
             week_start:       weekStart,
             day_index:        seance.jour,
             sport:            normSport(seance.sport),

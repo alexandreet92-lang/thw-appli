@@ -2305,16 +2305,15 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
                   }
                   const total = bars.reduce((a,bar)=>a+bar.min, 0) || 1
                   let xCursor = 0
-                  const sportCol = SPORT_BORDER[session.sport]
                   return bars.map((bar, i) => {
                     const w = (bar.min / total) * 100
-                    const h = bar.isRecovery ? 12 : (ZONE_HEIGHTS_PCT[bar.zone] ?? 32)
+                    const h = bar.isRecovery ? 10 : (ZONE_HEIGHTS_PCT[bar.zone] ?? 32)
                     const y = 100 - h
-                    const fill = bar.isRecovery ? '#9ca3af' : sportCol
-                    const opacity = bar.isRecovery ? 0.30 : 0.85
+                    const fill = bar.isRecovery ? '#6b7280' : (ZONE_COLORS[bar.zone - 1] ?? '#9ca3af')
+                    const opacity = bar.isRecovery ? 0.35 : 0.88
                     const x = xCursor
                     xCursor += w
-                    const gap = w > 1 ? 0.4 : 0
+                    const gap = w > 1 ? 0.5 : 0
                     return (
                       <rect key={i}
                         x={x} y={y} width={Math.max(w - gap, 0.3)} height={h} rx={1.5}
@@ -2329,9 +2328,16 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
                 })()}
                 <line x1={0} y1={100} x2={100} y2={100} stroke="var(--border)" strokeWidth={0.4}/>
               </svg>
-              <div style={{ display:'flex',justifyContent:'space-between',marginTop:8,fontSize:9,color:'var(--text-dim)' }}>
-                <span>Z1 = bas · Z5 = haut</span>
-                <span>Clic sur un bloc pour le modifier</span>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8 }}>
+                <div style={{ display:'flex',gap:6 }}>
+                  {['Z1','Z2','Z3','Z4','Z5'].map((z,i)=>(
+                    <span key={z} style={{ fontSize:9,fontWeight:700,color:ZONE_COLORS[i],display:'flex',alignItems:'center',gap:3 }}>
+                      <span style={{ width:7,height:7,borderRadius:2,background:ZONE_COLORS[i],display:'inline-block' }}/>
+                      {z}
+                    </span>
+                  ))}
+                </div>
+                <span style={{ fontSize:9,color:'var(--text-dim)' }}>Clic pour modifier</span>
               </div>
             </div>
           </section>

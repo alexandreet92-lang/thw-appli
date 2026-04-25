@@ -101,6 +101,7 @@ interface Session {
   vHrAvg?:string; vPace?:string
   vHyroxStations?: Record<string,string>; vHyroxRuns?: string[]
   vSwimTime?:string; vBikeTime?:string; vRunTime?:string; vT1?:string; vT2?:string
+  vRpe?:number; vSplits?:string[]; vTempMax?:string; vHumidity?:string; vAltMax?:string; vNotes?:string
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -2091,6 +2092,25 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
   const router = useRouter()
   const [form, setForm] = useState<Session>({...session, blocks:[...session.blocks]})
   const [expandedBlockId, setExpandedBlockId] = useState<string|null>(null)
+  const [validPanel, setValidPanel] = useState<'form'|'compare'|null>(
+    session.status === 'done' && session.vDuration ? 'compare' : null
+  )
+  const [vDraft, setVDraft] = useState<{
+    vDurationMin:number; vRpe:number|null; vHrAvg:string; vDistance:string
+    vElevation:string; vTempMax:string; vHumidity:string; vAltMax:string
+    vSplits:string; vNotes:string
+  }>({
+    vDurationMin: session.vDuration ? (parseInt(session.vDuration)||0) : 0,
+    vRpe: session.vRpe ?? null,
+    vHrAvg: session.vHrAvg ?? '',
+    vDistance: session.vDistance ?? '',
+    vElevation: session.vElevation ?? '',
+    vTempMax: session.vTempMax ?? '',
+    vHumidity: session.vHumidity ?? '',
+    vAltMax: session.vAltMax ?? '',
+    vSplits: (session.vSplits ?? []).join('\n'),
+    vNotes: session.vNotes ?? '',
+  })
 
   const isDirty = JSON.stringify({
     title:form.title, time:form.time, durationMin:form.durationMin,
@@ -2127,12 +2147,30 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
     onClose()
     router.push('/activities')
   }
-  function handleValidateManual() {
-    // Phase 2 — formulaire complet (à valider avec user). Placeholder :
-    // confirme et marque comme done avec valeurs prévues = valeurs réelles.
-    if (window.confirm('Validation manuelle complète à venir. Marquer la séance comme effectuée avec les valeurs prévues ?')) {
-      onValidate({ ...form, status:'done' })
+  function handleValidateManual() { setValidPanel('form') }
+  function submitValidation() {
+    const d = vDraft
+    const dist = parseFloat(d.vDistance), dur = d.vDurationMin
+    const vSpeed = dist && dur ? `${(dist/(dur/60)).toFixed(1)} km/h` : undefined
+    const vPace = dist && dur && ['run','hyrox'].includes(session.sport)
+      ? (()=>{ const p=dur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
+      : undefined
+    const validated: Session = {
+      ...form, status:'done',
+      vDuration: dur ? String(dur) : undefined,
+      vRpe: d.vRpe ?? undefined,
+      vHrAvg: d.vHrAvg||undefined,
+      vDistance: d.vDistance||undefined,
+      vElevation: d.vElevation||undefined,
+      vSpeed, vPace,
+      vTempMax: d.vTempMax||undefined,
+      vHumidity: d.vHumidity||undefined,
+      vAltMax: d.vAltMax||undefined,
+      vSplits: d.vSplits.trim() ? d.vSplits.trim().split('\n').filter(Boolean) : undefined,
+      vNotes: d.vNotes||undefined,
     }
+    onValidate(validated)
+    setValidPanel('compare')
   }
   return (
     <div onClick={e=>e.stopPropagation()} style={{
@@ -2351,39 +2389,284 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
 
         {/* Validation */}
         <section style={{ marginBottom:8 }}>
-          <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 10px' }}>
-            Validation
-          </p>
-          <div style={{ display:'flex',gap:10,flexWrap:'wrap' as const }}>
-            <button onClick={handleValidateManual} style={{
-              flex:'1 1 200px', padding:'12px 14px', borderRadius:10,
-              border:'1px solid var(--border)', background:'var(--bg-card2)',
-              color:'var(--text)', fontSize:12, fontWeight:600, cursor:'pointer',
-              fontFamily:'DM Sans, sans-serif', textAlign:'left' as const,
-            }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
-                <span style={{ fontSize:14 }}>✏</span>
-                <span>Valider manuellement</span>
-              </div>
-              <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontWeight:400,lineHeight:1.4 }}>
-                Saisir durée réelle, RPE, FC, notes
-              </p>
-            </button>
-            <button onClick={handleValidateStrava} style={{
-              flex:'1 1 200px', padding:'12px 14px', borderRadius:10,
-              border:'1px solid #fc4c02', background:'rgba(252,76,2,0.06)',
-              color:'#fc4c02', fontSize:12, fontWeight:600, cursor:'pointer',
-              fontFamily:'DM Sans, sans-serif', textAlign:'left' as const,
-            }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
-                <span style={{ fontSize:14 }}>↗</span>
-                <span>Valider via Strava / Training</span>
-              </div>
-              <p style={{ fontSize:10,color:'#fc4c02aa',margin:0,fontWeight:400,lineHeight:1.4 }}>
-                Importer l'activité depuis la page Training
-              </p>
-            </button>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+            <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:0 }}>
+              {validPanel === 'form' ? 'Saisir les réels' : validPanel === 'compare' ? 'Prévu vs Réel' : 'Validation'}
+            </p>
+            {validPanel && (
+              <button onClick={()=>setValidPanel(null)} style={{ background:'none',border:'none',cursor:'pointer',fontSize:11,color:'var(--text-dim)',padding:'2px 8px',borderRadius:6 }}>
+                ← Retour
+              </button>
+            )}
           </div>
+
+          {validPanel === null && (
+            <div style={{ display:'flex',gap:10,flexWrap:'wrap' as const }}>
+              <button onClick={handleValidateManual} style={{
+                flex:'1 1 200px',padding:'12px 14px',borderRadius:10,
+                border:'1px solid var(--border)',background:'var(--bg-card2)',
+                color:'var(--text)',fontSize:12,fontWeight:600,cursor:'pointer',
+                fontFamily:'DM Sans,sans-serif',textAlign:'left' as const,
+              }}>
+                <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
+                  <span style={{ fontSize:14 }}>✏</span>
+                  <span>Valider manuellement</span>
+                </div>
+                <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontWeight:400,lineHeight:1.4 }}>
+                  Saisir durée réelle, RPE, FC, notes
+                </p>
+              </button>
+              <button onClick={handleValidateStrava} style={{
+                flex:'1 1 200px',padding:'12px 14px',borderRadius:10,
+                border:'1px solid #fc4c02',background:'rgba(252,76,2,0.06)',
+                color:'#fc4c02',fontSize:12,fontWeight:600,cursor:'pointer',
+                fontFamily:'DM Sans,sans-serif',textAlign:'left' as const,
+              }}>
+                <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
+                  <span style={{ fontSize:14 }}>↗</span>
+                  <span>Valider via Strava / Training</span>
+                </div>
+                <p style={{ fontSize:10,color:'#fc4c02aa',margin:0,fontWeight:400,lineHeight:1.4 }}>
+                  Importer l'activité depuis la page Training
+                </p>
+              </button>
+            </div>
+          )}
+
+          {validPanel === 'form' && (
+            <div>
+              {/* Grille de champs métriques */}
+              <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:14 }}>
+                {/* Durée réelle */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Durée (min)</label>
+                  <input type="number" min={0} max={600}
+                    value={vDraft.vDurationMin || ''}
+                    onChange={e=>setVDraft(d=>({...d,vDurationMin:parseInt(e.target.value)||0}))}
+                    placeholder={String(session.durationMin)}
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                  {vDraft.vDurationMin > 0 && <span style={{ fontSize:10,color:'var(--text-dim)',marginTop:2,display:'block' }}>{formatHM(vDraft.vDurationMin)}</span>}
+                </div>
+                {/* FC moy */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>FC moy (bpm)</label>
+                  <input type="number" min={40} max={220}
+                    value={vDraft.vHrAvg}
+                    onChange={e=>setVDraft(d=>({...d,vHrAvg:e.target.value}))}
+                    placeholder="ex: 155"
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                </div>
+                {/* Distance */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Distance (km)</label>
+                  <input type="number" min={0} step={0.1}
+                    value={vDraft.vDistance}
+                    onChange={e=>setVDraft(d=>({...d,vDistance:e.target.value}))}
+                    placeholder="ex: 12.5"
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                </div>
+                {/* Dénivelé */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Dénivelé (m)</label>
+                  <input type="number" min={0}
+                    value={vDraft.vElevation}
+                    onChange={e=>setVDraft(d=>({...d,vElevation:e.target.value}))}
+                    placeholder="ex: 450"
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                </div>
+                {/* Altitude max */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Altitude max (m)</label>
+                  <input type="number" min={0}
+                    value={vDraft.vAltMax}
+                    onChange={e=>setVDraft(d=>({...d,vAltMax:e.target.value}))}
+                    placeholder="ex: 1250"
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                </div>
+                {/* Température max */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Temp. max (°C)</label>
+                  <input type="number" min={-20} max={55}
+                    value={vDraft.vTempMax}
+                    onChange={e=>setVDraft(d=>({...d,vTempMax:e.target.value}))}
+                    placeholder="ex: 24"
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                </div>
+                {/* Humidité */}
+                <div>
+                  <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Humidité (%)</label>
+                  <input type="number" min={0} max={100}
+                    value={vDraft.vHumidity}
+                    onChange={e=>setVDraft(d=>({...d,vHumidity:e.target.value}))}
+                    placeholder="ex: 65"
+                    style={{ width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }}
+                  />
+                </div>
+                {/* Vitesse / Allure calculées */}
+                {parseFloat(vDraft.vDistance) > 0 && vDraft.vDurationMin > 0 && (
+                  <div>
+                    <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>Vitesse / Allure</label>
+                    <div style={{ padding:'6px 10px',borderRadius:8,border:'1px solid rgba(0,200,224,0.25)',background:'rgba(0,200,224,0.06)',fontSize:11,fontFamily:'DM Mono,monospace',color:'#00c8e0' }}>
+                      {(parseFloat(vDraft.vDistance)/(vDraft.vDurationMin/60)).toFixed(1)} km/h
+                      {['run','hyrox'].includes(session.sport) && (()=>{
+                        const p = vDraft.vDurationMin/parseFloat(vDraft.vDistance)
+                        const pm = Math.floor(p), ps = Math.round((p-pm)*60)
+                        return <span style={{ display:'block',marginTop:2,fontSize:10,color:'var(--text-dim)' }}>{pm}:{String(ps).padStart(2,'0')} /km</span>
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* RPE réel */}
+              <div style={{ marginBottom:14,background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px',border:'1px solid var(--border)' }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+                  <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>RPE réel</span>
+                  <span style={{ fontSize:13,fontWeight:700,color:vDraft.vRpe!=null?rpeColor(vDraft.vRpe):'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>
+                    {vDraft.vRpe!=null?`${vDraft.vRpe}/10`:'—'}
+                  </span>
+                </div>
+                <div style={{ display:'flex',gap:3,alignItems:'flex-end' }}>
+                  {Array.from({length:11},(_,i)=>i).map(i=>{
+                    const active = vDraft.vRpe===i, inRange = vDraft.vRpe!=null && i<=vDraft.vRpe
+                    return (
+                      <button key={i} onClick={()=>setVDraft(d=>({...d,vRpe:i}))} style={{
+                        flex:1,height:active?28:18,minWidth:16,borderRadius:4,border:'none',cursor:'pointer',
+                        background:inRange?rpeColor(i):'var(--border)',
+                        color:inRange?'#fff':'var(--text-dim)',
+                        fontSize:active?10:8,fontWeight:700,fontFamily:'DM Mono,monospace',
+                        transition:'height 0.12s,background 0.12s',
+                      }}>{i}</button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Splits par km */}
+              <div style={{ marginBottom:14 }}>
+                <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>
+                  Splits par km (1 par ligne)
+                </label>
+                <textarea
+                  value={vDraft.vSplits}
+                  onChange={e=>setVDraft(d=>({...d,vSplits:e.target.value}))}
+                  placeholder={'4:52\n4:48\n5:01'}
+                  rows={4}
+                  style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const,lineHeight:1.7 }}
+                />
+              </div>
+
+              {/* Notes de séance */}
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }}>
+                  Notes de séance
+                </label>
+                <textarea
+                  value={vDraft.vNotes}
+                  onChange={e=>setVDraft(d=>({...d,vNotes:e.target.value}))}
+                  placeholder="Sensations, conditions, remarques…"
+                  rows={3}
+                  style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Sans,sans-serif',boxSizing:'border-box' as const,lineHeight:1.5 }}
+                />
+              </div>
+
+              <button onClick={submitValidation} style={{
+                width:'100%',padding:'12px',borderRadius:10,border:'none',
+                background:'linear-gradient(135deg,#22c55e,#16a34a)',
+                color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,
+                cursor:'pointer',boxShadow:'0 4px 12px rgba(34,197,94,0.28)',
+              }}>
+                ✓ Valider la séance
+              </button>
+            </div>
+          )}
+
+          {validPanel === 'compare' && (()=>{
+            const planDur = session.durationMin
+            const realDur = vDraft.vDurationMin
+            const durDelta = realDur > 0 ? realDur - planDur : null
+            const planRpe = session.rpe
+            const realRpe = vDraft.vRpe
+            const rpeDelta = planRpe!=null && realRpe!=null ? realRpe-planRpe : null
+            const dist = parseFloat(vDraft.vDistance)
+            const computedSpeed = dist && realDur ? `${(dist/(realDur/60)).toFixed(1)} km/h` : ''
+            const computedPace = dist && realDur && ['run','hyrox'].includes(session.sport)
+              ? (()=>{ const p=realDur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
+              : ''
+            const fmtDelta = (d:number|null, fmtFn:(v:number)=>string) => {
+              if(d==null) return null
+              if(d===0) return '='
+              return d>0 ? `+${fmtFn(d)}` : `-${fmtFn(Math.abs(d))}`
+            }
+            const rows: {label:string;plan:string;real:string;delta:string|null}[] = [
+              { label:'Durée',    plan:formatHM(planDur),                     real:realDur>0?formatHM(realDur):'—',        delta:fmtDelta(durDelta, formatHM) },
+              { label:'RPE',      plan:planRpe!=null?`${planRpe}/10`:'—',     real:realRpe!=null?`${realRpe}/10`:'—',      delta:fmtDelta(rpeDelta, v=>`${v}`) },
+              { label:'FC moy',   plan:'—',                                   real:vDraft.vHrAvg?`${vDraft.vHrAvg} bpm`:'—', delta:null },
+              { label:'Distance', plan:'—',                                   real:vDraft.vDistance?`${vDraft.vDistance} km`:'—', delta:null },
+              { label:'Dénivelé', plan:'—',                                   real:vDraft.vElevation?`${vDraft.vElevation} m`:'—', delta:null },
+              ...(computedSpeed ? [{ label:'Vitesse', plan:'—', real:computedSpeed, delta:null }] : []),
+              ...(computedPace  ? [{ label:'Allure',  plan:'—', real:computedPace,  delta:null }] : []),
+              ...(vDraft.vAltMax   ? [{ label:'Altitude max', plan:'—', real:`${vDraft.vAltMax} m`,   delta:null }] : []),
+              ...(vDraft.vTempMax  ? [{ label:'Température',  plan:'—', real:`${vDraft.vTempMax}°C`,  delta:null }] : []),
+              ...(vDraft.vHumidity ? [{ label:'Humidité',     plan:'—', real:`${vDraft.vHumidity}%`,  delta:null }] : []),
+            ]
+            const splitLines = vDraft.vSplits.trim().split('\n').filter(Boolean)
+            return (
+              <div>
+                {/* Header colonnes */}
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr 64px',gap:4,marginBottom:6,padding:'0 8px' }}>
+                  {['Métrique','Prévu','Réel','Δ'].map(h=>(
+                    <span key={h} style={{ fontSize:9,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>{h}</span>
+                  ))}
+                </div>
+                <div style={{ display:'flex',flexDirection:'column' as const,gap:3 }}>
+                  {rows.map(r=>(
+                    <div key={r.label} style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr 64px',gap:4,padding:'7px 8px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                      <span style={{ fontSize:11,fontWeight:600,color:'var(--text-mid)' }}>{r.label}</span>
+                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{r.plan}</span>
+                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text)',fontWeight:600 }}>{r.real}</span>
+                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
+                        color:r.delta==null||r.delta==='='?'var(--text-dim)':r.delta.startsWith('+')?'#f97316':'#22c55e',
+                      }}>{r.delta??'—'}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Splits */}
+                {splitLines.length > 0 && (
+                  <div style={{ marginTop:14 }}>
+                    <p style={{ fontSize:10,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 8px' }}>Splits</p>
+                    <div style={{ background:'var(--bg-card2)',borderRadius:10,padding:'8px 12px',border:'1px solid var(--border)' }}>
+                      {splitLines.map((s,i)=>(
+                        <div key={i} style={{ display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:i<splitLines.length-1?'1px solid var(--border)':'none' }}>
+                          <span style={{ fontSize:10,color:'var(--text-dim)' }}>km {i+1}</span>
+                          <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text)',fontWeight:600 }}>{s.trim()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {vDraft.vNotes && (
+                  <div style={{ marginTop:14 }}>
+                    <p style={{ fontSize:10,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 6px' }}>Notes de séance</p>
+                    <p style={{ fontSize:12,color:'var(--text)',lineHeight:1.5,margin:0,padding:'10px 12px',background:'var(--bg-card2)',borderRadius:9,border:'1px solid var(--border)' }}>{vDraft.vNotes}</p>
+                  </div>
+                )}
+
+                <button onClick={()=>setValidPanel('form')} style={{ marginTop:14,width:'100%',padding:'9px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:600 }}>
+                  Modifier les réels
+                </button>
+              </div>
+            )
+          })()}
         </section>
       </main>
 

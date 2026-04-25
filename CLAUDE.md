@@ -43,3 +43,6 @@ Table `activities` :
 ## Objectif produit
 App de coaching sportif hybride (endurance + force).
 Benchmark UI/UX : Strava + TrainingPeaks.
+
+## Design System
+Avant toute modification ou création de composant UI, lis `docs/DESIGN_SYSTEM.md` et applique ses règles sans exception.

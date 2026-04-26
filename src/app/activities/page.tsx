@@ -3255,7 +3255,7 @@ export default function TrainingPage() {
           {/* ── Panneau analyse IA ── */}
           {aiError && (
             <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: T.radius, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 12 }}>
-              ⚠️ {aiError}
+              {aiError}
             </div>
           )}
           {aiResult && (
@@ -3283,7 +3283,7 @@ export default function TrainingPage() {
                     <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: T.textMuted, margin: '0 0 8px', fontFamily: T.fontDisplay }}>Tendances</p>
                     {aiResult.trends.map((t, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                        <span style={{ fontSize: 12 }}>{ t.direction === 'improving' ? '📈' : t.direction === 'declining' ? '📉' : '➡️' }</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: t.direction === 'improving' ? '#22c55e' : t.direction === 'declining' ? '#ef4444' : 'var(--text-dim)' }}>{ t.direction === 'improving' ? '↑' : t.direction === 'declining' ? '↓' : '→' }</span>
                         <div>
                           <p style={{ fontSize: 11, fontWeight: 600, margin: 0, color: T.text }}>{t.metric}</p>
                           <p style={{ fontSize: 10, color: T.textMuted, margin: 0, fontFamily: T.fontBody }}>{t.change}</p>
@@ -3297,13 +3297,13 @@ export default function TrainingPage() {
                 <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
                   {aiResult.strengths.length > 0 && (
                     <>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#22c55e', margin: '0 0 6px', fontFamily: T.fontDisplay }}>💪 Forces</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#22c55e', margin: '0 0 6px', fontFamily: T.fontDisplay }}>Forces</p>
                       {aiResult.strengths.map((s, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 3px', fontFamily: T.fontBody }}>• {s}</p>)}
                     </>
                   )}
                   {aiResult.weaknesses.length > 0 && (
                     <>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#f97316', margin: '10px 0 6px', fontFamily: T.fontDisplay }}>⚠️ Points à travailler</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#f97316', margin: '10px 0 6px', fontFamily: T.fontDisplay }}>Points à travailler</p>
                       {aiResult.weaknesses.map((w, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 3px', fontFamily: T.fontBody }}>• {w}</p>)}
                     </>
                   )}
@@ -3312,7 +3312,7 @@ export default function TrainingPage() {
                 {/* Recommandations */}
                 {aiResult.recommendations.length > 0 && (
                   <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#5b6fff', margin: '0 0 8px', fontFamily: T.fontDisplay }}>💡 Recommandations</p>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#5b6fff', margin: '0 0 8px', fontFamily: T.fontDisplay }}>Recommandations</p>
                     {aiResult.recommendations.map((r, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 5px', fontFamily: T.fontBody }}>• {r}</p>)}
                   </div>
                 )}

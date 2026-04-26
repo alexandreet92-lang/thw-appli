@@ -94,24 +94,7 @@ body {
   transition: background-color 0.5s ease, color 0.3s ease;
 }
 
-.bg-atmosphere {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-}
-
-.light .bg-atmosphere {
-  background:
-    radial-gradient(ellipse 55% 40% at 15% 55%, rgba(0,200,224,0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 45% 50% at 85% 20%, rgba(91,111,255,0.03) 0%, transparent 70%);
-}
-
-.dark .bg-atmosphere {
-  background:
-    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(0,200,224,0.05) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 60% at 80% 20%, rgba(91,111,255,0.06) 0%, transparent 70%);
-}
+/* .bg-atmosphere removed — solid bg only */
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
@@ -176,6 +159,36 @@ body {
 /* ── Button tap feedback (Framer Motion applies scale; this is the
       CSS fallback for reduced-motion users) ─────────────────────── */
 button:active { transform: scale(0.97); }
+
+/* ── Tab / filter pill — design system uniforme ──────────────────
+   Usage : className="tab-btn" + className="tab-btn active"
+   Height 36px, radius 6px, transparent default, --primary active. ── */
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-mid);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.tab-btn:hover:not(.active) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.tab-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+}
 
 /* Respect des préférences d'accessibilité */
 @media (prefers-reduced-motion: reduce) {

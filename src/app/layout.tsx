@@ -13,9 +13,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className="light">
+    <html lang="fr" className="dark">
       <body style={{ margin: 0, background: 'var(--bg)', height: '100vh', overflow: 'hidden' }}>
-        <div className="bg-atmosphere" aria-hidden="true" />
 
         {/* Desktop */}
         <div

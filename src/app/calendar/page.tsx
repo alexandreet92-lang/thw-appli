@@ -56,11 +56,11 @@ const SPORT_EMOJI: Record<string, string> = {
   run:'🏃', bike:'🚴', swim:'🏊', hyrox:'🏋️', gym:'💪', triathlon:'🔱', rowing:'🚣',
 }
 
-const RACE_CONFIG: Record<RaceLevel, { label: string; color: string; bg: string; border: string; emoji: string }> = {
-  secondary: { label:'Secondaire', color:'#22c55e', bg:'rgba(34,197,94,0.12)',  border:'#22c55e', emoji:'🟢' },
-  important: { label:'Important',  color:'#f97316', bg:'rgba(249,115,22,0.12)', border:'#f97316', emoji:'🟠' },
-  main:      { label:'Principal',  color:'#ef4444', bg:'rgba(239,68,68,0.12)',  border:'#ef4444', emoji:'🔴' },
-  gty:       { label:'GTY', color:'var(--gty-text)', bg:'var(--gty-bg)', border:'var(--gty-border)', emoji:'⚫' },
+const RACE_CONFIG: Record<RaceLevel, { label: string; color: string; bg: string; border: string }> = {
+  secondary: { label:'Secondaire', color:'#22c55e', bg:'rgba(34,197,94,0.12)',  border:'#22c55e' },
+  important: { label:'Important',  color:'#f97316', bg:'rgba(249,115,22,0.12)', border:'#f97316' },
+  main:      { label:'Principal',  color:'#ef4444', bg:'rgba(239,68,68,0.12)',  border:'#ef4444' },
+  gty:       { label:'GTY', color:'var(--gty-text)', bg:'var(--gty-bg)', border:'var(--gty-border)' },
 }
 
 const EVENT_CONFIG = { label:'Événement', color:'#9ca3af', bg:'rgba(156,163,175,0.12)', border:'#9ca3af', emoji:'📅' }
@@ -251,7 +251,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
             return (
               <button key={l} onClick={() => setLevel(l)}
                 style={{ padding:'8px 10px',borderRadius:9,border:'1px solid',cursor:'pointer',textAlign:'left',borderColor:level===l?cfg.border:'var(--border)',background:level===l?cfg.bg:'var(--bg-card2)' }}>
-                <p style={{ fontSize:11,fontWeight:600,margin:0,color:level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text)' }}>{cfg.emoji} {cfg.label}</p>
+                <p style={{ fontSize:11,fontWeight:600,margin:0,color:level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text)' }}>{cfg.label}</p>
               </button>
             )
           })}
@@ -288,12 +288,12 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
               {TRI_DISTANCES.map(d => (
                 <button key={d} onClick={() => setTriDist(d)} style={{ padding:'8px 12px',borderRadius:9,border:'1px solid',borderColor:triDist===d?'#a855f7':'var(--border)',background:triDist===d?'rgba(168,85,247,0.10)':'var(--bg-card2)',cursor:'pointer',textAlign:'left' }}>
                   <p style={{ fontSize:12,fontWeight:600,margin:0,color:triDist===d?'#a855f7':'var(--text)' }}>{d}</p>
-                  <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>🏊 {TRI_SWIM[d]} · 🚴 {TRI_BIKE[d]} · 🏃 {TRI_RUN[d]}</p>
+                  <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>Nat {TRI_SWIM[d]} · Vélo {TRI_BIKE[d]} · Run {TRI_RUN[d]}</p>
                 </button>
               ))}
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
-              {[{l:'🏊 Natation',v:goalSwim,s:setGoalSwim,p:'32:00'},{l:'🚴 Vélo',v:goalBike,s:setGoalBike,p:'2h25'},{l:'🏃 Run',v:goalRun,s:setGoalRun,p:'1h35'},{l:'⏱ Total',v:goalTime,s:setGoalTime,p:'4h40'}].map(x => (
+              {[{l:'Natation',v:goalSwim,s:setGoalSwim,p:'32:00'},{l:'Vélo',v:goalBike,s:setGoalBike,p:'2h25'},{l:'Run',v:goalRun,s:setGoalRun,p:'1h35'},{l:'Total',v:goalTime,s:setGoalTime,p:'4h40'}].map(x => (
                 <div key={x.l}>
                   <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{x.l}</p>
                   <input value={x.v} onChange={e => x.s(e.target.value)} placeholder={x.p}
@@ -349,7 +349,7 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
               return (
                 <button key={l} onClick={() => setForm({ ...form, level:l })}
                   style={{ padding:'4px 9px',borderRadius:7,border:'1px solid',borderColor:form.level===l?cfg.border:'var(--border)',background:form.level===l?cfg.bg:'var(--bg-card2)',color:form.level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text-mid)',fontSize:10,cursor:'pointer',fontWeight:form.level===l?700:400 }}>
-                  {cfg.emoji} {cfg.label}
+                  {cfg.label}
                 </button>
               )
             })}
@@ -387,11 +387,11 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:460,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14 }}>
           <div>
-            <span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{cfg.emoji} {cfg.label}</span>
+            <span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{cfg.label}</span>
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'6px 0 2px' }}>{race.name}</h3>
-            <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{SPORT_EMOJI[race.sport]} · {new Date(race.date).toLocaleDateString('fr-FR',{ weekday:'long',day:'numeric',month:'long',year:'numeric' })}</p>
-            {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>📏 {race.runDistance}</p>}
-            {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>🔱 {race.triDistance}</p>}
+            <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{race.sport} · {new Date(race.date).toLocaleDateString('fr-FR',{ weekday:'long',day:'numeric',month:'long',year:'numeric' })}</p>
+            {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>{race.runDistance}</p>}
+            {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>{race.triDistance}</p>}
           </div>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
@@ -403,7 +403,7 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
           {race.goal && (
             <div>
               <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Objectif</p>
-              <p style={{ fontSize:13,fontWeight:600,margin:0 }}>🎯 {race.goal}</p>
+              <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{race.goal}</p>
             </div>
           )}
         </div>
@@ -420,7 +420,7 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
           </button>
           <button onClick={onEdit}
             style={{ flex:1,padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
-            ✏️ Modifier
+            Modifier
           </button>
         </div>
       </div>
@@ -441,7 +441,7 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>📅 Ajouter un événement</h3>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Ajouter un événement</h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
         <div style={{ marginBottom:10 }}>
@@ -507,11 +507,11 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
       {/* GTY Banner */}
       {gty && (
         <div style={{ padding:'14px 18px',borderRadius:14,background:'var(--gty-bg)',border:'2px solid var(--gty-border)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' }}>
-          <span style={{ fontSize:28 }}>⚫</span>
+          <span style={{ width:10,height:10,borderRadius:'50%',background:'var(--gty-text)',display:'inline-block',flexShrink:0,opacity:0.7 }} />
           <div style={{ flex:1 }}>
             <p style={{ fontSize:11,fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--gty-text)',opacity:0.6,margin:'0 0 2px' }}>Goal of the Year</p>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800,color:'var(--gty-text)',margin:'0 0 2px' }}>{gty.name}</p>
-            {gty.goal && <p style={{ fontSize:12,color:'var(--gty-text)',opacity:0.7,margin:0 }}>🎯 {gty.goal}</p>}
+            {gty.goal && <p style={{ fontSize:12,color:'var(--gty-text)',opacity:0.7,margin:0 }}>{gty.goal}</p>}
           </div>
           <div style={{ textAlign:'center' }}>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,color:'var(--gty-text)',margin:0,lineHeight:1 }}>{Math.max(0, daysUntil(gty.date))}</p>
@@ -533,7 +533,7 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
         <div style={{ display:'flex',gap:6 }}>
           <button onClick={() => setAddEventMode({ month: currentMonth })}
             style={{ padding:'6px 12px',borderRadius:9,background:'rgba(156,163,175,0.15)',border:'1px solid rgba(156,163,175,0.3)',color:'#9ca3af',fontSize:11,fontWeight:600,cursor:'pointer' }}>
-            📅 Événement
+            Événement
           </button>
           <button onClick={() => setAddMode({ month: currentMonth })}
             style={{ padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer' }}>
@@ -563,7 +563,7 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
                       return (
                         <div key={item.key} onClick={e => { e.stopPropagation(); setDetailModal(item.race) }}
                           style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer',marginBottom:4 }}>
-                          <span style={{ fontSize:9 }}>{cfg.emoji}</span>
+                          <span style={{ width:6,height:6,borderRadius:'50%',background:item.race.level==='gty'?'var(--gty-text)':cfg.color,display:'inline-block',flexShrink:0 }} />
                           <div style={{ flex:1,minWidth:0 }}>
                             <p style={{ fontSize:10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:item.race.level==='gty'?'var(--gty-text)':cfg.color }}>{item.race.name}</p>
                             <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{item.date} {MONTH_SHORT[mi]}</p>
@@ -574,7 +574,7 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
                       return (
                         <div key={item.key}
                           style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:EVENT_CONFIG.bg,border:`1px solid ${EVENT_CONFIG.border}44`,marginBottom:4 }}>
-                          <span style={{ fontSize:9 }}>{EVENT_CONFIG.emoji}</span>
+                          <span style={{ width:6,height:6,borderRadius:'50%',background:EVENT_CONFIG.color,display:'inline-block',flexShrink:0 }} />
                           <div style={{ flex:1,minWidth:0 }}>
                             <p style={{ fontSize:10,fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:EVENT_CONFIG.color }}>{item.event.title}</p>
                             <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{item.date} {MONTH_SHORT[mi]}</p>
@@ -602,7 +602,7 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
             <div style={{ display:'flex',gap:6 }}>
               <button onClick={() => setAddEventMode({ month: currentMonth })}
                 style={{ padding:'5px 10px',borderRadius:8,background:'rgba(156,163,175,0.12)',border:'1px solid rgba(156,163,175,0.25)',color:'#9ca3af',fontSize:10,cursor:'pointer' }}>
-                📅 Événement
+                Événement
               </button>
               <button onClick={() => setAddMode({ month: currentMonth })}
                 style={{ padding:'5px 10px',borderRadius:8,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',fontSize:10,cursor:'pointer' }}>
@@ -632,12 +632,12 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
                   {dr.map(r => { const cfg = RACE_CONFIG[r.level]; return (
                     <div key={r.id} onClick={e => { e.stopPropagation(); setDetailModal(r) }}
                       style={{ borderRadius:3,padding:'1px 3px',background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer' }}>
-                      <p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:r.level==='gty'?'var(--gty-text)':cfg.color }}>{cfg.emoji} {r.name}</p>
+                      <p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:r.level==='gty'?'var(--gty-text)':cfg.color }}>{r.name}</p>
                     </div>
                   )})}
                   {de.map(ev => (
                     <div key={ev.id} style={{ borderRadius:3,padding:'1px 3px',background:EVENT_CONFIG.bg,border:`1px solid ${EVENT_CONFIG.border}44` }}>
-                      <p style={{ fontSize:7,fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:EVENT_CONFIG.color }}>{EVENT_CONFIG.emoji} {ev.title}</p>
+                      <p style={{ fontSize:7,fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:EVENT_CONFIG.color }}>{ev.title}</p>
                     </div>
                   ))}
                 </div>
@@ -659,7 +659,7 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
             <div style={{ flex:1 }}>
               <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{nextRace.name}</p>
               <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 4px' }}>{new Date(nextRace.date).toLocaleDateString('fr-FR',{ weekday:'long',day:'numeric',month:'long' })}</p>
-              {nextRace.goal && <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>🎯 {nextRace.goal}</p>}
+              {nextRace.goal && <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{nextRace.goal}</p>}
             </div>
             <button onClick={() => setEditModal(nextRace)}
               style={{ padding:'5px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
@@ -672,7 +672,6 @@ function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, del
       {/* All races list */}
       {races.length === 0 && events.filter(e => e.category === 'race').length === 0 && (
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontSize:32,marginBottom:8 }}>🏁</p>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée</p>
           <button onClick={() => setAddMode({ month: currentMonth })}
             style={{ padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>
@@ -710,7 +709,7 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>
-            {CATEGORY_CONFIG[category].icon} Ajouter un événement {CATEGORY_CONFIG[category].label}
+            Ajouter un événement {CATEGORY_CONFIG[category].label}
           </h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
@@ -857,7 +856,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
                       <span style={{ flex:1,fontSize:12,color:'var(--text)' }}>{t.name}</span>
                       <span style={{ fontSize:10,color:'var(--text-dim)' }}>{myEvents.filter(e => e.typeId === t.id).length} événement(s)</span>
                       <button onClick={() => setEditingType({ ...t })}
-                        style={{ padding:'3px 6px',borderRadius:6,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>✏️</button>
+                        style={{ padding:'3px 6px',borderRadius:6,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>Edit</button>
                       <button onClick={() => deleteEventType(t.id)}
                         style={{ padding:'3px 6px',borderRadius:6,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#ef4444',fontSize:10,cursor:'pointer' }}>✕</button>
                     </>

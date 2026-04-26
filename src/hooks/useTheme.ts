@@ -8,8 +8,7 @@ const NIGHT_START = 20
 const NIGHT_END   = 7
 
 function getAutoMode(): ThemeMode {
-  const h = new Date().getHours()
-  return h >= NIGHT_START || h < NIGHT_END ? 'dark' : 'light'
+  return 'dark'
 }
 
 function applyTheme(mode: ThemeMode) {
@@ -19,7 +18,7 @@ function applyTheme(mode: ThemeMode) {
 }
 
 export function useTheme() {
-  const [mode, setMode]         = useState<ThemeMode>('light')
+  const [mode, setMode]         = useState<ThemeMode>('dark')
   const [isManual, setIsManual] = useState(false)
 
   useEffect(() => {

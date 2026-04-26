@@ -978,6 +978,47 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
           </ChartSection>
         )
       })()}
+
+      {/* ── CHART 3 : VOLUME HEBDOMADAIRE ── */}
+      {(() => {
+        const semaines = plan.ai_context?.program?.semaines ?? []
+        if (semaines.length === 0) return null
+        const VOL_W = 460, VOL_H = 72, Y_PAD = 18, BAR_GAP = 3
+        const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
+        const barW = (VOL_W - BAR_GAP * (semaines.length - 1)) / semaines.length
+        return (
+          <ChartSection title="Volume hebdomadaire" subtitle={`${semaines.length} semaines`}>
+            <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible' }}>
+              {semaines.map((s, i) => {
+                const vol    = s.volume_h ?? 0
+                const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 3 : 0)
+                const x      = i * (barW + BAR_GAP)
+                const y      = VOL_H - barH
+                const active = s.numero === currentWeekNum
+                const col    = safeWeekTypeBg(s.type)
+                return (
+                  <g key={i}>
+                    <rect x={x} y={y} width={barW} height={barH}
+                      fill={col} opacity={active ? 1 : 0.4} rx={2}>
+                      <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? vol + 'h' : '—'}`}</title>
+                    </rect>
+                    {active && (
+                      <rect x={x} y={y} width={barW} height={barH} rx={2}
+                        fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.7} />
+                    )}
+                    {/* week number label below bar */}
+                    <text x={x + barW / 2} y={VOL_H + Y_PAD - 2} textAnchor="middle"
+                      fontSize={barW > 14 ? 8 : 6} fill={active ? col : 'var(--text-dim)'}
+                      fontWeight={active ? 700 : 400}>
+                      {`S${s.numero}`}
+                    </text>
+                  </g>
+                )
+              })}
+            </svg>
+          </ChartSection>
+        )
+      })()}
     </div>
   )
 }

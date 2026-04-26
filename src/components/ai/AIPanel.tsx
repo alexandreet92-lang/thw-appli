@@ -194,6 +194,72 @@ function MsgContent({ text }: { text: string }) {
   return <div style={{ fontFamily: 'DM Sans, sans-serif' }}>{blocks}</div>
 }
 
+// ── Typed text — streaming character-by-character reveal ──────────
+// Matches the Claude / ChatGPT "typewriter" feel: reveals chars at
+// ~16 ms/char during streaming, snaps to full text when done.
+
+function TypedText({ text, isStreaming }: { text: string; isStreaming: boolean }) {
+  const [shown, setShown]     = useState(isStreaming ? 0 : text.length)
+  const rafRef                = useRef<number | null>(null)
+  const targetLenRef          = useRef(text.length)
+  const prevStreamingRef      = useRef(isStreaming)
+
+  useEffect(() => {
+    targetLenRef.current = text.length
+
+    // Streaming just ended → snap to full text immediately
+    if (prevStreamingRef.current && !isStreaming) {
+      prevStreamingRef.current = false
+      setShown(text.length)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      return
+    }
+    prevStreamingRef.current = isStreaming
+
+    if (!isStreaming) {
+      setShown(text.length)
+      return
+    }
+
+    // Reveal chars progressively via rAF
+    const tick = () => {
+      setShown(prev => {
+        const remaining = targetLenRef.current - prev
+        if (remaining <= 0) { rafRef.current = null; return prev }
+        // Burst a few chars per frame — keeps up with fast streaming
+        const step = Math.max(1, Math.floor(remaining / 6))
+        const next = Math.min(prev + step, targetLenRef.current)
+        rafRef.current = requestAnimationFrame(tick)
+        return next
+      })
+    }
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [text, isStreaming])
+
+  const cursor = isStreaming
+    ? <span style={{
+        display:         'inline-block',
+        width:           2,
+        height:          13,
+        marginLeft:      2,
+        verticalAlign:   'middle',
+        background:      'var(--ai-accent)',
+        borderRadius:    1,
+        animation:       'ai_cursor 0.65s ease-in-out infinite',
+      }} />
+    : null
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <MsgContent text={text.slice(0, shown)} />
+      {cursor}
+    </div>
+  )
+}
+
 function parseBold(text: string): React.ReactNode {
   const parts = text.split(/\*\*([^*]+)\*\*/g)
   if (parts.length === 1) return text
@@ -692,7 +758,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 16px' }}>
               Retrouve-la dans Session → Bibliothèque
             </p>
-            <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Fermer
             </button>
           </div>
@@ -725,7 +791,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
               {errMsg && <p style={{ fontSize: 11, color: '#ef4444', margin: 0 }}>{errMsg}</p>}
               <button onClick={() => void save()} disabled={saving} style={{
                 padding: '10px', borderRadius: 9, border: 'none', marginTop: 2,
-                background: saving ? 'var(--ai-border)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                background: saving ? 'var(--ai-border)' : 'var(--ai-gradient)',
                 color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: saving ? 'not-allowed' : 'pointer',
               }}>
@@ -792,14 +858,14 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '9px 14px',
-          background: 'linear-gradient(90deg,rgba(91,111,255,0.09) 0%,transparent 100%)',
+          background: 'linear-gradient(90deg,var(--ai-accent-dim) 0%,transparent 100%)',
           borderBottom: '1px solid var(--ai-border)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
               {sportLabel} · {formatDuration(total)}
             </span>
-            <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'var(--ai-accent-dim)', color: 'var(--ai-accent)', fontWeight: 700, letterSpacing: '0.05em' }}>
               SÉANCE
             </span>
           </div>
@@ -911,7 +977,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
               <button onClick={() => { setEditedBlocks(session.blocks); setEditMode(true) }} style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                 Modifier
               </button>
-              <button onClick={() => setShowModal(true)} style={{ flex: 2, padding: '7px 10px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              <button onClick={() => setShowModal(true)} style={{ flex: 2, padding: '7px 10px', borderRadius: 8, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                 + Ajouter à la bibliothèque
               </button>
             </>
@@ -933,12 +999,12 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
 
 function Dots() {
   return (
-    <div style={{ display: 'flex', gap: 4, padding: '2px 0' }}>
+    <div style={{ display: 'flex', gap: 5, padding: '3px 2px', alignItems: 'center' }}>
       {[0, 1, 2].map(i => (
         <span key={i} style={{
-          display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
-          background: 'var(--ai-dim)',
-          animation: `ai_dot 1.2s ease-in-out ${i * 0.18}s infinite`,
+          display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+          background: 'var(--ai-accent)',
+          animation: `ai_dot 1.4s cubic-bezier(0.25,0.46,0.45,0.94) ${i * 0.22}s infinite`,
         }} />
       ))}
     </div>
@@ -1164,9 +1230,9 @@ function WeakpointsFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string
           return (
             <button key={s} onClick={() => toggle(s)} style={{
               padding: '7px 13px', borderRadius: 20,
-              border: `1px solid ${on ? '#5b6fff' : 'var(--ai-border)'}`,
-              background: on ? 'rgba(91,111,255,0.13)' : 'var(--ai-bg2)',
-              color: on ? '#5b6fff' : 'var(--ai-mid)',
+              border: `1px solid ${on ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+              background: on ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+              color: on ? 'var(--ai-accent)' : 'var(--ai-mid)',
               fontSize: 12, fontWeight: on ? 600 : 400,
               cursor: 'pointer', transition: 'all 0.12s',
               fontFamily: 'DM Sans,sans-serif',
@@ -1188,7 +1254,7 @@ function WeakpointsFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string
         <button onClick={submit} disabled={selected.length === 0} style={{
           flex: 1, padding: '9px 16px', borderRadius: 9,
           border: 'none',
-          background: selected.length > 0 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+          background: selected.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
           color: '#fff', fontSize: 12, fontWeight: 700,
           cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
           fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
@@ -1383,7 +1449,7 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
         )}
         <button onClick={next} disabled={!canNext} style={{
           flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
-          background: canNext ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+          background: canNext ? 'var(--ai-gradient)' : 'var(--ai-border)',
           color: '#fff', fontSize: 12, fontWeight: 700,
           cursor: canNext ? 'pointer' : 'not-allowed',
           fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
@@ -1497,7 +1563,7 @@ function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, 
         </button>
         <button onClick={submit} disabled={!type} style={{
           flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
-          background: type ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+          background: type ? 'var(--ai-gradient)' : 'var(--ai-border)',
           color: '#fff', fontSize: 12, fontWeight: 700,
           cursor: type ? 'pointer' : 'not-allowed',
           fontFamily: 'DM Sans,sans-serif',
@@ -1703,7 +1769,7 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
           Retour
         </button>
         <button onClick={buildPrompt}
-          style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
           Analyser mes tests
         </button>
       </div>
@@ -4256,7 +4322,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             disabled={typesSeance.length === 0}
             style={{
               flex: 1, padding: '9px', borderRadius: 9, border: 'none',
-              background: typesSeance.length > 0 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+              background: typesSeance.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: typesSeance.length > 0 ? 'pointer' : 'not-allowed',
               fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
@@ -4301,7 +4367,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           <a href="/session" style={{
             display: 'inline-flex', alignItems: 'center',
             padding: '8px 16px', borderRadius: 9, border: 'none',
-            background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            background: 'var(--ai-gradient)',
             color: '#fff', fontSize: 12, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
             textDecoration: 'none',
@@ -4353,7 +4419,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             disabled={modifyText.trim().length < 10}
             style={{
               flex: 1, padding: '9px', borderRadius: 9, border: 'none',
-              background: modifyText.trim().length >= 10 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+              background: modifyText.trim().length >= 10 ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: modifyText.trim().length >= 10 ? 'pointer' : 'not-allowed',
               fontFamily: 'DM Sans,sans-serif',
@@ -4489,7 +4555,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             disabled={saving}
             style={{
               flex: 2, padding: '9px', borderRadius: 9, border: 'none',
-              background: saving ? 'var(--ai-border)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+              background: saving ? 'var(--ai-border)' : 'var(--ai-gradient)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif',
             }}
@@ -4581,7 +4647,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
                 </button>
                 <button
                   onClick={applyBlocEdit}
-                  style={{ flex: 2, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                  style={{ flex: 2, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
                 >
                   Appliquer
                 </button>
@@ -4913,7 +4979,7 @@ function HistoryDrawer({
           title="Nouvelle conversation"
           style={{
             width: 24, height: 24, borderRadius: 6, border: 'none',
-            background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            background: 'var(--ai-gradient)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 2px 6px rgba(91,111,255,0.3)',
           }}
@@ -5491,31 +5557,52 @@ export default function AIPanel({
     <>
       {/* ── CSS global ─────────────────────────────────────── */}
       <style>{`
+        /* ── Thinking dots — organic spring bounce ───────────── */
         @keyframes ai_dot {
-          0%,80%,100% { opacity:.2; transform:translateY(0); }
-          40% { opacity:1; transform:translateY(-3px); }
+          0%, 70%, 100% { opacity: 0.22; transform: scale(0.75) translateY(0); }
+          35%            { opacity: 1;    transform: scale(1.18) translateY(-4px); }
         }
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }
         }
+        /* ── Typing cursor blink ──────────────────────────────── */
+        @keyframes ai_cursor {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0; }
+        }
+        /* ── Message appear ──────────────────────────────────── */
+        @keyframes ai_msg_in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
 
         /* CSS variables */
         .aip-root {
-          --ai-bg:      #ffffff;
-          --ai-bg2:     #f6f8fc;
-          --ai-border:  rgba(0,0,0,0.08);
-          --ai-text:    #0d1117;
-          --ai-mid:     rgba(13,17,23,0.58);
-          --ai-dim:     rgba(13,17,23,0.36);
+          --ai-bg:          #ffffff;
+          --ai-bg2:         #f6f8fc;
+          --ai-border:      rgba(0,0,0,0.08);
+          --ai-text:        #0d1117;
+          --ai-mid:         rgba(13,17,23,0.58);
+          --ai-dim:         rgba(13,17,23,0.36);
+          --ai-accent:      #8b5cf6;
+          --ai-accent-dim:  rgba(139,92,246,0.12);
+          --ai-accent-soft: rgba(139,92,246,0.06);
+          --ai-accent-line: rgba(139,92,246,0.48);
+          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
         }
         html.dark .aip-root {
-          --ai-bg:      #13161e;
-          --ai-bg2:     #0f121a;
-          --ai-border:  rgba(255,255,255,0.09);
-          --ai-text:    #eef2f7;
-          --ai-mid:     rgba(238,242,247,0.60);
-          --ai-dim:     rgba(238,242,247,0.35);
+          --ai-bg:          #13161e;
+          --ai-bg2:         #0f121a;
+          --ai-border:      rgba(255,255,255,0.09);
+          --ai-text:        #eef2f7;
+          --ai-mid:         rgba(238,242,247,0.60);
+          --ai-dim:         rgba(238,242,247,0.35);
+          --ai-accent:      #8b5cf6;
+          --ai-accent-dim:  rgba(139,92,246,0.15);
+          --ai-accent-soft: rgba(139,92,246,0.08);
+          --ai-accent-line: rgba(139,92,246,0.55);
+          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
         }
 
         /* Panneau */
@@ -5681,7 +5768,7 @@ export default function AIPanel({
             style={{
               width: 30, height: 30, borderRadius: 8,
               border: 'none',
-              background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+              background: 'var(--ai-gradient)',
               cursor: 'pointer', color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, boxShadow: '0 2px 8px rgba(91,111,255,0.3)',
@@ -5977,16 +6064,26 @@ export default function AIPanel({
                           maxWidth: '78%',
                           padding: '9px 14px',
                           borderRadius: '14px 14px 4px 14px',
-                          background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                          background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
                           color: '#fff',
                         }}>
                           <span style={{ fontSize: 13.5, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
                         </div>
-                      ) : (
-                        <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                          <MsgContent text={msg.content} />
-                        </div>
-                      )}
+                      ) : (() => {
+                        const isStreamingMsg = loading && idx === active.msgs.length - 1
+                        return (
+                          <div style={{
+                            flex: 1, minWidth: 0,
+                            borderLeft: '2px solid var(--ai-accent-line)',
+                            background: 'var(--ai-accent-soft)',
+                            borderRadius: '0 10px 10px 0',
+                            padding: '10px 14px 10px 14px',
+                            animation: 'ai_msg_in 0.22s ease both',
+                          }}>
+                            <TypedText text={msg.content} isStreaming={isStreamingMsg} />
+                          </div>
+                        )
+                      })()}
                     </div>
                     {/* Session card */}
                     {msg.role === 'assistant' && (
@@ -5998,20 +6095,23 @@ export default function AIPanel({
                   </div>
                 ))}
 
-                {/* Typing indicator */}
+                {/* Thinking indicator */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, animation: 'ai_msg_in 0.18s ease both' }}>
                     <div style={{
                       width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                      background: 'var(--ai-bg2)',
-                      border: '1px solid var(--ai-border)',
+                      background: 'var(--ai-accent-dim)',
+                      border: '1px solid var(--ai-accent-line)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <ModelEffigy model={model} isAnimating={true} size={15} color="var(--ai-mid)" />
+                      <ModelEffigy model={model} isAnimating={true} size={15} color="var(--ai-accent)" />
                     </div>
                     <div style={{
-                      padding: '10px 14px', borderRadius: '14px 14px 14px 4px',
-                      background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                      padding: '8px 14px',
+                      borderLeft: '2px solid var(--ai-accent-line)',
+                      background: 'var(--ai-accent-soft)',
+                      borderRadius: '0 10px 10px 0',
+                      display: 'flex', alignItems: 'center',
                     }}>
                       <Dots />
                     </div>

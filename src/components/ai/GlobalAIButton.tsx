@@ -34,15 +34,15 @@ export default function GlobalAIButton() {
           gap:         8,
           padding:     '9px 16px 9px 12px',
           borderRadius: 14,
-          border:      `1px solid ${open ? 'rgba(91,111,255,0.55)' : 'rgba(91,111,255,0.22)'}`,
+          border:      `1px solid ${open ? 'rgba(139,92,246,0.55)' : 'rgba(139,92,246,0.25)'}`,
           background:  open
-            ? 'linear-gradient(135deg,rgba(0,200,224,0.18),rgba(91,111,255,0.25))'
+            ? 'linear-gradient(135deg,rgba(139,92,246,0.18),rgba(91,111,255,0.22))'
             : 'var(--nav-bg)',
           backdropFilter: 'blur(14px)',
           WebkitBackdropFilter: 'blur(14px)',
           cursor:      'pointer',
           boxShadow:   open
-            ? '0 0 0 3px rgba(91,111,255,0.13), 0 8px 32px rgba(0,0,0,0.22)'
+            ? '0 0 0 3px rgba(139,92,246,0.14), 0 8px 32px rgba(0,0,0,0.22)'
             : '0 4px 20px rgba(0,0,0,0.18)',
           transition:  'all 0.18s',
         }}
@@ -60,7 +60,7 @@ export default function GlobalAIButton() {
           fontFamily:  'DM Sans, sans-serif',
           fontSize:    13,
           fontWeight:  600,
-          background:  'linear-gradient(90deg,#00c8e0,#5b6fff)',
+          background:  'linear-gradient(90deg,#8b5cf6,#5b6fff)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           whiteSpace:  'nowrap',

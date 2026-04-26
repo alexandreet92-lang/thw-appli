@@ -1186,11 +1186,15 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                       {Object.entries(volBySport).sort((a, b) => b[1] - a[1]).map(([sport, mins]) => {
                         const col = sportColor(sport)
                         const types = bySpSessions[sport] ?? []
+                        // Dominant intensity type
+                        const freqMap = types.reduce<Record<string, number>>((acc, t) => { acc[t] = (acc[t] ?? 0) + 1; return acc }, {})
+                        const dominant = Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
                         return (
-                          <div key={sport} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: col, minWidth: 70, textTransform: 'capitalize' as const }}>{sport}</span>
+                          <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: col, minWidth: 65, textTransform: 'capitalize' as const }}>{sport}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-dim)', minWidth: 18 }}>{types.length}×</span>
                             <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 36 }}>{formatDuration(mins)}</span>
-                            <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1 }}>{types.join(' · ')}</span>
+                            {dominant && <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1, fontStyle: 'italic' }}>{dominant}</span>}
                           </div>
                         )
                       })}

@@ -752,6 +752,9 @@ interface AiPlanSessionAgg {
 
 const TP_BLOC_COLORS: Record<string, string> = {
   'Base':        '#3b82f6',
+  'Build':       '#f97316',
+  'Peak':        '#ef4444',
+  'Taper':       '#22c55e',
   'Intensité':   '#f97316',
   'Spécifique':  '#ef4444',
   'Deload':      '#22c55e',
@@ -760,10 +763,11 @@ const TP_BLOC_COLORS: Record<string, string> = {
 
 function safeWeekTypeBg(type: string | null | undefined): string {
   const t = (type ?? '').toLowerCase()
-  if (t.includes('deload')) return '#86efac'
-  if (t.includes('base')) return '#2563eb'
-  if (t.includes('intensit')) return '#f97316'
-  if (t.includes('spécif') || t.includes('specif')) return '#ef4444'
+  if (t.includes('taper') || t.includes('deload')) return '#22c55e'
+  if (t.includes('base'))                          return '#3b82f6'
+  if (t.includes('build') || t.includes('intensit')) return '#f97316'
+  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#ef4444'
+  if (t.includes('compét') || t.includes('compet')) return '#a855f7'
   return '#8b5cf6'
 }
 
@@ -793,290 +797,146 @@ function fmtFrenchDate(iso: string): string {
   } catch { return iso }
 }
 
+// ── Helpers SVG & collapsible ─────────────────────────────────────────────
+
+function polarXY(cx: number, cy: number, r: number, angle: number) {
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+}
+
+function donutArcPath(
+  cx: number, cy: number, rOut: number, rIn: number,
+  startAng: number, endAng: number
+): string {
+  const lg = endAng - startAng > Math.PI ? 1 : 0
+  const os = polarXY(cx, cy, rOut, startAng), oe = polarXY(cx, cy, rOut, endAng)
+  const is = polarXY(cx, cy, rIn,  startAng), ie = polarXY(cx, cy, rIn,  endAng)
+  return [
+    `M ${os.x.toFixed(2)} ${os.y.toFixed(2)}`,
+    `A ${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(2)} ${oe.y.toFixed(2)}`,
+    `L ${ie.x.toFixed(2)} ${ie.y.toFixed(2)}`,
+    `A ${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(2)} ${is.y.toFixed(2)}`,
+    'Z',
+  ].join(' ')
+}
+
+function ChartSection({
+  title, subtitle, defaultOpen = true, children,
+}: {
+  title: string; subtitle?: string; defaultOpen?: boolean; children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+          padding: 0, marginBottom: open ? 10 : 0,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', letterSpacing: '0.10em', textTransform: 'uppercase' as const }}>
+            {title}
+          </span>
+          {subtitle && (
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>{subtitle}</span>
+          )}
+        </span>
+        <span style={{
+          fontSize: 9, color: 'var(--text-dim)', flexShrink: 0, userSelect: 'none' as const,
+          display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s',
+        }}>▼</span>
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  )
+}
+
+// ── Plan header + 4 collapsible charts ────────────────────────────────────
+
 function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
   plan: AiTrainingPlan
   sessions: AiPlanSessionAgg[]
   currentWeekStart: string
 }) {
-  const [open, setOpen] = useState(true)
-
-  // Numéro de semaine courante dans le plan
-  const startMs = new Date(plan.start_date + 'T00:00:00').getTime()
-  const curMs   = new Date(currentWeekStart + 'T00:00:00').getTime()
-  const idx     = Math.round((curMs - startMs) / (7 * 86400000))
-  const currentWeekNum = Math.max(1, Math.min(plan.duree_semaines, idx + 1))
-
-  // Volume par sport (depuis sessions S1-S2 réellement insérées)
-  const volBySportEntries: { sport: string; hours: number }[] = (() => {
-    const map = new Map<string, number>()
-    for (const s of sessions) {
-      if (!s.sport) continue
-      map.set(s.sport, (map.get(s.sport) ?? 0) + (s.duration_min ?? 0))
-    }
-    return Array.from(map.entries())
-      .map(([sport, mins]) => ({ sport, hours: mins / 60 }))
-      .sort((a, b) => b.hours - a.hours)
+  const currentWeekNum = (() => {
+    const startMs = new Date(plan.start_date + 'T00:00:00').getTime()
+    const curMs   = new Date(currentWeekStart + 'T00:00:00').getTime()
+    return Math.max(1, Math.min(plan.duree_semaines, Math.round((curMs - startMs) / (7 * 86400000)) + 1))
   })()
-  const maxSportHours = Math.max(...volBySportEntries.map(e => e.hours), 1)
 
-  // Distribution intensités
-  const intensityEntries: { key: string; mins: number; color: string; label: string }[] = (() => {
-    const map = new Map<string, number>()
-    for (const s of sessions) {
-      const k = s.intensity ?? 'unknown'
-      map.set(k, (map.get(k) ?? 0) + (s.duration_min ?? 0))
-    }
-    const META: Record<string, { color: string; label: string }> = {
-      low:      { color: '#22c55e', label: 'Facile' },
-      moderate: { color: '#eab308', label: 'Modéré' },
-      high:     { color: '#f97316', label: 'Intense' },
-      max:      { color: '#ef4444', label: 'Max' },
-      unknown:  { color: '#9ca3af', label: 'N/D' },
-    }
-    return Array.from(map.entries())
-      .map(([key, mins]) => ({ key, mins, ...(META[key] ?? META.unknown) }))
-      .sort((a, b) => b.mins - a.mins)
-  })()
-  const totalIntMins = intensityEntries.reduce((s, e) => s + e.mins, 0)
-
-  // Volume hebdo : depuis ai_context.program.semaines (toutes les semaines)
-  const weekly = plan.ai_context?.program?.semaines ?? []
-  const maxWeekH = Math.max(...weekly.map(w => w.volume_h ?? 0), 1)
-
-  // Graphiques constants
-  const PERIOD_W = 400, PERIOD_H = 50
-  const VOL_W   = 460, VOL_H   = 90
-  const Y_PAD   = 28
+  // Dimensions SVG
+  const PERIOD_W = 400, PERIOD_H = 52
 
   return (
-    <div style={{
-      borderRadius: 14,
-      border: '1px solid var(--border)',
-      background: 'var(--bg-card)',
-      padding: 16,
-      marginBottom: 8,
-    }}>
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 240 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: 0, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            Plan en cours
-          </p>
-          <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: '2px 0 4px', fontFamily: 'Syne,sans-serif', lineHeight: 1.2 }}>
-            {plan.name}
-          </p>
+    <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
+
+      {/* ── HEADER ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: 0, letterSpacing: '0.12em', textTransform: 'uppercase' as const }}>Plan en cours</p>
+          <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: '2px 0 4px', fontFamily: 'Syne,sans-serif', lineHeight: 1.2 }}>{plan.name}</p>
           {plan.objectif_principal && (
-            <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 6px', lineHeight: 1.45 }}>
-              {plan.objectif_principal}
-            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 6px', lineHeight: 1.45 }}>{plan.objectif_principal}</p>
           )}
-          {/* Progress bar S{N}/{total} */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', minWidth: 50, fontVariantNumeric: 'tabular-nums' }}>
-              S{currentWeekNum}/{plan.duree_semaines}
-            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', minWidth: 50, fontVariantNumeric: 'tabular-nums' }}>S{currentWeekNum}/{plan.duree_semaines}</span>
             <div style={{ flex: 1, height: 6, borderRadius: 4, background: 'rgba(139,92,246,0.12)', overflow: 'hidden' }}>
-              <div style={{
-                width: `${(currentWeekNum / plan.duree_semaines) * 100}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg,#8b5cf6,#5b6fff)',
-                transition: 'width 0.3s ease',
-              }} />
+              <div style={{ width: `${(currentWeekNum / plan.duree_semaines) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#8b5cf6,#5b6fff)', transition: 'width 0.3s ease' }} />
             </div>
           </div>
-          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>
-            Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}
-          </p>
+          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}</p>
         </div>
-        <button
-          onClick={() => setOpen(o => !o)}
-          style={{
-            border: '1px solid var(--border)', background: 'transparent',
-            borderRadius: 8, padding: '6px 10px', fontSize: 11, color: 'var(--text-mid)',
-            cursor: 'pointer', flexShrink: 0,
-          }}
-        >
-          {open ? '▲ Masquer graphiques' : '▼ Voir graphiques'}
-        </button>
       </div>
 
-      {open && (
-        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* PÉRIODISATION */}
-          {plan.blocs_periodisation.length > 0 && (
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: '0 0 8px', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                Périodisation
-              </p>
-              <svg width="100%" viewBox={`0 0 ${PERIOD_W} ${PERIOD_H}`} preserveAspectRatio="none" style={{ display: 'block', borderRadius: 6, marginBottom: 6 }}>
-                {(() => {
-                  const total = plan.duree_semaines || 1
-                  let offX = 0
-                  return plan.blocs_periodisation.map((b, i) => {
-                    const dur = (b.semaine_fin - b.semaine_debut + 1)
-                    const w   = (dur / total) * PERIOD_W
-                    const x   = offX
-                    offX += w
-                    const color = TP_BLOC_COLORS[b.type] ?? '#6b7280'
-                    return (
-                      <g key={i}>
-                        <rect x={x} y={0} width={w} height={PERIOD_H} fill={color} opacity={0.85}>
-                          <title>{`${b.nom} — ${b.type}\nS${b.semaine_debut} à S${b.semaine_fin} (${dur} sem)\n${b.description ?? ''}`}</title>
-                        </rect>
-                        {/* Marqueur semaine courante */}
-                        {currentWeekNum >= b.semaine_debut && currentWeekNum <= b.semaine_fin && (
-                          <line
-                            x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
-                            x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
-                            y1={0} y2={PERIOD_H}
-                            stroke="#fff" strokeWidth={2} opacity={0.95}
-                          />
-                        )}
-                      </g>
-                    )
-                  })
-                })()}
-              </svg>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-                {plan.blocs_periodisation.map((b, i) => (
-                  <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-dim)' }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: TP_BLOC_COLORS[b.type] ?? '#6b7280' }} />
-                    {b.nom} · S{b.semaine_debut}-S{b.semaine_fin}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* VOLUME HEBDO */}
-          {weekly.length > 0 && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: 0, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                  Volume hebdomadaire
-                </p>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                  max {Math.round(maxWeekH)}h · semaine active surlignée
-                </span>
-              </div>
-              <svg width="100%" viewBox={`0 0 ${VOL_W + Y_PAD} ${VOL_H + 18}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-                {[0, 0.5, 1].map((frac, i) => {
-                  const y  = VOL_H - frac * VOL_H
-                  const v  = Math.round(maxWeekH * frac)
-                  return (
-                    <g key={i}>
-                      <line x1={Y_PAD} y1={y} x2={VOL_W + Y_PAD} y2={y} stroke="rgba(107,114,128,0.20)" strokeWidth={1} strokeDasharray="3 3" />
-                      <text x={Y_PAD - 3} y={y + 3} textAnchor="end" fontSize={9} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{v}h</text>
-                    </g>
-                  )
-                })}
-                {weekly.map((sem, i) => {
-                  const stepX = VOL_W / weekly.length
-                  const barW  = Math.max(2, stepX - 2)
-                  const h     = Math.max(2, ((sem.volume_h ?? 0) / maxWeekH) * VOL_H)
-                  const x     = Y_PAD + i * stepX + (stepX - barW) / 2
-                  const y     = VOL_H - h
-                  const isActive = sem.numero === currentWeekNum
-                  return (
-                    <g key={i}>
-                      <rect
-                        x={x} y={y} width={barW} height={h}
-                        fill={safeWeekTypeBg(sem.type)} opacity={isActive ? 1 : 0.55}
-                        stroke={isActive ? '#00c8e0' : 'none'} strokeWidth={isActive ? 2 : 0}
-                        rx={2}
-                      >
-                        <title>{`S${sem.numero} — ${sem.theme ?? ''}\n${sem.volume_h ?? 0}h · TSS ${sem.tss_semaine ?? '?'}`}</title>
-                      </rect>
-                    </g>
-                  )
-                })}
-                {/* Labels sous l'axe — uniquement S1, mid, last + active */}
-                {weekly.map((sem, i) => {
-                  const stepX = VOL_W / weekly.length
-                  const showLabel = i === 0 || i === weekly.length - 1 || sem.numero === currentWeekNum || (weekly.length > 8 && i === Math.floor(weekly.length / 2))
-                  if (!showLabel) return null
-                  return (
-                    <text
-                      key={`lbl-${i}`}
-                      x={Y_PAD + i * stepX + stepX / 2}
-                      y={VOL_H + 13}
-                      textAnchor="middle" fontSize={9}
-                      fill={sem.numero === currentWeekNum ? '#00c8e0' : 'var(--text-dim)'}
-                      fontWeight={sem.numero === currentWeekNum ? 700 : 400}
-                    >
-                      S{sem.numero}
-                    </text>
-                  )
-                })}
-              </svg>
-            </div>
-          )}
-
-          {/* VOLUME PAR SPORT */}
-          {volBySportEntries.length > 0 && (
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: '0 0 6px', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                Volume par sport <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-dim)' }}>· estimé sur S1-S2 détaillées</span>
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {volBySportEntries.map(e => (
-                  <div key={e.sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 80, textTransform: 'capitalize' }}>
-                      {e.sport}
-                    </span>
-                    <div style={{ flex: 1, height: 12, background: 'rgba(107,114,128,0.10)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${(e.hours / maxSportHours) * 100}%`,
-                        height: '100%',
-                        background: sportColor(e.sport),
-                        opacity: 0.85,
-                        transition: 'width 0.3s ease',
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--text)', minWidth: 50, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {e.hours.toFixed(1)}h
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* DISTRIBUTION INTENSITÉS */}
-          {intensityEntries.length > 0 && totalIntMins > 0 && (
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: '0 0 6px', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                Distribution intensités <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-dim)' }}>· estimé sur S1-S2</span>
-              </p>
-              {/* Stacked horizontal bar */}
-              <div style={{ display: 'flex', height: 18, borderRadius: 5, overflow: 'hidden', background: 'rgba(107,114,128,0.08)' }}>
-                {intensityEntries.map(e => {
-                  const pct = (e.mins / totalIntMins) * 100
-                  if (pct < 1) return null
-                  return (
-                    <div key={e.key} style={{
-                      width: `${pct}%`,
-                      background: e.color,
-                      opacity: 0.85,
-                    }} title={`${e.label} — ${Math.round(e.mins / 60 * 10) / 10}h (${pct.toFixed(0)}%)`} />
-                  )
-                })}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 6 }}>
-                {intensityEntries.map(e => {
-                  const pct = (e.mins / totalIntMins) * 100
-                  return (
-                    <span key={e.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-dim)' }}>
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: e.color }} />
-                      {e.label} <span style={{ color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(0)}%</span>
-                    </span>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+      {/* ── CHART 1 : PÉRIODISATION ── */}
+      {plan.blocs_periodisation.length > 0 && (
+        <ChartSection title="Périodisation">
+          <svg width="100%" viewBox={`0 0 ${PERIOD_W} ${PERIOD_H}`} preserveAspectRatio="none" style={{ display: 'block', borderRadius: 6, marginBottom: 8 }}>
+            {(() => {
+              const total = plan.duree_semaines || 1
+              let offX = 0
+              return plan.blocs_periodisation.map((b, i) => {
+                const dur   = b.semaine_fin - b.semaine_debut + 1
+                const w     = (dur / total) * PERIOD_W
+                const x     = offX; offX += w
+                const color    = TP_BLOC_COLORS[b.type] ?? '#6b7280'
+                const isActive = currentWeekNum >= b.semaine_debut && currentWeekNum <= b.semaine_fin
+                const isFirst  = i === 0
+                const isLast   = i === plan.blocs_periodisation.length - 1
+                return (
+                  <g key={i}>
+                    <rect x={x} y={0} width={w} height={PERIOD_H} fill={color}
+                      opacity={isActive ? 0.92 : 0.55}
+                      rx={isFirst || isLast ? 4 : 0}>
+                      <title>{`${b.nom} (${b.type})\nS${b.semaine_debut}–S${b.semaine_fin} · ${dur} semaine${dur > 1 ? 's' : ''}${b.description ? '\n' + b.description : ''}`}</title>
+                    </rect>
+                    {w > 36 && (
+                      <text x={x + w / 2} y={PERIOD_H / 2 + 4} textAnchor="middle" fontSize={10} fill="#fff" fontWeight={700} opacity={0.9}>{b.type}</text>
+                    )}
+                    {isActive && (
+                      <line
+                        x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
+                        x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
+                        y1={0} y2={PERIOD_H}
+                        stroke="#fff" strokeWidth={2.5} opacity={0.95} strokeDasharray="4 2"
+                      />
+                    )}
+                  </g>
+                )
+              })
+            })()}
+          </svg>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+            {plan.blocs_periodisation.map((b, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-dim)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: TP_BLOC_COLORS[b.type] ?? '#6b7280', flexShrink: 0 }} />
+                {b.nom} · S{b.semaine_debut}–S{b.semaine_fin}
+              </span>
+            ))}
+          </div>
+        </ChartSection>
       )}
     </div>
   )

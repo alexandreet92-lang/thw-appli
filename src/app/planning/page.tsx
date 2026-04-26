@@ -1062,45 +1062,72 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
         const VOL_W = 460, VOL_H = 72, Y_PAD = 18, BAR_GAP = 3
         const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
         const barW = (VOL_W - BAR_GAP * (semaines.length - 1)) / semaines.length
+        const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
         return (
           <ChartSection title="Volume hebdomadaire" subtitle={`${semaines.length} semaines`}>
-            <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible' }}>
+            <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer' }}>
               {semaines.map((s, i) => {
                 const vol    = s.volume_h ?? 0
                 const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 3 : 0)
                 const x      = i * (barW + BAR_GAP)
                 const y      = VOL_H - barH
                 const active = s.numero === currentWeekNum
+                const isSel  = s.numero === selectedWeek
                 const col    = safeWeekTypeBg(s.type)
                 return (
-                  <g key={i}>
+                  <g key={i} onClick={() => setSelectedWeek(isSel ? null : s.numero)} style={{ cursor: 'pointer' }}>
+                    {/* invisible hit area for thin bars */}
+                    <rect x={x} y={0} width={barW} height={VOL_H + Y_PAD} fill="transparent" />
                     <rect x={x} y={y} width={barW} height={barH}
-                      fill={col} opacity={active ? 1 : 0.4} rx={2}>
+                      fill={col} opacity={isSel ? 1 : active ? 0.9 : 0.4} rx={2}>
                       <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? formatDuration(Math.round(vol * 60)) : '—'}`}</title>
                     </rect>
-                    {active && (
+                    {(active || isSel) && (
                       <rect x={x} y={y} width={barW} height={barH} rx={2}
                         fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.7} />
                     )}
                     {/* week number label below bar */}
                     <text x={x + barW / 2} y={VOL_H + Y_PAD - 2} textAnchor="middle"
-                      fontSize={barW > 14 ? 8 : 6} fill={active ? col : 'var(--text-dim)'}
-                      fontWeight={active ? 700 : 400}>
+                      fontSize={barW > 14 ? 8 : 6} fill={isSel || active ? col : 'var(--text-dim)'}
+                      fontWeight={isSel || active ? 700 : 400}>
                       {`S${s.numero}`}
                     </text>
                   </g>
                 )
               })}
             </svg>
+            {/* Detail panel on click */}
+            {selSem && (
+              <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: safeWeekTypeBg(selSem.type) }}>
+                    S{selSem.numero} — {selSem.type ?? ''}
+                  </span>
+                  <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
+                </div>
+                {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
+                  {selSem.seances && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{selSem.seances.length}</strong></span>}
+                  {(selSem as { note_coach?: string }).note_coach && (
+                    <span style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', marginTop: 4, fontStyle: 'italic' }}>{(selSem as { note_coach?: string }).note_coach}</span>
+                  )}
+                </div>
+              </div>
+            )}
           </ChartSection>
         )
       })()}
 
-      {/* ── CHART 4 : DISTRIBUTION DES INTENSITÉS (donut) ── */}
+      {/* ── CHART 4 : 3 DONUTS — Zones · Sports · Charge plan ── */}
       {(() => {
-        // Map intensity string → zone index 0–4 (Z1–Z5)
+        // ── helpers ──────────────────────────────────────────────
         const ZONE_COLORS = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444']
-        const ZONE_LABELS = ['Z1 — Récup', 'Z2 — Endurance', 'Z3 — Tempo', 'Z4 — Seuil', 'Z5 — VO2max']
+        const ZONE_LABELS = ['Z1 Récup', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2max']
+        const INTENS_COLORS: Record<string, string> = { low: '#3d8f6e', moderate: '#b8783a', high: '#b04040', max: '#7055a8' }
+        const INTENS_LABELS: Record<string, string> = { low: 'Facile', moderate: 'Modéré', high: 'Intensif', max: 'Max' }
+
         function intensityToZone(intensity: string | null | undefined): number {
           switch (intensity) {
             case 'low':      return 1
@@ -1110,58 +1137,126 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
             default:         return 0
           }
         }
-        // Aggregate current-week sessions by zone
+
+        function buildArcs<T extends { pct: number }>(entries: T[]): (T & { startAng: number; endAng: number })[] {
+          let angle = -Math.PI / 2
+          return entries.map(e => {
+            const sweep = e.pct * 2 * Math.PI
+            const startAng = angle
+            const endAng = angle + sweep - (entries.length > 1 ? 0.03 : 0)
+            angle += sweep
+            return { ...e, startAng, endAng }
+          })
+        }
+
+        // ── DONUT 1 : Zones (semaine actuelle) ───────────────────
         const currentWeekSessions = sessions.filter(s => s.week_start === currentWeekStart)
         const zoneMins = [0, 0, 0, 0, 0]
         for (const s of currentWeekSessions) {
           const z = intensityToZone(s.intensity)
           zoneMins[z] += s.duration_min ?? 0
         }
-        const totalMins = zoneMins.reduce((a, b) => a + b, 0)
-        if (totalMins === 0) return null
-
-        // Build donut arcs
-        const CX = 52, CY = 52, R_OUT = 44, R_IN = 28
-        const entries = zoneMins
-          .map((mins, zi) => ({ zi, mins, pct: mins / totalMins }))
+        const totalZoneMins = zoneMins.reduce((a, b) => a + b, 0)
+        const zoneEntries = zoneMins
+          .map((mins, zi) => ({ zi, mins, pct: totalZoneMins > 0 ? mins / totalZoneMins : 0 }))
           .filter(e => e.mins > 0)
+        const zoneArcs = buildArcs(zoneEntries)
 
-        let angle = -Math.PI / 2
-        const arcs = entries.map(e => {
-          const sweep = e.pct * 2 * Math.PI
-          const startAng = angle
-          const endAng = angle + sweep - (entries.length > 1 ? 0.03 : 0)
-          angle += sweep
-          return { ...e, startAng, endAng }
-        })
+        // ── DONUT 2 : Sports (plan complet, semaines S1-S2) ──────
+        const allSeances = (plan.ai_context?.program?.semaines ?? [])
+          .flatMap(w => (w.seances as { sport?: string; duree_min?: number }[] | undefined) ?? [])
+        const sportMap: Record<string, number> = {}
+        for (const s of allSeances) {
+          if (!s.sport) continue
+          sportMap[s.sport] = (sportMap[s.sport] ?? 0) + (s.duree_min ?? 0)
+        }
+        const totalSportMins = Object.values(sportMap).reduce((a, b) => a + b, 0)
+        const sportEntries = Object.entries(sportMap)
+          .map(([sport, mins]) => ({ sport, mins, pct: totalSportMins > 0 ? mins / totalSportMins : 0, col: sportColor(sport) }))
+          .sort((a, b) => b.mins - a.mins)
+        const sportArcs = buildArcs(sportEntries)
+
+        // ── DONUT 3 : Répartition charge plan (all seances) ──────
+        const intensMap: Record<string, number> = {}
+        for (const s of allSeances) {
+          const key = (s as { intensite?: string }).intensite ?? 'low'
+          intensMap[key] = (intensMap[key] ?? 0) + 1
+        }
+        const totalSessions = Object.values(intensMap).reduce((a, b) => a + b, 0)
+        const intensEntries = Object.entries(intensMap)
+          .map(([k, n]) => ({ key: k, n, pct: totalSessions > 0 ? n / totalSessions : 0, col: INTENS_COLORS[k] ?? '#9ca3af', label: INTENS_LABELS[k] ?? k }))
+          .sort((a, b) => b.n - a.n)
+        const intensArcs = buildArcs(intensEntries)
+
+        // At least one donut must have data
+        if (totalZoneMins === 0 && totalSportMins === 0 && totalSessions === 0) return null
+
+        const CX = 40, CY = 40, R_OUT = 34, R_IN = 20
+
+        function MiniDonut({ arcs, cx, cy, label, sub }: {
+          arcs: { startAng: number; endAng: number; col?: string; zi?: number }[]
+          cx: number; cy: number; label: string; sub: string
+        }) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
+              <svg width={cx * 2} height={cy * 2} viewBox={`0 0 ${cx * 2} ${cy * 2}`}>
+                {arcs.length === 0
+                  ? <circle cx={cx} cy={cy} r={R_OUT} fill="var(--border)" opacity={0.3} />
+                  : arcs.map((arc, i) => (
+                    <path key={i}
+                      d={donutArcPath(cx, cy, R_OUT, R_IN, arc.startAng, arc.endAng)}
+                      fill={arc.col ?? ZONE_COLORS[arc.zi ?? 0]}
+                      opacity={0.88}
+                    />
+                  ))
+                }
+                <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{sub}</text>
+              </svg>
+              <span style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' as const, lineHeight: 1.3 }}>{label}</span>
+            </div>
+          )
+        }
+
+        const zArcs = zoneArcs.map(a => ({ startAng: a.startAng, endAng: a.endAng, col: ZONE_COLORS[a.zi], zi: a.zi }))
+        const sArcs = sportArcs.map(a => ({ startAng: a.startAng, endAng: a.endAng, col: a.col }))
+        const iArcs = intensArcs.map(a => ({ startAng: a.startAng, endAng: a.endAng, col: a.col }))
 
         return (
-          <ChartSection title="Distribution des intensités" subtitle="(semaine actuelle)">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {/* Donut SVG */}
-              <svg width={CX * 2} height={CY * 2} viewBox={`0 0 ${CX * 2} ${CY * 2}`} style={{ flexShrink: 0 }}>
-                {arcs.map((arc, i) => (
-                  <path
-                    key={i}
-                    d={donutArcPath(CX, CY, R_OUT, R_IN, arc.startAng, arc.endAng)}
-                    fill={ZONE_COLORS[arc.zi]}
-                    opacity={0.9}
-                  >
-                    <title>{`${ZONE_LABELS[arc.zi]}: ${Math.round(arc.mins)}min (${Math.round(arc.pct * 100)}%)`}</title>
-                  </path>
+          <ChartSection title="Distributions" subtitle="(zones · sports · charge)">
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <MiniDonut arcs={zArcs} cx={CX} cy={CY}
+                label="Zones d'intensité" sub={totalZoneMins > 0 ? formatDuration(totalZoneMins) : '—'} />
+              <MiniDonut arcs={sArcs} cx={CX} cy={CY}
+                label="Répartition sports" sub={totalSportMins > 0 ? formatDuration(totalSportMins) : '—'} />
+              <MiniDonut arcs={iArcs} cx={CX} cy={CY}
+                label="Charge du plan" sub={totalSessions > 0 ? `${totalSessions} séances` : '—'} />
+            </div>
+            {/* compact legend under each donut */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {/* Zones legend */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {zoneArcs.slice(0, 3).map((a, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: ZONE_COLORS[a.zi], flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{ZONE_LABELS[a.zi]} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
+                  </div>
                 ))}
-                {/* Centre label */}
-                <text x={CX} y={CY - 4} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{formatDuration(totalMins)}</text>
-                <text x={CX} y={CY + 9} textAnchor="middle" fontSize={8} fill="var(--text-dim)">total</text>
-              </svg>
-
-              {/* Legend */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
-                {arcs.map((arc, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: ZONE_COLORS[arc.zi], flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, color: 'var(--text-mid)', flex: 1 }}>{ZONE_LABELS[arc.zi]}</span>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 32, textAlign: 'right' as const }}>{Math.round(arc.pct * 100)}%</span>
+              </div>
+              {/* Sports legend */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {sportArcs.slice(0, 3).map((a, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: a.col, flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'capitalize' as const }}>{a.sport} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
+                  </div>
+                ))}
+              </div>
+              {/* Intensité legend */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {intensArcs.slice(0, 3).map((a, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: a.col, flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{a.label} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
                   </div>
                 ))}
               </div>

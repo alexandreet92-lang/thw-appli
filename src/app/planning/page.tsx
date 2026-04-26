@@ -1131,7 +1131,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
-                  {selSem.seances && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{selSem.seances.length}</strong></span>}
+                  {(selSem as { seances?: unknown[] }).seances && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{(selSem as { seances: unknown[] }).seances.length}</strong></span>}
                   {(selSem as { note_coach?: string }).note_coach && (
                     <span style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', marginTop: 4, fontStyle: 'italic' }}>{(selSem as { note_coach?: string }).note_coach}</span>
                   )}

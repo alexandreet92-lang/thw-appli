@@ -4,14 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 
 const variants = {
-  hidden:  { opacity: 0, y: 10 },
+  hidden:  { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0  },
   exit:    { opacity: 0, y: -6 },
 }
 
 const transition = {
-  duration: 0.25,
-  ease: [0.25, 0.46, 0.45, 0.94] as const,
+  duration: 0.30,
+  ease: [0.16, 1, 0.3, 1] as const,
 }
 
 /**

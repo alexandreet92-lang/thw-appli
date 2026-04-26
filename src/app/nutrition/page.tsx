@@ -924,7 +924,7 @@ export default function NutritionPage() {
     <div style={{ padding: '0 0 80px' }}>
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 0' }}>
-        <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 22, margin: 0 }}>Nutrition</h1>
+        <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 24, margin: 0 }}>Nutrition</h1>
         <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
       </div>
 

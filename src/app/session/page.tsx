@@ -1758,7 +1758,7 @@ function BuildMode({ initial, onSave, onCancel }: {
           Annuler
         </button>
         <button onClick={save}
-          style={{ flex:3, padding:'12px 0', borderRadius:12, border:'none', background:`linear-gradient(135deg,#5b6fff,#00c8e0)`, color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(0,200,224,0.3)' }}>
+          style={{ flex:3, padding:'12px 0', borderRadius:6, border:'none', background:'#1B6EF3', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(27,110,243,0.30)' }}>
           Enregistrer la seance
         </button>
       </div>
@@ -1863,9 +1863,9 @@ function LibraryMode({ templates, onNew, onEdit, onStart, onDelete }: {
             <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>Séances types</h2>
           </div>
           <button onClick={onNew}
-            style={{ padding:'9px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)',
+            style={{ padding:'9px 20px', borderRadius:6, border:'none', background:'#1B6EF3',
               color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer',
-              boxShadow:'0 2px 12px rgba(0,200,224,0.3)' }}>
+              boxShadow:'0 2px 12px rgba(27,110,243,0.30)' }}>
             + Nouvelle séance
           </button>
         </div>
@@ -2121,7 +2121,7 @@ export default function SessionPage() {
       {/* Header */}
       <div className="session-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>
+          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>
             {titleMap[mode]}
           </h1>
           <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>

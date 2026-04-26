@@ -4,23 +4,23 @@ import { motion } from 'framer-motion'
 
 // ── Variants ──────────────────────────────────────────────────────
 const itemVariants = {
-  hidden:  { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0  },
+  hidden:  { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0 },
 }
 
 const groupVariants = {
   hidden:  {},
   visible: {
     transition: {
-      staggerChildren: 0.07,
+      staggerChildren: 0.05,
       delayChildren:   0.04,
     },
   },
 }
 
 const itemTransition = {
-  duration: 0.32,
-  ease: [0.25, 0.46, 0.45, 0.94] as const,
+  duration: 0.30,
+  ease: [0.16, 1, 0.3, 1] as const,
 }
 
 // ── Single element reveal on scroll ──────────────────────────────

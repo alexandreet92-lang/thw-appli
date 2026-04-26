@@ -1114,28 +1114,18 @@ export default function PerformancePage() {
       {/* ── En-tête ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
+          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
           <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records · Tests</p>
         </div>
         <AIAssistantButton agent="performance" context={{ page:'performance' }}/>
       </div>
 
-      {/* ── Tab bar desktop ── */}
-      <div className="hidden md:flex" style={{ gap:8, marginBottom:20, flexWrap:'wrap' as const }}>
+      {/* ── Tab bar ── */}
+      <div style={{ display:'flex', gap:6, marginBottom:20, flexWrap:'wrap' as const }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ flex:1, minWidth:120, padding:'11px 16px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:tab===t.id?t.color:'var(--border)', background:tab===t.id?t.bg:'var(--bg-card)', color:tab===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:tab===t.id?700:400, boxShadow:tab===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s' }}>
+            className={`tab-btn${tab===t.id?' active':''}`}>
             {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab bar mobile ── */}
-      <div className="md:hidden" style={{ display:'flex', gap:5, marginBottom:16, flexWrap:'wrap' as const }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ flex:1, minWidth:70, padding:'8px 4px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:tab===t.id?t.color:'var(--border)', background:tab===t.id?t.bg:'var(--bg-card)', color:tab===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:tab===t.id?700:400, transition:'all 0.15s' }}>
-            {t.short}
           </button>
         ))}
       </div>

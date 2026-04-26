@@ -724,7 +724,7 @@ export default function RecoveryPage() {
       {/* Header page */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Récupération</h1>
+          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Récupération</h1>
           <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>
             {new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
           </p>
@@ -752,7 +752,7 @@ export default function RecoveryPage() {
       {/* ── Résultat analyse IA ─────────────────────────── */}
       {aiError && (
         <div style={{ padding:'12px 18px', borderRadius:14, background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.25)', color:'#ef4444', fontSize:12, marginBottom:16 }}>
-          ⚠️ {aiError}
+          {aiError}
         </div>
       )}
       {aiResult && (
@@ -794,7 +794,7 @@ export default function RecoveryPage() {
             </div>
             {/* Conseil séance */}
             <div style={{ padding:'12px 16px', borderRadius:12, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.2)' }}>
-              <p style={{ fontSize:11, fontWeight:600, color:'#5b6fff', margin:'0 0 4px' }}>💡 Séance du jour</p>
+              <p style={{ fontSize:11, fontWeight:600, color:'#5b6fff', margin:'0 0 4px' }}>Séance du jour</p>
               <p style={{ fontSize:13, color:'var(--text)', margin:0, lineHeight:1.6 }}>{aiResult.todayAdvice}</p>
             </div>
             {/* Fatigue bar */}

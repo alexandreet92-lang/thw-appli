@@ -6063,8 +6063,8 @@ export default function AIPanel({
                         <div style={{
                           maxWidth: '78%',
                           padding: '9px 14px',
-                          borderRadius: '14px 14px 4px 14px',
-                          background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
+                          borderRadius: '18px 18px 4px 18px',
+                          background: '#1B6EF3',
                           color: '#fff',
                         }}>
                           <span style={{ fontSize: 13.5, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
@@ -6074,11 +6074,11 @@ export default function AIPanel({
                         return (
                           <div style={{
                             flex: 1, minWidth: 0,
-                            borderLeft: '2px solid var(--ai-accent-line)',
-                            background: 'var(--ai-accent-soft)',
-                            borderRadius: '0 10px 10px 0',
+                            background: '#161B24',
+                            border: '1px solid #1E2533',
+                            borderRadius: '4px 18px 18px 18px',
                             padding: '10px 14px 10px 14px',
-                            animation: 'ai_msg_in 0.22s ease both',
+                            animation: 'ai_msg_in 0.15s ease both',
                           }}>
                             <TypedText text={msg.content} isStreaming={isStreamingMsg} />
                           </div>
@@ -6108,9 +6108,9 @@ export default function AIPanel({
                     </div>
                     <div style={{
                       padding: '8px 14px',
-                      borderLeft: '2px solid var(--ai-accent-line)',
-                      background: 'var(--ai-accent-soft)',
-                      borderRadius: '0 10px 10px 0',
+                      background: '#161B24',
+                      border: '1px solid #1E2533',
+                      borderRadius: '4px 18px 18px 18px',
                       display: 'flex', alignItems: 'center',
                     }}>
                       <Dots />

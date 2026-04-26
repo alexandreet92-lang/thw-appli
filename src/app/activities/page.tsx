@@ -20,9 +20,9 @@ const T = {
   text:        'var(--text)',
   textSub:     'var(--text-mid)',
   textMuted:   'var(--text-dim)',
-  accent:      '#00c8e0',
-  accentBg:    'rgba(0,200,224,0.08)',
-  accentText:  '#0099b8',
+  accent:      '#1B6EF3',
+  accentBg:    'rgba(27,110,243,0.08)',
+  accentText:  '#4D9EFF',
   sidebar:     'var(--nav-bg)',
   sidebarW:    220,
   topH:        52,
@@ -3084,7 +3084,7 @@ export default function TrainingPage() {
                 padding: '5px 12px', fontSize: 12, fontWeight: 700, fontFamily: T.fontDisplay,
                 opacity: aiLoading ? 0.6 : 1, whiteSpace: 'nowrap' as const }}
             >
-              {aiLoading ? '⏳ Analyse…' : '🧠 Analyser'}
+              {aiLoading ? 'Analyse…' : 'Analyser'}
             </button>
           )}
           <button

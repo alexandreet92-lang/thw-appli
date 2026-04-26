@@ -3557,21 +3557,17 @@ export default function PlanningPage() {
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
+          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
         </div>
         <AIAssistantButton agent="planning" context={aiContext} />
       </div>
 
-      <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' as const }}>
-        {TABS.map(([id,label,short,color,bg])=>(
+      <div style={{ display:'flex',gap:6,marginBottom:20,flexWrap:'wrap' as const }}>
+        {TABS.map(([id,,short])=>(
           <button key={id} onClick={()=>setTab(id)}
-            style={{ flex:1,minWidth:90,padding:'11px 14px',borderRadius:12,border:'1px solid',cursor:'pointer',
-              borderColor:tab===id?color:'var(--border)',background:tab===id?bg:'var(--bg-card)',
-              color:tab===id?color:'var(--text-mid)',fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:tab===id?700:400,
-              boxShadow:'var(--shadow-card)',transition:'all 0.15s' }}>
-            <span className="hidden md:inline">{label}</span>
-            <span className="md:hidden">{short}</span>
+            className={`tab-btn${tab===id?' active':''}`}>
+            {short}
           </button>
         ))}
       </div>

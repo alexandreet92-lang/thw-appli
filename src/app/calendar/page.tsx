@@ -52,9 +52,6 @@ const SPORT_BORDER: Record<SportType, string> = {
   swim:'#38bdf8', run:'#22c55e', bike:'#3b82f6',
   hyrox:'#ef4444', gym:'#f97316', triathlon:'#a855f7', rowing:'#14b8a6',
 }
-const SPORT_EMOJI: Record<string, string> = {
-  run:'🏃', bike:'🚴', swim:'🏊', hyrox:'🏋️', gym:'💪', triathlon:'🔱', rowing:'🚣',
-}
 
 const RACE_CONFIG: Record<RaceLevel, { label: string; color: string; bg: string; border: string }> = {
   secondary: { label:'Secondaire', color:'#22c55e', bg:'rgba(34,197,94,0.12)',  border:'#22c55e' },
@@ -63,12 +60,12 @@ const RACE_CONFIG: Record<RaceLevel, { label: string; color: string; bg: string;
   gty:       { label:'GTY', color:'var(--gty-text)', bg:'var(--gty-bg)', border:'var(--gty-border)' },
 }
 
-const EVENT_CONFIG = { label:'Événement', color:'#9ca3af', bg:'rgba(156,163,175,0.12)', border:'#9ca3af', emoji:'📅' }
+const EVENT_CONFIG = { label:'Événement', color:'#9ca3af', bg:'rgba(156,163,175,0.12)', border:'#9ca3af' }
 
 const CATEGORY_CONFIG = {
-  race:  { label:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)',  icon:'🏁' },
-  pro:   { label:'Pro',   color:'#3b82f6', bg:'rgba(59,130,246,0.10)', icon:'💼' },
-  perso: { label:'Perso', color:'#a855f7', bg:'rgba(168,85,247,0.10)', icon:'🌿' },
+  race:  { label:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
+  pro:   { label:'Pro',   color:'#3b82f6', bg:'rgba(59,130,246,0.10)' },
+  perso: { label:'Perso', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
 }
 
 const RUN_DISTANCES = ['5 km','10 km','Semi-marathon','Marathon']
@@ -240,7 +237,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
           {RACE_SPORTS.map(s => (
             <button key={s} onClick={() => { setSport(s); setHyroxCat(''); setHyroxLvl(''); setHyroxGen('') }}
               style={{ padding:'5px 9px',borderRadius:8,border:'1px solid',borderColor:sport===s?SPORT_BORDER[s as SportType]:'var(--border)',background:sport===s?SPORT_BG[s as SportType]:'var(--bg-card2)',color:sport===s?SPORT_BORDER[s as SportType]:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
-              {SPORT_EMOJI[s]} {RSL[s]}
+              {RSL[s]}
             </button>
           ))}
         </div>
@@ -965,7 +962,8 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
 
       {myEvents.length === 0 && !showTypeManager && (
         <div style={{ padding:'28px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontSize:28,marginBottom:8 }}>{cfg.icon}</p>
+          <div style={{ width:32,height:32,borderRadius:'50%',background:`${cfg.color}20`,border:`1px solid ${cfg.color}40`,margin:'0 auto 10px' }}/>
+
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 6px' }}>Aucun événement {cfg.label}</p>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 12px' }}>Créez d'abord vos types, puis ajoutez des événements</p>
           <button onClick={() => setShowTypeManager(true)}
@@ -1001,7 +999,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
       return {
         id: r.id, date: r.date, title: r.name, category: 'race' as const,
         color: r.level === 'gty' ? '#9ca3af' : cfg.color,
-        label: cfg.label, subLabel: SPORT_EMOJI[r.sport],
+        label: cfg.label, subLabel: r.sport.toUpperCase().slice(0, 3),
       }
     }),
     ...events.map(e => {
@@ -1011,7 +1009,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
       return {
         id: e.id, date: e.date, title: e.title, category: e.category,
         color: col, label: t?.name ?? catCfg?.label ?? e.category,
-        subLabel: catCfg?.icon,
+        subLabel: catCfg?.label,
       }
     }),
   ].sort((a, b) => a.date.localeCompare(b.date))
@@ -1080,7 +1078,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                           <div style={{ flex:1,minWidth:0 }}>
                             <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:1 }}>
                               <span style={{ fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:catCfg?.color??'var(--text-dim)',padding:'1px 5px',borderRadius:4,background:`${catCfg?.color ?? '#6b7280'}18` }}>
-                                {catCfg?.icon} {catCfg?.label}
+                                {catCfg?.label}
                               </span>
                               <span style={{ fontSize:9,color:'var(--text-dim)' }}>{ev.label}</span>
                               {ev.subLabel && <span style={{ fontSize:10 }}>{ev.subLabel}</span>}
@@ -1201,22 +1199,17 @@ export default function CalendarPage() {
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
+          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
         </div>
         <AIAssistantButton agent="strategy" context={aiContext} />
       </div>
 
       {/* Tab pills */}
-      <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' }}>
+      <div style={{ display:'flex',gap:6,marginBottom:20,flexWrap:'wrap' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding:'9px 20px',borderRadius:50,border:'1px solid',cursor:'pointer',transition:'all 0.15s',
-              borderColor: tab === t.id ? t.color : 'var(--border)',
-              background:  tab === t.id ? t.color : 'transparent',
-              color:       tab === t.id ? '#fff'  : 'var(--text-mid)',
-              fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:tab===t.id?600:400,
-            }}>
+            className={`tab-btn${tab === t.id ? ' active' : ''}`}>
             {t.label}
           </button>
         ))}

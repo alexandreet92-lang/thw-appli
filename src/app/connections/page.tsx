@@ -449,25 +449,10 @@ function AppRow({
 function PillFilter({
   label, active, onClick,
 }: { label: string; active: boolean; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false)
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: '5px 13px', borderRadius: 20,
-        border: active ? 'none' : '1px solid var(--border-mid)',
-        background: active
-          ? 'linear-gradient(135deg, #00c8e0, #5b6fff)'
-          : hovered ? 'var(--bg-hover)' : 'var(--bg-card)',
-        color: active ? '#fff' : hovered ? 'var(--text)' : 'var(--text-mid)',
-        fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: active ? 600 : 400,
-        cursor: 'pointer',
-        transition: 'background 0.14s, color 0.14s',
-        whiteSpace: 'nowrap',
-        boxShadow: active ? '0 1px 8px rgba(0,200,224,0.2)' : 'none',
-      }}
+      className={`tab-btn${active ? ' active' : ''}`}
     >
       {label}
     </button>
@@ -758,8 +743,8 @@ export default function ConnectionsPage() {
           }}>
             <div>
               <h1 style={{
-                fontFamily: 'Syne, sans-serif', fontWeight: 800,
-                fontSize: 22, color: 'var(--text)',
+                fontFamily: 'Syne, sans-serif', fontWeight: 700,
+                fontSize: 24, color: 'var(--text)',
                 margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em',
               }}>
                 Connexions

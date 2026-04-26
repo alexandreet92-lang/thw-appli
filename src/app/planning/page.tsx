@@ -930,7 +930,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
 
   // Dimensions SVG
-  const PERIOD_W = 400, PERIOD_H = 16
+  const PERIOD_W = 400, PERIOD_H = 36
 
   return (
     <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
@@ -991,28 +991,28 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                 const isSel    = selectedBloc === i
                 const isFirst  = i === 0
                 const isLast   = i === plan.blocs_periodisation.length - 1
-                const textCol = TP_BLOC_TEXT[b.type] ?? '#333'
+                const textCol = TP_BLOC_TEXT[b.type] ?? '#fff'
+                // 1px gap entre blocs — chaque bloc est légèrement moins large
+                const gapRight = i < plan.blocs_periodisation.length - 1 ? 1 : 0
                 return (
                   <g key={i} onClick={() => setSelectedBloc(isSel ? null : i)} style={{ cursor: 'pointer' }}>
-                    <rect x={x} y={0} width={w} height={PERIOD_H} fill={color}
-                      opacity={isSel ? 1 : isActive ? 1 : 0.55}
-                      rx={isFirst ? 4 : isLast ? 4 : 0}
-                      style={isFirst ? { borderRadius:'4px 0 0 4px' } : isLast ? { borderRadius:'0 4px 4px 0' } : {}} />
-                    {isSel && <rect x={x} y={0} width={w} height={PERIOD_H} fill="none"
-                      stroke={textCol} strokeWidth={1} opacity={0.4} rx={isFirst || isLast ? 4 : 0} />}
-                    {w > 36 && (
-                      <text x={x + w / 2} y={PERIOD_H / 2 + 3.5} textAnchor="middle"
-                        fontSize={8} fill={textCol} fontWeight={500} opacity={0.85}
-                        style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {b.type.toUpperCase()}
+                    <rect x={x} y={0} width={w - gapRight} height={PERIOD_H} fill={color}
+                      opacity={isSel ? 1 : isActive ? 1 : 0.6}
+                      rx={6} />
+                    {isSel && <rect x={x} y={0} width={w - gapRight} height={PERIOD_H} fill="none"
+                      stroke="rgba(0,0,0,0.25)" strokeWidth={1.5} rx={6} />}
+                    {w > 40 && (
+                      <text x={x + (w - gapRight) / 2} y={PERIOD_H / 2 + 4} textAnchor="middle"
+                        fontSize={11} fill={textCol} fontWeight={500} opacity={0.92}>
+                        {b.type}
                       </text>
                     )}
                     {isActive && (
                       <line
-                        x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
-                        x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
-                        y1={1} y2={PERIOD_H - 1}
-                        stroke="#fff" strokeWidth={1.5} opacity={0.7} strokeDasharray="2 2"
+                        x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * (w - gapRight)}
+                        x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * (w - gapRight)}
+                        y1={4} y2={PERIOD_H - 4}
+                        stroke="#fff" strokeWidth={1.5} opacity={0.8} strokeDasharray="2 2"
                       />
                     )}
                   </g>

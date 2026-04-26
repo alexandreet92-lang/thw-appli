@@ -1170,13 +1170,15 @@ function TrainingTab() {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
-        const { data: planData } = await sb.from('training_plans')
+        console.log('[aiPlan] fetching for currentWeekStart=', currentWeekStart)
+        const { data: planData, error: planErr } = await sb.from('training_plans')
           .select('*')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .lte('start_date', currentWeekStart)
           .gte('end_date',   currentWeekStart)
           .maybeSingle()
+        console.log('[aiPlan] result:', { planData, planErr })
         if (cancelled) return
         if (!planData) { setAiPlan(null); setAiPlanSessions([]); return }
         setAiPlan(planData as unknown as AiTrainingPlan)

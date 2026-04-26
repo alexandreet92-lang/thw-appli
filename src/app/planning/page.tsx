@@ -1528,6 +1528,10 @@ function TrainingTab() {
     await updateSession(s.id, s)
     setDetailModal(null)
   }
+  async function handleAutoSaveSession(s:Session) {
+    await updateSession(s.id, s)
+    // do NOT close modal — inline auto-save
+  }
   async function handleValidate(s:Session) {
     await updateSession(s.id, { ...s, status:'done' })
     setDetailModal(null)
@@ -1717,7 +1721,7 @@ function TrainingTab() {
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
       {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}
-      {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
+      {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onAutoSave={handleAutoSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
       {/* ── Controls — desktop (ancienne interface) ── */}
@@ -2315,7 +2319,7 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
   )
 }
 
-function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{ session:Session; onClose:()=>void; onSave:(s:Session)=>void; onValidate:(s:Session)=>void; onDelete:(id:string)=>void }) {
+function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, onDelete }:{ session:Session; onClose:()=>void; onSave:(s:Session)=>void; onAutoSave:(s:Session)=>void; onValidate:(s:Session)=>void; onDelete:(id:string)=>void }) {
   const router = useRouter()
   const [form, setForm] = useState<Session>({...session, blocks:[...session.blocks]})
   const [expandedBlockId, setExpandedBlockId] = useState<string|null>(null)
@@ -2356,11 +2360,19 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
     setForm(f => ({ ...f, [key]:value }))
   }
   function patchBlock(id:string, patch:Partial<Block>) {
-    setForm(f => ({ ...f, blocks: f.blocks.map(b => b.id === id ? { ...b, ...patch } : b) }))
+    setForm(f => {
+      const blocks = f.blocks.map(b => b.id === id ? { ...b, ...patch } : b)
+      return { ...f, blocks }
+    })
+    // auto-save with merged patch; use latest form snapshot
+    const blocks = form.blocks.map(b => b.id === id ? { ...b, ...patch } : b)
+    autoSaveWith({ blocks })
   }
   function deleteBlock(id:string) {
-    setForm(f => ({ ...f, blocks: f.blocks.filter(b => b.id !== id) }))
+    const blocks = form.blocks.filter(b => b.id !== id)
+    setForm(f => ({ ...f, blocks }))
     if (expandedBlockId === id) setExpandedBlockId(null)
+    autoSaveWith({ blocks })
   }
   function addBlock() {
     const newBlock: Block = {
@@ -2368,12 +2380,25 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
       mode: 'single', type: 'effort',
       durationMin: 10, zone: 2, value: '', hrAvg: '', label: 'Nouveau bloc',
     }
-    setForm(f => ({ ...f, blocks:[...f.blocks, newBlock] }))
+    const blocks = [...form.blocks, newBlock]
+    setForm(f => ({ ...f, blocks }))
     setExpandedBlockId(newBlock.id)
+    autoSaveWith({ blocks })
   }
   function handleSave() {
     const tss = calcTSS(form.blocks, session.sport, form.durationMin, form.rpe)
     onSave({ ...form, tss })
+  }
+  // Auto-save a patch of fields immediately, without closing the modal.
+  // Accepts a partial Session so callers don't rely on stale closure state.
+  // If patch includes tss, that value is used as-is (manual override).
+  // Otherwise TSS is re-derived from blocks/duration/rpe.
+  function autoSaveWith(patch: Partial<Session>) {
+    const updated = { ...form, ...patch }
+    const tss = ('tss' in patch && patch.tss !== undefined)
+      ? patch.tss
+      : calcTSS(updated.blocks, updated.sport ?? session.sport, updated.durationMin, updated.rpe)
+    onAutoSave({ ...updated, tss })
   }
   function handleValidateStrava() {
     onClose()
@@ -2433,6 +2458,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
             <input
               value={form.title}
               onChange={e=>patchForm('title', e.target.value)}
+              onBlur={e=>autoSaveWith({ title: e.target.value })}
               placeholder="Titre de la séance"
               style={{
                 fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:800,
@@ -2441,27 +2467,76 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
               }}
             />
             <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:8,alignItems:'center' }}>
+              {/* Sport select */}
+              <select
+                value={form.sport}
+                onChange={e => {
+                  const s = e.target.value as SportType
+                  patchForm('sport', s)
+                  autoSaveWith({ sport: s })
+                }}
+                style={{
+                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
+                  color: SPORT_BORDER[form.sport] ?? SPORT_BORDER[session.sport],
+                  padding:'2px 8px',borderRadius:99,
+                  background: SPORT_BG[form.sport] ?? SPORT_BG[session.sport],
+                  border:`1px solid ${(SPORT_BORDER[form.sport] ?? SPORT_BORDER[session.sport])}33`,
+                  outline:'none' as const, cursor:'pointer',
+                }}
+              >
+                {(Object.keys(SPORT_LABEL) as SportType[]).map(s => (
+                  <option key={s} value={s}>{SPORT_LABEL[s]}</option>
+                ))}
+              </select>
+              {/* Time input */}
               <input
                 value={form.time}
                 onChange={e=>patchForm('time', e.target.value)}
+                onBlur={e=>autoSaveWith({ time: e.target.value })}
                 placeholder="07:00"
                 style={{
                   fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
-                  color:SPORT_BORDER[session.sport],
+                  color:'var(--text-mid)',
                   padding:'2px 8px',borderRadius:99,
-                  background:SPORT_BG[session.sport],
-                  border:`1px solid ${SPORT_BORDER[session.sport]}33`,
+                  background:'var(--bg-card2)',
+                  border:'1px solid var(--border)',
                   width:60, textAlign:'center' as const, outline:'none' as const,
                 }}
               />
-              <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,color:'var(--text-mid)',padding:'2px 8px',borderRadius:99,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                {formatHM(form.durationMin)}
-              </span>
-              {form.tss != null && form.tss > 0 && (
-                <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,color:'#8b5cf6',padding:'2px 8px',borderRadius:99,background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.22)' }}>
-                  TSS {form.tss}
-                </span>
-              )}
+              {/* Duration input (minutes) */}
+              <input
+                type="number"
+                min={1}
+                value={form.durationMin}
+                onChange={e=>patchForm('durationMin', Math.max(1,parseInt(e.target.value)||1))}
+                onBlur={e=>autoSaveWith({ durationMin: Math.max(1,parseInt(e.target.value)||1) })}
+                style={{
+                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,
+                  color:'var(--text-mid)',
+                  padding:'2px 8px',borderRadius:99,
+                  background:'var(--bg-card2)',border:'1px solid var(--border)',
+                  width:58, textAlign:'center' as const, outline:'none' as const,
+                }}
+                title="Durée en minutes"
+              />
+              <span style={{ fontSize:10,color:'var(--text-dim)',marginLeft:-4 }}>min</span>
+              {/* TSS input */}
+              <input
+                type="number"
+                min={0}
+                value={form.tss ?? 0}
+                onChange={e=>patchForm('tss', Math.max(0,parseInt(e.target.value)||0))}
+                onBlur={e=>autoSaveWith({ tss: Math.max(0,parseInt(e.target.value)||0) })}
+                style={{
+                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,
+                  color:'#8b5cf6',
+                  padding:'2px 8px',borderRadius:99,
+                  background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.22)',
+                  width:62, textAlign:'center' as const, outline:'none' as const,
+                }}
+                title="TSS"
+              />
+              <span style={{ fontSize:10,color:'var(--text-dim)',marginLeft:-4 }}>TSS</span>
               {form.status === 'done' && (
                 <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase' as const,color:'#22c55e',padding:'2px 8px',borderRadius:99,background:'rgba(34,197,94,0.10)',border:'1px solid rgba(34,197,94,0.25)' }}>
                   ✓ Validée
@@ -2497,7 +2572,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
               return (
                 <button
                   key={i}
-                  onClick={()=>patchForm('rpe', i)}
+                  onClick={()=>{ patchForm('rpe', i); autoSaveWith({ rpe: i }) }}
                   style={{
                     flex:1, height: active ? 30 : 20, minWidth:18,
                     borderRadius:5, border:'none', cursor:'pointer',
@@ -2641,6 +2716,7 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
           <textarea
             value={form.notes ?? ''}
             onChange={e=>patchForm('notes', e.target.value)}
+            onBlur={e=>autoSaveWith({ notes: e.target.value })}
             placeholder="Conseils, sensations attendues, points d'attention…"
             rows={3}
             style={{
@@ -2970,20 +3046,12 @@ function SessionDetailModal({ session, onClose, onSave, onValidate, onDelete }:{
           color:'#ff5f5f', fontSize:12, cursor:'pointer', fontWeight:600,
         }}>Supprimer la séance</button>
         <div style={{ flex:1 }} />
+        <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>Sauvegarde auto</span>
         <button onClick={onClose} style={{
           padding:'9px 16px', borderRadius:9,
           background:'transparent', border:'1px solid var(--border)',
           color:'var(--text-mid)', fontSize:12, cursor:'pointer',
         }}>Fermer</button>
-        <button onClick={handleSave} disabled={!isDirty} style={{
-          padding:'9px 18px', borderRadius:9, border:'none',
-          background: isDirty ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'rgba(107,114,128,0.20)',
-          color: isDirty ? '#fff' : 'var(--text-dim)',
-          fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:12,
-          cursor: isDirty ? 'pointer' : 'default',
-          boxShadow: isDirty ? '0 4px 12px rgba(0,200,224,0.25)' : 'none',
-          transition:'box-shadow 0.14s',
-        }}>Enregistrer</button>
       </footer>
     </div>
   )

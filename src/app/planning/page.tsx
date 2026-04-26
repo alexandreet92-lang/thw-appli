@@ -2348,14 +2348,6 @@ function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, 
     vCadenceMax: session.vCadenceMax ?? '',
   })
 
-  const isDirty = JSON.stringify({
-    title:form.title, time:form.time, durationMin:form.durationMin,
-    notes:form.notes, rpe:form.rpe, blocks:form.blocks,
-  }) !== JSON.stringify({
-    title:session.title, time:session.time, durationMin:session.durationMin,
-    notes:session.notes, rpe:session.rpe, blocks:session.blocks,
-  })
-
   function patchForm<K extends keyof Session>(key:K, value:Session[K]) {
     setForm(f => ({ ...f, [key]:value }))
   }
@@ -2384,10 +2376,6 @@ function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, 
     setForm(f => ({ ...f, blocks }))
     setExpandedBlockId(newBlock.id)
     autoSaveWith({ blocks })
-  }
-  function handleSave() {
-    const tss = calcTSS(form.blocks, session.sport, form.durationMin, form.rpe)
-    onSave({ ...form, tss })
   }
   // Auto-save a patch of fields immediately, without closing the modal.
   // Accepts a partial Session so callers don't rely on stale closure state.
@@ -2452,7 +2440,7 @@ function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, 
             border:`1px solid ${SPORT_BORDER[session.sport]}55`,
             display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
           }}>
-            <SportBadge sport={session.sport} size="sm"/>
+            <SportBadge sport={form.sport} size="sm"/>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <input

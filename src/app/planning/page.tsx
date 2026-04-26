@@ -123,8 +123,6 @@ interface Race {
   goalTime?:string; goalSwimTime?:string; goalBikeTime?:string; goalRunTime?:string
   validated?:boolean; validationData?:Record<string,any>
 }
-interface AnalyzeIssue { title:string; severity:'low'|'medium'|'high'; description:string }
-interface AnalyzeResult { score:number; summary:string; issues:AnalyzeIssue[]; suggestions:string[]; optimized_plan:{day:string;title:string;durationMin:number}[] }
 
 // ── Helpers ───────────────────────────────────────
 function uid():string { return `${Date.now()}_${Math.random().toString(36).slice(2)}` }
@@ -1546,30 +1544,6 @@ function TrainingTab() {
 
   const todaySessions = week[todayIdx]?.sessions??[]
 
-  // ── Analyse IA ─────────────────────────────────────
-  const [analyzeLoading, setAnalyzeLoading] = useState(false)
-  const [analyzeResult,  setAnalyzeResult]  = useState<AnalyzeResult|null>(null)
-  const [analyzeError,   setAnalyzeError]   = useState<string|null>(null)
-
-  async function analyzePlanning() {
-    setAnalyzeLoading(true); setAnalyzeResult(null); setAnalyzeError(null)
-    try {
-      const payload = {
-        weekStart: currentWeekStart,
-        sessions: allSess.map(s=>({ sport:s.sport, title:s.title, dayIndex:s.dayIndex, durationMin:s.durationMin, tss:s.tss, status:s.status, blocks:s.blocks.map(b=>({ type:b.type, zone:b.zone, durationMin:b.durationMin })) })),
-        activities: allActs.map(a=>({ sport:a.sport, name:a.name, dayIndex:a.dayIndex, durationMin:Math.round(a.elapsedTime/60), tss:a.tss })),
-        intensities,
-        kpis:{ plannedMin, doneMin, plannedTSS, doneTSS, plannedN, doneN },
-      }
-      const res = await fetch('/api/analyze-planning',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(payload) })
-      if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error??`Erreur ${res.status}`) }
-      setAnalyzeResult(await res.json())
-    } catch(e:any) {
-      setAnalyzeError(e.message??'Erreur inconnue')
-    } finally {
-      setAnalyzeLoading(false)
-    }
-  }
 
   // Render one week grid (used for both single-week and multi-week / compare)
   function WeekGrid({ ws, plan, labelTag }:{ ws:string; plan?:PlanVariant; labelTag?:string }) {
@@ -1897,80 +1871,6 @@ function TrainingTab() {
         </div>
       )}
 
-      {/* ── Résultat analyse IA ── */}
-      {analyzeError && (
-        <div style={{ padding:'12px 16px',borderRadius:12,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontSize:12 }}>
-          {analyzeError}
-        </div>
-      )}
-      {analyzeResult && (
-        <div className="card-enter" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:20,boxShadow:'var(--shadow-card)',display:'flex',flexDirection:'column',gap:16 }}>
-          {/* En-tête score */}
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:10 }}>
-            <div>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:'0 0 4px' }}>Analyse IA — Semaine</p>
-              <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>{analyzeResult.summary}</p>
-            </div>
-            <div style={{ textAlign:'center' as const,flexShrink:0 }}>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:36,fontWeight:800,margin:0,lineHeight:1,
-                color:analyzeResult.score>=80?'#22c55e':analyzeResult.score>=60?'#ffb340':'#ef4444' }}>
-                <CountUp value={analyzeResult.score} />
-              </p>
-              <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>/ 100</p>
-            </div>
-          </div>
-
-          {/* Issues */}
-          {analyzeResult.issues.length>0 && (
-            <div>
-              <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Points d'attention</p>
-              <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-                {analyzeResult.issues.map((issue,i)=>{
-                  const sev={ high:{c:'#ef4444',bg:'rgba(239,68,68,0.08)',border:'rgba(239,68,68,0.25)'}, medium:{c:'#f97316',bg:'rgba(249,115,22,0.08)',border:'rgba(249,115,22,0.25)'}, low:{c:'#22c55e',bg:'rgba(34,197,94,0.08)',border:'rgba(34,197,94,0.25)'} }[issue.severity]
-                  return (
-                    <div key={i} style={{ padding:'10px 13px',borderRadius:10,background:sev.bg,border:`1px solid ${sev.border}`,borderLeft:`3px solid ${sev.c}` }}>
-                      <p style={{ fontSize:12,fontWeight:600,color:sev.c,margin:'0 0 2px' }}>{issue.title}</p>
-                      <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{issue.description}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Suggestions */}
-          {analyzeResult.suggestions.length>0 && (
-            <div>
-              <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Suggestions</p>
-              <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
-                {analyzeResult.suggestions.map((s,i)=>(
-                  <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'8px 12px',borderRadius:9,background:'rgba(91,111,255,0.07)',border:'1px solid rgba(91,111,255,0.2)',borderLeft:'3px solid #5b6fff' }}>
-                    <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{s}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Plan optimisé */}
-          {analyzeResult.optimized_plan.length>0 && (
-            <div>
-              <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Plan optimisé suggéré</p>
-              <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6 }}>
-                {analyzeResult.optimized_plan.map((p,i)=>(
-                  <div key={i} style={{ padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',minWidth:110 }}>
-                    <p style={{ fontSize:10,fontWeight:700,color:'#00c8e0',margin:'0 0 2px' }}>{p.day}</p>
-                    <p style={{ fontSize:11,fontWeight:600,margin:'0 0 1px' }}>{p.title}</p>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontFamily:'DM Mono,monospace' }}>{formatHM(p.durationMin)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button onClick={()=>setAnalyzeResult(null)} style={{ alignSelf:'flex-end' as const,padding:'5px 12px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer' }}>Fermer</button>
-        </div>
-      )}
 
       {/* View switch */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>

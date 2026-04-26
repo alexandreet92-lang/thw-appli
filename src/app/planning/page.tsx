@@ -901,10 +901,11 @@ function AiPlanBubble({ planName }: { planName: string }) {
 
 // ── Plan header + 4 collapsible charts ────────────────────────────────────
 
-function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
+function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
   plan: AiTrainingPlan
   sessions: AiPlanSessionAgg[]
   currentWeekStart: string
+  nextRace?: Race | null
 }) {
   const currentWeekNum = (() => {
     const startMs = new Date(plan.start_date + 'T00:00:00').getTime()
@@ -937,6 +938,27 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
           </div>
           <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}</p>
         </div>
+
+        {/* ── Prochain objectif ── */}
+        {nextRace && (() => {
+          const cfg  = RACE_CONFIG[nextRace.level]
+          const days = daysUntil(nextRace.date)
+          const accentCol = nextRace.level === 'gty' ? 'var(--gty-text)' : cfg.color
+          return (
+            <div style={{ flexShrink: 0, textAlign: 'right' as const, minWidth: 100 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Prochain objectif</p>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, padding: '6px 10px', borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+                {days > 0 && (
+                  <span style={{ fontSize: 20, fontWeight: 800, color: accentCol, fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>J-{days}</span>
+                )}
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, maxWidth: 110, textAlign: 'right' as const }}>{nextRace.name}</span>
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                  {new Date(nextRace.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── CHART 1 : PÉRIODISATION ── */}
@@ -1307,7 +1329,8 @@ function TrainingTab() {
   }, []) // Runs once on client mount — window.location is always correct here
 
   const currentWeekStart = getWeekStartFromOffset(weekOffset)
-  const { sessions, intensities, activities, loading, addSession, updateSession, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
+  const { sessions, races, intensities, activities, loading, addSession, updateSession, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
+  const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0] ?? null
   const [view, setView] = useState<TrainingView>('vertical')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant}|null>(null)
   const [detailModal, setDetailModal] = useState<Session|null>(null)
@@ -1641,7 +1664,7 @@ function TrainingTab() {
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif sur cette semaine) ── */}
       {aiPlan && (
-        <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} />
+        <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} />
       )}
       {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
       {aiPlan && <AiPlanBubble planName={aiPlan.name} />}

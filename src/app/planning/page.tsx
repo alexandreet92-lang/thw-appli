@@ -432,13 +432,16 @@ function usePlanning(weekStartParam?:string) {
   }
 
   async function updateSession(id:string, upd:Partial<Session>) {
-    await supabase.from('planned_sessions').update({
+    const patch: Record<string,unknown> = {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
       tss:upd.tss??null, status:upd.status,
       validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed },
       updated_at:new Date().toISOString(),
-    }).eq('id',id)
+    }
+    // Persiste le sport si fourni (édition inline modal)
+    if (upd.sport) patch.sport = upd.sport
+    await supabase.from('planned_sessions').update(patch).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
   }
 
@@ -1427,6 +1430,8 @@ function TrainingTab() {
   // ── AI training plan détecté pour la semaine courante ──
   const [aiPlan,        setAiPlan]        = useState<AiTrainingPlan | null>(null)
   const [aiPlanSessions, setAiPlanSessions] = useState<AiPlanSessionAgg[]>([])
+  // Plan actif qui commence dans une semaine future (pas encore dans la vue courante)
+  const [upcomingPlan,  setUpcomingPlan]  = useState<{name:string;startDate:string} | null>(null)
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -1458,7 +1463,25 @@ function TrainingTab() {
           return startMs <= curMs + oneDayMs && endMs >= curMs - oneDayMs
         }) ?? null
 
-        if (!planData) { setAiPlan(null); setAiPlanSessions([]); return }
+        if (!planData) {
+          setAiPlan(null)
+          setAiPlanSessions([])
+          // Problème 1 fix : si aucun plan ne couvre la semaine courante,
+          // chercher si un plan actif démarre dans le futur → afficher une bannière
+          // pour que l'utilisateur puisse sauter directement à la semaine 1.
+          const futurePlan = (plans ?? []).find(p => {
+            const startMs = new Date((p as { start_date: string }).start_date + 'T00:00:00').getTime()
+            return startMs > curMs + oneDayMs
+          }) ?? null
+          if (!cancelled) {
+            setUpcomingPlan(futurePlan ? {
+              name:      (futurePlan as { name: string }).name,
+              startDate: (futurePlan as { start_date: string }).start_date,
+            } : null)
+          }
+          return
+        }
+        setUpcomingPlan(null)
         setAiPlan(planData as unknown as AiTrainingPlan)
 
         const { data: psData } = await sb.from('planned_sessions')
@@ -1718,6 +1741,30 @@ function TrainingTab() {
       )}
       {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
       {aiPlan && <AiPlanBubble planName={aiPlan.name} />}
+      {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
+      {upcomingPlan && !aiPlan && (
+        <div style={{ padding:'14px 18px',borderRadius:14,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>
+          <span style={{ fontSize:22 }}>📅</span>
+          <div style={{ flex:1,minWidth:0 }}>
+            <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 2px',color:'#00c8e0' }}>
+              {upcomingPlan.name}
+            </p>
+            <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>
+              Démarre le {new Date(upcomingPlan.startDate + 'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              const startMs = new Date(upcomingPlan.startDate + 'T00:00:00').getTime()
+              const baseMs  = new Date(getWeekStart() + 'T00:00:00').getTime()
+              const newOffset = Math.round((startMs - baseMs) / (7 * 86400000))
+              setWeekOffset(newOffset)
+            }}
+            style={{ padding:'8px 16px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer',flexShrink:0 }}>
+            Voir la semaine 1 →
+          </button>
+        </div>
+      )}
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
       {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}

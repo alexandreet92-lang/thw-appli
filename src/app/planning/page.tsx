@@ -11,6 +11,8 @@ import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
+import nDynamic from 'next/dynamic'
+const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -854,6 +856,49 @@ function ChartSection({
   )
 }
 
+// ── Floating Coach IA bubble — visible when an active AI plan exists ──────
+
+function AiPlanBubble({ planName }: { planName: string }) {
+  const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  return (
+    <>
+      <div style={{ position: 'fixed', bottom: 92, right: 20, zIndex: 90 }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          title={`Coach IA — ${planName}`}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 13px 7px 10px',
+            borderRadius: 24,
+            border: '1px solid',
+            borderColor: open
+              ? 'rgba(139,92,246,0.6)'
+              : hovered ? 'rgba(139,92,246,0.35)' : 'rgba(139,92,246,0.20)',
+            background: open
+              ? 'linear-gradient(135deg,rgba(139,92,246,0.22),rgba(91,111,255,0.22))'
+              : hovered
+              ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(91,111,255,0.12))'
+              : 'var(--bg-card)',
+            cursor: 'pointer', transition: 'all 0.16s',
+            boxShadow: open
+              ? '0 0 0 3px rgba(139,92,246,0.14), 0 4px 16px rgba(139,92,246,0.22)'
+              : '0 2px 10px rgba(0,0,0,0.14)',
+          }}
+        >
+          <span style={{ fontSize: 13 }}>✦</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: open ? '#a78bfa' : 'var(--text-mid)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            Mon plan
+          </span>
+        </button>
+      </div>
+      <AIPanelDynamic open={open} onClose={() => setOpen(false)} initialFlow={null} />
+    </>
+  )
+}
+
 // ── Plan header + 4 collapsible charts ────────────────────────────────────
 
 function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
@@ -1473,6 +1518,8 @@ function TrainingTab() {
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} />
       )}
+      {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
+      {aiPlan && <AiPlanBubble planName={aiPlan.name} />}
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
       {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}

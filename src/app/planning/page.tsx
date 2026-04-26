@@ -1350,6 +1350,7 @@ function TrainingTab() {
   const [activePlan,  setActivePlan]  = useState<PlanVariant>('A')
   const [compareMode, setCompareMode] = useState(false)
   const [showRangeDd, setShowRangeDd] = useState(false)
+  const [showPlanDd,  setShowPlanDd]  = useState(false)
 
   // ── Sync weekOffset depuis l'URL au mount client (corrige le décalage
   //    SSR/hydratation quand searchParams est vide côté serveur Next.js 15)
@@ -1732,28 +1733,32 @@ function TrainingTab() {
             ))}
           </div>}
         </div>
-        <div style={{ display:'flex',gap:4,marginLeft:'auto' }}>
-          {(['A','B'] as PlanVariant[]).map(p=>(
-            <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
-              style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-                borderColor:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
-                background:!compareMode&&activePlan===p?(p==='A'?'rgba(0,200,224,0.12)':'rgba(167,139,250,0.12)'):'var(--bg-card)',
-                color:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
-              Plan {p} {p==='A'?'— Optimal':'— Minimal'}
-            </button>
-          ))}
-          <button onClick={()=>setCompareMode(x=>!x)}
-            style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-              borderColor:compareMode?'#ffb340':'var(--border)',
-              background:compareMode?'rgba(255,179,64,0.12)':'var(--bg-card)',
-              color:compareMode?'#ffb340':'var(--text-mid)' }}>
-            Comparer
+        <div style={{ marginLeft:'auto', position:'relative' }}>
+          {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
+          <button onClick={()=>setShowPlanDd(x=>!x)}
+            style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
+            {compareMode ? 'Comparer' : `Plan ${activePlan}`} <span style={{ fontSize:9 }}>▾</span>
           </button>
-          <button onClick={analyzePlanning} disabled={analyzeLoading}
-            style={{ padding:'6px 14px',borderRadius:9,border:'1px solid #22c55e',fontSize:12,cursor:analyzeLoading?'default':'pointer',fontWeight:600,
-              background:'rgba(34,197,94,0.10)',color:'#22c55e',opacity:analyzeLoading?0.6:1,whiteSpace:'nowrap' as const }}>
-            {analyzeLoading?'Analyse en cours…':'Analyser la semaine'}
-          </button>
+          {showPlanDd && (
+            <div style={{ position:'absolute',top:'calc(100% + 4px)',right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'0 8px 20px rgba(0,0,0,0.14)',zIndex:50,minWidth:150,padding:4 }}>
+              {(['A','B'] as PlanVariant[]).map(p=>(
+                <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
+                  style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',
+                    background:!compareMode&&activePlan===p?'rgba(0,200,224,0.10)':'transparent',
+                    color:!compareMode&&activePlan===p?'#00c8e0':'var(--text-mid)',
+                    fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
+                  Plan {p} — {p==='A'?'Optimal':'Minimal'}
+                </button>
+              ))}
+              <button onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
+                style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',
+                  background:compareMode?'rgba(255,179,64,0.10)':'transparent',
+                  color:compareMode?'#ffb340':'var(--text-mid)',
+                  fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
+                Comparer A & B
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1791,32 +1796,34 @@ function TrainingTab() {
             ))}
           </div>}
         </div>
-        {/* Ligne 3 : Plan A / B / Comparer */}
-        <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-          {(['A','B'] as PlanVariant[]).map(p=>{
-            const isActive=!compareMode&&activePlan===p; const col=p==='A'?'#00c8e0':'#a78bfa'
-            return (
-              <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
-                style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
-                  border:`1.5px solid ${isActive?col:'var(--border)'}`,
-                  background:isActive?`${col}1a`:'transparent',
-                  color:isActive?col:'var(--text-mid)' }}>
-                Plan {p} — {p==='A'?'Optimal':'Minimal'}
+        {/* Ligne 3 : Plan ▾ dropdown compact */}
+        <div style={{ position:'relative' }}>
+          {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
+          <button onClick={()=>setShowPlanDd(x=>!x)}
+            style={{ width:'100%',padding:'10px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
+            <span>{compareMode ? 'Comparer A & B' : `Plan ${activePlan} — ${activePlan==='A'?'Optimal':'Minimal'}`}</span>
+            <span style={{ fontSize:10,color:'var(--text-dim)' }}>▾</span>
+          </button>
+          {showPlanDd && (
+            <div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
+              {(['A','B'] as PlanVariant[]).map(p=>(
+                <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
+                  style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
+                    background:!compareMode&&activePlan===p?'rgba(0,200,224,0.10)':'transparent',
+                    color:!compareMode&&activePlan===p?'#00c8e0':'var(--text-mid)',
+                    fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
+                  Plan {p} — {p==='A'?'Optimal':'Minimal'}
+                </button>
+              ))}
+              <button onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
+                style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
+                  background:compareMode?'rgba(255,179,64,0.10)':'transparent',
+                  color:compareMode?'#ffb340':'var(--text-mid)',
+                  fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
+                Comparer les deux plans
               </button>
-            )
-          })}
-          <button onClick={()=>setCompareMode(x=>!x)}
-            style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
-              border:`1.5px solid ${compareMode?'#ffb340':'var(--border)'}`,
-              background:compareMode?'rgba(255,179,64,0.12)':'transparent',
-              color:compareMode?'#ffb340':'var(--text-mid)' }}>
-            Comparer les deux plans
-          </button>
-          <button onClick={analyzePlanning} disabled={analyzeLoading}
-            style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:analyzeLoading?'default':'pointer',fontWeight:700,textAlign:'left' as const,
-              border:'1.5px solid #22c55e',background:'rgba(34,197,94,0.10)',color:'#22c55e',opacity:analyzeLoading?0.6:1 }}>
-            {analyzeLoading?'Analyse en cours…':'Analyser la semaine'}
-          </button>
+            </div>
+          )}
         </div>
       </div>
 

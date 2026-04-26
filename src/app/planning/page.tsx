@@ -919,7 +919,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
 
   // Dimensions SVG
-  const PERIOD_W = 400, PERIOD_H = 34
+  const PERIOD_W = 400, PERIOD_H = 20
 
   return (
     <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
@@ -1083,7 +1083,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
       {(() => {
         const semaines = plan.ai_context?.program?.semaines ?? []
         if (semaines.length === 0) return null
-        const VOL_W = 460, VOL_H = 72, Y_PAD = 18, BAR_GAP = 3
+        const VOL_W = 460, VOL_H = 40, Y_PAD = 12, BAR_GAP = 3
         const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
         const barW = (VOL_W - BAR_GAP * (semaines.length - 1)) / semaines.length
         const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null

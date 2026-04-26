@@ -753,46 +753,38 @@ interface AiPlanSessionAgg {
   week_start: string
 }
 
-// Pastel fills — light mode
 const TP_BLOC_COLORS: Record<string, string> = {
-  'Base':        '#B8CCE8',
-  'Build':       '#F2C9A8',
-  'Peak':        '#E8A8B8',
-  'Taper':       '#A8D4B8',
-  'Intensité':   '#F2C9A8',
-  'Spécifique':  '#E8A8B8',
-  'Deload':      '#A8D4B8',
-  'Compétition': '#D4B8E8',
+  'Base':        '#3B82F6',
+  'Build':       '#F97316',
+  'Peak':        '#EF4444',
+  'Taper':       '#22C55E',
+  'Intensité':   '#F97316',
+  'Spécifique':  '#EF4444',
+  'Deload':      '#22C55E',
+  'Compétition': '#A855F7',
 }
-// Dark paired text on pastel fill
 const TP_BLOC_TEXT: Record<string, string> = {
-  'Base':        '#2A4A6E',
-  'Build':       '#7A4A28',
-  'Peak':        '#6A2840',
-  'Taper':       '#2A5A3A',
-  'Intensité':   '#7A4A28',
-  'Spécifique':  '#6A2840',
-  'Deload':      '#2A5A3A',
-  'Compétition': '#4A2A6E',
+  'Base':        '#fff',
+  'Build':       '#fff',
+  'Peak':        '#fff',
+  'Taper':       '#fff',
+  'Intensité':   '#fff',
+  'Spécifique':  '#fff',
+  'Deload':      '#fff',
+  'Compétition': '#fff',
 }
 
 function safeWeekTypeBg(type: string | null | undefined): string {
   const t = (type ?? '').toLowerCase()
-  if (t.includes('taper') || t.includes('deload')) return '#A8D4B8'
-  if (t.includes('base'))                          return '#B8CCE8'
-  if (t.includes('build') || t.includes('intensit')) return '#F2C9A8'
-  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#E8A8B8'
-  if (t.includes('compét') || t.includes('compet')) return '#D4B8E8'
-  return '#D4B8E8'
+  if (t.includes('taper') || t.includes('deload')) return '#22C55E'
+  if (t.includes('base'))                          return '#3B82F6'
+  if (t.includes('build') || t.includes('intensit')) return '#F97316'
+  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#EF4444'
+  if (t.includes('compét') || t.includes('compet')) return '#A855F7'
+  return '#A855F7'
 }
 function safeWeekTypeText(type: string | null | undefined): string {
-  const t = (type ?? '').toLowerCase()
-  if (t.includes('taper') || t.includes('deload')) return '#2A5A3A'
-  if (t.includes('base'))                          return '#2A4A6E'
-  if (t.includes('build') || t.includes('intensit')) return '#7A4A28'
-  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#6A2840'
-  if (t.includes('compét') || t.includes('compet')) return '#4A2A6E'
-  return '#4A2A6E'
+  return safeWeekTypeBg(type)
 }
 
 const SPORT_COLOR_FALLBACK: Record<string, string> = {
@@ -1019,8 +1011,8 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                       <line
                         x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
                         x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
-                        y1={2} y2={PERIOD_H - 2}
-                        stroke={textCol} strokeWidth={1.5} opacity={0.5} strokeDasharray="2 2"
+                        y1={1} y2={PERIOD_H - 1}
+                        stroke="#fff" strokeWidth={1.5} opacity={0.7} strokeDasharray="2 2"
                       />
                     )}
                   </g>
@@ -1114,17 +1106,16 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
         const semaines = plan.ai_context?.program?.semaines ?? []
         if (semaines.length === 0) return null
         const n = semaines.length
-        const BAR_GAP = 3
-        // Barres étroites : max 18 px, se réduisent si beaucoup de semaines
-        const barW = Math.min(Math.floor((460 - BAR_GAP * (n - 1)) / n), 18)
+        const BAR_GAP = 4
+        const barW = 40           // 40 svg-units = 40px rendu max (< 60px demandé)
         const VOL_W = barW * n + BAR_GAP * (n - 1)
-        const VOL_H = 24   // réduit de 40%
-        const Y_PAD = 10
+        const VOL_H = 80          // max 120px demandé — on prend 80 pour rester compact
+        const Y_PAD = 14
         const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
         const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
         return (
           <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`}>
-            <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer' }}>
+            <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer', maxWidth: VOL_W }}>
               {semaines.map((s, i) => {
                 const vol    = s.volume_h ?? 0
                 const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 2 : 0)

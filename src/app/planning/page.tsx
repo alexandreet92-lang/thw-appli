@@ -1560,18 +1560,18 @@ function TrainingTab() {
       <ScrollRevealGroup style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
         <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:0 }}>Volume</p>
+            <p style={{ fontSize:11,fontWeight:500,color:'#8A95AA',margin:0 }}>Volume</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:4,background:'transparent',border:'1px solid #1E2533',color:'#8A95AA',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
           <p style={{ fontSize:10,color:'#8A95AA',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatHM(plannedMin)}</p>
-          <p style={{ fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}>{formatHM(doneMin)}</p>
+          <p style={{ fontFamily:'DM Mono,monospace',fontSize:28,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}>{formatHM(doneMin)}</p>
           <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#1B6EF3" height={5} className="mb-1.5" />
           <p style={{ fontSize:10,color:'#8A95AA',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
         </ScrollRevealItem>
         <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:'0 0 8px' }}>Séances</p>
+          <p style={{ fontSize:11,fontWeight:500,color:'#8A95AA',margin:'0 0 8px' }}>Séances</p>
           <p style={{ fontSize:10,color:'#8A95AA',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedN}</p>
-          <p style={{ fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}><CountUp value={doneN} /></p>
+          <p style={{ fontFamily:'DM Mono,monospace',fontSize:28,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}><CountUp value={doneN} /></p>
           <AnimatedBar pct={plannedN?Math.min(doneN/plannedN*100,100):0} color="#1B6EF3" height={5} className="mb-1.5" />
           <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:4 }}>
             {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:'#8A95AA',fontFamily:'DM Mono,monospace',display:'flex',alignItems:'center',gap:3 }}><SportBadge sport={s.sport} size="xs"/> {s.done}/{s.planned}</span>)}
@@ -1579,11 +1579,11 @@ function TrainingTab() {
         </ScrollRevealItem>
         <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:0 }}>TSS</p>
+            <p style={{ fontSize:11,fontWeight:500,color:'#8A95AA',margin:0 }}>TSS</p>
             <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:4,background:'transparent',border:'1px solid #1E2533',color:'#8A95AA',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
           <p style={{ fontSize:10,color:'#8A95AA',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedTSS} pts</p>
-          <p style={{ fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}><CountUp value={doneTSS} /> pts</p>
+          <p style={{ fontFamily:'DM Mono,monospace',fontSize:28,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}><CountUp value={doneTSS} /> pts</p>
           <AnimatedBar pct={plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0} color="#1B6EF3" height={5} />
         </ScrollRevealItem>
       </ScrollRevealGroup>
@@ -3554,8 +3554,8 @@ export default function PlanningPage() {
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0,color:'#F0F4FF' }}>Planning</h1>
-          <p style={{ fontSize:13,color:'#3D4D63',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
+          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:600,letterSpacing:'-0.02em',margin:0,color:'#F0F4FF' }}>Planning</h1>
+          <p style={{ fontSize:12,color:'#3D4D63',margin:'4px 0 0' }}>Training · Semaine · Saison</p>
         </div>
         <AIAssistantButton agent="planning" context={aiContext} />
       </div>
@@ -3563,7 +3563,8 @@ export default function PlanningPage() {
       <div style={{ display:'inline-flex',gap:0,marginBottom:20,background:'#0F1117',border:'1px solid #1E2533',borderRadius:8,padding:4 }}>
         {TABS.map(([id,,short])=>(
           <button key={id} onClick={()=>setTab(id)}
-            className={`tab-btn${tab===id?' active':''}`}>
+            className={`tab-btn${tab===id?' active':''}`}
+            style={{ height:32,padding:'0 16px',transition:'background 0.15s ease,color 0.15s ease' }}>
             {short}
           </button>
         ))}

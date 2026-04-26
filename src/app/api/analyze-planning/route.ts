@@ -55,10 +55,14 @@ Retourne UNIQUEMENT le JSON, rien d'autre.`
       throw new Error('No text response from model')
     }
 
-    // Extract JSON from the response (handle potential markdown code blocks)
+    // Extract JSON from the response (handle markdown code blocks and preamble text)
     let rawText = textBlock.text.trim()
     const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (jsonMatch) rawText = jsonMatch[1].trim()
+    // Strip any text before the first { and after the last } (handles "Here is the JSON: {...}")
+    const start = rawText.indexOf('{')
+    const end   = rawText.lastIndexOf('}')
+    if (start !== -1 && end !== -1 && end > start) rawText = rawText.slice(start, end + 1)
 
     const result = JSON.parse(rawText)
 

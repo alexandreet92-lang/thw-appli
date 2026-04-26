@@ -1140,7 +1140,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                         style={{ padding:'8px 10px',borderRadius:9,background:isPast?'var(--bg-card2)':`${ev.color}15`,border:`1px solid ${isPast?'var(--border)':ev.color+'44'}`,opacity:isPast?0.6:1 }}>
                         <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:3 }}>
                           <div style={{ width:6,height:6,borderRadius:'50%',background:ev.color,flexShrink:0 }}/>
-                          <span style={{ fontSize:8,color:catCfg?.color??'var(--text-dim)',fontWeight:700 }}>{catCfg?.icon} {catCfg?.label}</span>
+                          <span style={{ fontSize:8,color:catCfg?.color??'var(--text-dim)',fontWeight:700 }}>{catCfg?.label}</span>
                           <span style={{ fontSize:8,color:'var(--text-dim)',marginLeft:'auto' }}>{day} {MONTH_SHORT[mi]}</span>
                         </div>
                         <p style={{ fontSize:11,fontWeight:600,margin:0,color:ev.color,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{ev.title}</p>

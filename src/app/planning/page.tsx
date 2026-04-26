@@ -829,7 +829,7 @@ function ChartSection({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: 20, paddingTop: 16 }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{

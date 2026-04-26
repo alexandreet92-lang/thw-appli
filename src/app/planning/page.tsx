@@ -10,6 +10,7 @@ import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -28,7 +29,7 @@ type RaceSport     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 type CyclingSub    = 'velo' | 'vtt' | 'ht' | 'elliptique'
 
 // ── Constants ─────────────────────────────────────
-const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(236,72,153,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)' }
+const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.10)', run:'rgba(249,115,22,0.10)', bike:'rgba(59,130,246,0.10)', hyrox:'rgba(236,72,153,0.10)', gym:'rgba(139,92,246,0.10)', rowing:'rgba(20,184,166,0.10)' }
 const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#f97316', bike:'#3b82f6', hyrox:'#ec4899', gym:'#8b5cf6', rowing:'#14b8a6' }
 
 const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron' }
@@ -1310,7 +1311,7 @@ function TrainingTab() {
   function WeekGrid({ ws, plan, labelTag }:{ ws:string; plan?:PlanVariant; labelTag?:string }) {
     const w = buildWeek(ws, plan)
     const wDates = getWeekDatesFromStart(ws)
-    const planColor = plan==='A'?'#00c8e0':plan==='B'?'#a78bfa':'var(--text)'
+    const planColor = plan==='A'?'#1B6EF3':plan==='B'?'#6D7EAA':'var(--text)'
     return (
       <div style={{ background:'var(--bg-card)',border:`1px solid ${plan?planColor+'44':'var(--border)'}`,borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)',overflowX:'auto' }}>
         {labelTag && <div style={{ padding:'6px 14px',background:`${planColor}11`,borderBottom:`1px solid ${planColor}33`,display:'flex',alignItems:'center',gap:8 }}>
@@ -1322,12 +1323,12 @@ function TrainingTab() {
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
             <div key={d.day} style={{ padding:'8px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)',minWidth:68 }}>
               <p style={{ fontSize:10,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.06em',margin:'0 0 2px',fontWeight:500 }}>{d.day}</p>
-              <p style={{ fontSize:14,fontWeight:700,margin:'0 0 4px',color:i===todayIdx&&isCurrent?'#00c8e0':'var(--text)' }}>{wDates[i]}</p>
+              <p style={{ fontSize:14,fontWeight:700,margin:'0 0 4px',color:i===todayIdx&&isCurrent?'#4D9EFF':'var(--text)' }}>{wDates[i]}</p>
               <div data-intensity-picker style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative' as const }}>
                 <button
                   onClick={()=>{ if (isCurrent) setIntensityPickerDay(isPickerOpen?null:i); else setIntensityModal(d.intensity) }}
                   title={isCurrent?'Changer l\'intensité du jour':cfg.label}
-                  style={{ padding:'2px 9px 2px 7px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:9,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
+                  style={{ padding:'2px 6px',borderRadius:4,background:'transparent',border:'1px solid #1E2533',color:'#8A95AA',fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
                   {cfg.label}
                   {isCurrent && (
                     <svg width={7} height={7} viewBox="0 0 10 10" style={{ opacity:0.7,transform:isPickerOpen?'rotate(180deg)':'none',transition:'transform 0.12s' }}>
@@ -1383,7 +1384,7 @@ function TrainingTab() {
               onDragLeave={()=>setDragOver(null)}
               onDrop={()=>onDrop(i)}
               onTouchEnd={()=>onTouchEnd(i)}
-              style={{ borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(0,200,224,0.04)':'transparent',minWidth:68,minHeight:80 }}>
+              style={{ borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(27,110,243,0.05)':'transparent',minWidth:68,minHeight:80 }}>
               <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
                 {/* Activités réelles (cliquables → modal détail) */}
                 {d.activities.map(a=>{
@@ -1392,34 +1393,34 @@ function TrainingTab() {
                   if(matchedSession) {
                     const actMin = Math.round(a.elapsedTime/60)
                     const st = matchStatus(matchedSession.durationMin, actMin)
-                    return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
+                    return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:4,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
                       <div style={{ display:'flex',alignItems:'center',gap:3,marginBottom:2 }}>
                         <SportBadge sport={sp} size="xs"/>
-                        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,flex:1 }}>{matchedSession.title}</p>
+                        <p style={{ fontSize:11,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,flex:1,color:SPORT_BORDER[sp] }}>{matchedSession.title}</p>
                       </div>
-                      <p style={{ fontSize:7,margin:'0 0 1px',fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>Prévu {formatHM(matchedSession.durationMin)} · Réalisé {formatHM(actMin)}</p>
-                      <span style={{ fontSize:7,fontWeight:700,color:st.color }}>{st.label}</span>
+                      <p style={{ fontSize:10,margin:'0 0 1px',fontFamily:'DM Mono,monospace',color:'#3D4D63' }}>Prévu {formatHM(matchedSession.durationMin)} · Réalisé {formatHM(actMin)}</p>
+                      <span style={{ fontSize:10,fontWeight:700,color:st.color }}>{st.label}</span>
                     </div>
                   }
-                  return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9,cursor:'pointer' }}>
+                  return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:4,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
                     <div style={{ display:'flex',alignItems:'center',gap:3 }}>
                       <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>OK</span>
-                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
+                      <p style={{ fontSize:11,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:SPORT_BORDER[sp] }}>{a.name}</p>
                     </div>
-                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
+                    <p style={{ fontSize:10,margin:'1px 0 0',fontFamily:'DM Mono,monospace',color:'#3D4D63' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
                   </div>
                 })}
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
                   <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={()=>onTouchStart(s.id,i)} onClick={()=>setDetailModal(s)}
-                    style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[s.sport],borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative' }}>
+                    style={{ borderRadius:4,padding:'4px 6px',background:SPORT_BG[s.sport],borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative' }}>
                     {s.status==='done' && <span style={{ position:'absolute',top:2,right:2,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700 }}>FAIT</span>}
-                    {s.planVariant && <span style={{ position:'absolute',top:2,left:2,fontSize:7,fontWeight:800,color:s.planVariant==='A'?'#00c8e0':'#a78bfa' }}>{s.planVariant}</span>}
+                    {s.planVariant && <span style={{ position:'absolute',top:2,left:2,fontSize:7,fontWeight:700,color:'#8A95AA' }}>{s.planVariant}</span>}
                     <div style={{ display:'flex',alignItems:'center',gap:3,paddingLeft:8 }}>
                       <SportBadge sport={s.sport} size="xs"/>
-                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{s.title}</p>
+                      <p style={{ fontSize:11,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:SPORT_BORDER[s.sport] }}>{s.title}</p>
                     </div>
-                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace',paddingLeft:8 }}>{s.time} · {formatHM(s.durationMin)}</p>
+                    <p style={{ fontSize:10,margin:'1px 0 0',fontFamily:'DM Mono,monospace',paddingLeft:8,color:'#3D4D63' }}>{s.time} · {formatHM(s.durationMin)}</p>
                     {s.blocks.length>0 && <div style={{ display:'flex',gap:1,marginTop:2,height:6,borderRadius:1,overflow:'hidden' }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.8 }}/> })}</div>}
                   </div>
                 ))}
@@ -1448,11 +1449,11 @@ function TrainingTab() {
 
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
-        <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
-          <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
-          <span style={{ fontSize:11,fontWeight:600,color:'var(--text)',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-          <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
-          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize:9,padding:'2px 6px',borderRadius:5,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Auj.</button>}
+        <div style={{ display:'flex',alignItems:'center',gap:4,background:'transparent',borderRadius:10,padding:'4px 6px' }}>
+          <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'none',border:'none',color:'#8A95AA',cursor:'pointer',padding:'2px 4px',borderRadius:6,display:'flex',alignItems:'center' }}><ChevronLeft size={16}/></button>
+          <span style={{ fontSize:13,fontWeight:500,color:'#F0F4FF',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
+          <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'none',border:'none',color:'#8A95AA',cursor:'pointer',padding:'2px 4px',borderRadius:6,display:'flex',alignItems:'center' }}><ChevronRight size={16}/></button>
+          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize:9,padding:'2px 6px',borderRadius:5,background:'rgba(27,110,243,0.12)',border:'1px solid rgba(27,110,243,0.25)',color:'#4D9EFF',cursor:'pointer',fontWeight:600 }}>Auj.</button>}
         </div>
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
@@ -1460,7 +1461,7 @@ function TrainingTab() {
           </button>
           {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
             {([1,5,10] as WeekRange[]).map(r=>(
-              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(0,200,224,0.10)':'transparent',color:weekRange===r?'#00c8e0':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
+              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(27,110,243,0.10)':'transparent',color:weekRange===r?'#4D9EFF':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
                 {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
               </button>
             ))}
@@ -1469,23 +1470,21 @@ function TrainingTab() {
         <div style={{ display:'flex',gap:4,marginLeft:'auto' }}>
           {(['A','B'] as PlanVariant[]).map(p=>(
             <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
-              style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-                borderColor:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
-                background:!compareMode&&activePlan===p?(p==='A'?'rgba(0,200,224,0.12)':'rgba(167,139,250,0.12)'):'var(--bg-card)',
-                color:!compareMode&&activePlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
+              style={{ padding:'0 14px',height:36,borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:600,
+                borderColor:!compareMode&&activePlan===p&&p==='A'?'transparent':'#1E2533',
+                background:!compareMode&&activePlan===p&&p==='A'?'#1B6EF3':'transparent',
+                color:!compareMode&&activePlan===p&&p==='A'?'#fff':'#8A95AA' }}>
               Plan {p} {p==='A'?'— Optimal':'— Minimal'}
             </button>
           ))}
           <button onClick={()=>setCompareMode(x=>!x)}
-            style={{ padding:'6px 14px',borderRadius:9,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-              borderColor:compareMode?'#ffb340':'var(--border)',
-              background:compareMode?'rgba(255,179,64,0.12)':'var(--bg-card)',
-              color:compareMode?'#ffb340':'var(--text-mid)' }}>
+            style={{ padding:'0 14px',height:36,borderRadius:6,border:'1px solid #1E2533',fontSize:13,cursor:'pointer',fontWeight:600,
+              background:'transparent',color:'#8A95AA' }}>
             Comparer
           </button>
           <button onClick={analyzePlanning} disabled={analyzeLoading}
-            style={{ padding:'6px 14px',borderRadius:9,border:'1px solid #22c55e',fontSize:12,cursor:analyzeLoading?'default':'pointer',fontWeight:600,
-              background:'rgba(34,197,94,0.10)',color:'#22c55e',opacity:analyzeLoading?0.6:1,whiteSpace:'nowrap' as const }}>
+            style={{ padding:'0 14px',height:36,borderRadius:6,border:'1px solid #1E2533',fontSize:13,cursor:analyzeLoading?'default':'pointer',fontWeight:600,
+              background:'transparent',color:'#8A95AA',opacity:analyzeLoading?0.6:1,whiteSpace:'nowrap' as const }}>
             {analyzeLoading?'Analyse en cours…':'Analyser la semaine'}
           </button>
         </div>
@@ -1496,12 +1495,12 @@ function TrainingTab() {
         {/* Ligne 1 : Navigation semaine */}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-            <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1 }}>←</button>
-            <span style={{ fontSize:13,fontWeight:700,color:'var(--text)',minWidth:130,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-            <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1 }}>→</button>
+            <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'none',border:'none',color:'#8A95AA',cursor:'pointer',padding:'4px 8px',borderRadius:6,display:'flex',alignItems:'center' }}><ChevronLeft size={18}/></button>
+            <span style={{ fontSize:13,fontWeight:500,color:'#F0F4FF',minWidth:130,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
+            <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'none',border:'none',color:'#8A95AA',cursor:'pointer',padding:'4px 8px',borderRadius:6,display:'flex',alignItems:'center' }}><ChevronRight size={18}/></button>
           </div>
           {weekOffset!==0
-            ? <button onClick={()=>setWeekOffset(0)} style={{ fontSize:11,padding:'5px 12px',borderRadius:20,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.3)',color:'#00c8e0',cursor:'pointer',fontWeight:700 }}>Auj.</button>
+            ? <button onClick={()=>setWeekOffset(0)} style={{ fontSize:11,padding:'5px 12px',borderRadius:6,background:'rgba(27,110,243,0.12)',border:'1px solid rgba(27,110,243,0.25)',color:'#4D9EFF',cursor:'pointer',fontWeight:600 }}>Auj.</button>
             : <div style={{ width:52 }}/>
           }
         </div>
@@ -1517,8 +1516,8 @@ function TrainingTab() {
             {([1,5,10] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
                 style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
-                  background:weekRange===r?'rgba(0,200,224,0.10)':'transparent',
-                  color:weekRange===r?'#00c8e0':'var(--text-mid)',
+                  background:weekRange===r?'rgba(27,110,243,0.10)':'transparent',
+                  color:weekRange===r?'#4D9EFF':'var(--text-mid)',
                   fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
                 {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
               </button>
@@ -1528,27 +1527,25 @@ function TrainingTab() {
         {/* Ligne 3 : Plan A / B / Comparer */}
         <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
           {(['A','B'] as PlanVariant[]).map(p=>{
-            const isActive=!compareMode&&activePlan===p; const col=p==='A'?'#00c8e0':'#a78bfa'
+            const isActive=!compareMode&&activePlan===p&&p==='A'
             return (
               <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false)}}
-                style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
-                  border:`1.5px solid ${isActive?col:'var(--border)'}`,
-                  background:isActive?`${col}1a`:'transparent',
-                  color:isActive?col:'var(--text-mid)' }}>
+                style={{ padding:'11px 16px',borderRadius:6,fontSize:13,cursor:'pointer',fontWeight:600,textAlign:'left' as const,
+                  border:`1px solid ${isActive?'transparent':'#1E2533'}`,
+                  background:isActive?'#1B6EF3':'transparent',
+                  color:isActive?'#fff':'#8A95AA' }}>
                 Plan {p} — {p==='A'?'Optimal':'Minimal'}
               </button>
             )
           })}
           <button onClick={()=>setCompareMode(x=>!x)}
-            style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:'pointer',fontWeight:700,textAlign:'left' as const,
-              border:`1.5px solid ${compareMode?'#ffb340':'var(--border)'}`,
-              background:compareMode?'rgba(255,179,64,0.12)':'transparent',
-              color:compareMode?'#ffb340':'var(--text-mid)' }}>
+            style={{ padding:'11px 16px',borderRadius:6,fontSize:13,cursor:'pointer',fontWeight:600,textAlign:'left' as const,
+              border:'1px solid #1E2533',background:'transparent',color:'#8A95AA' }}>
             Comparer les deux plans
           </button>
           <button onClick={analyzePlanning} disabled={analyzeLoading}
-            style={{ padding:'11px 16px',borderRadius:12,fontSize:13,cursor:analyzeLoading?'default':'pointer',fontWeight:700,textAlign:'left' as const,
-              border:'1.5px solid #22c55e',background:'rgba(34,197,94,0.10)',color:'#22c55e',opacity:analyzeLoading?0.6:1 }}>
+            style={{ padding:'11px 16px',borderRadius:6,fontSize:13,cursor:analyzeLoading?'default':'pointer',fontWeight:600,textAlign:'left' as const,
+              border:'1px solid #1E2533',background:'transparent',color:'#8A95AA',opacity:analyzeLoading?0.6:1 }}>
             {analyzeLoading?'Analyse en cours…':'Analyser la semaine'}
           </button>
         </div>
@@ -1563,45 +1560,45 @@ function TrainingTab() {
       <ScrollRevealGroup style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
         <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Volume</p>
-            <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:0 }}>Volume</p>
+            <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:4,background:'transparent',border:'1px solid #1E2533',color:'#8A95AA',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatHM(plannedMin)}</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#00c8e0',margin:'0 0 8px' }}>{formatHM(doneMin)}</p>
-          <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#00c8e0" height={5} className="mb-1.5" />
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
+          <p style={{ fontSize:10,color:'#8A95AA',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatHM(plannedMin)}</p>
+          <p style={{ fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}>{formatHM(doneMin)}</p>
+          <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#1B6EF3" height={5} className="mb-1.5" />
+          <p style={{ fontSize:10,color:'#8A95AA',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
         </ScrollRevealItem>
         <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Séances</p>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedN}</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#ffb340',margin:'0 0 8px' }}><CountUp value={doneN} /></p>
-          <AnimatedBar pct={plannedN?Math.min(doneN/plannedN*100,100):0} color="#ffb340" height={5} className="mb-1.5" />
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:'0 0 8px' }}>Séances</p>
+          <p style={{ fontSize:10,color:'#8A95AA',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedN}</p>
+          <p style={{ fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}><CountUp value={doneN} /></p>
+          <AnimatedBar pct={plannedN?Math.min(doneN/plannedN*100,100):0} color="#1B6EF3" height={5} className="mb-1.5" />
           <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:4 }}>
-            {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:SPORT_BORDER[s.sport],fontFamily:'DM Mono,monospace',display:'flex',alignItems:'center',gap:3 }}><SportBadge sport={s.sport} size="xs"/> {s.done}/{s.planned}</span>)}
+            {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:'#8A95AA',fontFamily:'DM Mono,monospace',display:'flex',alignItems:'center',gap:3 }}><SportBadge sport={s.sport} size="xs"/> {s.done}/{s.planned}</span>)}
           </div>
         </ScrollRevealItem>
         <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
-            <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(91,111,255,0.10)',border:'1px solid rgba(91,111,255,0.25)',color:'#5b6fff',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:0 }}>TSS</p>
+            <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:4,background:'transparent',border:'1px solid #1E2533',color:'#8A95AA',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
           </div>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedTSS} pts</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#5b6fff',margin:'0 0 8px' }}><CountUp value={doneTSS} /> pts</p>
-          <AnimatedBar pct={plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0} color="#5b6fff" height={5} />
+          <p style={{ fontSize:10,color:'#8A95AA',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedTSS} pts</p>
+          <p style={{ fontFamily:'DM Mono,monospace',fontSize:32,fontWeight:700,color:'#4D9EFF',margin:'0 0 8px',lineHeight:1.1 }}><CountUp value={doneTSS} /> pts</p>
+          <AnimatedBar pct={plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0} color="#1B6EF3" height={5} />
         </ScrollRevealItem>
       </ScrollRevealGroup>
 
       {/* Volume par discipline */}
       {sportStats.length>0 && (
         <div className="card-enter card-enter-3" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 12px' }}>Volume par discipline</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:'0 0 12px' }}>Volume par discipline</p>
           {sportStats.map(s=>{ const pct=s.plannedH>0?Math.min(s.doneH/s.plannedH*100,100):0; const c=SPORT_BORDER[s.sport]; return (
             <div key={s.sport} style={{ marginBottom:10 }}>
               <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4 }}>
-                <span style={{ fontSize:12,display:'flex',alignItems:'center',gap:5 }}><SportBadge sport={s.sport} size="xs"/><span style={{ fontWeight:500,color:'var(--text-mid)' }}>{SPORT_LABEL[s.sport]}</span></span>
-                <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:c,fontWeight:600 }}>{s.doneH.toFixed(1)}h <span style={{ color:'var(--text-dim)',fontWeight:400 }}>/ {s.plannedH.toFixed(1)}h</span></span>
+                <span style={{ fontSize:12,display:'flex',alignItems:'center',gap:5 }}><SportBadge sport={s.sport} size="xs"/><span style={{ fontWeight:500,color:'#8A95AA' }}>{SPORT_LABEL[s.sport]}</span></span>
+                <span style={{ fontSize:12,fontFamily:'DM Mono,monospace',color:'#8A95AA',fontWeight:400 }}>{s.doneH.toFixed(1)}h <span style={{ color:'#3D4D63' }}>/ {s.plannedH.toFixed(1)}h</span></span>
               </div>
-              <AnimatedBar pct={pct} gradient={`linear-gradient(90deg,${c}bb,${c})`} height={6} />
+              <AnimatedBar pct={pct} gradient={`linear-gradient(90deg,${c}cc,${c}cc)`} height={6} />
             </div>
           )})}
         </div>
@@ -1610,7 +1607,7 @@ function TrainingTab() {
       {/* Aujourd'hui */}
       {todaySessions.length>0 && (
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 10px' }}>Aujourd'hui — {week[todayIdx]?.day} {week[todayIdx]?.date}</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'#3D4D63',margin:'0 0 10px' }}>Aujourd'hui — {week[todayIdx]?.day} {week[todayIdx]?.date}</p>
           {todaySessions.map(s=>(
             <div key={s.id} onClick={()=>setDetailModal(s)} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRadius:10,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',marginBottom:7 }}>
               <SportBadge sport={s.sport} size="sm"/>
@@ -1686,7 +1683,7 @@ function TrainingTab() {
               <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6 }}>
                 {analyzeResult.optimized_plan.map((p,i)=>(
                   <div key={i} style={{ padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',minWidth:110 }}>
-                    <p style={{ fontSize:10,fontWeight:700,color:'#00c8e0',margin:'0 0 2px' }}>{p.day}</p>
+                    <p style={{ fontSize:10,fontWeight:700,color:'#4D9EFF',margin:'0 0 2px' }}>{p.day}</p>
                     <p style={{ fontSize:11,fontWeight:600,margin:'0 0 1px' }}>{p.title}</p>
                     <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontFamily:'DM Mono,monospace' }}>{formatHM(p.durationMin)}</p>
                   </div>
@@ -1704,7 +1701,7 @@ function TrainingTab() {
         <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{compareMode?'Comparaison Plan A / Plan B':`Plan ${activePlan} · ${getWeekLabel(currentWeekStart)}`}</p>
         {!compareMode&&<div style={{ display:'flex',gap:6 }}>
           {([['vertical','⊟ Vertical'],['horizontal','⊞ Horizontal']] as [TrainingView,string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 11px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:view===v?'#00c8e0':'var(--border)',background:view===v?'rgba(0,200,224,0.10)':'var(--bg-card)',color:view===v?'#00c8e0':'var(--text-mid)',fontWeight:view===v?600:400 }}>{l}</button>
+            <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 11px',borderRadius:6,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:view===v?'transparent':'#1E2533',background:view===v?'#1B6EF3':'transparent',color:view===v?'#fff':'#8A95AA',fontWeight:600 }}>{l}</button>
           ))}
         </div>}
       </div>
@@ -1737,12 +1734,12 @@ function TrainingTab() {
                 <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                   <div style={{ textAlign:'center' as const,minWidth:32 }}>
                     <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:0 }}>{d.day}</p>
-                    <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:i===todayIdx?'#00c8e0':'var(--text)' }}>{d.date}</p>
+                    <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:i===todayIdx?'#4D9EFF':'var(--text)' }}>{d.date}</p>
                   </div>
                   <button onClick={()=>setIntensityModal(d.intensity)} style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:10,fontWeight:700,cursor:'pointer' }}>{cfg.label}</button>
                   <button onClick={()=>handleChangeIntensity(i)} style={{ width:20,height:20,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                 </div>
-                <button onClick={()=>setAddModal({dayIndex:i,plan:activePlan})} style={{ padding:'4px 9px',borderRadius:7,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)',color:'#00c8e0',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
+                <button onClick={()=>setAddModal({dayIndex:i,plan:activePlan})} style={{ padding:'4px 9px',borderRadius:6,background:'transparent',border:'1px solid #1E2533',color:'#8A95AA',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
               </div>
               {/* Activities from Training */}
               {d.activities.map(a=>{ const sp=normalizeSportType(a.sport); const matchedSession=matchActivity(a,d.sessions); return (
@@ -1767,7 +1764,7 @@ function TrainingTab() {
                       <div style={{ display:'flex',alignItems:'center',gap:5 }}>
                         <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{s.title}</p>
                         {s.status==='done'&&<span style={{ fontSize:8,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>FAIT</span>}
-                        <span style={{ fontSize:9,fontWeight:700,color:s.planVariant==='B'?'#a78bfa':'#00c8e0',marginLeft:4 }}>Plan {s.planVariant}</span>
+                        <span style={{ fontSize:9,fontWeight:600,color:'#8A95AA',marginLeft:4 }}>Plan {s.planVariant}</span>
                       </div>
                       <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
                     </div>
@@ -2872,7 +2869,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             return (
             <div key={d} style={{ padding:'7px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)' }}>
               <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 1px' }}>{DAY_NAMES[d]}</p>
-              <p style={{ fontSize:13,fontWeight:700,margin:'0 0 3px',color:d===todayIdx?'#00c8e0':'var(--text)' }}>{dates[d]}</p>
+              <p style={{ fontSize:13,fontWeight:700,margin:'0 0 3px',color:d===todayIdx?'#4D9EFF':'var(--text)' }}>{dates[d]}</p>
               <span style={{ padding:'1px 5px',borderRadius:20,background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize:8,fontWeight:700 }}>{load.label}</span>
               {/* Main task badges (click to edit) */}
               {mainTasks.map(mt=>(
@@ -3557,13 +3554,13 @@ export default function PlanningPage() {
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
-          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
+          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0,color:'#F0F4FF' }}>Planning</h1>
+          <p style={{ fontSize:13,color:'#3D4D63',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
         </div>
         <AIAssistantButton agent="planning" context={aiContext} />
       </div>
 
-      <div style={{ display:'flex',gap:6,marginBottom:20,flexWrap:'wrap' as const }}>
+      <div style={{ display:'inline-flex',gap:0,marginBottom:20,background:'#0F1117',border:'1px solid #1E2533',borderRadius:8,padding:4 }}>
         {TABS.map(([id,,short])=>(
           <button key={id} onClick={()=>setTab(id)}
             className={`tab-btn${tab===id?' active':''}`}>

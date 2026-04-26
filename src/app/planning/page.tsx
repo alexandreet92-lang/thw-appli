@@ -1019,6 +1019,80 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
           </ChartSection>
         )
       })()}
+
+      {/* ── CHART 4 : DISTRIBUTION DES INTENSITÉS (donut) ── */}
+      {(() => {
+        // Map intensity string → zone index 0–4 (Z1–Z5)
+        const ZONE_COLORS = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444']
+        const ZONE_LABELS = ['Z1 — Récup', 'Z2 — Endurance', 'Z3 — Tempo', 'Z4 — Seuil', 'Z5 — VO2max']
+        function intensityToZone(intensity: string | null | undefined): number {
+          switch (intensity) {
+            case 'low':      return 1
+            case 'moderate': return 2
+            case 'high':     return 3
+            case 'max':      return 4
+            default:         return 0
+          }
+        }
+        // Aggregate current-week sessions by zone
+        const currentWeekSessions = sessions.filter(s => s.week_start === currentWeekStart)
+        const zoneMins = [0, 0, 0, 0, 0]
+        for (const s of currentWeekSessions) {
+          const z = intensityToZone(s.intensity)
+          zoneMins[z] += s.duration_min ?? 0
+        }
+        const totalMins = zoneMins.reduce((a, b) => a + b, 0)
+        if (totalMins === 0) return null
+
+        // Build donut arcs
+        const CX = 52, CY = 52, R_OUT = 44, R_IN = 28
+        const entries = zoneMins
+          .map((mins, zi) => ({ zi, mins, pct: mins / totalMins }))
+          .filter(e => e.mins > 0)
+
+        let angle = -Math.PI / 2
+        const arcs = entries.map(e => {
+          const sweep = e.pct * 2 * Math.PI
+          const startAng = angle
+          const endAng = angle + sweep - (entries.length > 1 ? 0.03 : 0)
+          angle += sweep
+          return { ...e, startAng, endAng }
+        })
+
+        return (
+          <ChartSection title="Distribution des intensités" subtitle="(semaine actuelle)">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Donut SVG */}
+              <svg width={CX * 2} height={CY * 2} viewBox={`0 0 ${CX * 2} ${CY * 2}`} style={{ flexShrink: 0 }}>
+                {arcs.map((arc, i) => (
+                  <path
+                    key={i}
+                    d={donutArcPath(CX, CY, R_OUT, R_IN, arc.startAng, arc.endAng)}
+                    fill={ZONE_COLORS[arc.zi]}
+                    opacity={0.9}
+                  >
+                    <title>{`${ZONE_LABELS[arc.zi]}: ${Math.round(arc.mins)}min (${Math.round(arc.pct * 100)}%)`}</title>
+                  </path>
+                ))}
+                {/* Centre label */}
+                <text x={CX} y={CY - 4} textAnchor="middle" fontSize={13} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{Math.round(totalMins / 60 * 10) / 10}h</text>
+                <text x={CX} y={CY + 9} textAnchor="middle" fontSize={8} fill="var(--text-dim)">total</text>
+              </svg>
+
+              {/* Legend */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
+                {arcs.map((arc, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: ZONE_COLORS[arc.zi], flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-mid)', flex: 1 }}>{ZONE_LABELS[arc.zi]}</span>
+                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 32, textAlign: 'right' as const }}>{Math.round(arc.pct * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ChartSection>
+        )
+      })()}
     </div>
   )
 }

@@ -753,25 +753,46 @@ interface AiPlanSessionAgg {
   week_start: string
 }
 
+// Pastel fills — light mode
 const TP_BLOC_COLORS: Record<string, string> = {
-  'Base':        '#4A6FA5',  // bleu ardoise
-  'Build':       '#C17B5C',  // terracotta doux
-  'Peak':        '#8B3A52',  // bordeaux
-  'Taper':       '#5C8A6E',  // sauge
-  'Intensité':   '#C17B5C',
-  'Spécifique':  '#8B3A52',
-  'Deload':      '#5C8A6E',
-  'Compétition': '#6B4FA8',  // violet sobre
+  'Base':        '#B8CCE8',
+  'Build':       '#F2C9A8',
+  'Peak':        '#E8A8B8',
+  'Taper':       '#A8D4B8',
+  'Intensité':   '#F2C9A8',
+  'Spécifique':  '#E8A8B8',
+  'Deload':      '#A8D4B8',
+  'Compétition': '#D4B8E8',
+}
+// Dark paired text on pastel fill
+const TP_BLOC_TEXT: Record<string, string> = {
+  'Base':        '#2A4A6E',
+  'Build':       '#7A4A28',
+  'Peak':        '#6A2840',
+  'Taper':       '#2A5A3A',
+  'Intensité':   '#7A4A28',
+  'Spécifique':  '#6A2840',
+  'Deload':      '#2A5A3A',
+  'Compétition': '#4A2A6E',
 }
 
 function safeWeekTypeBg(type: string | null | undefined): string {
   const t = (type ?? '').toLowerCase()
-  if (t.includes('taper') || t.includes('deload')) return '#5C8A6E'
-  if (t.includes('base'))                          return '#4A6FA5'
-  if (t.includes('build') || t.includes('intensit')) return '#C17B5C'
-  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#8B3A52'
-  if (t.includes('compét') || t.includes('compet')) return '#6B4FA8'
-  return '#6B4FA8'
+  if (t.includes('taper') || t.includes('deload')) return '#A8D4B8'
+  if (t.includes('base'))                          return '#B8CCE8'
+  if (t.includes('build') || t.includes('intensit')) return '#F2C9A8'
+  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#E8A8B8'
+  if (t.includes('compét') || t.includes('compet')) return '#D4B8E8'
+  return '#D4B8E8'
+}
+function safeWeekTypeText(type: string | null | undefined): string {
+  const t = (type ?? '').toLowerCase()
+  if (t.includes('taper') || t.includes('deload')) return '#2A5A3A'
+  if (t.includes('base'))                          return '#2A4A6E'
+  if (t.includes('build') || t.includes('intensit')) return '#7A4A28'
+  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#6A2840'
+  if (t.includes('compét') || t.includes('compet')) return '#4A2A6E'
+  return '#4A2A6E'
 }
 
 const SPORT_COLOR_FALLBACK: Record<string, string> = {
@@ -917,7 +938,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
 
   // Dimensions SVG
-  const PERIOD_W = 400, PERIOD_H = 20
+  const PERIOD_W = 400, PERIOD_H = 16
 
   return (
     <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
@@ -978,22 +999,28 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                 const isSel    = selectedBloc === i
                 const isFirst  = i === 0
                 const isLast   = i === plan.blocs_periodisation.length - 1
+                const textCol = TP_BLOC_TEXT[b.type] ?? '#333'
                 return (
                   <g key={i} onClick={() => setSelectedBloc(isSel ? null : i)} style={{ cursor: 'pointer' }}>
                     <rect x={x} y={0} width={w} height={PERIOD_H} fill={color}
-                      opacity={isSel ? 1 : isActive ? 0.82 : 0.45}
-                      rx={isFirst || isLast ? 3 : 0} />
+                      opacity={isSel ? 1 : isActive ? 1 : 0.55}
+                      rx={isFirst ? 4 : isLast ? 4 : 0}
+                      style={isFirst ? { borderRadius:'4px 0 0 4px' } : isLast ? { borderRadius:'0 4px 4px 0' } : {}} />
                     {isSel && <rect x={x} y={0} width={w} height={PERIOD_H} fill="none"
-                      stroke="#fff" strokeWidth={1.5} opacity={0.6} rx={isFirst || isLast ? 3 : 0} />}
-                    {w > 30 && (
-                      <text x={x + w / 2} y={PERIOD_H / 2 + 4} textAnchor="middle" fontSize={9} fill="#fff" fontWeight={700} opacity={0.88}>{b.type}</text>
+                      stroke={textCol} strokeWidth={1} opacity={0.4} rx={isFirst || isLast ? 4 : 0} />}
+                    {w > 36 && (
+                      <text x={x + w / 2} y={PERIOD_H / 2 + 3.5} textAnchor="middle"
+                        fontSize={8} fill={textCol} fontWeight={500} opacity={0.85}
+                        style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {b.type.toUpperCase()}
+                      </text>
                     )}
-                    {isActive && !isSel && (
+                    {isActive && (
                       <line
                         x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
                         x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * w}
-                        y1={0} y2={PERIOD_H}
-                        stroke="#fff" strokeWidth={2} opacity={0.85} strokeDasharray="3 2"
+                        y1={2} y2={PERIOD_H - 2}
+                        stroke={textCol} strokeWidth={1.5} opacity={0.5} strokeDasharray="2 2"
                       />
                     )}
                   </g>
@@ -1006,18 +1033,19 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
           {selectedBloc !== null && plan.blocs_periodisation[selectedBloc] && (() => {
             const b = plan.blocs_periodisation[selectedBloc]
             const dur = b.semaine_fin - b.semaine_debut + 1
-            const col = TP_BLOC_COLORS[b.type] ?? '#6b5fa8'
+            const col = TP_BLOC_COLORS[b.type] ?? '#D4B8E8'
+            const txt = TP_BLOC_TEXT[b.type] ?? '#333'
             return (
               <div style={{
-                background: `${col}18`, border: `1px solid ${col}40`,
+                background: `${col}60`, border: `1px solid ${col}`,
                 borderRadius: 8, padding: '10px 12px', marginBottom: 8,
                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px',
               }}>
                 <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: col }}>{b.nom}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: txt }}>{b.nom}</span>
                   <button onClick={() => setSelectedBloc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, padding: 0 }}>✕</button>
                 </div>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Phase <strong style={{ color: 'var(--text-mid)' }}>{b.type}</strong></span>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Phase <strong style={{ color: txt }}>{b.type}</strong></span>
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Durée <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>S{b.semaine_debut}–S{b.semaine_fin} · {dur} sem.</strong></span>
                 {b.volume_hebdo_h != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume/sem. <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(b.volume_hebdo_h * 60))}</strong></span>}
                 {b.description && <p style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.5 }}>{b.description}</p>}
@@ -1026,13 +1054,17 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
           })()}
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
-            {plan.blocs_periodisation.map((b, i) => (
-              <button key={i} onClick={() => setSelectedBloc(selectedBloc === i ? null : i)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: selectedBloc === i ? 'var(--text)' : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: TP_BLOC_COLORS[b.type] ?? '#6b5fa8', flexShrink: 0, opacity: selectedBloc === i ? 1 : 0.7 }} />
-                {b.nom} · S{b.semaine_debut}–S{b.semaine_fin}
-              </button>
-            ))}
+            {plan.blocs_periodisation.map((b, i) => {
+              const col = TP_BLOC_COLORS[b.type] ?? '#D4B8E8'
+              const txt = TP_BLOC_TEXT[b.type] ?? '#333'
+              return (
+                <button key={i} onClick={() => setSelectedBloc(selectedBloc === i ? null : i)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: selectedBloc === i ? txt : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: col, border: `1px solid ${txt}30`, flexShrink: 0, opacity: selectedBloc === i ? 1 : 0.8 }} />
+                  {b.nom} · S{b.semaine_debut}–S{b.semaine_fin}
+                </button>
+              )
+            })}
           </div>
         </ChartSection>
       )}
@@ -1081,37 +1113,43 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
       {(() => {
         const semaines = plan.ai_context?.program?.semaines ?? []
         if (semaines.length === 0) return null
-        const VOL_W = 460, VOL_H = 40, Y_PAD = 12, BAR_GAP = 3
+        const n = semaines.length
+        const BAR_GAP = 3
+        // Barres étroites : max 18 px, se réduisent si beaucoup de semaines
+        const barW = Math.min(Math.floor((460 - BAR_GAP * (n - 1)) / n), 18)
+        const VOL_W = barW * n + BAR_GAP * (n - 1)
+        const VOL_H = 24   // réduit de 40%
+        const Y_PAD = 10
         const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
-        const barW = (VOL_W - BAR_GAP * (semaines.length - 1)) / semaines.length
         const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
         return (
-          <ChartSection title="Volume hebdomadaire" subtitle={`${semaines.length} semaines`}>
+          <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`}>
             <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer' }}>
               {semaines.map((s, i) => {
                 const vol    = s.volume_h ?? 0
-                const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 3 : 0)
+                const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 2 : 0)
                 const x      = i * (barW + BAR_GAP)
                 const y      = VOL_H - barH
                 const active = s.numero === currentWeekNum
                 const isSel  = s.numero === selectedWeek
                 const col    = safeWeekTypeBg(s.type)
+                const txtCol = safeWeekTypeText(s.type)
                 return (
                   <g key={i} onClick={() => setSelectedWeek(isSel ? null : s.numero)} style={{ cursor: 'pointer' }}>
-                    {/* invisible hit area for thin bars */}
+                    {/* invisible hit area */}
                     <rect x={x} y={0} width={barW} height={VOL_H + Y_PAD} fill="transparent" />
                     <rect x={x} y={y} width={barW} height={barH}
-                      fill={col} opacity={isSel ? 1 : active ? 0.9 : 0.4} rx={2}>
+                      fill={col} opacity={isSel ? 1 : active ? 1 : 0.5} rx={2}>
                       <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? formatDuration(Math.round(vol * 60)) : '—'}`}</title>
                     </rect>
                     {(active || isSel) && (
                       <rect x={x} y={y} width={barW} height={barH} rx={2}
-                        fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.7} />
+                        fill="none" stroke={txtCol} strokeWidth={1} opacity={0.4} />
                     )}
                     {/* week number label below bar */}
-                    <text x={x + barW / 2} y={VOL_H + Y_PAD - 2} textAnchor="middle"
-                      fontSize={barW > 14 ? 8 : 6} fill={isSel || active ? col : 'var(--text-dim)'}
-                      fontWeight={isSel || active ? 700 : 400}>
+                    <text x={x + barW / 2} y={VOL_H + Y_PAD - 1} textAnchor="middle"
+                      fontSize={6} fill={isSel || active ? txtCol : '#aaa'}
+                      fontWeight={isSel || active ? 600 : 400}>
                       {`S${s.numero}`}
                     </text>
                   </g>
@@ -1120,7 +1158,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
             </svg>
             {/* Detail panel on click */}
             {selSem && (() => {
-              const accentCol = safeWeekTypeBg(selSem.type)
+              const accentCol = safeWeekTypeText(selSem.type)
               // Parse seances for detailed breakdown
               type RawSeance = { sport?: string; intensite?: string; duree_min?: number; titre?: string; title?: string }
               const rawSeances = (selSem.seances ?? []) as RawSeance[]

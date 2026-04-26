@@ -1178,7 +1178,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                   <div style={{ display: 'flex', gap: 16, marginBottom: hasSportDetail ? 10 : 0 }}>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
-                    {rawSeances.length > 0 && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{rawSeances.length}</strong></span>}
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{rawSeances.length > 0 ? rawSeances.length : '—'}</strong></span>
                   </div>
                   {/* Per-sport breakdown */}
                   {hasSportDetail && (

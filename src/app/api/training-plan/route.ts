@@ -258,6 +258,10 @@ function normalizePlan(raw: unknown): GeneratedPlan {
 
   return {
     ...(inner as unknown as GeneratedPlan),
+    // Alias: AI may return `name` instead of the schema-mandated `nom`
+    nom: (inner.nom ?? inner.name ?? 'Plan d\'entraînement') as string,
+    // Alias: AI may return `objectif` instead of `objectif_principal`
+    objectif_principal: (inner.objectif_principal ?? inner.objectif ?? '') as string,
     semaines: semaines as GeneratedPlan['semaines'],
     blocs_periodisation: (Array.isArray(blocsRaw) ? blocsRaw : []) as GeneratedPlan['blocs_periodisation'],
     conseils_adaptation: Array.isArray(inner.conseils_adaptation) ? inner.conseils_adaptation as string[] : [],

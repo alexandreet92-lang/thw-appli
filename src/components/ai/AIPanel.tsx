@@ -2243,9 +2243,15 @@ function TrainingPlanFlow({
           .flatMap(w => (w.seances ?? []).map(s => s.sport))
           .filter((s): s is string => typeof s === 'string' && s.length > 0)
       ))
-      const { data: planRow, error: planErr } = await sb.from('training_plans').insert({
+
+      // Defensive: AI may return `name` instead of `nom` — never send undefined to a NOT NULL column
+      const planName = program.nom
+        ?? (program as unknown as { name?: string }).name
+        ?? 'Plan d\'entraînement'
+
+      const { error: planInsertErr } = await sb.from('training_plans').insert({
         user_id:             user.id,
-        name:                program.nom,
+        name:                planName,
         objectif_principal:  program.objectif_principal ?? null,
         duree_semaines:      program.duree_semaines,
         start_date:          startDate,
@@ -2260,14 +2266,26 @@ function TrainingPlanFlow({
           generated_at: (generatedAt ?? new Date()).toISOString(),
         },
         status: 'active',
-      }).select('id').single()
+      })
 
-      // training_plans insert is best-effort — sessions are always created even
-      // if the plan row fails (plan_id will be null, display still works).
-      if (planErr || !planRow) {
-        console.warn('[saveToPlanning] training_plans insert failed (non-fatal):', planErr?.message)
+      if (planInsertErr) {
+        console.error('[saveToPlanning] training_plans insert failed:', planInsertErr.message, planInsertErr)
       }
-      const planId = planRow?.id as string | undefined
+
+      // Fetch the just-inserted plan id with a separate SELECT
+      // (avoids PostgREST return=representation quirks with RLS)
+      let planId: string | undefined
+      if (!planInsertErr) {
+        const { data: planRow } = await sb.from('training_plans')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .eq('start_date', startDate)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        planId = planRow?.id as string | undefined
+      }
 
       // 3. Construire la liste des séances à insérer
       // Si merge : récupérer les jours déjà occupés

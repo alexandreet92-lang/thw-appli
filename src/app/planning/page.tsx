@@ -756,24 +756,24 @@ interface AiPlanSessionAgg {
 }
 
 const TP_BLOC_COLORS: Record<string, string> = {
-  'Base':        '#4f7aaa',  // slate blue — muted
-  'Build':       '#b8783a',  // warm amber — muted
-  'Peak':        '#b04040',  // deep crimson — muted
-  'Taper':       '#3d8f6e',  // forest teal — muted
-  'Intensité':   '#b8783a',
-  'Spécifique':  '#b04040',
-  'Deload':      '#3d8f6e',
-  'Compétition': '#7055a8',  // soft violet — muted
+  'Base':        '#4A6FA5',  // bleu ardoise
+  'Build':       '#C17B5C',  // terracotta doux
+  'Peak':        '#8B3A52',  // bordeaux
+  'Taper':       '#5C8A6E',  // sauge
+  'Intensité':   '#C17B5C',
+  'Spécifique':  '#8B3A52',
+  'Deload':      '#5C8A6E',
+  'Compétition': '#6B4FA8',  // violet sobre
 }
 
 function safeWeekTypeBg(type: string | null | undefined): string {
   const t = (type ?? '').toLowerCase()
-  if (t.includes('taper') || t.includes('deload')) return '#3d8f6e'
-  if (t.includes('base'))                          return '#4f7aaa'
-  if (t.includes('build') || t.includes('intensit')) return '#b8783a'
-  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#b04040'
-  if (t.includes('compét') || t.includes('compet')) return '#7055a8'
-  return '#6b5fa8'
+  if (t.includes('taper') || t.includes('deload')) return '#5C8A6E'
+  if (t.includes('base'))                          return '#4A6FA5'
+  if (t.includes('build') || t.includes('intensit')) return '#C17B5C'
+  if (t.includes('peak') || t.includes('spécif') || t.includes('specif')) return '#8B3A52'
+  if (t.includes('compét') || t.includes('compet')) return '#6B4FA8'
+  return '#6B4FA8'
 }
 
 const SPORT_COLOR_FALLBACK: Record<string, string> = {

@@ -938,6 +938,46 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
           </div>
         </ChartSection>
       )}
+
+      {/* ── CHART 2 : VOLUME PAR SPORT ── */}
+      {(() => {
+        const volBySport = (() => {
+          const map = new Map<string, number>()
+          for (const s of sessions) {
+            if (!s.sport) continue
+            map.set(s.sport, (map.get(s.sport) ?? 0) + (s.duration_min ?? 0))
+          }
+          return Array.from(map.entries())
+            .map(([sport, mins]) => ({ sport, hours: +(mins / 60).toFixed(1) }))
+            .sort((a, b) => b.hours - a.hours)
+        })()
+        if (volBySport.length === 0) return null
+        const maxH = Math.max(...volBySport.map(e => e.hours), 1)
+        return (
+          <ChartSection title="Volume par sport" subtitle="(semaine actuelle)">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {volBySport.map(({ sport, hours }) => {
+                const col = sportColor(sport)
+                const pct = (hours / maxH) * 100
+                return (
+                  <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: col, minWidth: 74, textTransform: 'capitalize' as const }}>{sport}</span>
+                    <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'var(--border)', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${pct}%`, height: '100%', borderRadius: 5,
+                        background: col, opacity: 0.85,
+                        transformOrigin: 'left center',
+                        animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)', minWidth: 32, textAlign: 'right' as const }}>{hours}h</span>
+                  </div>
+                )
+              })}
+            </div>
+          </ChartSection>
+        )
+      })()}
     </div>
   )
 }

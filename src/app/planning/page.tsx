@@ -10,6 +10,7 @@ import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
+import { formatDuration } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -948,29 +949,29 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
             map.set(s.sport, (map.get(s.sport) ?? 0) + (s.duration_min ?? 0))
           }
           return Array.from(map.entries())
-            .map(([sport, mins]) => ({ sport, hours: +(mins / 60).toFixed(1) }))
-            .sort((a, b) => b.hours - a.hours)
+            .map(([sport, mins]) => ({ sport, mins }))
+            .sort((a, b) => b.mins - a.mins)
         })()
         if (volBySport.length === 0) return null
-        const maxH = Math.max(...volBySport.map(e => e.hours), 1)
+        const maxMins = Math.max(...volBySport.map(e => e.mins), 1)
         return (
-          <ChartSection title="Volume par sport" subtitle="(semaine actuelle)">
+          <ChartSection title="Volume par sport" subtitle="(plan complet)">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {volBySport.map(({ sport, hours }) => {
+              {volBySport.map(({ sport, mins }) => {
                 const col = sportColor(sport)
-                const pct = (hours / maxH) * 100
+                const pct = (mins / maxMins) * 100
                 return (
                   <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 600, color: col, minWidth: 74, textTransform: 'capitalize' as const }}>{sport}</span>
-                    <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'var(--border)', overflow: 'hidden' }}>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}>
                       <div style={{
-                        width: `${pct}%`, height: '100%', borderRadius: 5,
-                        background: col, opacity: 0.85,
+                        width: `${pct}%`, height: '100%', borderRadius: 4,
+                        background: col, opacity: 0.82,
                         transformOrigin: 'left center',
                         animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both',
                       }} />
                     </div>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)', minWidth: 32, textAlign: 'right' as const }}>{hours}h</span>
+                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)', minWidth: 36, textAlign: 'right' as const }}>{formatDuration(mins)}</span>
                   </div>
                 )
               })}
@@ -1000,7 +1001,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
                   <g key={i}>
                     <rect x={x} y={y} width={barW} height={barH}
                       fill={col} opacity={active ? 1 : 0.4} rx={2}>
-                      <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? vol + 'h' : '—'}`}</title>
+                      <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? formatDuration(Math.round(vol * 60)) : '—'}`}</title>
                     </rect>
                     {active && (
                       <rect x={x} y={y} width={barW} height={barH} rx={2}
@@ -1075,7 +1076,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart }: {
                   </path>
                 ))}
                 {/* Centre label */}
-                <text x={CX} y={CY - 4} textAnchor="middle" fontSize={13} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{Math.round(totalMins / 60 * 10) / 10}h</text>
+                <text x={CX} y={CY - 4} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{formatDuration(totalMins)}</text>
                 <text x={CX} y={CY + 9} textAnchor="middle" fontSize={8} fill="var(--text-dim)">total</text>
               </svg>
 

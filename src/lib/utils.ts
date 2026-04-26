@@ -26,6 +26,20 @@ export const SPORT_LABEL: Record<Sport, string> = {
   gym:       'Musculation',
 }
 
+/**
+ * Converts a duration in minutes to a human-readable "Xh YY" format.
+ * Examples: 90 → "1h30"  |  45 → "45min"  |  400 → "6h40"  |  60 → "1h"
+ */
+export function formatDuration(minutes: number): string {
+  const m = Math.round(minutes)
+  if (m <= 0) return '0min'
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  if (h === 0) return `${rem}min`
+  if (rem === 0) return `${h}h`
+  return `${h}h${String(rem).padStart(2, '0')}`
+}
+
 export function formatTime(date?: Date): string {
   const d = date ?? new Date()
   return `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`

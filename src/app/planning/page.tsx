@@ -1170,18 +1170,33 @@ function TrainingTab() {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
-        console.log('[aiPlan] fetching for currentWeekStart=', currentWeekStart)
-        const { data: planData, error: planErr } = await sb.from('training_plans')
+
+        // Fetch all active plans for the user, sorted newest first.
+        // We filter client-side so timezone off-by-one in stored dates
+        // never causes a silent miss, and maybeSingle() errors on
+        // multiple rows are avoided.
+        const { data: plans } = await sb.from('training_plans')
           .select('*')
           .eq('user_id', user.id)
           .eq('status', 'active')
-          .lte('start_date', currentWeekStart)
-          .gte('end_date',   currentWeekStart)
-          .maybeSingle()
-        console.log('[aiPlan] result:', { planData, planErr })
+          .order('created_at', { ascending: false })
+          .limit(10)
+
         if (cancelled) return
+
+        // Find the plan whose [start_date, end_date] covers currentWeekStart.
+        // Accept ±1 day tolerance to absorb timezone serialisation drift.
+        const oneDayMs = 86400000
+        const curMs    = new Date(currentWeekStart + 'T00:00:00').getTime()
+        const planData = (plans ?? []).find(p => {
+          const startMs = new Date((p as { start_date: string }).start_date + 'T00:00:00').getTime()
+          const endMs   = new Date((p as { end_date:   string }).end_date   + 'T00:00:00').getTime()
+          return startMs <= curMs + oneDayMs && endMs >= curMs - oneDayMs
+        }) ?? null
+
         if (!planData) { setAiPlan(null); setAiPlanSessions([]); return }
         setAiPlan(planData as unknown as AiTrainingPlan)
+
         const { data: psData } = await sb.from('planned_sessions')
           .select('sport,duration_min,intensity,week_start')
           .eq('user_id', user.id)

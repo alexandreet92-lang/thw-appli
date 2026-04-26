@@ -1121,25 +1121,61 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
               })}
             </svg>
             {/* Detail panel on click */}
-            {selSem && (
-              <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: safeWeekTypeBg(selSem.type) }}>
-                    S{selSem.numero} — {selSem.type ?? ''}
-                  </span>
-                  <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
-                </div>
-                {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
-                  {selSem.seances && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{selSem.seances.length}</strong></span>}
-                  {selSem.note_coach && (
-                    <span style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', marginTop: 4, fontStyle: 'italic' }}>{selSem.note_coach}</span>
+            {selSem && (() => {
+              const accentCol = safeWeekTypeBg(selSem.type)
+              // Parse seances for detailed breakdown
+              type RawSeance = { sport?: string; intensite?: string; duree_min?: number; titre?: string; title?: string }
+              const rawSeances = (selSem.seances ?? []) as RawSeance[]
+              // Volume by sport
+              const volBySport: Record<string, number> = {}
+              for (const s of rawSeances) {
+                if (!s.sport) continue
+                volBySport[s.sport] = (volBySport[s.sport] ?? 0) + (s.duree_min ?? 0)
+              }
+              // Sessions grouped by sport → list of intensite
+              const bySpSessions: Record<string, string[]> = {}
+              for (const s of rawSeances) {
+                if (!s.sport) continue
+                if (!bySpSessions[s.sport]) bySpSessions[s.sport] = []
+                bySpSessions[s.sport].push(s.intensite ?? s.titre ?? s.title ?? '?')
+              }
+              const hasSportDetail = Object.keys(volBySport).length > 0
+              return (
+                <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selSem.numero} — {selSem.type ?? ''}</span>
+                    <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
+                  </div>
+                  {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
+                  {/* KPIs row */}
+                  <div style={{ display: 'flex', gap: 16, marginBottom: hasSportDetail ? 10 : 0 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
+                    {rawSeances.length > 0 && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{rawSeances.length}</strong></span>}
+                  </div>
+                  {/* Per-sport breakdown */}
+                  {hasSportDetail && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {Object.entries(volBySport).sort((a, b) => b[1] - a[1]).map(([sport, mins]) => {
+                        const col = sportColor(sport)
+                        const types = bySpSessions[sport] ?? []
+                        return (
+                          <div key={sport} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: col, minWidth: 70, textTransform: 'capitalize' as const }}>{sport}</span>
+                            <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 36 }}>{formatDuration(mins)}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1 }}>{types.join(' · ')}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {/* note_coach fallback for S3+ weeks */}
+                  {selSem.note_coach && !hasSportDetail && (
+                    <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', fontStyle: 'italic' }}>{selSem.note_coach}</p>
                   )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </ChartSection>
         )
       })()}

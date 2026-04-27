@@ -744,8 +744,9 @@ interface AiPlanWeekMeta {
   theme?: string
   volume_h?: number
   tss_semaine?: number
-  seances?: unknown[]   // semaines S1-S2 : séances détaillées
-  note_coach?: string   // semaines S3+  : résumé coach
+  // Toutes les semaines ont des séances depuis le fix du prompt (blocs uniquement S1-S2)
+  seances?: unknown[]
+  note_coach?: string
 }
 interface AiTrainingPlan {
   id: string
@@ -960,9 +961,38 @@ function exportPlanToPDF(plan: AiTrainingPlan) {
     run:'Course à pied', bike:'Cyclisme', swim:'Natation',
     hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron',
   }
+  const SPORT_COLORS: Record<string, string> = {
+    run:'#f97316', bike:'#3b82f6', swim:'#06b6d4',
+    hyrox:'#ec4899', gym:'#8b5cf6', rowing:'#14b8a6',
+  }
   const INTENS_LABEL_PDF: Record<string, string> = {
     low:'Endurance', moderate:'Tempo / Z3', high:'Intensif / Z4', max:'VO2max / Z5',
   }
+  const DAY_NAMES_PDF = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+
+  // Formatte durée en hhmm
+  function fmtDurPDF(min: number): string {
+    const h = Math.floor(min / 60), m = min % 60
+    if (h === 0) return `${m}min`
+    return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
+  }
+
+  // Résolution du nom de sport affiché
+  function sportLabel(raw: string): string {
+    const lower = raw.toLowerCase()
+    const direct = SPORT_NAMES[lower]
+    if (direct) return direct
+    // Recherche par valeur (le coach peut envoyer le nom en français)
+    const found = Object.entries(SPORT_NAMES).find(([, v]) => v.toLowerCase() === lower)
+    return found ? found[1] : raw
+  }
+  function sportColor(raw: string): string {
+    const lower = raw.toLowerCase()
+    if (SPORT_COLORS[lower]) return SPORT_COLORS[lower]
+    const found = Object.entries(SPORT_NAMES).find(([, v]) => v.toLowerCase() === lower)
+    return found ? (SPORT_COLORS[found[0]] ?? '#8b5cf6') : '#8b5cf6'
+  }
+
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -970,85 +1000,136 @@ function exportPlanToPDF(plan: AiTrainingPlan) {
 <title>${plan.name}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, system-ui, sans-serif; background: #fff; color: #111; padding: 28px 32px; font-size: 13px; line-height: 1.5; }
-  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-  .meta { font-size: 12px; color: #666; margin-bottom: 4px; }
-  .objectif { font-size: 13px; color: #444; margin: 8px 0 16px; padding: 10px 14px; border-left: 3px solid #8b5cf6; background: #f5f3ff; border-radius: 0 8px 8px 0; }
-  .week { margin-bottom: 22px; page-break-inside: avoid; }
-  .week-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; padding: 6px 10px; background: #f3f4f6; border-radius: 6px; display: flex; justify-content: space-between; }
-  .week-note { font-size: 11px; color: #6b7280; font-style: italic; margin-bottom: 8px; padding-left: 4px; }
-  .sessions { display: flex; flex-direction: column; gap: 6px; }
-  .session { padding: 8px 12px; border-left: 3px solid #8b5cf6; border-radius: 0 8px 8px 0; background: #fafafa; }
-  .session-header { display: flex; align-items: center; gap: 8px; }
-  .session-sport { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: #8b5cf622; color: #8b5cf6; padding: 2px 6px; border-radius: 99px; flex-shrink: 0; }
-  .session-title { font-weight: 600; font-size: 13px; }
-  .session-meta { font-size: 11px; color: #6b7280; margin-top: 3px; }
-  .session-notes { font-size: 11px; color: #444; margin-top: 4px; font-style: italic; }
-  .blocs { margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
-  .bloc { font-size: 11px; color: #374151; padding: 2px 0; }
-  .day-badge { font-size: 10px; background: #e5e7eb; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
-  .footer { margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 14px; font-size: 10px; color: #9ca3af; }
+  body { font-family: -apple-system, system-ui, sans-serif; background: #fff; color: #111; padding: 24px 30px; font-size: 12px; line-height: 1.5; }
+  h1 { font-size: 20px; font-weight: 800; margin-bottom: 2px; }
+  .plan-meta { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+  .objectif { font-size: 12px; color: #374151; margin: 8px 0 16px; padding: 8px 12px; border-left: 3px solid #8b5cf6; background: #f5f3ff; border-radius: 0 6px 6px 0; }
+  .week { margin-bottom: 18px; break-inside: avoid; }
+  .week-header { display: flex; align-items: baseline; gap: 10px; padding: 5px 10px; background: #f1f5f9; border-radius: 6px; margin-bottom: 4px; }
+  .week-num { font-size: 13px; font-weight: 800; color: #1e293b; }
+  .week-type { font-size: 10px; font-weight: 600; color: #8b5cf6; text-transform: uppercase; letter-spacing: 0.06em; }
+  .week-stats { margin-left: auto; display: flex; gap: 12px; font-size: 10px; color: #6b7280; font-variant-numeric: tabular-nums; }
+  .week-stats strong { color: #374151; }
+  .week-theme { font-size: 11px; color: #475569; font-style: italic; padding: 0 2px 4px; }
+  .week-coach { font-size: 11px; color: #6b7280; padding: 3px 10px 6px; border-left: 2px solid #e2e8f0; margin: 0 0 6px 4px; }
+  .sessions { display: flex; flex-direction: column; gap: 4px; }
+  .session { padding: 6px 10px; border-left: 3px solid #8b5cf6; background: #fafafa; border-radius: 0 5px 5px 0; }
+  .session-header { display: flex; align-items: center; gap: 6px; }
+  .sport-badge { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; padding: 1px 5px; border-radius: 99px; flex-shrink: 0; }
+  .day-badge { font-size: 9px; background: #e2e8f0; color: #475569; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .session-title { font-weight: 600; font-size: 12px; flex: 1; }
+  .session-meta { font-size: 10px; color: #6b7280; margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .session-notes { font-size: 10px; color: #374151; margin-top: 3px; font-style: italic; }
+  .blocs { margin-top: 5px; padding-top: 5px; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 2px; }
+  .bloc { font-size: 10px; color: #374151; display: flex; gap: 6px; align-items: baseline; }
+  .bloc-name { font-weight: 600; }
+  .bloc-detail { color: #6b7280; }
+  .bloc-zone { display: inline-block; width: 14px; height: 8px; border-radius: 2px; vertical-align: middle; margin-right: 2px; }
+  .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #9ca3af; display: flex; justify-content: space-between; }
   @media print {
-    body { padding: 16px 20px; }
-    .week { page-break-inside: avoid; }
-    @page { margin: 1.2cm; }
+    body { padding: 12px 16px; font-size: 11px; }
+    .week { break-inside: avoid; }
+    @page { margin: 1cm; size: A4; }
   }
 </style>
 </head>
 <body>
-<h1>${plan.name}</h1>
-<p class="meta">Plan ${plan.duree_semaines} semaines · Du ${plan.start_date} au ${plan.end_date} · Sports : ${plan.sports.map(s => SPORT_NAMES[s] ?? s).join(', ')}</p>
+
+<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+  <div>
+    <h1>${plan.name}</h1>
+    <p class="plan-meta">
+      ${plan.duree_semaines} semaines &nbsp;·&nbsp; ${plan.start_date} → ${plan.end_date}
+      &nbsp;·&nbsp; Sports : ${plan.sports.map(s => sportLabel(s)).join(', ')}
+    </p>
+  </div>
+  <div style="text-align:right;font-size:10px;color:#9ca3af;white-space:nowrap">
+    Plan THW Coach IA<br>
+    ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+  </div>
+</div>
+
 ${plan.objectif_principal ? `<div class="objectif">${plan.objectif_principal}</div>` : ''}
+
 ${semaines.map((sem) => {
   const seances = (Array.isArray(sem.seances) ? sem.seances : []) as Record<string, unknown>[]
+  const volumeH = typeof sem.volume_h === 'number' ? sem.volume_h : null
+  const tssSem  = typeof sem.tss_semaine === 'number' ? sem.tss_semaine : null
+  const ZONE_PDF_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
+
   return `<div class="week">
-  <div class="week-title"><span>Semaine ${sem.numero}</span><span style="font-weight:400;color:#6b7280">${seances.length} séance${seances.length !== 1 ? 's' : ''}</span></div>
-  ${sem.note_coach ? `<div class="week-note">${sem.note_coach}</div>` : ''}
+  <div class="week-header">
+    <span class="week-num">Semaine ${sem.numero}</span>
+    ${sem.type ? `<span class="week-type">${sem.type}</span>` : ''}
+    <span class="week-stats">
+      ${volumeH !== null ? `<span><strong>${volumeH}h</strong> vol.</span>` : ''}
+      ${tssSem !== null ? `<span><strong>${tssSem}</strong> TSS</span>` : ''}
+      ${seances.length > 0 ? `<span><strong>${seances.length}</strong> séance${seances.length > 1 ? 's' : ''}</span>` : ''}
+    </span>
+  </div>
+  ${sem.theme ? `<p class="week-theme">${sem.theme}</p>` : ''}
+  ${sem.note_coach ? `<p class="week-coach">${sem.note_coach}</p>` : ''}
+  ${seances.length === 0 ? '<p style="font-size:10px;color:#9ca3af;padding:4px 10px">Semaine de repos</p>' : `
   <div class="sessions">
   ${seances.map((s: Record<string, unknown>) => {
-    const sport = typeof s.sport === 'string' ? s.sport : ''
-    const sportNorm = Object.entries(SPORT_NAMES).find(([,v]) => v.toLowerCase() === sport.toLowerCase())?.[0] ?? sport.toLowerCase()
-    const sportLabel = SPORT_NAMES[sportNorm] ?? sport
-    const titre = typeof s.titre === 'string' ? s.titre : ''
-    const jour = typeof s.jour === 'number' ? s.jour : null
-    const dureMin = typeof s.duree_min === 'number' ? s.duree_min : null
-    const tss = typeof s.tss === 'number' ? s.tss : null
-    const intensite = typeof s.intensite === 'string' ? s.intensite : null
-    const notes = typeof s.notes === 'string' ? s.notes : null
-    const blocs = Array.isArray(s.blocs) ? s.blocs as Record<string, unknown>[] : []
-    const DAY_NAMES_PDF = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
-    const dayLabel = jour !== null ? `Jour ${jour} — ${DAY_NAMES_PDF[jour] ?? ''}` : ''
-    const metaParts = [
-      dureMin ? `${Math.floor(dureMin / 60) > 0 ? Math.floor(dureMin / 60) + 'h' : ''}${dureMin % 60 > 0 ? (dureMin % 60) + 'min' : ''}` : null,
-      tss ? `${tss} TSS` : null,
-      intensite ? (INTENS_LABEL_PDF[intensite] ?? intensite) : null,
-    ].filter(Boolean)
-    return `<div class="session">
+    const rawSport   = typeof s.sport    === 'string' ? s.sport    : ''
+    const titre      = typeof s.titre    === 'string' ? s.titre    : ''
+    const jour       = typeof s.jour     === 'number' ? s.jour     : null
+    const dureMin    = typeof s.duree_min === 'number' ? s.duree_min : null
+    const heure      = typeof s.heure    === 'string' ? s.heure    : null
+    const tss        = typeof s.tss      === 'number' ? s.tss      : null
+    const intensite  = typeof s.intensite === 'string' ? s.intensite : null
+    const notes      = typeof s.notes    === 'string' ? s.notes    : null
+    const rpe        = typeof s.rpe      === 'number' ? s.rpe      : null
+    const blocs      = Array.isArray(s.blocs) ? s.blocs as Record<string, unknown>[] : []
+    const col        = sportColor(rawSport)
+    const dayLabel   = jour !== null ? `${DAY_NAMES_PDF[jour] ?? 'J' + jour}` : ''
+
+    return `<div class="session" style="border-left-color:${col}">
     <div class="session-header">
       ${dayLabel ? `<span class="day-badge">${dayLabel}</span>` : ''}
-      <span class="session-sport">${sportLabel}</span>
+      ${heure ? `<span style="font-size:9px;color:#6b7280;font-variant-numeric:tabular-nums">${heure}</span>` : ''}
+      <span class="sport-badge" style="background:${col}22;color:${col}">${sportLabel(rawSport)}</span>
       <span class="session-title">${titre}</span>
     </div>
-    ${metaParts.length ? `<div class="session-meta">${metaParts.join(' · ')}</div>` : ''}
-    ${notes ? `<div class="session-notes">${notes}</div>` : ''}
+    <div class="session-meta">
+      ${dureMin !== null ? `<span>⏱ ${fmtDurPDF(dureMin)}</span>` : ''}
+      ${tss !== null ? `<span>${tss} TSS</span>` : ''}
+      ${intensite ? `<span>${INTENS_LABEL_PDF[intensite] ?? intensite}</span>` : ''}
+      ${rpe !== null ? `<span>RPE ${rpe}/10</span>` : ''}
+    </div>
+    ${notes ? `<p class="session-notes">${notes}</p>` : ''}
     ${blocs.length > 0 ? `<div class="blocs">${blocs.map((b: Record<string, unknown>) => {
-      const nom = typeof b.nom === 'string' ? b.nom : ''
-      const duree = typeof b.duree_min === 'number' ? b.duree_min : null
-      const zone = typeof b.zone === 'number' ? b.zone : null
-      const reps = typeof b.repetitions === 'number' && b.repetitions > 1 ? b.repetitions : null
-      const parts = [
-        nom,
-        reps ? `${reps}×${duree}min` : (duree ? `${duree}min` : null),
-        zone ? `Z${zone}` : null,
-      ].filter(Boolean)
-      return `<div class="bloc">· ${parts.join(' — ')}</div>`
+      const bNom   = typeof b.nom        === 'string' ? b.nom        : ''
+      const bDur   = typeof b.duree_min  === 'number' ? b.duree_min  : null
+      const bZone  = typeof b.zone       === 'number' ? b.zone       : null
+      const bReps  = typeof b.repetitions === 'number' && b.repetitions > 1 ? b.repetitions : null
+      const bWatts = typeof b.watts      === 'number' ? b.watts      : null
+      const bAllure= typeof b.allure     === 'string' ? b.allure     : null
+      const bConsigne = typeof b.consigne === 'string' ? b.consigne  : null
+      const bZoneColor = bZone ? (ZONE_PDF_COLORS[bZone - 1] ?? '#9ca3af') : '#9ca3af'
+      const detail = [
+        bReps ? `${bReps}×${bDur}min` : (bDur ? `${fmtDurPDF(bDur)}` : null),
+        bZone ? `Z${bZone}` : null,
+        bWatts ? `${bWatts}W` : (bAllure ?? null),
+      ].filter(Boolean).join(' · ')
+      return `<div class="bloc">
+        <span class="bloc-zone" style="background:${bZoneColor}"></span>
+        <span class="bloc-name">${bNom}</span>
+        ${detail ? `<span class="bloc-detail">${detail}</span>` : ''}
+        ${bConsigne ? `<span class="bloc-detail">— ${bConsigne}</span>` : ''}
+      </div>`
     }).join('')}</div>` : ''}
     </div>`
   }).join('')}
-  </div>
+  </div>`}
 </div>`
 }).join('')}
-<div class="footer">Exporté depuis THW Coaching · Plan généré par le Coach IA · ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+
+<div class="footer">
+  <span>Généré par THW Coach IA · ${plan.name}</span>
+  <span>${plan.start_date} → ${plan.end_date} · ${plan.duree_semaines} semaines</span>
+</div>
 </body>
 </html>`
 

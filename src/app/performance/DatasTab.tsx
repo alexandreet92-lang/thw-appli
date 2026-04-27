@@ -1011,6 +1011,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
   const [isRunDirty, setIsRunDirty]     = useState(false)
   const [isHrDirty, setIsHrDirty]       = useState(false)
   const [saving2, setSaving2]           = useState(false)
+  const [hrSaveError, setHrSaveError]   = useState<string | null>(null)
 
   // ── Derived FTP / CSS / split ────────────────────────────────────
   const cp20Watts = parseInt(cp20Input) || 0
@@ -1111,16 +1112,27 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
 
   async function handleSaveHR() {
     setSaving2(true)
+    setHrSaveError(null)
     try {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      if (!user) { setHrSaveError('Non authentifié'); return }
       const hrMax = parseInt(fcMaxInput) || profile.hrMax
-      await sb.from('athlete_performance_profile').upsert(
-        { user_id: user.id, hr_max: hrMax },
+      const now = new Date().toISOString()
+      const { error } = await sb.from('athlete_performance_profile').upsert(
+        { user_id: user.id, hr_max: hrMax, updated_at: now },
         { onConflict: 'user_id' }
       )
+      if (error) {
+        console.error('[handleSaveHR] Supabase error:', error)
+        setHrSaveError(error.message)
+        return
+      }
       setIsHrDirty(false)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[handleSaveHR] Exception:', msg)
+      setHrSaveError(msg)
     } finally {
       setSaving2(false)
     }
@@ -1282,6 +1294,28 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SectionHeader label="Puissance / Allure" gradient="linear-gradient(180deg,#00c8e0,#5b6fff)" />
 
+      {/* Bouton Estimer via IA — global, toutes zones */}
+      {onOpenAI && (
+        <button
+          onClick={() => onOpenAI('Aide-moi à estimer mes zones d\'entraînement. Dis-moi quel sport ou paramètre tu veux calibrer (running, cyclisme, natation, aviron, fréquence cardiaque) et je calcule tes zones personnalisées.')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 16px', borderRadius: 10,
+            border: '1px solid rgba(139,92,246,0.35)',
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(91,111,255,0.08))',
+            color: '#8b5cf6', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            width: '100%', textAlign: 'left' as const,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
+            <path d="M12 8v4l3 3"/>
+          </svg>
+          Estimer mes zones via IA
+          <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.7 }}>Tous sports · FC</span>
+        </button>
+      )}
+
       {/* Sport tabs */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {SPORT_TABS.map(t => (
@@ -1339,15 +1373,6 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                 {cp20Watts > 0 && <span style={{ fontSize: 10, color: '#8b5cf6', fontFamily: 'DM Mono,monospace' }}>→ FTP {localFtp}W</span>}
               </div>
-            )}
-            {onOpenAI && (
-              <button onClick={() => onOpenAI('Calculer mes zones d\'entraînement cyclisme depuis ma FTP')} style={{
-                marginLeft: 'auto', padding: '4px 10px', borderRadius: 6,
-                border: '1px solid #8b5cf655', background: '#8b5cf611', color: '#8b5cf6',
-                fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              }}>
-                Estimer via IA
-              </button>
             )}
           </div>
 
@@ -1519,15 +1544,6 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 {rowThreshSplit}/500m
               </button>
             )}
-            {onOpenAI && (
-              <button onClick={() => onOpenAI('Calculer mes zones d\'entraînement aviron depuis mon temps 2000m')} style={{
-                marginLeft: 'auto', padding: '4px 10px', borderRadius: 6,
-                border: '1px solid #8b5cf655', background: '#8b5cf611', color: '#8b5cf6',
-                fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              }}>
-                Estimer via IA
-              </button>
-            )}
           </div>
 
           {rowMode === 'auto' ? (
@@ -1600,15 +1616,6 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 style={{ width: 68, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>→ CSS estimée</span>
             </div>
-            {onOpenAI && (
-              <button onClick={() => onOpenAI('Calculer mes zones d\'entraînement natation depuis mon temps 400m')} style={{
-                marginLeft: 'auto', padding: '4px 10px', borderRadius: 6,
-                border: '1px solid #8b5cf655', background: '#8b5cf611', color: '#8b5cf6',
-                fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              }}>
-                Estimer via IA
-              </button>
-            )}
           </div>
 
           {swimMode === 'auto' ? (
@@ -1704,6 +1711,9 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                 {saving2 ? 'Enregistrement…' : 'Enregistrer'}
               </button>
+            )}
+            {hrSaveError && (
+              <p style={{ fontSize: 10, color: '#ef4444', marginTop: 6 }}>Erreur : {hrSaveError}</p>
             )}
           </>
         ) : (

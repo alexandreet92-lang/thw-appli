@@ -1883,10 +1883,14 @@ interface TrainingPlanForm {
   precision_equipement: string
   // Bloc 4
   blessures_passees: boolean
+  blessures_zones: string[]
+  blessures_date: string
   blessures_detail: string
   gene_recente: boolean
+  gene_zones: string[]
   gene_detail: string
   contraintes_permanentes: boolean
+  contraintes_zones: string[]
   contraintes_detail: string
   antecedents: boolean
   antecedents_detail: string
@@ -2054,10 +2058,14 @@ const DEFAULT_FORM: TrainingPlanForm = {
   equipements: [],
   precision_equipement: '',
   blessures_passees: false,
+  blessures_zones: [],
+  blessures_date: '',
   blessures_detail: '',
   gene_recente: false,
+  gene_zones: [],
   gene_detail: '',
   contraintes_permanentes: false,
+  contraintes_zones: [],
   contraintes_detail: '',
   antecedents: false,
   antecedents_detail: '',
@@ -4167,30 +4175,99 @@ function TrainingPlanFlow({
       )
 
       // ── BLOC 4 : Blessures ───────────────────────────────────
-      case 4: return (
+      case 4: return (() => {
+        const ZONES = ['Genou', 'Cheville', 'Dos', 'Épaule', 'Hanche', 'Tendon', 'Autre'] as const
+        type Zone = typeof ZONES[number]
+        const toggleZone = (arr: string[], z: Zone) =>
+          arr.includes(z) ? arr.filter(x => x !== z) : [...arr, z]
+
+        return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
             Blessures et contraintes
           </p>
 
-          {([
-            ['blessures_passees', 'blessures_detail', 'Blessures passées importantes', 'Décrivez les blessures passées...'],
-            ['gene_recente', 'gene_detail', 'Gêne ou douleur récente', 'Décrivez la gêne actuelle...'],
-            ['contraintes_permanentes', 'contraintes_detail', 'Contraintes permanentes', 'Contraintes anatomiques ou physiologiques...'],
-            ['antecedents', 'antecedents_detail', 'Antécédents médicaux', 'Antécédents cardiaques, pathologies...'],
-          ] as [keyof TrainingPlanForm, keyof TrainingPlanForm, string, string][]).map(([boolKey, textKey, label, ph]) => (
-            <div key={boolKey}>
-              <span style={tpLabelStyle()}>{label}</span>
-              <div style={{ display: 'flex', gap: 6, marginBottom: (form[boolKey] as boolean) ? 8 : 0 }}>
-                <button onClick={() => setField(boolKey, true as TrainingPlanForm[typeof boolKey])} style={tpPillStyle(form[boolKey] as boolean)}>Oui</button>
-                <button onClick={() => setField(boolKey, false as TrainingPlanForm[typeof boolKey])} style={tpPillStyle(!(form[boolKey] as boolean))}>Non</button>
-              </div>
-              {(form[boolKey] as boolean) && (
-                <textarea value={form[textKey] as string} onChange={e => setField(textKey, e.target.value as TrainingPlanForm[typeof textKey])}
-                  placeholder={ph} rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
-              )}
+          {/* Blessures passées */}
+          <div>
+            <span style={tpLabelStyle()}>Blessures passées importantes</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.blessures_passees ? 10 : 0 }}>
+              <button onClick={() => setField('blessures_passees', true)}  style={tpPillStyle(form.blessures_passees)}>Oui</button>
+              <button onClick={() => setField('blessures_passees', false)} style={tpPillStyle(!form.blessures_passees)}>Non</button>
             </div>
-          ))}
+            {form.blessures_passees && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {ZONES.map(z => (
+                    <button key={z} onClick={() => setField('blessures_zones', toggleZone(form.blessures_zones, z))}
+                      style={tpPillStyle(form.blessures_zones.includes(z))}>{z}</button>
+                  ))}
+                </div>
+                <input type="text" placeholder="Mois/année (ex: 03/2023)" value={form.blessures_date}
+                  onChange={e => setField('blessures_date', e.target.value)}
+                  style={{ ...tpInputStyle(), padding: '6px 10px' }} />
+                <textarea placeholder="Description de la blessure..." value={form.blessures_detail}
+                  onChange={e => setField('blessures_detail', e.target.value)}
+                  rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+              </div>
+            )}
+          </div>
+
+          {/* Gêne ou douleur récente */}
+          <div>
+            <span style={tpLabelStyle()}>Gêne ou douleur récente</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.gene_recente ? 10 : 0 }}>
+              <button onClick={() => setField('gene_recente', true)}  style={tpPillStyle(form.gene_recente)}>Oui</button>
+              <button onClick={() => setField('gene_recente', false)} style={tpPillStyle(!form.gene_recente)}>Non</button>
+            </div>
+            {form.gene_recente && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {ZONES.map(z => (
+                    <button key={z} onClick={() => setField('gene_zones', toggleZone(form.gene_zones, z))}
+                      style={tpPillStyle(form.gene_zones.includes(z))}>{z}</button>
+                  ))}
+                </div>
+                <textarea placeholder="Décrivez la gêne actuelle..." value={form.gene_detail}
+                  onChange={e => setField('gene_detail', e.target.value)}
+                  rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+              </div>
+            )}
+          </div>
+
+          {/* Contraintes permanentes */}
+          <div>
+            <span style={tpLabelStyle()}>Contraintes permanentes</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.contraintes_permanentes ? 10 : 0 }}>
+              <button onClick={() => setField('contraintes_permanentes', true)}  style={tpPillStyle(form.contraintes_permanentes)}>Oui</button>
+              <button onClick={() => setField('contraintes_permanentes', false)} style={tpPillStyle(!form.contraintes_permanentes)}>Non</button>
+            </div>
+            {form.contraintes_permanentes && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {ZONES.map(z => (
+                    <button key={z} onClick={() => setField('contraintes_zones', toggleZone(form.contraintes_zones, z))}
+                      style={tpPillStyle(form.contraintes_zones.includes(z))}>{z}</button>
+                  ))}
+                </div>
+                <textarea placeholder="Contraintes anatomiques ou physiologiques..." value={form.contraintes_detail}
+                  onChange={e => setField('contraintes_detail', e.target.value)}
+                  rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+              </div>
+            )}
+          </div>
+
+          {/* Antécédents médicaux — inchangé */}
+          <div>
+            <span style={tpLabelStyle()}>Antécédents médicaux</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.antecedents ? 8 : 0 }}>
+              <button onClick={() => setField('antecedents', true)}  style={tpPillStyle(form.antecedents)}>Oui</button>
+              <button onClick={() => setField('antecedents', false)} style={tpPillStyle(!form.antecedents)}>Non</button>
+            </div>
+            {form.antecedents && (
+              <textarea value={form.antecedents_detail} onChange={e => setField('antecedents_detail', e.target.value)}
+                placeholder="Antécédents cardiaques, pathologies..." rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+            )}
+          </div>
 
           <div>
             <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
@@ -4198,7 +4275,8 @@ function TrainingPlanFlow({
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
         </div>
-      )
+        )
+      })()
 
       // ── BLOC 5 : Méthodes ────────────────────────────────────
       case 5: return (

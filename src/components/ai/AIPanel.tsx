@@ -5307,15 +5307,24 @@ export default function AIPanel({
 
   // ── Phase 4 : initialise la conversation liée au plan ──────────
   // Quand le panel s'ouvre avec un planId, trouve ou crée une conv
-  // taggée [PLAN:id] pour reprendre la mémoire du plan en continu.
-  const planConvInitRef = useRef<string | null>(null)
+  // taggée [PLAN:id] et l'active automatiquement.
+  // Le ref sert à éviter de créer la conv deux fois si les deps
+  // se re-déclenchent sans que le panel ait été fermé entre-temps.
+  const planConvCreatedRef = useRef<string | null>(null)
   useEffect(() => {
     if (!open || !planId || !mounted) return
-    if (planConvInitRef.current === planId) return   // déjà initialisé
-    planConvInitRef.current = planId
 
+    // Cherche une conv existante pour ce plan (localStorage ou state)
     const existing = convs.find(c => c.title.startsWith(`[PLAN:${planId}]`))
-    if (existing) { setActiveId(existing.id); return }
+    if (existing) {
+      // Toujours re-sélectionner la conv du plan à l'ouverture
+      setActiveId(existing.id)
+      return
+    }
+
+    // Évite de créer la conv deux fois en cas de double-déclenchement
+    if (planConvCreatedRef.current === planId) return
+    planConvCreatedRef.current = planId
 
     // Nouvelle conv — welcome message du coach
     const welcomeText = `Je suis ton Coach IA. J'ai l'intégralité de ton plan **${planName ?? 'en cours'}** en mémoire — objectif, périodisation, chaque semaine et chaque séance. Pose-moi toutes tes questions ou demande des ajustements : je réponds directement en me basant sur ton programme.`
@@ -5328,7 +5337,8 @@ export default function AIPanel({
     }
     setConvs(prev => [planConv, ...prev].slice(0, MAX_CONVS))
     setActiveId(newId)
-  // convs est intentionnellement omis — on lit sa valeur courante via la ref
+  // convs est intentionnellement omis des deps — on veut déclencher sur open/planId/mounted,
+  // pas à chaque message envoyé. La valeur courante de convs est lue dans la closure.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, planId, mounted, planName])
 

@@ -96,6 +96,20 @@ function calcRunZones(tSec: number) {
   ]
 }
 
+function calcRunZonesFromInputs(km10TotalSec: number, endurSecPerKm: number) {
+  const secPerKm  = km10TotalSec / 10
+  const threshSec = Math.round(secPerKm * 1.06)
+  const vo2maxSec = Math.round(secPerKm * 0.95)
+  const z1Bound   = endurSecPerKm + 30
+  return [
+    { z: 'Z1', label: 'Récup',   range: `> ${secToStr(z1Bound)}/km` },
+    { z: 'Z2', label: 'Aérobie', range: `${secToStr(endurSecPerKm)} – ${secToStr(z1Bound)}/km` },
+    { z: 'Z3', label: 'Tempo',   range: `${secToStr(threshSec)} – ${secToStr(endurSecPerKm)}/km` },
+    { z: 'Z4', label: 'Seuil',   range: `${secToStr(vo2maxSec)} – ${secToStr(threshSec)}/km` },
+    { z: 'Z5', label: 'VO2max',  range: `< ${secToStr(vo2maxSec)}/km` },
+  ]
+}
+
 function calcSwimZones(cssSec: number) {
   return [
     { z: 'Z1', label: 'Récup',   range: `> ${secToStr(Math.round(cssSec * 1.35))}/100m` },
@@ -990,7 +1004,12 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
   const [bikeInputType, setBikeInputType] = useState<'ftp' | 'cp20'>('ftp')
   const [time400mInput, setTime400mInput] = useState('')
   const [time2000mInput, setTime2000mInput] = useState('')
+  const [run10kmInput, setRun10kmInput] = useState('')
+  const [runEndurInput, setRunEndurInput] = useState('')
+  const [fcMaxInput, setFcMaxInput]     = useState(String(profile.hrMax || ''))
   const [isDirty, setIsDirty]           = useState(false)
+  const [isRunDirty, setIsRunDirty]     = useState(false)
+  const [isHrDirty, setIsHrDirty]       = useState(false)
   const [saving2, setSaving2]           = useState(false)
 
   // ── Derived FTP / CSS / split ────────────────────────────────────
@@ -1069,8 +1088,39 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
           z4_value: swZ[3].range,
           z5_value: swZ[4].range,
         })
+      } else if (sport === 'run') {
+        const runZ = runZonesAuto
+        await sbSave('run', {
+          ...existing,
+          sport: 'run',
+          sl1: run10kmInput || profile.thresholdPace,
+          z1_value: runZ[0].range,
+          z2_value: runZ[1].range,
+          z3_value: runZ[2].range,
+          z4_value: runZ[3].range,
+          z5_value: runZ[4].range,
+        })
+        setIsRunDirty(false)
+        return
       }
       setIsDirty(false)
+    } finally {
+      setSaving2(false)
+    }
+  }
+
+  async function handleSaveHR() {
+    setSaving2(true)
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const hrMax = parseInt(fcMaxInput) || profile.hrMax
+      await sb.from('athlete_performance_profile').upsert(
+        { user_id: user.id, hr_max: hrMax },
+        { onConflict: 'user_id' }
+      )
+      setIsHrDirty(false)
     } finally {
       setSaving2(false)
     }
@@ -1137,10 +1187,15 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
   }
 
   const bikeZonesAuto = calcBikeZones(localFtp)
-  const runZonesAuto  = calcRunZones(parseSec(profile.thresholdPace))
+  const run10kmSec    = parseSec(run10kmInput)
+  const runEndurSec   = parseSec(runEndurInput)
+  const runZonesAuto  = (run10kmSec > 0 && runEndurSec > 0)
+    ? calcRunZonesFromInputs(run10kmSec, runEndurSec)
+    : calcRunZones(parseSec(profile.thresholdPace))
   const swimZonesAuto = calcSwimZones(parseSec(localCSS))
   const rowZonesAuto  = calcRowZones(parseSec(localRowSplit))
-  const hrZonesAuto   = calcHRZones(profile.hrMax)
+  const localHrMax    = parseInt(fcMaxInput) || profile.hrMax
+  const hrZonesAuto   = calcHRZones(localHrMax)
 
   const [bikeManual, setBikeManual] = useState<{minW: number; maxW: number}[]>(
     calcBikeZones(profile.ftp).map(z => ({ minW: z.minW, maxW: z.maxW }))
@@ -1368,33 +1423,63 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <ModeToggle mode={runMode} onChange={setRunMode} />
           </div>
           {runMode === 'auto' ? (
-            <ZBars
-              zones={runZonesAuto.map((z, i) => ({ z: z.z, label: z.label, range: getZoneDisplay('run', i + 1, z.range) }))}
-              onSelect={(key, label, range) => onSelect(label, range)}
-              selectedKey={zoneSelKey}
-              editKey={activeEdit?.startsWith('run:') ? activeEdit.slice(4) : null}
-              editDraft={editDraft}
-              onEditStart={(key, cur) => tryEdit(`run:${key}`, cur)}
-              onEditChange={setEditDraft}
-              onEditConfirm={() => { void confirmZoneEdit() }}
-              onEditCancel={cancelEdit}
-              editSaving={sbSaving}
-            />
+            <>
+              {/* Inputs for zone estimation */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>10 km :</span>
+                  <input type="text" value={run10kmInput} placeholder="ex: 37:20"
+                    onChange={e => { setRun10kmInput(e.target.value); setIsRunDirty(true) }}
+                    style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Endurance :</span>
+                  <input type="text" value={runEndurInput} placeholder="ex: 5:30"
+                    onChange={e => { setRunEndurInput(e.target.value); setIsRunDirty(true) }}
+                    style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/km</span>
+                </div>
+              </div>
+              <ZBars
+                zones={runZonesAuto.map((z, i) => ({ z: z.z, label: z.label, range: getZoneDisplay('run', i + 1, z.range) }))}
+                onSelect={(key, label, range) => onSelect(label, range)}
+                selectedKey={zoneSelKey}
+                editKey={activeEdit?.startsWith('run:') ? activeEdit.slice(4) : null}
+                editDraft={editDraft}
+                onEditStart={(key, cur) => tryEdit(`run:${key}`, cur)}
+                onEditChange={setEditDraft}
+                onEditConfirm={() => { void confirmZoneEdit() }}
+                onEditCancel={cancelEdit}
+                editSaving={sbSaving}
+              />
+              {isRunDirty && (
+                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  {saving2 ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+              )}
+            </>
           ) : (
             <div>
               {runManual.map((z, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 52 }}>{ZONE_LABELS[i]}</span>
-                  <input type="text" value={z.min} placeholder="min" onChange={e => { const v = [...runManual]; v[i] = {...v[i], min: e.target.value}; setRunManual(v) }}
+                  <input type="text" value={z.min} placeholder="min" onChange={e => { const v = [...runManual]; v[i] = {...v[i], min: e.target.value}; setRunManual(v); setIsRunDirty(true) }}
                     style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
-                  <input type="text" value={z.max} placeholder="max" onChange={e => { const v = [...runManual]; v[i] = {...v[i], max: e.target.value}; setRunManual(v) }}
+                  <input type="text" value={z.max} placeholder="max" onChange={e => { const v = [...runManual]; v[i] = {...v[i], max: e.target.value}; setRunManual(v); setIsRunDirty(true) }}
                     style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/km</span>
                 </div>
               ))}
-              <button onClick={resetRun} style={{ marginTop: 4, padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <button onClick={resetRun} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
+                {isRunDirty && (
+                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                    {saving2 ? 'Enregistrement…' : 'Enregistrer'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </Card>
@@ -1583,44 +1668,66 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div style={{ display: 'flex', gap: 12, fontSize: 11, marginTop: 4 }}>
               <span style={{ color: 'var(--text-dim)' }}>Repos : <strong style={{ color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>{profile.hrRest}bpm</strong></span>
               <span style={{ color: 'var(--text-dim)' }}>LTHR : <strong style={{ color: '#f97316', fontFamily: 'DM Mono,monospace' }}>{profile.lthr}bpm</strong></span>
-              <span style={{ color: 'var(--text-dim)' }}>Max : <strong style={{ color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>{profile.hrMax}bpm</strong></span>
+              <span style={{ color: 'var(--text-dim)' }}>Max : <strong style={{ color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>{localHrMax}bpm</strong></span>
             </div>
           </div>
           <ModeToggle mode={hrMode} onChange={setHrMode} />
         </div>
 
         {hrMode === 'auto' ? (
-          <ZBars
-            zones={hrZonesAuto.map((z, i) => ({
-              z: z.z, label: z.label,
-              // Z5 (VO2max) shown as ≥ since it goes to FCmax (Coggan/Allen)
-              range: i === 4 ? `≥ ${z.min} bpm` : `${z.min} – ${z.max} bpm`,
-            }))}
-            onSelect={(key, label, range) => onSelect(label, range)}
-            selectedKey={zoneSelKey}
-            editKey={activeEdit?.startsWith('hr:') ? activeEdit.slice(3) : null}
-            editDraft={editDraft}
-            onEditStart={(key, cur) => tryEdit(`hr:${key}`, cur)}
-            onEditChange={setEditDraft}
-            onEditConfirm={() => { void confirmZoneEdit() }}
-            onEditCancel={cancelEdit}
-            editSaving={false}
-          />
+          <>
+            {/* FCmax input */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>FC max :</span>
+              <input type="number" value={fcMaxInput} placeholder="ex: 185"
+                onChange={e => { setFcMaxInput(e.target.value); setIsHrDirty(true) }}
+                style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
+            </div>
+            <ZBars
+              zones={hrZonesAuto.map((z, i) => ({
+                z: z.z, label: z.label,
+                // Z5 (VO2max) shown as ≥ since it goes to FCmax (Coggan/Allen)
+                range: i === 4 ? `≥ ${z.min} bpm` : `${z.min} – ${z.max} bpm`,
+              }))}
+              onSelect={(key, label, range) => onSelect(label, range)}
+              selectedKey={zoneSelKey}
+              editKey={activeEdit?.startsWith('hr:') ? activeEdit.slice(3) : null}
+              editDraft={editDraft}
+              onEditStart={(key, cur) => tryEdit(`hr:${key}`, cur)}
+              onEditChange={setEditDraft}
+              onEditConfirm={() => { void confirmZoneEdit() }}
+              onEditCancel={cancelEdit}
+              editSaving={false}
+            />
+            {isHrDirty && (
+              <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                {saving2 ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            )}
+          </>
         ) : (
           <div>
             {hrManual.map((z, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 52 }}>{ZONE_LABELS[i]}</span>
-                <input type="number" value={z.min} onChange={e => { const v = [...hrManual]; v[i] = {...v[i], min: parseInt(e.target.value)||0}; setHrManual(v) }}
+                <input type="number" value={z.min} onChange={e => { const v = [...hrManual]; v[i] = {...v[i], min: parseInt(e.target.value)||0}; setHrManual(v); setIsHrDirty(true) }}
                   style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
-                <input type="number" value={z.max} onChange={e => { const v = [...hrManual]; v[i] = {...v[i], max: parseInt(e.target.value)||0}; setHrManual(v) }}
+                <input type="number" value={z.max} onChange={e => { const v = [...hrManual]; v[i] = {...v[i], max: parseInt(e.target.value)||0}; setHrManual(v); setIsHrDirty(true) }}
                   style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
               </div>
             ))}
-            <button onClick={resetHR} style={{ marginTop: 4, padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <button onClick={resetHR} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
+              {isHrDirty && (
+                <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  {saving2 ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -1629,20 +1736,20 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
           <div style={{ display: 'flex', height: 14, borderRadius: 7, overflow: 'hidden' }}>
             {hrZonesAuto.map((z, i) => {
               // Z5 has min=max=hrMax → give it a fixed visual slice
-              const flex = i === 4 ? Math.round(profile.hrMax * 0.05) : z.max - z.min
+              const flex = i === 4 ? Math.round(localHrMax * 0.05) : z.max - z.min
               return <div key={z.z} style={{ flex, background: Z_COLORS[i], opacity: 0.8 }} />
             })}
           </div>
           <div style={{ display: 'flex', marginTop: 3 }}>
             {hrZonesAuto.map((z, i) => {
-              const flex = i === 4 ? Math.round(profile.hrMax * 0.05) : z.max - z.min
+              const flex = i === 4 ? Math.round(localHrMax * 0.05) : z.max - z.min
               return (
                 <div key={z.z} style={{ flex, textAlign: 'center' }}>
                   <span style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: Z_COLORS[i] }}>{z.min}</span>
                 </div>
               )
             })}
-            <span style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: Z_COLORS[3] }}>{profile.hrMax}</span>
+            <span style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: Z_COLORS[3] }}>{localHrMax}</span>
           </div>
         </div>
       </Card>

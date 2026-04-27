@@ -2136,7 +2136,7 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
       const [
         zonesRes, recBike, recRun, recSwim,
         profRes, yearRes, testRes,
-        a3, a6, a12, calRes,
+        a3, a6, a12, racesRes, calRes,
       ] = await Promise.all([
         sb.from('training_zones').select('sport,z1_value').eq('user_id', user.id).eq('is_current', true),
         sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'bike'),
@@ -2148,7 +2148,8 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d6m),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d12m),
-        sb.from('calendar_events').select('category,level').eq('user_id', user.id),
+        sb.from('planned_races').select('level').eq('user_id', user.id),
+        sb.from('calendar_events').select('category').eq('user_id', user.id),
       ])
 
       // Zones: z1_value non-vide = configuré
@@ -2165,12 +2166,16 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
       const hr_rest = numOf('hr_rest', 'hrRest', 'resting_hr') > 0
       const hr_max  = numOf('hr_max',  'hrMax',  'max_hr')     > 0
 
-      // Calendar
-      type CalRow = { category: string; level?: string }
+      // Races (planned_races table) — level column: 'main' | 'important' | 'secondary' | 'gty'
+      type RaceRow = { level: string }
+      const raceRows: RaceRow[] = (racesRes.data ?? []) as RaceRow[]
+      const races = raceRows.filter(r => r.level !== 'gty').length
+      const gty   = raceRows.filter(r => r.level === 'gty').length
+
+      // Calendar events (category only — no level column in calendar_events)
+      type CalRow = { category: string }
       const evts: CalRow[] = (calRes.data ?? []) as CalRow[]
-      const races       = evts.filter(e => e.category === 'race' && e.level !== 'gty').length
-      const gty         = evts.filter(e => e.category === 'race' && e.level === 'gty').length
-      const pro_events  = evts.filter(e => e.category === 'pro').length
+      const pro_events   = evts.filter(e => e.category === 'pro').length
       const perso_events = evts.filter(e => e.category === 'perso').length
 
       setStatus({

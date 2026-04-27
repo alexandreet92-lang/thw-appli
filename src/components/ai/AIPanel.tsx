@@ -1944,6 +1944,9 @@ interface TrainingPlanForm {
   plan_nutritionnel: 'structure' | 'intuitif' | 'non' | ''
   contraintes_alimentaires: string[]
   complements: string[]
+  timing_nutrition: 'toujours' | 'selon_heure' | 'jeun' | ''
+  ravitaillement: 'oui' | 'parfois' | 'non' | ''
+  objectif_poids: 'perdre' | 'maintenir' | 'prendre' | 'non_concerne' | ''
   precision_nutrition: string
 }
 
@@ -2142,6 +2145,9 @@ const DEFAULT_FORM: TrainingPlanForm = {
   plan_nutritionnel: '',
   contraintes_alimentaires: [],
   complements: [],
+  timing_nutrition: '',
+  ravitaillement: '',
+  objectif_poids: '',
   precision_nutrition: '',
 }
 
@@ -4781,6 +4787,33 @@ function TrainingPlanFlow({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['Caféine', 'Protéines', 'Électrolytes', 'Créatine', 'Aucun', 'Autres'].map(c => (
                 <button key={c} onClick={() => setField('complements', toggleArr(form.complements, c))} style={tpPillStyle(form.complements.includes(c))}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Mange-tu avant l&apos;entraînement ?</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['toujours', 'Oui toujours'], ['selon_heure', 'Selon l\'heure'], ['jeun', 'Non — à jeun']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('timing_nutrition', val)} style={tpPillStyle(form.timing_nutrition === val)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Tu t&apos;entraînes à te ravitailler pendant les sorties longues ?</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['oui', 'Oui régulièrement'], ['parfois', 'Parfois'], ['non', 'Non']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('ravitaillement', val)} style={tpPillStyle(form.ravitaillement === val)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Objectif corporel</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['perdre', 'Perdre du poids'], ['maintenir', 'Maintenir'], ['prendre', 'Prendre du poids'], ['non_concerne', 'Non concerné']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setField('objectif_poids', val)} style={tpPillStyle(form.objectif_poids === val)}>{label}</button>
               ))}
             </div>
           </div>

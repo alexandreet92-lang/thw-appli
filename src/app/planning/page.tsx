@@ -977,92 +977,215 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
         })()}
       </div>
 
-      {/* ── CHART 1 : PÉRIODISATION ── */}
-      {plan.blocs_periodisation.length > 0 && (
-        <ChartSection title="Périodisation">
-          <svg width="100%" viewBox={`0 0 ${PERIOD_W} ${PERIOD_H}`} preserveAspectRatio="none"
-            style={{ display: 'block', borderRadius: 5, marginBottom: 8, cursor: 'pointer' }}>
-            {(() => {
-              const total = plan.duree_semaines || 1
-              let offX = 0
-              return plan.blocs_periodisation.map((b, i) => {
-                const dur      = b.semaine_fin - b.semaine_debut + 1
-                const w        = (dur / total) * PERIOD_W
-                const x        = offX; offX += w
-                const color    = TP_BLOC_COLORS[b.type] ?? '#6b5fa8'
-                const isActive = currentWeekNum >= b.semaine_debut && currentWeekNum <= b.semaine_fin
-                const isSel    = selectedBloc === i
-                const isFirst  = i === 0
-                const isLast   = i === plan.blocs_periodisation.length - 1
-                const textCol = TP_BLOC_TEXT[b.type] ?? '#fff'
-                // 1px gap entre blocs — chaque bloc est légèrement moins large
-                const gapRight = i < plan.blocs_periodisation.length - 1 ? 1 : 0
-                return (
-                  <g key={i} onClick={() => setSelectedBloc(isSel ? null : i)} style={{ cursor: 'pointer' }}>
-                    <rect x={x} y={0} width={w - gapRight} height={PERIOD_H} fill={color}
-                      opacity={isSel ? 1 : isActive ? 1 : 0.6}
-                      rx={6} />
-                    {isSel && <rect x={x} y={0} width={w - gapRight} height={PERIOD_H} fill="none"
-                      stroke="rgba(0,0,0,0.25)" strokeWidth={1.5} rx={6} />}
-                    {w > 40 && (
-                      <text x={x + (w - gapRight) / 2} y={PERIOD_H / 2 + 4} textAnchor="middle"
-                        fontSize={11} fill={textCol} fontWeight={500} opacity={0.92}>
-                        {b.type}
-                      </text>
-                    )}
-                    {isActive && (
-                      <line
-                        x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * (w - gapRight)}
-                        x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * (w - gapRight)}
-                        y1={4} y2={PERIOD_H - 4}
-                        stroke="#fff" strokeWidth={1.5} opacity={0.8} strokeDasharray="2 2"
-                      />
-                    )}
-                  </g>
-                )
-              })
-            })()}
-          </svg>
+      {/* ── CHARTS ROW : PÉRIODISATION (60%) + VOLUME HEBDOMADAIRE (40%) ── */}
+      {/* Desktop : côte à côte — Mobile : empilés */}
+      <style>{`
+        @media (min-width: 768px) {
+          #plan-charts-row { display: grid; grid-template-columns: 60% 40%; gap: 16px; align-items: start; }
+        }
+      `}</style>
+      <div id="plan-charts-row">
+        {/* ── LEFT : PÉRIODISATION ── */}
+        <div>
+          {plan.blocs_periodisation.length > 0 && (
+            <ChartSection title="Périodisation">
+              <svg width="100%" viewBox={`0 0 ${PERIOD_W} ${PERIOD_H}`} preserveAspectRatio="none"
+                style={{ display: 'block', borderRadius: 5, marginBottom: 8, cursor: 'pointer' }}>
+                {(() => {
+                  const total = plan.duree_semaines || 1
+                  let offX = 0
+                  return plan.blocs_periodisation.map((b, i) => {
+                    const dur      = b.semaine_fin - b.semaine_debut + 1
+                    const w        = (dur / total) * PERIOD_W
+                    const x        = offX; offX += w
+                    const color    = TP_BLOC_COLORS[b.type] ?? '#6b5fa8'
+                    const isActive = currentWeekNum >= b.semaine_debut && currentWeekNum <= b.semaine_fin
+                    const isSel    = selectedBloc === i
+                    const isFirst  = i === 0
+                    const isLast   = i === plan.blocs_periodisation.length - 1
+                    const textCol = TP_BLOC_TEXT[b.type] ?? '#fff'
+                    // 1px gap entre blocs — chaque bloc est légèrement moins large
+                    const gapRight = i < plan.blocs_periodisation.length - 1 ? 1 : 0
+                    return (
+                      <g key={i} onClick={() => setSelectedBloc(isSel ? null : i)} style={{ cursor: 'pointer' }}>
+                        <rect x={x} y={0} width={w - gapRight} height={PERIOD_H} fill={color}
+                          opacity={isSel ? 1 : isActive ? 1 : 0.6}
+                          rx={6} />
+                        {isSel && <rect x={x} y={0} width={w - gapRight} height={PERIOD_H} fill="none"
+                          stroke="rgba(0,0,0,0.25)" strokeWidth={1.5} rx={6} />}
+                        {w > 40 && (
+                          <text x={x + (w - gapRight) / 2} y={PERIOD_H / 2 + 4} textAnchor="middle"
+                            fontSize={11} fill={textCol} fontWeight={500} opacity={0.92}>
+                            {b.type}
+                          </text>
+                        )}
+                        {isActive && (
+                          <line
+                            x1={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * (w - gapRight)}
+                            x2={x + ((currentWeekNum - b.semaine_debut + 0.5) / dur) * (w - gapRight)}
+                            y1={4} y2={PERIOD_H - 4}
+                            stroke="#fff" strokeWidth={1.5} opacity={0.8} strokeDasharray="2 2"
+                          />
+                        )}
+                      </g>
+                    )
+                  })
+                })()}
+              </svg>
 
-          {/* Detail panel for selected bloc */}
-          {selectedBloc !== null && plan.blocs_periodisation[selectedBloc] && (() => {
-            const b = plan.blocs_periodisation[selectedBloc]
-            const dur = b.semaine_fin - b.semaine_debut + 1
-            const col = TP_BLOC_COLORS[b.type] ?? '#D4B8E8'
-            const txt = TP_BLOC_TEXT[b.type] ?? '#333'
-            return (
-              <div style={{
-                background: `${col}60`, border: `1px solid ${col}`,
-                borderRadius: 8, padding: '10px 12px', marginBottom: 8,
-                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px',
-              }}>
-                <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: txt }}>{b.nom}</span>
-                  <button onClick={() => setSelectedBloc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, padding: 0 }}>✕</button>
-                </div>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Phase <strong style={{ color: txt }}>{b.type}</strong></span>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Durée <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>S{b.semaine_debut}–S{b.semaine_fin} · {dur} sem.</strong></span>
-                {b.volume_hebdo_h != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume/sem. <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(b.volume_hebdo_h * 60))}</strong></span>}
-                {b.description && <p style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.5 }}>{b.description}</p>}
+              {/* Detail panel for selected bloc */}
+              {selectedBloc !== null && plan.blocs_periodisation[selectedBloc] && (() => {
+                const b = plan.blocs_periodisation[selectedBloc]
+                const dur = b.semaine_fin - b.semaine_debut + 1
+                const col = TP_BLOC_COLORS[b.type] ?? '#D4B8E8'
+                const txt = TP_BLOC_TEXT[b.type] ?? '#333'
+                return (
+                  <div style={{
+                    background: `${col}60`, border: `1px solid ${col}`,
+                    borderRadius: 8, padding: '10px 12px', marginBottom: 8,
+                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px',
+                  }}>
+                    <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: txt }}>{b.nom}</span>
+                      <button onClick={() => setSelectedBloc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, padding: 0 }}>✕</button>
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Phase <strong style={{ color: txt }}>{b.type}</strong></span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Durée <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>S{b.semaine_debut}–S{b.semaine_fin} · {dur} sem.</strong></span>
+                    {b.volume_hebdo_h != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume/sem. <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(b.volume_hebdo_h * 60))}</strong></span>}
+                    {b.description && <p style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.5 }}>{b.description}</p>}
+                  </div>
+                )
+              })()}
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+                {plan.blocs_periodisation.map((b, i) => {
+                  const col = TP_BLOC_COLORS[b.type] ?? '#D4B8E8'
+                  const txt = TP_BLOC_TEXT[b.type] ?? '#333'
+                  return (
+                    <button key={i} onClick={() => setSelectedBloc(selectedBloc === i ? null : i)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: selectedBloc === i ? txt : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: col, border: `1px solid ${txt}30`, flexShrink: 0, opacity: selectedBloc === i ? 1 : 0.8 }} />
+                      {b.nom} · S{b.semaine_debut}–S{b.semaine_fin}
+                    </button>
+                  )
+                })}
               </div>
+            </ChartSection>
+          )}
+        </div>
+
+        {/* ── RIGHT : VOLUME HEBDOMADAIRE ── */}
+        <div>
+          {(() => {
+            const semaines = plan.ai_context?.program?.semaines ?? []
+            if (semaines.length === 0) return null
+            const n = semaines.length
+            const BAR_GAP = 4
+            const barW = 40           // 40 svg-units = 40px rendu max (< 60px demandé)
+            const VOL_W = barW * n + BAR_GAP * (n - 1)
+            const VOL_H = 80          // max 120px demandé — on prend 80 pour rester compact
+            const Y_PAD = 14
+            const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
+            const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
+            return (
+              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`}>
+                <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer', maxWidth: VOL_W }}>
+                  {semaines.map((s, i) => {
+                    const vol    = s.volume_h ?? 0
+                    const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 2 : 0)
+                    const x      = i * (barW + BAR_GAP)
+                    const y      = VOL_H - barH
+                    const active = s.numero === currentWeekNum
+                    const isSel  = s.numero === selectedWeek
+                    const col    = safeWeekTypeBg(s.type)
+                    const txtCol = safeWeekTypeText(s.type)
+                    return (
+                      <g key={i} onClick={() => setSelectedWeek(isSel ? null : s.numero)} style={{ cursor: 'pointer' }}>
+                        {/* invisible hit area */}
+                        <rect x={x} y={0} width={barW} height={VOL_H + Y_PAD} fill="transparent" />
+                        <rect x={x} y={y} width={barW} height={barH}
+                          fill={col} opacity={isSel ? 1 : active ? 1 : 0.5} rx={2}>
+                          <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? formatDuration(Math.round(vol * 60)) : '—'}`}</title>
+                        </rect>
+                        {(active || isSel) && (
+                          <rect x={x} y={y} width={barW} height={barH} rx={2}
+                            fill="none" stroke={txtCol} strokeWidth={1} opacity={0.4} />
+                        )}
+                        {/* week number label below bar */}
+                        <text x={x + barW / 2} y={VOL_H + Y_PAD - 1} textAnchor="middle"
+                          fontSize={6} fill={isSel || active ? txtCol : '#aaa'}
+                          fontWeight={isSel || active ? 600 : 400}>
+                          {`S${s.numero}`}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+                {/* Detail panel on click */}
+                {selSem && (() => {
+                  const accentCol = safeWeekTypeText(selSem.type)
+                  // Parse seances for detailed breakdown
+                  type RawSeance = { sport?: string; intensite?: string; duree_min?: number; titre?: string; title?: string }
+                  const rawSeances = (selSem.seances ?? []) as RawSeance[]
+                  // Volume by sport
+                  const volBySport: Record<string, number> = {}
+                  for (const s of rawSeances) {
+                    if (!s.sport) continue
+                    volBySport[s.sport] = (volBySport[s.sport] ?? 0) + (s.duree_min ?? 0)
+                  }
+                  // Sessions grouped by sport → list of intensite
+                  const bySpSessions: Record<string, string[]> = {}
+                  for (const s of rawSeances) {
+                    if (!s.sport) continue
+                    if (!bySpSessions[s.sport]) bySpSessions[s.sport] = []
+                    bySpSessions[s.sport].push(s.intensite ?? s.titre ?? s.title ?? '?')
+                  }
+                  const hasSportDetail = Object.keys(volBySport).length > 0
+                  return (
+                    <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selSem.numero} — {selSem.type ?? ''}</span>
+                        <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
+                      </div>
+                      {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
+                      {/* KPIs row */}
+                      <div style={{ display: 'flex', gap: 16, marginBottom: hasSportDetail ? 10 : 0 }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{rawSeances.length > 0 ? rawSeances.length : '—'}</strong></span>
+                      </div>
+                      {/* Per-sport breakdown */}
+                      {hasSportDetail && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {Object.entries(volBySport).sort((a, b) => b[1] - a[1]).map(([sport, mins]) => {
+                            const col = sportColor(sport)
+                            const types = bySpSessions[sport] ?? []
+                            // Dominant intensity type
+                            const freqMap = types.reduce<Record<string, number>>((acc, t) => { acc[t] = (acc[t] ?? 0) + 1; return acc }, {})
+                            const dominant = Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+                            return (
+                              <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: col, minWidth: 65, textTransform: 'capitalize' as const }}>{sport}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)', minWidth: 18 }}>{types.length}×</span>
+                                <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 36 }}>{formatDuration(mins)}</span>
+                                {dominant && <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1, fontStyle: 'italic' }}>{dominant}</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {/* note_coach fallback for S3+ weeks */}
+                      {selSem.note_coach && !hasSportDetail && (
+                        <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', fontStyle: 'italic' }}>{selSem.note_coach}</p>
+                      )}
+                    </div>
+                  )
+                })()}
+              </ChartSection>
             )
           })()}
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
-            {plan.blocs_periodisation.map((b, i) => {
-              const col = TP_BLOC_COLORS[b.type] ?? '#D4B8E8'
-              const txt = TP_BLOC_TEXT[b.type] ?? '#333'
-              return (
-                <button key={i} onClick={() => setSelectedBloc(selectedBloc === i ? null : i)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: selectedBloc === i ? txt : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: col, border: `1px solid ${txt}30`, flexShrink: 0, opacity: selectedBloc === i ? 1 : 0.8 }} />
-                  {b.nom} · S{b.semaine_debut}–S{b.semaine_fin}
-                </button>
-              )
-            })}
-          </div>
-        </ChartSection>
-      )}
+        </div>
+      </div>
 
       {/* ── CHART 2 : VOLUME PAR SPORT ── */}
       {(() => {
@@ -1100,116 +1223,6 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                 )
               })}
             </div>
-          </ChartSection>
-        )
-      })()}
-
-      {/* ── CHART 3 : VOLUME HEBDOMADAIRE ── */}
-      {(() => {
-        const semaines = plan.ai_context?.program?.semaines ?? []
-        if (semaines.length === 0) return null
-        const n = semaines.length
-        const BAR_GAP = 4
-        const barW = 40           // 40 svg-units = 40px rendu max (< 60px demandé)
-        const VOL_W = barW * n + BAR_GAP * (n - 1)
-        const VOL_H = 80          // max 120px demandé — on prend 80 pour rester compact
-        const Y_PAD = 14
-        const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
-        const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
-        return (
-          <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`}>
-            <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer', maxWidth: VOL_W }}>
-              {semaines.map((s, i) => {
-                const vol    = s.volume_h ?? 0
-                const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 2 : 0)
-                const x      = i * (barW + BAR_GAP)
-                const y      = VOL_H - barH
-                const active = s.numero === currentWeekNum
-                const isSel  = s.numero === selectedWeek
-                const col    = safeWeekTypeBg(s.type)
-                const txtCol = safeWeekTypeText(s.type)
-                return (
-                  <g key={i} onClick={() => setSelectedWeek(isSel ? null : s.numero)} style={{ cursor: 'pointer' }}>
-                    {/* invisible hit area */}
-                    <rect x={x} y={0} width={barW} height={VOL_H + Y_PAD} fill="transparent" />
-                    <rect x={x} y={y} width={barW} height={barH}
-                      fill={col} opacity={isSel ? 1 : active ? 1 : 0.5} rx={2}>
-                      <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? formatDuration(Math.round(vol * 60)) : '—'}`}</title>
-                    </rect>
-                    {(active || isSel) && (
-                      <rect x={x} y={y} width={barW} height={barH} rx={2}
-                        fill="none" stroke={txtCol} strokeWidth={1} opacity={0.4} />
-                    )}
-                    {/* week number label below bar */}
-                    <text x={x + barW / 2} y={VOL_H + Y_PAD - 1} textAnchor="middle"
-                      fontSize={6} fill={isSel || active ? txtCol : '#aaa'}
-                      fontWeight={isSel || active ? 600 : 400}>
-                      {`S${s.numero}`}
-                    </text>
-                  </g>
-                )
-              })}
-            </svg>
-            {/* Detail panel on click */}
-            {selSem && (() => {
-              const accentCol = safeWeekTypeText(selSem.type)
-              // Parse seances for detailed breakdown
-              type RawSeance = { sport?: string; intensite?: string; duree_min?: number; titre?: string; title?: string }
-              const rawSeances = (selSem.seances ?? []) as RawSeance[]
-              // Volume by sport
-              const volBySport: Record<string, number> = {}
-              for (const s of rawSeances) {
-                if (!s.sport) continue
-                volBySport[s.sport] = (volBySport[s.sport] ?? 0) + (s.duree_min ?? 0)
-              }
-              // Sessions grouped by sport → list of intensite
-              const bySpSessions: Record<string, string[]> = {}
-              for (const s of rawSeances) {
-                if (!s.sport) continue
-                if (!bySpSessions[s.sport]) bySpSessions[s.sport] = []
-                bySpSessions[s.sport].push(s.intensite ?? s.titre ?? s.title ?? '?')
-              }
-              const hasSportDetail = Object.keys(volBySport).length > 0
-              return (
-                <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selSem.numero} — {selSem.type ?? ''}</span>
-                    <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
-                  </div>
-                  {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
-                  {/* KPIs row */}
-                  <div style={{ display: 'flex', gap: 16, marginBottom: hasSportDetail ? 10 : 0 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{rawSeances.length > 0 ? rawSeances.length : '—'}</strong></span>
-                  </div>
-                  {/* Per-sport breakdown */}
-                  {hasSportDetail && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {Object.entries(volBySport).sort((a, b) => b[1] - a[1]).map(([sport, mins]) => {
-                        const col = sportColor(sport)
-                        const types = bySpSessions[sport] ?? []
-                        // Dominant intensity type
-                        const freqMap = types.reduce<Record<string, number>>((acc, t) => { acc[t] = (acc[t] ?? 0) + 1; return acc }, {})
-                        const dominant = Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
-                        return (
-                          <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: col, minWidth: 65, textTransform: 'capitalize' as const }}>{sport}</span>
-                            <span style={{ fontSize: 10, color: 'var(--text-dim)', minWidth: 18 }}>{types.length}×</span>
-                            <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 36 }}>{formatDuration(mins)}</span>
-                            {dominant && <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1, fontStyle: 'italic' }}>{dominant}</span>}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                  {/* note_coach fallback for S3+ weeks */}
-                  {selSem.note_coach && !hasSportDetail && (
-                    <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', fontStyle: 'italic' }}>{selSem.note_coach}</p>
-                  )}
-                </div>
-              )
-            })()}
           </ChartSection>
         )
       })()}

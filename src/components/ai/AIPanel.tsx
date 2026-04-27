@@ -4152,7 +4152,7 @@ function TrainingPlanFlow({
           <div>
             <span style={tpLabelStyle()}>Équipements disponibles</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {['Piscine', 'Home trainer', 'Salle de musculation', 'Capteur de puissance vélo', 'Montre GPS', 'Ergomètre aviron', 'Matériel Hyrox'].map(eq => (
+              {['Piscine', 'Home trainer', 'Tapis de course', 'Salle de musculation', 'Capteur de puissance vélo', 'Capteur de fréquence cardiaque', 'Montre GPS', 'Ergomètre aviron', 'Piste d\'athlétisme', 'Matériel Hyrox'].map(eq => (
                 <button key={eq} onClick={() => setField('equipements', toggleArr(form.equipements, eq))} style={tpPillStyle(form.equipements.includes(eq))}>{eq}</button>
               ))}
             </div>

@@ -1125,59 +1125,87 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
                 {/* Detail panel on click */}
                 {selSem && (() => {
                   const accentCol = safeWeekTypeText(selSem.type)
-                  // Parse seances for detailed breakdown
+
+                  // ── Lecture défensive : accepte seances ET sessions (alias agent) ──
                   type RawSeance = { sport?: string; intensite?: string; duree_min?: number; titre?: string; title?: string }
-                  const rawSeances = (selSem.seances ?? []) as RawSeance[]
-                  // Volume by sport
-                  const volBySport: Record<string, number> = {}
-                  for (const s of rawSeances) {
-                    if (!s.sport) continue
-                    volBySport[s.sport] = (volBySport[s.sport] ?? 0) + (s.duree_min ?? 0)
+                  const selSemAny = selSem as unknown as Record<string, unknown>
+                  const seancesRaw = selSemAny.seances ?? selSemAny.sessions
+                  const rawSeances = (Array.isArray(seancesRaw) ? seancesRaw : []) as RawSeance[]
+
+                  // ── Labels lisibles pour l'intensité ──
+                  const INTENS_LABEL: Record<string, string> = {
+                    low:      'Endurance',
+                    moderate: 'Tempo / Z3',
+                    high:     'Intensif / Z4',
+                    max:      'VO2max / Z5',
                   }
-                  // Sessions grouped by sport → list of intensite
-                  const bySpSessions: Record<string, string[]> = {}
+
+                  // ── Agrégation par sport ──
+                  const volBySport:   Record<string, number>   = {}
+                  const cntBySport:   Record<string, number>   = {}
+                  const intenBySport: Record<string, string[]> = {}
                   for (const s of rawSeances) {
                     if (!s.sport) continue
-                    if (!bySpSessions[s.sport]) bySpSessions[s.sport] = []
-                    bySpSessions[s.sport].push(s.intensite ?? s.titre ?? s.title ?? '?')
+                    volBySport[s.sport]   = (volBySport[s.sport]   ?? 0) + (s.duree_min ?? 0)
+                    cntBySport[s.sport]   = (cntBySport[s.sport]   ?? 0) + 1
+                    if (!intenBySport[s.sport]) intenBySport[s.sport] = []
+                    // stocke le label lisible de l'intensité
+                    const iLabel = INTENS_LABEL[s.intensite ?? ''] ?? s.titre ?? s.title ?? ''
+                    if (iLabel) intenBySport[s.sport].push(iLabel)
                   }
                   const hasSportDetail = Object.keys(volBySport).length > 0
+                  const totalSeances   = rawSeances.length   // 0 pour S3+
+
                   return (
                     <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30` }}>
+
+                      {/* ── En-tête ── */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selSem.numero} — {selSem.type ?? ''}</span>
                         <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
                       </div>
                       {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
-                      {/* KPIs row */}
-                      <div style={{ display: 'flex', gap: 16, marginBottom: hasSportDetail ? 10 : 0 }}>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong></span>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong></span>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séances <strong style={{ color: 'var(--text)' }}>{rawSeances.length > 0 ? rawSeances.length : '—'}</strong></span>
+
+                      {/* ── KPIs globaux ── */}
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: hasSportDetail ? 10 : 4 }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                          Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong>
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                          TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong>
+                        </span>
+                        {totalSeances > 0 && (
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                            Séances <strong style={{ color: 'var(--text)' }}>{totalSeances}</strong>
+                          </span>
+                        )}
                       </div>
-                      {/* Per-sport breakdown */}
+
+                      {/* ── Détail par sport (S1-S2 uniquement) ── */}
                       {hasSportDetail && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {Object.entries(volBySport).sort((a, b) => b[1] - a[1]).map(([sport, mins]) => {
-                            const col = sportColor(sport)
-                            const types = bySpSessions[sport] ?? []
-                            // Dominant intensity type
-                            const freqMap = types.reduce<Record<string, number>>((acc, t) => { acc[t] = (acc[t] ?? 0) + 1; return acc }, {})
+                            const col  = sportColor(sport)
+                            const cnt  = cntBySport[sport] ?? 0
+                            const labels = intenBySport[sport] ?? []
+                            // Type dominant = label le plus fréquent
+                            const freqMap = labels.reduce<Record<string, number>>((acc, l) => { acc[l] = (acc[l] ?? 0) + 1; return acc }, {})
                             const dominant = Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
                             return (
-                              <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: col, minWidth: 65, textTransform: 'capitalize' as const }}>{sport}</span>
-                                <span style={{ fontSize: 10, color: 'var(--text-dim)', minWidth: 18 }}>{types.length}×</span>
-                                <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', minWidth: 36 }}>{formatDuration(mins)}</span>
-                                {dominant && <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1, fontStyle: 'italic' }}>{dominant}</span>}
+                              <div key={sport} style={{ display: 'grid', gridTemplateColumns: '70px 22px 44px 1fr', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: col, textTransform: 'capitalize' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'right' as const }}>{cnt}×</span>
+                                <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
+                                {dominant && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dominant}</span>}
                               </div>
                             )
                           })}
                         </div>
                       )}
-                      {/* note_coach fallback for S3+ weeks */}
+
+                      {/* ── Résumé coach pour S3+ (pas de détail séances) ── */}
                       {selSem.note_coach && !hasSportDetail && (
-                        <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', fontStyle: 'italic' }}>{selSem.note_coach}</p>
+                        <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '2px 0 0', fontStyle: 'italic', lineHeight: 1.5 }}>{selSem.note_coach}</p>
                       )}
                     </div>
                   )

@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -2025,6 +2026,279 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+// ══════════════════════════════════════════════════════════════
+// TP INTRO — Écran interstitiel de préparation avant le questionnaire
+// ══════════════════════════════════════════════════════════════
+
+interface TpIntroStatus {
+  zones_bike: boolean;  records_bike: number
+  zones_run:  boolean;  records_run:  number
+  zones_swim: boolean;  records_swim: number
+  zones_hr:   boolean;  year_datas:   number;  tests:    number
+  vo2max:     boolean;  hr_rest:      boolean
+  activities_3m:  number
+  activities_6m:  number
+  activities_12m: number
+  races: number; gty: number; pro_events: number; perso_events: number
+}
+
+function TpSubRow({ label, ok, count, link }: {
+  label: string; ok: boolean; count?: number; link: string
+}) {
+  const hasCount = !ok && (count ?? 0) > 0
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--ai-border)' }}>
+      <div style={{ width: 16, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {ok
+          ? <CheckCircle2 size={13} color="#22c55e" />
+          : hasCount
+          ? <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+          : <XCircle size={13} color="#ef4444" />}
+      </div>
+      <span style={{ flex: 1, fontSize: 12, color: ok ? 'var(--ai-text)' : 'var(--ai-mid)', lineHeight: 1.4 }}>{label}</span>
+      {!ok && (
+        <a href={link} style={{ fontSize: 10, color: '#8b5cf6', textDecoration: 'none', flexShrink: 0, fontWeight: 600 }}>
+          Compléter →
+        </a>
+      )}
+    </div>
+  )
+}
+
+function TpSectionWrap({ id, label, ok, total, isOpen, onToggle, children }: {
+  id: string; label: string; ok: number; total: number
+  isOpen: boolean; onToggle: () => void; children: React.ReactNode
+}) {
+  const allOk  = ok === total
+  const noneOk = ok === 0
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: isOpen ? '8px 8px 0 0' : 8,
+          border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+          cursor: 'pointer', outline: 'none', textAlign: 'left' as const,
+          transition: 'border-radius 0.1s',
+        }}
+      >
+        <div style={{ width: 16, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {allOk
+            ? <CheckCircle2 size={13} color="#22c55e" />
+            : noneOk
+            ? <XCircle size={13} color="#ef4444" />
+            : <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', fontVariantNumeric: 'tabular-nums' }}>{ok}/{total}</span>}
+        </div>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+          {label}
+        </span>
+        <ChevronDown
+          size={13}
+          color="var(--ai-dim)"
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }}
+        />
+      </button>
+      {isOpen && (
+        <div style={{
+          padding: '2px 10px 4px',
+          border: '1px solid var(--ai-border)', borderTop: 'none',
+          borderRadius: '0 0 8px 8px', background: 'var(--ai-bg)',
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCancel: () => void }) {
+  const [status,  setStatus]  = useState<TpIntroStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    performance: true, training: true, calendrier: true, nutrition: false, recuperation: false,
+  })
+
+  useEffect(() => { void fetchStatus() }, [])
+
+  async function fetchStatus() {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setLoading(false); return }
+
+      const now  = new Date()
+      const d3m  = new Date(now.getTime() -  90 * 86400000).toISOString().slice(0, 10)
+      const d6m  = new Date(now.getTime() - 180 * 86400000).toISOString().slice(0, 10)
+      const d12m = new Date(now.getTime() - 365 * 86400000).toISOString().slice(0, 10)
+
+      const [
+        zonesRes, recBike, recRun, recSwim,
+        profRes, yearRes, testRes,
+        a3, a6, a12, calRes,
+      ] = await Promise.all([
+        sb.from('training_zones').select('sport,z1_value').eq('user_id', user.id).eq('is_current', true),
+        sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'bike'),
+        sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'run'),
+        sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'swim'),
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+        sb.from('year_data_manual').select('id', { count: 'exact', head: true }),
+        sb.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
+        sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d6m),
+        sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d12m),
+        sb.from('calendar_events').select('category,level').eq('user_id', user.id),
+      ])
+
+      // Zones: z1_value non-vide = configuré
+      const zMap: Record<string, boolean> = {}
+      for (const z of zonesRes.data ?? []) {
+        zMap[z.sport as string] = !!(z.z1_value)
+      }
+
+      // Profile: colonnes pouvant être snake_case ou camelCase selon la migration
+      const p = profRes.data as Record<string, unknown> | null
+      const numOf = (...keys: string[]): number =>
+        keys.reduce((acc, k) => acc || (Number(p?.[k]) || 0), 0)
+      const vo2max  = numOf('vo2max', 'vo_2max') > 0
+      const hr_rest = numOf('hr_rest', 'hrRest', 'resting_hr') > 0
+      const hr_max  = numOf('hr_max',  'hrMax',  'max_hr')     > 0
+
+      // Calendar
+      type CalRow = { category: string; level?: string }
+      const evts: CalRow[] = (calRes.data ?? []) as CalRow[]
+      const races       = evts.filter(e => e.category === 'race' && e.level !== 'gty').length
+      const gty         = evts.filter(e => e.category === 'race' && e.level === 'gty').length
+      const pro_events  = evts.filter(e => e.category === 'pro').length
+      const perso_events = evts.filter(e => e.category === 'perso').length
+
+      setStatus({
+        zones_bike:  zMap['bike']  ?? false, records_bike: recBike.count ?? 0,
+        zones_run:   zMap['run']   ?? false, records_run:  recRun.count  ?? 0,
+        zones_swim:  zMap['swim']  ?? false, records_swim: recSwim.count ?? 0,
+        zones_hr:    hr_rest || hr_max,
+        year_datas:  yearRes.count ?? 0,
+        tests:       testRes.count ?? 0,
+        vo2max, hr_rest,
+        activities_3m:  a3.count  ?? 0,
+        activities_6m:  a6.count  ?? 0,
+        activities_12m: a12.count ?? 0,
+        races, gty, pro_events, perso_events,
+      })
+    } catch (err) {
+      console.error('[TpIntro] fetch error', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggle = (id: string) => setOpen(prev => ({ ...prev, [id]: !prev[id] }))
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px 0', textAlign: 'center' }}>
+        <div style={{
+          width: 24, height: 24, borderRadius: '50%',
+          border: '2px solid rgba(139,92,246,0.2)', borderTop: '2px solid #8b5cf6',
+          animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px',
+        }} />
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Vérification du profil…</p>
+      </div>
+    )
+  }
+
+  const s = status
+  const perfOk  = [
+    s?.zones_bike, !!(s?.records_bike), s?.zones_run,  !!(s?.records_run),
+    s?.zones_swim, !!(s?.records_swim), s?.zones_hr,   !!(s?.year_datas),
+    !!(s?.tests),  s?.vo2max,           s?.hr_rest,
+  ].filter(Boolean).length
+  const trainOk = [!!(s?.activities_3m), !!(s?.activities_6m), !!(s?.activities_12m)].filter(Boolean).length
+  const calOk   = [!!(s?.races), !!(s?.gty), !!(s?.pro_events), !!(s?.perso_events)].filter(Boolean).length
+
+  return (
+    <div style={{ paddingBottom: 80 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          Prépare ton plan d&apos;entraînement
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.65 }}>
+          Plus ton profil est complet, plus le plan généré sera précis. Tu peux continuer même si des données manquent.
+        </p>
+      </div>
+
+      {/* Performance */}
+      <TpSectionWrap id="performance" label="Performance" ok={perfOk} total={11} isOpen={open.performance} onToggle={() => toggle('performance')}>
+        <TpSubRow label="Zones puissance vélo"       ok={s?.zones_bike   ?? false} link="/performance" />
+        <TpSubRow label="Records puissance vélo"      ok={!!(s?.records_bike)} count={s?.records_bike} link="/performance" />
+        <TpSubRow label="Zones allure course à pied"  ok={s?.zones_run    ?? false} link="/performance" />
+        <TpSubRow label="Records course à pied"       ok={!!(s?.records_run)}  count={s?.records_run}  link="/performance" />
+        <TpSubRow label="Zones allure natation"       ok={s?.zones_swim   ?? false} link="/performance" />
+        <TpSubRow label="Records natation"            ok={!!(s?.records_swim)} count={s?.records_swim} link="/performance" />
+        <TpSubRow label="Zones FC"                    ok={s?.zones_hr     ?? false} link="/performance" />
+        <TpSubRow label="Year datas"                  ok={!!(s?.year_datas)}   count={s?.year_datas}   link="/performance" />
+        <TpSubRow label="Tests"                       ok={!!(s?.tests)}        count={s?.tests}        link="/performance" />
+        <TpSubRow label="VO2max"                      ok={s?.vo2max       ?? false} link="/performance" />
+        <TpSubRow label="FC repos"                    ok={s?.hr_rest      ?? false} link="/performance" />
+      </TpSectionWrap>
+
+      {/* Training */}
+      <TpSectionWrap id="training" label="Training" ok={trainOk} total={3} isOpen={open.training} onToggle={() => toggle('training')}>
+        <TpSubRow label="3 mois d'historique"  ok={!!(s?.activities_3m)}  count={s?.activities_3m}  link="/activities" />
+        <TpSubRow label="6 mois d'historique"  ok={!!(s?.activities_6m)}  count={s?.activities_6m}  link="/activities" />
+        <TpSubRow label="1 an d'historique"    ok={!!(s?.activities_12m)} count={s?.activities_12m} link="/activities" />
+      </TpSectionWrap>
+
+      {/* Calendrier */}
+      <TpSectionWrap id="calendrier" label="Calendrier" ok={calOk} total={4} isOpen={open.calendrier} onToggle={() => toggle('calendrier')}>
+        <TpSubRow label="Race calendar"    ok={!!(s?.races)}        count={s?.races}        link="/calendar" />
+        <TpSubRow label="GTY"              ok={!!(s?.gty)}          count={s?.gty}          link="/calendar" />
+        <TpSubRow label="Pro calendar"     ok={!!(s?.pro_events)}   count={s?.pro_events}   link="/calendar" />
+        <TpSubRow label="Perso calendar"   ok={!!(s?.perso_events)} count={s?.perso_events} link="/calendar" />
+      </TpSectionWrap>
+
+      {/* Nutrition */}
+      <TpSectionWrap id="nutrition" label="Nutrition" ok={0} total={1} isOpen={open.nutrition} onToggle={() => toggle('nutrition')}>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '10px 0', textAlign: 'center' }}>À compléter</p>
+      </TpSectionWrap>
+
+      {/* Récupération */}
+      <TpSectionWrap id="recuperation" label="Récupération" ok={0} total={1} isOpen={open.recuperation} onToggle={() => toggle('recuperation')}>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '10px 0', textAlign: 'center' }}>À compléter</p>
+      </TpSectionWrap>
+
+      {/* CTA sticky */}
+      <div style={{
+        position: 'sticky', bottom: 0,
+        paddingTop: 12, marginTop: 12,
+        background: 'var(--ai-bg)', borderTop: '1px solid var(--ai-border)',
+      }}>
+        <button
+          onClick={onContinue}
+          style={{
+            width: '100%', padding: '11px 16px', borderRadius: 10,
+            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+            border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'Syne,sans-serif', letterSpacing: '0.01em',
+          }}
+        >
+          Continuer vers le questionnaire →
+        </button>
+        <button
+          onClick={onCancel}
+          style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+
 function TrainingPlanFlow({
   model,
   onCancel,
@@ -2034,11 +2308,9 @@ function TrainingPlanFlow({
   onCancel: () => void
   onRecordConv: (userMsg: string, aiMsg: string) => void
 }) {
-  type TpPhase = 'gate' | 'questionnaire' | 'generating' | 'result' | 'modifying'
+  type TpPhase = 'intro' | 'gate' | 'questionnaire' | 'generating' | 'result' | 'modifying'
 
-  // TEMP: gate Zeus désactivée — tous les utilisateurs accèdent à la feature
-  // À réactiver : useState<TpPhase>(model === 'zeus' ? 'questionnaire' : 'gate')
-  const [phase, setPhase] = useState<TpPhase>('questionnaire')
+  const [phase, setPhase] = useState<TpPhase>('intro')
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<TrainingPlanForm>(DEFAULT_FORM)
   const [program, setProgram] = useState<GeneratedTrainingPlan | null>(null)
@@ -2405,6 +2677,18 @@ function TrainingPlanFlow({
     )
   }
   */
+
+  // ─────────────────────────────────────────────────────────────
+  // PHASE : intro — checklist de préparation du profil
+  // ─────────────────────────────────────────────────────────────
+  if (phase === 'intro') {
+    return (
+      <TpIntroScreen
+        onContinue={() => setPhase('questionnaire')}
+        onCancel={onCancel}
+      />
+    )
+  }
 
   // ─────────────────────────────────────────────────────────────
   // PHASE : generating

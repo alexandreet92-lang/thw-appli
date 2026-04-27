@@ -102,6 +102,8 @@ interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
   tss?:number; main?:boolean; status:SessionStatus; notes?:string; blocks:Block[]
   rpe?:number; dayIndex:number; planVariant?:PlanVariant
+  // Phase 5 — snapshot immuable de la version IA (pour badge "modifié" + reset)
+  originalContent?: Record<string, unknown>
   vDuration?:string; vDistance?:string; vElevation?:string; vSpeed?:string
   vHrAvg?:string; vPace?:string
   vHyroxStations?: Record<string,string>; vHyroxRuns?: string[]
@@ -136,6 +138,17 @@ function formatHM(totalMin:number):string {
 // Keep formatDur as alias for backward compat in display
 function formatDur(min:number):string { return formatHM(min) }
 function daysUntil(d:string):number { return Math.ceil((new Date(d).getTime()-Date.now())/(1000*60*60*24)) }
+
+// Phase 5 — Détecte si la séance a été modifiée par l'athlète vs la version IA originale
+function isSessionModified(s: Session): boolean {
+  if (!s.originalContent) return false
+  const o = s.originalContent
+  if (typeof o.titre === 'string' && o.titre !== s.title) return true
+  if (typeof o.duration_min === 'number' && o.duration_min !== s.durationMin) return true
+  if (typeof o.notes === 'string' && (o.notes || '') !== (s.notes || '')) return true
+  if (typeof o.rpe === 'number' && o.rpe !== (s.rpe ?? null)) return true
+  return false
+}
 function calcSpeed(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; return `${(d/(m/60)).toFixed(1)} km/h` }
 
 // Normalise un bloc en provenance de planned_sessions.blocks (JSONB) vers
@@ -386,6 +399,7 @@ function usePlanning(weekStartParam?:string) {
       time:r.time??'09:00', durationMin:r.duration_min, tss:r.tss,
       status:r.status, notes:r.notes, rpe:r.rpe, blocks:normalizeBlocks(r.blocks), main:false,
       planVariant:r.plan_variant??'A',
+      originalContent: r.original_content ?? undefined,
       ...(r.validation_data??{}),
     })))
     setTasks((t.data??[]).map((r:any):WeekTask=>({
@@ -939,6 +953,113 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
   )
 }
 
+// ── Phase 5 — Export PDF du plan complet ─────────────────────────────────
+function exportPlanToPDF(plan: AiTrainingPlan) {
+  const semaines = plan.ai_context?.program?.semaines ?? []
+  const SPORT_NAMES: Record<string, string> = {
+    run:'Course à pied', bike:'Cyclisme', swim:'Natation',
+    hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron',
+  }
+  const INTENS_LABEL_PDF: Record<string, string> = {
+    low:'Endurance', moderate:'Tempo / Z3', high:'Intensif / Z4', max:'VO2max / Z5',
+  }
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>${plan.name}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, system-ui, sans-serif; background: #fff; color: #111; padding: 28px 32px; font-size: 13px; line-height: 1.5; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .meta { font-size: 12px; color: #666; margin-bottom: 4px; }
+  .objectif { font-size: 13px; color: #444; margin: 8px 0 16px; padding: 10px 14px; border-left: 3px solid #8b5cf6; background: #f5f3ff; border-radius: 0 8px 8px 0; }
+  .week { margin-bottom: 22px; page-break-inside: avoid; }
+  .week-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; padding: 6px 10px; background: #f3f4f6; border-radius: 6px; display: flex; justify-content: space-between; }
+  .week-note { font-size: 11px; color: #6b7280; font-style: italic; margin-bottom: 8px; padding-left: 4px; }
+  .sessions { display: flex; flex-direction: column; gap: 6px; }
+  .session { padding: 8px 12px; border-left: 3px solid #8b5cf6; border-radius: 0 8px 8px 0; background: #fafafa; }
+  .session-header { display: flex; align-items: center; gap: 8px; }
+  .session-sport { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: #8b5cf622; color: #8b5cf6; padding: 2px 6px; border-radius: 99px; flex-shrink: 0; }
+  .session-title { font-weight: 600; font-size: 13px; }
+  .session-meta { font-size: 11px; color: #6b7280; margin-top: 3px; }
+  .session-notes { font-size: 11px; color: #444; margin-top: 4px; font-style: italic; }
+  .blocs { margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+  .bloc { font-size: 11px; color: #374151; padding: 2px 0; }
+  .day-badge { font-size: 10px; background: #e5e7eb; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+  .footer { margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 14px; font-size: 10px; color: #9ca3af; }
+  @media print {
+    body { padding: 16px 20px; }
+    .week { page-break-inside: avoid; }
+    @page { margin: 1.2cm; }
+  }
+</style>
+</head>
+<body>
+<h1>${plan.name}</h1>
+<p class="meta">Plan ${plan.duree_semaines} semaines · Du ${plan.start_date} au ${plan.end_date} · Sports : ${plan.sports.map(s => SPORT_NAMES[s] ?? s).join(', ')}</p>
+${plan.objectif_principal ? `<div class="objectif">${plan.objectif_principal}</div>` : ''}
+${semaines.map((sem) => {
+  const seances = (Array.isArray(sem.seances) ? sem.seances : []) as Record<string, unknown>[]
+  return `<div class="week">
+  <div class="week-title"><span>Semaine ${sem.numero}</span><span style="font-weight:400;color:#6b7280">${seances.length} séance${seances.length !== 1 ? 's' : ''}</span></div>
+  ${sem.note_coach ? `<div class="week-note">${sem.note_coach}</div>` : ''}
+  <div class="sessions">
+  ${seances.map((s: Record<string, unknown>) => {
+    const sport = typeof s.sport === 'string' ? s.sport : ''
+    const sportNorm = Object.entries(SPORT_NAMES).find(([,v]) => v.toLowerCase() === sport.toLowerCase())?.[0] ?? sport.toLowerCase()
+    const sportLabel = SPORT_NAMES[sportNorm] ?? sport
+    const titre = typeof s.titre === 'string' ? s.titre : ''
+    const jour = typeof s.jour === 'number' ? s.jour : null
+    const dureMin = typeof s.duree_min === 'number' ? s.duree_min : null
+    const tss = typeof s.tss === 'number' ? s.tss : null
+    const intensite = typeof s.intensite === 'string' ? s.intensite : null
+    const notes = typeof s.notes === 'string' ? s.notes : null
+    const blocs = Array.isArray(s.blocs) ? s.blocs as Record<string, unknown>[] : []
+    const DAY_NAMES_PDF = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+    const dayLabel = jour !== null ? `Jour ${jour} — ${DAY_NAMES_PDF[jour] ?? ''}` : ''
+    const metaParts = [
+      dureMin ? `${Math.floor(dureMin / 60) > 0 ? Math.floor(dureMin / 60) + 'h' : ''}${dureMin % 60 > 0 ? (dureMin % 60) + 'min' : ''}` : null,
+      tss ? `${tss} TSS` : null,
+      intensite ? (INTENS_LABEL_PDF[intensite] ?? intensite) : null,
+    ].filter(Boolean)
+    return `<div class="session">
+    <div class="session-header">
+      ${dayLabel ? `<span class="day-badge">${dayLabel}</span>` : ''}
+      <span class="session-sport">${sportLabel}</span>
+      <span class="session-title">${titre}</span>
+    </div>
+    ${metaParts.length ? `<div class="session-meta">${metaParts.join(' · ')}</div>` : ''}
+    ${notes ? `<div class="session-notes">${notes}</div>` : ''}
+    ${blocs.length > 0 ? `<div class="blocs">${blocs.map((b: Record<string, unknown>) => {
+      const nom = typeof b.nom === 'string' ? b.nom : ''
+      const duree = typeof b.duree_min === 'number' ? b.duree_min : null
+      const zone = typeof b.zone === 'number' ? b.zone : null
+      const reps = typeof b.repetitions === 'number' && b.repetitions > 1 ? b.repetitions : null
+      const parts = [
+        nom,
+        reps ? `${reps}×${duree}min` : (duree ? `${duree}min` : null),
+        zone ? `Z${zone}` : null,
+      ].filter(Boolean)
+      return `<div class="bloc">· ${parts.join(' — ')}</div>`
+    }).join('')}</div>` : ''}
+    </div>`
+  }).join('')}
+  </div>
+</div>`
+}).join('')}
+<div class="footer">Exporté depuis THW Coaching · Plan généré par le Coach IA · ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+</body>
+</html>`
+
+  const w = window.open('', '_blank')
+  if (w) {
+    w.document.write(html)
+    w.document.close()
+    setTimeout(() => { w.print() }, 400)
+  }
+}
+
 // ── Plan header + 4 collapsible charts ────────────────────────────────────
 
 function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
@@ -976,7 +1097,21 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
               <div style={{ width: `${(currentWeekNum / plan.duree_semaines) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#8b5cf6,#5b6fff)', transition: 'width 0.3s ease' }} />
             </div>
           </div>
-          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}</p>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0 }}>Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}</p>
+            <button
+              onClick={() => exportPlanToPDF(plan)}
+              title="Exporter le plan complet en PDF"
+              style={{
+                padding:'2px 8px', borderRadius:6,
+                background:'transparent', border:'1px solid var(--border)',
+                color:'var(--text-dim)', fontSize:10, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:3, flexShrink:0,
+              }}
+            >
+              <span>↓</span> PDF
+            </button>
+          </div>
         </div>
 
         {/* ── Prochain objectif ── */}
@@ -1779,6 +1914,7 @@ function TrainingTab() {
                   <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={()=>onTouchStart(s.id,i)} onClick={()=>setDetailModal(s)}
                     style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[s.sport],borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative' }}>
                     {s.status==='done' && <span style={{ position:'absolute',top:2,right:2,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700 }}>FAIT</span>}
+                    {s.status!=='done' && isSessionModified(s) && <span title="Modifié par toi" style={{ position:'absolute',top:3,right:3,width:5,height:5,borderRadius:'50%',background:'#f97316',flexShrink:0 }} />}
                     {s.planVariant && <span style={{ position:'absolute',top:2,left:2,fontSize:7,fontWeight:800,color:s.planVariant==='A'?'#00c8e0':'#a78bfa' }}>{s.planVariant}</span>}
                     <div style={{ display:'flex',alignItems:'center',gap:3,paddingLeft:8 }}>
                       <SportBadge sport={s.sport} size="xs"/>
@@ -2009,12 +2145,13 @@ function TrainingTab() {
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 10px' }}>Aujourd'hui — {week[todayIdx]?.day} {week[todayIdx]?.date}</p>
           {todaySessions.map(s=>(
-            <div key={s.id} onClick={()=>setDetailModal(s)} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRadius:10,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',marginBottom:7 }}>
+            <div key={s.id} onClick={()=>setDetailModal(s)} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRadius:10,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',marginBottom:7,position:'relative' }}>
               <SportBadge sport={s.sport} size="sm"/>
               <div style={{ flex:1 }}>
                 <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0 }}>{s.title}</p>
                 <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
               </div>
+              {s.status!=='done' && isSessionModified(s) && <span title="Modifié par toi" style={{ width:7,height:7,borderRadius:'50%',background:'#f97316',flexShrink:0 }} />}
               <span style={{ padding:'4px 10px',borderRadius:20,background:s.status==='done'?`${SPORT_BORDER[s.sport]}22`:'var(--bg-card2)',border:`1px solid ${s.status==='done'?SPORT_BORDER[s.sport]:'var(--border)'}`,color:s.status==='done'?SPORT_BORDER[s.sport]:'var(--text-dim)',fontSize:10,fontWeight:600 }}>{s.status==='done'?'FAIT':'À faire'}</span>
             </div>
           ))}
@@ -3146,6 +3283,33 @@ function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, 
           background:'rgba(255,95,95,0.10)', border:'1px solid rgba(255,95,95,0.25)',
           color:'#ff5f5f', fontSize:12, cursor:'pointer', fontWeight:600,
         }}>Supprimer la séance</button>
+        {/* Phase 5 — Reset vers version IA originale */}
+        {session.originalContent && isSessionModified(form) && (
+          <button
+            onClick={() => {
+              const o = session.originalContent!
+              const restored: Session = {
+                ...session,
+                title:       typeof o.titre       === 'string' ? o.titre       : session.title,
+                durationMin: typeof o.duration_min === 'number' ? o.duration_min : session.durationMin,
+                notes:       typeof o.notes       === 'string' ? o.notes       : session.notes,
+                rpe:         typeof o.rpe         === 'number' ? o.rpe         : session.rpe,
+                blocks:      normalizeBlocks((o.blocs as unknown[] | undefined) ?? []),
+              }
+              onSave(restored)
+              onClose()
+            }}
+            title="Revenir à la version générée par le Coach IA"
+            style={{
+              padding:'9px 12px', borderRadius:9,
+              background:'rgba(249,115,22,0.10)', border:'1px solid rgba(249,115,22,0.30)',
+              color:'#f97316', fontSize:11, cursor:'pointer', fontWeight:600,
+              display:'flex', alignItems:'center', gap:4,
+            }}
+          >
+            <span style={{ fontSize:10 }}>↩</span> Réinitialiser
+          </button>
+        )}
         <div style={{ flex:1 }} />
         <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>Sauvegarde auto</span>
         <button onClick={onClose} style={{

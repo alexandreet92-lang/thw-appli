@@ -1087,7 +1087,23 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: 0, letterSpacing: '0.12em', textTransform: 'uppercase' as const }}>Plan en cours</p>
-          <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: '2px 0 4px', fontFamily: 'Syne,sans-serif', lineHeight: 1.2 }}>{plan.name}</p>
+          {/* Titre + bouton PDF côte à côte */}
+          <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0 4px' }}>
+            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'Syne,sans-serif', lineHeight: 1.2, flex: 1, minWidth: 0 }}>{plan.name}</p>
+            <button
+              onClick={() => exportPlanToPDF(plan)}
+              title="Exporter le plan complet en PDF"
+              style={{
+                padding:'4px 10px', borderRadius:7,
+                background:'rgba(139,92,246,0.10)', border:'1px solid rgba(139,92,246,0.25)',
+                color:'#8b5cf6', fontSize:10, fontWeight:600, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:4, flexShrink:0,
+                whiteSpace:'nowrap' as const,
+              }}
+            >
+              ↓ PDF
+            </button>
+          </div>
           {plan.objectif_principal && (
             <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 6px', lineHeight: 1.45 }}>{plan.objectif_principal}</p>
           )}
@@ -1097,21 +1113,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
               <div style={{ width: `${(currentWeekNum / plan.duree_semaines) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#8b5cf6,#5b6fff)', transition: 'width 0.3s ease' }} />
             </div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
-            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0 }}>Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}</p>
-            <button
-              onClick={() => exportPlanToPDF(plan)}
-              title="Exporter le plan complet en PDF"
-              style={{
-                padding:'2px 8px', borderRadius:6,
-                background:'transparent', border:'1px solid var(--border)',
-                color:'var(--text-dim)', fontSize:10, cursor:'pointer',
-                display:'flex', alignItems:'center', gap:3, flexShrink:0,
-              }}
-            >
-              <span>↓</span> PDF
-            </button>
-          </div>
+          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>Du {fmtFrenchDate(plan.start_date)} au {fmtFrenchDate(plan.end_date)}</p>
         </div>
 
         {/* ── Prochain objectif ── */}
@@ -1457,13 +1459,13 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
           .filter(e => e.mins > 0)
         const zoneArcs = buildArcs(zoneEntries)
 
-        // ── DONUT 2 : Sports (plan complet, semaines S1-S2) ──────
-        const allSeances = (plan.ai_context?.program?.semaines ?? [])
-          .flatMap(w => (w.seances as { sport?: string; duree_min?: number }[] | undefined) ?? [])
+        // ── DONUT 2 : Sports (plan complet — toutes les planned_sessions du plan) ──────
+        // On utilise la prop `sessions` (AiPlanSessionAgg[] depuis la table planned_sessions)
+        // qui couvre TOUTES les semaines du plan, pas seulement S1-S2 comme ai_context.
         const sportMap: Record<string, number> = {}
-        for (const s of allSeances) {
+        for (const s of sessions) {
           if (!s.sport) continue
-          sportMap[s.sport] = (sportMap[s.sport] ?? 0) + (s.duree_min ?? 0)
+          sportMap[s.sport] = (sportMap[s.sport] ?? 0) + (s.duration_min ?? 0)
         }
         const totalSportMins = Object.values(sportMap).reduce((a, b) => a + b, 0)
         const sportEntries = Object.entries(sportMap)
@@ -1471,10 +1473,10 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
           .sort((a, b) => b.mins - a.mins)
         const sportArcs = buildArcs(sportEntries)
 
-        // ── DONUT 3 : Répartition charge plan (all seances) ──────
+        // ── DONUT 3 : Répartition charge plan (toutes les planned_sessions) ──────
         const intensMap: Record<string, number> = {}
-        for (const s of allSeances) {
-          const key = (s as { intensite?: string }).intensite ?? 'low'
+        for (const s of sessions) {
+          const key = s.intensity ?? 'low'
           intensMap[key] = (intensMap[key] ?? 0) + 1
         }
         const totalSessions = Object.values(intensMap).reduce((a, b) => a + b, 0)
@@ -3283,33 +3285,39 @@ function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, 
           background:'rgba(255,95,95,0.10)', border:'1px solid rgba(255,95,95,0.25)',
           color:'#ff5f5f', fontSize:12, cursor:'pointer', fontWeight:600,
         }}>Supprimer la séance</button>
-        {/* Phase 5 — Reset vers version IA originale */}
-        {session.originalContent && isSessionModified(form) && (
-          <button
-            onClick={() => {
-              const o = session.originalContent!
-              const restored: Session = {
-                ...session,
-                title:       typeof o.titre       === 'string' ? o.titre       : session.title,
-                durationMin: typeof o.duration_min === 'number' ? o.duration_min : session.durationMin,
-                notes:       typeof o.notes       === 'string' ? o.notes       : session.notes,
-                rpe:         typeof o.rpe         === 'number' ? o.rpe         : session.rpe,
-                blocks:      normalizeBlocks((o.blocs as unknown[] | undefined) ?? []),
-              }
-              onSave(restored)
-              onClose()
-            }}
-            title="Revenir à la version générée par le Coach IA"
-            style={{
-              padding:'9px 12px', borderRadius:9,
-              background:'rgba(249,115,22,0.10)', border:'1px solid rgba(249,115,22,0.30)',
-              color:'#f97316', fontSize:11, cursor:'pointer', fontWeight:600,
-              display:'flex', alignItems:'center', gap:4,
-            }}
-          >
-            <span style={{ fontSize:10 }}>↩</span> Réinitialiser
-          </button>
-        )}
+        {/* Phase 5 — Reset vers version IA originale (visible dès qu'il y a un original) */}
+        {session.originalContent && (() => {
+          const modified = isSessionModified(form)
+          return (
+            <button
+              onClick={() => {
+                if (!modified) return
+                const o = session.originalContent!
+                const restored: Session = {
+                  ...session,
+                  title:       typeof o.titre       === 'string' ? o.titre       : session.title,
+                  durationMin: typeof o.duration_min === 'number' ? o.duration_min : session.durationMin,
+                  notes:       typeof o.notes       === 'string' ? o.notes       : session.notes,
+                  rpe:         typeof o.rpe         === 'number' ? o.rpe         : session.rpe,
+                  blocks:      normalizeBlocks((o.blocs as unknown[] | undefined) ?? []),
+                }
+                onSave(restored)
+                onClose()
+              }}
+              title={modified ? 'Revenir à la version générée par le Coach IA' : 'Séance non modifiée — identique à la version IA'}
+              style={{
+                padding:'9px 12px', borderRadius:9,
+                background: modified ? 'rgba(249,115,22,0.10)' : 'transparent',
+                border: modified ? '1px solid rgba(249,115,22,0.30)' : '1px solid var(--border)',
+                color: modified ? '#f97316' : 'var(--text-dim)',
+                fontSize:11, cursor: modified ? 'pointer' : 'default', fontWeight:600,
+                display:'flex', alignItems:'center', gap:4, opacity: modified ? 1 : 0.5,
+              }}
+            >
+              <span style={{ fontSize:10 }}>↩</span> {modified ? 'Réinitialiser' : 'Original IA'}
+            </button>
+          )
+        })()}
         <div style={{ flex:1 }} />
         <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>Sauvegarde auto</span>
         <button onClick={onClose} style={{

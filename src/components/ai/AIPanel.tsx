@@ -1868,7 +1868,12 @@ interface TrainingPlanForm {
   forme_actuelle: 'tres_bonne' | 'bonne' | 'moyenne' | 'mauvaise' | ''
   precision_profil: string
   // Bloc 2
-  seances_par_semaine: number
+  seances_debut_prepa: number
+  seances_pic_prepa: number
+  repartition_tri: { natation: number; velo: number; run: number; muscu: number }
+  repartition_hyrox: { run: number; muscu: number; spe: number; velo: number }
+  include_muscu: boolean
+  seances_muscu: number
   heures_par_semaine: number
   jours_repos: string[]
   contraintes_horaires: 'matin' | 'soir' | 'midi' | 'flexible' | ''
@@ -2036,7 +2041,12 @@ const DEFAULT_FORM: TrainingPlanForm = {
   programme_precedent_detail: '',
   forme_actuelle: '',
   precision_profil: '',
-  seances_par_semaine: 5,
+  seances_debut_prepa: 5,
+  seances_pic_prepa: 7,
+  repartition_tri: { natation: 2, velo: 2, run: 2, muscu: 1 },
+  repartition_hyrox: { run: 2, muscu: 2, spe: 2, velo: 0 },
+  include_muscu: false,
+  seances_muscu: 1,
   heures_par_semaine: 8,
   jours_repos: [],
   contraintes_horaires: '',
@@ -3979,13 +3989,121 @@ function TrainingPlanFlow({
           </p>
 
           <div>
-            <span style={tpLabelStyle()}>Séances par semaine : {form.seances_par_semaine}</span>
-            <input type="range" min={3} max={12} value={form.seances_par_semaine} onChange={e => setField('seances_par_semaine', Number(e.target.value))}
+            <span style={tpLabelStyle()}>Séances en début de prépa : {form.seances_debut_prepa}</span>
+            <input type="range" min={3} max={12} value={form.seances_debut_prepa} onChange={e => setField('seances_debut_prepa', Number(e.target.value))}
               style={{ width: '100%', accentColor: '#8b5cf6' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
               <span>3</span><span>12</span>
             </div>
           </div>
+
+          <div>
+            <span style={tpLabelStyle()}>Séances au pic de la prépa : {form.seances_pic_prepa}</span>
+            <input type="range" min={3} max={12} value={form.seances_pic_prepa} onChange={e => setField('seances_pic_prepa', Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#8b5cf6' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
+              <span>3</span><span>12</span>
+            </div>
+          </div>
+
+          {/* Répartition par discipline — visible si objectif GTY/Principal = Triathlon ou Hyrox */}
+          {(() => {
+            const gtyRace  = form.goal_races.find(r => r.level === 'gty')
+            const mainRace = form.goal_races.find(r => r.level === 'main')
+            const objSport = (gtyRace ?? mainRace)?.sport ?? form.sport_principal
+
+            if (objSport === 'Triathlon') {
+              const t = form.repartition_tri
+              const total = t.natation + t.velo + t.run + t.muscu
+              return (
+                <div>
+                  <span style={tpLabelStyle()}>
+                    Répartition par discipline — Triathlon
+                    <span style={{ marginLeft: 8, fontWeight: 400, color: '#00c8e0', fontSize: 12 }}>
+                      Total : {total} séance{total > 1 ? 's' : ''}
+                    </span>
+                  </span>
+                  {([
+                    { key: 'natation' as const, label: 'Natation' },
+                    { key: 'velo'     as const, label: 'Vélo' },
+                    { key: 'run'      as const, label: 'Run' },
+                    { key: 'muscu'    as const, label: 'Muscu' },
+                  ]).map(({ key, label }) => (
+                    <div key={key} style={{ marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ai-dim)', marginBottom: 2 }}>
+                        <span>{label}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{t[key]}</span>
+                      </div>
+                      <input type="range" min={0} max={6} value={t[key]}
+                        onChange={e => setField('repartition_tri', { ...t, [key]: Number(e.target.value) })}
+                        style={{ width: '100%', accentColor: '#8b5cf6' }} />
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+
+            if (objSport === 'Hyrox') {
+              const h = form.repartition_hyrox
+              const total = h.run + h.muscu + h.spe + h.velo
+              return (
+                <div>
+                  <span style={tpLabelStyle()}>
+                    Répartition par discipline — Hyrox
+                    <span style={{ marginLeft: 8, fontWeight: 400, color: '#00c8e0', fontSize: 12 }}>
+                      Total : {total} séance{total > 1 ? 's' : ''}
+                    </span>
+                  </span>
+                  {([
+                    { key: 'run'   as const, label: 'Run' },
+                    { key: 'muscu' as const, label: 'Muscu' },
+                    { key: 'spe'   as const, label: 'Spé Hyrox' },
+                    { key: 'velo'  as const, label: 'Vélo' },
+                  ]).map(({ key, label }) => (
+                    <div key={key} style={{ marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ai-dim)', marginBottom: 2 }}>
+                        <span>{label}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{h[key]}</span>
+                      </div>
+                      <input type="range" min={0} max={6} value={h[key]}
+                        onChange={e => setField('repartition_hyrox', { ...h, [key]: Number(e.target.value) })}
+                        style={{ width: '100%', accentColor: '#8b5cf6' }} />
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+
+            return null
+          })()}
+
+          {/* Inclure la musculation — visible pour tous les sports sauf Triathlon et Hyrox */}
+          {(() => {
+            const gtyRace  = form.goal_races.find(r => r.level === 'gty')
+            const mainRace = form.goal_races.find(r => r.level === 'main')
+            const objSport = (gtyRace ?? mainRace)?.sport ?? form.sport_principal
+            if (objSport === 'Triathlon' || objSport === 'Hyrox') return null
+            return (
+              <div>
+                <span style={tpLabelStyle()}>Inclure la musculation</span>
+                <div style={{ display: 'flex', gap: 6, marginBottom: form.include_muscu ? 8 : 0 }}>
+                  <button onClick={() => setField('include_muscu', true)}  style={tpPillStyle(form.include_muscu)}>Oui</button>
+                  <button onClick={() => setField('include_muscu', false)} style={tpPillStyle(!form.include_muscu)}>Non</button>
+                </div>
+                {form.include_muscu && (
+                  <div>
+                    <span style={{ fontSize: 12, color: 'var(--ai-dim)', display: 'block', marginBottom: 4 }}>
+                      Séances muscu/semaine : {form.seances_muscu}
+                    </span>
+                    <input type="range" min={1} max={4} value={form.seances_muscu}
+                      onChange={e => setField('seances_muscu', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: '#8b5cf6' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ai-dim)' }}>
+                      <span>1</span><span>4</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div>
             <span style={tpLabelStyle()}>Heures disponibles par semaine : {form.heures_par_semaine}h</span>

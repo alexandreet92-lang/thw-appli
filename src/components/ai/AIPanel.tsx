@@ -1805,7 +1805,7 @@ interface GoalRace {
   trail_elevation?: string
   // Triathlon
   tri_distance?: string   // 'XS'|'S'|'M'|'70.3'|'Ironman'
-  tri_goal_total?: string; tri_goal_swim?: string; tri_goal_bike?: string; tri_goal_run?: string
+  tri_goal_swim?: string; tri_goal_t1?: string; tri_goal_bike?: string; tri_goal_t2?: string; tri_goal_run?: string
   // Hyrox
   hyrox_format?: string   // 'Solo Open'|'Solo Pro'|'Doubles Mixte'|'Doubles Men'|'Doubles Women'|'Relay 4x'
   hyrox_gender?: string   // 'Homme'|'Femme'
@@ -1824,7 +1824,28 @@ const LEVEL_LABEL: Record<GoalRace['level'], string> = {
   gty: 'GTY', main: 'Principal', important: 'Important', secondary: 'Secondaire',
 }
 const LEVEL_COLOR: Record<GoalRace['level'], string> = {
-  gty: '#f59e0b', main: '#8b5cf6', important: '#00c8e0', secondary: '#6b7280',
+  gty: '#DC2626', main: '#EA580C', important: '#00c8e0', secondary: '#6b7280',
+}
+
+// ── Triathlon time helpers ─────────────────────────────────────
+function triParseHHMM(s: string | undefined): number {
+  const parts = (s ?? '').split(':')
+  if (parts.length < 2) return 0
+  return (parseInt(parts[0]) || 0) * 3600 + (parseInt(parts[1]) || 0) * 60
+}
+function triParseMMSS(s: string | undefined): number {
+  const parts = (s ?? '').split(':')
+  if (parts.length < 2) return 0
+  return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0)
+}
+function triTotalSec(swim?: string, t1?: string, bike?: string, t2?: string, run?: string): number {
+  return triParseHHMM(swim) + triParseMMSS(t1) + triParseHHMM(bike) + triParseMMSS(t2) + triParseHHMM(run)
+}
+function secToHHMMSS(s: number): string {
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
 interface TrainingPlanForm {
@@ -3678,19 +3699,31 @@ function TrainingPlanFlow({
                         <button key={d} onClick={() => updateGoalRace(idx, { tri_distance: d })} style={tpPillStyle(race.tri_distance === d)}>{d}</button>
                       ))}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                      <input type="text" placeholder="Temps total (ex: 4:30:00)" value={race.tri_goal_total ?? ''}
-                        onChange={e => updateGoalRace(idx, { tri_goal_total: e.target.value })}
-                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
-                      <input type="text" placeholder="Nage (ex: 35:00)" value={race.tri_goal_swim ?? ''}
-                        onChange={e => updateGoalRace(idx, { tri_goal_swim: e.target.value })}
-                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
-                      <input type="text" placeholder="Vélo (ex: 2:20:00)" value={race.tri_goal_bike ?? ''}
-                        onChange={e => updateGoalRace(idx, { tri_goal_bike: e.target.value })}
-                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
-                      <input type="text" placeholder="Course (ex: 1:35:00)" value={race.tri_goal_run ?? ''}
-                        onChange={e => updateGoalRace(idx, { tri_goal_run: e.target.value })}
-                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {[
+                        { label: 'Natation',      value: race.tri_goal_swim ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_swim: v }), fmt: 'hh:mm' },
+                        { label: 'T1',             value: race.tri_goal_t1  ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_t1:   v }), fmt: 'mm:ss' },
+                        { label: 'Vélo',           value: race.tri_goal_bike ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_bike: v }), fmt: 'hh:mm' },
+                        { label: 'T2',             value: race.tri_goal_t2  ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_t2:   v }), fmt: 'mm:ss' },
+                        { label: 'Course à pied',  value: race.tri_goal_run ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_run:  v }), fmt: 'hh:mm' },
+                      ].map(({ label, value, onCh, fmt }) => (
+                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af', width: 90, flexShrink: 0 }}>{label}</span>
+                          <input type="text" placeholder={fmt} value={value}
+                            onChange={e => onCh(e.target.value)}
+                            style={{ ...tpInputStyle(), padding: '4px 8px', fontSize: 11, flex: 1 }} />
+                        </div>
+                      ))}
+                      {(() => {
+                        const total = triTotalSec(race.tri_goal_swim, race.tri_goal_t1, race.tri_goal_bike, race.tri_goal_t2, race.tri_goal_run)
+                        if (total === 0) return null
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <span style={{ fontSize: 11, color: '#6b7280', width: 90, flexShrink: 0 }}>Total</span>
+                            <span style={{ fontSize: 12, color: '#00c8e0', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{secToHHMMSS(total)}</span>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 )}

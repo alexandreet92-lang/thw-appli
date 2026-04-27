@@ -1140,7 +1140,7 @@ export default function PerformancePage() {
           onAnalyzeProfile={handleAnalyzeProfile}
         />
       )}
-      {tab === 'datas'  && <DatasTab  onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile}/>}
+      {tab === 'datas'  && <DatasTab  onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} onOpenAI={prompt => { setAiPrefill(prompt); setAiOpen(true) }} />}
       {tab === 'tests'  && (
         <TestsTab
           profile={profile}

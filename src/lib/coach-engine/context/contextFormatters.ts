@@ -438,6 +438,57 @@ export function formatCentralContext(ctx: Record<string, unknown>): string {
 
 // ── DISPATCHER ──────────────────────────────────────────────
 
+// ── PLAN COACH — contexte plan d'entraînement complet ───────────
+
+export function formatTrainingPlanContext(ctx: Record<string, unknown>): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const plan = ctx.trainingPlan as Record<string, any> | undefined
+  if (!plan) return ''
+
+  const lines: string[] = ['=== PLAN D\'ENTRAÎNEMENT EN COURS ===']
+  if (plan.name)                 lines.push(`\n**Nom** : ${plan.name}`)
+  if (plan.objectif_principal)   lines.push(`**Objectif** : ${plan.objectif_principal}`)
+  if (plan.duree_semaines)       lines.push(`**Durée** : ${plan.duree_semaines} semaines (du ${plan.start_date} au ${plan.end_date})`)
+  if (plan.sports?.length)       lines.push(`**Sports** : ${(plan.sports as string[]).join(', ')}`)
+  if (plan.currentWeekNum)       lines.push(`**Semaine actuelle** : S${plan.currentWeekNum}/${plan.duree_semaines}`)
+
+  const blocs = plan.blocs_periodisation as Array<Record<string, unknown>> | undefined
+  if (blocs?.length) {
+    lines.push('\n### Périodisation')
+    for (const b of blocs) {
+      lines.push(`  - ${b.nom} (${b.type}) · S${b.semaine_debut}–S${b.semaine_fin}${b.volume_hebdo_h ? ` · ~${b.volume_hebdo_h}h/sem` : ''}${b.description ? ` : ${b.description}` : ''}`)
+    }
+  }
+
+  const semaines = plan.semaines as Array<Record<string, unknown>> | undefined
+  if (semaines?.length) {
+    lines.push('\n### Programme semaine par semaine')
+    for (const s of semaines) {
+      const seances = (s.seances as unknown[] | undefined) ?? []
+      lines.push(
+        `  S${s.numero} — ${s.type ?? ''}${s.theme ? ` · ${s.theme}` : ''}` +
+        `${s.volume_h ? ` · ${s.volume_h}h` : ''}${s.tss_semaine ? ` · TSS ${s.tss_semaine}` : ''}` +
+        `${seances.length > 0 ? ` · ${seances.length} séances` : ''}` +
+        `${s.note_coach ? ` · ${s.note_coach}` : ''}`
+      )
+    }
+  }
+
+  const conseils = plan.conseils_adaptation as string[] | undefined
+  if (conseils?.length) {
+    lines.push('\n### Conseils d\'adaptation')
+    for (const c of conseils) lines.push(`  - ${c}`)
+  }
+
+  const points = plan.points_cles as string[] | undefined
+  if (points?.length) {
+    lines.push('\n### Points clés')
+    for (const p of points) lines.push(`  - ${p}`)
+  }
+
+  return lines.join('\n')
+}
+
 export function formatContextForAgent(
   agentId: string,
   ctx: Record<string, unknown>
@@ -445,14 +496,15 @@ export function formatContextForAgent(
   if (!ctx || Object.keys(ctx).length === 0) return ''
 
   switch (agentId) {
-    case 'central':      return formatCentralContext(ctx)
-    case 'planning':     return formatPlanningContext(ctx)
-    case 'strategy':     return formatStrategyContext(ctx)
-    case 'readiness':    return formatRecoveryContext(ctx)
+    case 'central':       return formatCentralContext(ctx)
+    case 'plan_coach':    return formatTrainingPlanContext(ctx)
+    case 'planning':      return formatPlanningContext(ctx)
+    case 'strategy':      return formatStrategyContext(ctx)
+    case 'readiness':     return formatRecoveryContext(ctx)
     case 'sessionBuilder': return formatSessionContext(ctx)
-    case 'nutrition':    return formatNutritionContext(ctx)
-    case 'performance':  return formatPerformanceContext(ctx)
-    case 'adjustment':   return formatPlanningContext(ctx) // même données que planning
-    default:             return `=== CONTEXTE ===\n${JSON.stringify(ctx, null, 2)}`
+    case 'nutrition':     return formatNutritionContext(ctx)
+    case 'performance':   return formatPerformanceContext(ctx)
+    case 'adjustment':    return formatPlanningContext(ctx) // même données que planning
+    default:              return `=== CONTEXTE ===\n${JSON.stringify(ctx, null, 2)}`
   }
 }

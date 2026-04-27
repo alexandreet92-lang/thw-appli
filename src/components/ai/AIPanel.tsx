@@ -50,6 +50,10 @@ interface Props {
   initialFlow?: FlowId
   initialUserLabel?: string
   initialAssistantMsg?: string
+  // Phase 4 — plan-aware chat
+  planId?: string                    // training_plans.id — active le mode plan_coach
+  planContext?: Record<string, unknown> // { trainingPlan: {...} } injecté en system prompt
+  planName?: string                  // affiché dans la conv et le welcome message
 }
 
 // ── Storage ────────────────────────────────────────────────────
@@ -5247,6 +5251,9 @@ export default function AIPanel({
   initialFlow,
   initialUserLabel,
   initialAssistantMsg,
+  planId,
+  planContext,
+  planName,
 }: Props) {
 
   // ── State ──────────────────────────────────────────────────
@@ -5297,6 +5304,33 @@ export default function AIPanel({
     }
     if (!open) initialFlowSetRef.current = false
   }, [open, initialFlow])
+
+  // ── Phase 4 : initialise la conversation liée au plan ──────────
+  // Quand le panel s'ouvre avec un planId, trouve ou crée une conv
+  // taggée [PLAN:id] pour reprendre la mémoire du plan en continu.
+  const planConvInitRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!open || !planId || !mounted) return
+    if (planConvInitRef.current === planId) return   // déjà initialisé
+    planConvInitRef.current = planId
+
+    const existing = convs.find(c => c.title.startsWith(`[PLAN:${planId}]`))
+    if (existing) { setActiveId(existing.id); return }
+
+    // Nouvelle conv — welcome message du coach
+    const welcomeText = `Je suis ton Coach IA. J'ai l'intégralité de ton plan **${planName ?? 'en cours'}** en mémoire — objectif, périodisation, chaque semaine et chaque séance. Pose-moi toutes tes questions ou demande des ajustements : je réponds directement en me basant sur ton programme.`
+    const welcomeMsg: AIMsg = { id: genId(), role: 'assistant', content: welcomeText, ts: Date.now(), modelId: 'athena' }
+    const newId = genId()
+    const planConv: AIConv = {
+      id: newId,
+      title: `[PLAN:${planId}] ${planName ?? 'Mon plan'}`,
+      createdAt: Date.now(), updatedAt: Date.now(), msgs: [welcomeMsg],
+    }
+    setConvs(prev => [planConv, ...prev].slice(0, MAX_CONVS))
+    setActiveId(newId)
+  // convs est intentionnellement omis — on lit sa valeur courante via la ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, planId, mounted, planName])
 
   // Détection desktop — sidebar persistante
   useEffect(() => {
@@ -5519,15 +5553,18 @@ export default function AIPanel({
       apiMsgs.push({ role: 'user', content: apiContentText })
     }
 
+    // Plan-aware chat : utilise l'agent plan_coach + contexte plan injecté
+    const isPlanChat = Boolean(planId && active?.title.startsWith(`[PLAN:${planId}]`))
+
     try {
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId: 'central',
-          modelId: snapshot,
+          agentId:  isPlanChat ? 'plan_coach' : 'central',
+          modelId:  snapshot,
           messages: apiMsgs,
-          context: context ?? {},
+          context:  isPlanChat ? (planContext ?? {}) : (context ?? {}),
         }),
       })
 
@@ -5555,6 +5592,22 @@ export default function AIPanel({
             : c
         ))
       }
+
+      // ── Persistance DB pour le plan-chat (training_plan_messages) ──
+      if (isPlanChat && planId && accumulated) {
+        try {
+          const { createClient } = await import('@/lib/supabase/client')
+          const sb = createClient()
+          const { data: { user } } = await sb.auth.getUser()
+          if (user) {
+            await sb.from('training_plan_messages').insert([
+              { training_plan_id: planId, user_id: user.id, role: 'user',      content: displayText },
+              { training_plan_id: planId, user_id: user.id, role: 'assistant', content: accumulated  },
+            ])
+          }
+        } catch { /* non-bloquant */ }
+      }
+
     } catch {
       const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
       setConvs(prev => prev.map(c =>
@@ -5564,7 +5617,7 @@ export default function AIPanel({
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA])
+  }, [input, loading, active, context, model, activeQA, planId, planContext])
 
   // SSR guard
   if (!mounted) return null

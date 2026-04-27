@@ -874,9 +874,26 @@ function ChartSection({
 
 // ── Floating Coach IA bubble — visible when an active AI plan exists ──────
 
-function AiPlanBubble({ planName }: { planName: string }) {
+function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
+
+  // Contexte plan injecté dans le system prompt du coach
+  const planContext = {
+    trainingPlan: {
+      name:                plan.name,
+      objectif_principal:  plan.objectif_principal,
+      duree_semaines:      plan.duree_semaines,
+      start_date:          plan.start_date,
+      end_date:            plan.end_date,
+      sports:              plan.sports,
+      blocs_periodisation: plan.blocs_periodisation,
+      conseils_adaptation: plan.conseils_adaptation,
+      points_cles:         plan.points_cles,
+      semaines:            plan.ai_context?.program?.semaines ?? [],
+    },
+  }
+
   return (
     <>
       <div style={{ position: 'fixed', bottom: 92, right: 20, zIndex: 90 }}>
@@ -884,7 +901,7 @@ function AiPlanBubble({ planName }: { planName: string }) {
           onClick={() => setOpen(o => !o)}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          title={`Coach IA — ${planName}`}
+          title={`Coach IA — ${plan.name}`}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 13px 7px 10px',
@@ -910,7 +927,14 @@ function AiPlanBubble({ planName }: { planName: string }) {
           </span>
         </button>
       </div>
-      <AIPanelDynamic open={open} onClose={() => setOpen(false)} initialFlow={null} />
+      <AIPanelDynamic
+        open={open}
+        onClose={() => setOpen(false)}
+        initialFlow={null}
+        planId={plan.id}
+        planName={plan.name}
+        planContext={planContext}
+      />
     </>
   )
 }
@@ -1782,7 +1806,7 @@ function TrainingTab() {
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} />
       )}
       {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
-      {aiPlan && <AiPlanBubble planName={aiPlan.name} />}
+      {aiPlan && <AiPlanBubble plan={aiPlan} />}
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
       {upcomingPlan && !aiPlan && (
         <div style={{ padding:'14px 18px',borderRadius:14,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>

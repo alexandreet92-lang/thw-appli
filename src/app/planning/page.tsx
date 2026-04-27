@@ -981,7 +981,8 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
       {/* Desktop : côte à côte — Mobile : empilés */}
       <style>{`
         @media (min-width: 768px) {
-          #plan-charts-row { display: grid; grid-template-columns: 60% 40%; gap: 16px; align-items: start; }
+          #plan-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+          #plan-charts-row > div { min-width: 0; }
         }
       `}</style>
       <div id="plan-charts-row">

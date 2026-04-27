@@ -1784,10 +1784,54 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
 
 // ── TrainingPlanFlow ───────────────────────────────────────────
 
+interface PlannedRaceRow {
+  id: string; user_id: string; name: string; sport: string; date: string
+  level?: string; goal?: string; strategy?: string
+  run_distance?: string; tri_distance?: string
+  hyrox_category?: string; hyrox_level?: string; hyrox_gender?: string
+  goal_time?: string; goal_swim_time?: string; goal_bike_time?: string; goal_run_time?: string
+  validation_data?: Record<string, unknown>
+}
+
+interface GoalRace {
+  id?: string             // planned_races.id — présent si depuis DB
+  nom: string
+  date: string
+  sport: string
+  level: 'gty' | 'main' | 'important' | 'secondary'
+  goal_libre: string
+  // Running / Trail
+  run_distance?: string   // '5km'|'10km'|'Semi'|'Marathon'|'100km' ou '20km'|'50km'|'Ultra'
+  trail_elevation?: string
+  // Triathlon
+  tri_distance?: string   // 'XS'|'S'|'M'|'70.3'|'Ironman'
+  tri_goal_total?: string; tri_goal_swim?: string; tri_goal_bike?: string; tri_goal_run?: string
+  // Hyrox
+  hyrox_format?: string   // 'Solo Open'|'Solo Pro'|'Doubles Mixte'|'Doubles Men'|'Doubles Women'|'Relay 4x'
+  hyrox_gender?: string   // 'Homme'|'Femme'
+  // Cyclisme
+  velo_type?: string; velo_distance?: string; velo_elevation?: string
+  velo_altitude_max?: string; velo_cols?: string
+  // Aviron
+  aviron_format?: string
+  // Natation
+  natation_type?: string; natation_distance?: string
+  // Universal
+  goal_time?: string
+}
+
+const LEVEL_LABEL: Record<GoalRace['level'], string> = {
+  gty: 'GTY', main: 'Principal', important: 'Important', secondary: 'Secondaire',
+}
+const LEVEL_COLOR: Record<GoalRace['level'], string> = {
+  gty: '#f59e0b', main: '#8b5cf6', important: '#00c8e0', secondary: '#6b7280',
+}
+
 interface TrainingPlanForm {
   // Bloc 0
   sport_principal: string
   sports_hybride: { sport: string; importance: 'principal' | 'secondaire' | 'complementaire' }[]
+  goal_races: GoalRace[]
   course_cible_nom: string
   course_cible_date: string
   courses_secondaires: { nom: string; date: string; importance: 'B' | 'C' }[]
@@ -1957,6 +2001,7 @@ function tpLabelStyle(): React.CSSProperties {
 const DEFAULT_FORM: TrainingPlanForm = {
   sport_principal: '',
   sports_hybride: [],
+  goal_races: [],
   course_cible_nom: '',
   course_cible_date: '',
   courses_secondaires: [],
@@ -2338,6 +2383,7 @@ function TrainingPlanFlow({
   const [showMergeChoice, setShowMergeChoice] = useState(false)
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null)
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied'>('idle')
+  const [goalRacesLoading, setGoalRacesLoading] = useState(true)
 
   function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -2346,6 +2392,76 @@ function TrainingPlanFlow({
   function toggleArr<T>(arr: T[], val: T): T[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
   }
+
+  // ── Goal races helpers ─────────────────────────────────────────
+  function updateGoalRace(idx: number, patch: Partial<GoalRace>) {
+    setForm(prev => ({ ...prev, goal_races: prev.goal_races.map((r, i) => i === idx ? { ...r, ...patch } : r) }))
+  }
+
+  function setGoalRaceLevel(idx: number, level: GoalRace['level']) {
+    setForm(prev => {
+      const prevGty = prev.goal_races.findIndex((r, i) => i !== idx && r.level === 'gty')
+      const next = prev.goal_races.map((r, i) => {
+        if (i === idx) return { ...r, level }
+        if (level === 'gty' && r.level === 'gty') return { ...r, level: 'important' as const }
+        return r
+      })
+      // Sync DB for DB-backed races
+      const race = next[idx]
+      if (race.id) void syncRaceLevel(race.id, level)
+      if (level === 'gty' && prevGty >= 0 && prev.goal_races[prevGty].id) {
+        void syncRaceLevel(prev.goal_races[prevGty].id!, 'important')
+      }
+      return { ...prev, goal_races: next }
+    })
+  }
+
+  async function syncRaceLevel(raceId: string, level: string) {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      await sb.from('planned_races').update({ level }).eq('id', raceId)
+    } catch { /* silent */ }
+  }
+
+  // ── Fetch planned_races on mount ───────────────────────────────
+  useEffect(() => {
+    async function fetchGoalRaces() {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('planned_races')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: true })
+        if (data && data.length > 0) {
+          const races: GoalRace[] = (data as PlannedRaceRow[]).map(r => ({
+            id: r.id,
+            nom: r.name,
+            date: r.date,
+            sport: r.sport,
+            level: (r.level ?? 'important') as GoalRace['level'],
+            goal_libre: r.goal ?? '',
+            run_distance: r.run_distance ?? undefined,
+            tri_distance: r.tri_distance ?? undefined,
+            hyrox_format: r.hyrox_category ?? undefined,
+            hyrox_gender: r.hyrox_gender ?? undefined,
+            goal_time: r.goal_time ?? undefined,
+            tri_goal_swim: r.goal_swim_time ?? undefined,
+            tri_goal_bike: r.goal_bike_time ?? undefined,
+            tri_goal_run: r.goal_run_time ?? undefined,
+          }))
+          setForm(prev => ({ ...prev, goal_races: races }))
+        }
+      } finally {
+        setGoalRacesLoading(false)
+      }
+    }
+    void fetchGoalRaces()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Supabase context fetch ─────────────────────────────────────
   async function fetchAthleteContext() {
@@ -3431,14 +3547,14 @@ function TrainingPlanFlow({
           <div>
             <span style={tpLabelStyle()}>Sport principal</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {['Running', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox', 'Triathlon', 'Hybride'].map(s => (
+              {['Running', 'Trail', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox', 'Triathlon', 'Hybride'].map(s => (
                 <button key={s} onClick={() => setField('sport_principal', s)} style={tpPillStyle(form.sport_principal === s)}>{s}</button>
               ))}
             </div>
             {form.sport_principal === 'Hybride' && (
               <div style={{ marginTop: 10 }}>
                 <span style={{ ...tpLabelStyle(), marginBottom: 6 }}>Sports et importance :</span>
-                {(['Running', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox'] as const).map(sp => {
+                {(['Running', 'Trail', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox'] as const).map(sp => {
                   const entry = form.sports_hybride.find(e => e.sport === sp)
                   return (
                     <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -3462,69 +3578,211 @@ function TrainingPlanFlow({
             )}
           </div>
 
-          {/* Course cible */}
+          {/* ── Goal of the Year ─────────────────────────────── */}
           <div>
-            <span style={tpLabelStyle()}>Course ou événement cible</span>
-            <input
-              type="text"
-              placeholder="Ex: Marathon de Paris, Ironman Nice..."
-              value={form.course_cible_nom}
-              onChange={e => setField('course_cible_nom', e.target.value)}
-              style={{ ...tpInputStyle(), marginBottom: 6 }}
-            />
-            <input
-              type="date"
-              value={form.course_cible_date}
-              onChange={e => setField('course_cible_date', e.target.value)}
-              style={tpInputStyle()}
-            />
-          </div>
-
-          {/* Courses secondaires */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ ...tpLabelStyle(), margin: 0 }}>Autres courses (B/C)</span>
-              {form.courses_secondaires.length < 5 && (
-                <button
-                  onClick={() => setField('courses_secondaires', [...form.courses_secondaires, { nom: '', date: '', importance: 'B' }])}
-                  style={{ fontSize: 11, color: '#8b5cf6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-                >
-                  + Ajouter
-                </button>
-              )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={tpLabelStyle()}>Goal of the Year</span>
+              <button
+                onClick={() => setField('goal_races', [...form.goal_races, { nom: '', date: '', sport: 'Running', level: 'important', goal_libre: '' }])}
+                style={{ fontSize: 11, color: '#8b5cf6', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 700 }}
+              >+ Course</button>
             </div>
-            {form.courses_secondaires.map((c, i) => (
-              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                <input
-                  type="text"
-                  placeholder="Nom course"
-                  value={c.nom}
-                  onChange={e => {
-                    const next = [...form.courses_secondaires]
-                    next[i] = { ...next[i], nom: e.target.value }
-                    setField('courses_secondaires', next)
-                  }}
-                  style={{ ...tpInputStyle(), flex: 2 }}
-                />
-                <input
-                  type="date"
-                  value={c.date}
-                  onChange={e => {
-                    const next = [...form.courses_secondaires]
-                    next[i] = { ...next[i], date: e.target.value }
-                    setField('courses_secondaires', next)
-                  }}
-                  style={{ ...tpInputStyle(), flex: 1 }}
-                />
-                {(['B', 'C'] as const).map(imp => (
-                  <button key={imp} onClick={() => {
-                    const next = [...form.courses_secondaires]
-                    next[i] = { ...next[i], importance: imp }
-                    setField('courses_secondaires', next)
-                  }} style={tpPillStyle(c.importance === imp)}>{imp}</button>
-                ))}
-                <button onClick={() => setField('courses_secondaires', form.courses_secondaires.filter((_, j) => j !== i))}
-                  style={{ fontSize: 14, color: 'var(--ai-dim)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px' }}>×</button>
+
+            {/* Chargement */}
+            {goalRacesLoading && (
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', textAlign: 'center', padding: '12px 0' }}>Chargement du Race Calendar…</p>
+            )}
+
+            {/* Aucune course */}
+            {!goalRacesLoading && form.goal_races.length === 0 && (
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
+                Aucune course dans ton Race Calendar. Clique &quot;+ Course&quot; pour en ajouter une.
+              </p>
+            )}
+
+            {/* Cards */}
+            {form.goal_races.map((race, idx) => (
+              <div key={idx} style={{ border: `1px solid ${LEVEL_COLOR[race.level]}44`, borderRadius: 10, padding: '10px 12px', marginBottom: 8, background: `${LEVEL_COLOR[race.level]}06` }}>
+
+                {/* ─ En-tête : nom · date · × ─ */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    {race.id ? (
+                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: 0 }}>{race.nom}</p>
+                    ) : (
+                      <input type="text" placeholder="Nom de la course" value={race.nom}
+                        onChange={e => updateGoalRace(idx, { nom: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 12, width: '100%' }} />
+                    )}
+                    <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '2px 0 0' }}>
+                      {race.date ? new Date(race.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : (
+                        <input type="date" value={race.date}
+                          onChange={e => updateGoalRace(idx, { date: e.target.value })}
+                          style={{ ...tpInputStyle(), padding: '3px 6px', fontSize: 11, marginTop: 4 }} />
+                      )}
+                    </p>
+                  </div>
+                  <button onClick={() => setField('goal_races', form.goal_races.filter((_, i) => i !== idx))}
+                    style={{ fontSize: 16, lineHeight: 1, color: 'var(--ai-dim)', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
+                </div>
+
+                {/* ─ Niveau (GTY / Principal / Important / Secondaire) ─ */}
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                  {(['gty', 'main', 'important', 'secondary'] as const).map(lv => (
+                    <button key={lv} onClick={() => setGoalRaceLevel(idx, lv)} style={{
+                      padding: '4px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                      border: `1px solid ${LEVEL_COLOR[lv]}`,
+                      background: race.level === lv ? LEVEL_COLOR[lv] : 'transparent',
+                      color: race.level === lv ? '#fff' : LEVEL_COLOR[lv],
+                      transition: 'all 0.12s',
+                    }}>{LEVEL_LABEL[lv]}</button>
+                  ))}
+                </div>
+
+                {/* ─ Sport ─ */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                  {(['Running', 'Trail', 'Cyclisme', 'Triathlon', 'Hyrox', 'Natation', 'Aviron'] as const).map(sp => (
+                    <button key={sp} onClick={() => updateGoalRace(idx, { sport: sp, run_distance: undefined, tri_distance: undefined, hyrox_format: undefined, velo_type: undefined, aviron_format: undefined, natation_type: undefined })}
+                      style={tpPillStyle(race.sport === sp)}>{sp}</button>
+                  ))}
+                </div>
+
+                {/* ─ Sous-catégories Running ─ */}
+                {race.sport === 'Running' && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                    {['5km', '10km', 'Semi', 'Marathon', '100km'].map(d => (
+                      <button key={d} onClick={() => updateGoalRace(idx, { run_distance: d })} style={tpPillStyle(race.run_distance === d)}>{d}</button>
+                    ))}
+                  </div>
+                )}
+
+                {/* ─ Sous-catégories Trail ─ */}
+                {race.sport === 'Trail' && (
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                      {['10km', '20km', 'Marathon (~42km)', '50km', '100km', 'Ultra (>100km)'].map(d => (
+                        <button key={d} onClick={() => updateGoalRace(idx, { run_distance: d })} style={tpPillStyle(race.run_distance === d)}>{d}</button>
+                      ))}
+                    </div>
+                    <input type="text" placeholder="Dénivelé positif (ex: 3 500 m)" value={race.trail_elevation ?? ''}
+                      onChange={e => updateGoalRace(idx, { trail_elevation: e.target.value })}
+                      style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, width: '100%' }} />
+                  </div>
+                )}
+
+                {/* ─ Sous-catégories Triathlon ─ */}
+                {race.sport === 'Triathlon' && (
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                      {['XS (Super Sprint)', 'S (Sprint)', 'M (Olympique)', 'Ironman 70.3', 'Ironman'].map(d => (
+                        <button key={d} onClick={() => updateGoalRace(idx, { tri_distance: d })} style={tpPillStyle(race.tri_distance === d)}>{d}</button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                      <input type="text" placeholder="Temps total (ex: 4:30:00)" value={race.tri_goal_total ?? ''}
+                        onChange={e => updateGoalRace(idx, { tri_goal_total: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                      <input type="text" placeholder="Nage (ex: 35:00)" value={race.tri_goal_swim ?? ''}
+                        onChange={e => updateGoalRace(idx, { tri_goal_swim: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                      <input type="text" placeholder="Vélo (ex: 2:20:00)" value={race.tri_goal_bike ?? ''}
+                        onChange={e => updateGoalRace(idx, { tri_goal_bike: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                      <input type="text" placeholder="Course (ex: 1:35:00)" value={race.tri_goal_run ?? ''}
+                        onChange={e => updateGoalRace(idx, { tri_goal_run: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ─ Sous-catégories Hyrox ─ */}
+                {race.sport === 'Hyrox' && (
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 5 }}>
+                      {(['Solo Open', 'Solo Pro', 'Doubles Mixte', 'Doubles Men', 'Doubles Women', 'Relay 4x'] as const).map(f => (
+                        <button key={f} onClick={() => updateGoalRace(idx, { hyrox_format: f })} style={tpPillStyle(race.hyrox_format === f)}>{f}</button>
+                      ))}
+                    </div>
+                    {(race.hyrox_format === 'Solo Open' || race.hyrox_format === 'Solo Pro') && (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {(['Homme', 'Femme'] as const).map(g => (
+                          <button key={g} onClick={() => updateGoalRace(idx, { hyrox_gender: g })} style={tpPillStyle(race.hyrox_gender === g)}>{g}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ─ Sous-catégories Cyclisme ─ */}
+                {race.sport === 'Cyclisme' && (
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                      {(['Course un jour', 'Cyclosportive', 'Course par étapes'] as const).map(t => (
+                        <button key={t} onClick={() => updateGoalRace(idx, { velo_type: t })} style={tpPillStyle(race.velo_type === t)}>{t}</button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                      <input type="text" placeholder="Distance (ex: 170 km)" value={race.velo_distance ?? ''}
+                        onChange={e => updateGoalRace(idx, { velo_distance: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                      <input type="text" placeholder="Dénivelé (ex: 4 200 m)" value={race.velo_elevation ?? ''}
+                        onChange={e => updateGoalRace(idx, { velo_elevation: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                      <input type="text" placeholder="Altitude max (ex: 2 642 m)" value={race.velo_altitude_max ?? ''}
+                        onChange={e => updateGoalRace(idx, { velo_altitude_max: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                      <input type="text" placeholder="Cols (ex: 3 cols, Galibier…)" value={race.velo_cols ?? ''}
+                        onChange={e => updateGoalRace(idx, { velo_cols: e.target.value })}
+                        style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ─ Sous-catégories Aviron ─ */}
+                {race.sport === 'Aviron' && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                    {(['Ergomètre 2000m', 'Ergomètre 500m', 'Ergomètre 6000m', 'Ergomètre 30min', 'En eau 2000m (1x)', 'En eau 2000m (2x)', 'En eau 2000m (4-)', 'En eau 2000m (8+)', 'Head race', 'Aviron de mer'] as const).map(f => (
+                      <button key={f} onClick={() => updateGoalRace(idx, { aviron_format: f })} style={tpPillStyle(race.aviron_format === f)}>{f}</button>
+                    ))}
+                  </div>
+                )}
+
+                {/* ─ Sous-catégories Natation ─ */}
+                {race.sport === 'Natation' && (
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
+                      {(['Open water', 'Piscine'] as const).map(t => (
+                        <button key={t} onClick={() => updateGoalRace(idx, { natation_type: t, natation_distance: undefined })} style={tpPillStyle(race.natation_type === t)}>{t}</button>
+                      ))}
+                    </div>
+                    {race.natation_type === 'Open water' && (
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {['1 km', '2.5 km', '5 km', '10 km', '25 km'].map(d => (
+                          <button key={d} onClick={() => updateGoalRace(idx, { natation_distance: d })} style={tpPillStyle(race.natation_distance === d)}>{d}</button>
+                        ))}
+                      </div>
+                    )}
+                    {race.natation_type === 'Piscine' && (
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {['50 m', '100 m', '200 m', '400 m', '800 m', '1 500 m'].map(d => (
+                          <button key={d} onClick={() => updateGoalRace(idx, { natation_distance: d })} style={tpPillStyle(race.natation_distance === d)}>{d}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ─ Temps cible (Running, Trail, Aviron, Natation) ─ */}
+                {(race.sport === 'Running' || race.sport === 'Trail' || race.sport === 'Aviron' || race.sport === 'Natation' || race.sport === 'Cyclisme') && (
+                  <input type="text" placeholder="Temps cible (ex: 3:30:00)" value={race.goal_time ?? ''}
+                    onChange={e => updateGoalRace(idx, { goal_time: e.target.value })}
+                    style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, marginBottom: 6, width: '100%' }} />
+                )}
+
+                {/* ─ Objectif libre ─ */}
+                <input type="text" placeholder="Objectif personnel (finir, podium, chrono, sensations…)" value={race.goal_libre}
+                  onChange={e => updateGoalRace(idx, { goal_libre: e.target.value })}
+                  style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, width: '100%' }} />
               </div>
             ))}
           </div>

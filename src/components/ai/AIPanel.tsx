@@ -6155,8 +6155,8 @@ export default function AIPanel({
                         return (
                           <div style={{
                             flex: 1, minWidth: 0,
-                            background: '#161B24',
-                            border: '1px solid #1E2533',
+                            background: 'var(--ai-bg2)',
+                            border: '1px solid var(--ai-border)',
                             borderRadius: '4px 18px 18px 18px',
                             padding: '10px 14px 10px 14px',
                             animation: 'ai_msg_in 0.15s ease both',
@@ -6189,8 +6189,8 @@ export default function AIPanel({
                     </div>
                     <div style={{
                       padding: '8px 14px',
-                      background: '#161B24',
-                      border: '1px solid #1E2533',
+                      background: 'var(--ai-bg2)',
+                      border: '1px solid var(--ai-border)',
                       borderRadius: '4px 18px 18px 18px',
                       display: 'flex', alignItems: 'center',
                     }}>

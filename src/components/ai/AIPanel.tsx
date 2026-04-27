@@ -1897,13 +1897,26 @@ interface TrainingPlanForm {
   precision_sante: string
   // Bloc 5
   blocs_custom: boolean
-  blocs_custom_detail: { nom: string; type: string; duree_semaines: number }[]
+  blocs_custom_detail: { nom: string; type: string; duree_semaines: number; discipline?: string }[]
   entree_programme: 'prudent' | 'intense' | ''
   reaction_volume: 'tres_bien' | 'bien' | 'mal' | ''
   reaction_intensite: 'rapide' | '48h' | 'saturation' | ''
   type_seances: 'courtes' | 'longues' | 'mixte' | ''
   connaissance_de_soi: string
   precision_methode: string
+  // Entraînements spéciaux
+  heat_training: boolean
+  heat_training_freq: '1' | '2' | ''
+  altitude_training: boolean
+  altitude_training_weeks: number
+  jeune_entraine: boolean
+  jeune_entraine_freq: '1' | '2' | ''
+  double_entrainement: boolean
+  double_entrainement_jours: string[]
+  entrainement_nocturne: boolean
+  brick_training: boolean
+  brick_training_freq: string
+  natation_eau_libre: boolean
   // Bloc 6
   sommeil_heures: number
   fatigue_travail: 'physique' | 'mental' | 'les_deux' | 'faible' | ''
@@ -2078,6 +2091,18 @@ const DEFAULT_FORM: TrainingPlanForm = {
   type_seances: '',
   connaissance_de_soi: '',
   precision_methode: '',
+  heat_training: false,
+  heat_training_freq: '',
+  altitude_training: false,
+  altitude_training_weeks: 2,
+  jeune_entraine: false,
+  jeune_entraine_freq: '',
+  double_entrainement: false,
+  double_entrainement_jours: [],
+  entrainement_nocturne: false,
+  brick_training: false,
+  brick_training_freq: '',
+  natation_eau_libre: false,
   sommeil_heures: 7,
   fatigue_travail: '',
   stress_annee: '',
@@ -4279,22 +4304,49 @@ function TrainingPlanFlow({
       })()
 
       // ── BLOC 5 : Méthodes ────────────────────────────────────
-      case 5: return (
+      case 5: return (() => {
+        const gtyRace   = form.goal_races.find(r => r.level === 'gty')
+        const mainRace  = form.goal_races.find(r => r.level === 'main')
+        const raceSport = (gtyRace ?? mainRace)?.sport ?? ''
+        const objSport  = (raceSport || form.sport_principal).toLowerCase()
+        const isTri        = objSport === 'triathlon'
+        const isHyrox      = objSport === 'hyrox'
+        const isRunOrTrail = objSport === 'running' || objSport === 'trail'
+        const isNatation   = objSport === 'natation'
+
+        const BLOC_TYPES = ['Aérobie', 'VMA/PMA', 'Seuil', 'Spécifique', 'Deload', ...(isRunOrTrail ? ['Hills'] : [])]
+        const TRI_DISCS   = ['Natation', 'Vélo', 'Run', 'Muscu']
+        const HYROX_DISCS = ['Run', 'Muscu', 'Spé Hyrox', 'Vélo']
+
+        // Helper compact inline pour les toggles spéciaux
+        const SpToggle = ({ label, on, onToggle }: { label: string; on: boolean; onToggle: (v: boolean) => void }) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 12, color: 'var(--text)' }}>{label}</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => onToggle(true)}  style={tpPillStyle(on)}>Oui</button>
+              <button onClick={() => onToggle(false)} style={tpPillStyle(!on)}>Non</button>
+            </div>
+          </div>
+        )
+
+        return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
             Méthodes et périodisation
           </p>
 
+          {/* ── Blocs custom ───────────────────────────────────── */}
           <div>
             <span style={tpLabelStyle()}>Blocs custom</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.blocs_custom ? 10 : 0 }}>
               <button onClick={() => setField('blocs_custom', false)} style={tpPillStyle(!form.blocs_custom)}>Laisser l&apos;IA décider</button>
-              <button onClick={() => setField('blocs_custom', true)} style={tpPillStyle(form.blocs_custom)}>Définir mes blocs</button>
+              <button onClick={() => setField('blocs_custom', true)}  style={tpPillStyle(form.blocs_custom)}>Définir mes blocs</button>
             </div>
             {form.blocs_custom && (
               <div>
                 {form.blocs_custom_detail.map((b, i) => (
                   <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                    {/* Nom + supprimer */}
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
                       <input type="text" placeholder="Nom du bloc" value={b.nom} onChange={e => {
                         const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], nom: e.target.value }; setField('blocs_custom_detail', next)
@@ -4302,22 +4354,34 @@ function TrainingPlanFlow({
                       <button onClick={() => setField('blocs_custom_detail', form.blocs_custom_detail.filter((_, j) => j !== i))}
                         style={{ fontSize: 14, color: 'var(--ai-dim)', background: 'transparent', border: 'none', cursor: 'pointer' }}>×</button>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-                      {(['Base', 'VMA', 'Seuil', 'Spécifique', 'Deload'] as const).map(t => (
+                    {/* Discipline — Tri ou Hyrox seulement */}
+                    {(isTri || isHyrox) && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                        {(isTri ? TRI_DISCS : HYROX_DISCS).map(d => (
+                          <button key={d} onClick={() => {
+                            const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], discipline: d }; setField('blocs_custom_detail', next)
+                          }} style={tpPillStyle(b.discipline === d)}>{d}</button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Type */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                      {BLOC_TYPES.map(t => (
                         <button key={t} onClick={() => {
                           const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], type: t }; setField('blocs_custom_detail', next)
                         }} style={tpPillStyle(b.type === t)}>{t}</button>
                       ))}
                     </div>
+                    {/* Durée */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>Durée : {b.duree_semaines} sem.</span>
+                      <span style={{ fontSize: 11, color: 'var(--ai-dim)', whiteSpace: 'nowrap' }}>Durée : {b.duree_semaines} sem.</span>
                       <input type="range" min={1} max={12} value={b.duree_semaines} onChange={e => {
                         const next = [...form.blocs_custom_detail]; next[i] = { ...next[i], duree_semaines: Number(e.target.value) }; setField('blocs_custom_detail', next)
                       }} style={{ flex: 1, accentColor: '#8b5cf6' }} />
                     </div>
                   </div>
                 ))}
-                <button onClick={() => setField('blocs_custom_detail', [...form.blocs_custom_detail, { nom: '', type: 'Base', duree_semaines: 4 }])}
+                <button onClick={() => setField('blocs_custom_detail', [...form.blocs_custom_detail, { nom: '', type: 'Aérobie', duree_semaines: 4 }])}
                   style={{ fontSize: 12, color: '#8b5cf6', background: 'transparent', border: '1px dashed rgba(139,92,246,0.4)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', width: '100%' }}>
                   + Ajouter un bloc
                 </button>
@@ -4325,6 +4389,87 @@ function TrainingPlanFlow({
             )}
           </div>
 
+          {/* ── Entraînements spéciaux ─────────────────────────── */}
+          <div>
+            <span style={tpLabelStyle()}>Entraînements spéciaux</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
+
+              {/* Heat training */}
+              <div>
+                <SpToggle label="Heat training" on={form.heat_training} onToggle={v => setField('heat_training', v)} />
+                {form.heat_training && (
+                  <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                    <button onClick={() => setField('heat_training_freq', '1')} style={tpPillStyle(form.heat_training_freq === '1')}>1 fois/semaine</button>
+                    <button onClick={() => setField('heat_training_freq', '2')} style={tpPillStyle(form.heat_training_freq === '2')}>2 fois/semaine</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Altitude training */}
+              <div>
+                <SpToggle label="Altitude training" on={form.altitude_training} onToggle={v => setField('altitude_training', v)} />
+                {form.altitude_training && (
+                  <div style={{ marginTop: 6 }}>
+                    <span style={{ fontSize: 11, color: 'var(--ai-dim)', display: 'block', marginBottom: 2 }}>
+                      Durée : {form.altitude_training_weeks} semaine{form.altitude_training_weeks > 1 ? 's' : ''}
+                    </span>
+                    <input type="range" min={1} max={8} value={form.altitude_training_weeks}
+                      onChange={e => setField('altitude_training_weeks', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: '#8b5cf6' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ai-dim)' }}>
+                      <span>1 sem.</span><span>8 sem.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Jeûne entraîné */}
+              <div>
+                <SpToggle label="Jeûne entraîné" on={form.jeune_entraine} onToggle={v => setField('jeune_entraine', v)} />
+                {form.jeune_entraine && (
+                  <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                    <button onClick={() => setField('jeune_entraine_freq', '1')} style={tpPillStyle(form.jeune_entraine_freq === '1')}>1 fois/semaine</button>
+                    <button onClick={() => setField('jeune_entraine_freq', '2')} style={tpPillStyle(form.jeune_entraine_freq === '2')}>2 fois/semaine</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Double entraînement */}
+              <div>
+                <SpToggle label="Double entraînement" on={form.double_entrainement} onToggle={v => setField('double_entrainement', v)} />
+                {form.double_entrainement && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => (
+                      <button key={j} onClick={() => setField('double_entrainement_jours', toggleArr(form.double_entrainement_jours, j))}
+                        style={tpPillStyle(form.double_entrainement_jours.includes(j))}>{j}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Entraînement nocturne */}
+              <SpToggle label="Entraînement nocturne" on={form.entrainement_nocturne} onToggle={v => setField('entrainement_nocturne', v)} />
+
+              {/* Brick training — Triathlon uniquement */}
+              {isTri && (
+                <div>
+                  <SpToggle label="Brick training" on={form.brick_training} onToggle={v => setField('brick_training', v)} />
+                  {form.brick_training && (
+                    <input type="text" placeholder="Fréquence (ex : 1 fois/semaine)" value={form.brick_training_freq}
+                      onChange={e => setField('brick_training_freq', e.target.value)}
+                      style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, marginTop: 6 }} />
+                  )}
+                </div>
+              )}
+
+              {/* Natation en eau libre — Triathlon ou Natation */}
+              {(isTri || isNatation) && (
+                <SpToggle label="Natation en eau libre" on={form.natation_eau_libre} onToggle={v => setField('natation_eau_libre', v)} />
+              )}
+            </div>
+          </div>
+
+          {/* ── Reste du bloc 5 ────────────────────────────────── */}
           <div>
             <span style={tpLabelStyle()}>Entrée dans le programme</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -4337,16 +4482,16 @@ function TrainingPlanFlow({
             <span style={tpLabelStyle()}>Réaction au volume</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               <button onClick={() => setField('reaction_volume', 'tres_bien')} style={tpPillStyle(form.reaction_volume === 'tres_bien')}>Très bien — je récupère vite</button>
-              <button onClick={() => setField('reaction_volume', 'bien')} style={tpPillStyle(form.reaction_volume === 'bien')}>Bien — récupération normale</button>
-              <button onClick={() => setField('reaction_volume', 'mal')} style={tpPillStyle(form.reaction_volume === 'mal')}>Mal — je sature vite</button>
+              <button onClick={() => setField('reaction_volume', 'bien')}      style={tpPillStyle(form.reaction_volume === 'bien')}>Bien — récupération normale</button>
+              <button onClick={() => setField('reaction_volume', 'mal')}       style={tpPillStyle(form.reaction_volume === 'mal')}>Mal — je sature vite</button>
             </div>
           </div>
 
           <div>
             <span style={tpLabelStyle()}>Réaction à l&apos;intensité</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button onClick={() => setField('reaction_intensite', 'rapide')} style={tpPillStyle(form.reaction_intensite === 'rapide')}>Progressions rapides</button>
-              <button onClick={() => setField('reaction_intensite', '48h')} style={tpPillStyle(form.reaction_intensite === '48h')}>48h pour récupérer</button>
+              <button onClick={() => setField('reaction_intensite', 'rapide')}     style={tpPillStyle(form.reaction_intensite === 'rapide')}>Progressions rapides</button>
+              <button onClick={() => setField('reaction_intensite', '48h')}        style={tpPillStyle(form.reaction_intensite === '48h')}>48h pour récupérer</button>
               <button onClick={() => setField('reaction_intensite', 'saturation')} style={tpPillStyle(form.reaction_intensite === 'saturation')}>Saturation rapide</button>
             </div>
           </div>
@@ -4356,19 +4501,15 @@ function TrainingPlanFlow({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               <button onClick={() => setField('type_seances', 'courtes')} style={tpPillStyle(form.type_seances === 'courtes')}>Courtes et intenses</button>
               <button onClick={() => setField('type_seances', 'longues')} style={tpPillStyle(form.type_seances === 'longues')}>Longues et progressives</button>
-              <button onClick={() => setField('type_seances', 'mixte')} style={tpPillStyle(form.type_seances === 'mixte')}>Mixte</button>
+              <button onClick={() => setField('type_seances', 'mixte')}   style={tpPillStyle(form.type_seances === 'mixte')}>Mixte</button>
             </div>
           </div>
 
           <div>
             <span style={tpLabelStyle()}>Connaissance de soi * <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(obligatoire)</span></span>
-            <textarea
-              value={form.connaissance_de_soi}
-              onChange={e => setField('connaissance_de_soi', e.target.value)}
+            <textarea value={form.connaissance_de_soi} onChange={e => setField('connaissance_de_soi', e.target.value)}
               placeholder="Décrivez comment vous réagissez à l'entraînement, vos points forts, vos faiblesses, ce qui vous motive, vos difficultés habituelles, les types d'effort que vous aimez ou détestez..."
-              rows={4}
-              style={{ ...tpInputStyle(), resize: 'vertical' }}
-            />
+              rows={4} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
 
           <div>
@@ -4377,7 +4518,8 @@ function TrainingPlanFlow({
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
         </div>
-      )
+        )
+      })()
 
       // ── BLOC 6 : Récupération ────────────────────────────────
       case 6: return (

@@ -1924,6 +1924,22 @@ interface TrainingPlanForm {
   stress_detail: string
   outils_recuperation: string[]
   precision_recup: string
+  // Habitudes d'entraînement
+  easy_lundi: boolean
+  habitude_double_jours: string[]
+  repos_fixe_jours: string[]
+  seance_longue_jour: 'Samedi' | 'Dimanche' | 'Flexible' | ''
+  seance_cle_jour: string
+  entrainement_a_jeun: boolean
+  entrainement_a_jeun_freq: '1' | '2' | ''
+  // Suivi et récupération
+  hrv_mesure: boolean
+  hrv_outil: string
+  suivi_sommeil: boolean
+  suivi_sommeil_outil: string
+  alcool_regulier: boolean
+  cafeine_regulier: boolean
+  cafeine_timing: 'matin' | 'journee' | ''
   // Bloc 7
   plan_nutritionnel: 'structure' | 'intuitif' | 'non' | ''
   contraintes_alimentaires: string[]
@@ -2109,6 +2125,20 @@ const DEFAULT_FORM: TrainingPlanForm = {
   stress_detail: '',
   outils_recuperation: [],
   precision_recup: '',
+  easy_lundi: false,
+  habitude_double_jours: [],
+  repos_fixe_jours: [],
+  seance_longue_jour: '',
+  seance_cle_jour: '',
+  entrainement_a_jeun: false,
+  entrainement_a_jeun_freq: '',
+  hrv_mesure: false,
+  hrv_outil: '',
+  suivi_sommeil: false,
+  suivi_sommeil_outil: '',
+  alcool_regulier: false,
+  cafeine_regulier: false,
+  cafeine_timing: '',
   plan_nutritionnel: '',
   contraintes_alimentaires: [],
   complements: [],
@@ -4565,6 +4595,151 @@ function TrainingPlanFlow({
               {['Massage', 'Bain froid', 'Compression', 'Sommeil optimisé', 'Aucun', 'Autres'].map(t => (
                 <button key={t} onClick={() => setField('outils_recuperation', toggleArr(form.outils_recuperation, t))} style={tpPillStyle(form.outils_recuperation.includes(t))}>{t}</button>
               ))}
+            </div>
+          </div>
+
+          {/* ── Habitudes d'entraînement ─────────────────────── */}
+          <div>
+            <span style={tpLabelStyle()}>Habitudes d&apos;entraînement</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
+
+              {/* Easy lundi */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, color: 'var(--text)' }}>Easy lundi</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => setField('easy_lundi', true)}  style={tpPillStyle(form.easy_lundi)}>Oui</button>
+                  <button onClick={() => setField('easy_lundi', false)} style={tpPillStyle(!form.easy_lundi)}>Non</button>
+                </div>
+              </div>
+
+              {/* Double entraînement */}
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Double entraînement — jours</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => (
+                    <button key={j} onClick={() => setField('habitude_double_jours', toggleArr(form.habitude_double_jours, j))}
+                      style={tpPillStyle(form.habitude_double_jours.includes(j))}>{j}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Repos fixe */}
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Repos fixe — jours</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => (
+                    <button key={j} onClick={() => setField('repos_fixe_jours', toggleArr(form.repos_fixe_jours, j))}
+                      style={tpPillStyle(form.repos_fixe_jours.includes(j))}>{j}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Séance longue */}
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Séance longue — jour préféré</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['Samedi', 'Dimanche', 'Flexible'] as const).map(j => (
+                    <button key={j} onClick={() => setField('seance_longue_jour', j)} style={tpPillStyle(form.seance_longue_jour === j)}>{j}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Séance clé */}
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Séance clé (intensité) — jour préféré</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map(j => (
+                    <button key={j} onClick={() => setField('seance_cle_jour', form.seance_cle_jour === j ? '' : j)}
+                      style={tpPillStyle(form.seance_cle_jour === j)}>{j}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Entraînement à jeun */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.entrainement_a_jeun ? 6 : 0 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>Entraînement à jeun</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setField('entrainement_a_jeun', true)}  style={tpPillStyle(form.entrainement_a_jeun)}>Oui</button>
+                    <button onClick={() => setField('entrainement_a_jeun', false)} style={tpPillStyle(!form.entrainement_a_jeun)}>Non</button>
+                  </div>
+                </div>
+                {form.entrainement_a_jeun && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setField('entrainement_a_jeun_freq', '1')} style={tpPillStyle(form.entrainement_a_jeun_freq === '1')}>1 fois/semaine</button>
+                    <button onClick={() => setField('entrainement_a_jeun_freq', '2')} style={tpPillStyle(form.entrainement_a_jeun_freq === '2')}>2 fois/semaine</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Suivi et récupération ─────────────────────────── */}
+          <div>
+            <span style={tpLabelStyle()}>Suivi et récupération</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
+
+              {/* HRV */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.hrv_mesure ? 6 : 0 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>HRV mesuré</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setField('hrv_mesure', true)}  style={tpPillStyle(form.hrv_mesure)}>Oui</button>
+                    <button onClick={() => setField('hrv_mesure', false)} style={tpPillStyle(!form.hrv_mesure)}>Non</button>
+                  </div>
+                </div>
+                {form.hrv_mesure && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {['Whoop', 'Garmin', 'Oura', 'Autre'].map(o => (
+                      <button key={o} onClick={() => setField('hrv_outil', form.hrv_outil === o ? '' : o)} style={tpPillStyle(form.hrv_outil === o)}>{o}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Suivi du sommeil */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.suivi_sommeil ? 6 : 0 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>Suivi du sommeil</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setField('suivi_sommeil', true)}  style={tpPillStyle(form.suivi_sommeil)}>Oui</button>
+                    <button onClick={() => setField('suivi_sommeil', false)} style={tpPillStyle(!form.suivi_sommeil)}>Non</button>
+                  </div>
+                </div>
+                {form.suivi_sommeil && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {['Whoop', 'Garmin', 'Oura', 'Autre'].map(o => (
+                      <button key={o} onClick={() => setField('suivi_sommeil_outil', form.suivi_sommeil_outil === o ? '' : o)} style={tpPillStyle(form.suivi_sommeil_outil === o)}>{o}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Alcool */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, color: 'var(--text)' }}>Consommation d&apos;alcool régulière</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => setField('alcool_regulier', true)}  style={tpPillStyle(form.alcool_regulier)}>Oui</button>
+                  <button onClick={() => setField('alcool_regulier', false)} style={tpPillStyle(!form.alcool_regulier)}>Non</button>
+                </div>
+              </div>
+
+              {/* Caféine */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.cafeine_regulier ? 6 : 0 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>Consommateur régulier de caféine</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setField('cafeine_regulier', true)}  style={tpPillStyle(form.cafeine_regulier)}>Oui</button>
+                    <button onClick={() => setField('cafeine_regulier', false)} style={tpPillStyle(!form.cafeine_regulier)}>Non</button>
+                  </div>
+                </div>
+                {form.cafeine_regulier && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setField('cafeine_timing', 'matin')}   style={tpPillStyle(form.cafeine_timing === 'matin')}>Matin uniquement</button>
+                    <button onClick={() => setField('cafeine_timing', 'journee')} style={tpPillStyle(form.cafeine_timing === 'journee')}>Toute la journée</button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

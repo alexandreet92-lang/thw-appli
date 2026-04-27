@@ -2405,6 +2405,7 @@ function TrainingPlanFlow({
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null)
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied'>('idle')
   const [goalRacesLoading, setGoalRacesLoading] = useState(true)
+  const [personalRecords, setPersonalRecords] = useState<{ sport: string; distance_label: string; performance: string }[]>([])
 
   function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -2445,20 +2446,25 @@ function TrainingPlanFlow({
     } catch { /* silent */ }
   }
 
-  // ── Fetch planned_races on mount ───────────────────────────────
+  // ── Fetch planned_races + personal_records on mount ───────────
   useEffect(() => {
-    async function fetchGoalRaces() {
+    async function fetchInitialData() {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
-        const { data } = await sb.from('planned_races')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('date', { ascending: true })
-        if (data && data.length > 0) {
-          const races: GoalRace[] = (data as PlannedRaceRow[]).map(r => ({
+
+        const [racesRes, recsRes] = await Promise.all([
+          sb.from('planned_races').select('*').eq('user_id', user.id).order('date', { ascending: true }),
+          sb.from('personal_records')
+            .select('sport, distance_label, performance')
+            .eq('user_id', user.id)
+            .order('achieved_at', { ascending: false }),
+        ])
+
+        if (racesRes.data && racesRes.data.length > 0) {
+          const races: GoalRace[] = (racesRes.data as PlannedRaceRow[]).map(r => ({
             id: r.id,
             nom: r.name,
             date: r.date,
@@ -2476,11 +2482,17 @@ function TrainingPlanFlow({
           }))
           setForm(prev => ({ ...prev, goal_races: races }))
         }
+
+        if (recsRes.data) {
+          const recs = (recsRes.data as { sport: string; distance_label: string; performance: string }[])
+            .filter(r => r.sport && r.distance_label && r.performance)
+          setPersonalRecords(recs)
+        }
       } finally {
         setGoalRacesLoading(false)
       }
     }
-    void fetchGoalRaces()
+    void fetchInitialData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -3876,8 +3888,58 @@ function TrainingPlanFlow({
 
           <div>
             <span style={tpLabelStyle()}>Meilleure performance</span>
-            <input type="text" placeholder="Ex: 3h45 marathon, 5h ironman..." value={form.meilleure_performance}
-              onChange={e => setField('meilleure_performance', e.target.value)} style={tpInputStyle()} />
+            {personalRecords.length > 0 ? (
+              <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', marginTop: 6 }}>
+                {(() => {
+                  const ORDER = ['run', 'trail', 'bike', 'triathlon', 'swim', 'rowing', 'hyrox']
+                  const LABELS: Record<string, string> = {
+                    run: 'Running', trail: 'Trail', bike: 'Cyclisme',
+                    triathlon: 'Triathlon', swim: 'Natation', rowing: 'Aviron', hyrox: 'Hyrox',
+                  }
+                  // Deduplicate: most recent record per (sport, distance_label)
+                  const seen = new Set<string>()
+                  const deduped = personalRecords.filter(r => {
+                    const key = `${r.sport}||${r.distance_label}`
+                    if (seen.has(key)) return false
+                    seen.add(key)
+                    return true
+                  })
+                  const groups: Record<string, typeof deduped> = {}
+                  for (const r of deduped) {
+                    if (!groups[r.sport]) groups[r.sport] = []
+                    groups[r.sport].push(r)
+                  }
+                  const sports = ORDER.filter(s => groups[s])
+                  if (sports.length === 0) return null
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {sports.map(sp => (
+                        <div key={sp}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            {LABELS[sp] ?? sp}
+                          </div>
+                          {groups[sp].map(r => (
+                            <div key={r.distance_label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, paddingBottom: 3 }}>
+                              <span style={{ color: 'var(--ai-dim)' }}>{r.distance_label}</span>
+                              <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text)', fontWeight: 600 }}>{r.performance}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+                <a
+                  href="/performance"
+                  style={{ display: 'block', marginTop: 10, fontSize: 11, color: '#8b5cf6', textDecoration: 'none', textAlign: 'right' }}
+                >
+                  Mettre à jour mes records →
+                </a>
+              </div>
+            ) : (
+              <input type="text" placeholder="Ex: 3h45 marathon, 5h ironman..." value={form.meilleure_performance}
+                onChange={e => setField('meilleure_performance', e.target.value)} style={tpInputStyle()} />
+            )}
           </div>
 
           <div>

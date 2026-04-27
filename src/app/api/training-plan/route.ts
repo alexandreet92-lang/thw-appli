@@ -44,10 +44,9 @@ interface PlanSemaine {
   volume_h: number
   tss_semaine: number
   theme: string
-  // Semaines détaillées (S1-S2)
-  seances?: PlanSeance[]
-  // Semaines résumées (S3+)
   note_coach?: string
+  // Toutes les semaines ont des séances ; les blocs sont détaillés S1-S2 uniquement
+  seances?: PlanSeance[]
 }
 
 interface PlanPeriodisation {
@@ -94,13 +93,13 @@ const JSON_SCHEMA = `{
   ],
   "semaines": [
     {
-      "SEMAINES 1 et 2 — format détaillé": {
-        "numero": "number",
-        "type": "string",
-        "volume_h": "number",
-        "tss_semaine": "number",
-        "theme": "string (1 phrase courte)",
-        "seances": [
+      "numero": "number",
+      "type": "string",
+      "volume_h": "number",
+      "tss_semaine": "number",
+      "theme": "string (1 phrase courte)",
+      "note_coach": "string (1 phrase de coaching)",
+      "seances": [
           {
             "jour": "number (0=lundi, 6=dimanche)",
             "sport": "string",
@@ -109,7 +108,7 @@ const JSON_SCHEMA = `{
             "tss": "number",
             "intensite": "low | moderate | high | max",
             "heure": "string (ex: 06:30)",
-            "notes": "string (1 phrase)",
+            "notes": "string (1 phrase, ≤12 mots)",
             "rpe": "number",
             "blocs": [
               {
@@ -120,20 +119,11 @@ const JSON_SCHEMA = `{
                 "recup_min": "number",
                 "watts": "number | null",
                 "allure": "string | null",
-                "consigne": "string (1 phrase)"
+                "consigne": "string (1 phrase, ≤10 mots)"
               }
             ]
           }
-        ]
-      },
-      "SEMAINES 3+ — format résumé UNIQUEMENT": {
-        "numero": "number",
-        "type": "string",
-        "volume_h": "number",
-        "tss_semaine": "number",
-        "theme": "string (1 phrase courte)",
-        "note_coach": "string (1 phrase)"
-      }
+      ]
     }
   ],
   "conseils_adaptation": ["string (3 max)"],
@@ -312,13 +302,15 @@ ${JSON.stringify(sante ?? [], null, 2)}
 
 ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTANT :\n${JSON.stringify(programme_actuel ?? null, null, 2)}` : ''}
 
-INSTRUCTIONS CRITIQUES POUR LA TAILLE DE LA RÉPONSE :
-- Génère UNIQUEMENT les 2 premières semaines avec le détail complet des séances et des blocs.
-- Pour les semaines 3 et suivantes, inclure UNIQUEMENT : numero, type, volume_h, tss_semaine, theme, note_coach. SANS les séances ni les blocs.
+INSTRUCTIONS POUR LA GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
+- Génère le détail complet des séances (seances[]) pour TOUTES les semaines du plan, sans exception.
+- Pour chaque séance de chaque semaine : sport, titre, jour, duree_min, tss, intensite, heure, notes, rpe.
+- Les blocs détaillés (blocs[]) : UNIQUEMENT pour les semaines 1 et 2. Pour les semaines 3+, mettre blocs à [] (tableau vide).
+- Note_coach : OBLIGATOIRE pour chaque semaine, 1 phrase de coaching contextuelle.
 - Limite conseils_adaptation à 3 éléments maximum.
 - Limite points_cles à 3 éléments maximum.
-- Chaque "consigne" et "notes" doivent tenir en 1 phrase courte.
-- Cette contrainte est OBLIGATOIRE pour éviter la troncature du JSON.
+- Chaque "consigne" ≤ 10 mots, chaque "notes" ≤ 12 mots — concision obligatoire pour tenir dans les tokens.
+- Ne jamais omettre les séances d'une semaine, même en fin de plan.
 
 Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}

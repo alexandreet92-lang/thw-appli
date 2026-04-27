@@ -1069,8 +1069,7 @@ ${semaines.map((sem) => {
   </div>
   ${sem.theme ? `<p class="week-theme">${sem.theme}</p>` : ''}
   ${sem.note_coach ? `<p class="week-coach">${sem.note_coach}</p>` : ''}
-  ${seances.length === 0 ? '<p style="font-size:10px;color:#9ca3af;padding:4px 10px">Semaine de repos</p>' : `
-  <div class="sessions">
+  ${seances.length > 0 ? `<div class="sessions">
   ${seances.map((s: Record<string, unknown>) => {
     const rawSport   = typeof s.sport    === 'string' ? s.sport    : ''
     const titre      = typeof s.titre    === 'string' ? s.titre    : ''
@@ -1122,7 +1121,7 @@ ${semaines.map((sem) => {
     }).join('')}</div>` : ''}
     </div>`
   }).join('')}
-  </div>`}
+  </div>` : ''}
 </div>`
 }).join('')}
 

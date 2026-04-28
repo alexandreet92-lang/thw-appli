@@ -2841,6 +2841,15 @@ function YearDatasSubTab() {
   // Chart tooltips
   const [hoveredBar, setHoveredBar] = useState<{ year: string; val: number; svgX: number } | null>(null)
 
+  // Responsive
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   // ── Fetch ──────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -3268,151 +3277,297 @@ function YearDatasSubTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <SectionHeader label="Données annuelles" gradient="linear-gradient(180deg,#a855f7,#5b6fff)" />
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Mode toggle */}
-          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-            {(['auto', 'manual'] as const).map(m => (
-              <button key={m} onClick={() => {
-                setMode(m)
-                setSelectedYear(m === 'auto' ? 'all' : (allYears[0] ?? currentYear))
-                setEditYear(null)
-              }} style={{
-                padding: '5px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                background: mode === m ? '#5b6fff' : 'var(--bg-card2)',
-                color:      mode === m ? '#fff'    : 'var(--text-dim)',
-              }}>
-                {m === 'auto' ? 'Auto' : 'Manuel'}
-              </button>
-            ))}
+      {isMobile ? (
+        /* ── Mobile : 3 lignes ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <SectionHeader label="Données annuelles" gradient="linear-gradient(180deg,#a855f7,#5b6fff)" />
+
+          {/* Ligne 1 : toggle Auto/Manuel + sélecteur d'année */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['auto', 'manual'] as const).map(m => (
+                <button key={m} onClick={() => {
+                  setMode(m)
+                  setSelectedYear(m === 'auto' ? 'all' : (allYears[0] ?? currentYear))
+                  setEditYear(null)
+                }} style={{
+                  padding: '5px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                  background: mode === m ? '#5b6fff' : 'var(--bg-card2)',
+                  color:      mode === m ? '#fff'    : 'var(--text-dim)',
+                }}>
+                  {m === 'auto' ? 'Auto' : 'Manuel'}
+                </button>
+              ))}
+            </div>
+            <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
+              style={{ flex: 1, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
+              {mode === 'auto' && <option value="all">Toutes années</option>}
+              {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+            </select>
           </div>
-          {/* Year selector */}
-          <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
-            {mode === 'auto' && <option value="all">Toutes années</option>}
-            {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
-          </select>
-          {/* Add year */}
-          <div style={{ display: 'flex', gap: 3 }}>
+
+          {/* Ligne 2 : saisie d'année */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input
               type="number" value={addYearInput}
               onChange={e => setAddYearInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddYear()}
               placeholder="2023" min="2000" max="2035"
-              style={{ width: 58, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+              style={{ flex: 1, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
             />
             <button onClick={handleAddYear} style={{
-              padding: '5px 10px', borderRadius: 7, border: '1px solid #a855f7',
+              padding: '5px 12px', borderRadius: 7, border: '1px solid #a855f7',
               background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
             }}>+ Saisir</button>
           </div>
-          {/* Sync dropdown */}
-          <div ref={syncMenuRef} style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowSyncMenu(v => !v)}
-              disabled={syncing}
-              style={{
-                padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)',
-                background: showSyncMenu ? 'var(--bg-card2)' : 'var(--bg-card)',
-                color: 'var(--text)', fontSize: 11, fontWeight: 600,
-                cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
-                display: 'flex', alignItems: 'center', gap: 5, opacity: syncing ? 0.7 : 1,
-                transition: 'background 0.12s',
-              }}
-            >
-              {syncing ? 'Sync…' : 'Synchroniser'}
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
 
-            {showSyncMenu && !syncing && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 5px)', right: 0, zIndex: 200,
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 10, padding: 4, minWidth: 210,
-                boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
-              }}>
-                {/* Strava */}
-                <button
-                  onClick={() => void handleSync('strava')}
-                  disabled={!stravaConnected}
-                  style={{
-                    width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
-                    background: 'transparent', textAlign: 'left',
-                    cursor: stravaConnected ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    opacity: stravaConnected ? 1 : 0.5, color: 'var(--text)',
-                    fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { if (stravaConnected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FC4C02', flexShrink: 0 }} />
-                    Sync Strava
-                  </span>
-                  {!stravaConnected && (
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>Non connecté</span>
-                  )}
-                </button>
-
-                <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
-
-                {/* Garmin / Polar / Wahoo — bientôt disponible */}
-                {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
-                  <div key={p} style={{
-                    padding: '8px 11px', borderRadius: 7,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    opacity: 0.45, cursor: 'not-allowed',
-                    color: 'var(--text)', fontSize: 12, fontWeight: 500,
-                  }}>
+          {/* Ligne 3 : sync + import */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {/* Sync dropdown */}
+            <div ref={syncMenuRef} style={{ position: 'relative', flex: 1 }}>
+              <button
+                onClick={() => setShowSyncMenu(v => !v)}
+                disabled={syncing}
+                style={{
+                  width: '100%', padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)',
+                  background: showSyncMenu ? 'var(--bg-card2)' : 'var(--bg-card)',
+                  color: 'var(--text)', fontSize: 11, fontWeight: 600,
+                  cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, opacity: syncing ? 0.7 : 1,
+                  transition: 'background 0.12s',
+                }}
+              >
+                {syncing ? 'Sync…' : 'Synchroniser'}
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0 }}>
+                  <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {showSyncMenu && !syncing && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 5px)', left: 0, zIndex: 200,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 10, padding: 4, minWidth: 210,
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
+                }}>
+                  <button
+                    onClick={() => void handleSync('strava')}
+                    disabled={!stravaConnected}
+                    style={{
+                      width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                      background: 'transparent', textAlign: 'left',
+                      cursor: stravaConnected ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      opacity: stravaConnected ? 1 : 0.5, color: 'var(--text)',
+                      fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={e => { if (stravaConnected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                  >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
-                      Sync {p}
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FC4C02', flexShrink: 0 }} />
+                      Sync Strava
                     </span>
-                    <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600, marginLeft: 6, whiteSpace: 'nowrap' }}>
-                      Bientôt disponible
-                    </span>
-                  </div>
-                ))}
-              </div>
+                    {!stravaConnected && (
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>Non connecté</span>
+                    )}
+                  </button>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+                  {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
+                    <div key={p} style={{
+                      padding: '8px 11px', borderRadius: 7,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      opacity: 0.45, cursor: 'not-allowed',
+                      color: 'var(--text)', fontSize: 12, fontWeight: 500,
+                    }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
+                        Sync {p}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600, marginLeft: 6, whiteSpace: 'nowrap' }}>
+                        Bientôt disponible
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Import */}
+            {stravaConnected && (
+              <button
+                onClick={() => void handleImportHistory()}
+                disabled={importing || syncing}
+                style={{
+                  flex: 1, padding: '5px 11px', borderRadius: 7,
+                  border: '1px solid rgba(168,85,247,0.35)',
+                  background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
+                  color: '#a855f7', fontSize: 11, fontWeight: 600,
+                  cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'opacity 0.15s',
+                }}
+              >
+                {importing ? (
+                  <>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                    Import…
+                  </>
+                ) : (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+                    </svg>
+                    Importer
+                  </>
+                )}
+              </button>
             )}
           </div>
-
-          {/* Bouton import historique — distinct du sync */}
-          {stravaConnected && (
-            <button
-              onClick={() => void handleImportHistory()}
-              disabled={importing || syncing}
-              style={{
-                padding: '5px 11px', borderRadius: 7,
-                border: '1px solid rgba(168,85,247,0.35)',
-                background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
-                color: '#a855f7', fontSize: 11, fontWeight: 600,
-                cursor: importing || syncing ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
-                display: 'flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s',
-              }}
-            >
-              {importing ? (
-                <>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
-                  Import…
-                </>
-              ) : (
-                <>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
-                  </svg>
-                  Importer l&apos;historique Strava
-                </>
-              )}
-            </button>
-          )}
         </div>
-      </div>
+      ) : (
+        /* ── Desktop : une seule rangée (inchangé) ── */
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <SectionHeader label="Données annuelles" gradient="linear-gradient(180deg,#a855f7,#5b6fff)" />
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Mode toggle */}
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['auto', 'manual'] as const).map(m => (
+                <button key={m} onClick={() => {
+                  setMode(m)
+                  setSelectedYear(m === 'auto' ? 'all' : (allYears[0] ?? currentYear))
+                  setEditYear(null)
+                }} style={{
+                  padding: '5px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                  background: mode === m ? '#5b6fff' : 'var(--bg-card2)',
+                  color:      mode === m ? '#fff'    : 'var(--text-dim)',
+                }}>
+                  {m === 'auto' ? 'Auto' : 'Manuel'}
+                </button>
+              ))}
+            </div>
+            {/* Year selector */}
+            <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
+              {mode === 'auto' && <option value="all">Toutes années</option>}
+              {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+            </select>
+            {/* Add year */}
+            <div style={{ display: 'flex', gap: 3 }}>
+              <input
+                type="number" value={addYearInput}
+                onChange={e => setAddYearInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddYear()}
+                placeholder="2023" min="2000" max="2035"
+                style={{ width: 58, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+              />
+              <button onClick={handleAddYear} style={{
+                padding: '5px 10px', borderRadius: 7, border: '1px solid #a855f7',
+                background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>+ Saisir</button>
+            </div>
+            {/* Sync dropdown */}
+            <div ref={syncMenuRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowSyncMenu(v => !v)}
+                disabled={syncing}
+                style={{
+                  padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)',
+                  background: showSyncMenu ? 'var(--bg-card2)' : 'var(--bg-card)',
+                  color: 'var(--text)', fontSize: 11, fontWeight: 600,
+                  cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', gap: 5, opacity: syncing ? 0.7 : 1,
+                  transition: 'background 0.12s',
+                }}
+              >
+                {syncing ? 'Sync…' : 'Synchroniser'}
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0 }}>
+                  <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {showSyncMenu && !syncing && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 5px)', right: 0, zIndex: 200,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 10, padding: 4, minWidth: 210,
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
+                }}>
+                  {/* Strava */}
+                  <button
+                    onClick={() => void handleSync('strava')}
+                    disabled={!stravaConnected}
+                    style={{
+                      width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                      background: 'transparent', textAlign: 'left',
+                      cursor: stravaConnected ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      opacity: stravaConnected ? 1 : 0.5, color: 'var(--text)',
+                      fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={e => { if (stravaConnected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FC4C02', flexShrink: 0 }} />
+                      Sync Strava
+                    </span>
+                    {!stravaConnected && (
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>Non connecté</span>
+                    )}
+                  </button>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+                  {/* Garmin / Polar / Wahoo — bientôt disponible */}
+                  {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
+                    <div key={p} style={{
+                      padding: '8px 11px', borderRadius: 7,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      opacity: 0.45, cursor: 'not-allowed',
+                      color: 'var(--text)', fontSize: 12, fontWeight: 500,
+                    }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
+                        Sync {p}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600, marginLeft: 6, whiteSpace: 'nowrap' }}>
+                        Bientôt disponible
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Bouton import historique — distinct du sync */}
+            {stravaConnected && (
+              <button
+                onClick={() => void handleImportHistory()}
+                disabled={importing || syncing}
+                style={{
+                  padding: '5px 11px', borderRadius: 7,
+                  border: '1px solid rgba(168,85,247,0.35)',
+                  background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
+                  color: '#a855f7', fontSize: 11, fontWeight: 600,
+                  cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s',
+                }}
+              >
+                {importing ? (
+                  <>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                    Import…
+                  </>
+                ) : (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+                    </svg>
+                    Importer l&apos;historique Strava
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sync message */}
       {syncMsg && (
@@ -3550,7 +3705,7 @@ function YearDatasSubTab() {
         </div>
         {c1Sports.length > 0 ? (
           <>
-            <svg viewBox={`0 0 ${SVG_W} ${C1_H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+            <svg viewBox={`0 0 ${SVG_W} ${C1_H}`} className="perf-chart1-svg" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
               {/* Grid */}
               {[0, 0.5, 1].map(f => {
                 const y = C1_PT + c1PlotH * (1 - f)
@@ -3584,7 +3739,7 @@ function YearDatasSubTab() {
               ))}
             </svg>
             {/* Legend */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+            <div className="perf-chart1-legend" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
               {c1Sports.map(sp => (
                 <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 14, height: 3, borderRadius: 2, background: sp.color }} />
@@ -3675,12 +3830,14 @@ function YearDatasSubTab() {
                       <g key={yr} style={{ cursor: 'pointer' }}
                         onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
                         onClick={() => setSelectedYear(yr)}>
-                        <rect x={bx} y={by} width={barW} height={bh} rx={3} fill={col} opacity={hov ? 1 : 0.72} />
-                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={3} fill="none" stroke={col} strokeWidth="1.5" />}
-                        <text x={cx} y={svgH - 5} textAnchor="middle"
-                          style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
-                          {yr.slice(2)}
-                        </text>
+                        <rect x={bx} y={by} width={barW} height={bh} rx={4} fill={col} opacity={hov ? 1 : 0.72} />
+                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={4} fill="none" stroke={col} strokeWidth="1.5" />}
+                        {(!isMobile || barW >= 18) && (
+                          <text x={cx} y={svgH - 5} textAnchor="middle"
+                            style={{ fontSize: isMobile ? 8 : 9, fontFamily: 'DM Mono,monospace', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
+                            {yr.slice(2)}
+                          </text>
+                        )}
                       </g>
                     )
                   })}

@@ -218,3 +218,17 @@ button:active { transform: scale(0.97); }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Performance page — overrides mobile (@max-width: 768px) ───── */
+@media (max-width: 768px) {
+  /* Chart 1 : Volume mensuel — hauteur minimale + légende scrollable */
+  .perf-chart1-svg { min-height: 200px; }
+  .perf-chart1-legend {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Légende : items non rétrécissables pour que le scroll soit utile */
+  .perf-chart1-legend > * { flex-shrink: 0; }
+}

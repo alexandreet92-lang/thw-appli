@@ -2833,11 +2833,6 @@ function YearDatasSubTab() {
       }
     }
 
-    // Check Strava connection — same logic as Profile page (oauth_tokens table)
-    const connRes = await fetch('/api/oauth/status')
-    const connData = connRes.ok ? (await connRes.json() as { connected: string[] }) : { connected: [] }
-    setStravaConnected(connData.connected.includes('strava'))
-
     const yearsSet = new Set<string>()
     Object.keys(auto).forEach(y => yearsSet.add(y))
     Object.values(manual).forEach(m => Object.keys(m).forEach(y => yearsSet.add(y)))
@@ -2852,6 +2847,18 @@ function YearDatasSubTab() {
   }, [])
 
   useEffect(() => { void fetchData() }, [fetchData])
+
+  // Strava connection check — exact same pattern as Profile page (useConnections hook)
+  const checkStravaConnection = useCallback(async () => {
+    try {
+      const res = await fetch('/api/oauth/status')
+      if (!res.ok) return
+      const { connected: cp } = await res.json() as { connected: string[] }
+      setStravaConnected(cp.includes('strava'))
+    } catch {}
+  }, [])
+
+  useEffect(() => { void checkStravaConnection() }, [checkStravaConnection])
 
   // Close sync menu on outside click
   useEffect(() => {

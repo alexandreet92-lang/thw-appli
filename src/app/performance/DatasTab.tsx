@@ -2848,6 +2848,8 @@ function YearDatasSubTab() {
     const { data: acts } = await sb
       .from('activities')
       .select('sport_type, started_at, moving_time_s, distance_m, tss, elevation_gain_m')
+      .order('started_at', { ascending: false })
+      .limit(5000)
 
     const auto: Record<string, Record<string, YDAutoStat>> = {}
     const monthly: Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}

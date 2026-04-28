@@ -2771,9 +2771,11 @@ function YearDatasSubTab() {
   const [saving, setSaving]       = useState(false)
   const [addYearInput, setAddYearInput] = useState('')
 
-  // Strava sync
-  const [syncing, setSyncing]   = useState(false)
-  const [syncMsg, setSyncMsg]   = useState<{ ok: boolean; text: string } | null>(null)
+  // Sync dropdown
+  const [syncing,      setSyncing]      = useState(false)
+  const [syncMsg,      setSyncMsg]      = useState<{ ok: boolean; text: string } | null>(null)
+  const [showSyncMenu, setShowSyncMenu] = useState(false)
+  const syncMenuRef = useRef<HTMLDivElement>(null)
 
   // Chart tooltips
   const [hoveredBar, setHoveredBar] = useState<{ year: string; val: number; svgX: number } | null>(null)
@@ -2851,6 +2853,18 @@ function YearDatasSubTab() {
 
   useEffect(() => { void fetchData() }, [fetchData])
 
+  // Close sync menu on outside click
+  useEffect(() => {
+    if (!showSyncMenu) return
+    function onClickOutside(e: MouseEvent) {
+      if (syncMenuRef.current && !syncMenuRef.current.contains(e.target as Node)) {
+        setShowSyncMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [showSyncMenu])
+
   // ── Helpers ────────────────────────────────────────────────
   const sportDef     = YD_SPORTS.find(s => s.id === activeSport)!
   const sportMetrics = YD_SPORT_METRICS[activeSport]
@@ -2860,7 +2874,6 @@ function YearDatasSubTab() {
 
   function autoStat(year: string): YDAutoStat | null { return autoStats[year]?.[activeSport] ?? null }
   function manualEntry(year: string): YDManual | null { return manualMap[activeSport]?.[year] ?? null }
-  function manualEntryForSport(sportId: string, year: string): YDManual | null { return manualMap[sportId]?.[year] ?? null }
 
   function getDisplayVal(m: YDMetric, year: string): number {
     if (mode === 'auto') { const s = autoStat(year); return s ? m.fromAuto(s) : 0 }
@@ -2888,33 +2901,36 @@ function YearDatasSubTab() {
   const chartVals   = chartYears.map(yr => getDisplayVal(metricDef, yr))
   const maxChartVal = Math.max(...chartVals, 1)
 
-  // ── Save manual ────────────────────────────────────────────
+  // ── Save manual (UPSERT) ───────────────────────────────────
   async function saveManual(year: string) {
     setSaving(true)
     try {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) return
-      const existing = manualEntry(year)
       const payload = {
-        user_id: user.id, sport: activeSport, year: parseInt(year),
-        km: editDraft.km ?? null, heures: editDraft.heures ?? null,
-        denivele: editDraft.denivele ?? null, nb_sorties: editDraft.nb_sorties ?? null,
-        sortie_plus_longue_km: editDraft.sortie_plus_longue_km ?? null,
+        user_id:                   user.id,
+        sport:                     activeSport,
+        year:                      parseInt(year),
+        km:                        editDraft.km                        ?? null,
+        heures:                    editDraft.heures                    ?? null,
+        denivele:                  editDraft.denivele                  ?? null,
+        nb_sorties:                editDraft.nb_sorties                ?? null,
+        sortie_plus_longue_km:     editDraft.sortie_plus_longue_km     ?? null,
         sortie_plus_longue_heures: editDraft.sortie_plus_longue_heures ?? null,
-        tss: editDraft.tss ?? null, volume_tonnes: editDraft.volume_tonnes ?? null,
-        specifique: editDraft.specifique ?? {}, updated_at: new Date().toISOString(),
+        tss:                       editDraft.tss                       ?? null,
+        volume_tonnes:             editDraft.volume_tonnes             ?? null,
+        specifique:                editDraft.specifique                ?? {},
+        updated_at:                new Date().toISOString(),
       }
-      let saved: YDManual | null = null
-      if (existing?.id) {
-        const { data } = await sb.from('year_data_manual').update(payload).eq('id', existing.id).select().single()
-        saved = data as YDManual | null
-      } else {
-        const { data } = await sb.from('year_data_manual').insert(payload).select().single()
-        saved = data as YDManual | null
-      }
+      const { data: saved } = await sb
+        .from('year_data_manual')
+        .upsert(payload, { onConflict: 'user_id,sport,year' })
+        .select()
+        .single()
       if (saved) {
-        setManualMap(prev => ({ ...prev, [activeSport]: { ...(prev[activeSport] ?? {}), [year]: saved! } }))
+        const s = saved as YDManual
+        setManualMap(prev => ({ ...prev, [activeSport]: { ...(prev[activeSport] ?? {}), [year]: s } }))
         if (!allYears.includes(year)) setAllYears(prev => [...prev, year].sort((a, b) => b.localeCompare(a)))
       }
       setEditYear(null); setEditDraft({})
@@ -2940,48 +2956,56 @@ function YearDatasSubTab() {
     startEdit(yr)
   }
 
-  // ── Strava sync ────────────────────────────────────────────
-  async function handleStravaSync() {
-    setSyncing(true); setSyncMsg(null)
-    try {
-      const res = await fetch('/api/strava/stats')
-      if (res.status === 403) {
-        setSyncMsg({ ok: false, text: 'Non connecté à Strava. Connecte ton compte depuis les paramètres.' })
-        return
-      }
-      if (!res.ok) { setSyncMsg({ ok: false, text: 'Erreur Strava. Réessaie plus tard.' }); return }
-      const data = await res.json() as Record<string, unknown>
-      const currentYr = String(new Date().getFullYear())
-      const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+  // ── Provider sync — architecture extensible ────────────────
+  type SyncResult = { ok: boolean; text: string }
 
-      type StravaTotal = { count: number; distance: number; moving_time: number }
-      const mappings: { sportId: string; ytd: StravaTotal | null }[] = [
-        { sportId: 'running',  ytd: (data.ytd_run_totals  ?? null) as StravaTotal | null },
-        { sportId: 'cycling',  ytd: (data.ytd_ride_totals ?? null) as StravaTotal | null },
-        { sportId: 'swimming', ytd: (data.ytd_swim_totals ?? null) as StravaTotal | null },
-      ]
-      for (const { sportId, ytd } of mappings) {
-        if (!ytd) continue
-        const km     = Math.round((ytd.distance / 1000) * 10) / 10
-        const heures = Math.round((ytd.moving_time / 3600) * 10) / 10
-        const nb     = ytd.count
-        const existing = manualEntryForSport(sportId, currentYr)
-        const payload = {
-          user_id: user.id, sport: sportId, year: parseInt(currentYr),
-          km, heures, nb_sorties: nb, denivele: null,
-          sortie_plus_longue_km: null, sortie_plus_longue_heures: null,
-          tss: null, volume_tonnes: null, specifique: {}, updated_at: new Date().toISOString(),
-        }
-        if (existing?.id) {
-          await sb.from('year_data_manual').update(payload).eq('id', existing.id)
-        } else {
-          await sb.from('year_data_manual').insert(payload)
-        }
-      }
-      setSyncMsg({ ok: true, text: `Données ${currentYr} mises à jour (Running, Cyclisme, Natation).` })
-      await fetchData()
+  async function syncStrava(): Promise<SyncResult> {
+    const res = await fetch('/api/strava/stats')
+    if (res.status === 403) return { ok: false, text: 'Non connecté à Strava. Connecte ton compte depuis les paramètres.' }
+    if (!res.ok)            return { ok: false, text: 'Erreur Strava. Réessaie plus tard.' }
+
+    const data      = await res.json() as Record<string, unknown>
+    const currentYr = String(new Date().getFullYear())
+    const sb        = createClient()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return { ok: false, text: 'Non authentifié.' }
+
+    type StravaTotal = { count: number; distance: number; moving_time: number }
+    const mappings: { sportId: string; ytd: StravaTotal | null }[] = [
+      { sportId: 'running',  ytd: (data.ytd_run_totals  ?? null) as StravaTotal | null },
+      { sportId: 'cycling',  ytd: (data.ytd_ride_totals ?? null) as StravaTotal | null },
+      { sportId: 'swimming', ytd: (data.ytd_swim_totals ?? null) as StravaTotal | null },
+    ]
+    for (const { sportId, ytd } of mappings) {
+      if (!ytd) continue
+      await sb.from('year_data_manual').upsert({
+        user_id:    user.id,
+        sport:      sportId,
+        year:       parseInt(currentYr),
+        km:         Math.round((ytd.distance    / 1000) * 10) / 10,
+        heures:     Math.round((ytd.moving_time / 3600) * 10) / 10,
+        nb_sorties: ytd.count,
+        denivele: null, sortie_plus_longue_km: null, sortie_plus_longue_heures: null,
+        tss: null, volume_tonnes: null, specifique: {}, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,sport,year' })
+    }
+    return { ok: true, text: `Données ${currentYr} mises à jour (Running, Cyclisme, Natation).` }
+  }
+
+  // Point d'entrée générique — ajouter Garmin/Polar/Wahoo ici quand dispo
+  async function syncProvider(provider: 'strava'): Promise<SyncResult> {
+    switch (provider) {
+      case 'strava': return syncStrava()
+      default:       return { ok: false, text: `Intégration ${provider} non disponible.` }
+    }
+  }
+
+  async function handleSync(provider: 'strava') {
+    setSyncing(true); setSyncMsg(null); setShowSyncMenu(false)
+    try {
+      const result = await syncProvider(provider)
+      setSyncMsg(result)
+      if (result.ok) await fetchData()
     } catch { setSyncMsg({ ok: false, text: 'Erreur inattendue.' }) }
     finally { setSyncing(false) }
   }
@@ -3075,21 +3099,79 @@ function YearDatasSubTab() {
               background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
             }}>+ Saisir</button>
           </div>
-          {/* Strava sync */}
-          {stravaConnected ? (
-            <button onClick={() => void handleStravaSync()} disabled={syncing} style={{
-              padding: '5px 12px', borderRadius: 7, border: 'none', whiteSpace: 'nowrap',
-              background: syncing ? 'var(--bg-card2)' : 'linear-gradient(135deg,#FC4C02,#ff8c5a)',
-              color: syncing ? 'var(--text-dim)' : '#fff',
-              fontSize: 11, fontWeight: 600, cursor: syncing ? 'not-allowed' : 'pointer',
-            }}>
-              {syncing ? 'Sync…' : 'Sync Strava'}
+          {/* Sync dropdown */}
+          <div ref={syncMenuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowSyncMenu(v => !v)}
+              disabled={syncing}
+              style={{
+                padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)',
+                background: showSyncMenu ? 'var(--bg-card2)' : 'var(--bg-card)',
+                color: 'var(--text)', fontSize: 11, fontWeight: 600,
+                cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 5, opacity: syncing ? 0.7 : 1,
+                transition: 'background 0.12s',
+              }}
+            >
+              {syncing ? 'Sync…' : 'Synchroniser'}
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--text-dim)', padding: '5px 0', whiteSpace: 'nowrap' }}>
-              Strava non connecté
-            </span>
-          )}
+
+            {showSyncMenu && !syncing && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 5px)', right: 0, zIndex: 200,
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 10, padding: 4, minWidth: 210,
+                boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
+              }}>
+                {/* Strava */}
+                <button
+                  onClick={() => void handleSync('strava')}
+                  disabled={!stravaConnected}
+                  style={{
+                    width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                    background: 'transparent', textAlign: 'left',
+                    cursor: stravaConnected ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    opacity: stravaConnected ? 1 : 0.5, color: 'var(--text)',
+                    fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { if (stravaConnected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FC4C02', flexShrink: 0 }} />
+                    Sync Strava
+                  </span>
+                  {!stravaConnected && (
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>Non connecté</span>
+                  )}
+                </button>
+
+                <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+
+                {/* Garmin / Polar / Wahoo — bientôt disponible */}
+                {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
+                  <div key={p} style={{
+                    padding: '8px 11px', borderRadius: 7,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    opacity: 0.45, cursor: 'not-allowed',
+                    color: 'var(--text)', fontSize: 12, fontWeight: 500,
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
+                      Sync {p}
+                    </span>
+                    <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600, marginLeft: 6, whiteSpace: 'nowrap' }}>
+                      Bientôt disponible
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

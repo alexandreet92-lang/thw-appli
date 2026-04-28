@@ -2,22 +2,31 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken } from './tokens'
 
 // ── Mapping des types d'activité Strava → notre schéma ────────────────
+// Doit rester synchronisé avec la contrainte activities_sport_type_check
 const SPORT_TYPE_MAP: Record<string, string> = {
-  Run:              'run',
-  TrailRun:         'trail_run',
-  Ride:             'bike',
-  MountainBikeRide: 'bike',
-  GravelRide:       'bike',
-  VirtualRide:      'virtual_bike',
-  Swim:             'swim',
-  OpenWaterSwim:    'swim',
-  Rowing:           'rowing',
-  Workout:          'gym',
-  WeightTraining:   'gym',
-  CrossFit:         'gym',
-  Yoga:             'gym',
-  Hike:             'trail_run',
-  Walk:             'other',
+  // Running
+  Run: 'run', VirtualRun: 'run',
+  // Trail / rando
+  TrailRun: 'trail_run', Hike: 'trail_run',
+  // Vélo
+  Ride: 'bike', MountainBikeRide: 'bike', GravelRide: 'bike',
+  EBikeRide: 'bike', EMountainBikeRide: 'bike', Handcycle: 'bike', Velomobile: 'bike',
+  // Vélo virtuel
+  VirtualRide: 'virtual_bike',
+  // Natation
+  Swim: 'swim', OpenWaterSwim: 'open_water_swim',
+  // Aviron / pagaie
+  Rowing: 'rowing', VirtualRow: 'rowing', Canoeing: 'rowing', Kayaking: 'rowing',
+  // Salle
+  Workout: 'gym', WeightTraining: 'gym', Elliptical: 'gym', StairStepper: 'gym', Pilates: 'gym',
+  // Valeurs spécifiques disponibles en DB
+  CrossFit: 'crossfit',
+  Yoga: 'yoga',
+  HighIntensityIntervalTraining: 'hiit',
+  // Ski & sports de glisse
+  AlpineSki: 'ski', BackcountrySki: 'ski', NordicSki: 'ski',
+  Snowboard: 'ski', Snowshoe: 'ski', RollerSki: 'ski',
+  IceSkate: 'ski', InlineSkate: 'ski',
 }
 
 function mapSportType(stravaType: string): string {

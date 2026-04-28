@@ -2722,21 +2722,36 @@ interface StravaActivity {
   trainer?: boolean; commute?: boolean; flagged?: boolean
 }
 
-// Mapping Strava sport_type → valeur stockée en DB (identique à lib/strava/activities.ts)
+// Mapping Strava sport_type → valeur stockée en DB
+// Doit rester synchronisé avec la contrainte activities_sport_type_check
 const STRAVA_SPORT_MAP: Record<string, string> = {
+  // Running
   Run: 'run', VirtualRun: 'run',
+  // Trail / rando
   TrailRun: 'trail_run', Hike: 'trail_run',
-  Ride: 'bike', MountainBikeRide: 'bike', GravelRide: 'bike', EBikeRide: 'bike', EMountainBikeRide: 'bike', Handcycle: 'bike',
+  // Vélo
+  Ride: 'bike', MountainBikeRide: 'bike', GravelRide: 'bike',
+  EBikeRide: 'bike', EMountainBikeRide: 'bike', Handcycle: 'bike', Velomobile: 'bike',
+  // Vélo virtuel
   VirtualRide: 'virtual_bike',
-  Swim: 'swim', OpenWaterSwim: 'swim',
+  // Natation
+  Swim: 'swim', OpenWaterSwim: 'open_water_swim',
+  // Aviron / pagaie
   Rowing: 'rowing', VirtualRow: 'rowing', Canoeing: 'rowing', Kayaking: 'rowing',
-  Workout: 'gym', WeightTraining: 'gym', CrossFit: 'gym', Yoga: 'gym',
-  HighIntensityIntervalTraining: 'gym', Elliptical: 'gym', StairStepper: 'gym',
-  AlpineSki: 'ski', BackcountrySki: 'ski', NordicSki: 'ski', Snowboard: 'ski', Snowshoe: 'ski', RollerSki: 'ski',
+  // Salle
+  Workout: 'gym', WeightTraining: 'gym', Elliptical: 'gym', StairStepper: 'gym', Pilates: 'gym',
+  // Valeurs spécifiques disponibles en DB
+  CrossFit: 'crossfit',
+  Yoga: 'yoga',
+  HighIntensityIntervalTraining: 'hiit',
+  // Ski & sports de glisse
+  AlpineSki: 'ski', BackcountrySki: 'ski', NordicSki: 'ski',
+  Snowboard: 'ski', Snowshoe: 'ski', RollerSki: 'ski',
   IceSkate: 'ski', InlineSkate: 'ski',
 }
 function mapStravaSport(stravaType: string): string {
-  return STRAVA_SPORT_MAP[stravaType] ?? stravaType.toLowerCase()
+  // Fallback 'other' : jamais de valeur hors contrainte activities_sport_type_check
+  return STRAVA_SPORT_MAP[stravaType] ?? 'other'
 }
 
 // ── Sport definitions ──────────────────────────────────────────
@@ -2745,10 +2760,10 @@ const YD_SPORTS: { id: YDSportId; label: string; color: string; keys: string[] }
   { id: 'running',  label: 'Running',  color: '#22c55e', keys: ['run', 'running', 'virtualrun', 'walk'] },
   { id: 'trail',    label: 'Trail',    color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running', 'trailrun', 'hike'] },
   { id: 'cycling',  label: 'Cyclisme', color: '#00c8e0', keys: ['bike', 'virtual_bike', 'cycling', 'ride', 'virtual_ride', 'road_cycling', 'gravelride', 'mountainbikeride', 'ebikeride'] },
-  { id: 'swimming', label: 'Natation', color: '#38bdf8', keys: ['swim', 'swimming', 'open_water_swimming', 'openwatersim'] },
+  { id: 'swimming', label: 'Natation', color: '#38bdf8', keys: ['swim', 'swimming', 'open_water_swim', 'open_water_swimming', 'openwatersim'] },
   { id: 'rowing',   label: 'Aviron',   color: '#14b8a6', keys: ['rowing', 'virtualrow', 'canoeing', 'kayaking'] },
   { id: 'hyrox',    label: 'Hyrox',    color: '#ef4444', keys: ['hyrox'] },
-  { id: 'gym',      label: 'Muscu',    color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout', 'weighttraining', 'crossfit', 'yoga', 'pilates'] },
+  { id: 'gym',      label: 'Muscu',    color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout', 'weighttraining', 'crossfit', 'yoga', 'hiit', 'pilates'] },
   { id: 'ski',      label: 'Ski',      color: '#a78bfa', keys: ['ski', 'skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard', 'alpineski', 'nordicski', 'snowshoe', 'rollerski'] },
 ]
 

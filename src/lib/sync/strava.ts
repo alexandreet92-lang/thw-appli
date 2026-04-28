@@ -171,10 +171,31 @@ export async function syncMissingStreams(userId: string, limit = 20): Promise<nu
 }
 
 function mapStravaSportType(type: string): string {
+  // Doit rester synchronisé avec la contrainte activities_sport_type_check
   const map: Record<string, string> = {
-    Run: 'run', TrailRun: 'trail_run', Ride: 'bike',
-    VirtualRide: 'virtual_bike', Swim: 'swim',
-    Rowing: 'rowing', WeightTraining: 'gym', Workout: 'other',
+    // Running
+    Run: 'run', VirtualRun: 'run',
+    // Trail / rando
+    TrailRun: 'trail_run', Hike: 'trail_run',
+    // Vélo
+    Ride: 'bike', MountainBikeRide: 'bike', GravelRide: 'bike',
+    EBikeRide: 'bike', EMountainBikeRide: 'bike', Handcycle: 'bike', Velomobile: 'bike',
+    // Vélo virtuel
+    VirtualRide: 'virtual_bike',
+    // Natation
+    Swim: 'swim', OpenWaterSwim: 'open_water_swim',
+    // Aviron / pagaie
+    Rowing: 'rowing', VirtualRow: 'rowing', Canoeing: 'rowing', Kayaking: 'rowing',
+    // Salle
+    Workout: 'gym', WeightTraining: 'gym', Elliptical: 'gym', StairStepper: 'gym', Pilates: 'gym',
+    // Valeurs spécifiques disponibles en DB
+    CrossFit: 'crossfit',
+    Yoga: 'yoga',
+    HighIntensityIntervalTraining: 'hiit',
+    // Ski & sports de glisse
+    AlpineSki: 'ski', BackcountrySki: 'ski', NordicSki: 'ski',
+    Snowboard: 'ski', Snowshoe: 'ski', RollerSki: 'ski',
+    IceSkate: 'ski', InlineSkate: 'ski',
   }
   return map[type] ?? 'other'
 }

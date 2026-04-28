@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createPublicClient, createServiceClient } from '@/lib/supabase/server'
+import { getValidToken } from '@/lib/oauth/tokens'
 import { getValidToken as getLegacyToken } from '@/lib/strava/tokens'
 
 // GET /api/strava/stats
 // Fetch aggregated YTD stats from Strava /athletes/{id}/stats
-// Checks oauth_tokens first (new OAuth flow), falls back to strava_tokens (legacy)
+// getValidToken gère le refresh automatique du token oauth_tokens.
+// Fallback : strava_tokens (legacy).
 export async function GET() {
   const supabase = await createPublicClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -13,23 +15,22 @@ export async function GET() {
   let accessToken: string | null = null
   let athleteId: number | null = null
 
-  // Try new OAuth system (oauth_tokens table) first
-  const service = createServiceClient()
-  const { data: oauthRow } = await service
-    .from('oauth_tokens')
-    .select('access_token, refresh_token, expires_at, provider_user_id')
-    .eq('user_id', user.id)
-    .eq('provider', 'strava')
-    .eq('is_active', true)
-    .single()
+  // Tentative via oauth_tokens avec refresh automatique
+  accessToken = await getValidToken(user.id, 'strava')
 
-  if (oauthRow) {
-    const now = Math.floor(Date.now() / 1000)
-    const isExpired = oauthRow.expires_at !== null && oauthRow.expires_at < now + 300
-    if (!isExpired) {
-      accessToken = oauthRow.access_token as string
-      athleteId   = oauthRow.provider_user_id ? parseInt(oauthRow.provider_user_id as string, 10) : null
-    }
+  if (accessToken) {
+    // Récupère l'athleteId depuis provider_user_id (pas retourné par getValidToken)
+    const service = createServiceClient()
+    const { data: oauthRow } = await service
+      .from('oauth_tokens')
+      .select('provider_user_id')
+      .eq('user_id', user.id)
+      .eq('provider', 'strava')
+      .eq('is_active', true)
+      .single()
+    athleteId = oauthRow?.provider_user_id
+      ? parseInt(oauthRow.provider_user_id as string, 10)
+      : null
   }
 
   // Fallback: legacy strava_tokens table

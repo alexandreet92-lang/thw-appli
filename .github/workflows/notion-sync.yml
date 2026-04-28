@@ -1,0 +1,87 @@
+name: Sync Notion to CLAUDE.md
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Notion SDK
+        run: npm install @notionhq/client
+
+      - name: Fetch Notion and update CLAUDE.md
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: |
+          node << 'EOF'
+          const { Client } = require('@notionhq/client');
+          const fs = require('fs');
+
+          const notion = new Client({ auth: process.env.NOTION_TOKEN });
+
+          async function getBlocks(blockId) {
+            const blocks = [];
+            let cursor;
+            do {
+              const res = await notion.blocks.children.list({
+                block_id: blockId,
+                start_cursor: cursor,
+              });
+              blocks.push(...res.results);
+              cursor = res.next_cursor;
+            } while (cursor);
+            return blocks;
+          }
+
+          function blockToText(block) {
+            const type = block.type;
+            const content = block[type];
+            if (!content) return '';
+            const text = content.rich_text?.map(t => t.plain_text).join('') || '';
+            switch (type) {
+              case 'heading_1': return `# ${text}`;
+              case 'heading_2': return `## ${text}`;
+              case 'heading_3': return `### ${text}`;
+              case 'bulleted_list_item': return `- ${text}`;
+              case 'numbered_list_item': return `1. ${text}`;
+              case 'paragraph': return text;
+              case 'to_do': return `- [${content.checked ? 'x' : ' '}] ${text}`;
+              default: return text;
+            }
+          }
+
+          async function main() {
+            const pageId = '34d1f2da742880bca580e251ff4eaab2';
+            const blocks = await getBlocks(pageId);
+            const lines = blocks.map(blockToText).filter(Boolean);
+
+            const existing = fs.readFileSync('CLAUDE.md', 'utf8');
+            const marker = '\n\n---\n## Notes Notion\n';
+            const base = existing.split(marker)[0];
+            const updated = base + marker + lines.join('\n');
+
+            fs.writeFileSync('CLAUDE.md', updated);
+            console.log('CLAUDE.md mis à jour');
+          }
+
+          main().catch(console.error);
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CLAUDE.md
+          git diff --staged --quiet || git commit -m "sync: mise à jour Notion → CLAUDE.md"
+          git push

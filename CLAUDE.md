@@ -49,4 +49,22 @@ Avant toute modification ou création de composant UI, lis `docs/DESIGN_SYSTEM.m
 
 ---
 ## Notes Notion
-
+Fonctionnalités / Evolutions pour plus tard : 
+- Page formation : 
+- Intégrations externes - transfert de séances 
+- Page Challenge (a mettre en place lorsque l’app a plusieurs milliers d’utilisateurs) 
+- Outils HRV inclus dans l’app (a partir de l’abonnement Pro) 
+- 
+- Exécuté phase 4 = mémoire chat discussions + plan B
+- Exécuté phase 5 = 
+- Rajouter action rapide : Analyser une activité 
+- Rajouter pour le bouton Créer un plan d’entrainement : 
+- Main actions rapides en première page : 
+- Lister toutes les actions rapides + définir leurs procédés tv
+- Sous actions rapide Créer un plan d’entrainement : 
+All Pages
+### Tasks this week
+- Finir la fonctionnalité : Créer un plan d’entrainement 
+- Lister TOUTES les actions rapides 
+- Lister le process des main actions rapides 
+- Priorité action rapide = Créer un plan d’entrainement 

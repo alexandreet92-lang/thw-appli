@@ -1904,6 +1904,8 @@ interface TrainingPlanForm {
   type_seances: 'courtes' | 'longues' | 'mixte' | ''
   connaissance_de_soi: string
   precision_methode: string
+  journees_type_actif: boolean
+  journees_type: Record<string, string>
   // Entraînements spéciaux
   heat_training: boolean
   heat_training_freq: '1' | '2' | ''
@@ -2110,6 +2112,8 @@ const DEFAULT_FORM: TrainingPlanForm = {
   type_seances: '',
   connaissance_de_soi: '',
   precision_methode: '',
+  journees_type_actif: false,
+  journees_type: {},
   heat_training: false,
   heat_training_freq: '',
   altitude_training: false,
@@ -4546,6 +4550,56 @@ function TrainingPlanFlow({
             <textarea value={form.connaissance_de_soi} onChange={e => setField('connaissance_de_soi', e.target.value)}
               placeholder="Décrivez comment vous réagissez à l'entraînement, vos points forts, vos faiblesses, ce qui vous motive, vos difficultés habituelles, les types d'effort que vous aimez ou détestez..."
               rows={4} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+          </div>
+
+          {/* ── Type de journée ────────────────────────────────── */}
+          <div>
+            <span style={tpLabelStyle()}>Définir le type de journée</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: form.journees_type_actif ? 10 : 0 }}>
+              <button onClick={() => setField('journees_type_actif', true)}  style={tpPillStyle(form.journees_type_actif)}>Oui</button>
+              <button onClick={() => setField('journees_type_actif', false)} style={tpPillStyle(!form.journees_type_actif)}>Non</button>
+            </div>
+            {form.journees_type_actif && (() => {
+              const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+              const TYPES = [
+                { val: 'recup',        label: 'Récup',        color: '#22c55e' },
+                { val: 'recup_active', label: 'Récup active', color: '#84cc16' },
+                { val: 'low',          label: 'Low',          color: '#38bdf8' },
+                { val: 'mid',          label: 'Mid',          color: '#f59e0b' },
+                { val: 'hard',         label: 'Hard',         color: '#ef4444' },
+              ]
+              const hardCount = JOURS.filter(j => form.journees_type[j] === 'hard').length
+              return (
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>
+                    Recommandation : 2 à 3 séances Hard maximum par semaine.
+                    {hardCount > 3 && <span style={{ color: '#ef4444', fontWeight: 600 }}> Actuellement {hardCount} Hard — dépasse le seuil.</span>}
+                  </p>
+                  {JOURS.map(jour => (
+                    <div key={jour} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--ai-dim)', width: 80, flexShrink: 0 }}>{jour}</span>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {TYPES.map(t => {
+                          const sel = form.journees_type[jour] === t.val
+                          return (
+                            <button key={t.val}
+                              onClick={() => setField('journees_type', { ...form.journees_type, [jour]: sel ? '' : t.val })}
+                              style={{
+                                padding: '3px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                                border: `1px solid ${t.color}`,
+                                background: sel ? t.color : 'transparent',
+                                color: sel ? '#fff' : t.color,
+                              }}>
+                              {t.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
 
           <div>

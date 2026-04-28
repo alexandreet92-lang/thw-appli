@@ -1903,6 +1903,16 @@ interface TrainingPlanForm {
   reaction_intensite: 'rapide' | '48h' | 'saturation' | ''
   type_seances: 'courtes' | 'longues' | 'mixte' | ''
   connaissance_de_soi: string
+  points_forts: string[]
+  points_forts_detail: string
+  points_faibles: string[]
+  points_faibles_detail: string
+  difficultes: string[]
+  difficultes_detail: string
+  efforts_aimes: string[]
+  efforts_detestes: string[]
+  efforts_detail: string
+  niveau_connaissance: 'debutant' | 'bonnes' | 'important' | 'expert' | ''
   precision_methode: string
   journees_type_actif: boolean
   journees_type: Record<string, string>
@@ -2111,6 +2121,16 @@ const DEFAULT_FORM: TrainingPlanForm = {
   reaction_intensite: '',
   type_seances: '',
   connaissance_de_soi: '',
+  points_forts: [],
+  points_forts_detail: '',
+  points_faibles: [],
+  points_faibles_detail: '',
+  difficultes: [],
+  difficultes_detail: '',
+  efforts_aimes: [],
+  efforts_detestes: [],
+  efforts_detail: '',
+  niveau_connaissance: '',
   precision_methode: '',
   journees_type_actif: false,
   journees_type: {},
@@ -4536,21 +4556,106 @@ function TrainingPlanFlow({
             </div>
           </div>
 
-          <div>
-            <span style={tpLabelStyle()}>Type de séances préféré</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button onClick={() => setField('type_seances', 'courtes')} style={tpPillStyle(form.type_seances === 'courtes')}>Courtes et intenses</button>
-              <button onClick={() => setField('type_seances', 'longues')} style={tpPillStyle(form.type_seances === 'longues')}>Longues et progressives</button>
-              <button onClick={() => setField('type_seances', 'mixte')}   style={tpPillStyle(form.type_seances === 'mixte')}>Mixte</button>
-            </div>
-          </div>
+          {/* ── Connaissance de soi ────────────────────────────── */}
+          {(() => {
+            const ATOUTS   = ['Endurance', 'Puissance', 'Vitesse', 'Récupération rapide', 'Mental', 'Régularité', 'Technique']
+            const DIFFICUL = ['Je sature vite en volume', 'Je récupère mal de l\'intensité', 'Je me blesse souvent', 'Je manque de régularité', 'Je m\'ennuie vite', 'Je gère mal la fatigue mentale', 'Je sous-performe en compétition']
+            const EFFORTS  = ['Longues sorties', 'Intervalles courts', 'Tempo', 'Côtes', 'Natation technique', 'Musculation', 'Séances en groupe']
+            const subLabel = (t: string) => (
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 5 }}>{t}</span>
+            )
+            return (
+              <>
+                {/* 1 — Points forts / Points faibles */}
+                <div>
+                  <span style={tpLabelStyle()}>Points forts / Points faibles</span>
+                  <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div>
+                      {subLabel('Points forts')}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+                        {ATOUTS.map(a => (
+                          <button key={a} onClick={() => setField('points_forts', toggleArr(form.points_forts, a))}
+                            style={tpPillStyle(form.points_forts.includes(a))}>{a}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      {subLabel('Points faibles')}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+                        {ATOUTS.map(a => (
+                          <button key={a} onClick={() => setField('points_faibles', toggleArr(form.points_faibles, a))}
+                            style={tpPillStyle(form.points_faibles.includes(a))}>{a}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <input type="text" placeholder="Précisions (optionnel)…" value={form.points_forts_detail}
+                      onChange={e => setField('points_forts_detail', e.target.value)}
+                      style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                  </div>
+                </div>
 
-          <div>
-            <span style={tpLabelStyle()}>Connaissance de soi * <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(obligatoire)</span></span>
-            <textarea value={form.connaissance_de_soi} onChange={e => setField('connaissance_de_soi', e.target.value)}
-              placeholder="Décrivez comment vous réagissez à l'entraînement, vos points forts, vos faiblesses, ce qui vous motive, vos difficultés habituelles, les types d'effort que vous aimez ou détestez..."
-              rows={4} style={{ ...tpInputStyle(), resize: 'vertical' }} />
-          </div>
+                {/* 2 — Difficultés habituelles */}
+                <div>
+                  <span style={tpLabelStyle()}>Difficultés habituelles</span>
+                  <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {DIFFICUL.map(d => (
+                        <button key={d} onClick={() => setField('difficultes', toggleArr(form.difficultes, d))}
+                          style={tpPillStyle(form.difficultes.includes(d))}>{d}</button>
+                      ))}
+                    </div>
+                    <input type="text" placeholder="Précisions (optionnel)…" value={form.difficultes_detail}
+                      onChange={e => setField('difficultes_detail', e.target.value)}
+                      style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                  </div>
+                </div>
+
+                {/* 3 — Types d'efforts */}
+                <div>
+                  <span style={tpLabelStyle()}>Types d&apos;efforts</span>
+                  <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div>
+                      {subLabel('J\'aime')}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+                        {EFFORTS.map(e => (
+                          <button key={e} onClick={() => setField('efforts_aimes', toggleArr(form.efforts_aimes, e))}
+                            style={tpPillStyle(form.efforts_aimes.includes(e))}>{e}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      {subLabel('Je déteste')}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+                        {EFFORTS.map(e => (
+                          <button key={e} onClick={() => setField('efforts_detestes', toggleArr(form.efforts_detestes, e))}
+                            style={tpPillStyle(form.efforts_detestes.includes(e))}>{e}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <input type="text" placeholder="Précisions (optionnel)…" value={form.efforts_detail}
+                      onChange={e => setField('efforts_detail', e.target.value)}
+                      style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
+                  </div>
+                </div>
+
+                {/* 4 — Niveau de connaissance */}
+                <div>
+                  <span style={tpLabelStyle()}>Niveau de connaissance en entraînement</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {([
+                      ['debutant',  'Aucune ou peu (débutant)'],
+                      ['bonnes',    'Bonnes connaissances'],
+                      ['important', 'Connaissances importantes (sportif aguerri)'],
+                      ['expert',    'Expert'],
+                    ] as const).map(([val, label]) => (
+                      <button key={val} onClick={() => setField('niveau_connaissance', val)}
+                        style={tpPillStyle(form.niveau_connaissance === val)}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )
+          })()}
 
           {/* ── Type de journée ────────────────────────────────── */}
           <div>

@@ -2833,10 +2833,10 @@ function YearDatasSubTab() {
       }
     }
 
-    // Check Strava connection via server-side endpoint (strava_tokens is service-key only)
-    const connRes = await fetch('/api/strava/connected')
-    const connData = connRes.ok ? (await connRes.json() as { connected: boolean }) : { connected: false }
-    setStravaConnected(connData.connected)
+    // Check Strava connection — same logic as Profile page (oauth_tokens table)
+    const connRes = await fetch('/api/oauth/status')
+    const connData = connRes.ok ? (await connRes.json() as { connected: string[] }) : { connected: [] }
+    setStravaConnected(connData.connected.includes('strava'))
 
     const yearsSet = new Set<string>()
     Object.keys(auto).forEach(y => yearsSet.add(y))

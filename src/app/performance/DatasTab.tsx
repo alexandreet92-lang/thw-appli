@@ -2905,7 +2905,15 @@ function YearDatasSubTab() {
   const displayManual: YDManual   | null = selectedYear === 'all' ? null    : manualEntry(selectedYear)
   const hasDisplay = mode === 'auto' ? displayAuto !== null : displayManual !== null
 
-  const chartVals   = chartYears.map(yr => getDisplayVal(metricDef, yr))
+  // Merged value: prefer auto (individual activities), fallback to manual (annual totals from sync)
+  function getMergedVal(m: YDMetric, year: string, sport: string): number {
+    const a = autoStats[year]?.[sport] ?? null
+    if (a) return m.fromAuto(a)
+    const e = manualMap[sport]?.[year] ?? null
+    return e ? (m.fromManual(e) ?? 0) : 0
+  }
+
+  const chartVals   = chartYears.map(yr => getMergedVal(metricDef, yr, activeSport))
   const maxChartVal = Math.max(...chartVals, 1)
 
   // ── Save manual (UPSERT) ───────────────────────────────────
@@ -3035,10 +3043,26 @@ function YearDatasSubTab() {
   const MONTHS        = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
   // ── Chart 1: monthly volume ────────────────────────────────
-  const c1YearOpts = allYears.length > 0 ? allYears : [currentYear]
-  const c1Sports   = YD_SPORTS.filter(sp => {
-    return MONTHS.some((_, mi) => (monthlyStats[chart1Year]?.[mi]?.[sp.id]?.[chart1Metric] ?? 0) > 0)
-  })
+  const c1YearOpts   = allYears.length > 0 ? allYears : [currentYear]
+  const c1HasMonthly = MONTHS.some((_, mi) =>
+    YD_SPORTS.some(sp => (monthlyStats[chart1Year]?.[mi]?.[sp.id]?.[chart1Metric] ?? 0) > 0)
+  )
+  const c1Sports = c1HasMonthly ? YD_SPORTS.filter(sp =>
+    MONTHS.some((_, mi) => (monthlyStats[chart1Year]?.[mi]?.[sp.id]?.[chart1Metric] ?? 0) > 0)
+  ) : []
+  // Annual fallback: read year_data_manual when no monthly activity data is available
+  const c1AnnualSports = !c1HasMonthly ? YD_SPORTS.filter(sp => {
+    const e = manualMap[sp.id]?.[chart1Year]
+    if (!e) return false
+    const v = chart1Metric === 'km' ? (e.km ?? 0) : chart1Metric === 'heures' ? (e.heures ?? 0) : (e.nb_sorties ?? 0)
+    return v > 0
+  }) : []
+  const c1AnnualMax = c1AnnualSports.length > 0
+    ? Math.max(1, ...c1AnnualSports.map(sp => {
+        const e = manualMap[sp.id]?.[chart1Year]
+        return chart1Metric === 'km' ? (e?.km ?? 0) : chart1Metric === 'heures' ? (e?.heures ?? 0) : (e?.nb_sorties ?? 0)
+      }))
+    : 1
   const c1MonthVals = (sportId: string): number[] =>
     MONTHS.map((_, mi) => monthlyStats[chart1Year]?.[mi]?.[sportId]?.[chart1Metric] ?? 0)
   const c1MaxVal  = Math.max(1, ...c1Sports.flatMap(sp => c1MonthVals(sp.id)))
@@ -3048,12 +3072,21 @@ function YearDatasSubTab() {
   const c1X = (mi: number) => C1_PL + (mi / 11) * c1PlotW
   const c1Y = (v: number) => C1_PT + c1PlotH - (v / c1MaxVal) * c1PlotH
 
-  // ── Chart 3: global all-sport stats per year ───────────────
+  // ── Chart 3: global all-sport stats per year — merged sources ─
   const c3Stats = chartYears.map(yr => ({
     year: yr,
-    heures:     Math.round(YD_SPORTS.reduce((s, sp) => s + (autoStats[yr]?.[sp.id]?.heures ?? 0), 0) * 10) / 10,
-    nb_sorties: Math.round(YD_SPORTS.reduce((s, sp) => s + (autoStats[yr]?.[sp.id]?.nb_sorties ?? 0), 0)),
-    km:         Math.round(YD_SPORTS.reduce((s, sp) => s + (autoStats[yr]?.[sp.id]?.km ?? 0), 0)),
+    heures: Math.round(YD_SPORTS.reduce((acc, sp) => {
+      const a = autoStats[yr]?.[sp.id]; if (a) return acc + a.heures
+      return acc + (manualMap[sp.id]?.[yr]?.heures ?? 0)
+    }, 0) * 10) / 10,
+    nb_sorties: Math.round(YD_SPORTS.reduce((acc, sp) => {
+      const a = autoStats[yr]?.[sp.id]; if (a) return acc + a.nb_sorties
+      return acc + (manualMap[sp.id]?.[yr]?.nb_sorties ?? 0)
+    }, 0)),
+    km: Math.round(YD_SPORTS.reduce((acc, sp) => {
+      const a = autoStats[yr]?.[sp.id]; if (a) return acc + a.km
+      return acc + (manualMap[sp.id]?.[yr]?.km ?? 0)
+    }, 0)),
   }))
   const hasC3Data = c3Stats.some(s => s.heures > 0 || s.nb_sorties > 0 || s.km > 0)
   const C3_H = 80, C3_PL = 44, C3_PR = 8, C3_PT = 8, C3_PB = 20
@@ -3264,11 +3297,7 @@ function YearDatasSubTab() {
             </select>
           </div>
         </div>
-        {c1Sports.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
-            Aucune activité Strava pour {chart1Year}. Synchronise tes activités.
-          </p>
-        ) : (
+        {c1Sports.length > 0 ? (
           <>
             <svg viewBox={`0 0 ${SVG_W} ${C1_H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
               {/* Grid */}
@@ -3313,6 +3342,38 @@ function YearDatasSubTab() {
               ))}
             </div>
           </>
+        ) : c1AnnualSports.length > 0 ? (
+          /* Fallback : totaux annuels depuis year_data_manual (pas de détail mensuel) */
+          <div style={{ padding: '4px 0' }}>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 12px', fontStyle: 'italic' }}>
+              Détail mensuel non disponible — totaux {chart1Year}
+            </p>
+            {c1AnnualSports.map(sp => {
+              const e   = manualMap[sp.id]?.[chart1Year]
+              const val = chart1Metric === 'km'
+                ? (e?.km ?? 0)
+                : chart1Metric === 'heures' ? (e?.heures ?? 0) : (e?.nb_sorties ?? 0)
+              const pct = Math.max(4, (val / c1AnnualMax) * 100)
+              const fmt = chart1Metric === 'heures'
+                ? `${val.toFixed(1)} h`
+                : chart1Metric === 'km' ? `${val.toFixed(0)} km` : `${Math.round(val)}`
+              return (
+                <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 58, textAlign: 'right', flexShrink: 0 }}>{sp.label}</span>
+                  <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'var(--border)', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: sp.color, borderRadius: 5, transition: 'width 0.4s' }} />
+                  </div>
+                  <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: sp.color, width: 52, flexShrink: 0, fontWeight: 600 }}>
+                    {fmt}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
+            Aucune donnée pour {chart1Year}.
+          </p>
         )}
       </Card>
 

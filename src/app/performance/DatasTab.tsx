@@ -2703,15 +2703,15 @@ interface YDRawAct {
 }
 
 // ── Sport definitions ──────────────────────────────────────────
-const YD_SPORTS: { id: YDSportId; label: string; icon: string; color: string; keys: string[] }[] = [
-  { id: 'running',  label: 'Running',  icon: '🏃', color: '#22c55e', keys: ['running', 'run'] },
-  { id: 'trail',    label: 'Trail',    icon: '⛰️',  color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running'] },
-  { id: 'cycling',  label: 'Cyclisme', icon: '🚴', color: '#00c8e0', keys: ['cycling', 'ride', 'virtual_ride', 'road_cycling'] },
-  { id: 'swimming', label: 'Natation', icon: '🏊', color: '#38bdf8', keys: ['swimming', 'swim', 'open_water_swimming'] },
-  { id: 'rowing',   label: 'Aviron',   icon: '🚣', color: '#14b8a6', keys: ['rowing'] },
-  { id: 'hyrox',    label: 'Hyrox',    icon: '⚡', color: '#ef4444', keys: ['hyrox'] },
-  { id: 'gym',      label: 'Muscu',    icon: '💪', color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout'] },
-  { id: 'ski',      label: 'Ski',      icon: '⛷️', color: '#a78bfa', keys: ['skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard'] },
+const YD_SPORTS: { id: YDSportId; label: string; color: string; keys: string[] }[] = [
+  { id: 'running',  label: 'Running',  color: '#22c55e', keys: ['running', 'run'] },
+  { id: 'trail',    label: 'Trail',    color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running'] },
+  { id: 'cycling',  label: 'Cyclisme', color: '#00c8e0', keys: ['cycling', 'ride', 'virtual_ride', 'road_cycling'] },
+  { id: 'swimming', label: 'Natation', color: '#38bdf8', keys: ['swimming', 'swim', 'open_water_swimming'] },
+  { id: 'rowing',   label: 'Aviron',   color: '#14b8a6', keys: ['rowing'] },
+  { id: 'hyrox',    label: 'Hyrox',    color: '#ef4444', keys: ['hyrox'] },
+  { id: 'gym',      label: 'Muscu',    color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout'] },
+  { id: 'ski',      label: 'Ski',      color: '#a78bfa', keys: ['skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard'] },
 ]
 
 // ── Metric definitions ─────────────────────────────────────────
@@ -2746,61 +2746,79 @@ const YD_SPORT_METRICS: Record<YDSportId, string[]> = {
 
 // ── Component ─────────────────────────────────────────────────
 function YearDatasSubTab() {
-  const [loading, setLoading]       = useState(true)
-  // year → sportId → aggregated stat (from Strava activities)
-  const [autoStats, setAutoStats]   = useState<Record<string, Record<string, YDAutoStat>>>({})
-  // sportId → year → manual entry (from year_data_manual table)
-  const [manualMap, setManualMap]   = useState<Record<string, Record<string, YDManual>>>({})
-  const [allYears, setAllYears]     = useState<string[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [autoStats, setAutoStats]     = useState<Record<string, Record<string, YDAutoStat>>>({})
+  const [manualMap, setManualMap]     = useState<Record<string, Record<string, YDManual>>>({})
+  // year → month(0-11) → sportId → {km, heures, nb_sorties}
+  const [monthlyStats, setMonthlyStats] = useState<
+    Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>>
+  >({})
+  const [allYears, setAllYears]       = useState<string[]>([])
+  const [stravaConnected, setStravaConnected] = useState(false)
 
   const [activeSport, setActiveSport] = useState<YDSportId>('running')
-  const [mode, setMode]             = useState<'auto' | 'manual'>('auto')
+  const [mode, setMode]               = useState<'auto' | 'manual'>('auto')
   const [selectedYear, setSelectedYear] = useState('all')
-  const [chartMetric, setChartMetric]   = useState('km')
+  const [chartMetric, setChartMetric]   = useState('heures')
+
+  // Chart 1 controls
+  const [chart1Year,   setChart1Year]   = useState('')
+  const [chart1Metric, setChart1Metric] = useState<'km' | 'heures' | 'nb_sorties'>('heures')
 
   // Edit state (manual mode)
-  const [editYear, setEditYear]     = useState<string | null>(null)
-  const [editDraft, setEditDraft]   = useState<Partial<YDManual>>({})
-  const [saving, setSaving]         = useState(false)
+  const [editYear,  setEditYear]  = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<Partial<YDManual>>({})
+  const [saving, setSaving]       = useState(false)
+  const [addYearInput, setAddYearInput] = useState('')
 
-  // Chart tooltip
+  // Strava sync
+  const [syncing, setSyncing]   = useState(false)
+  const [syncMsg, setSyncMsg]   = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Chart tooltips
   const [hoveredBar, setHoveredBar] = useState<{ year: string; val: number; svgX: number } | null>(null)
 
-  // ── Fetch ────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true)
     const sb = createClient()
 
-    // 1. Auto: Strava activities
     const { data: acts } = await sb
       .from('activities')
       .select('sport, date, duration, distance, load, raw_data')
 
     const auto: Record<string, Record<string, YDAutoStat>> = {}
+    const monthly: Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}
+
     for (const act of (acts ?? []) as YDRawAct[]) {
       if (!act.date || !act.sport) continue
       const year  = act.date.slice(0, 4)
+      const month = parseInt(act.date.slice(5, 7)) - 1  // 0-indexed
       const lower = act.sport.toLowerCase()
       for (const sp of YD_SPORTS) {
         if (!sp.keys.includes(lower)) continue
+        // Annual
         if (!auto[year]) auto[year] = {}
         if (!auto[year][sp.id]) auto[year][sp.id] = { nb_sorties: 0, km: 0, heures: 0, denivele: 0, longest_km: 0, longest_h: 0, tss: 0 }
         const s   = auto[year][sp.id]
         const km  = (act.distance ?? 0) / 1000
         const h   = (act.duration ?? 0) / 3600
         const rd  = act.raw_data as Record<string, unknown> | null
-        s.nb_sorties += 1
-        s.km         += km
-        s.heures     += h
-        s.tss        += act.load ?? 0
+        s.nb_sorties += 1; s.km += km; s.heures += h; s.tss += act.load ?? 0
         s.denivele   += typeof rd?.total_elevation_gain === 'number' ? rd.total_elevation_gain : 0
         if (km > s.longest_km) s.longest_km = km
         if (h  > s.longest_h)  s.longest_h  = h
+        // Monthly
+        if (!monthly[year]) monthly[year] = {}
+        if (!monthly[year][month]) monthly[year][month] = {}
+        if (!monthly[year][month][sp.id]) monthly[year][month][sp.id] = { km: 0, heures: 0, nb_sorties: 0 }
+        monthly[year][month][sp.id].km        += km
+        monthly[year][month][sp.id].heures    += h
+        monthly[year][month][sp.id].nb_sorties += 1
         break
       }
     }
 
-    // 2. Manual: year_data_manual (may not exist yet — ignore error)
     const manual: Record<string, Record<string, YDManual>> = {}
     const { data: manualRows, error: manualErr } = await sb
       .from('year_data_manual')
@@ -2813,7 +2831,10 @@ function YearDatasSubTab() {
       }
     }
 
-    // 3. Collect all years
+    // Check Strava connection
+    const { data: tokenRow } = await sb.from('strava_tokens').select('id').maybeSingle()
+    setStravaConnected(!!tokenRow)
+
     const yearsSet = new Set<string>()
     Object.keys(auto).forEach(y => yearsSet.add(y))
     Object.values(manual).forEach(m => Object.keys(m).forEach(y => yearsSet.add(y)))
@@ -2821,49 +2842,38 @@ function YearDatasSubTab() {
 
     setAutoStats(auto)
     setManualMap(manual)
+    setMonthlyStats(monthly)
     setAllYears(years)
+    setChart1Year(prev => prev && years.includes(prev) ? prev : (years[0] ?? String(new Date().getFullYear())))
     setLoading(false)
   }, [])
 
   useEffect(() => { void fetchData() }, [fetchData])
 
-  // ── Derived helpers ──────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────
   const sportDef     = YD_SPORTS.find(s => s.id === activeSport)!
   const sportMetrics = YD_SPORT_METRICS[activeSport]
   const validMetric  = sportMetrics.includes(chartMetric) ? chartMetric : sportMetrics[0]
   const metricDef    = YD_METRICS[validMetric]!
+  const chartYears   = [...allYears].sort()
 
-  const chartYears = [...allYears].sort()
+  function autoStat(year: string): YDAutoStat | null { return autoStats[year]?.[activeSport] ?? null }
+  function manualEntry(year: string): YDManual | null { return manualMap[activeSport]?.[year] ?? null }
+  function manualEntryForSport(sportId: string, year: string): YDManual | null { return manualMap[sportId]?.[year] ?? null }
 
-  function autoStat(year: string): YDAutoStat | null {
-    return autoStats[year]?.[activeSport] ?? null
-  }
-  function manualEntry(year: string): YDManual | null {
-    return manualMap[activeSport]?.[year] ?? null
-  }
   function getDisplayVal(m: YDMetric, year: string): number {
-    if (mode === 'auto') {
-      const s = autoStat(year)
-      return s ? m.fromAuto(s) : 0
-    }
-    const e = manualEntry(year)
-    return e ? (m.fromManual(e) ?? 0) : 0
+    if (mode === 'auto') { const s = autoStat(year); return s ? m.fromAuto(s) : 0 }
+    const e = manualEntry(year); return e ? (m.fromManual(e) ?? 0) : 0
   }
 
-  // Aggregate (auto mode + all years)
   const aggStat: YDAutoStat | null = (() => {
     if (mode !== 'auto') return null
     const agg: YDAutoStat = { nb_sorties: 0, km: 0, heures: 0, denivele: 0, longest_km: 0, longest_h: 0, tss: 0 }
     let found = false
     for (const yr of allYears) {
-      const s = autoStat(yr)
-      if (!s) continue
-      found = true
-      agg.nb_sorties += s.nb_sorties
-      agg.km         += s.km
-      agg.heures     += s.heures
-      agg.denivele   += s.denivele
-      agg.tss        += s.tss
+      const s = autoStat(yr); if (!s) continue; found = true
+      agg.nb_sorties += s.nb_sorties; agg.km += s.km; agg.heures += s.heures
+      agg.denivele += s.denivele; agg.tss += s.tss
       if (s.longest_km > agg.longest_km) agg.longest_km = s.longest_km
       if (s.longest_h  > agg.longest_h)  agg.longest_h  = s.longest_h
     }
@@ -2874,11 +2884,10 @@ function YearDatasSubTab() {
   const displayManual: YDManual   | null = selectedYear === 'all' ? null    : manualEntry(selectedYear)
   const hasDisplay = mode === 'auto' ? displayAuto !== null : displayManual !== null
 
-  // Chart
   const chartVals   = chartYears.map(yr => getDisplayVal(metricDef, yr))
   const maxChartVal = Math.max(...chartVals, 1)
 
-  // ── Save manual entry ────────────────────────────────────────
+  // ── Save manual ────────────────────────────────────────────
   async function saveManual(year: string) {
     setSaving(true)
     try {
@@ -2887,19 +2896,13 @@ function YearDatasSubTab() {
       if (!user) return
       const existing = manualEntry(year)
       const payload = {
-        user_id:                   user.id,
-        sport:                     activeSport,
-        year:                      parseInt(year),
-        km:                        editDraft.km                        ?? null,
-        heures:                    editDraft.heures                    ?? null,
-        denivele:                  editDraft.denivele                  ?? null,
-        nb_sorties:                editDraft.nb_sorties                ?? null,
-        sortie_plus_longue_km:     editDraft.sortie_plus_longue_km     ?? null,
+        user_id: user.id, sport: activeSport, year: parseInt(year),
+        km: editDraft.km ?? null, heures: editDraft.heures ?? null,
+        denivele: editDraft.denivele ?? null, nb_sorties: editDraft.nb_sorties ?? null,
+        sortie_plus_longue_km: editDraft.sortie_plus_longue_km ?? null,
         sortie_plus_longue_heures: editDraft.sortie_plus_longue_heures ?? null,
-        tss:                       editDraft.tss                       ?? null,
-        volume_tonnes:             editDraft.volume_tonnes             ?? null,
-        specifique:                editDraft.specifique                ?? {},
-        updated_at:                new Date().toISOString(),
+        tss: editDraft.tss ?? null, volume_tonnes: editDraft.volume_tonnes ?? null,
+        specifique: editDraft.specifique ?? {}, updated_at: new Date().toISOString(),
       }
       let saved: YDManual | null = null
       if (existing?.id) {
@@ -2913,11 +2916,8 @@ function YearDatasSubTab() {
         setManualMap(prev => ({ ...prev, [activeSport]: { ...(prev[activeSport] ?? {}), [year]: saved! } }))
         if (!allYears.includes(year)) setAllYears(prev => [...prev, year].sort((a, b) => b.localeCompare(a)))
       }
-      setEditYear(null)
-      setEditDraft({})
-    } finally {
-      setSaving(false)
-    }
+      setEditYear(null); setEditDraft({})
+    } finally { setSaving(false) }
   }
 
   function startEdit(year: string) {
@@ -2929,7 +2929,63 @@ function YearDatasSubTab() {
     setEditYear(year)
   }
 
-  // ── Loading ──────────────────────────────────────────────────
+  function handleAddYear() {
+    const yr = addYearInput.trim()
+    if (!yr || !/^\d{4}$/.test(yr)) return
+    if (!allYears.includes(yr)) setAllYears(prev => [...prev, yr].sort((a, b) => b.localeCompare(a)))
+    setMode('manual')
+    setSelectedYear(yr)
+    setAddYearInput('')
+    startEdit(yr)
+  }
+
+  // ── Strava sync ────────────────────────────────────────────
+  async function handleStravaSync() {
+    setSyncing(true); setSyncMsg(null)
+    try {
+      const res = await fetch('/api/strava/stats')
+      if (res.status === 403) {
+        setSyncMsg({ ok: false, text: 'Non connecté à Strava. Connecte ton compte depuis les paramètres.' })
+        return
+      }
+      if (!res.ok) { setSyncMsg({ ok: false, text: 'Erreur Strava. Réessaie plus tard.' }); return }
+      const data = await res.json() as Record<string, unknown>
+      const currentYr = String(new Date().getFullYear())
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      type StravaTotal = { count: number; distance: number; moving_time: number }
+      const mappings: { sportId: string; ytd: StravaTotal | null }[] = [
+        { sportId: 'running',  ytd: (data.ytd_run_totals  ?? null) as StravaTotal | null },
+        { sportId: 'cycling',  ytd: (data.ytd_ride_totals ?? null) as StravaTotal | null },
+        { sportId: 'swimming', ytd: (data.ytd_swim_totals ?? null) as StravaTotal | null },
+      ]
+      for (const { sportId, ytd } of mappings) {
+        if (!ytd) continue
+        const km     = Math.round((ytd.distance / 1000) * 10) / 10
+        const heures = Math.round((ytd.moving_time / 3600) * 10) / 10
+        const nb     = ytd.count
+        const existing = manualEntryForSport(sportId, currentYr)
+        const payload = {
+          user_id: user.id, sport: sportId, year: parseInt(currentYr),
+          km, heures, nb_sorties: nb, denivele: null,
+          sortie_plus_longue_km: null, sortie_plus_longue_heures: null,
+          tss: null, volume_tonnes: null, specifique: {}, updated_at: new Date().toISOString(),
+        }
+        if (existing?.id) {
+          await sb.from('year_data_manual').update(payload).eq('id', existing.id)
+        } else {
+          await sb.from('year_data_manual').insert(payload)
+        }
+      }
+      setSyncMsg({ ok: true, text: `Données ${currentYr} mises à jour (Running, Cyclisme, Natation).` })
+      await fetchData()
+    } catch { setSyncMsg({ ok: false, text: 'Erreur inattendue.' }) }
+    finally { setSyncing(false) }
+  }
+
+  // ── Loading ────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
@@ -2941,9 +2997,39 @@ function YearDatasSubTab() {
     )
   }
 
-  const currentYear    = String(new Date().getFullYear())
-  const manualListYrs  = allYears.includes(currentYear) ? allYears : [currentYear, ...allYears]
-  const SVG_W          = 500
+  const currentYear   = String(new Date().getFullYear())
+  const manualListYrs = allYears.includes(currentYear) ? allYears : [currentYear, ...allYears]
+  const SVG_W         = 500
+  const MONTHS        = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+
+  // ── Chart 1: monthly volume ────────────────────────────────
+  const c1YearOpts = allYears.length > 0 ? allYears : [currentYear]
+  const c1Sports   = YD_SPORTS.filter(sp => {
+    return MONTHS.some((_, mi) => (monthlyStats[chart1Year]?.[mi]?.[sp.id]?.[chart1Metric] ?? 0) > 0)
+  })
+  const c1MonthVals = (sportId: string): number[] =>
+    MONTHS.map((_, mi) => monthlyStats[chart1Year]?.[mi]?.[sportId]?.[chart1Metric] ?? 0)
+  const c1MaxVal  = Math.max(1, ...c1Sports.flatMap(sp => c1MonthVals(sp.id)))
+  const C1_H = 155, C1_PL = 44, C1_PR = 10, C1_PT = 16, C1_PB = 32
+  const c1PlotW = SVG_W - C1_PL - C1_PR
+  const c1PlotH = C1_H - C1_PT - C1_PB
+  const c1X = (mi: number) => C1_PL + (mi / 11) * c1PlotW
+  const c1Y = (v: number) => C1_PT + c1PlotH - (v / c1MaxVal) * c1PlotH
+
+  // ── Chart 3: global all-sport stats per year ───────────────
+  const c3Stats = chartYears.map(yr => ({
+    year: yr,
+    heures:     Math.round(YD_SPORTS.reduce((s, sp) => s + (autoStats[yr]?.[sp.id]?.heures ?? 0), 0) * 10) / 10,
+    nb_sorties: Math.round(YD_SPORTS.reduce((s, sp) => s + (autoStats[yr]?.[sp.id]?.nb_sorties ?? 0), 0)),
+    km:         Math.round(YD_SPORTS.reduce((s, sp) => s + (autoStats[yr]?.[sp.id]?.km ?? 0), 0)),
+  }))
+  const hasC3Data = c3Stats.some(s => s.heures > 0 || s.nb_sorties > 0 || s.km > 0)
+  const C3_H = 80, C3_PL = 44, C3_PR = 8, C3_PT = 8, C3_PB = 20
+  const c3PlotW = SVG_W - C3_PL - C3_PR
+  const c3PlotH = C3_H - C3_PT - C3_PB
+  const c3N   = Math.max(chartYears.length, 1)
+  const c3Gap = 5
+  const c3BarW = Math.max(10, c3PlotW / c3N - c3Gap)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -2959,11 +3045,12 @@ function YearDatasSubTab() {
                 setMode(m)
                 setSelectedYear(m === 'auto' ? 'all' : (allYears[0] ?? currentYear))
                 setEditYear(null)
-              }}
-                style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                  background: mode === m ? '#5b6fff' : 'var(--bg-card2)',
-                  color:      mode === m ? '#fff'    : 'var(--text-dim)' }}>
-                {m === 'auto' ? '⚡ Auto' : '✏️ Manuel'}
+              }} style={{
+                padding: '5px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                background: mode === m ? '#5b6fff' : 'var(--bg-card2)',
+                color:      mode === m ? '#fff'    : 'var(--text-dim)',
+              }}>
+                {m === 'auto' ? 'Auto' : 'Manuel'}
               </button>
             ))}
           </div>
@@ -2973,8 +3060,54 @@ function YearDatasSubTab() {
             {mode === 'auto' && <option value="all">Toutes années</option>}
             {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
           </select>
+          {/* Add year */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            <input
+              type="number" value={addYearInput}
+              onChange={e => setAddYearInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddYear()}
+              placeholder="2023" min="2000" max="2035"
+              style={{ width: 58, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+            />
+            <button onClick={handleAddYear} style={{
+              padding: '5px 10px', borderRadius: 7, border: '1px solid #a855f7',
+              background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>+ Saisir</button>
+          </div>
+          {/* Strava sync */}
+          {stravaConnected ? (
+            <button onClick={() => void handleStravaSync()} disabled={syncing} style={{
+              padding: '5px 12px', borderRadius: 7, border: 'none', whiteSpace: 'nowrap',
+              background: syncing ? 'var(--bg-card2)' : 'linear-gradient(135deg,#FC4C02,#ff8c5a)',
+              color: syncing ? 'var(--text-dim)' : '#fff',
+              fontSize: 11, fontWeight: 600, cursor: syncing ? 'not-allowed' : 'pointer',
+            }}>
+              {syncing ? 'Sync…' : 'Sync Strava'}
+            </button>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', padding: '5px 0', whiteSpace: 'nowrap' }}>
+              Strava non connecté
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Sync message */}
+      {syncMsg && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 8, fontSize: 12,
+          background: syncMsg.ok ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
+          border: `1px solid ${syncMsg.ok ? 'rgba(34,197,94,0.30)' : 'rgba(239,68,68,0.30)'}`,
+          color: syncMsg.ok ? '#22c55e' : '#ef4444',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          {syncMsg.text}
+          <button onClick={() => setSyncMsg(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 16, lineHeight: 1, padding: '0 0 0 8px' }}>
+            x
+          </button>
+        </div>
+      )}
 
       {/* ── Sport tabs ── */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
@@ -2983,33 +3116,30 @@ function YearDatasSubTab() {
             setActiveSport(sp.id)
             setEditYear(null)
             setChartMetric(YD_SPORT_METRICS[sp.id][0] ?? 'km')
-          }}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: 'none',
-              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-              background: activeSport === sp.id ? sp.color : 'var(--bg-card2)',
-              color:      activeSport === sp.id ? '#fff'   : 'var(--text-dim)' }}>
-            <span>{sp.icon}</span>
-            <span>{sp.label}</span>
+          }} style={{
+            padding: '6px 14px', borderRadius: 20, border: 'none',
+            cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+            background: activeSport === sp.id ? sp.color : 'var(--bg-card2)',
+            color:      activeSport === sp.id ? '#fff'   : 'var(--text-dim)',
+          }}>
+            {sp.label}
           </button>
         ))}
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* ── KPI cards ── */}
       {hasDisplay ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
           {sportMetrics.map(mk => {
-            const m = YD_METRICS[mk]
-            if (!m) return null
+            const m = YD_METRICS[mk]; if (!m) return null
             const val = mode === 'auto'
-              ? (displayAuto   ? m.fromAuto(displayAuto)              : 0)
-              : (displayManual ? (m.fromManual(displayManual) ?? 0)   : 0)
+              ? (displayAuto   ? m.fromAuto(displayAuto)            : 0)
+              : (displayManual ? (m.fromManual(displayManual) ?? 0) : 0)
             return (
               <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{m.label}</p>
                 <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: sportDef.color, margin: 0 }}>
-                  {val > 0
-                    ? m.fmt(val)
-                    : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
+                  {val > 0 ? m.fmt(val) : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
                 </p>
               </div>
             )
@@ -3019,42 +3149,108 @@ function YearDatasSubTab() {
         <Card>
           <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '10px 0' }}>
             {mode === 'manual'
-              ? 'Aucune donnée. Passe en mode Manuel et clique sur "+ Saisir".'
+              ? 'Aucune donnée. Clique sur "+ Saisir" pour ajouter une année.'
               : 'Aucune activité Strava pour ce sport / cette période.'}
           </p>
         </Card>
       )}
 
-      {/* ── Bar chart ── */}
+      {/* ════ Chart 1 — Volume mensuel par sport ════ */}
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
+            Volume mensuel par sport
+          </h3>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <select value={chart1Year} onChange={e => setChart1Year(e.target.value)}
+              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+              {c1YearOpts.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+            </select>
+            <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
+              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+              <option value="heures">Heures</option>
+              <option value="km">Distance (km)</option>
+              <option value="nb_sorties">Sorties</option>
+            </select>
+          </div>
+        </div>
+        {c1Sports.length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
+            Aucune activité Strava pour {chart1Year}. Synchronise tes activités.
+          </p>
+        ) : (
+          <>
+            <svg viewBox={`0 0 ${SVG_W} ${C1_H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+              {/* Grid */}
+              {[0, 0.5, 1].map(f => {
+                const y = C1_PT + c1PlotH * (1 - f)
+                const v = c1MaxVal * f
+                return (
+                  <g key={f}>
+                    <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="0.5" strokeDasharray={f > 0 ? '3,3' : undefined} />
+                    <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      {chart1Metric === 'heures' ? `${v.toFixed(1)}h` : chart1Metric === 'km' ? `${Math.round(v)}` : `${Math.round(v)}`}
+                    </text>
+                  </g>
+                )
+              })}
+              {/* Lines per sport */}
+              {c1Sports.map(sp => {
+                const vals = c1MonthVals(sp.id)
+                const pts  = vals.map((v, mi) => `${c1X(mi).toFixed(1)},${c1Y(v).toFixed(1)}`).join(' ')
+                return (
+                  <g key={sp.id}>
+                    <polyline points={pts} fill="none" stroke={sp.color} strokeWidth="1.8" strokeLinejoin="round" opacity="0.85" />
+                    {vals.map((v, mi) => v > 0 ? (
+                      <circle key={mi} cx={c1X(mi)} cy={c1Y(v)} r={3} fill={sp.color} opacity={0.9} />
+                    ) : null)}
+                  </g>
+                )
+              })}
+              {/* X labels */}
+              {MONTHS.map((m, mi) => (
+                <text key={mi} x={c1X(mi)} y={C1_H - 4} textAnchor="middle"
+                  style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{m}</text>
+              ))}
+            </svg>
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+              {c1Sports.map(sp => (
+                <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 14, height: 3, borderRadius: 2, background: sp.color }} />
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sp.label}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </Card>
+
+      {/* ════ Chart 2 — Comparaison inter-années par sport ════ */}
       {(chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Évolution par année</h3>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
+              Comparaison par année — {sportDef.label}
+            </h3>
             <select value={validMetric} onChange={e => setChartMetric(e.target.value)}
               style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
               {sportMetrics.map(mk => <option key={mk} value={mk}>{YD_METRICS[mk]?.label}</option>)}
             </select>
           </div>
-
           {(() => {
-            const svgH  = 150
-            const bPad  = 22, tPad = 8, lPad = 42
-            const plotW = SVG_W - lPad - 8
-            const plotH = svgH - bPad - tPad
-            const n     = Math.max(chartYears.length, 1)
-            const gap   = 5
-            const barW  = Math.max(12, plotW / n - gap)
-            const yMax  = maxChartVal * 1.15
-
+            const svgH = 150, bPad = 22, tPad = 8, lPad = 42
+            const plotW = SVG_W - lPad - 8, plotH = svgH - bPad - tPad
+            const n = Math.max(chartYears.length, 1), gap = 5
+            const barW = Math.max(12, plotW / n - gap)
+            const yMax = maxChartVal * 1.15
             const yStep = Math.pow(10, Math.floor(Math.log10(maxChartVal || 1)))
             const yLabels: number[] = []
             for (let v = 0; v <= yMax && yLabels.length < 5; v += yStep) yLabels.push(v)
-
             return (
               <div style={{ position: 'relative' }}>
                 <svg viewBox={`0 0 ${SVG_W} ${svgH}`} style={{ width: '100%', height: svgH, overflow: 'visible' }}
                   onMouseLeave={() => setHoveredBar(null)}>
-                  {/* Grid + Y labels */}
                   {yLabels.map(v => {
                     const y = tPad + plotH - (v / yMax) * plotH
                     return (
@@ -3067,18 +3263,12 @@ function YearDatasSubTab() {
                       </g>
                     )
                   })}
-                  {/* Baseline */}
                   <line x1={lPad} y1={tPad + plotH} x2={SVG_W - 8} y2={tPad + plotH} stroke="var(--border)" strokeWidth="1" />
-                  {/* Bars */}
                   {chartYears.map((yr, i) => {
-                    const val  = chartVals[i]
-                    const bh   = Math.max(0, (val / yMax) * plotH)
-                    const bx   = lPad + i * (barW + gap) + gap / 2
-                    const by   = tPad + plotH - bh
-                    const cx   = bx + barW / 2
-                    const col  = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
-                    const sel  = selectedYear === yr
-                    const hov  = hoveredBar?.year === yr
+                    const val = chartVals[i], bh = Math.max(0, (val / yMax) * plotH)
+                    const bx = lPad + i * (barW + gap) + gap / 2, by = tPad + plotH - bh
+                    const cx = bx + barW / 2, col = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+                    const sel = selectedYear === yr, hov = hoveredBar?.year === yr
                     return (
                       <g key={yr} style={{ cursor: 'pointer' }}
                         onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
@@ -3093,7 +3283,6 @@ function YearDatasSubTab() {
                     )
                   })}
                 </svg>
-                {/* Tooltip */}
                 {hoveredBar && (
                   <div style={{
                     position: 'absolute', top: 4, pointerEvents: 'none', zIndex: 10,
@@ -3113,17 +3302,68 @@ function YearDatasSubTab() {
         </Card>
       )}
 
+      {/* ════ Chart 3 — Volume global toutes disciplines ════ */}
+      {hasC3Data && (
+        <Card>
+          <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>
+            Volume global — Toutes disciplines
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {([
+              { key: 'heures'     as const, label: 'Heures',        color: '#a855f7', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
+              { key: 'nb_sorties' as const, label: 'Sorties',       color: '#5b6fff', max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
+              { key: 'km'         as const, label: 'Distance (km)', color: '#00c8e0', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
+            ]).map(({ key, label, color, max, fmt }) => (
+              <div key={key}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
+                  {label}
+                </p>
+                <svg viewBox={`0 0 ${SVG_W} ${C3_H}`} style={{ width: '100%', height: C3_H, overflow: 'visible' }}>
+                  <line x1={C3_PL} y1={C3_PT + c3PlotH} x2={SVG_W - C3_PR} y2={C3_PT + c3PlotH} stroke="var(--border)" strokeWidth="1" />
+                  <text x={C3_PL - 3} y={C3_PT + 5} textAnchor="end"
+                    style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                    {fmt(max)}
+                  </text>
+                  {c3Stats.map((s, i) => {
+                    const val = s[key]
+                    const bh  = Math.max(0, (val / max) * c3PlotH)
+                    const bx  = C3_PL + i * (c3BarW + c3Gap) + c3Gap / 2
+                    const by  = C3_PT + c3PlotH - bh
+                    const cx  = bx + c3BarW / 2
+                    const col = YEAR_COLORS[s.year] ?? color
+                    return (
+                      <g key={s.year}>
+                        <rect x={bx} y={by} width={c3BarW} height={bh} rx={3} fill={col} opacity={0.85} />
+                        {bh > 16 && (
+                          <text x={cx} y={by + bh / 2 + 4} textAnchor="middle"
+                            style={{ fontSize: 8, fill: '#fff', fontFamily: 'DM Mono,monospace', fontWeight: '700' }}>
+                            {fmt(val)}
+                          </text>
+                        )}
+                        <text x={cx} y={C3_H - 3} textAnchor="middle"
+                          style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                          {s.year.slice(2)}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* ── Manual entry list ── */}
       {mode === 'manual' && (
         <Card>
           <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px' }}>
-            {sportDef.icon} {sportDef.label} — Saisie manuelle
+            {sportDef.label} — Saisie manuelle
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {manualListYrs.map(yr => {
-              const entry     = manualEntry(yr)
-              const isEditing = editYear === yr
-              const col       = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+              const entry = manualEntry(yr), isEditing = editYear === yr
+              const col   = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
 
               if (isEditing) {
                 return (
@@ -3131,8 +3371,7 @@ function YearDatasSubTab() {
                     <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: col, margin: '0 0 10px' }}>{yr}</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                       {sportMetrics.map(mk => {
-                        const m = YD_METRICS[mk]
-                        if (!m) return null
+                        const m = YD_METRICS[mk]; if (!m) return null
                         const rawVal = editDraft[m.manualKey]
                         const strVal = typeof rawVal === 'number' ? String(rawVal) : ''
                         return (
@@ -3168,8 +3407,7 @@ function YearDatasSubTab() {
                   <div style={{ flex: 1, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {entry
                       ? sportMetrics.slice(0, 3).map(mk => {
-                          const m = YD_METRICS[mk]!
-                          const v = m.fromManual(entry)
+                          const m = YD_METRICS[mk]!; const v = m.fromManual(entry)
                           return v != null && v > 0 ? (
                             <span key={mk} style={{ fontSize: 11 }}>
                               <span style={{ color: 'var(--text-dim)' }}>{m.label} </span>

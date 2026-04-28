@@ -196,7 +196,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
               >
                 {analyzing
                   ? <><span style={{ width:11, height:11, border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>Analyse…</>
-                  : '🔬 Analyser'
+                  : 'Analyser'
                 }
               </button>
             )}
@@ -953,7 +953,7 @@ function TestCard({ test, accentColor, onOpen, onAnalyze }: { test: TestDef; acc
               onClick={onAnalyze}
               style={{ padding:'7px 12px', borderRadius:9, background:'rgba(249,115,22,0.12)', border:'1px solid rgba(249,115,22,0.35)', color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const }}
             >
-              🔬 Analyser
+              Analyser
             </button>
           )}
           <button

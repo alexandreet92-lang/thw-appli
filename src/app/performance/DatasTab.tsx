@@ -2696,22 +2696,60 @@ interface YDManual {
   specifique: Record<string, unknown>; updated_at?: string
 }
 
+// Colonnes réelles de la table activities (sport_type stocké via SPORT_TYPE_MAP de lib/strava/activities.ts)
 interface YDRawAct {
-  sport: string | null; date: string | null
-  duration: number | null; distance: number | null; load: number | null
-  raw_data: unknown
+  sport_type:      string | null
+  started_at:      string | null
+  moving_time_s:   number | null
+  distance_m:      number | null
+  tss:             number | null
+  elevation_gain_m: number | null
+}
+
+// Type pour l'import Strava (réponse API brute)
+interface StravaActivity {
+  id: number; name?: string
+  sport_type?: string; type?: string
+  start_date?: string
+  moving_time?: number; elapsed_time?: number
+  distance?: number; total_elevation_gain?: number
+  average_speed?: number; max_speed?: number
+  average_heartrate?: number; max_heartrate?: number
+  average_watts?: number; max_watts?: number
+  weighted_average_watts?: number; kilojoules?: number
+  suffer_score?: number; average_cadence?: number
+  average_temp?: number; calories?: number
+  trainer?: boolean; commute?: boolean; flagged?: boolean
+}
+
+// Mapping Strava sport_type → valeur stockée en DB (identique à lib/strava/activities.ts)
+const STRAVA_SPORT_MAP: Record<string, string> = {
+  Run: 'run', VirtualRun: 'run',
+  TrailRun: 'trail_run', Hike: 'trail_run',
+  Ride: 'bike', MountainBikeRide: 'bike', GravelRide: 'bike', EBikeRide: 'bike', EMountainBikeRide: 'bike', Handcycle: 'bike',
+  VirtualRide: 'virtual_bike',
+  Swim: 'swim', OpenWaterSwim: 'swim',
+  Rowing: 'rowing', VirtualRow: 'rowing', Canoeing: 'rowing', Kayaking: 'rowing',
+  Workout: 'gym', WeightTraining: 'gym', CrossFit: 'gym', Yoga: 'gym',
+  HighIntensityIntervalTraining: 'gym', Elliptical: 'gym', StairStepper: 'gym',
+  AlpineSki: 'ski', BackcountrySki: 'ski', NordicSki: 'ski', Snowboard: 'ski', Snowshoe: 'ski', RollerSki: 'ski',
+  IceSkate: 'ski', InlineSkate: 'ski',
+}
+function mapStravaSport(stravaType: string): string {
+  return STRAVA_SPORT_MAP[stravaType] ?? stravaType.toLowerCase()
 }
 
 // ── Sport definitions ──────────────────────────────────────────
+// Les keys incluent les valeurs stockées après mapStravaSport ET les variantes manuelles
 const YD_SPORTS: { id: YDSportId; label: string; color: string; keys: string[] }[] = [
-  { id: 'running',  label: 'Running',  color: '#22c55e', keys: ['running', 'run'] },
-  { id: 'trail',    label: 'Trail',    color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running'] },
-  { id: 'cycling',  label: 'Cyclisme', color: '#00c8e0', keys: ['cycling', 'ride', 'virtual_ride', 'road_cycling'] },
-  { id: 'swimming', label: 'Natation', color: '#38bdf8', keys: ['swimming', 'swim', 'open_water_swimming'] },
-  { id: 'rowing',   label: 'Aviron',   color: '#14b8a6', keys: ['rowing'] },
+  { id: 'running',  label: 'Running',  color: '#22c55e', keys: ['run', 'running', 'virtualrun', 'walk'] },
+  { id: 'trail',    label: 'Trail',    color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running', 'trailrun', 'hike'] },
+  { id: 'cycling',  label: 'Cyclisme', color: '#00c8e0', keys: ['bike', 'virtual_bike', 'cycling', 'ride', 'virtual_ride', 'road_cycling', 'gravelride', 'mountainbikeride', 'ebikeride'] },
+  { id: 'swimming', label: 'Natation', color: '#38bdf8', keys: ['swim', 'swimming', 'open_water_swimming', 'openwatersim'] },
+  { id: 'rowing',   label: 'Aviron',   color: '#14b8a6', keys: ['rowing', 'virtualrow', 'canoeing', 'kayaking'] },
   { id: 'hyrox',    label: 'Hyrox',    color: '#ef4444', keys: ['hyrox'] },
-  { id: 'gym',      label: 'Muscu',    color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout'] },
-  { id: 'ski',      label: 'Ski',      color: '#a78bfa', keys: ['skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard'] },
+  { id: 'gym',      label: 'Muscu',    color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout', 'weighttraining', 'crossfit', 'yoga', 'pilates'] },
+  { id: 'ski',      label: 'Ski',      color: '#a78bfa', keys: ['ski', 'skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard', 'alpineski', 'nordicski', 'snowshoe', 'rollerski'] },
 ]
 
 // ── Metric definitions ─────────────────────────────────────────
@@ -2777,6 +2815,12 @@ function YearDatasSubTab() {
   const [showSyncMenu, setShowSyncMenu] = useState(false)
   const syncMenuRef = useRef<HTMLDivElement>(null)
 
+  // Import historique Strava
+  const [importing,       setImporting]       = useState(false)
+  const [importProgress,  setImportProgress]  = useState<{
+    imported: number; skipped: number; page: number; done: boolean; error?: string
+  } | null>(null)
+
   // Chart tooltips
   const [hoveredBar, setHoveredBar] = useState<{ year: string; val: number; svgX: number } | null>(null)
 
@@ -2785,29 +2829,29 @@ function YearDatasSubTab() {
     setLoading(true)
     const sb = createClient()
 
+    // Colonnes réelles de la table activities (noms corrects)
     const { data: acts } = await sb
       .from('activities')
-      .select('sport, date, duration, distance, load, raw_data')
+      .select('sport_type, started_at, moving_time_s, distance_m, tss, elevation_gain_m')
 
     const auto: Record<string, Record<string, YDAutoStat>> = {}
     const monthly: Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}
 
     for (const act of (acts ?? []) as YDRawAct[]) {
-      if (!act.date || !act.sport) continue
-      const year  = act.date.slice(0, 4)
-      const month = parseInt(act.date.slice(5, 7)) - 1  // 0-indexed
-      const lower = act.sport.toLowerCase()
+      if (!act.started_at || !act.sport_type) continue
+      const year  = act.started_at.slice(0, 4)
+      const month = parseInt(act.started_at.slice(5, 7)) - 1  // 0-indexed
+      const lower = act.sport_type.toLowerCase()
       for (const sp of YD_SPORTS) {
         if (!sp.keys.includes(lower)) continue
         // Annual
         if (!auto[year]) auto[year] = {}
         if (!auto[year][sp.id]) auto[year][sp.id] = { nb_sorties: 0, km: 0, heures: 0, denivele: 0, longest_km: 0, longest_h: 0, tss: 0 }
-        const s   = auto[year][sp.id]
-        const km  = (act.distance ?? 0) / 1000
-        const h   = (act.duration ?? 0) / 3600
-        const rd  = act.raw_data as Record<string, unknown> | null
-        s.nb_sorties += 1; s.km += km; s.heures += h; s.tss += act.load ?? 0
-        s.denivele   += typeof rd?.total_elevation_gain === 'number' ? rd.total_elevation_gain : 0
+        const s  = auto[year][sp.id]
+        const km = (act.distance_m ?? 0) / 1000
+        const h  = (act.moving_time_s ?? 0) / 3600
+        s.nb_sorties += 1; s.km += km; s.heures += h; s.tss += act.tss ?? 0
+        s.denivele   += act.elevation_gain_m ?? 0
         if (km > s.longest_km) s.longest_km = km
         if (h  > s.longest_h)  s.longest_h  = h
         // Monthly
@@ -3025,6 +3069,111 @@ function YearDatasSubTab() {
     finally { setSyncing(false) }
   }
 
+  // ── Import historique complet Strava ───────────────────────
+  async function handleImportHistory() {
+    if (!stravaConnected || importing) return
+    setImporting(true)
+    setSyncMsg(null)
+    setImportProgress({ imported: 0, skipped: 0, page: 0, done: false })
+
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) {
+        setImportProgress({ imported: 0, skipped: 0, page: 0, done: true, error: 'Non authentifié.' })
+        return
+      }
+
+      // Charger tous les provider_id Strava déjà en base (déduplification)
+      const { data: existingRows } = await sb
+        .from('activities')
+        .select('provider_id')
+        .eq('user_id', user.id)
+        .eq('provider', 'strava')
+
+      const existingIds = new Set(
+        (existingRows ?? []).map((r: { provider_id: string }) => r.provider_id)
+      )
+
+      let page          = 1
+      let totalImported = 0
+      let totalSkipped  = 0
+
+      while (true) {
+        const res = await fetch(`/api/strava/import-history?page=${page}&per_page=200`)
+        if (res.status === 403) {
+          setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: true, error: 'Non connecté à Strava.' })
+          break
+        }
+        if (!res.ok) {
+          setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: true, error: `Erreur Strava (${res.status}).` })
+          break
+        }
+
+        const activities = await res.json() as StravaActivity[]
+        if (!activities?.length) {
+          // Toutes les pages traitées
+          setImportProgress({ imported: totalImported, skipped: totalSkipped, page: page - 1, done: true })
+          if (totalImported > 0) await fetchData()
+          break
+        }
+
+        const toInsert = activities.filter(a => !existingIds.has(String(a.id)))
+        totalSkipped += activities.length - toInsert.length
+
+        if (toInsert.length > 0) {
+          const rows = toInsert.map(a => ({
+            user_id:          user.id,
+            provider:         'strava',
+            provider_id:      String(a.id),
+            sport_type:       mapStravaSport(a.sport_type ?? a.type ?? 'Workout'),
+            title:            a.name ?? null,
+            started_at:       a.start_date ?? null,
+            moving_time_s:    a.moving_time    ?? null,
+            elapsed_time_s:   a.elapsed_time   ?? null,
+            distance_m:       a.distance       ?? null,
+            elevation_gain_m: a.total_elevation_gain ?? null,
+            avg_speed_ms:     a.average_speed  ?? null,
+            max_speed_ms:     a.max_speed      ?? null,
+            avg_hr:           a.average_heartrate ?? null,
+            max_hr:           a.max_heartrate  ? Math.round(a.max_heartrate) : null,
+            avg_watts:        a.average_watts  ?? null,
+            normalized_watts: a.weighted_average_watts ? Math.round(a.weighted_average_watts) : null,
+            kilojoules:       a.kilojoules     ?? null,
+            suffer_score:     a.suffer_score   ?? null,
+            avg_cadence:      a.average_cadence ?? null,
+            avg_temp_c:       a.average_temp   ?? null,
+            trainer:          a.trainer        ?? null,
+            commute:          a.commute        ?? null,
+            flagged:          a.flagged        ?? null,
+            calories:         a.calories       ?? null,
+            raw_data:         a,
+            created_at:       new Date().toISOString(),
+            updated_at:       new Date().toISOString(),
+          }))
+
+          const { error: insertErr } = await sb.from('activities').insert(rows)
+          if (insertErr) {
+            setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: true, error: `Erreur DB: ${insertErr.message}` })
+            break
+          }
+          toInsert.forEach(a => existingIds.add(String(a.id)))
+          totalImported += toInsert.length
+        }
+
+        page++
+        setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: false })
+      }
+    } catch {
+      setImportProgress(prev =>
+        prev ? { ...prev, done: true, error: 'Erreur inattendue.' }
+             : { imported: 0, skipped: 0, page: 0, done: true, error: 'Erreur inattendue.' }
+      )
+    } finally {
+      setImporting(false)
+    }
+  }
+
   // ── Loading ────────────────────────────────────────────────
   if (loading) {
     return (
@@ -3212,6 +3361,37 @@ function YearDatasSubTab() {
               </div>
             )}
           </div>
+
+          {/* Bouton import historique — distinct du sync */}
+          {stravaConnected && (
+            <button
+              onClick={() => void handleImportHistory()}
+              disabled={importing || syncing}
+              style={{
+                padding: '5px 11px', borderRadius: 7,
+                border: '1px solid rgba(168,85,247,0.35)',
+                background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
+                color: '#a855f7', fontSize: 11, fontWeight: 600,
+                cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s',
+              }}
+            >
+              {importing ? (
+                <>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                  Import…
+                </>
+              ) : (
+                <>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+                  </svg>
+                  Importer l&apos;historique Strava
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -3227,8 +3407,60 @@ function YearDatasSubTab() {
           {syncMsg.text}
           <button onClick={() => setSyncMsg(null)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 16, lineHeight: 1, padding: '0 0 0 8px' }}>
-            x
+            ×
           </button>
+        </div>
+      )}
+
+      {/* Import progress */}
+      {importProgress && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 10,
+          background: importProgress.done && importProgress.error
+            ? 'rgba(239,68,68,0.07)'
+            : importProgress.done
+              ? 'rgba(34,197,94,0.07)'
+              : 'rgba(168,85,247,0.07)',
+          border: `1px solid ${importProgress.done && importProgress.error
+            ? 'rgba(239,68,68,0.22)'
+            : importProgress.done
+              ? 'rgba(34,197,94,0.22)'
+              : 'rgba(168,85,247,0.22)'}`,
+        }}>
+          {!importProgress.done ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Import Strava en cours…</span>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#a855f7', fontWeight: 700 }}>
+                  {importProgress.imported} activités
+                </span>
+              </div>
+              <div style={{ height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', marginBottom: 5 }}>
+                <div style={{
+                  height: '100%', borderRadius: 3,
+                  background: 'linear-gradient(90deg,#a855f7,#5b6fff)',
+                  transition: 'width 0.5s ease',
+                  /* largeur indicative — on ne connaît pas le total */
+                  width: `${Math.min(94, 4 + Math.log1p(importProgress.imported) * 12)}%`,
+                }} />
+              </div>
+              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0 }}>
+                Page {importProgress.page} · {importProgress.skipped} déjà en base
+              </p>
+            </>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: importProgress.error ? '#ef4444' : '#22c55e', fontWeight: 500 }}>
+                {importProgress.error
+                  ? importProgress.error
+                  : `${importProgress.imported} activité${importProgress.imported !== 1 ? 's' : ''} importée${importProgress.imported !== 1 ? 's' : ''} · ${importProgress.skipped} déjà en base`}
+              </span>
+              <button onClick={() => setImportProgress(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 16, lineHeight: 1, padding: '0 0 0 10px' }}>
+                ×
+              </button>
+            </div>
+          )}
         </div>
       )}
 

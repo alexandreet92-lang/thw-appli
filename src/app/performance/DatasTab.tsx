@@ -3084,85 +3084,75 @@ function YearDatasSubTab() {
         return
       }
 
-      // Charger tous les provider_id Strava déjà en base (déduplification)
-      const { data: existingRows } = await sb
-        .from('activities')
-        .select('provider_id')
-        .eq('user_id', user.id)
-        .eq('provider', 'strava')
-
-      const existingIds = new Set(
-        (existingRows ?? []).map((r: { provider_id: string }) => r.provider_id)
-      )
-
-      let page          = 1
-      let totalImported = 0
-      let totalSkipped  = 0
+      let page           = 1
+      let totalImported  = 0
+      let totalProcessed = 0
 
       while (true) {
         const res = await fetch(`/api/strava/import-history?page=${page}&per_page=200`)
         if (res.status === 403) {
-          setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: true, error: 'Non connecté à Strava.' })
+          setImportProgress({ imported: totalImported, skipped: totalProcessed - totalImported, page, done: true, error: 'Non connecté à Strava.' })
           break
         }
         if (!res.ok) {
-          setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: true, error: `Erreur Strava (${res.status}).` })
+          setImportProgress({ imported: totalImported, skipped: totalProcessed - totalImported, page, done: true, error: `Erreur Strava (${res.status}).` })
           break
         }
 
         const activities = await res.json() as StravaActivity[]
         if (!activities?.length) {
           // Toutes les pages traitées
-          setImportProgress({ imported: totalImported, skipped: totalSkipped, page: page - 1, done: true })
+          setImportProgress({ imported: totalImported, skipped: totalProcessed - totalImported, page: page - 1, done: true })
           if (totalImported > 0) await fetchData()
           break
         }
 
-        const toInsert = activities.filter(a => !existingIds.has(String(a.id)))
-        totalSkipped += activities.length - toInsert.length
+        totalProcessed += activities.length
 
-        if (toInsert.length > 0) {
-          const rows = toInsert.map(a => ({
-            user_id:          user.id,
-            provider:         'strava',
-            provider_id:      String(a.id),
-            sport_type:       mapStravaSport(a.sport_type ?? a.type ?? 'Workout'),
-            title:            a.name ?? null,
-            started_at:       a.start_date ?? null,
-            moving_time_s:    a.moving_time    ?? null,
-            elapsed_time_s:   a.elapsed_time   ?? null,
-            distance_m:       a.distance       ?? null,
-            elevation_gain_m: a.total_elevation_gain ?? null,
-            avg_speed_ms:     a.average_speed  ?? null,
-            max_speed_ms:     a.max_speed      ?? null,
-            avg_hr:           a.average_heartrate ?? null,
-            max_hr:           a.max_heartrate  ? Math.round(a.max_heartrate) : null,
-            avg_watts:        a.average_watts  ?? null,
-            normalized_watts: a.weighted_average_watts ? Math.round(a.weighted_average_watts) : null,
-            kilojoules:       a.kilojoules     ?? null,
-            suffer_score:     a.suffer_score   ?? null,
-            avg_cadence:      a.average_cadence ?? null,
-            avg_temp_c:       a.average_temp   ?? null,
-            trainer:          a.trainer        ?? null,
-            commute:          a.commute        ?? null,
-            flagged:          a.flagged        ?? null,
-            calories:         a.calories       ?? null,
-            raw_data:         a,
-            created_at:       new Date().toISOString(),
-            updated_at:       new Date().toISOString(),
-          }))
+        const rows = activities.map(a => ({
+          user_id:          user.id,
+          provider:         'strava',
+          provider_id:      String(a.id),
+          sport_type:       mapStravaSport(a.sport_type ?? a.type ?? 'Workout'),
+          title:            a.name ?? null,
+          started_at:       a.start_date ?? null,
+          moving_time_s:    a.moving_time    ?? null,
+          elapsed_time_s:   a.elapsed_time   ?? null,
+          distance_m:       a.distance       ?? null,
+          elevation_gain_m: a.total_elevation_gain ?? null,
+          avg_speed_ms:     a.average_speed  ?? null,
+          max_speed_ms:     a.max_speed      ?? null,
+          avg_hr:           a.average_heartrate ?? null,
+          max_hr:           a.max_heartrate  ? Math.round(a.max_heartrate) : null,
+          avg_watts:        a.average_watts  ?? null,
+          normalized_watts: a.weighted_average_watts ? Math.round(a.weighted_average_watts) : null,
+          kilojoules:       a.kilojoules     ?? null,
+          suffer_score:     a.suffer_score   ?? null,
+          avg_cadence:      a.average_cadence ?? null,
+          avg_temp_c:       a.average_temp   ?? null,
+          trainer:          a.trainer        ?? null,
+          commute:          a.commute        ?? null,
+          flagged:          a.flagged        ?? null,
+          calories:         a.calories       ?? null,
+          raw_data:         a,
+          created_at:       new Date().toISOString(),
+          updated_at:       new Date().toISOString(),
+        }))
 
-          const { error: insertErr } = await sb.from('activities').insert(rows)
-          if (insertErr) {
-            setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: true, error: `Erreur DB: ${insertErr.message}` })
-            break
-          }
-          toInsert.forEach(a => existingIds.add(String(a.id)))
-          totalImported += toInsert.length
+        // ON CONFLICT DO NOTHING — évite les erreurs de doublon sans pré-filtre
+        const { data: inserted, error: upsertErr } = await sb
+          .from('activities')
+          .upsert(rows, { onConflict: 'user_id,provider,provider_id', ignoreDuplicates: true })
+          .select('provider_id')
+
+        if (upsertErr) {
+          setImportProgress({ imported: totalImported, skipped: totalProcessed - totalImported, page, done: true, error: `Erreur DB: ${upsertErr.message}` })
+          break
         }
+        totalImported += inserted?.length ?? 0
 
         page++
-        setImportProgress({ imported: totalImported, skipped: totalSkipped, page, done: false })
+        setImportProgress({ imported: totalImported, skipped: totalProcessed - totalImported, page, done: false })
       }
     } catch {
       setImportProgress(prev =>

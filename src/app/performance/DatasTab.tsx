@@ -2680,7 +2680,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
 // ════════════════════════════════════════════════
 
 // ── Types ─────────────────────────────────────────────────────
-type YDSportId = 'running' | 'trail' | 'cycling' | 'swimming' | 'rowing' | 'hyrox' | 'gym' | 'ski'
+type YDSportId = 'running' | 'trail' | 'cycling' | 'swimming' | 'rowing' | 'hyrox' | 'gym' | 'ski' | 'other'
 
 interface YDAutoStat {
   nb_sorties: number; km: number; heures: number
@@ -2765,6 +2765,7 @@ const YD_SPORTS: { id: YDSportId; label: string; color: string; keys: string[] }
   { id: 'hyrox',    label: 'Hyrox',    color: '#ef4444', keys: ['hyrox'] },
   { id: 'gym',      label: 'Muscu',    color: '#f97316', keys: ['gym', 'weight_training', 'crosstraining', 'workout', 'weighttraining', 'crossfit', 'yoga', 'hiit', 'pilates'] },
   { id: 'ski',      label: 'Ski',      color: '#a78bfa', keys: ['ski', 'skiing', 'alpine_ski', 'backcountry_ski', 'nordic_ski', 'snowboard', 'alpineski', 'nordicski', 'snowshoe', 'rollerski'] },
+  { id: 'other',    label: 'Autres',   color: '#9ca3af', keys: ['other'] },
 ]
 
 // ── Metric definitions ─────────────────────────────────────────
@@ -2795,6 +2796,7 @@ const YD_SPORT_METRICS: Record<YDSportId, string[]> = {
   hyrox:    ['nb_sorties', 'km', 'heures'],
   gym:      ['nb_sorties', 'heures', 'volume_tonnes'],
   ski:      ['heures', 'denivele', 'nb_sorties'],
+  other:    ['nb_sorties', 'heures', 'km'],
 }
 
 // ── Component ─────────────────────────────────────────────────

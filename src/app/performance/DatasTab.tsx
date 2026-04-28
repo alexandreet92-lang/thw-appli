@@ -2844,10 +2844,41 @@ function YearDatasSubTab() {
     setLoading(true)
     const sb = createClient()
 
-    // Source unique : year_data_manual (totaux annuels par sport)
-    // Les activités individuelles (table activities) ne sont pas utilisées ici
+    // Colonnes réelles de la table activities (noms corrects)
+    const { data: acts } = await sb
+      .from('activities')
+      .select('sport_type, started_at, moving_time_s, distance_m, tss, elevation_gain_m')
+
     const auto: Record<string, Record<string, YDAutoStat>> = {}
     const monthly: Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}
+
+    for (const act of (acts ?? []) as YDRawAct[]) {
+      if (!act.started_at || !act.sport_type) continue
+      const year  = act.started_at.slice(0, 4)
+      const month = parseInt(act.started_at.slice(5, 7)) - 1  // 0-indexed
+      const lower = act.sport_type.toLowerCase()
+      for (const sp of YD_SPORTS) {
+        if (!sp.keys.includes(lower)) continue
+        // Annual
+        if (!auto[year]) auto[year] = {}
+        if (!auto[year][sp.id]) auto[year][sp.id] = { nb_sorties: 0, km: 0, heures: 0, denivele: 0, longest_km: 0, longest_h: 0, tss: 0 }
+        const s  = auto[year][sp.id]
+        const km = (act.distance_m ?? 0) / 1000
+        const h  = (act.moving_time_s ?? 0) / 3600
+        s.nb_sorties += 1; s.km += km; s.heures += h; s.tss += act.tss ?? 0
+        s.denivele   += act.elevation_gain_m ?? 0
+        if (km > s.longest_km) s.longest_km = km
+        if (h  > s.longest_h)  s.longest_h  = h
+        // Monthly
+        if (!monthly[year]) monthly[year] = {}
+        if (!monthly[year][month]) monthly[year][month] = {}
+        if (!monthly[year][month][sp.id]) monthly[year][month][sp.id] = { km: 0, heures: 0, nb_sorties: 0 }
+        monthly[year][month][sp.id].km        += km
+        monthly[year][month][sp.id].heures    += h
+        monthly[year][month][sp.id].nb_sorties += 1
+        break
+      }
+    }
 
     const manual: Record<string, Record<string, YDManual>> = {}
     const { data: manualRows, error: manualErr } = await sb
@@ -3055,7 +3086,7 @@ function YearDatasSubTab() {
 
   // ── Import historique complet Strava ───────────────────────
   async function handleImportHistory() {
-    if (importing) return
+    if (!stravaConnected || importing) return
     setImporting(true)
     setSyncMsg(null)
     setImportProgress({ imported: 0, skipped: 0, page: 0, done: false })
@@ -3336,34 +3367,36 @@ function YearDatasSubTab() {
             )}
           </div>
 
-          {/* Bouton import historique — toujours visible, erreur gérée par l'API */}
-          <button
-            onClick={() => void handleImportHistory()}
-            disabled={importing || syncing}
-            style={{
-              padding: '5px 11px', borderRadius: 7,
-              border: '1px solid rgba(168,85,247,0.35)',
-              background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
-              color: '#a855f7', fontSize: 11, fontWeight: 600,
-              cursor: importing || syncing ? 'not-allowed' : 'pointer',
-              whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
-              display: 'flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s',
-            }}
-          >
-            {importing ? (
-              <>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
-                Import…
-              </>
-            ) : (
-              <>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
-                </svg>
-                Importer l&apos;historique Strava
-              </>
-            )}
-          </button>
+          {/* Bouton import historique — distinct du sync */}
+          {stravaConnected && (
+            <button
+              onClick={() => void handleImportHistory()}
+              disabled={importing || syncing}
+              style={{
+                padding: '5px 11px', borderRadius: 7,
+                border: '1px solid rgba(168,85,247,0.35)',
+                background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
+                color: '#a855f7', fontSize: 11, fontWeight: 600,
+                cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s',
+              }}
+            >
+              {importing ? (
+                <>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                  Import…
+                </>
+              ) : (
+                <>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+                  </svg>
+                  Importer l&apos;historique Strava
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

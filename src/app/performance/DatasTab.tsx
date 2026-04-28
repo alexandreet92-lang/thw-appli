@@ -2846,17 +2846,27 @@ function YearDatasSubTab() {
     setLoading(true)
     const sb = createClient()
 
-    // Colonnes réelles de la table activities (noms corrects)
-    const { data: acts } = await sb
-      .from('activities')
-      .select('sport_type, started_at, moving_time_s, distance_m, tss, elevation_gain_m')
-      .order('started_at', { ascending: false })
-      .limit(5000)
+    // Pagination pour contourner le plafond PostgREST db-max-rows=1000
+    // (le .limit() côté client est écrasé par ce plafond serveur)
+    const PAGE = 1000
+    let acts: YDRawAct[] = []
+    let offset = 0
+    while (true) {
+      const { data: page } = await sb
+        .from('activities')
+        .select('sport_type, started_at, moving_time_s, distance_m, tss, elevation_gain_m')
+        .order('started_at', { ascending: false })
+        .range(offset, offset + PAGE - 1)
+      if (!page?.length) break
+      acts = [...acts, ...(page as YDRawAct[])]
+      if (page.length < PAGE) break
+      offset += PAGE
+    }
 
     const auto: Record<string, Record<string, YDAutoStat>> = {}
     const monthly: Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}
 
-    for (const act of (acts ?? []) as YDRawAct[]) {
+    for (const act of acts) {
       if (!act.started_at || !act.sport_type) continue
       const year  = act.started_at.slice(0, 4)
       const month = parseInt(act.started_at.slice(5, 7)) - 1  // 0-indexed

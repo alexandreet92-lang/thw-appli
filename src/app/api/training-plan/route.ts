@@ -260,6 +260,198 @@ function normalizePlan(raw: unknown): GeneratedPlan {
 }
 
 // ─────────────────────────────────────────────────────────────
+// formatQuestionnaireForPrompt
+// Transforme le form brut en texte structuré lisible par le coach IA.
+// Chaque section est explicitée — l'IA n'a pas à deviner les noms de clés.
+// ─────────────────────────────────────────────────────────────
+
+function formatQuestionnaireForPrompt(q: Record<string, unknown>): string {
+  const s   = (k: string, fb = '') => String(q[k] ?? fb)
+  const n   = (k: string, fb = 0) => Number(q[k] ?? fb)
+  const b   = (k: string) => q[k] === true
+  const arr = (k: string): string[] => Array.isArray(q[k]) ? (q[k] as string[]) : []
+  const rec = (k: string): Record<string, unknown> =>
+    (q[k] && typeof q[k] === 'object' && !Array.isArray(q[k]))
+      ? (q[k] as Record<string, unknown>) : {}
+
+  // ── 1. Objectif ──────────────────────────────────────────────
+  const sport = s('sport_principal')
+  const hybride = (Array.isArray(q.sports_hybride) ? q.sports_hybride as Record<string,unknown>[] : [])
+    .map(h => `${h.sport} (${h.importance})`).join(', ')
+
+  const goalRaces = (Array.isArray(q.goal_races) ? q.goal_races as Record<string,unknown>[] : [])
+  const racesText = goalRaces.length ? goalRaces.map((r, i) => {
+    const rs = r as Record<string, unknown>
+    let line = `  [${String(rs.level ?? 'course').toUpperCase()}] ${rs.nom ?? '?'} — ${rs.date ?? '?'} | Sport: ${rs.sport ?? '?'}`
+    if (rs.goal_libre)      line += `\n    Objectif: ${rs.goal_libre}`
+    if (rs.run_distance)    line += `\n    Distance running: ${rs.run_distance}`
+    if (rs.trail_elevation) line += `\n    Dénivelé trail: ${rs.trail_elevation}`
+    if (rs.tri_distance)    line += `\n    Format triathlon: ${rs.tri_distance}`
+    const hasTri = rs.tri_goal_swim || rs.tri_goal_t1 || rs.tri_goal_bike || rs.tri_goal_t2 || rs.tri_goal_run
+    if (hasTri) line += `\n    Temps cibles tri: Nage ${rs.tri_goal_swim ?? '—'} | T1 ${rs.tri_goal_t1 ?? '—'} | Vélo ${rs.tri_goal_bike ?? '—'} | T2 ${rs.tri_goal_t2 ?? '—'} | Run ${rs.tri_goal_run ?? '—'}`
+    if (rs.hyrox_format)    line += `\n    Format Hyrox: ${rs.hyrox_format}${rs.hyrox_gender ? ` (${rs.hyrox_gender})` : ''}`
+    if (rs.velo_type)       line += `\n    Type vélo: ${rs.velo_type}${rs.velo_distance ? `, ${rs.velo_distance}` : ''}${rs.velo_elevation ? `, D+ ${rs.velo_elevation}` : ''}`
+    if (rs.aviron_format)   line += `\n    Format aviron: ${rs.aviron_format}`
+    if (rs.natation_type)   line += `\n    Natation: ${rs.natation_type}${rs.natation_distance ? ` ${rs.natation_distance}` : ''}`
+    if (rs.goal_time)       line += `\n    Temps cible: ${rs.goal_time}`
+    return `  Course ${i+1}:\n${line}`
+  }).join('\n') : '  Aucune course renseignée'
+
+  // ── 2. Profil ─────────────────────────────────────────────────
+  const meilleurePerf = s('meilleure_performance')
+
+  // ── 3. Disponibilité ──────────────────────────────────────────
+  const isTri   = sport.toLowerCase() === 'triathlon' || goalRaces.some(r => String(r.sport ?? '').toLowerCase() === 'triathlon' && (r.level === 'gty' || r.level === 'main'))
+  const isHyrox = sport.toLowerCase() === 'hyrox'    || goalRaces.some(r => String(r.sport ?? '').toLowerCase() === 'hyrox'    && (r.level === 'gty' || r.level === 'main'))
+  const triRep  = rec('repartition_tri')
+  const hyroxRep = rec('repartition_hyrox')
+  let repartitionText = ''
+  if (isTri)   repartitionText = `  Répartition Triathlon/semaine: Natation ${triRep.natation ?? 0}j | Vélo ${triRep.velo ?? 0}j | Run ${triRep.run ?? 0}j | Muscu ${triRep.muscu ?? 0}j`
+  if (isHyrox) repartitionText = `  Répartition Hyrox/semaine: Run ${hyroxRep.run ?? 0}j | Muscu ${hyroxRep.muscu ?? 0}j | Spé Hyrox ${hyroxRep.spe ?? 0}j | Vélo ${hyroxRep.velo ?? 0}j`
+
+  // ── 4. Blessures ──────────────────────────────────────────────
+  const blessures: string[] = []
+  if (b('blessures_passees')) {
+    const zones = arr('blessures_zones').join(', ') || '?'
+    blessures.push(`Blessure passée — Zone(s): ${zones}${s('blessures_date') ? `, date: ${s('blessures_date')}` : ''} — ${s('blessures_detail') || 'non précisé'}`)
+  }
+  if (b('gene_recente')) {
+    const zones = arr('gene_zones').join(', ') || '?'
+    blessures.push(`Gêne récente — Zone(s): ${zones} — ${s('gene_detail') || 'non précisé'}`)
+  }
+  if (b('contraintes_permanentes')) {
+    const zones = arr('contraintes_zones').join(', ') || '?'
+    blessures.push(`Contrainte permanente — Zone(s): ${zones} — ${s('contraintes_detail') || 'non précisé'}`)
+  }
+  if (b('antecedents')) blessures.push(`Antécédents médicaux: ${s('antecedents_detail') || 'non précisé'}`)
+
+  // ── 5. Blocs custom ───────────────────────────────────────────
+  const blocsCustom = (Array.isArray(q.blocs_custom_detail) ? q.blocs_custom_detail as Record<string,unknown>[] : [])
+  const blocsCustomText = b('blocs_custom') && blocsCustom.length
+    ? blocsCustom.map(bc => `  Bloc "${bc.nom}" — type: ${bc.type} — ${bc.duree_semaines} sem.${bc.discipline ? ` — discipline: ${bc.discipline}` : ''}`).join('\n')
+    : '  Laissé à l\'IA'
+
+  // ── 6. Entraînements spéciaux ─────────────────────────────────
+  const spTrainings: string[] = []
+  if (b('heat_training'))    spTrainings.push(`Heat training: ${s('heat_training_freq') || '?'}x/sem`)
+  if (b('altitude_training')) spTrainings.push(`Altitude training: ${s('altitude_training_semaines') || '?'} sem`)
+  if (b('jeune_entraine'))   spTrainings.push(`Entraînement à jeun: ${s('jeune_entraine_freq') || '?'}x/sem`)
+  if (b('double_entrainement')) {
+    const jours = arr('double_entrainement_jours')
+    spTrainings.push(`Double séance${jours.length ? ' — jours: ' + jours.join(', ') : ''}`)
+  }
+  if (b('nocturne'))         spTrainings.push('Entraînement nocturne')
+  if (b('brick_training'))   spTrainings.push(`Brick training: ${s('brick_training_freq') || '?'}`)
+  if (b('natation_eau_libre')) spTrainings.push('Natation en eau libre')
+
+  // ── 7. Type de journée ────────────────────────────────────────
+  const joursType = rec('journees_type')
+  const joursTypeText = b('journees_type_actif') && Object.keys(joursType).length
+    ? Object.entries(joursType).filter(([,v]) => v).map(([j, v]) => `${j}: ${v}`).join(' | ')
+    : 'Non défini'
+
+  // ── 8. Connaissance de soi ────────────────────────────────────
+  const ptsF = arr('points_forts').join(', ')
+  const ptsFb = arr('points_faibles').join(', ')
+  const diff = arr('difficultes').join(', ')
+  const efAim = arr('efforts_aimes').join(', ')
+  const efDet = arr('efforts_detestes').join(', ')
+
+  // ── 9. Habitudes d'entraînement ───────────────────────────────
+  const habitudes: string[] = []
+  if (b('easy_lundi'))            habitudes.push('Easy lundi')
+  if (arr('habitude_double_jours').length) habitudes.push(`Double: ${arr('habitude_double_jours').join(', ')}`)
+  if (arr('repos_fixe_jours').length)      habitudes.push(`Repos fixe: ${arr('repos_fixe_jours').join(', ')}`)
+  if (s('seance_longue_jour'))    habitudes.push(`Séance longue: ${s('seance_longue_jour')}`)
+  if (s('seance_cle_jour'))       habitudes.push(`Séance clé: ${s('seance_cle_jour')}`)
+  if (b('entrainement_a_jeun'))   habitudes.push(`À jeun: ${s('entrainement_a_jeun_freq') || '?'}x/sem`)
+
+  // ── 10. Suivi et récupération ─────────────────────────────────
+  const suivi: string[] = []
+  if (b('hrv_mesure'))            suivi.push(`HRV: ${s('hrv_outil') || 'outil non précisé'}`)
+  if (b('suivi_sommeil'))         suivi.push(`Sommeil: ${s('suivi_sommeil_outil') || 'outil non précisé'}`)
+  if (b('alcool_regulier'))       suivi.push('Consommation alcool régulière')
+  if (b('cafeine_regulier'))      suivi.push(`Caféine: ${s('cafeine_timing') === 'journee' ? 'toute la journée' : 'matin uniquement'}`)
+
+  // ── Formatage final ───────────────────────────────────────────
+  return `
+━━━ 1. OBJECTIF PRINCIPAL ━━━
+Sport principal: ${sport || 'non précisé'}${hybride ? `\nSports hybrides: ${hybride}` : ''}
+Expérience: ${s('experience') || 'non précisée'}
+Niveau de connaissance: ${s('niveau_connaissance') || 'non précisé'}
+
+Courses cibles (Goal of the Year + secondaires):
+${racesText}
+
+━━━ 2. PROFIL PERFORMANCE ━━━
+Expérience: ${s('experience') || '?'} | Volume actuel: ${n('volume_actuel')}h/sem | Forme actuelle: ${s('forme_actuelle') || '?'}
+Meilleure performance: ${meilleurePerf || 'non renseignée'}
+Programme précédent: ${b('programme_precedent') ? `Oui — ${s('programme_precedent_detail')}` : 'Non'}
+${s('precision_profil') ? `Précisions profil: ${s('precision_profil')}` : ''}
+
+Points forts: ${ptsF || 'non précisés'}
+Points faibles: ${ptsFb || 'non précisés'}
+${s('points_forts_detail') ? `Détail: ${s('points_forts_detail')}` : ''}
+Difficultés habituelles: ${diff || 'non précisées'}
+${s('difficultes_detail') ? `Détail: ${s('difficultes_detail')}` : ''}
+Efforts aimés: ${efAim || 'non précisés'}
+Efforts détestés: ${efDet || 'non précisés'}
+
+━━━ 3. DISPONIBILITÉ ━━━
+Séances/semaine: début de prépa ${n('seances_debut_prepa')}, pic de prépa ${n('seances_pic_prepa')}
+${repartitionText}
+Musculation incluse: ${b('include_muscu') ? `Oui, ${n('seances_muscu')} séance(s)/sem` : 'Non'}
+Heures/semaine: ${n('heures_par_semaine')}h
+Jours de repos: ${arr('jours_repos').join(', ') || 'aucun spécifié'}
+Contraintes horaires: ${s('contraintes_horaires') || 'flexible'}
+${s('precision_dispo') ? `Précisions disponibilité: ${s('precision_dispo')}` : ''}
+
+Type de journée par jour (si défini):
+${joursTypeText}
+
+━━━ 4. ÉQUIPEMENT ━━━
+${arr('equipements').join(', ') || 'non précisé'}
+${s('precision_equipement') ? `Précisions: ${s('precision_equipement')}` : ''}
+
+━━━ 5. BLESSURES & CONTRAINTES MÉDICALES ━━━
+${blessures.length ? blessures.map(l => `- ${l}`).join('\n') : 'Aucune blessure ni contrainte signalée'}
+${s('precision_sante') ? `Précisions santé: ${s('precision_sante')}` : ''}
+
+━━━ 6. MÉTHODES & PÉRIODISATION ━━━
+Blocs de périodisation:
+${blocsCustomText}
+Entrée dans le programme: ${s('entree_programme') === 'prudent' ? 'Progressif' : s('entree_programme') === 'intense' ? 'Direct — prêt à charger' : 'non précisé'}
+Réaction au volume: ${s('reaction_volume') || 'non précisée'}
+Réaction à l'intensité: ${s('reaction_intensite') || 'non précisée'}
+${s('precision_methode') ? `Précisions méthode: ${s('precision_methode')}` : ''}
+
+Entraînements spéciaux demandés:
+${spTrainings.length ? spTrainings.map(t => `- ${t}`).join('\n') : '- Aucun'}
+
+━━━ 7. RÉCUPÉRATION & MODE DE VIE ━━━
+Sommeil: ${n('sommeil_heures')}h/nuit
+Fatigue travail: ${s('fatigue_travail') || 'non précisée'}
+Périodes de stress: ${s('stress_annee') || 'non précisée'}${s('stress_detail') ? ` — ${s('stress_detail')}` : ''}
+Outils récupération: ${arr('outils_recuperation').join(', ') || 'aucun'}
+${s('precision_recup') ? `Précisions récup: ${s('precision_recup')}` : ''}
+
+Habitudes d'entraînement:
+${habitudes.length ? habitudes.map(h => `- ${h}`).join('\n') : '- Non précisées'}
+
+Suivi & biométrie:
+${suivi.length ? suivi.map(s => `- ${s}`).join('\n') : '- Non précisé'}
+
+━━━ 8. NUTRITION ━━━
+Plan nutritionnel: ${s('plan_nutritionnel') || 'non précisé'}
+Contraintes alimentaires: ${arr('contraintes_alimentaires').join(', ') || 'aucune'}
+Compléments: ${arr('complements').join(', ') || 'aucun'}
+Alimentation avant entraînement: ${s('timing_nutrition') === 'toujours' ? 'Oui toujours' : s('timing_nutrition') === 'selon_heure' ? 'Selon l\'heure' : s('timing_nutrition') === 'jeun' ? 'À jeun' : 'non précisé'}
+Ravitaillement sorties longues: ${s('ravitaillement') === 'oui' ? 'Oui régulièrement' : s('ravitaillement') === 'parfois' ? 'Parfois' : s('ravitaillement') === 'non' ? 'Non' : 'non précisé'}
+Objectif corporel: ${s('objectif_poids') === 'perdre' ? 'Perte de poids' : s('objectif_poids') === 'maintenir' ? 'Maintien' : s('objectif_poids') === 'prendre' ? 'Prise de poids' : s('objectif_poids') === 'non_concerne' ? 'Non concerné' : 'non précisé'}
+${s('precision_nutrition') ? `Précisions nutrition: ${s('precision_nutrition')}` : ''}`.trim()
+}
+
+// ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: TrainingPlanRequestBody
@@ -280,12 +472,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     programme_actuel,
   } = body
 
+  const formattedQuestionnaire = formatQuestionnaireForPrompt(questionnaire)
+
   const userPrompt = `Crée un programme d'entraînement avec ces informations :
 
-QUESTIONNAIRE ATHLÈTE :
-${JSON.stringify(questionnaire, null, 2)}
+QUESTIONNAIRE ATHLÈTE — INTERPRÉTATION STRUCTURÉE :
+${formattedQuestionnaire}
 
-PROFIL PERFORMANCE :
+PROFIL PERFORMANCE (zones, FTP, VO2max) :
 ${JSON.stringify(profil ?? null, null, 2)}
 
 ZONES D'ENTRAÎNEMENT :
@@ -302,22 +496,54 @@ ${JSON.stringify(sante ?? [], null, 2)}
 
 ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTANT :\n${JSON.stringify(programme_actuel ?? null, null, 2)}` : ''}
 
-INSTRUCTIONS POUR LA GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
+INSTRUCTIONS DE GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
+
+STRUCTURE :
 - Génère le détail complet des séances (seances[]) pour TOUTES les semaines du plan, sans exception.
-- Pour chaque séance de chaque semaine : sport, titre, jour, duree_min, tss, intensite, heure, notes, rpe.
-- Les blocs détaillés (blocs[]) : UNIQUEMENT pour les semaines 1 et 2. Pour les semaines 3+, mettre blocs à [] (tableau vide).
-- Note_coach : OBLIGATOIRE pour chaque semaine, 1 phrase de coaching contextuelle.
-- Limite conseils_adaptation à 3 éléments maximum.
-- Limite points_cles à 3 éléments maximum.
-- Chaque "consigne" ≤ 10 mots, chaque "notes" ≤ 12 mots — concision obligatoire pour tenir dans les tokens.
-- Ne jamais omettre les séances d'une semaine, même en fin de plan.
+- Pour chaque séance : sport, titre, jour (0=lundi…6=dimanche), duree_min, tss, intensite, heure, notes, rpe.
+- Blocs détaillés (blocs[]) : UNIQUEMENT semaines 1 et 2. Semaines 3+ → blocs: [].
+- note_coach : OBLIGATOIRE pour chaque semaine, 1 phrase de coaching contextuelle.
+- conseils_adaptation : 3 éléments maximum. points_cles : 3 éléments maximum.
+- Chaque "consigne" ≤ 10 mots, chaque "notes" ≤ 12 mots.
+
+COURSES & OBJECTIFS :
+- Construire la périodisation en remontant depuis la date de la course GTY (ou Principale si pas de GTY).
+- Respecter les temps cibles par discipline (triathlon : nage/T1/vélo/T2/run ; autre sport : temps global).
+- Intégrer les courses secondaires comme jalons intermédiaires, sans les sur-charger.
+
+DISPONIBILITÉ & RÉPARTITION :
+- Respecter strictement le nombre de séances (début de prépa / pic de prépa).
+- Pour Triathlon ou Hyrox : distribuer les séances selon la répartition par discipline fournie.
+- Respecter les jours de repos fixes et les contraintes horaires.
+- Placer la séance longue et la séance clé (intensité) aux jours préférés indiqués.
+- Si type de journée défini par jour : respecter cet encodage (Hard ≤ 3/sem, Récup = pas de charge).
+
+BLESSURES & ZONES FRAGILES :
+- Adapter les exercices et l'intensité selon les zones corporelles blessées ou fragiles.
+- Réduire ou exclure les contraintes mécaniques sur la zone concernée.
+- Pour contraintes permanentes : appliquer la restriction sur TOUTE la durée du plan.
+
+BLOCS DE PÉRIODISATION :
+- Si blocs custom définis : suivre exactement l'ordre, le type et la durée indiqués.
+- Intégrer la discipline associée à chaque bloc si précisée.
+- Inclure les entraînements spéciaux demandés (heat, altitude, double séance, nocturne, brick, etc.).
+
+CONNAISSANCE DE SOI & PSYCHOLOGIE :
+- Appuyer le programme sur les points forts, limiter l'exposition aux points faibles.
+- Adapter la structure aux difficultés habituelles signalées (saturation volume, récupération, etc.).
+- Favoriser les types d'efforts aimés dans les séances plaisir/récupération.
+
+NUTRITION & RÉCUPÉRATION :
+- Si objectif poids = perte : suggérer des séances longues à faible intensité, limiter les entraînements intenses à jeun.
+- Si ravitaillement à l'entraînement = Oui : intégrer des sorties longues avec pratique ravitaillement.
+- Tenir compte du sommeil, de la fatigue au travail et des périodes de stress pour moduler la charge.
 
 Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}
 
-RÈGLES :
+RÈGLES GÉNÉRALES :
 1. Programme réaliste adapté au niveau et au temps disponible
-2. Progression logique et périodisation intelligente
+2. Progression logique et périodisation intelligente (Base → Intensité → Spécifique → Compétition)
 3. Semaine de deload toutes les 3-4 semaines
 4. TSS cohérent avec la durée et l'intensité
 5. Respect des jours de repos demandés`

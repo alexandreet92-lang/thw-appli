@@ -219,10 +219,29 @@ button:active { transform: scale(0.97); }
   }
 }
 
+/* ── Year Datas — animations ──────────────────────────────────── */
+@keyframes ydEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ydBarEnter {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+.yd-enter { animation: ydEnter 350ms ease-out both; }
+.yd-bar   { transform-box: fill-box; transform-origin: bottom; }
+/* Scroll reveal : état initial géré par JS IntersectionObserver */
+.yd-reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+.yd-reveal.yd-visible { opacity: 1; transform: none; }
+
 /* ── Performance page — overrides mobile (@max-width: 768px) ───── */
 @media (max-width: 768px) {
   /* Chart 1 : Volume mensuel — hauteur minimale + légende scrollable */
-  .perf-chart1-svg { min-height: 200px; }
+  .perf-chart1-svg { min-height: 220px; }
   .perf-chart1-legend {
     flex-wrap: nowrap !important;
     overflow-x: auto;

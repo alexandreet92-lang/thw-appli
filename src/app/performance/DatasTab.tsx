@@ -30,11 +30,61 @@ const YEAR_COLORS: Record<string, string> = {
 }
 const YEAR_DEFAULT_COLOR = '#9ca3af'
 
+// Couleurs sport Design System §2.3 — fixes et immuables
+const SPORT_DS_COLOR: Record<string, string> = {
+  running:  '#f97316',
+  trail:    '#f97316',
+  cycling:  '#3b82f6',
+  swimming: '#06b6d4',
+  rowing:   '#14b8a6',
+  hyrox:    '#ec4899',
+  gym:      '#8b5cf6',
+  ski:      '#9ca3af',
+  other:    '#9ca3af',
+}
+
 // ── Power Curve: couleurs par rang (plus récent = index 0) ──────
 const PC_COLORS = ['#60B4FF', '#2563EB', '#EAB308', '#F97316', '#EF4444'] as const
 function getPCColor(yr: string, sortedDesc: string[]): string {
   const idx = sortedDesc.indexOf(yr)
   return idx >= 0 && idx < PC_COLORS.length ? PC_COLORS[idx] : YEAR_DEFAULT_COLOR
+}
+
+// ── Chart helpers ────────────────────────────────────────────────
+
+/** Interpolation monotone Fritsch-Carlson — courbe cubique sans dépassement */
+function monotonePath(pts: [number, number][]): string {
+  if (pts.length < 2) return ''
+  const n = pts.length
+  const dx: number[] = [], slope: number[] = [], m: number[] = new Array(n)
+  for (let i = 0; i < n - 1; i++) {
+    dx[i]    = pts[i + 1][0] - pts[i][0]
+    slope[i] = (pts[i + 1][1] - pts[i][1]) / dx[i]
+  }
+  m[0] = slope[0]; m[n - 1] = slope[n - 2]
+  for (let i = 1; i < n - 1; i++) {
+    m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2
+  }
+  for (let i = 0; i < n - 1; i++) {
+    if (Math.abs(slope[i]) < 1e-9) { m[i] = m[i + 1] = 0; continue }
+    const a = m[i] / slope[i], b = m[i + 1] / slope[i], s = a * a + b * b
+    if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * slope[i]; m[i + 1] = t * b * slope[i] }
+  }
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+  for (let i = 0; i < n - 1; i++) {
+    const x1 = pts[i][0] + dx[i] / 3,     y1 = pts[i][1] + m[i] * dx[i] / 3
+    const x2 = pts[i + 1][0] - dx[i] / 3, y2 = pts[i + 1][1] - m[i + 1] * dx[i] / 3
+    d += ` C${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)} ${pts[i + 1][0].toFixed(1)},${pts[i + 1][1].toFixed(1)}`
+  }
+  return d
+}
+
+/** Chemin d'aire sous la courbe monotone, fermé à baseY */
+function monotonoArea(pts: [number, number][], baseY: number): string {
+  const curve = monotonePath(pts)
+  if (!curve) return ''
+  const last = pts[pts.length - 1], first = pts[0]
+  return `${curve} L${last[0].toFixed(1)},${baseY.toFixed(1)} L${first[0].toFixed(1)},${baseY.toFixed(1)} Z`
 }
 
 // ── Utility functions ────────────────────────────────────────────
@@ -944,6 +994,27 @@ function SectionHeader({ label, gradient }: { label: string; gradient: string })
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
       <div style={{ width: 3, height: 20, borderRadius: 2, background: gradient }} />
       <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{label}</h2>
+    </div>
+  )
+}
+
+// ── Empty state §13 ──────────────────────────────────────────────
+function EmptyState({ icon, title, description }: { icon: 'chart' | 'activity'; title: string; description: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 16px', textAlign: 'center' }}>
+      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {icon === 'chart' ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3v18h18"/><polyline points="7 16 11 12 15 16 19 12"/>
+          </svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+          </svg>
+        )}
+      </div>
+      <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{title}</p>
+      <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0, maxWidth: 220 }}>{description}</p>
     </div>
   )
 }
@@ -2839,7 +2910,8 @@ function YearDatasSubTab() {
   } | null>(null)
 
   // Chart tooltips
-  const [hoveredBar, setHoveredBar] = useState<{ year: string; val: number; svgX: number } | null>(null)
+  const [hoveredBar,   setHoveredBar]   = useState<{ year: string; val: number; svgX: number } | null>(null)
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null)
 
   // Responsive
   const [isMobile, setIsMobile] = useState(false)
@@ -2849,6 +2921,23 @@ function YearDatasSubTab() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  // Scroll reveal §12 — déclenché quand les charts passent dans le viewport
+  useEffect(() => {
+    const els = document.querySelectorAll('.yd-reveal')
+    if (!els.length) return
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => {
+        if (e.isIntersecting) {
+          ;(e.target as HTMLElement).classList.add('yd-visible')
+          io.unobserve(e.target)
+        }
+      }),
+      { threshold: 0.08 }
+    )
+    els.forEach(el => io.observe(el))
+    return () => io.disconnect()
+  }, [autoStats, allYears])
 
   // ── Fetch ──────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -3274,7 +3363,7 @@ function YearDatasSubTab() {
   const c3BarW = Math.max(10, c3PlotW / c3N - c3Gap)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="yd-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* ── Header ── */}
       {isMobile ? (
@@ -3392,24 +3481,24 @@ function YearDatasSubTab() {
               )}
             </div>
 
-            {/* Import */}
+            {/* Import — Primary §15 */}
             {stravaConnected && (
               <button
                 onClick={() => void handleImportHistory()}
                 disabled={importing || syncing}
                 style={{
                   flex: 1, padding: '5px 11px', borderRadius: 7,
-                  border: '1px solid rgba(168,85,247,0.35)',
-                  background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
-                  color: '#a855f7', fontSize: 11, fontWeight: 600,
+                  border: 'none',
+                  background: importing || syncing ? 'rgba(0,200,224,0.45)' : '#00c8e0',
+                  color: '#fff', fontSize: 11, fontWeight: 600,
                   cursor: importing || syncing ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
+                  whiteSpace: 'nowrap', opacity: importing || syncing ? 0.8 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'opacity 0.15s',
                 }}
               >
                 {importing ? (
                   <>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
                     Import…
                   </>
                 ) : (
@@ -3685,8 +3774,8 @@ function YearDatasSubTab() {
       )}
 
       {/* ════ Chart 1 — Volume mensuel par sport ════ */}
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+      <Card style={{ position: 'relative' }} >
+        <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
             Volume mensuel par sport
           </h3>
@@ -3704,8 +3793,66 @@ function YearDatasSubTab() {
           </div>
         </div>
         {c1Sports.length > 0 ? (
-          <>
-            <svg viewBox={`0 0 ${SVG_W} ${C1_H}`} className="perf-chart1-svg" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+          <div style={{ position: 'relative' }}>
+            {/* ── Tooltip crosshair ancré en haut-droite ── */}
+            {hoveredMonth !== null && (
+              <div style={{
+                position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none',
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 10, padding: '7px 10px', minWidth: 128,
+                boxShadow: 'var(--shadow-card)',
+              }}>
+                <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 11, fontWeight: 700, margin: '0 0 5px', color: 'var(--text)' }}>
+                  {MONTHS[hoveredMonth]}
+                </p>
+                {c1Sports.map(sp => {
+                  const h  = monthlyStats[chart1Year]?.[hoveredMonth]?.[sp.id]?.heures ?? 0
+                  const km = monthlyStats[chart1Year]?.[hoveredMonth]?.[sp.id]?.km ?? 0
+                  const nb = monthlyStats[chart1Year]?.[hoveredMonth]?.[sp.id]?.nb_sorties ?? 0
+                  if (h === 0 && km === 0 && nb === 0) return null
+                  return (
+                    <div key={sp.id} style={{ marginBottom: 4 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, fontWeight: 600, color: sp.color }}>{sp.label}</span>
+                      </span>
+                      <div style={{ paddingLeft: 11 }}>
+                        {h  > 0 && <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '1px 0' }}>{h.toFixed(1)} h</p>}
+                        {km > 0 && <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '1px 0' }}>{Math.round(km)} km</p>}
+                        {nb > 0 && <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '1px 0' }}>{nb} séance{nb > 1 ? 's' : ''}</p>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* ── SVG : courbes monotones + gradients + crosshair ── */}
+            <svg
+              viewBox={`0 0 ${SVG_W} ${C1_H}`}
+              className="perf-chart1-svg"
+              style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}
+              onMouseMove={e => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                const svgX = ((e.clientX - rect.left) / rect.width) * SVG_W
+                const rawMi = Math.round(((svgX - C1_PL) / c1PlotW) * 11)
+                setHoveredMonth(Math.max(0, Math.min(11, rawMi)))
+              }}
+              onMouseLeave={() => setHoveredMonth(null)}
+            >
+              <defs>
+                {c1Sports.map(sp => (
+                  <linearGradient key={sp.id} id={`c1g-${sp.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor={sp.color} stopOpacity="0.10" />
+                    <stop offset="100%" stopColor={sp.color} stopOpacity="0" />
+                  </linearGradient>
+                ))}
+                <filter id="c1-halo" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
               {/* Grid */}
               {[0, 0.5, 1].map(f => {
                 const y = C1_PT + c1PlotH * (1 - f)
@@ -3714,31 +3861,66 @@ function YearDatasSubTab() {
                   <g key={f}>
                     <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="0.5" strokeDasharray={f > 0 ? '3,3' : undefined} />
                     <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
-                      {chart1Metric === 'heures' ? `${v.toFixed(1)}h` : chart1Metric === 'km' ? `${Math.round(v)}` : `${Math.round(v)}`}
+                      {chart1Metric === 'heures' ? `${v.toFixed(1)}h` : `${Math.round(v)}`}
                     </text>
                   </g>
                 )
               })}
-              {/* Lines per sport */}
+
+              {/* Gradients sous les courbes (peints en premier) */}
               {c1Sports.map(sp => {
                 const vals = c1MonthVals(sp.id)
-                const pts  = vals.map((v, mi) => `${c1X(mi).toFixed(1)},${c1Y(v).toFixed(1)}`).join(' ')
+                const pts: [number, number][] = vals.map((v, mi) => [c1X(mi), c1Y(v)] as [number, number])
+                const aPath = monotonoArea(pts, C1_PT + c1PlotH)
+                if (!aPath) return null
+                return <path key={`a-${sp.id}`} d={aPath} fill={`url(#c1g-${sp.id})`} pointerEvents="none" />
+              })}
+
+              {/* Courbes monotones + points */}
+              {c1Sports.map(sp => {
+                const vals  = c1MonthVals(sp.id)
+                const pts: [number, number][] = vals.map((v, mi) => [c1X(mi), c1Y(v)] as [number, number])
+                const lPath = monotonePath(pts)
                 return (
                   <g key={sp.id}>
-                    <polyline points={pts} fill="none" stroke={sp.color} strokeWidth="1.8" strokeLinejoin="round" opacity="0.85" />
+                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1.8" strokeLinejoin="round" opacity="0.9" />
                     {vals.map((v, mi) => v > 0 ? (
-                      <circle key={mi} cx={c1X(mi)} cy={c1Y(v)} r={3} fill={sp.color} opacity={0.9} />
+                      <circle key={mi}
+                        cx={c1X(mi)} cy={c1Y(v)}
+                        r={hoveredMonth === mi ? 5 : 3}
+                        fill={sp.color}
+                        opacity={hoveredMonth === mi ? 1 : 0.9}
+                        filter={hoveredMonth === mi ? 'url(#c1-halo)' : undefined}
+                      />
                     ) : null)}
                   </g>
                 )
               })}
+
+              {/* Crosshair vertical */}
+              {hoveredMonth !== null && (
+                <line
+                  x1={c1X(hoveredMonth)} y1={C1_PT}
+                  x2={c1X(hoveredMonth)} y2={C1_PT + c1PlotH}
+                  stroke="var(--text-dim)" strokeWidth="1"
+                  strokeDasharray="3,2" opacity="0.55"
+                  pointerEvents="none"
+                />
+              )}
+
               {/* X labels */}
               {MONTHS.map((m, mi) => (
                 <text key={mi} x={c1X(mi)} y={C1_H - 4} textAnchor="middle"
-                  style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{m}</text>
+                  style={{
+                    fontSize: 8,
+                    fill: hoveredMonth === mi ? 'var(--text)' : 'var(--text-dim)',
+                    fontFamily: 'DM Mono,monospace',
+                    fontWeight: hoveredMonth === mi ? '700' : '400',
+                  }}>{m}</text>
               ))}
             </svg>
-            {/* Legend */}
+
+            {/* Légende */}
             <div className="perf-chart1-legend" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
               {c1Sports.map(sp => (
                 <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -3747,7 +3929,7 @@ function YearDatasSubTab() {
                 </div>
               ))}
             </div>
-          </>
+          </div>
         ) : c1AnnualSports.length > 0 ? (
           /* Fallback : totaux annuels depuis year_data_manual (pas de détail mensuel) */
           <div style={{ padding: '4px 0' }}>
@@ -3777,16 +3959,14 @@ function YearDatasSubTab() {
             })}
           </div>
         ) : (
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
-            Aucune donnée pour {chart1Year}.
-          </p>
+          <EmptyState icon="chart" title="Aucune donnée" description={`Aucune activité enregistrée pour ${chart1Year}.`} />
         )}
       </Card>
 
       {/* ════ Chart 2 — Comparaison inter-années par sport ════ */}
       {(chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
               Comparaison par année — {sportDef.label}
             </h3>
@@ -3824,13 +4004,19 @@ function YearDatasSubTab() {
                   {chartYears.map((yr, i) => {
                     const val = chartVals[i], bh = Math.max(0, (val / yMax) * plotH)
                     const bx = lPad + i * (barW + gap) + gap / 2, by = tPad + plotH - bh
-                    const cx = bx + barW / 2, col = YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR
+                    const cx = bx + barW / 2
+                    const col = SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR
                     const sel = selectedYear === yr, hov = hoveredBar?.year === yr
                     return (
                       <g key={yr} style={{ cursor: 'pointer' }}
                         onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
                         onClick={() => setSelectedYear(yr)}>
-                        <rect x={bx} y={by} width={barW} height={bh} rx={4} fill={col} opacity={hov ? 1 : 0.72} />
+                        <rect
+                          x={bx} y={by} width={barW} height={bh} rx={4}
+                          fill={col} opacity={hov || sel ? 1 : 0.68}
+                          className="yd-bar"
+                          style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
+                        />
                         {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={4} fill="none" stroke={col} strokeWidth="1.5" />}
                         {(!isMobile || barW >= 18) && (
                           <text x={cx} y={svgH - 5} textAnchor="middle"
@@ -3849,7 +4035,7 @@ function YearDatasSubTab() {
                     right: hoveredBar.svgX >= SVG_W / 2 ? `calc(${((SVG_W - hoveredBar.svgX) / SVG_W * 100).toFixed(1)}% + 10px)` : undefined,
                     background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', whiteSpace: 'nowrap',
                   }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px', color: YEAR_COLORS[hoveredBar.year] ?? YEAR_DEFAULT_COLOR }}>{hoveredBar.year}</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px', color: SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR }}>{hoveredBar.year}</p>
                     <p style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', margin: 0 }}>
                       {metricDef.label}: <strong>{metricDef.fmt(hoveredBar.val)}</strong>
                     </p>
@@ -3864,14 +4050,14 @@ function YearDatasSubTab() {
       {/* ════ Chart 3 — Volume global toutes disciplines ════ */}
       {hasC3Data && (
         <Card>
-          <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>
+          <h3 className="yd-reveal" style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>
             Volume global — Toutes disciplines
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {([
-              { key: 'heures'     as const, label: 'Heures',        color: '#a855f7', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
-              { key: 'nb_sorties' as const, label: 'Sorties',       color: '#5b6fff', max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
-              { key: 'km'         as const, label: 'Distance (km)', color: '#00c8e0', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
+              { key: 'heures'     as const, label: 'Heures',        color: '#00c8e0', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
+              { key: 'nb_sorties' as const, label: 'Sorties',       color: '#f97316', max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
+              { key: 'km'         as const, label: 'Distance (km)', color: '#3b82f6', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
             ]).map(({ key, label, color, max, fmt }) => (
               <div key={key}>
                 <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
@@ -3889,10 +4075,14 @@ function YearDatasSubTab() {
                     const bx  = C3_PL + i * (c3BarW + c3Gap) + c3Gap / 2
                     const by  = C3_PT + c3PlotH - bh
                     const cx  = bx + c3BarW / 2
-                    const col = YEAR_COLORS[s.year] ?? color
                     return (
                       <g key={s.year}>
-                        <rect x={bx} y={by} width={c3BarW} height={bh} rx={3} fill={col} opacity={0.85} />
+                        <rect
+                          x={bx} y={by} width={c3BarW} height={bh} rx={4}
+                          fill={color} opacity={0.82}
+                          className="yd-bar"
+                          style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
+                        />
                         {bh > 16 && (
                           <text x={cx} y={by + bh / 2 + 4} textAnchor="middle"
                             style={{ fontSize: 8, fill: '#fff', fontFamily: 'DM Mono,monospace', fontWeight: '700' }}>
@@ -3990,9 +4180,11 @@ function YearDatasSubTab() {
       {/* ── Auto empty state ── */}
       {mode === 'auto' && allYears.length === 0 && (
         <Card>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '16px 0' }}>
-            Aucune activité trouvée. Synchronise Strava pour voir tes données annuelles.
-          </p>
+          <EmptyState
+            icon="activity"
+            title="Aucune activité"
+            description="Synchronise Strava ou importe ton historique pour voir tes données annuelles."
+          />
         </Card>
       )}
 

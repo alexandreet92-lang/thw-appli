@@ -203,88 +203,29 @@ const DUR_SECS: Record<string, number> = {
   '4h':14400, '5h':18000, '6h':21600,
 }
 
-const BIKE_REC: Record<string, {w:number;date:string}[]> = {
-  'Pmax':  [{w:1240,date:'2024-08-12'},{w:1180,date:'2023-06-20'}],
-  '10s':   [{w:980, date:'2024-09-01'},{w:920, date:'2023-07-15'}],
-  '30s':   [{w:740, date:'2024-07-22'},{w:710, date:'2023-05-10'}],
-  '1min':  [{w:560, date:'2024-06-14'},{w:530, date:'2023-08-03'}],
-  '3min':  [{w:430, date:'2024-05-28'},{w:410, date:'2023-09-18'}],
-  '5min':  [{w:390, date:'2024-04-10'},{w:375, date:'2023-04-22'}],
-  '8min':  [{w:360, date:'2024-03-15'},{w:348, date:'2023-03-30'}],
-  '10min': [{w:345, date:'2024-02-28'},{w:332, date:'2023-02-14'}],
-  '12min': [{w:335, date:'2024-01-20'},{w:320, date:'2023-01-08'}],
-  '15min': [{w:328, date:'2024-03-10'},{w:314, date:'2023-03-05'}],
-  '20min': [{w:320, date:'2024-10-05'},{w:308, date:'2023-10-12'}],
-  '30min': [{w:310, date:'2024-11-02'},{w:298, date:'2023-11-20'}],
-  '1h':    [{w:301, date:'2024-12-01'},{w:285, date:'2023-12-10'}],
-  '90min': [{w:290, date:'2024-09-15'},{w:276, date:'2023-09-20'}],
-  '2h':    [{w:275, date:'2024-08-30'},{w:262, date:'2023-08-25'}],
-  '3h':    [{w:255, date:'2024-07-14'},{w:242, date:'2023-07-20'}],
-  '4h':    [{w:238, date:'2024-06-22'},{w:225, date:'2023-06-18'}],
-  '5h':    [{w:222, date:'2024-05-18'},{w:210, date:'2023-05-30'}],
-  '6h':    [{w:208, date:'2024-04-28'},{w:196, date:'2023-04-15'}],
-}
-
 const RUN_DISTS = ['1500m','5km','10km','Semi','Marathon','50km','100km']
 const RUN_KM: Record<string,number> = { '1500m':1.5,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
-const RUN_REC: Record<string, {time:string;date:string}[]> = {
-  '1500m':    [{time:'4:22',    date:'2024-06-08'},{time:'4:35',    date:'2023-07-14'}],
-  '5km':      [{time:'17:45',   date:'2024-04-21'},{time:'18:12',   date:'2023-05-10'}],
-  '10km':     [{time:'37:20',   date:'2024-05-12'},{time:'38:45',   date:'2023-06-18'}],
-  'Semi':     [{time:'1:24:30', date:'2024-04-06'},{time:'1:27:15', date:'2023-04-09'}],
-  'Marathon': [{time:'3:05:00', date:'2024-10-20'},{time:'3:12:30', date:'2023-10-15'}],
-  '50km':     [{time:'4:45:00', date:'2024-07-06'},{time:'—',       date:'—'}],
-  '100km':    [{time:'—',       date:'—'},          {time:'—',      date:'—'}],
-}
 
 const SWIM_DISTS = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
-const SWIM_REC: Record<string, {time:string;date:string}[]> = {
-  '100m':   [{time:'1:10',  date:'2024-03-15'},{time:'1:14',  date:'2023-04-20'}],
-  '200m':   [{time:'2:28',  date:'2024-04-10'},{time:'2:35',  date:'2023-05-12'}],
-  '400m':   [{time:'5:10',  date:'2024-02-28'},{time:'5:22',  date:'2023-03-18'}],
-  '1000m':  [{time:'13:20', date:'2024-05-20'},{time:'13:55', date:'2023-06-10'}],
-  '1500m':  [{time:'20:30', date:'2024-01-15'},{time:'21:10', date:'2023-02-20'}],
-  '2000m':  [{time:'27:45', date:'2024-06-05'},{time:'28:40', date:'2023-07-15'}],
-  '5000m':  [{time:'—',     date:'—'},          {time:'—',    date:'—'}],
-  '10000m': [{time:'—',     date:'—'},          {time:'—',    date:'—'}],
-}
 
 const ROW_DISTS = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
 const ROW_M: Record<string,number> = { '500m':500,'1000m':1000,'2000m':2000,'5000m':5000,'10000m':10000,'Semi':21097,'Marathon':42195 }
-const ROW_REC: Record<string, {time:string;date:string}[]> = {
-  '500m':    [{time:'1:32',  date:'2024-02-10'},{time:'1:36',  date:'2023-03-05'}],
-  '1000m':   [{time:'3:18',  date:'2024-03-20'},{time:'3:25',  date:'2023-04-15'}],
-  '2000m':   [{time:'6:52',  date:'2024-01-28'},{time:'7:08',  date:'2023-02-12'}],
-  '5000m':   [{time:'18:30', date:'2024-04-05'},{time:'19:10', date:'2023-05-20'}],
-  '10000m':  [{time:'38:45', date:'2024-05-10'},{time:'40:20', date:'2023-06-08'}],
-  'Semi':    [{time:'—',     date:'—'},          {time:'—',    date:'—'}],
-  'Marathon':[{time:'—',     date:'—'},          {time:'—',    date:'—'}],
-}
 
 const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmers Carry','Sandbag Lunges','Wall Balls']
 interface HyroxRecord {
   format: string; date: string; total: string; roxzone: string; penalties: string
   stations: Record<string, string>; runs: string[]
 }
-const HYROX_REC: HyroxRecord = {
-  format: 'Solo Open Homme', date: '2024-05-10', total: '1:02:45', roxzone: '8:30', penalties: '0',
-  stations: {
-    'SkiErg': '3:42', 'Sled Push': '3:15', 'Sled Pull': '2:55',
-    'Burpee Broad Jump': '5:10', 'Rowing': '3:28', 'Farmers Carry': '2:40',
-    'Sandbag Lunges': '5:55', 'Wall Balls': '4:50',
-  },
-  runs: ['4:12','4:08','4:15','4:22','4:18','4:30','4:35','4:28'],
-}
 
 const GYM_MOVES = [
-  { name:'Bench Press',    recs:[{l:'1RM',v:120},{l:'3RM',v:110},{l:'5RM',v:102},{l:'10RM',v:90},{l:'Max reps PDC',v:32}] },
-  { name:'Squat',          recs:[{l:'1RM',v:150},{l:'3RM',v:138},{l:'5RM',v:128},{l:'10RM',v:112},{l:'Max reps PDC',v:0}] },
-  { name:'Deadlift',       recs:[{l:'1RM',v:185},{l:'3RM',v:172},{l:'5RM',v:160},{l:'10RM',v:140},{l:'Max reps PDC',v:0}] },
-  { name:'Tractions',      recs:[{l:'Max reps PDC',v:18},{l:'1RM+charge',v:40}] },
-  { name:'Dips',           recs:[{l:'Max reps PDC',v:30},{l:'1RM+charge',v:50}] },
-  { name:'Dev. militaire', recs:[{l:'Max charge',v:80}] },
-  { name:'Pompes',         recs:[{l:'Max reps',v:65}] },
+  { name:'Bench Press',    recs:[{l:'1RM',v:0},{l:'3RM',v:0},{l:'5RM',v:0},{l:'10RM',v:0},{l:'Max reps PDC',v:0}] },
+  { name:'Squat',          recs:[{l:'1RM',v:0},{l:'3RM',v:0},{l:'5RM',v:0},{l:'10RM',v:0},{l:'Max reps PDC',v:0}] },
+  { name:'Deadlift',       recs:[{l:'1RM',v:0},{l:'3RM',v:0},{l:'5RM',v:0},{l:'10RM',v:0},{l:'Max reps PDC',v:0}] },
+  { name:'Tractions',      recs:[{l:'Max reps PDC',v:0},{l:'1RM+charge',v:0}] },
+  { name:'Dips',           recs:[{l:'Max reps PDC',v:0},{l:'1RM+charge',v:0}] },
+  { name:'Dev. militaire', recs:[{l:'Max charge',v:0}] },
+  { name:'Pompes',         recs:[{l:'Max reps',v:0}] },
 ]
 
 // ── Sports Records Types ─────────────────────────────────────────
@@ -323,22 +264,6 @@ const CHART_DISTS: Record<string, string[]> = {
   rowing: ['500m', '2000m', '5000m'],
 }
 
-// ── YearSelector ─────────────────────────────────────────────────
-function YearSelector({ years, value, onChange, color = '#5b6fff' }: {
-  years: string[]; value: string; onChange: (y: string) => void; color?: string
-}) {
-  return (
-    <select value={value} onChange={e => onChange(e.target.value)} style={{
-      padding: '5px 10px', borderRadius: 7,
-      border: `1px solid ${color}55`,
-      background: 'var(--bg-card2)', color: 'var(--text)',
-      fontSize: 11, cursor: 'pointer', outline: 'none',
-    }}>
-      <option value="All Time">All Time</option>
-      {years.map(y => <option key={y} value={y}>{y}</option>)}
-    </select>
-  )
-}
 
 // ── TimeBarChart ─────────────────────────────────────────────────
 // Taller bar = slower = worse. Supabase data only.
@@ -982,7 +907,7 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
           {sub && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sub}</span>}
         </div>
         {rec23 && rec23 !== '—' && (
-          <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)' }}>2023 : {rec23}</span>
+          <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)' }}>Préc. : {rec23}</span>
         )}
       </div>
       {actions && <div onClick={e => e.stopPropagation()}>{actions}</div>}
@@ -2102,26 +2027,24 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   profile: Props['profile']
 }) {
   const [sport, setSport] = useState<RecordSport>('bike')
-  const [selectedYear, setSelectedYear] = useState('All Time')
+  // ── Année globale (pills DS §16) ─────────────────────────────────
+  const [recordYear, setRecordYear] = useState('All Time')
   const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set())
   // ── Inline edit state (one record at a time) ─────────────────────
   // key format: "bike-record-${dur}"
   const [activeEdit, setActiveEdit] = useState<string | null>(null)
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const [editDate, setEditDate] = useState('')
   const [recordSaving, setRecordSaving] = useState(false)
 
-  // Supabase overrides: {dur -> {w, date}} — most recent record per duration
-  const [bikeOverrides, setBikeOverrides] = useState<Record<string, {w: number; date: string}>>({})
+  // Tous les records vélo depuis Supabase (toutes années)
+  const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
 
   // All personal records for run/swim/rowing/gym from Supabase
   const [allSpRecords, setAllSpRecords] = useState<SpRecord[]>([])
-  const [runYear,  setRunYear]  = useState('All Time')
-  const [swimYear, setSwimYear] = useState('All Time')
-  const [rowYear,  setRowYear]  = useState('All Time')
-  const [gymYear,  setGymYear]  = useState('All Time')
 
-  // Load latest bike records from Supabase on mount
+  // Load all bike records from Supabase on mount (toutes années)
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
@@ -2129,19 +2052,11 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       if (!user) return
       const { data } = await supabase
         .from('personal_records')
-        .select('distance_label, performance, achieved_at')
+        .select('id, distance_label, performance, achieved_at')
         .eq('user_id', user.id)
         .eq('sport', 'bike')
         .order('achieved_at', { ascending: false })
-      if (!data) return
-      const overrides: Record<string, {w: number; date: string}> = {}
-      for (const rec of data) {
-        if (!overrides[rec.distance_label as string]) {
-          const w = parseInt(rec.performance as string) || 0
-          if (w > 0) overrides[rec.distance_label as string] = { w, date: rec.achieved_at as string }
-        }
-      }
-      setBikeOverrides(overrides)
+      if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
     }
     void load()
   }, [])
@@ -2163,89 +2078,140 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     void load()
   }, [])
 
-  // Returns the best record to display for a duration (Supabase override takes priority)
-  function getEffectiveRec(dur: string): {w: number; date: string} {
-    return bikeOverrides[dur] ?? BIKE_REC[dur]?.[0] ?? { w: 0, date: '—' }
+  // Meilleur record vélo pour une durée (filtré par année sélectionnée)
+  function getEffectiveRec(dur: string): {id: string | null; w: number; date: string} {
+    const recs = bikeAllRecords
+      .filter(r => r.distance_label === dur && (recordYear === 'All Time' || r.achieved_at.slice(0, 4) === recordYear))
+      .map(r => ({ id: r.id, w: parseInt(r.performance) || 0, date: r.achieved_at }))
+      .filter(r => r.w > 0)
+      .sort((a, b) => b.w - a.w)
+    return recs[0] ?? { id: null, w: 0, date: '—' }
   }
 
-  // Returns previous year's record for a duration
+  // Meilleur record vélo de l'année précédente
   function getPrevRec(dur: string): {w: number; date: string} | undefined {
-    if (bikeOverrides[dur]) return BIKE_REC[dur]?.[0]
-    return BIKE_REC[dur]?.[1]
+    if (recordYear === 'All Time') {
+      // 2e meilleur record toutes années confondues
+      const all = bikeAllRecords
+        .filter(r => r.distance_label === dur)
+        .map(r => ({ w: parseInt(r.performance) || 0, date: r.achieved_at }))
+        .filter(r => r.w > 0)
+        .sort((a, b) => b.w - a.w)
+      return all[1]
+    }
+    const prevYear = String(parseInt(recordYear) - 1)
+    const recs = bikeAllRecords
+      .filter(r => r.distance_label === dur && r.achieved_at.slice(0, 4) === prevYear)
+      .map(r => ({ w: parseInt(r.performance) || 0, date: r.achieved_at }))
+      .filter(r => r.w > 0)
+      .sort((a, b) => b.w - a.w)
+    return recs[0]
   }
 
-  function tryEdit(key: string, currentVal: string) {
+  function tryEdit(key: string, currentVal: string, recordId: string | null = null) {
     if (activeEdit && activeEdit !== key) {
       if (!window.confirm('Abandonner les modifications en cours ?')) return
     }
     setActiveEdit(key)
+    setEditingRecordId(recordId)
     setEditDraft(currentVal)
     setEditDate(new Date().toISOString().split('T')[0])
   }
 
   function cancelEdit() {
     setActiveEdit(null)
+    setEditingRecordId(null)
     setEditDraft('')
   }
 
-  // Helpers for non-bike sports
-  function getSpBest(sport: string, dist: string, year: string): { perf: string; date: string } | null {
+  // Meilleur record pour les sports non-vélo (retourne l'id pour upsert)
+  function getSpBest(sp: string, dist: string, year: string): { id: string; perf: string; date: string } | null {
     const recs = allSpRecords.filter(r =>
-      r.sport === sport && r.distance_label === dist &&
+      r.sport === sp && r.distance_label === dist &&
       (year === 'All Time' || r.achieved_at.slice(0, 4) === year)
     )
     if (!recs.length) return null
-    const isTime = sport !== 'gym'
+    const isTime = sp !== 'gym'
     const sorted = [...recs].sort((a, b) =>
       isTime
         ? toSec(a.performance) - toSec(b.performance)
         : parseFloat(b.performance) - parseFloat(a.performance)
     )
-    return { perf: sorted[0].performance, date: sorted[0].achieved_at }
+    return { id: sorted[0].id, perf: sorted[0].performance, date: sorted[0].achieved_at }
   }
 
-  function getSpYears(sport: string): string[] {
-    const years = new Set<string>()
-    allSpRecords.filter(r => r.sport === sport).forEach(r => years.add(r.achieved_at.slice(0, 4)))
-    return [...years].sort((a, b) => b.localeCompare(a))
+  // Record de l'année précédente pour les sports non-vélo
+  function getSpPrev(sp: string, dist: string): { perf: string; date: string } | null {
+    if (recordYear === 'All Time') {
+      // 2e meilleur toutes années (de l'année suivante la moins bonne)
+      const all = allSpRecords.filter(r => r.sport === sp && r.distance_label === dist && r.performance !== '—')
+      if (all.length < 2) return null
+      const isTime = sp !== 'gym'
+      const sorted = [...all].sort((a, b) =>
+        isTime ? toSec(a.performance) - toSec(b.performance) : parseFloat(b.performance) - parseFloat(a.performance)
+      )
+      const bestYear = sorted[0].achieved_at.slice(0, 4)
+      const prev = sorted.find(r => r.achieved_at.slice(0, 4) !== bestYear)
+      return prev ? { perf: prev.performance, date: prev.achieved_at } : null
+    }
+    const prevYear = String(parseInt(recordYear) - 1)
+    const r = getSpBest(sp, dist, prevYear)
+    return r ? { perf: r.perf, date: r.date } : null
   }
 
-  async function confirmSpRecord(sport: string, dist: string, unit: string) {
+  // Toutes les années disponibles (vélo + tous sports) pour les pills
+  const allRecordYears: string[] = (() => {
+    const s = new Set<string>()
+    bikeAllRecords.forEach(r => s.add(r.achieved_at.slice(0, 4)))
+    allSpRecords.forEach(r => s.add(r.achieved_at.slice(0, 4)))
+    return [...s].sort((a, b) => b.localeCompare(a))
+  })()
+
+  async function confirmSpRecord(sp: string, dist: string, unit: string) {
     setRecordSaving(true)
     if (editDraft) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        await supabase.from('personal_records').insert({
-          user_id:          user.id,
-          sport,
-          distance_label:   dist,
-          performance:      editDraft,
-          performance_unit: unit,
-          event_type:       'training',
-          achieved_at:      editDate || new Date().toISOString().slice(0, 10),
-          race_name:        null,
-          pace_s_km:        null,
-          elevation_gain_m: null,
-          split_swim:       null,
-          split_bike:       null,
-          split_run:        null,
-          station_times:    null,
-          notes:            null,
-        })
-        const newRec: SpRecord = {
-          id:               crypto.randomUUID(),
-          sport,
-          distance_label:   dist,
-          performance:      editDraft,
-          performance_unit: unit,
-          achieved_at:      editDate || new Date().toISOString().slice(0, 10),
+        const achievedAt = editDate || new Date().toISOString().slice(0, 10)
+        if (editingRecordId) {
+          // UPDATE du record existant
+          await supabase.from('personal_records').update({
+            performance:      editDraft,
+            performance_unit: unit,
+            achieved_at:      achievedAt,
+          }).eq('id', editingRecordId)
+          setAllSpRecords(prev => prev.map(r =>
+            r.id === editingRecordId
+              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt }
+              : r
+          ))
+        } else {
+          // INSERT nouveau record
+          const { data: inserted } = await supabase.from('personal_records').insert({
+            user_id:          user.id,
+            sport:            sp,
+            distance_label:   dist,
+            performance:      editDraft,
+            performance_unit: unit,
+            event_type:       'training',
+            achieved_at:      achievedAt,
+            race_name:        null,
+            pace_s_km:        null,
+            elevation_gain_m: null,
+            split_swim:       null,
+            split_bike:       null,
+            split_run:        null,
+            station_times:    null,
+            notes:            null,
+          }).select('id, sport, distance_label, performance, performance_unit, achieved_at').single()
+          if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
         }
-        setAllSpRecords(prev => [...prev, newRec])
       }
     }
     setRecordSaving(false)
     setActiveEdit(null)
+    setEditingRecordId(null)
     setEditDraft('')
   }
 
@@ -2256,49 +2222,57 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        await supabase.from('personal_records').insert({
-          user_id:          user.id,
-          sport:            'bike',
-          distance_label:   dur,
-          performance:      String(watts),
-          performance_unit: 'watts',
-          event_type:       'training',
-          achieved_at:      editDate || new Date().toISOString().split('T')[0],
-          race_name:        null,
-          pace_s_km:        null,
-          elevation_gain_m: null,
-          split_swim:       null,
-          split_bike:       null,
-          split_run:        null,
-          station_times:    null,
-          notes:            null,
-        })
-        setBikeOverrides(prev => ({ ...prev, [dur]: { w: watts, date: editDate } }))
+        const achievedAt = editDate || new Date().toISOString().split('T')[0]
+        if (editingRecordId) {
+          // UPDATE du record existant
+          await supabase.from('personal_records').update({
+            performance: String(watts),
+            achieved_at: achievedAt,
+          }).eq('id', editingRecordId)
+          setBikeAllRecords(prev => prev.map(r =>
+            r.id === editingRecordId
+              ? { ...r, performance: String(watts), achieved_at: achievedAt }
+              : r
+          ))
+        } else {
+          // INSERT nouveau record
+          const { data: inserted } = await supabase.from('personal_records').insert({
+            user_id:          user.id,
+            sport:            'bike',
+            distance_label:   dur,
+            performance:      String(watts),
+            performance_unit: 'watts',
+            event_type:       'training',
+            achieved_at:      achievedAt,
+            race_name:        null,
+            pace_s_km:        null,
+            elevation_gain_m: null,
+            split_swim:       null,
+            split_bike:       null,
+            split_run:        null,
+            station_times:    null,
+            notes:            null,
+          }).select('id, distance_label, performance, achieved_at').single()
+          if (inserted) setBikeAllRecords(prev => [...prev, inserted as typeof bikeAllRecords[0]])
+        }
       }
     }
     setRecordSaving(false)
     setActiveEdit(null)
+    setEditingRecordId(null)
     setEditDraft('')
   }
 
-  // Build bikeByYear merging BIKE_REC + Supabase overrides
+  // Build bikeByYear depuis Supabase uniquement (meilleur par durée par année)
   const bikeByYear: Record<string, Record<string, number>> = {}
-  for (const dur of BIKE_DURS) {
-    const eff = getEffectiveRec(dur)
-    if (eff.w > 0) {
-      const year = eff.date.slice(0, 4)
-      if (!bikeByYear[year]) bikeByYear[year] = {}
-      bikeByYear[year][dur] = eff.w
-    }
-    // Also include previous year's record
-    const prev = getPrevRec(dur)
-    if (prev && prev.w > 0) {
-      const yr = prev.date.slice(0, 4)
-      if (!bikeByYear[yr]) bikeByYear[yr] = {}
-      if (!bikeByYear[yr][dur]) bikeByYear[yr][dur] = prev.w
-    }
+  for (const rec of bikeAllRecords) {
+    const yr  = rec.achieved_at.slice(0, 4)
+    const dur = rec.distance_label
+    const w   = parseInt(rec.performance) || 0
+    if (w <= 0) continue
+    if (!bikeByYear[yr]) bikeByYear[yr] = {}
+    if (!bikeByYear[yr][dur] || w > bikeByYear[yr][dur]) bikeByYear[yr][dur] = w
   }
-  // Max 5 années les plus récentes
   const bikeYears = Object.keys(bikeByYear).sort((a, b) => b.localeCompare(a)).slice(0, 5)
 
   function toggleHiddenYear(yr: string) {
@@ -2330,22 +2304,37 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
         onChange={(id) => setSport(id as RecordSport)}
       />
 
+      {/* Year pills DS §16 */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {(['All Time', ...allRecordYears] as string[]).map(yr => {
+          const active = recordYear === yr
+          const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+          return (
+            <button key={yr} onClick={() => setRecordYear(yr)} style={{
+              padding: '5px 12px', borderRadius: 20, border: 'none',
+              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              fontSize: 12, fontWeight: active ? 700 : 500,
+              transition: 'background 0.15s, color 0.15s',
+              background: active ? color : 'var(--bg-card2)',
+              color: active ? '#ffffff' : 'var(--text-dim)',
+            }}>
+              {yr}
+            </button>
+          )
+        })}
+      </div>
+
       {/* BIKE */}
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
-              <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-                style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, cursor: 'pointer', outline: 'none' }}>
-                <option value="All Time">All Time</option>
-                {bikeYears.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
             </div>
 
             {/* Scroll horizontal sur mobile si l'axe X est trop dense */}
             <div style={{ overflowX: 'auto', overflowY: 'visible', margin: '0 -4px' }}>
-              <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={selectedYear} weight={profile.weight} />
+              <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={recordYear} weight={profile.weight} />
             </div>
 
             {/* Legend */}
@@ -2375,7 +2364,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             {BIKE_DURS.map(d => {
               const eff = getEffectiveRec(d)
               const prev = getPrevRec(d)
-              if (eff.w === 0 && !BIKE_REC[d]) return null
+              if (eff.w === 0) return null
               const editKey = `bike-record-${d}`
               const isEditing = activeEdit === editKey
               const sel = selectedDatum?.label === `Vélo ${d}` && selectedDatum?.value === `${eff.w}W`
@@ -2429,7 +2418,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                   selected={sel}
                   actions={
                     <button
-                      onClick={() => tryEdit(editKey, eff.w > 0 ? String(eff.w) : '')}
+                      onClick={() => tryEdit(editKey, eff.w > 0 ? String(eff.w) : '', eff.id)}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       Modifier
@@ -2446,25 +2435,17 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
-              <YearSelector years={getSpYears('run')} value={runYear} onChange={setRunYear} color="#22c55e" />
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
             {RUN_DISTS.map(d => {
               const editKey = `run-${d}`
               const isEditing = activeEdit === editKey
-              const spBest = getSpBest('run', d, runYear)
-              const staticBest = (() => {
-                const sr = (RUN_REC[d] ?? []).filter(r => r.time !== '—' && (runYear === 'All Time' || r.date.slice(0, 4) === runYear))
-                return sr.length > 0 ? { perf: sr[0].time, date: sr[0].date } : null
-              })()
-              const displayRec = spBest ?? staticBest
-              const prevRec = runYear === 'All Time'
-                ? (() => { const p = RUN_REC[d]?.[1]; return p && p.time !== '—' ? { perf: p.time, date: p.date } : null })()
-                : null
-              const pace = displayRec ? calcPacePerKm(RUN_KM[d] ?? 0, displayRec.perf) : '—'
-              const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (displayRec?.perf ?? '—')
+              const spBest  = getSpBest('run', d, recordYear)
+              const prevRec = getSpPrev('run', d)
+              const pace = spBest ? calcPacePerKm(RUN_KM[d] ?? 0, spBest.perf) : '—'
+              const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               if (isEditing) {
                 return (
                   <div key={d} style={{
@@ -2491,13 +2472,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
               }
               return (
                 <RecordRow key={d} label={d}
-                  rec24={displayRec?.perf ?? '—'}
+                  rec24={spBest?.perf ?? '—'}
                   rec23={prevRec?.perf ?? '—'}
                   sub={pace !== '—' ? pace : undefined}
-                  onSelect={() => displayRec ? onSelect(`Course ${d}`, displayRec.perf) : undefined}
+                  onSelect={() => spBest ? onSelect(`Course ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={
-                    <button onClick={() => tryEdit(editKey, displayRec?.perf ?? '')}
+                    <button onClick={() => tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null)}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Modifier
                     </button>
@@ -2512,25 +2493,17 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {sport === 'swim' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
-              <YearSelector years={getSpYears('swim')} value={swimYear} onChange={setSwimYear} color="#38bdf8" />
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} color="#38bdf8" />
             {SWIM_DISTS.map(d => {
               const editKey = `swim-${d}`
               const isEditing = activeEdit === editKey
-              const spBest = getSpBest('swim', d, swimYear)
-              const staticBest = (() => {
-                const sr = (SWIM_REC[d] ?? []).filter(r => r.time !== '—' && (swimYear === 'All Time' || r.date.slice(0, 4) === swimYear))
-                return sr.length > 0 ? { perf: sr[0].time, date: sr[0].date } : null
-              })()
-              const displayRec = spBest ?? staticBest
-              const prevRec = swimYear === 'All Time'
-                ? (() => { const p = SWIM_REC[d]?.[1]; return p && p.time !== '—' ? { perf: p.time, date: p.date } : null })()
-                : null
-              const split = displayRec ? calcSplit500m(SWIM_M[d] ?? 0, displayRec.perf).replace('/500m', '/100m') : '—'
-              const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (displayRec?.perf ?? '—')
+              const spBest  = getSpBest('swim', d, recordYear)
+              const prevRec = getSpPrev('swim', d)
+              const split   = spBest ? calcSplit500m(SWIM_M[d] ?? 0, spBest.perf).replace('/500m', '/100m') : '—'
+              const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               if (isEditing) {
                 return (
                   <div key={d} style={{
@@ -2557,13 +2530,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
               }
               return (
                 <RecordRow key={d} label={d}
-                  rec24={displayRec?.perf ?? '—'}
+                  rec24={spBest?.perf ?? '—'}
                   rec23={prevRec?.perf ?? '—'}
                   sub={split !== '—' ? split : undefined}
-                  onSelect={() => displayRec ? onSelect(`Natation ${d}`, displayRec.perf) : undefined}
+                  onSelect={() => spBest ? onSelect(`Natation ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={
-                    <button onClick={() => tryEdit(editKey, displayRec?.perf ?? '')}
+                    <button onClick={() => tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null)}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Modifier
                     </button>
@@ -2578,24 +2551,16 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {sport === 'rowing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
-              <YearSelector years={getSpYears('rowing')} value={rowYear} onChange={setRowYear} color="#14b8a6" />
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} color="#14b8a6" />
             {ROW_DISTS.map(d => {
               const editKey = `rowing-${d}`
               const isEditing = activeEdit === editKey
-              const spBest = getSpBest('rowing', d, rowYear)
-              const staticBest = (() => {
-                const sr = (ROW_REC[d] ?? []).filter(r => r.time !== '—' && (rowYear === 'All Time' || r.date.slice(0, 4) === rowYear))
-                return sr.length > 0 ? { perf: sr[0].time, date: sr[0].date } : null
-              })()
-              const displayRec = spBest ?? staticBest
-              const prevRec = rowYear === 'All Time'
-                ? (() => { const p = ROW_REC[d]?.[1]; return p && p.time !== '—' ? { perf: p.time, date: p.date } : null })()
-                : null
-              const split = displayRec ? calcSplit500m(ROW_M[d] ?? 0, displayRec.perf) : '—'
+              const spBest  = getSpBest('rowing', d, recordYear)
+              const prevRec = getSpPrev('rowing', d)
+              const split   = spBest ? calcSplit500m(ROW_M[d] ?? 0, spBest.perf) : '—'
               const wStr = (() => {
                 if (split === '—') return '—'
                 const pp = split.split('/')[0].split(':').map(Number)
@@ -2603,7 +2568,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                 return ss > 0 ? `~${Math.round(2.80 / (ss / 500) ** 3)}W` : '—'
               })()
               const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
-              const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (displayRec?.perf ?? '—')
+              const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               if (isEditing) {
                 return (
                   <div key={d} style={{
@@ -2630,13 +2595,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
               }
               return (
                 <RecordRow key={d} label={lbl}
-                  rec24={displayRec?.perf ?? '—'}
+                  rec24={spBest?.perf ?? '—'}
                   rec23={prevRec?.perf ?? '—'}
                   sub={split !== '—' ? `${split} · ${wStr}` : undefined}
-                  onSelect={() => displayRec ? onSelect(`Aviron ${d}`, displayRec.perf) : undefined}
+                  onSelect={() => spBest ? onSelect(`Aviron ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={
-                    <button onClick={() => tryEdit(editKey, displayRec?.perf ?? '')}
+                    <button onClick={() => tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null)}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Modifier
                     </button>
@@ -2656,9 +2621,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {/* GYM */}
       {sport === 'gym' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <SectionHeader label="Records muscu" gradient="linear-gradient(180deg,#fb923c,#f97316)" />
-            <YearSelector years={getSpYears('gym')} value={gymYear} onChange={setGymYear} color="#f97316" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }} className="md:grid-cols-2">
             {GYM_MOVES.map(m => (
@@ -2670,9 +2634,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                     const editKey   = `gym-${distLabel}`
                     const isEditing = activeEdit === editKey
                     const unit      = r.l.includes('reps') ? 'reps' : 'kg'
-                    const spBest    = getSpBest('gym', distLabel, gymYear)
-                    const staticVal = r.v ? `${r.v}${unit === 'reps' ? ' reps' : ' kg'}` : '—'
-                    const displayVal = spBest ? `${spBest.perf}${unit === 'reps' ? ' reps' : ' kg'}` : staticVal
+                    const spBest    = getSpBest('gym', distLabel, recordYear)
+                    const displayVal = spBest ? `${spBest.perf}${unit === 'reps' ? ' reps' : ' kg'}` : '—'
                     const sel = selectedDatum?.label === distLabel && selectedDatum?.value === displayVal
 
                     if (isEditing) {
@@ -2714,7 +2677,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                           <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: displayVal !== '—' ? '#f97316' : 'var(--text-dim)' }}>
                             {displayVal}
                           </span>
-                          <button onClick={e => { e.stopPropagation(); tryEdit(editKey, spBest?.perf ?? (r.v ? String(r.v) : '')) }}
+                          <button onClick={e => { e.stopPropagation(); tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null) }}
                             style={{ padding: '2px 7px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', flexShrink: 0 }}>
                             Modifier
                           </button>

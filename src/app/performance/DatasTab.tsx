@@ -3374,8 +3374,11 @@ function YearDatasSubTab() {
   const c1MaxVal = c1CompareMode
     ? Math.max(1, ...c1CompareYears.flatMap(yr => c1PointVals(c1CompareSport, yr)))
     : Math.max(1, ...c1Sports.flatMap(sp => c1PointVals(sp.id)))
-  const C1_H = 155, C1_PL = 44, C1_PR = 10, C1_PT = 16, C1_PB = 32
-  const c1PlotW = SVG_W - C1_PL - C1_PR
+  // Mobile : viewBox plus haut + largeur fixe 728px en mode Semaine (scroll horizontal)
+  const C1_H    = isMobile ? 230 : 155
+  const C1_SVG_W = (isMobile && chart1Period === 'semaine') ? 728 : SVG_W
+  const C1_PL = 44, C1_PR = 10, C1_PT = 16, C1_PB = 32
+  const c1PlotW = C1_SVG_W - C1_PL - C1_PR
   const c1PlotH = C1_H - C1_PT - C1_PB
   // Diviseur protégé contre C1_N = 1
   const c1X = (i: number) => C1_PL + (i / Math.max(1, C1_N - 1)) * c1PlotW
@@ -3916,9 +3919,9 @@ function YearDatasSubTab() {
 
         {/* ── Contenu chart ── */}
         {(c1CompareMode ? c1CompareYears.length > 0 : c1Sports.length > 0) ? (
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', minHeight: isMobile ? 280 : 'auto' }}>
 
-            {/* ── Tooltip crosshair ancré en haut-droite ── */}
+            {/* ── Tooltip crosshair ancré en haut-droite (hors scroll) ── */}
             {hoveredPoint !== null && (
               <div style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
@@ -3967,14 +3970,26 @@ function YearDatasSubTab() {
               </div>
             )}
 
-            {/* ── SVG courbes ── */}
+            {/* ── SVG courbes — wrapper scrollable sur mobile en mode Semaine ── */}
+            <div style={{
+              overflowX: isMobile ? 'auto' : 'visible',
+              overflowY: 'visible',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              marginRight: isMobile ? -16 : 0,
+              paddingRight: isMobile ? 16 : 0,
+            } as React.CSSProperties}>
             <svg
-              viewBox={`0 0 ${SVG_W} ${C1_H}`}
+              viewBox={`0 0 ${C1_SVG_W} ${C1_H}`}
               className="perf-chart1-svg"
-              style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}
+              style={{
+                display: 'block', overflow: 'visible',
+                width: (isMobile && chart1Period === 'semaine') ? C1_SVG_W : '100%',
+                height: 'auto',
+              }}
               onMouseMove={e => {
                 const rect  = e.currentTarget.getBoundingClientRect()
-                const svgX  = ((e.clientX - rect.left) / rect.width) * SVG_W
+                const svgX  = ((e.clientX - rect.left) / rect.width) * C1_SVG_W
                 const rawI  = Math.round(((svgX - C1_PL) / c1PlotW) * (C1_N - 1))
                 setHoveredPoint(Math.max(0, Math.min(C1_N - 1, rawI)))
               }}
@@ -3989,7 +4004,7 @@ function YearDatasSubTab() {
                   const y = c1Y(v)
                   return (
                     <g key={v}>
-                      <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
+                      <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
                       <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                         {chart1Metric === 'heures' ? `${v}h` : `${Math.round(v)}`}
                       </text>
@@ -4058,6 +4073,7 @@ function YearDatasSubTab() {
                   ))
               }
             </svg>
+            </div>{/* fin scroll wrapper */}
 
             {/* Légende */}
             <div className="perf-chart1-legend" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>

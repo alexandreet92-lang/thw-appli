@@ -193,18 +193,16 @@ function calcRowZones(splitSec: number) {
   ]
 }
 
-// ── Data constants ───────────────────────────────────────────────
-const BIKE_DURS = ['Pmax','10s','30s','1min','3min','5min','8min','10min','12min','15min','20min','30min','1h','90min','2h','3h','4h','5h','6h']
+// ── Data constants — labels fixes, valeurs depuis la DB ──────────
+const BIKE_DURS = ['Pmax','10s','30s','1min','3min','5min','8min','20min','30min','1h','2h','3h']
 
 const DUR_SECS: Record<string, number> = {
   'Pmax':1, '10s':10, '30s':30, '1min':60, '3min':180, '5min':300,
-  '8min':480, '10min':600, '12min':720, '15min':900, '20min':1200,
-  '30min':1800, '1h':3600, '90min':5400, '2h':7200, '3h':10800,
-  '4h':14400, '5h':18000, '6h':21600,
+  '8min':480, '20min':1200, '30min':1800, '1h':3600, '2h':7200, '3h':10800,
 }
 
-const RUN_DISTS = ['1500m','5km','10km','Semi','Marathon','50km','100km']
-const RUN_KM: Record<string,number> = { '1500m':1.5,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
+const RUN_DISTS = ['400m','1km','5km','10km','Semi','Marathon','50km','100km']
+const RUN_KM: Record<string,number> = { '400m':0.4,'1km':1,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
 
 const SWIM_DISTS = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
@@ -2364,7 +2362,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             {BIKE_DURS.map(d => {
               const eff = getEffectiveRec(d)
               const prev = getPrevRec(d)
-              if (eff.w === 0) return null
               const editKey = `bike-record-${d}`
               const isEditing = activeEdit === editKey
               const sel = selectedDatum?.label === `Vélo ${d}` && selectedDatum?.value === `${eff.w}W`

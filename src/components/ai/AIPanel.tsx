@@ -2649,15 +2649,45 @@ function TrainingPlanFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const rawText = await res.text()
-      let data: { program?: GeneratedTrainingPlan; error?: string; debug_stack?: string }
-      try {
-        data = JSON.parse(rawText)
-      } catch {
-        // Vercel retourne du texte (ex: 504 gateway timeout) — on remonte l'info
-        console.error('[training-plan] response non-JSON (status', res.status, '):', rawText.slice(0, 300))
-        throw new Error(`Erreur serveur ${res.status}: ${rawText.slice(0, 120)}`)
+
+      if (!res.body) {
+        const text = await res.text()
+        console.error('[training-plan] no body (status', res.status, '):', text.slice(0, 200))
+        throw new Error(`Erreur serveur ${res.status}`)
       }
+
+      // Lecture streaming NDJSON — chaque ligne est un objet JSON
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      let data: { program?: GeneratedTrainingPlan; error?: string; debug_stack?: string } | undefined
+
+      outer: while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed) continue
+          try {
+            const msg = JSON.parse(trimmed) as {
+              type: string
+              program?: GeneratedTrainingPlan
+              error?: string
+              debug_stack?: string
+            }
+            if (msg.type === 'done') { data = { program: msg.program }; break outer }
+            if (msg.type === 'error') { data = { error: msg.error, debug_stack: msg.debug_stack }; break outer }
+            // type:'ping' → keepalive, on continue
+          } catch {
+            console.error('[training-plan] ligne NDJSON invalide:', trimmed.slice(0, 100))
+          }
+        }
+      }
+
+      if (!data) throw new Error('Stream terminé sans réponse')
       // Diagnostic : on inspecte aussi les clés alternatives que l'agent
       // pourrait renvoyer (programme/semaines/blocs au top-level), via cast ciblé.
       const rawData = data as unknown as {

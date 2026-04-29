@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 
-export const maxDuration = 60
-export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -456,12 +455,15 @@ ${s('precision_nutrition') ? `Précisions nutrition: ${s('precision_nutrition')}
 
 // ─────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export async function POST(req: NextRequest): Promise<Response> {
   let body: TrainingPlanRequestBody
   try {
     body = await req.json() as TrainingPlanRequestBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return new Response(JSON.stringify({ type: 'error', error: 'Invalid JSON' }) + '\n', {
+      status: 400,
+      headers: { 'Content-Type': 'application/x-ndjson' },
+    })
   }
 
   const {
@@ -554,63 +556,73 @@ RÈGLES GÉNÉRALES :
 4. TSS cohérent avec la durée et l'intensité
 5. Respect des jours de repos demandés`
 
-  try {
-    const client = getAnthropicClient()
-    const AGENT_ID = 'agent_011Ca8Ar5a3gyowSA6fQ94UT'
-    let plan: GeneratedPlan | null = null
+  const encoder = new TextEncoder()
 
-    try {
-      const resp = await client.messages.create({
-        model: AGENT_ID,
-        max_tokens: 16000,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: userPrompt }],
-      })
-      console.log('[training-plan] Agent stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
-      if (resp.stop_reason === 'max_tokens') {
-        console.log('[training-plan] WARNING: output truncated at max_tokens (agent)')
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      const send = (msg: object) =>
+        controller.enqueue(encoder.encode(JSON.stringify(msg) + '\n'))
+
+      try {
+        // Keepalive immédiat — évite le timeout Vercel avant le premier octet
+        send({ type: 'ping' })
+
+        const client = getAnthropicClient()
+        let fullText = ''
+
+        // Streaming direct — chaque token reçu garde la connexion vivante
+        const stream = client.messages.stream({
+          model: MODELS.powerful,
+          max_tokens: 16000,
+          system: SYSTEM,
+          messages: [{ role: 'user', content: userPrompt }],
+        })
+
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            fullText += event.delta.text
+          }
+        }
+
+        const final = await stream.finalMessage()
+        console.log('[training-plan] stop_reason:', final.stop_reason, '| usage:', JSON.stringify(final.usage))
+        if (final.stop_reason === 'max_tokens') {
+          console.log('[training-plan] WARNING: output truncated at max_tokens')
+        }
+
+        if (!fullText) {
+          send({ type: 'error', error: 'No response from model' })
+          return
+        }
+
+        let plan: GeneratedPlan
+        try {
+          plan = parseAndRepair<GeneratedPlan>(fullText)
+        } catch (parseErr) {
+          const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+          console.log('[training-plan] Parse error:', msg)
+          send({ type: 'error', error: msg })
+          return
+        }
+
+        console.log('FULL DATA RAW:', JSON.stringify(plan, null, 2))
+        const normalized = normalizePlan(plan)
+        send({ type: 'done', program: normalized })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.log('[training-plan] Fatal error:', message)
+        send({ type: 'error', error: message })
+      } finally {
+        controller.close()
       }
-      const textBlock = resp.content.find(b => b.type === 'text')
-      if (textBlock && textBlock.type === 'text') {
-        plan = parseAndRepair<GeneratedPlan>(textBlock.text)
-      }
-    } catch (agentErr) {
-      console.log('[training-plan] Agent failed, falling back to model:', agentErr instanceof Error ? agentErr.message : String(agentErr))
-      // Fallback to powerful model
-      const resp = await client.messages.create({
-        model: MODELS.powerful,
-        max_tokens: 16000,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: userPrompt }],
-      })
-      console.log('[training-plan] Fallback stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
-      if (resp.stop_reason === 'max_tokens') {
-        console.log('[training-plan] WARNING: output truncated at max_tokens (fallback)')
-      }
-      const textBlock = resp.content.find(b => b.type === 'text')
-      if (textBlock && textBlock.type === 'text') {
-        plan = parseAndRepair<GeneratedPlan>(textBlock.text)
-      }
-    }
+    },
+  })
 
-    if (!plan) {
-      return NextResponse.json({ error: 'No response from model' }, { status: 500 })
-    }
-
-    // Log brut reçu de l'agent (pour debug des variations de clés)
-    console.log('FULL DATA RAW:', JSON.stringify(plan, null, 2))
-
-    // Normalisation : l'agent peut renvoyer les données avec des clés alternatives
-    // (programme vs program, weeks vs semaines, blocs/blocks vs blocs_periodisation).
-    // On ramène tout vers le schéma attendu par le front.
-    const normalized = normalizePlan(plan)
-
-    return NextResponse.json({ program: normalized })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    const stack = err instanceof Error ? err.stack?.slice(0, 500) : undefined
-    console.log('[training-plan] Fatal error:', message)
-    // Renvoie le message complet au client pour diagnostic sans accès aux logs Vercel
-    return NextResponse.json({ error: message, debug_stack: stack }, { status: 500 })
-  }
+  return new Response(readableStream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+    },
+  })
 }

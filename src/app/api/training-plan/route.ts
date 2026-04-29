@@ -1,3 +1,5 @@
+export const maxDuration = 60
+
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 

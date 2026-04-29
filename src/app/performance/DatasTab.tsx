@@ -4287,10 +4287,9 @@ function YearDatasSubTab() {
                 return (
                   <circle key={`race-${idx}`}
                     cx={marker.x} cy={C1_PT + c1PlotH + 6}
-                    r={r}
+                    r={3}
                     fill="#ef4444"
-                    stroke="white" strokeWidth={1}
-                    opacity={isH ? 1 : 0.85}
+                    opacity={isH ? 1 : 0.75}
                     style={{ pointerEvents: 'none' }}
                   />
                 )

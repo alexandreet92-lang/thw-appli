@@ -3795,12 +3795,11 @@ function YearDatasSubTab() {
             {/* ── Tooltip crosshair ancré en haut-droite ── */}
             {hoveredMonth !== null && (
               <div style={{
-                position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none',
+                position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 10, padding: '7px 10px', minWidth: 128,
-                boxShadow: 'var(--shadow-card)',
+                borderRadius: 8, padding: '10px 12px', minWidth: 128,
               }}>
-                <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 11, fontWeight: 700, margin: '0 0 5px', color: 'var(--text)' }}>
+                <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
                   {MONTHS[hoveredMonth]}
                 </p>
                 {c1Sports.map(sp => {
@@ -3811,13 +3810,13 @@ function YearDatasSubTab() {
                   return (
                     <div key={sp.id} style={{ marginBottom: 4 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 600, color: sp.color }}>{sp.label}</span>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: sp.color }}>{sp.label}</span>
                       </span>
-                      <div style={{ paddingLeft: 11 }}>
-                        {h  > 0 && <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '1px 0' }}>{h.toFixed(1)} h</p>}
-                        {km > 0 && <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '1px 0' }}>{Math.round(km)} km</p>}
-                        {nb > 0 && <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '1px 0' }}>{nb} séance{nb > 1 ? 's' : ''}</p>}
+                      <div style={{ paddingLeft: 10 }}>
+                        {h  > 0 && <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>{h.toFixed(1)} h</p>}
+                        {km > 0 && <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>{Math.round(km)} km</p>}
+                        {nb > 0 && <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>{nb} séance{nb > 1 ? 's' : ''}</p>}
                       </div>
                     </div>
                   )
@@ -3838,18 +3837,6 @@ function YearDatasSubTab() {
               }}
               onMouseLeave={() => setHoveredMonth(null)}
             >
-              <defs>
-                {c1Sports.map(sp => (
-                  <linearGradient key={sp.id} id={`c1g-${sp.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor={sp.color} stopOpacity="0.10" />
-                    <stop offset="100%" stopColor={sp.color} stopOpacity="0" />
-                  </linearGradient>
-                ))}
-                <filter id="c1-halo" x="-60%" y="-60%" width="220%" height="220%">
-                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              </defs>
 
               {/* Grid */}
               {[0, 0.5, 1].map(f => {
@@ -3857,21 +3844,12 @@ function YearDatasSubTab() {
                 const v = c1MaxVal * f
                 return (
                   <g key={f}>
-                    <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="0.5" strokeDasharray={f > 0 ? '3,3' : undefined} />
-                    <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                    <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
+                    <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                       {chart1Metric === 'heures' ? `${v.toFixed(1)}h` : `${Math.round(v)}`}
                     </text>
                   </g>
                 )
-              })}
-
-              {/* Gradients sous les courbes (peints en premier) */}
-              {c1Sports.map(sp => {
-                const vals = c1MonthVals(sp.id)
-                const pts: [number, number][] = vals.map((v, mi) => [c1X(mi), c1Y(v)] as [number, number])
-                const aPath = monotonoArea(pts, C1_PT + c1PlotH)
-                if (!aPath) return null
-                return <path key={`a-${sp.id}`} d={aPath} fill={`url(#c1g-${sp.id})`} pointerEvents="none" />
               })}
 
               {/* Courbes monotones + points */}
@@ -3881,14 +3859,15 @@ function YearDatasSubTab() {
                 const lPath = monotonePath(pts)
                 return (
                   <g key={sp.id}>
-                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1.5" strokeLinejoin="round" opacity="0.9" />
+                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, mi) => v > 0 ? (
                       <circle key={mi}
                         cx={c1X(mi)} cy={c1Y(v)}
-                        r={hoveredMonth === mi ? 4 : 2}
+                        r={hoveredMonth === mi ? 3 : 0}
                         fill={sp.color}
-                        opacity={hoveredMonth === mi ? 1 : 0.9}
-                        filter={hoveredMonth === mi ? 'url(#c1-halo)' : undefined}
+                        stroke={sp.color}
+                        strokeWidth="1.5"
+                        opacity={hoveredMonth === mi ? 1 : 0}
                       />
                     ) : null)}
                   </g>
@@ -3900,8 +3879,8 @@ function YearDatasSubTab() {
                 <line
                   x1={c1X(hoveredMonth)} y1={C1_PT}
                   x2={c1X(hoveredMonth)} y2={C1_PT + c1PlotH}
-                  stroke="var(--text-dim)" strokeWidth="1"
-                  strokeDasharray="3,2" opacity="0.55"
+                  stroke="var(--border)" strokeWidth="1"
+                  strokeOpacity="0.6"
                   pointerEvents="none"
                 />
               )}
@@ -3910,7 +3889,7 @@ function YearDatasSubTab() {
               {MONTHS.map((m, mi) => (
                 <text key={mi} x={c1X(mi)} y={C1_H - 4} textAnchor="middle"
                   style={{
-                    fontSize: 8,
+                    fontSize: 10,
                     fill: hoveredMonth === mi ? 'var(--text)' : 'var(--text-dim)',
                     fontFamily: 'DM Mono,monospace',
                     fontWeight: hoveredMonth === mi ? '700' : '400',
@@ -4011,7 +3990,7 @@ function YearDatasSubTab() {
                         onClick={() => setSelectedYear(yr)}>
                         <rect
                           x={bx} y={by} width={barW} height={bh} rx={4}
-                          fill={col} opacity={hov || sel ? 1 : 0.68}
+                          fill={col} opacity={hov || sel ? 1.0 : 0.75}
                           className="yd-bar"
                           style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
                         />
@@ -4077,13 +4056,13 @@ function YearDatasSubTab() {
                       <g key={s.year}>
                         <rect
                           x={bx} y={by} width={c3BarW} height={bh} rx={4}
-                          fill={color} opacity={0.82}
+                          fill={color} opacity={0.75}
                           className="yd-bar"
                           style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
                         />
-                        {bh > 16 && (
+                        {bh > 24 && (
                           <text x={cx} y={by + bh / 2 + 4} textAnchor="middle"
-                            style={{ fontSize: 8, fill: '#fff', fontFamily: 'DM Mono,monospace', fontWeight: '700' }}>
+                            style={{ fontSize: 10, fill: '#fff', fontFamily: 'DM Mono,monospace', fontWeight: '700' }}>
                             {fmt(val)}
                           </text>
                         )}

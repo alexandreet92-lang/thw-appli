@@ -915,7 +915,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
                 </div>
                 <button
                   onClick={handleSave}
-                  style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:saved ? '#22c55e' : cfg.color, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'Syne,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : cfg.color+'40'}` }}
+                  style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:saved ? '#22c55e' : cfg.color, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : cfg.color+'40'}` }}
                 >
                   {saved ? '✓ Résultats enregistrés' : 'Enregistrer ce test'}
                 </button>
@@ -990,7 +990,7 @@ function TestsTab({ profile, onAnalyzeTest }: {
       <div className="hidden md:flex" style={{ gap:8, flexWrap:'wrap' as const }}>
         {TEST_SPORT_TABS.map(t => (
           <button key={t.id} onClick={() => setTestSport(t.id)}
-            style={{ flex:1, minWidth:110, padding:'10px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:testSport===t.id?700:400, boxShadow:testSport===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+            style={{ flex:1, minWidth:110, padding:'10px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:testSport===t.id?700:400, boxShadow:testSport===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
             <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.label}
           </button>
         ))}
@@ -1000,7 +1000,7 @@ function TestsTab({ profile, onAnalyzeTest }: {
       <div className="md:hidden" style={{ display:'flex', gap:5, flexWrap:'wrap' as const }}>
         {TEST_SPORT_TABS.map(t => (
           <button key={t.id} onClick={() => setTestSport(t.id)}
-            style={{ flex:1, minWidth:58, padding:'7px 5px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:testSport===t.id?700:400, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
+            style={{ flex:1, minWidth:58, padding:'7px 5px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:11, fontWeight:testSport===t.id?700:400, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
             <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.short}
           </button>
         ))}

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import type { ZoneSport } from '@/hooks/useTrainingZones'
+import { SportTabs } from '@/components/ui/SportTabs'
 
 // ── Types ────────────────────────────────────────────────────────
 type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox' | 'gym'
@@ -1388,18 +1389,11 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
       )}
 
       {/* Sport tabs */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-        {SPORT_TABS.map(t => (
-          <button key={t.id} onClick={() => setPowerSport(t.id)} style={{
-            padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-            whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-            background: powerSport === t.id ? t.color : 'var(--bg-card2)',
-            color:      powerSport === t.id ? '#fff'   : 'var(--text-dim)',
-          }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SportTabs
+        tabs={SPORT_TABS}
+        value={powerSport}
+        onChange={(id) => setPowerSport(id as PowerSport)}
+      />
 
       {/* Bike */}
       {powerSport === 'bike' && (
@@ -2329,18 +2323,11 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       <SectionHeader label="Records personnels" gradient="linear-gradient(180deg,#ffb340,#f97316)" />
 
       {/* Sport tabs */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-        {SPORT_TABS.map(([s, l, c]) => (
-          <button key={s} onClick={() => setSport(s)} style={{
-            padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-            whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-            background: sport === s ? c : 'var(--bg-card2)',
-            color:      sport === s ? '#fff' : 'var(--text-dim)',
-          }}>
-            {l}
-          </button>
-        ))}
-      </div>
+      <SportTabs
+        tabs={SPORT_TABS.map(([id, label, color]) => ({ id, label, color }))}
+        value={sport}
+        onChange={(id) => setSport(id as RecordSport)}
+      />
 
       {/* BIKE */}
       {sport === 'bike' && (
@@ -3726,22 +3713,15 @@ function YearDatasSubTab() {
       )}
 
       {/* ── Sport tabs ── */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-        {YD_SPORTS.map(sp => (
-          <button key={sp.id} onClick={() => {
-            setActiveSport(sp.id)
-            setEditYear(null)
-            setChartMetric(YD_SPORT_METRICS[sp.id][0] ?? 'km')
-          }} style={{
-            padding: '6px 14px', borderRadius: 20, border: 'none',
-            cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-            background: activeSport === sp.id ? sp.color : 'var(--bg-card2)',
-            color:      activeSport === sp.id ? '#fff'   : 'var(--text-dim)',
-          }}>
-            {sp.label}
-          </button>
-        ))}
-      </div>
+      <SportTabs
+        tabs={YD_SPORTS.map(sp => ({ id: sp.id, label: sp.label, color: sp.color }))}
+        value={activeSport}
+        onChange={(id) => {
+          setActiveSport(id)
+          setEditYear(null)
+          setChartMetric(YD_SPORT_METRICS[id][0] ?? 'km')
+        }}
+      />
 
       {/* ── KPI cards ── */}
       {hasDisplay ? (

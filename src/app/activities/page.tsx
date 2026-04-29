@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/hooks/useTheme'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
+import { SportTabs } from '@/components/ui/SportTabs'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -1386,19 +1387,16 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
   return (
     <div>
       {/* Sport tabs */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-        {sportsPresent.map(sp => (
-          <button key={sp} onClick={() => setActiveSport(sp)} style={{
-            padding: '6px 16px', borderRadius: 20, fontSize: 12, cursor: 'pointer', fontWeight: sport === sp ? 700 : 400,
-            background: sport === sp ? (SPORT_COLOR[sp as SportType] ?? T.accent) : T.surface,
-            color: sport === sp ? '#fff' : T.textSub,
-            border: sport === sp ? `1px solid ${SPORT_COLOR[sp as SportType] ?? T.accent}` : `1px solid ${T.border}`,
-            transition: 'all 0.15s',
-          }}>
-            {SPORT_TAB_LABEL[sp] ?? sp}
-          </button>
-        ))}
-      </div>
+      <SportTabs
+        tabs={sportsPresent.map(sp => ({
+          id: sp,
+          label: SPORT_TAB_LABEL[sp] ?? sp,
+          color: SPORT_COLOR[sp as SportType] ?? T.accent,
+        }))}
+        value={sport}
+        onChange={(id) => setActiveSport(id as SportType)}
+        style={{ marginBottom: 20 }}
+      />
 
       {/* Run specific */}
       {sport === 'run' && (

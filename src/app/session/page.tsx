@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef, useCallback } from 'react'
 // import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import { SportTabs } from '@/components/ui/SportTabs'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 
@@ -1871,16 +1872,14 @@ function LibraryMode({ templates, onNew, onEdit, onStart, onDelete }: {
         </div>
 
         {/* Niveau 1 — Tabs sport (scrollable) */}
-        <div style={{ overflowX:'auto', paddingBottom:2 }}>
-          <div style={{ display:'flex', gap:7, minWidth:'max-content' }}>
-            <button style={tabStyle(sportFilter==='all','#5b6fff')} onClick={()=>selectSport('all')}>Toutes</button>
-            {SPORTS.map(s => (
-              <button key={s.id} style={tabStyle(sportFilter===s.id, s.color)} onClick={()=>selectSport(s.id)}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <SportTabs
+          tabs={[
+            { id: 'all', label: 'Toutes', color: '#5b6fff' },
+            ...SPORTS.map(s => ({ id: s.id, label: s.label, color: s.color })),
+          ]}
+          value={sportFilter}
+          onChange={(id) => selectSport(id as Sport | 'all')}
+        />
 
         {/* Niveau 2 — Filtres par type (badges multi-select) */}
         {availableTypes.length > 0 && (

@@ -7,7 +7,7 @@ import type { ZoneSport } from '@/hooks/useTrainingZones'
 import { SportTabs } from '@/components/ui/SportTabs'
 
 // ── Types ────────────────────────────────────────────────────────
-type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox' | 'gym'
+type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
 
 interface Props {
   onSelect: (label: string, value: string) => void
@@ -212,6 +212,15 @@ const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m'
 const ROW_DISTS = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
 const ROW_M: Record<string,number> = { '500m':500,'1000m':1000,'2000m':2000,'5000m':5000,'10000m':10000,'Semi':21097,'Marathon':42195 }
 
+// Formats triathlon avec distances des 3 disciplines
+const TRIATHLON_FORMATS: { id: string; label: string; swim: string; bike: string; run: string }[] = [
+  { id: 'XS',        label: 'XS',        swim: '400m',   bike: '10 km',  run: '2,5 km' },
+  { id: 'S',         label: 'Sprint',    swim: '750m',   bike: '20 km',  run: '5 km'   },
+  { id: 'M',         label: 'Olympique', swim: '1500m',  bike: '40 km',  run: '10 km'  },
+  { id: '70.3',      label: '70.3',      swim: '1900m',  bike: '90 km',  run: '21,1 km'},
+  { id: 'Ironman',   label: 'Ironman',   swim: '3800m',  bike: '180 km', run: '42,2 km'},
+]
+
 const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmers Carry','Sandbag Lunges','Wall Balls']
 interface HyroxRecord {
   format: string; date: string; total: string; roxzone: string; penalties: string
@@ -236,6 +245,11 @@ interface SpRecord {
   performance: string
   performance_unit: string
   achieved_at: string
+  split_swim?: string | null
+  split_t1?:   string | null
+  split_bike?: string | null
+  split_t2?:   string | null
+  split_run?:  string | null
 }
 
 interface HyroxRace {
@@ -2031,12 +2045,17 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   const [recordYear, setRecordYear] = useState('All Time')
   const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set())
   // ── Inline edit state (one record at a time) ─────────────────────
-  // key format: "bike-record-${dur}"
   const [activeEdit, setActiveEdit] = useState<string | null>(null)
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState('')
+  const [editDraft, setEditDraft] = useState('')       // temps final
   const [editDate, setEditDate] = useState('')
   const [recordSaving, setRecordSaving] = useState(false)
+  // Splits triathlon
+  const [editSplitSwim, setEditSplitSwim] = useState('')
+  const [editSplitT1,   setEditSplitT1]   = useState('')
+  const [editSplitBike, setEditSplitBike] = useState('')
+  const [editSplitT2,   setEditSplitT2]   = useState('')
+  const [editSplitRun,  setEditSplitRun]  = useState('')
 
   // Tous les records vélo depuis Supabase (toutes années)
   const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
@@ -2061,7 +2080,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     void load()
   }, [])
 
-  // Load run/swim/rowing/gym records from Supabase
+  // Load run/swim/rowing/gym/triathlon records from Supabase
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
@@ -2069,9 +2088,9 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       if (!user) return
       const { data } = await supabase
         .from('personal_records')
-        .select('id, sport, distance_label, performance, performance_unit, achieved_at')
+        .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run')
         .eq('user_id', user.id)
-        .in('sport', ['run', 'swim', 'rowing', 'gym'])
+        .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
         .order('achieved_at', { ascending: false })
       if (data) setAllSpRecords(data as SpRecord[])
     }
@@ -2122,6 +2141,86 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     setActiveEdit(null)
     setEditingRecordId(null)
     setEditDraft('')
+    setEditSplitSwim(''); setEditSplitT1(''); setEditSplitBike(''); setEditSplitT2(''); setEditSplitRun('')
+  }
+
+  // Meilleur record triathlon pour un format (filtré par année)
+  function getTrBest(fmt: string): SpRecord | null {
+    const recs = allSpRecords.filter(r =>
+      r.sport === 'triathlon' && r.distance_label === fmt &&
+      (recordYear === 'All Time' || r.achieved_at.slice(0, 4) === recordYear)
+    )
+    if (!recs.length) return null
+    return [...recs].sort((a, b) => toSec(a.performance) - toSec(b.performance))[0]
+  }
+
+  // Record triathlon de l'année précédente
+  function getTrPrev(fmt: string): SpRecord | null {
+    if (recordYear === 'All Time') {
+      const all = allSpRecords.filter(r => r.sport === 'triathlon' && r.distance_label === fmt)
+      if (all.length < 2) return null
+      const sorted = [...all].sort((a, b) => toSec(a.performance) - toSec(b.performance))
+      const bestYear = sorted[0].achieved_at.slice(0, 4)
+      return sorted.find(r => r.achieved_at.slice(0, 4) !== bestYear) ?? null
+    }
+    const prevYear = String(parseInt(recordYear) - 1)
+    const recs = allSpRecords.filter(r =>
+      r.sport === 'triathlon' && r.distance_label === fmt && r.achieved_at.slice(0, 4) === prevYear
+    )
+    if (!recs.length) return null
+    return [...recs].sort((a, b) => toSec(a.performance) - toSec(b.performance))[0]
+  }
+
+  function tryEditTriathlon(key: string, rec: SpRecord | null) {
+    if (activeEdit && activeEdit !== key) {
+      if (!window.confirm('Abandonner les modifications en cours ?')) return
+    }
+    setActiveEdit(key)
+    setEditingRecordId(rec?.id ?? null)
+    setEditDraft(rec?.performance ?? '')
+    setEditDate(rec?.achieved_at ?? new Date().toISOString().slice(0, 10))
+    setEditSplitSwim(rec?.split_swim ?? '')
+    setEditSplitT1(rec?.split_t1 ?? '')
+    setEditSplitBike(rec?.split_bike ?? '')
+    setEditSplitT2(rec?.split_t2 ?? '')
+    setEditSplitRun(rec?.split_run ?? '')
+  }
+
+  async function confirmTriathlonRecord(fmt: string) {
+    setRecordSaving(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const achievedAt = editDate || new Date().toISOString().slice(0, 10)
+      const payload = {
+        performance:      editDraft || '0:00:00',
+        performance_unit: 'time',
+        split_swim:       editSplitSwim || null,
+        split_t1:         editSplitT1   || null,
+        split_bike:       editSplitBike || null,
+        split_t2:         editSplitT2   || null,
+        split_run:        editSplitRun  || null,
+        achieved_at:      achievedAt,
+      }
+      if (editingRecordId) {
+        await supabase.from('personal_records').update(payload).eq('id', editingRecordId)
+        setAllSpRecords(prev => prev.map(r =>
+          r.id === editingRecordId ? { ...r, ...payload } : r
+        ))
+      } else {
+        const { data: inserted } = await supabase.from('personal_records').insert({
+          user_id:        user.id,
+          sport:          'triathlon',
+          distance_label: fmt,
+          event_type:     'competition',
+          race_name:      null,
+          ...payload,
+        }).select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run').single()
+        if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
+      }
+    }
+    setRecordSaving(false)
+    cancelEdit()
   }
 
   // Meilleur record pour les sports non-vélo (retourne l'id pour upsert)
@@ -2285,12 +2384,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   }
 
   const SPORT_TABS: [RecordSport, string, string][] = [
-    ['bike',   'Vélo',    '#3b82f6'],
-    ['run',    'Course',  '#22c55e'],
-    ['swim',   'Natation','#38bdf8'],
-    ['rowing', 'Aviron',  '#14b8a6'],
-    ['hyrox',  'Hyrox',   '#ef4444'],
-    ['gym',    'Muscu',   '#f97316'],
+    ['bike',       'Vélo',       '#3b82f6'],
+    ['run',        'Course',     '#22c55e'],
+    ['swim',       'Natation',   '#38bdf8'],
+    ['rowing',     'Aviron',     '#14b8a6'],
+    ['triathlon',  'Triathlon',  '#f59e0b'],
+    ['hyrox',      'Hyrox',      '#ef4444'],
+    ['gym',        'Muscu',      '#f97316'],
   ]
 
   return (
@@ -2609,6 +2709,133 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             })}
             <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>Puissance via formule Concept2 : P = 2.80 / (split/500)³</p>
           </Card>
+        </div>
+      )}
+
+      {/* TRIATHLON */}
+      {sport === 'triathlon' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {TRIATHLON_FORMATS.map(fmt => {
+            const editKey  = `triathlon-${fmt.id}`
+            const isEditing = activeEdit === editKey
+            const best     = getTrBest(fmt.id)
+            const prev     = getTrPrev(fmt.id)
+
+            const fieldStyle = {
+              flex: 1, padding: '4px 8px', borderRadius: 6,
+              border: '1px solid #f59e0b', background: 'var(--input-bg)',
+              color: 'var(--text)', fontFamily: 'DM Mono,monospace',
+              fontSize: 11, outline: 'none', minWidth: 0,
+            }
+            const labelStyle = { fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }
+
+            if (isEditing) {
+              return (
+                <Card key={fmt.id} style={{ padding: '14px 16px', border: '1px solid #f59e0b' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
+                      {fmt.label}
+                      <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 8 }}>
+                        {fmt.swim} · {fmt.bike} · {fmt.run}
+                      </span>
+                    </span>
+                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                      style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                  </div>
+
+                  {/* Grille des splits */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr 80px 1fr', gap: 8, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={labelStyle}>🏊 Natation</span>
+                      <input value={editSplitSwim} onChange={e => setEditSplitSwim(e.target.value)}
+                        placeholder="hh:mm:ss" style={fieldStyle} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={labelStyle}>T1</span>
+                      <input value={editSplitT1} onChange={e => setEditSplitT1(e.target.value)}
+                        placeholder="mm:ss" style={fieldStyle} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={labelStyle}>🚴 Vélo</span>
+                      <input value={editSplitBike} onChange={e => setEditSplitBike(e.target.value)}
+                        placeholder="hh:mm:ss" style={fieldStyle} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={labelStyle}>T2</span>
+                      <input value={editSplitT2} onChange={e => setEditSplitT2(e.target.value)}
+                        placeholder="mm:ss" style={fieldStyle} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={labelStyle}>🏃 Course</span>
+                      <input value={editSplitRun} onChange={e => setEditSplitRun(e.target.value)}
+                        placeholder="hh:mm:ss" style={fieldStyle} />
+                    </div>
+                  </div>
+
+                  {/* Temps final + actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Temps final</span>
+                    <input value={editDraft} onChange={e => setEditDraft(e.target.value)}
+                      placeholder="hh:mm:ss"
+                      onKeyDown={e => { if (e.key === 'Enter') void confirmTriathlonRecord(fmt.id); if (e.key === 'Escape') cancelEdit() }}
+                      style={{ ...fieldStyle, maxWidth: 110, fontWeight: 700 }} />
+                    <button onClick={() => void confirmTriathlonRecord(fmt.id)} disabled={recordSaving}
+                      style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                      {recordSaving ? '…' : 'Confirmer'}
+                    </button>
+                    <button onClick={cancelEdit}
+                      style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Annuler
+                    </button>
+                  </div>
+                </Card>
+              )
+            }
+
+            return (
+              <Card key={fmt.id} style={{ padding: '12px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Ligne titre */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: best ? 6 : 0 }}>
+                      <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
+                        {fmt.label}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                        {fmt.swim} · {fmt.bike} · {fmt.run}
+                      </span>
+                      <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 14, fontWeight: 700, color: best ? '#f59e0b' : 'var(--text-dim)', marginLeft: 'auto' }}>
+                        {best?.performance ?? '—'}
+                      </span>
+                    </div>
+
+                    {/* Splits si disponibles */}
+                    {best && (best.split_swim || best.split_bike || best.split_run) && (
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)' }}>
+                        {best.split_swim && <span>🏊 {best.split_swim}</span>}
+                        {best.split_t1   && <span style={{ color: 'var(--text-dim)' }}>T1 {best.split_t1}</span>}
+                        {best.split_bike && <span>🚴 {best.split_bike}</span>}
+                        {best.split_t2   && <span style={{ color: 'var(--text-dim)' }}>T2 {best.split_t2}</span>}
+                        {best.split_run  && <span>🏃 {best.split_run}</span>}
+                      </div>
+                    )}
+
+                    {/* Record précédent */}
+                    {prev && (
+                      <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 2 }}>
+                        Préc. : {prev.performance} ({prev.achieved_at.slice(0, 4)})
+                      </div>
+                    )}
+                  </div>
+
+                  <button onClick={() => tryEditTriathlon(editKey, best)}
+                    style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    Modifier
+                  </button>
+                </div>
+              </Card>
+            )
+          })}
         </div>
       )}
 

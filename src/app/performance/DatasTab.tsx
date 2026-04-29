@@ -3820,18 +3820,22 @@ function YearDatasSubTab() {
             >
 
               {/* Grid */}
-              {[0, 0.5, 1].map(f => {
-                const y = C1_PT + c1PlotH * (1 - f)
-                const v = c1MaxVal * f
-                return (
-                  <g key={f}>
-                    <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
-                    <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
-                      {chart1Metric === 'heures' ? `${v.toFixed(1)}h` : `${Math.round(v)}`}
-                    </text>
-                  </g>
-                )
-              })}
+              {(() => {
+                const ticks = chart1Metric === 'heures'
+                  ? Array.from({ length: Math.floor(c1MaxVal / 5) + 1 }, (_, i) => i * 5).filter(v => v <= c1MaxVal + 0.1)
+                  : [0, 0.5, 1].map(f => c1MaxVal * f)
+                return ticks.map(v => {
+                  const y = c1Y(v)
+                  return (
+                    <g key={v}>
+                      <line x1={C1_PL} y1={y} x2={SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
+                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                        {chart1Metric === 'heures' ? `${v}h` : `${Math.round(v)}`}
+                      </text>
+                    </g>
+                  )
+                })
+              })()}
 
               {/* Courbes monotones + points */}
               {c1Sports.map(sp => {
@@ -3840,7 +3844,7 @@ function YearDatasSubTab() {
                 const lPath = monotonePath(pts)
                 return (
                   <g key={sp.id}>
-                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, mi) => v > 0 ? (
                       <circle key={mi}
                         cx={c1X(mi)} cy={c1Y(v)}
@@ -3870,10 +3874,9 @@ function YearDatasSubTab() {
               {MONTHS.map((m, mi) => (
                 <text key={mi} x={c1X(mi)} y={C1_H - 4} textAnchor="middle"
                   style={{
-                    fontSize: 10,
-                    fill: hoveredMonth === mi ? 'var(--text)' : 'var(--text-dim)',
+                    fontSize: 8,
+                    fill: 'var(--text-dim)',
                     fontFamily: 'DM Mono,monospace',
-                    fontWeight: hoveredMonth === mi ? '700' : '400',
                   }}>{m}</text>
               ))}
             </svg>

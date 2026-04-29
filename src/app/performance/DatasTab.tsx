@@ -1346,11 +1346,11 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
       })()
     : undefined
 
-  const SPORT_TABS: { id: PowerSport; label: string }[] = [
-    { id: 'bike',   label: 'Cyclisme' },
-    { id: 'run',    label: 'Running' },
-    { id: 'rowing', label: 'Aviron' },
-    { id: 'swim',   label: 'Natation' },
+  const SPORT_TABS: { id: PowerSport; label: string; color: string }[] = [
+    { id: 'bike',   label: 'Cyclisme', color: '#3b82f6' },
+    { id: 'run',    label: 'Running',  color: '#22c55e' },
+    { id: 'rowing', label: 'Aviron',   color: '#14b8a6' },
+    { id: 'swim',   label: 'Natation', color: '#06b6d4' },
   ]
 
   const ZONE_LABELS = ['Récup', 'Aérobie', 'Tempo', 'Seuil', 'VO2max']
@@ -1388,14 +1388,13 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
       )}
 
       {/* Sport tabs */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
         {SPORT_TABS.map(t => (
           <button key={t.id} onClick={() => setPowerSport(t.id)} style={{
-            padding: '7px 14px', borderRadius: 9, border: '1px solid', cursor: 'pointer',
-            borderColor: powerSport === t.id ? '#00c8e0' : 'var(--border)',
-            background: powerSport === t.id ? 'rgba(0,200,224,0.10)' : 'var(--bg-card)',
-            color: powerSport === t.id ? '#00c8e0' : 'var(--text-mid)',
-            fontSize: 12, fontWeight: powerSport === t.id ? 600 : 400,
+            padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+            whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+            background: powerSport === t.id ? t.color : 'var(--bg-card2)',
+            color:      powerSport === t.id ? '#fff'   : 'var(--text-dim)',
           }}>
             {t.label}
           </button>

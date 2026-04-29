@@ -32,8 +32,8 @@ const YEAR_DEFAULT_COLOR = '#9ca3af'
 
 // Couleurs sport Design System §2.3 — fixes et immuables
 const SPORT_DS_COLOR: Record<string, string> = {
-  running:  '#f97316',
-  trail:    '#f97316',
+  running:  '#22c55e',
+  trail:    '#84cc16',
   cycling:  '#3b82f6',
   swimming: '#06b6d4',
   rowing:   '#14b8a6',

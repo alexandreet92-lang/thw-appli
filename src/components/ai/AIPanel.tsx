@@ -2649,7 +2649,15 @@ function TrainingPlanFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = await res.json() as { program?: GeneratedTrainingPlan; error?: string }
+      const rawText = await res.text()
+      let data: { program?: GeneratedTrainingPlan; error?: string; debug_stack?: string }
+      try {
+        data = JSON.parse(rawText)
+      } catch {
+        // Vercel retourne du texte (ex: 504 gateway timeout) — on remonte l'info
+        console.error('[training-plan] response non-JSON (status', res.status, '):', rawText.slice(0, 300))
+        throw new Error(`Erreur serveur ${res.status}: ${rawText.slice(0, 120)}`)
+      }
       // Diagnostic : on inspecte aussi les clés alternatives que l'agent
       // pourrait renvoyer (programme/semaines/blocs au top-level), via cast ciblé.
       const rawData = data as unknown as {

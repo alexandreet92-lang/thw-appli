@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
 // ── Types ─────────────────────────────────────────────────────
 

@@ -550,7 +550,7 @@ Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}
 
 RÈGLES GÉNÉRALES :
-0. CONCISION IMPÉRATIVE : génère un plan synthétique, maximum 4000 tokens. Strings courtes, pas de répétition, pas de texte superflu.
+0. IMPORTANT : Tu dois générer un plan TRÈS court. Maximum 2000 tokens. Chaque semaine = 1 ligne. Pas de descriptions longues.
 1. Programme réaliste adapté au niveau et au temps disponible
 2. Progression logique et périodisation intelligente (Base → Intensité → Spécifique → Compétition)
 3. Semaine de deload toutes les 3-4 semaines
@@ -574,7 +574,7 @@ RÈGLES GÉNÉRALES :
         // Streaming direct — chaque token reçu garde la connexion vivante
         const stream = client.messages.stream({
           model: MODELS.powerful,
-          max_tokens: 8000,
+          max_tokens: 4000,
           system: SYSTEM,
           messages: [{ role: 'user', content: userPrompt }],
         })

@@ -21,8 +21,8 @@
   --zone-5: #ef4444; /* VO2max       */
 
   /* ── Brand ────────────────────────────────────── */
-  --primary:      #1B6EF3;
-  --primary-dim:  rgba(27,110,243,0.12);
+  --primary:      #00c8e0;
+  --primary-dim:  rgba(0,200,224,0.12);
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
 }

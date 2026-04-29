@@ -194,11 +194,12 @@ function calcRowZones(splitSec: number) {
 }
 
 // ── Data constants — labels fixes, valeurs depuis la DB ──────────
-const BIKE_DURS = ['Pmax','10s','30s','1min','3min','5min','8min','20min','30min','1h','2h','3h']
+const BIKE_DURS = ['Pmax','10s','30s','1min','3min','5min','8min','20min','30min','1h','2h','3h','4h','5h','6h']
 
 const DUR_SECS: Record<string, number> = {
   'Pmax':1, '10s':10, '30s':30, '1min':60, '3min':180, '5min':300,
   '8min':480, '20min':1200, '30min':1800, '1h':3600, '2h':7200, '3h':10800,
+  '4h':14400, '5h':18000, '6h':21600,
 }
 
 const RUN_DISTS = ['400m','1km','5km','10km','Semi','Marathon','50km','100km']

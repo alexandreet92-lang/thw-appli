@@ -2352,7 +2352,8 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
         zones_run:   zMap['run']   ?? false, records_run:  recRun.count  ?? 0,
         zones_swim:  zMap['swim']  ?? false, records_swim: recSwim.count ?? 0,
         zones_hr:    hr_rest || hr_max,
-        year_datas:  yearRes.count ?? 0,
+        // year_datas : manuel (year_data_manual) OU auto (activities Strava)
+        year_datas:  (yearRes.count ?? 0) + (a12.count ?? 0),
         tests:       testRes.count ?? 0,
         vo2max, hr_rest,
         activities_3m:  a3.count  ?? 0,

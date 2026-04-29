@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 
+export const maxDuration = 60
+
 // ── Types ─────────────────────────────────────────────────────
 
 interface TrainingPlanRequestBody {
@@ -474,6 +476,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const formattedQuestionnaire = formatQuestionnaireForPrompt(questionnaire)
 
+  // Tronquer l'historique à 30 activités max pour réduire la taille du prompt
+  const historique_30j = (historique_90j ?? []).slice(0, 30)
+
   const userPrompt = `Crée un programme d'entraînement avec ces informations :
 
 QUESTIONNAIRE ATHLÈTE — INTERPRÉTATION STRUCTURÉE :
@@ -485,8 +490,8 @@ ${JSON.stringify(profil ?? null, null, 2)}
 ZONES D'ENTRAÎNEMENT :
 ${JSON.stringify(zones ?? null, null, 2)}
 
-HISTORIQUE 90 DERNIERS JOURS :
-${JSON.stringify(historique_90j ?? [], null, 2)}
+HISTORIQUE 30 DERNIERS JOURS :
+${JSON.stringify(historique_30j, null, 2)}
 
 CALENDRIER ET OBJECTIFS :
 ${JSON.stringify(calendrier_objectifs ?? [], null, 2)}

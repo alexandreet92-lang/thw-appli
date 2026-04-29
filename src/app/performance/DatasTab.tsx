@@ -3883,11 +3883,11 @@ function YearDatasSubTab() {
                 const lPath = monotonePath(pts)
                 return (
                   <g key={sp.id}>
-                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1.8" strokeLinejoin="round" opacity="0.9" />
+                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1.5" strokeLinejoin="round" opacity="0.9" />
                     {vals.map((v, mi) => v > 0 ? (
                       <circle key={mi}
                         cx={c1X(mi)} cy={c1Y(v)}
-                        r={hoveredMonth === mi ? 5 : 3}
+                        r={hoveredMonth === mi ? 4 : 2}
                         fill={sp.color}
                         opacity={hoveredMonth === mi ? 1 : 0.9}
                         filter={hoveredMonth === mi ? 'url(#c1-halo)' : undefined}

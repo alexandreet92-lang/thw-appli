@@ -2312,7 +2312,7 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
         sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'run'),
         sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'swim'),
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
-        sb.from('year_data_manual').select('id', { count: 'exact', head: true }),
+        sb.from('year_data_manual').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         sb.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d6m),

@@ -565,6 +565,10 @@ RÈGLES GÉNÉRALES :
         system: SYSTEM,
         messages: [{ role: 'user', content: userPrompt }],
       })
+      console.log('[training-plan] Agent stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
+      if (resp.stop_reason === 'max_tokens') {
+        console.log('[training-plan] WARNING: output truncated at max_tokens (agent)')
+      }
       const textBlock = resp.content.find(b => b.type === 'text')
       if (textBlock && textBlock.type === 'text') {
         plan = parseAndRepair<GeneratedPlan>(textBlock.text)
@@ -578,6 +582,10 @@ RÈGLES GÉNÉRALES :
         system: SYSTEM,
         messages: [{ role: 'user', content: userPrompt }],
       })
+      console.log('[training-plan] Fallback stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
+      if (resp.stop_reason === 'max_tokens') {
+        console.log('[training-plan] WARNING: output truncated at max_tokens (fallback)')
+      }
       const textBlock = resp.content.find(b => b.type === 'text')
       if (textBlock && textBlock.type === 'text') {
         plan = parseAndRepair<GeneratedPlan>(textBlock.text)
@@ -599,7 +607,9 @@ RÈGLES GÉNÉRALES :
     return NextResponse.json({ program: normalized })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack?.slice(0, 500) : undefined
     console.log('[training-plan] Fatal error:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    // Renvoie le message complet au client pour diagnostic sans accès aux logs Vercel
+    return NextResponse.json({ error: message, debug_stack: stack }, { status: 500 })
   }
 }

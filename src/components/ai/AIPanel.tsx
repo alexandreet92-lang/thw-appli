@@ -2701,7 +2701,7 @@ function TrainingPlanFlow({
       if (data.error || structureInvalid) {
         const errMsg = data.error ?? 'Erreur de génération'
         const isParseErr = errMsg.toLowerCase().includes('json') || errMsg.toLowerCase().includes('parse') || errMsg.toLowerCase().includes('unterminated') || structureInvalid
-        console.error('[training-plan] error:', data.error ?? 'none', '| structureInvalid:', structureInvalid, '| response:', data)
+        console.error('[training-plan] error:', data.error ?? 'none', '| structureInvalid:', structureInvalid, '| stack:', (data as Record<string,unknown>).debug_stack ?? 'n/a', '| response:', data)
         setError(isParseErr ? 'La génération a rencontré un problème.' : errMsg)
         setRetryable(isParseErr)
         setPhase(program ? 'result' : 'questionnaire')

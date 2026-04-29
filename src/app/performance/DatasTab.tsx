@@ -3717,9 +3717,10 @@ function YearDatasSubTab() {
         tabs={YD_SPORTS.map(sp => ({ id: sp.id, label: sp.label, color: sp.color }))}
         value={activeSport}
         onChange={(id) => {
-          setActiveSport(id)
+          const sportId = id as YDSportId
+          setActiveSport(sportId)
           setEditYear(null)
-          setChartMetric(YD_SPORT_METRICS[id][0] ?? 'km')
+          setChartMetric(YD_SPORT_METRICS[sportId][0] ?? 'km')
         }}
       />
 

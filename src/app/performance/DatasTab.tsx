@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import type { ZoneSport } from '@/hooks/useTrainingZones'
@@ -2875,8 +2876,28 @@ function getISOWeek(dateStr: string): number {
   return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
+// ── Markers types ────────────────────────────────────────────
+interface C1Race {
+  id: string
+  title: string | null
+  started_at: string
+  sport_type: string | null
+  moving_time_s: number | null
+  distance_m: number | null
+}
+interface C1Injury {
+  id: string
+  nom: string
+  type: string
+  date_debut: string
+  date_fin: string | null
+}
+interface C1RaceMarker  { race: C1Race; x: number; color: string }
+interface C1InjuryBand  { inj: C1Injury; x1: number; x2: number; isPoint: boolean }
+
 // ── Component ─────────────────────────────────────────────────
 function YearDatasSubTab() {
+  const router = useRouter()
   const [loading, setLoading]         = useState(true)
   const [autoStats, setAutoStats]     = useState<Record<string, Record<string, YDAutoStat>>>({})
   const [manualMap, setManualMap]     = useState<Record<string, Record<string, YDManual>>>({})
@@ -2925,8 +2946,13 @@ function YearDatasSubTab() {
   } | null>(null)
 
   // Chart tooltips
-  const [hoveredBar,   setHoveredBar]   = useState<{ year: string; val: number; svgX: number } | null>(null)
-  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null)
+  const [hoveredBar,      setHoveredBar]      = useState<{ year: string; val: number; svgX: number } | null>(null)
+  const [hoveredPoint,    setHoveredPoint]    = useState<number | null>(null)
+  // Chart 1 markers — compétitions + blessures
+  const [c1Races,         setC1Races]         = useState<C1Race[]>([])
+  const [c1Injuries,      setC1Injuries]      = useState<C1Injury[]>([])
+  const [c1HoveredRace,   setC1HoveredRace]   = useState<C1Race | null>(null)
+  const [c1HoveredInjury, setC1HoveredInjury] = useState<C1Injury | null>(null)
 
   // Responsive
   const [isMobile, setIsMobile] = useState(false)
@@ -3044,6 +3070,31 @@ function YearDatasSubTab() {
   }, [])
 
   useEffect(() => { void fetchData() }, [fetchData])
+
+  // ── Fetch marqueurs (compétitions + blessures) ───────────────
+  const fetchMarkers = useCallback(async () => {
+    const sb = createClient()
+    const [{ data: runRaces }, { data: cycleRaces }, { data: injuriesData }] = await Promise.all([
+      // Courses à pied (is_race = true → workout_type 1)
+      sb.from('activities')
+        .select('id, title, started_at, sport_type, moving_time_s, distance_m')
+        .eq('is_race', true),
+      // Courses cyclistes (workout_type 11 dans raw_data)
+      sb.from('activities')
+        .select('id, title, started_at, sport_type, moving_time_s, distance_m')
+        .filter('raw_data->>workout_type', 'eq', '11'),
+      // Blessures — erreur silencieuse si table absente (data sera null)
+      sb.from('injuries').select('id, nom, type, date_debut, date_fin'),
+    ])
+    const merged = [...(runRaces ?? []), ...(cycleRaces ?? [])]
+    // Dédupliquer par id (une course running peut matcher les deux requêtes)
+    const seen = new Set<string>()
+    const unique = merged.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true })
+    setC1Races(unique as C1Race[])
+    setC1Injuries((injuriesData ?? []) as C1Injury[])
+  }, [])
+
+  useEffect(() => { void fetchMarkers() }, [fetchMarkers])
 
   // Strava connection check — exact same pattern as Profile page (useConnections hook)
   const checkStravaConnection = useCallback(async () => {
@@ -3388,6 +3439,53 @@ function YearDatasSubTab() {
     chart1Metric === 'heures'     ? `${v.toFixed(1)} h`
     : chart1Metric === 'km'       ? `${Math.round(v)} km`
     : `${Math.round(v)} séance${Math.round(v) > 1 ? 's' : ''}`
+
+  // ── Chart 1 markers computation ────────────────────────────────
+  // Années visibles sur le chart (normal = [chart1Year], compare = c1CompareYears)
+  const c1MarkerYears = c1CompareMode ? c1CompareYears : (chart1Year ? [chart1Year] : [])
+
+  // Helper : index X (0-based) depuis une date ISO
+  const dateToIdx = (dateStr: string): number => {
+    if (chart1Period === 'mois') return parseInt(dateStr.slice(5, 7)) - 1
+    return getISOWeek(dateStr) - 1
+  }
+
+  const c1RaceMarkers: C1RaceMarker[] = []
+  const c1InjuryBands: C1InjuryBand[] = []
+
+  // Races
+  for (const race of c1Races) {
+    if (!race.started_at) continue
+    const yr = race.started_at.slice(0, 4)
+    if (!c1MarkerYears.includes(yr)) continue
+    const x = c1X(dateToIdx(race.started_at))
+    const lower = (race.sport_type ?? '').toLowerCase()
+    const sp = YD_SPORTS.find(s => s.keys.includes(lower))
+    c1RaceMarkers.push({ race, x, color: sp?.color ?? '#fbbf24' })
+  }
+
+  // Injury bands
+  for (const inj of c1Injuries) {
+    for (const yr of c1MarkerYears) {
+      const startYr = inj.date_debut.slice(0, 4)
+      const endYr   = inj.date_fin ? inj.date_fin.slice(0, 4) : startYr
+      if (endYr < yr || startYr > yr) continue
+      const idxMax  = C1_N - 1
+      const x1 = c1X(startYr === yr ? dateToIdx(inj.date_debut) : 0)
+      if (!inj.date_fin) {
+        c1InjuryBands.push({ inj, x1, x2: x1, isPoint: true })
+        continue
+      }
+      const x2 = c1X(endYr === yr ? dateToIdx(inj.date_fin) : idxMax)
+      c1InjuryBands.push({ inj, x1, x2, isPoint: false })
+    }
+  }
+
+  // Formatage date lisible pour tooltip
+  const fmtDate = (d: string) => {
+    const dt = new Date(d)
+    return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
 
   // ── Chart 3: global all-sport stats per year — merged sources ─
   const c3Stats = chartYears.map(yr => ({
@@ -3922,16 +4020,46 @@ function YearDatasSubTab() {
           <div style={{ position: 'relative', minHeight: isMobile ? 280 : 'auto' }}>
 
             {/* ── Tooltip crosshair ancré en haut-droite (hors scroll) ── */}
-            {hoveredPoint !== null && (
+            {(hoveredPoint !== null || c1HoveredRace || c1HoveredInjury) && (
               <div style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 12px', minWidth: 128,
+                borderRadius: 8, padding: '10px 12px', minWidth: 140, maxWidth: 200,
               }}>
-                <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
-                  {C1_LABELS[hoveredPoint]}
-                </p>
-                {c1CompareMode ? (
+                {hoveredPoint !== null && (
+                  <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
+                    {C1_LABELS[hoveredPoint]}
+                  </p>
+                )}
+                {/* Section compétition */}
+                {c1HoveredRace && (
+                  <div style={{ marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      🏆 Compétition
+                    </p>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-word' }}>{c1HoveredRace.title ?? '—'}</p>
+                    <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: 0 }}>
+                      {fmtDate(c1HoveredRace.started_at)}
+                      {c1HoveredRace.distance_m ? ` · ${Math.round(c1HoveredRace.distance_m / 1000)} km` : ''}
+                      {c1HoveredRace.moving_time_s ? ` · ${Math.floor(c1HoveredRace.moving_time_s / 3600)}h${String(Math.floor((c1HoveredRace.moving_time_s % 3600) / 60)).padStart(2, '0')}` : ''}
+                    </p>
+                    <p style={{ fontSize: 9, color: 'var(--primary)', margin: '3px 0 0', fontWeight: 600 }}>Clic → détail activité</p>
+                  </div>
+                )}
+                {/* Section blessure */}
+                {c1HoveredInjury && (
+                  <div style={{ marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', margin: '0 0 3px' }}>⚡ Blessure</p>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{c1HoveredInjury.nom}</p>
+                    <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{c1HoveredInjury.type}</p>
+                    <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: 0 }}>
+                      {fmtDate(c1HoveredInjury.date_debut)}
+                      {c1HoveredInjury.date_fin ? ` → ${fmtDate(c1HoveredInjury.date_fin)}` : ' (en cours)'}
+                    </p>
+                    <p style={{ fontSize: 9, color: '#ef4444', margin: '3px 0 0', fontWeight: 600 }}>Clic → blessures</p>
+                  </div>
+                )}
+                {hoveredPoint !== null && (c1CompareMode ? (
                   /* Mode Comparer : ligne par année */
                   c1CompareYears.map(yr => {
                     const v = c1PointVals(c1CompareSport, yr)[hoveredPoint]
@@ -3966,7 +4094,7 @@ function YearDatasSubTab() {
                       </div>
                     )
                   })
-                )}
+                ))}
               </div>
             )}
 
@@ -3986,14 +4114,31 @@ function YearDatasSubTab() {
                 display: 'block', overflow: 'visible',
                 width: (isMobile && chart1Period === 'semaine') ? C1_SVG_W : '100%',
                 height: 'auto',
+                cursor: (c1HoveredRace || c1HoveredInjury) ? 'pointer' : 'crosshair',
               }}
               onMouseMove={e => {
                 const rect  = e.currentTarget.getBoundingClientRect()
                 const svgX  = ((e.clientX - rect.left) / rect.width) * C1_SVG_W
                 const rawI  = Math.round(((svgX - C1_PL) / c1PlotW) * (C1_N - 1))
                 setHoveredPoint(Math.max(0, Math.min(C1_N - 1, rawI)))
+                // Détection hover marqueur course (±10px)
+                const nearRace = c1RaceMarkers.find(m => Math.abs(m.x - svgX) < 10)
+                setC1HoveredRace(nearRace?.race ?? null)
+                // Détection hover blessure
+                const nearInj = c1InjuryBands.find(b =>
+                  b.isPoint ? Math.abs(b.x1 - svgX) < 10 : svgX >= b.x1 - 4 && svgX <= b.x2 + 4
+                )
+                setC1HoveredInjury(nearInj?.inj ?? null)
               }}
-              onMouseLeave={() => setHoveredPoint(null)}
+              onMouseLeave={() => {
+                setHoveredPoint(null)
+                setC1HoveredRace(null)
+                setC1HoveredInjury(null)
+              }}
+              onClick={() => {
+                if (c1HoveredRace)   { router.push(`/activities/${c1HoveredRace.id}`); return }
+                if (c1HoveredInjury) { router.push('/injuries') }
+              }}
             >
               {/* Grid */}
               {(() => {
@@ -4012,6 +4157,26 @@ function YearDatasSubTab() {
                   )
                 })
               })()}
+
+              {/* ── Injury bands (derrière les courbes) ── */}
+              {c1InjuryBands.map((band, idx) =>
+                band.isPoint ? (
+                  /* Marqueur ponctuel ⚡ — pas de date_fin */
+                  <text key={`inj-pt-${idx}`}
+                    x={band.x1} y={C1_PT + c1PlotH + (isMobile ? 9 : 11)}
+                    textAnchor="middle"
+                    style={{ fontSize: isMobile ? 6 : 8, pointerEvents: 'none' }}
+                  >⚡</text>
+                ) : (
+                  /* Bande verticale semi-transparente */
+                  <rect key={`inj-band-${idx}`}
+                    x={band.x1} y={C1_PT}
+                    width={Math.max(2, band.x2 - band.x1)} height={c1PlotH}
+                    fill="rgba(239,68,68,0.08)" rx={2}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )
+              )}
 
               {/* Courbes — mode Comparer */}
               {c1CompareMode && c1CompareYears.map(yr => {
@@ -4044,6 +4209,22 @@ function YearDatasSubTab() {
                       />
                     ) : null)}
                   </g>
+                )
+              })}
+
+              {/* ── Race markers — triangles au bas du plot area ── */}
+              {c1RaceMarkers.map((marker, idx) => {
+                const ms  = isMobile ? 5 : 7   // demi-base triangle
+                const yB  = C1_PT + c1PlotH     // bas du plot
+                const yT  = yB - ms * 1.6       // sommet du triangle (pointant vers le haut)
+                const isH = c1HoveredRace?.id === marker.race.id
+                return (
+                  <polygon key={`race-${idx}`}
+                    points={`${marker.x},${yT} ${marker.x - ms},${yB + 2} ${marker.x + ms},${yB + 2}`}
+                    fill={marker.color}
+                    opacity={isH ? 1 : 0.75}
+                    style={{ pointerEvents: 'none' }}
+                  />
                 )
               })}
 

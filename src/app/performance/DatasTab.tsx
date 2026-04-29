@@ -2330,14 +2330,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       <SectionHeader label="Records personnels" gradient="linear-gradient(180deg,#ffb340,#f97316)" />
 
       {/* Sport tabs */}
-      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
         {SPORT_TABS.map(([s, l, c]) => (
           <button key={s} onClick={() => setSport(s)} style={{
-            padding: '7px 12px', borderRadius: 9, border: '1px solid', cursor: 'pointer',
-            borderColor: sport === s ? c : 'var(--border)',
-            background: sport === s ? `${c}22` : 'var(--bg-card)',
-            color: sport === s ? c : 'var(--text-mid)',
-            fontSize: 12, fontWeight: sport === s ? 600 : 400,
+            padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+            whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+            background: sport === s ? c : 'var(--bg-card2)',
+            color:      sport === s ? '#fff' : 'var(--text-dim)',
           }}>
             {l}
           </button>

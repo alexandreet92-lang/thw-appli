@@ -44,6 +44,9 @@ Table `activities` :
 App de coaching sportif hybride (endurance + force).
 Benchmark UI/UX : Strava + TrainingPeaks.
 
+## Règle d'interconnexion des pages
+Toutes les pages de l'app sont interconnectées. Chaque page qui affiche une entité (activité, blessure, compétition, séance) doit avoir un lien cliquable vers la page dédiée de cette entité. Une page ne refuse jamais d'afficher un lien vers une autre page sous prétexte que les données ne sont "pas pertinentes". L'interconnexion est obligatoire et permanente.
+
 ## Design System
 Avant toute modification ou création de composant UI, lis `docs/DESIGN_SYSTEM.md` et applique ses règles sans exception.
 

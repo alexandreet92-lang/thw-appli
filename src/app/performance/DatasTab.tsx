@@ -2953,6 +2953,11 @@ function YearDatasSubTab() {
   const [c1Injuries,      setC1Injuries]      = useState<C1Injury[]>([])
   const [c1HoveredRace,   setC1HoveredRace]   = useState<C1Race | null>(null)
   const [c1HoveredInjury, setC1HoveredInjury] = useState<C1Injury | null>(null)
+  // Visibilité des marqueurs
+  const [c1ShowRaces,     setC1ShowRaces]     = useState(true)
+  const [c1ShowBlessures, setC1ShowBlessures] = useState(true)
+  const [c1FeatOpen,      setC1FeatOpen]      = useState(false)
+  const c1FeatRef = useRef<HTMLDivElement>(null)
 
   // Responsive
   const [isMobile, setIsMobile] = useState(false)
@@ -3119,6 +3124,18 @@ function YearDatasSubTab() {
     document.addEventListener('mousedown', onClickOutside)
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [showSyncMenu])
+
+  // Close Fonctionnalités dropdown on outside click
+  useEffect(() => {
+    if (!c1FeatOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (c1FeatRef.current && !c1FeatRef.current.contains(e.target as Node)) {
+        setC1FeatOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [c1FeatOpen])
 
   // ── Helpers ────────────────────────────────────────────────
   const sportDef     = YD_SPORTS.find(s => s.id === activeSport)!
@@ -3970,6 +3987,52 @@ function YearDatasSubTab() {
                 }}>
                 Comparer
               </button>
+
+              {/* Bouton Fonctionnalités — dropdown toggles marqueurs */}
+              <div ref={c1FeatRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setC1FeatOpen(v => !v)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    border: '1px solid var(--border)',
+                    background: c1FeatOpen ? 'var(--bg-card2)' : 'transparent',
+                    color: 'var(--text-dim)',
+                    transition: 'background 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                  Affichage <span style={{ fontSize: 9, opacity: 0.7 }}>{c1FeatOpen ? '▲' : '▼'}</span>
+                </button>
+                {c1FeatOpen && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '8px 12px', minWidth: 148,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={c1ShowRaces}
+                        onChange={() => setC1ShowRaces(v => !v)}
+                        style={{ accentColor: '#ef4444', cursor: 'pointer', width: 14, height: 14 }}
+                      />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text)' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', border: '1.5px solid white', boxShadow: '0 0 0 1px #ef4444', flexShrink: 0 }} />
+                        Courses
+                      </span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={c1ShowBlessures}
+                        onChange={() => setC1ShowBlessures(v => !v)}
+                        style={{ accentColor: '#ef4444', cursor: 'pointer', width: 14, height: 14 }}
+                      />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text)' }}>
+                        <span style={{ fontSize: 10 }}>⚡</span>
+                        Blessures
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -4121,13 +4184,17 @@ function YearDatasSubTab() {
                 const svgX  = ((e.clientX - rect.left) / rect.width) * C1_SVG_W
                 const rawI  = Math.round(((svgX - C1_PL) / c1PlotW) * (C1_N - 1))
                 setHoveredPoint(Math.max(0, Math.min(C1_N - 1, rawI)))
-                // Détection hover marqueur course (±10px)
-                const nearRace = c1RaceMarkers.find(m => Math.abs(m.x - svgX) < 10)
+                // Détection hover marqueur course (±10px, seulement si visible)
+                const nearRace = c1ShowRaces
+                  ? c1RaceMarkers.find(m => Math.abs(m.x - svgX) < 10)
+                  : undefined
                 setC1HoveredRace(nearRace?.race ?? null)
-                // Détection hover blessure
-                const nearInj = c1InjuryBands.find(b =>
-                  b.isPoint ? Math.abs(b.x1 - svgX) < 10 : svgX >= b.x1 - 4 && svgX <= b.x2 + 4
-                )
+                // Détection hover blessure (seulement si visible)
+                const nearInj = c1ShowBlessures
+                  ? c1InjuryBands.find(b =>
+                      b.isPoint ? Math.abs(b.x1 - svgX) < 10 : svgX >= b.x1 - 4 && svgX <= b.x2 + 4
+                    )
+                  : undefined
                 setC1HoveredInjury(nearInj?.inj ?? null)
               }}
               onMouseLeave={() => {
@@ -4136,7 +4203,7 @@ function YearDatasSubTab() {
                 setC1HoveredInjury(null)
               }}
               onClick={() => {
-                if (c1HoveredRace)   { router.push(`/activities/${c1HoveredRace.id}`); return }
+                if (c1HoveredRace)   { router.push(`/activities?id=${c1HoveredRace.id}`); return }
                 if (c1HoveredInjury) { router.push('/injuries') }
               }}
             >
@@ -4159,14 +4226,15 @@ function YearDatasSubTab() {
               })()}
 
               {/* ── Injury bands (derrière les courbes) ── */}
-              {c1InjuryBands.map((band, idx) =>
+              {c1ShowBlessures && c1InjuryBands.map((band, idx) =>
                 band.isPoint ? (
-                  /* Marqueur ponctuel ⚡ — pas de date_fin */
-                  <text key={`inj-pt-${idx}`}
-                    x={band.x1} y={C1_PT + c1PlotH + (isMobile ? 9 : 11)}
-                    textAnchor="middle"
-                    style={{ fontSize: isMobile ? 6 : 8, pointerEvents: 'none' }}
-                  >⚡</text>
+                  /* Marqueur ponctuel — cercle rouge */
+                  <circle key={`inj-pt-${idx}`}
+                    cx={band.x1} cy={C1_PT + c1PlotH + 6}
+                    r={isMobile ? 3 : 4}
+                    fill="#ef4444" stroke="white" strokeWidth={1}
+                    style={{ pointerEvents: 'none' }}
+                  />
                 ) : (
                   /* Bande verticale semi-transparente */
                   <rect key={`inj-band-${idx}`}
@@ -4212,17 +4280,17 @@ function YearDatasSubTab() {
                 )
               })}
 
-              {/* ── Race markers — triangles au bas du plot area ── */}
-              {c1RaceMarkers.map((marker, idx) => {
-                const ms  = isMobile ? 5 : 7   // demi-base triangle
-                const yB  = C1_PT + c1PlotH     // bas du plot
-                const yT  = yB - ms * 1.6       // sommet du triangle (pointant vers le haut)
+              {/* ── Race markers — cercles rouges au bas du plot area ── */}
+              {c1ShowRaces && c1RaceMarkers.map((marker, idx) => {
                 const isH = c1HoveredRace?.id === marker.race.id
+                const r   = isMobile ? 3 : 4
                 return (
-                  <polygon key={`race-${idx}`}
-                    points={`${marker.x},${yT} ${marker.x - ms},${yB + 2} ${marker.x + ms},${yB + 2}`}
-                    fill={marker.color}
-                    opacity={isH ? 1 : 0.75}
+                  <circle key={`race-${idx}`}
+                    cx={marker.x} cy={C1_PT + c1PlotH + 6}
+                    r={r}
+                    fill="#ef4444"
+                    stroke="white" strokeWidth={1}
+                    opacity={isH ? 1 : 0.85}
                     style={{ pointerEvents: 'none' }}
                   />
                 )

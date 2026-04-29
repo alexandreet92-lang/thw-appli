@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/Button'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -132,19 +133,15 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
+          <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={loading || !email || !password}
-            style={{
-              width:'100%', padding:'12px', borderRadius:11,
-              background: loading||!email||!password ? 'var(--border)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-              border:'none', color:'#fff',
-              fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14,
-              cursor: loading||!email||!password ? 'not-allowed' : 'pointer',
-              marginTop:4, transition:'all 0.15s',
-            }}>
-            {loading ? 'Chargement...' : mode==='login' ? 'Se connecter' : 'Créer mon compte'}
-          </button>
+            loading={loading}
+            style={{ width: '100%', marginTop: 4, justifyContent: 'center' }}
+          >
+            {mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+          </Button>
 
           {mode==='login' && (
             <button

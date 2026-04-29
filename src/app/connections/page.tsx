@@ -567,7 +567,7 @@ function ConnectModal({
                     ? 'linear-gradient(135deg, #00b8ce, #4a5fff)'
                     : 'linear-gradient(135deg, #00c8e0, #5b6fff)',
                   color: '#fff',
-                  fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 700,
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   boxShadow: '0 2px 14px rgba(0,200,224,0.3)',
@@ -786,7 +786,7 @@ export default function ConnectionsPage() {
                     ? 'linear-gradient(135deg, #00b8ce, #4a5fff)'
                     : 'linear-gradient(135deg, #00c8e0, #5b6fff)',
                 color: syncingAll ? 'var(--text-dim)' : '#fff',
-                fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 13,
+                fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13,
                 cursor: syncingAll ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
                 boxShadow: syncingAll ? 'none' : '0 2px 16px rgba(0,200,224,0.25)',

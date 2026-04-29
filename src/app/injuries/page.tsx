@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/Button'
 
 type InjuryType = 'douleur' | 'gene' | 'blessure'
 type PainType   = 'musculaire' | 'articulaire' | 'tendineuse'
@@ -243,7 +244,7 @@ function AddInjuryModal({ zone, onClose, onSave }: { zone:MuscleZone; onClose:()
           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', marginBottom:6 }}>Commentaire</p>
           <textarea value={comment} onChange={e=>setComment(e.target.value)} rows={2} placeholder="Description..." style={{ width:'100%', padding:'8px 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif' }}/>
         </div>
-        <button onClick={save} style={{ width:'100%', padding:13, borderRadius:12, background:'linear-gradient(135deg,#ef4444,#f97316)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>Enregistrer + Analyse IA</button>
+        <Button variant="destructive" onClick={save} style={{ width: '100%', justifyContent: 'center' }}>Enregistrer + Analyse IA</Button>
       </div>
     </div>
   )
@@ -312,10 +313,10 @@ function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=
         </div>
         <div style={{ display:'flex', gap:7 }}>
           <input value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Note du jour..." onKeyDown={e=>e.key==='Enter'&&addEntry()} style={{ flex:1, padding:'7px 11px', borderRadius:9, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Sans,sans-serif', fontSize:12, outline:'none' }}/>
-          <button onClick={addEntry} style={{ padding:'7px 12px', borderRadius:9, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>+</button>
+          <Button variant="primary" size="sm" onClick={addEntry}>+</Button>
         </div>
       </div>
-      <button onClick={()=>onUpdate({...injury,status})} style={{ padding:11, borderRadius:12, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>Sauvegarder</button>
+      <Button variant="primary" onClick={() => onUpdate({ ...injury, status })} style={{ width: '100%', justifyContent: 'center' }}>Sauvegarder</Button>
     </div>
   )
 }

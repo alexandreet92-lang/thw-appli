@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import { Button } from '@/components/ui/Button'
 
 // ── Types pour l'analyse IA ───────────────────────────────────
 interface AIReadinessResult {
@@ -293,13 +294,12 @@ function SectionToday({ data, onCheckIn, onAIAnalysis, aiLoading }: {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={onAIAnalysis} disabled={aiLoading}
-            style={{ padding:'8px 14px', borderRadius:10, background:'rgba(91,111,255,0.10)', border:'1px solid rgba(91,111,255,0.35)', color:'#5b6fff', fontFamily:'Syne,sans-serif', fontWeight:600, fontSize:12, cursor:aiLoading?'default':'pointer', whiteSpace:'nowrap' as const, opacity:aiLoading?0.6:1 }}>
+            style={{ padding:'8px 14px', borderRadius:10, background:'rgba(91,111,255,0.10)', border:'1px solid rgba(91,111,255,0.35)', color:'#5b6fff', fontFamily:'DM Sans,sans-serif', fontWeight:600, fontSize:12, cursor:aiLoading?'default':'pointer', whiteSpace:'nowrap' as const, opacity:aiLoading?0.6:1 }}>
             {aiLoading ? '⏳ Analyse…' : '🧠 Analyse IA'}
           </button>
-          <button onClick={onCheckIn}
-            style={{ padding:'8px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:600, fontSize:12, cursor:'pointer', whiteSpace:'nowrap' as const }}>
+          <Button variant="primary" size="sm" onClick={onCheckIn} style={{ whiteSpace: 'nowrap' }}>
             Check-in du matin
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -601,9 +601,7 @@ function SectionDataSources() {
           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Sources</p>
           <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:'3px 0 0' }}>Sources de données</h2>
         </div>
-        <button style={{ padding:'7px 14px', borderRadius:9, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:600, fontSize:11, cursor:'pointer' }}>
-          Ajouter une source
-        </button>
+        <Button variant="primary" size="sm">Ajouter une source</Button>
       </div>
 
       {connected.length === 0 && (

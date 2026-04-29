@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/Button'
 
 // ── Calcul des zones ──────────────────────────────
 function calcRunZones(lthr: number, thresholdPace: number) {
@@ -279,9 +280,7 @@ export default function ZonesPage() {
 
       {/* Save */}
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
-        <button style={{ padding: '11px 28px', borderRadius: 12, background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', border: 'none', color: '#fff', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,200,224,0.3)' }}>
-          Sauvegarder les zones
-        </button>
+        <Button variant="primary">Sauvegarder les zones</Button>
       </div>
     </div>
   )

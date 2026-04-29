@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'destructive'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
   children: React.ReactNode
@@ -13,17 +13,21 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const variants = {
   primary: cn(
     'bg-[var(--primary)] text-white border-none',
-    'shadow-[0_2px_12px_rgba(27,110,243,0.30)]',
-    'hover:brightness-110 hover:shadow-[0_4px_20px_rgba(27,110,243,0.40)] hover:-translate-y-px',
+    'shadow-[0_2px_12px_rgba(0,200,224,0.25)]',
+    'hover:brightness-110 hover:shadow-[0_4px_20px_rgba(0,200,224,0.35)] hover:-translate-y-px',
     'active:translate-y-0'
   ),
-  ghost: cn(
-    'bg-[var(--bg-card)] border border-[var(--border-mid)] text-[var(--text-mid)]',
-    'hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[rgba(27,110,243,0.06)]'
+  secondary: cn(
+    'bg-transparent border border-[var(--primary)] text-[var(--primary)]',
+    'hover:bg-[var(--primary-dim)]'
   ),
-  danger: cn(
-    'bg-[rgba(255,95,95,0.10)] border border-[rgba(255,95,95,0.2)] text-[#ff5f5f]',
-    'hover:bg-[rgba(255,95,95,0.18)]'
+  ghost: cn(
+    'bg-transparent border-0 text-[var(--text-dim)]',
+    'hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'
+  ),
+  destructive: cn(
+    'bg-[rgba(239,68,68,0.10)] border border-[rgba(239,68,68,0.2)] text-[#ef4444]',
+    'hover:bg-[rgba(239,68,68,0.18)]'
   ),
 }
 
@@ -67,7 +71,7 @@ export function Button({
     <motion.button
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center font-medium transition-all duration-200 cursor-pointer border-none',
+        'inline-flex items-center font-medium transition-all duration-200 cursor-pointer',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         variants[variant],
         sizes[size],

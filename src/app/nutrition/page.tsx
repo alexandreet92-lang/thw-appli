@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import dynamicImport from 'next/dynamic'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import { Button } from '@/components/ui/Button'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import type { NutritionPlanData, PlanDay, MealSet, DailyLog, WeightLog } from '@/hooks/useNutrition'
@@ -1052,7 +1053,7 @@ export default function NutritionPage() {
                 background: 'linear-gradient(135deg,rgba(0,200,224,0.12),rgba(91,111,255,0.18))',
                 border: '1px solid rgba(91,111,255,0.35)',
                 color: 'var(--text)',
-                fontFamily: 'Syne,sans-serif',
+                fontFamily: 'DM Sans,sans-serif',
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: 'pointer',
@@ -1270,19 +1271,15 @@ export default function NutritionPage() {
                     </div>
                   ))}
                 </div>
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => void handleSaveManualLog()}
                   disabled={savingLog}
-                  style={{
-                    padding: '9px 0', borderRadius: 9,
-                    background: 'rgba(0,200,224,0.12)',
-                    border: '1px solid rgba(0,200,224,0.3)',
-                    color: '#00c8e0', fontFamily: 'Syne,sans-serif',
-                    fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                  }}
+                  loading={savingLog}
+                  style={{ width: '100%', justifyContent: 'center' }}
                 >
-                  {savingLog ? 'Sauvegarde...' : 'Sauvegarder'}
-                </button>
+                  Sauvegarder
+                </Button>
               </div>
             </div>
           )}
@@ -1451,18 +1448,13 @@ export default function NutritionPage() {
                 />
               </div>
             </div>
-            <button
+            <Button
+              variant="secondary"
               onClick={() => void handleSaveWeight()}
-              style={{
-                width: '100%', padding: '9px 0', borderRadius: 9,
-                background: 'rgba(0,200,224,0.12)',
-                border: '1px solid rgba(0,200,224,0.3)',
-                color: '#00c8e0', fontFamily: 'Syne,sans-serif',
-                fontWeight: 700, fontSize: 12, cursor: 'pointer',
-              }}
+              style={{ width: '100%', justifyContent: 'center' }}
             >
               Sauvegarder la mesure
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1586,21 +1578,9 @@ export default function NutritionPage() {
 
       {/* Bouton Mes repas types */}
       <div style={{ padding: '8px 16px 24px', textAlign: 'center' }}>
-        <button
-          onClick={() => setShowTemplates(true)}
-          style={{
-            padding: '8px 18px',
-            borderRadius: 9,
-            border: '1px solid var(--border)',
-            background: 'transparent',
-            color: 'var(--text-dim)',
-            fontSize: 12,
-            cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
-          }}
-        >
+        <Button variant="ghost" onClick={() => setShowTemplates(true)}>
           Mes repas types
-        </button>
+        </Button>
       </div>
 
       {/* Templates modal */}

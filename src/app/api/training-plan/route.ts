@@ -460,9 +460,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   try {
     body = await req.json() as TrainingPlanRequestBody
   } catch {
-    return new Response(JSON.stringify({ type: 'error', error: 'Invalid JSON' }) + '\n', {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/x-ndjson' },
+      headers: { 'Content-Type': 'application/json' },
     })
   }
 
@@ -549,81 +549,59 @@ NUTRITION & RÉCUPÉRATION :
 Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}
 
-RÈGLES GÉNÉRALES :
-0. IMPORTANT : Tu dois générer un plan TRÈS court. Maximum 2000 tokens. Chaque semaine = 1 ligne. Pas de descriptions longues.
+RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
+0. FORMAT ULTRA-COMPACT : 4 semaines MAXIMUM. blocs:[] pour TOUTES les semaines. Titres ≤ 3 mots. Notes ≤ 5 mots. Maximum 2000 tokens total.
 1. Programme réaliste adapté au niveau et au temps disponible
-2. Progression logique et périodisation intelligente (Base → Intensité → Spécifique → Compétition)
-3. Semaine de deload toutes les 3-4 semaines
-4. TSS cohérent avec la durée et l'intensité
-5. Respect des jours de repos demandés`
+2. Progression logique (Base → Intensité → Spécifique → Compétition)
+3. TSS cohérent avec la durée et l'intensité
+4. Respect des jours de repos demandés`
 
-  const encoder = new TextEncoder()
+  try {
+    const client = getAnthropicClient()
+    const resp = await client.messages.create({
+      model: MODELS.powerful,
+      max_tokens: 2000,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+    console.log('[training-plan] stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
+    if (resp.stop_reason === 'max_tokens') {
+      console.log('[training-plan] WARNING: output truncated at max_tokens')
+    }
 
-  const readableStream = new ReadableStream({
-    async start(controller) {
-      const send = (msg: object) =>
-        controller.enqueue(encoder.encode(JSON.stringify(msg) + '\n'))
+    const textBlock = resp.content.find(b => b.type === 'text')
+    const rawText = textBlock?.type === 'text' ? textBlock.text : ''
 
-      try {
-        // Keepalive immédiat — évite le timeout Vercel avant le premier octet
-        send({ type: 'ping' })
+    if (!rawText) {
+      return new Response(JSON.stringify({ error: 'No response from model' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
 
-        const client = getAnthropicClient()
-        let fullText = ''
+    let plan: GeneratedPlan
+    try {
+      plan = parseAndRepair<GeneratedPlan>(rawText)
+    } catch (parseErr) {
+      const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+      console.log('[training-plan] Parse error:', msg, '| raw tail:', rawText.slice(-300))
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
 
-        // Streaming direct — chaque token reçu garde la connexion vivante
-        const stream = client.messages.stream({
-          model: MODELS.powerful,
-          max_tokens: 4000,
-          system: SYSTEM,
-          messages: [{ role: 'user', content: userPrompt }],
-        })
-
-        for await (const event of stream) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            fullText += event.delta.text
-          }
-        }
-
-        const final = await stream.finalMessage()
-        console.log('[training-plan] stop_reason:', final.stop_reason, '| usage:', JSON.stringify(final.usage))
-        if (final.stop_reason === 'max_tokens') {
-          console.log('[training-plan] WARNING: output truncated at max_tokens')
-        }
-
-        if (!fullText) {
-          send({ type: 'error', error: 'No response from model' })
-          return
-        }
-
-        let plan: GeneratedPlan
-        try {
-          plan = parseAndRepair<GeneratedPlan>(fullText)
-        } catch (parseErr) {
-          const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
-          console.log('[training-plan] Parse error:', msg)
-          send({ type: 'error', error: msg })
-          return
-        }
-
-        console.log('FULL DATA RAW:', JSON.stringify(plan, null, 2))
-        const normalized = normalizePlan(plan)
-        send({ type: 'done', program: normalized })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        console.log('[training-plan] Fatal error:', message)
-        send({ type: 'error', error: message })
-      } finally {
-        controller.close()
-      }
-    },
-  })
-
-  return new Response(readableStream, {
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      'X-Accel-Buffering': 'no',
-    },
-  })
+    console.log('FULL DATA RAW:', JSON.stringify(plan, null, 2))
+    const normalized = normalizePlan(plan)
+    return new Response(JSON.stringify({ program: normalized }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.log('[training-plan] Fatal error:', message)
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 }

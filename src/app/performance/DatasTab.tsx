@@ -2855,6 +2855,26 @@ const YD_SPORT_METRICS: Record<YDSportId, string[]> = {
   other:    ['nb_sorties', 'heures', 'km'],
 }
 
+// ── Chart 1 Compare — couleurs par année ────────────────────────
+const C1_CMP_COLORS: Record<string, string> = {
+  '2021': '#9ca3af',
+  '2022': '#6366f1',
+  '2023': '#f97316',
+  '2024': '#eab308',
+  '2025': '#3b82f6',
+  '2026': '#00c8e0',
+}
+
+/** Numéro de semaine ISO 8601 (1-53) depuis une date ISO string */
+function getISOWeek(dateStr: string): number {
+  const d    = new Date(dateStr)
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const dayNum = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
 // ── Component ─────────────────────────────────────────────────
 function YearDatasSubTab() {
   const [loading, setLoading]         = useState(true)
@@ -2873,8 +2893,18 @@ function YearDatasSubTab() {
   const [chartMetric, setChartMetric]   = useState('heures')
 
   // Chart 1 controls
-  const [chart1Year,   setChart1Year]   = useState('')
-  const [chart1Metric, setChart1Metric] = useState<'km' | 'heures' | 'nb_sorties'>('heures')
+  const [chart1Year,      setChart1Year]      = useState('')
+  const [chart1Metric,    setChart1Metric]    = useState<'km' | 'heures' | 'nb_sorties'>('heures')
+  const [chart1Period,    setChart1Period]    = useState<'mois' | 'semaine'>('mois')
+  // Chart 1 — Mode Comparer
+  const [c1CompareMode,   setC1CompareMode]   = useState(false)
+  const [c1CompareSport,  setC1CompareSport]  = useState<string>('running')
+  const [c1CompareYears,  setC1CompareYears]  = useState<string[]>([])
+  const [c1CompareSheet,  setC1CompareSheet]  = useState(false)
+  // weeklyStats : year → isoWeek(1-53) → sportId → {km, heures, nb_sorties}
+  const [weeklyStats, setWeeklyStats] = useState<
+    Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>>
+  >({})
 
   // Edit state (manual mode)
   const [editYear,  setEditYear]  = useState<string | null>(null)
@@ -2896,7 +2926,7 @@ function YearDatasSubTab() {
 
   // Chart tooltips
   const [hoveredBar,   setHoveredBar]   = useState<{ year: string; val: number; svgX: number } | null>(null)
-  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null)
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null)
 
   // Responsive
   const [isMobile, setIsMobile] = useState(false)
@@ -2948,11 +2978,13 @@ function YearDatasSubTab() {
 
     const auto: Record<string, Record<string, YDAutoStat>> = {}
     const monthly: Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}
+    const weekly:  Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>> = {}
 
     for (const act of acts) {
       if (!act.started_at || !act.sport_type) continue
       const year  = act.started_at.slice(0, 4)
       const month = parseInt(act.started_at.slice(5, 7)) - 1  // 0-indexed
+      const week  = getISOWeek(act.started_at)
       const lower = act.sport_type.toLowerCase()
       for (const sp of YD_SPORTS) {
         if (!sp.keys.includes(lower)) continue
@@ -2970,9 +3002,16 @@ function YearDatasSubTab() {
         if (!monthly[year]) monthly[year] = {}
         if (!monthly[year][month]) monthly[year][month] = {}
         if (!monthly[year][month][sp.id]) monthly[year][month][sp.id] = { km: 0, heures: 0, nb_sorties: 0 }
-        monthly[year][month][sp.id].km        += km
-        monthly[year][month][sp.id].heures    += h
+        monthly[year][month][sp.id].km         += km
+        monthly[year][month][sp.id].heures     += h
         monthly[year][month][sp.id].nb_sorties += 1
+        // Weekly (ISO 8601)
+        if (!weekly[year]) weekly[year] = {}
+        if (!weekly[year][week]) weekly[year][week] = {}
+        if (!weekly[year][week][sp.id]) weekly[year][week][sp.id] = { km: 0, heures: 0, nb_sorties: 0 }
+        weekly[year][week][sp.id].km         += km
+        weekly[year][week][sp.id].heures     += h
+        weekly[year][week][sp.id].nb_sorties += 1
         break
       }
     }
@@ -2997,8 +3036,10 @@ function YearDatasSubTab() {
     setAutoStats(auto)
     setManualMap(manual)
     setMonthlyStats(monthly)
+    setWeeklyStats(weekly)
     setAllYears(years)
     setChart1Year(prev => prev && years.includes(prev) ? prev : (years[0] ?? String(new Date().getFullYear())))
+    setC1CompareYears(prev => prev.length > 0 ? prev : (years[0] ? [years[0]] : []))
     setLoading(false)
   }, [])
 
@@ -3293,16 +3334,31 @@ function YearDatasSubTab() {
   const SVG_W         = 500
   const MONTHS        = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
-  // ── Chart 1: monthly volume ────────────────────────────────
-  const c1YearOpts   = allYears.length > 0 ? allYears : [currentYear]
-  const c1HasMonthly = MONTHS.some((_, mi) =>
-    YD_SPORTS.some(sp => (monthlyStats[chart1Year]?.[mi]?.[sp.id]?.[chart1Metric] ?? 0) > 0)
+  // ── Chart 1: volume par sport (mensuel ou hebdomadaire) ───────
+  const c1YearOpts = allYears.length > 0 ? allYears : [currentYear]
+  // Nombre de points X selon la période
+  const C1_N = chart1Period === 'mois' ? 12 : 52
+  // Libellés axe X
+  const C1_LABELS: string[] = chart1Period === 'mois'
+    ? MONTHS
+    : Array.from({ length: 52 }, (_, i) => `S${i + 1}`)
+  // Valeurs par point (index 0-based) pour un sport + une année
+  const c1PointVals = (sportId: string, year = chart1Year): number[] =>
+    Array.from({ length: C1_N }, (_, i) =>
+      chart1Period === 'mois'
+        ? (monthlyStats[year]?.[i]?.[sportId]?.[chart1Metric] ?? 0)
+        : (weeklyStats[year]?.[i + 1]?.[sportId]?.[chart1Metric] ?? 0)
+    )
+  // Sports ayant des données (mode normal)
+  const c1HasData = Array.from({ length: C1_N }, (_, i) => i).some(i =>
+    YD_SPORTS.some(sp => c1PointVals(sp.id)[i] > 0)
   )
-  const c1Sports = c1HasMonthly ? YD_SPORTS.filter(sp =>
-    MONTHS.some((_, mi) => (monthlyStats[chart1Year]?.[mi]?.[sp.id]?.[chart1Metric] ?? 0) > 0)
+  const c1Sports = c1HasData ? YD_SPORTS.filter(sp =>
+    Array.from({ length: C1_N }, (_, i) => i).some(i => c1PointVals(sp.id)[i] > 0)
   ) : []
-  // Annual fallback: read year_data_manual when no monthly activity data is available
-  const c1AnnualSports = !c1HasMonthly ? YD_SPORTS.filter(sp => {
+  // Fallback annuel (seulement en mode mois et hors compare)
+  const c1HasMonthly = c1HasData && chart1Period === 'mois'
+  const c1AnnualSports = !c1HasMonthly && !c1CompareMode ? YD_SPORTS.filter(sp => {
     const e = manualMap[sp.id]?.[chart1Year]
     if (!e) return false
     const v = chart1Metric === 'km' ? (e.km ?? 0) : chart1Metric === 'heures' ? (e.heures ?? 0) : (e.nb_sorties ?? 0)
@@ -3314,14 +3370,21 @@ function YearDatasSubTab() {
         return chart1Metric === 'km' ? (e?.km ?? 0) : chart1Metric === 'heures' ? (e?.heures ?? 0) : (e?.nb_sorties ?? 0)
       }))
     : 1
-  const c1MonthVals = (sportId: string): number[] =>
-    MONTHS.map((_, mi) => monthlyStats[chart1Year]?.[mi]?.[sportId]?.[chart1Metric] ?? 0)
-  const c1MaxVal  = Math.max(1, ...c1Sports.flatMap(sp => c1MonthVals(sp.id)))
+  // MaxVal selon mode
+  const c1MaxVal = c1CompareMode
+    ? Math.max(1, ...c1CompareYears.flatMap(yr => c1PointVals(c1CompareSport, yr)))
+    : Math.max(1, ...c1Sports.flatMap(sp => c1PointVals(sp.id)))
   const C1_H = 155, C1_PL = 44, C1_PR = 10, C1_PT = 16, C1_PB = 32
   const c1PlotW = SVG_W - C1_PL - C1_PR
   const c1PlotH = C1_H - C1_PT - C1_PB
-  const c1X = (mi: number) => C1_PL + (mi / 11) * c1PlotW
+  // Diviseur protégé contre C1_N = 1
+  const c1X = (i: number) => C1_PL + (i / Math.max(1, C1_N - 1)) * c1PlotW
   const c1Y = (v: number) => C1_PT + c1PlotH - (v / c1MaxVal) * c1PlotH
+  // Helper format valeur tooltip
+  const c1FmtVal = (v: number): string =>
+    chart1Metric === 'heures'     ? `${v.toFixed(1)} h`
+    : chart1Metric === 'km'       ? `${Math.round(v)} km`
+    : `${Math.round(v)} séance${Math.round(v) > 1 ? 's' : ''}`
 
   // ── Chart 3: global all-sport stats per year — merged sources ─
   const c3Stats = chartYears.map(yr => ({
@@ -3752,73 +3815,171 @@ function YearDatasSubTab() {
         </Card>
       )}
 
-      {/* ════ Chart 1 — Volume mensuel par sport ════ */}
-      <Card style={{ position: 'relative' }} >
-        <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
-            Volume mensuel par sport
-          </h3>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <select value={chart1Year} onChange={e => setChart1Year(e.target.value)}
-              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-              {c1YearOpts.map(yr => <option key={yr} value={yr}>{yr}</option>)}
-            </select>
-            <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
-              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-              <option value="heures">Heures</option>
-              <option value="km">Distance (km)</option>
-              <option value="nb_sorties">Sorties</option>
-            </select>
+      {/* ════ Chart 1 — Volume par sport (mois / semaine) ════ */}
+      <Card style={{ position: 'relative' }}>
+
+        {/* ── Controls ── */}
+        <div className="yd-reveal" style={{ marginBottom: c1CompareMode ? 8 : 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
+              Volume par sport
+            </h3>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Toggle Mois / Semaine */}
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                {(['mois', 'semaine'] as const).map(p => (
+                  <button key={p} onClick={() => setChart1Period(p)} style={{
+                    padding: '4px 9px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+                    transition: 'background 0.15s, color 0.15s',
+                    background: chart1Period === p ? 'var(--primary)' : 'var(--bg-card2)',
+                    color:      chart1Period === p ? '#fff' : 'var(--text-dim)',
+                  }}>
+                    {p === 'mois' ? 'Mois' : 'Sem.'}
+                  </button>
+                ))}
+              </div>
+              {/* Selects année + métrique (cachés en mode Comparer) */}
+              {!c1CompareMode && (
+                <>
+                  <select value={chart1Year} onChange={e => setChart1Year(e.target.value)}
+                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                    {c1YearOpts.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+                  </select>
+                  <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
+                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                    <option value="heures">Heures</option>
+                    <option value="km">Distance (km)</option>
+                    <option value="nb_sorties">Sorties</option>
+                  </select>
+                </>
+              )}
+              {/* Bouton Comparer */}
+              <button
+                onClick={() => {
+                  const next = !c1CompareMode
+                  setC1CompareMode(next)
+                  if (next && isMobile) setC1CompareSheet(true)
+                }}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  border: c1CompareMode ? 'none' : '1px solid var(--primary)',
+                  background: c1CompareMode ? 'var(--primary)' : 'transparent',
+                  color: c1CompareMode ? '#fff' : 'var(--primary)',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>
+                Comparer
+              </button>
+            </div>
           </div>
+
+          {/* ── Panneau Comparer — desktop inline ── */}
+          {c1CompareMode && !isMobile && (
+            <div style={{
+              display: 'flex', gap: 12, alignItems: 'center', marginTop: 10,
+              padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 8, flexWrap: 'wrap',
+            }}>
+              {/* Sélecteur sport */}
+              <select value={c1CompareSport} onChange={e => setC1CompareSport(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                {YD_SPORTS.map(sp => <option key={sp.id} value={sp.id}>{sp.label}</option>)}
+              </select>
+              {/* Sélecteur métrique */}
+              <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
+                style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                <option value="heures">Heures</option>
+                <option value="km">Distance (km)</option>
+                <option value="nb_sorties">Sorties</option>
+              </select>
+              {/* Checkboxes années (max 3) */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Années (max 3)</span>
+                {c1YearOpts.map(yr => {
+                  const checked = c1CompareYears.includes(yr)
+                  const color   = C1_CMP_COLORS[yr] ?? '#9ca3af'
+                  return (
+                    <label key={yr} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={checked}
+                        onChange={() => setC1CompareYears(prev =>
+                          checked ? prev.filter(y => y !== yr)
+                                  : prev.length < 3 ? [...prev, yr] : prev
+                        )}
+                        style={{ accentColor: color, cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: 11, fontWeight: 600, color }}>{yr}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
-        {c1Sports.length > 0 ? (
+
+        {/* ── Contenu chart ── */}
+        {(c1CompareMode ? c1CompareYears.length > 0 : c1Sports.length > 0) ? (
           <div style={{ position: 'relative' }}>
+
             {/* ── Tooltip crosshair ancré en haut-droite ── */}
-            {hoveredMonth !== null && (
+            {hoveredPoint !== null && (
               <div style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '10px 12px', minWidth: 128,
               }}>
                 <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
-                  {MONTHS[hoveredMonth]}
+                  {C1_LABELS[hoveredPoint]}
                 </p>
-                {c1Sports.map(sp => {
-                  const h  = monthlyStats[chart1Year]?.[hoveredMonth]?.[sp.id]?.heures ?? 0
-                  const km = monthlyStats[chart1Year]?.[hoveredMonth]?.[sp.id]?.km ?? 0
-                  const nb = monthlyStats[chart1Year]?.[hoveredMonth]?.[sp.id]?.nb_sorties ?? 0
-                  if (h === 0 && km === 0 && nb === 0) return null
-                  return (
-                    <div key={sp.id} style={{ marginBottom: 4 }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: sp.color }}>{sp.label}</span>
-                      </span>
-                      <div style={{ paddingLeft: 10 }}>
-                        {h  > 0 && <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>{h.toFixed(1)} h</p>}
-                        {km > 0 && <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>{Math.round(km)} km</p>}
-                        {nb > 0 && <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>{nb} séance{nb > 1 ? 's' : ''}</p>}
+                {c1CompareMode ? (
+                  /* Mode Comparer : ligne par année */
+                  c1CompareYears.map(yr => {
+                    const v = c1PointVals(c1CompareSport, yr)[hoveredPoint]
+                    if (v === 0) return null
+                    const color = C1_CMP_COLORS[yr] ?? '#9ca3af'
+                    return (
+                      <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color }}>{yr}</span>
+                        <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', marginLeft: 4 }}>
+                          {c1FmtVal(v)}
+                        </span>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })
+                ) : (
+                  /* Mode normal : ligne par sport */
+                  c1Sports.map(sp => {
+                    const v = c1PointVals(sp.id)[hoveredPoint]
+                    if (v === 0) return null
+                    return (
+                      <div key={sp.id} style={{ marginBottom: 4 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: sp.color }}>{sp.label}</span>
+                        </span>
+                        <div style={{ paddingLeft: 10 }}>
+                          <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>
+                            {c1FmtVal(v)}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             )}
 
-            {/* ── SVG : courbes monotones + gradients + crosshair ── */}
+            {/* ── SVG courbes ── */}
             <svg
               viewBox={`0 0 ${SVG_W} ${C1_H}`}
               className="perf-chart1-svg"
               style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}
               onMouseMove={e => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                const svgX = ((e.clientX - rect.left) / rect.width) * SVG_W
-                const rawMi = Math.round(((svgX - C1_PL) / c1PlotW) * 11)
-                setHoveredMonth(Math.max(0, Math.min(11, rawMi)))
+                const rect  = e.currentTarget.getBoundingClientRect()
+                const svgX  = ((e.clientX - rect.left) / rect.width) * SVG_W
+                const rawI  = Math.round(((svgX - C1_PL) / c1PlotW) * (C1_N - 1))
+                setHoveredPoint(Math.max(0, Math.min(C1_N - 1, rawI)))
               }}
-              onMouseLeave={() => setHoveredMonth(null)}
+              onMouseLeave={() => setHoveredPoint(null)}
             >
-
               {/* Grid */}
               {(() => {
                 const ticks = chart1Metric === 'heures'
@@ -3837,22 +3998,34 @@ function YearDatasSubTab() {
                 })
               })()}
 
-              {/* Courbes monotones + points */}
-              {c1Sports.map(sp => {
-                const vals  = c1MonthVals(sp.id)
-                const pts: [number, number][] = vals.map((v, mi) => [c1X(mi), c1Y(v)] as [number, number])
-                const lPath = monotonePath(pts)
+              {/* Courbes — mode Comparer */}
+              {c1CompareMode && c1CompareYears.map(yr => {
+                const color = C1_CMP_COLORS[yr] ?? '#9ca3af'
+                const vals  = c1PointVals(c1CompareSport, yr)
+                const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
+                return (
+                  <g key={yr}>
+                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                    {vals.map((v, i) => v > 0 && hoveredPoint === i ? (
+                      <circle key={i} cx={c1X(i)} cy={c1Y(v)} r={3} fill={color} stroke={color} strokeWidth="1.5" />
+                    ) : null)}
+                  </g>
+                )
+              })}
+
+              {/* Courbes — mode normal */}
+              {!c1CompareMode && c1Sports.map(sp => {
+                const vals  = c1PointVals(sp.id)
+                const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
                 return (
                   <g key={sp.id}>
-                    <path d={lPath} fill="none" stroke={sp.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                    {vals.map((v, mi) => v > 0 ? (
-                      <circle key={mi}
-                        cx={c1X(mi)} cy={c1Y(v)}
-                        r={hoveredMonth === mi ? 3 : 0}
-                        fill={sp.color}
-                        stroke={sp.color}
-                        strokeWidth="1.5"
-                        opacity={hoveredMonth === mi ? 1 : 0}
+                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                    {vals.map((v, i) => v > 0 ? (
+                      <circle key={i}
+                        cx={c1X(i)} cy={c1Y(v)}
+                        r={hoveredPoint === i ? 3 : 0}
+                        fill={sp.color} stroke={sp.color} strokeWidth="1.5"
+                        opacity={hoveredPoint === i ? 1 : 0}
                       />
                     ) : null)}
                   </g>
@@ -3860,37 +4033,54 @@ function YearDatasSubTab() {
               })}
 
               {/* Crosshair vertical */}
-              {hoveredMonth !== null && (
+              {hoveredPoint !== null && (
                 <line
-                  x1={c1X(hoveredMonth)} y1={C1_PT}
-                  x2={c1X(hoveredMonth)} y2={C1_PT + c1PlotH}
-                  stroke="var(--border)" strokeWidth="1"
-                  strokeOpacity="0.6"
+                  x1={c1X(hoveredPoint)} y1={C1_PT}
+                  x2={c1X(hoveredPoint)} y2={C1_PT + c1PlotH}
+                  stroke="var(--border)" strokeWidth="1" strokeOpacity="0.6"
                   pointerEvents="none"
                 />
               )}
 
               {/* X labels */}
-              {MONTHS.map((m, mi) => (
-                <text key={mi} x={c1X(mi)} y={C1_H - 4} textAnchor="middle"
-                  style={{
-                    fontSize: 8,
-                    fill: 'var(--text-dim)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}>{m}</text>
-              ))}
+              {chart1Period === 'mois'
+                ? MONTHS.map((m, i) => (
+                    <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
+                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      {m}
+                    </text>
+                  ))
+                : Array.from({ length: 52 }, (_, i) => i).filter(i => i % 8 === 0).map(i => (
+                    <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
+                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      S{i + 1}
+                    </text>
+                  ))
+              }
             </svg>
 
             {/* Légende */}
             <div className="perf-chart1-legend" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-              {c1Sports.map(sp => (
-                <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 14, height: 3, borderRadius: 2, background: sp.color }} />
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sp.label}</span>
-                </div>
-              ))}
+              {c1CompareMode
+                ? c1CompareYears.map(yr => {
+                    const color = C1_CMP_COLORS[yr] ?? '#9ca3af'
+                    return (
+                      <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: 14, height: 3, borderRadius: 2, background: color }} />
+                        <span style={{ fontSize: 10, color }}>{yr}</span>
+                      </div>
+                    )
+                  })
+                : c1Sports.map(sp => (
+                    <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 14, height: 3, borderRadius: 2, background: sp.color }} />
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sp.label}</span>
+                    </div>
+                  ))
+              }
             </div>
           </div>
+
         ) : c1AnnualSports.length > 0 ? (
           /* Fallback : totaux annuels depuis year_data_manual (pas de détail mensuel) */
           <div style={{ padding: '4px 0' }}>
@@ -3921,6 +4111,80 @@ function YearDatasSubTab() {
           </div>
         ) : (
           <EmptyState icon="chart" title="Aucune donnée" description={`Aucune activité enregistrée pour ${chart1Year}.`} />
+        )}
+
+        {/* ── Bottom sheet mobile — Mode Comparer ── */}
+        {c1CompareMode && isMobile && c1CompareSheet && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 200,
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              background: 'rgba(0,0,0,0.45)',
+            }}
+            onClick={() => setC1CompareSheet(false)}
+          >
+            <div
+              style={{
+                background: 'var(--bg-card)', borderRadius: '16px 16px 0 0',
+                padding: '20px 16px 32px', animation: 'slideUp 0.25s ease',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h4 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, margin: 0 }}>Mode Comparer</h4>
+                <button onClick={() => setC1CompareSheet(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-dim)', padding: 4 }}>✕</button>
+              </div>
+              {/* Sport */}
+              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px' }}>Sport</p>
+              <select value={c1CompareSport} onChange={e => setC1CompareSport(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 12 }}>
+                {YD_SPORTS.map(sp => <option key={sp.id} value={sp.id}>{sp.label}</option>)}
+              </select>
+              {/* Métrique */}
+              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px' }}>Métrique</p>
+              <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
+                style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 14 }}>
+                <option value="heures">Heures</option>
+                <option value="km">Distance (km)</option>
+                <option value="nb_sorties">Sorties</option>
+              </select>
+              {/* Années */}
+              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 8px' }}>Années à comparer (max 3)</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {c1YearOpts.map(yr => {
+                  const checked = c1CompareYears.includes(yr)
+                  const color   = C1_CMP_COLORS[yr] ?? '#9ca3af'
+                  return (
+                    <label key={yr} style={{
+                      display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                      padding: '5px 10px', borderRadius: 20,
+                      background: checked ? `${color}22` : 'var(--bg-card2)',
+                      border: `1px solid ${checked ? color : 'var(--border)'}`,
+                    }}>
+                      <input type="checkbox" checked={checked}
+                        onChange={() => setC1CompareYears(prev =>
+                          checked ? prev.filter(y => y !== yr)
+                                  : prev.length < 3 ? [...prev, yr] : prev
+                        )}
+                        style={{ accentColor: color, cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: 12, fontWeight: 600, color }}>{yr}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => setC1CompareSheet(false)}
+                style={{
+                  marginTop: 18, width: '100%', padding: '10px', borderRadius: 8,
+                  background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 13,
+                  border: 'none', cursor: 'pointer',
+                }}>
+                Appliquer
+              </button>
+            </div>
+          </div>
         )}
       </Card>
 

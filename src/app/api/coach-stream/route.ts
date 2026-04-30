@@ -1,13 +1,16 @@
 // ══════════════════════════════════════════════════════════════
 // API — /api/coach-stream
-// Streaming SSE du chat IA. Retourne les tokens au fur et à mesure.
-// Supporte le tool use : les blocs tool_use sont émis comme événements
-// SSE distincts (event: tool_use) séparément des chunks texte (event: text).
+// Approche hybride : appel Anthropic NON-streaming (await complet),
+// puis émission SSE des blocs text + tool_use d'un seul coup.
+//
+// Pourquoi non-streaming ?
+//   Le streaming des input_json_delta pour add_week (JSON volumineux)
+//   causait des interruptions de connexion. En mode non-streaming,
+//   le JSON du tool_use est garanti complet avant toute émission SSE.
 // ══════════════════════════════════════════════════════════════
 
-// Vercel : runtime Node.js requis pour le streaming long + tool use volumineux.
-// Sans maxDuration, le timeout par défaut est 10s — trop court pour add_week.
-export const runtime    = 'nodejs'
+// Vercel : runtime Node.js requis + maxDuration pour les réponses longues.
+export const runtime     = 'nodejs'
 export const maxDuration = 60
 
 import { NextRequest } from 'next/server'
@@ -61,122 +64,57 @@ export async function POST(req: NextRequest) {
   const { model, maxTokens } = getModelConfig(body.modelId)
   const client = getAnthropicClient()
 
-  // Append tool instructions to the existing system prompt (ne remplace pas)
   const systemWithTools = `${systemPrompt}\n\n${TOOL_INSTRUCTIONS}`
 
-  const stream = await client.messages.create({
+  // ── Appel Anthropic NON-streaming ─────────────────────────────
+  // On attend la réponse complète avant d'émettre quoi que ce soit.
+  // Avantages : JSON tool_use garanti complet, pas d'accumulation de deltas,
+  //             pas de keepalive, pas de problème d'index.
+  // Inconvénient : le texte n'apparaît plus progressivement (acceptable).
+  //
+  // maxTokens est augmenté à 4096 min pour garantir que add_week (JSON lourd)
+  // n'est pas tronqué. getModelConfig retourne 1400 par défaut — insuffisant.
+  const effectiveMaxTokens = Math.max(maxTokens, 4096)
+
+  const response = await client.messages.create({
     model,
-    max_tokens: maxTokens,
+    max_tokens: effectiveMaxTokens,
     system: systemWithTools,
     messages: anthropicMessages,
     tools: coachTools,
     tool_choice: { type: 'auto' },
-    stream: true,
   })
+
+  console.log('[coach-stream] response received — stop_reason:', response.stop_reason,
+    '— blocks:', response.content.length,
+    '— usage:', response.usage)
 
   const encoder = new TextEncoder()
 
-  // Accumulation des blocs tool_use en cours de streaming
-  // Clé = index du content block, valeur = { name, json accumulé }
-  const pendingToolUse: Record<number, { name: string; json: string }> = {}
-
+  // ── Émission SSE des blocs ────────────────────────────────────
+  // Format : "event: <type>\ndata: <payload>\n\n"
+  // Les valeurs data sont JSON-encodées pour éviter les \n bruts.
   const readable = new ReadableStream({
-    async start(controller) {
-      // Helper SSE — format : "event: <type>\ndata: <payload>\n\n"
-      // IMPORTANT : la valeur data ne doit JAMAIS contenir de \n brut (casse le format SSE).
-      // Pour le texte, on JSON-encode le chunk → le frontend JSON.parse côté client.
+    start(controller) {
       const send = (eventType: string, data: string) => {
         controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`))
       }
 
-      try {
-        for await (const event of stream) {
-
-          // ── Début d'un content block ─────────────────────────
-          if (event.type === 'content_block_start') {
-            const block = event.content_block
-            if (block.type === 'tool_use') {
-              // Initialise l'accumulation pour ce bloc tool_use
-              pendingToolUse[event.index] = { name: block.name, json: '' }
-              console.log('[coach-stream] tool_use block started:', block.name, '(index:', event.index, ')')
-            }
-          }
-
-          // ── Delta d'un content block ─────────────────────────
-          if (event.type === 'content_block_delta') {
-            if (event.delta.type === 'text_delta') {
-              // Chunk texte → JSON.stringify pour éviter les \n bruts dans la ligne data SSE
-              send('text', JSON.stringify(event.delta.text))
-            } else if (event.delta.type === 'input_json_delta') {
-              // JSON partiel d'un tool_use → accumulation
-              const chunk = event.delta.partial_json ?? ''
-              console.log('[coach-stream] delta chunk length:', chunk.length,
-                '(index:', event.index, ') preview:', chunk.slice(0, 60))
-              const pending = pendingToolUse[event.index]
-              if (pending !== undefined) {
-                pending.json += chunk
-                // ── Keepalive SSE ────────────────────────────────────────────────────
-                // Pendant l'accumulation des deltas on n'émet aucun event métier.
-                // Sans données, Vercel considère la réponse comme idle et kill la
-                // fonction (timeout 10s par défaut, même avec maxDuration=60 si aucun
-                // octet n'est écrit). Un commentaire SSE (ligne commençant par ':')
-                // est ignoré par tous les parsers SSE mais maintient la connexion vivante.
-                controller.enqueue(encoder.encode(':\n\n'))
-              } else {
-                console.warn('[coach-stream] delta received for unknown index:', event.index,
-                  '— pendingToolUse keys:', Object.keys(pendingToolUse))
-              }
-            }
-          }
-
-          // ── Fin d'un content block ───────────────────────────
-          if (event.type === 'content_block_stop') {
-            // Log AVANT le check pending pour voir tous les stops, même les blocs texte
-            console.log('[coach-stream] content_block_stop — index:', event.index,
-              '— pendingToolUse keys:', Object.keys(pendingToolUse))
-
-            const pending = pendingToolUse[event.index]
-            if (pending !== undefined) {
-              // Le bloc tool_use est complet → on le parse et on l'émet
-              console.log('[coach-stream] accumulated JSON length:', pending.json.length,
-                '— preview:', pending.json.slice(0, 120))
-              try {
-                const toolInput = JSON.parse(pending.json || '{}')
-                console.log('[coach-stream] parsed tool input keys:', Object.keys(toolInput))
-                const ssePayload = JSON.stringify({
-                  tool_name: pending.name,
-                  tool_input: toolInput,
-                })
-                console.log('[coach-stream] emitting SSE tool_use:', pending.name,
-                  '— payload length:', ssePayload.length)
-                send('tool_use', ssePayload)
-              } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err)
-                console.error('[coach-stream] tool parse error:', msg,
-                  'buffer preview:', pending.json.substring(0, 200))
-              }
-              delete pendingToolUse[event.index]
-            }
-          }
-
-          // ── Fin du message ────────────────────────────────────
-          if (event.type === 'message_delta') {
-            console.log('[coach-stream] message_delta — stop_reason:', event.delta.stop_reason,
-              'pending keys still open:', Object.keys(pendingToolUse))
-          }
-
-          if (event.type === 'message_stop') {
-            console.log('[coach-stream] message_stop received — stream complete')
-          }
+      for (const block of response.content) {
+        if (block.type === 'text') {
+          // Texte → JSON.stringify pour éviter les \n bruts dans la ligne data SSE
+          send('text', JSON.stringify(block.text))
+        } else if (block.type === 'tool_use') {
+          console.log('[coach-stream] emitting tool_use SSE:', block.name,
+            '— input keys:', Object.keys(block.input as Record<string, unknown>))
+          send('tool_use', JSON.stringify({
+            tool_name: block.name,
+            tool_input: block.input,
+          }))
         }
-
-        console.log('[coach-stream] stream loop ended normally')
-      } catch (err) {
-        console.error('[coach-stream] stream loop error:', err)
-      } finally {
-        console.log('[coach-stream] closing writer, pendingToolUse keys:', Object.keys(pendingToolUse))
-        controller.close()
       }
+
+      controller.close()
     },
   })
 

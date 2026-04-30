@@ -5,6 +5,11 @@
 // SSE distincts (event: tool_use) séparément des chunks texte (event: text).
 // ══════════════════════════════════════════════════════════════
 
+// Vercel : runtime Node.js requis pour le streaming long + tool use volumineux.
+// Sans maxDuration, le timeout par défaut est 10s — trop court pour add_week.
+export const runtime    = 'nodejs'
+export const maxDuration = 60
+
 import { NextRequest } from 'next/server'
 import { getAnthropicClient } from '@/lib/agents/base'
 import { buildChatParams, getModelConfig } from '@/lib/agents/chatAgent'
@@ -110,6 +115,13 @@ export async function POST(req: NextRequest) {
               const pending = pendingToolUse[event.index]
               if (pending !== undefined) {
                 pending.json += chunk
+                // ── Keepalive SSE ────────────────────────────────────────────────────
+                // Pendant l'accumulation des deltas on n'émet aucun event métier.
+                // Sans données, Vercel considère la réponse comme idle et kill la
+                // fonction (timeout 10s par défaut, même avec maxDuration=60 si aucun
+                // octet n'est écrit). Un commentaire SSE (ligne commençant par ':')
+                // est ignoré par tous les parsers SSE mais maintient la connexion vivante.
+                controller.enqueue(encoder.encode(':\n\n'))
               } else {
                 console.warn('[coach-stream] delta received for unknown index:', event.index,
                   '— pendingToolUse keys:', Object.keys(pendingToolUse))
@@ -146,10 +158,23 @@ export async function POST(req: NextRequest) {
               delete pendingToolUse[event.index]
             }
           }
+
+          // ── Fin du message ────────────────────────────────────
+          if (event.type === 'message_delta') {
+            console.log('[coach-stream] message_delta — stop_reason:', event.delta.stop_reason,
+              'pending keys still open:', Object.keys(pendingToolUse))
+          }
+
+          if (event.type === 'message_stop') {
+            console.log('[coach-stream] message_stop received — stream complete')
+          }
         }
+
+        console.log('[coach-stream] stream loop ended normally')
       } catch (err) {
-        console.error('[coach-stream] stream error:', err)
+        console.error('[coach-stream] stream loop error:', err)
       } finally {
+        console.log('[coach-stream] closing writer, pendingToolUse keys:', Object.keys(pendingToolUse))
         controller.close()
       }
     },

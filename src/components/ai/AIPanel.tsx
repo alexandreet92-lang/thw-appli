@@ -36,6 +36,11 @@ interface AIConv {
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | null
 
+interface PendingToolCall {
+  tool_name: string
+  tool_input: Record<string, unknown>
+}
+
 interface ActiveQuickAction {
   label: string
   apiPrompt: string   // enriched prompt that goes to AI — never shown to user as-is
@@ -6603,6 +6608,142 @@ const QUICK_ACTIONS: QuickAction[] = [
 // COMPOSANT PRINCIPAL
 // ══════════════════════════════════════════════════════════════
 
+// ── Tool call day names ───────────────────────────────────────
+
+const DAY_NAMES_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const SPORT_LABELS_TOOL: Record<string, string> = {
+  run: 'Course', bike: 'Vélo', swim: 'Natation',
+  hyrox: 'Hyrox', rowing: 'Aviron', gym: 'Muscu',
+}
+
+// ── ToolCallPreview ───────────────────────────────────────────
+
+function ToolCallPreview({
+  toolCall, onApply, onCancel, applyStatus, applyError,
+}: {
+  toolCall: PendingToolCall
+  onApply: () => void
+  onCancel: () => void
+  applyStatus: 'idle' | 'applying' | 'success' | 'error'
+  applyError: string | null
+}) {
+  const { tool_name, tool_input: inp } = toolCall
+
+  const day = typeof inp.day_index === 'number' ? (DAY_NAMES_FR[inp.day_index] ?? `J${inp.day_index}`) : ''
+  const sport = typeof inp.sport === 'string' ? (SPORT_LABELS_TOOL[inp.sport] ?? inp.sport) : ''
+  const weekStart = typeof inp.week_start === 'string' ? inp.week_start : ''
+
+  let borderColor = '#22c55e'
+  let emoji = '+'
+  let label = ''
+  let description = ''
+
+  if (tool_name === 'add_session') {
+    borderColor = '#22c55e'; emoji = '+'
+    label = 'Ajouter une séance'
+    description = `${String(inp.title ?? '—')} · ${sport} · ${String(inp.duration_min ?? '?')}min · ${day} semaine du ${weekStart}`
+  } else if (tool_name === 'update_session') {
+    borderColor = '#f97316'; emoji = '✎'
+    label = 'Modifier une séance'
+    const changes = Object.keys(inp).filter(k => k !== 'session_id').join(', ')
+    description = `Séance …${String(inp.session_id ?? '').slice(-8)} · Champs : ${changes || 'aucun'}`
+  } else if (tool_name === 'delete_session') {
+    borderColor = '#ef4444'; emoji = '✕'
+    label = 'Supprimer une séance'
+    description = `⚠ Séance …${String(inp.session_id ?? '').slice(-8)} — action irréversible`
+  } else if (tool_name === 'move_session') {
+    borderColor = '#3b82f6'; emoji = '→'
+    label = 'Déplacer une séance'
+    const newDay = typeof inp.new_day_index === 'number' ? (DAY_NAMES_FR[inp.new_day_index] ?? `J${inp.new_day_index}`) : ''
+    description = `Séance …${String(inp.session_id ?? '').slice(-8)} → ${newDay} semaine du ${String(inp.new_week_start ?? '')}`
+  } else if (tool_name === 'add_week') {
+    borderColor = '#22c55e'; emoji = '+'
+    label = 'Ajouter une semaine complète'
+    const sessions = (inp.sessions as unknown[]) ?? []
+    description = `${String(inp.week_type ?? '')} · semaine du ${String(inp.week_start ?? '')} · ${sessions.length} séances`
+  } else if (tool_name === 'update_plan_periodisation') {
+    borderColor = '#f97316'; emoji = '⟳'
+    label = 'Modifier la périodisation'
+    const blocs = (inp.blocs_periodisation as unknown[]) ?? []
+    description = `${blocs.length} blocs de périodisation remplacés`
+  }
+
+  const isApplying = applyStatus === 'applying'
+
+  return (
+    <div style={{
+      borderRadius: 12,
+      border: `1px solid ${borderColor}44`,
+      borderLeft: `3px solid ${borderColor}`,
+      background: `${borderColor}0e`,
+      padding: '12px 14px',
+      marginLeft: 34,
+      animation: 'ai_msg_in 0.18s ease both',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
+        <span style={{ fontSize: 13, color: borderColor, fontWeight: 800, lineHeight: 1, fontFamily: 'DM Mono,monospace' }}>{emoji}</span>
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, color: borderColor,
+          fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>
+          {label}
+        </span>
+      </div>
+
+      {/* Description */}
+      <p style={{ fontSize: 12.5, color: 'var(--ai-text)', margin: '0 0 12px', lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>
+        {description}
+      </p>
+
+      {/* Error */}
+      {applyStatus === 'error' && applyError && (
+        <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px', padding: '6px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', fontFamily: 'DM Sans,sans-serif' }}>
+          Erreur : {applyError}
+        </p>
+      )}
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: 7 }}>
+        <button
+          onClick={onCancel}
+          disabled={isApplying}
+          style={{
+            flex: 1, padding: '8px 10px', borderRadius: 8,
+            border: '1px solid var(--ai-border)',
+            background: 'var(--ai-bg)', color: 'var(--ai-mid)',
+            fontSize: 12, fontWeight: 600,
+            cursor: isApplying ? 'not-allowed' : 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+            opacity: isApplying ? 0.5 : 1,
+          }}
+        >
+          ✗ Annuler
+        </button>
+        <button
+          onClick={onApply}
+          disabled={isApplying}
+          style={{
+            flex: 2, padding: '8px 10px', borderRadius: 8,
+            border: 'none',
+            background: isApplying ? 'var(--ai-border)' : 'var(--ai-gradient)',
+            color: isApplying ? 'var(--ai-mid)' : '#fff',
+            fontSize: 12, fontWeight: 700,
+            cursor: isApplying ? 'not-allowed' : 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          {isApplying ? 'Application…' : '✓ Appliquer'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ══════════════════════════════════════════════════════════════
+
 export default function AIPanel({
   open,
   onClose,
@@ -6630,8 +6771,11 @@ export default function AIPanel({
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
-  const [attachment,  setAttachment]  = useState<AttachedFile | null>(null)
-  const [attachErr,   setAttachErr]   = useState<string | null>(null)
+  const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
+  const [attachErr,     setAttachErr]     = useState<string | null>(null)
+  const [pendingToolCall, setPendingToolCall] = useState<PendingToolCall | null>(null)
+  const [toolApplyStatus, setToolApplyStatus] = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
+  const [toolApplyError,  setToolApplyError]  = useState<string | null>(null)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -6817,7 +6961,136 @@ export default function AIPanel({
     if (dx < 0 && histOpen)  setHistOpen(false)
   }, [isDesktop, histOpen])
 
-  // Sélection de texte → popup "Demander à THW"
+  // ── Plan sessions context fetch (pour plan_context au send) ───
+  async function fetchPlanSessionsContext(pid: string): Promise<Record<string, unknown>[]> {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data } = await sb
+        .from('planned_sessions')
+        .select('id, week_start, day_index, sport, title, duration_min, tss, status, intensity')
+        .eq('plan_id', pid)
+        .order('week_start', { ascending: true })
+        .order('day_index',  { ascending: true })
+        .limit(150)
+      return (data ?? []) as Record<string, unknown>[]
+    } catch { return [] }
+  }
+
+  // ── Apply tool call ────────────────────────────────────────────
+  const applyToolCall = useCallback(async () => {
+    if (!pendingToolCall) return
+    setToolApplyStatus('applying')
+    setToolApplyError(null)
+
+    const { tool_name, tool_input: inp } = pendingToolCall
+
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+
+      if (tool_name === 'add_session') {
+        const { error } = await sb.from('planned_sessions').insert({
+          user_id:      user.id,
+          plan_id:      inp.training_plan_id,
+          week_start:   inp.week_start,
+          day_index:    inp.day_index,
+          sport:        inp.sport,
+          title:        inp.title,
+          time:         inp.time ?? null,
+          duration_min: inp.duration_min,
+          blocks:       inp.blocks ?? null,
+          tss:          inp.tss ?? null,
+          intensity:    inp.intensity ?? null,
+          notes:        inp.notes ?? null,
+          rpe:          inp.rpe ?? null,
+          status:       'planned',
+          source:       'ai',
+        })
+        if (error) throw error
+
+      } else if (tool_name === 'update_session') {
+        const { session_id, ...fields } = inp
+        const { error } = await sb.from('planned_sessions').update(fields).eq('id', session_id)
+        if (error) throw error
+
+      } else if (tool_name === 'delete_session') {
+        const { error } = await sb.from('planned_sessions').delete().eq('id', inp.session_id)
+        if (error) throw error
+
+      } else if (tool_name === 'move_session') {
+        const { error } = await sb.from('planned_sessions').update({
+          week_start: inp.new_week_start,
+          day_index:  inp.new_day_index,
+        }).eq('id', inp.session_id)
+        if (error) throw error
+
+      } else if (tool_name === 'add_week') {
+        const sessions = (inp.sessions as Record<string, unknown>[]).map(s => ({
+          ...s,
+          user_id:    user.id,
+          plan_id:    inp.training_plan_id,
+          week_start: inp.week_start,
+          status:     'planned',
+          source:     'ai',
+        }))
+        const { error } = await sb.from('planned_sessions').insert(sessions)
+        if (error) throw error
+
+      } else if (tool_name === 'update_plan_periodisation') {
+        const { error } = await sb.from('training_plans').update({
+          blocs_periodisation: inp.blocs_periodisation,
+        }).eq('id', inp.training_plan_id)
+        if (error) throw error
+
+      } else {
+        throw new Error(`Tool inconnu : ${tool_name}`)
+      }
+
+      // Succès — ajouter un message de confirmation dans le chat
+      const cid = active?.id
+      if (cid) {
+        const successMsg: AIMsg = {
+          id: genId(), role: 'assistant',
+          content: '✓ Modification appliquée avec succès.',
+          ts: Date.now(), modelId: model,
+        }
+        setConvs(prev => prev.map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, successMsg], updatedAt: Date.now() } : c
+        ))
+      }
+      setPendingToolCall(null)
+      setToolApplyStatus('idle')
+
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setToolApplyStatus('error')
+      setToolApplyError(msg)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingToolCall, active, model])
+
+  // ── Cancel tool call ───────────────────────────────────────────
+  const cancelToolCall = useCallback(() => {
+    setPendingToolCall(null)
+    setToolApplyStatus('idle')
+    setToolApplyError(null)
+    const cid = active?.id
+    if (cid) {
+      const cancelMsg: AIMsg = {
+        id: genId(), role: 'assistant',
+        content: 'Modification annulée.',
+        ts: Date.now(), modelId: model,
+      }
+      setConvs(prev => prev.map(c =>
+        c.id === cid ? { ...c, msgs: [...c.msgs, cancelMsg], updatedAt: Date.now() } : c
+      ))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, model])
+
   const handleMsgMouseUp = useCallback(() => {
     const sel = window.getSelection()
     const txt = sel?.toString().trim() ?? ''
@@ -6927,6 +7200,12 @@ export default function AIPanel({
     const isPlanChat = Boolean(planId && active?.title.startsWith(`[PLAN:${planId}]`))
 
     try {
+      // ── Fetch plan sessions context si plan-chat ─────────────────
+      let planSessionsContext: Record<string, unknown>[] = []
+      if (isPlanChat && planId) {
+        planSessionsContext = await fetchPlanSessionsContext(planId)
+      }
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -6934,7 +7213,17 @@ export default function AIPanel({
           agentId:  isPlanChat ? 'plan_coach' : 'central',
           modelId:  snapshot,
           messages: apiMsgs,
-          context:  isPlanChat ? (planContext ?? {}) : (context ?? {}),
+          // Merge plan_context (session IDs) into the existing context so that
+          // formatTrainingPlanContext can inject them into the system prompt.
+          context: isPlanChat
+            ? {
+                ...(planContext ?? {}),
+                plan_context: {
+                  training_plan_id: planId,
+                  sessions: planSessionsContext,
+                },
+              }
+            : (context ?? {}),
         }),
       })
 
@@ -6947,24 +7236,51 @@ export default function AIPanel({
           : c
       ))
 
-      const reader  = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
+      // ── Parse SSE stream ─────────────────────────────────────────
+      // Format : event: text\ndata: <chunk>\n\n  |  event: tool_use\ndata: {...}\n\n
+      const reader      = res.body.getReader()
+      const decoder     = new TextDecoder()
+      let textAccumulated = ''
+      let sseBuffer       = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-        const text = accumulated
-        setConvs(prev => prev.map(c =>
-          c.id === cid
-            ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: text } : m), updatedAt: Date.now() }
-            : c
-        ))
+        sseBuffer += decoder.decode(value, { stream: true })
+
+        // Split on double newline to extract complete SSE events
+        const parts = sseBuffer.split('\n\n')
+        sseBuffer = parts.pop() ?? ''  // keep incomplete trailing event in buffer
+
+        for (const rawEvent of parts) {
+          if (!rawEvent.trim()) continue
+          let eventType = 'text'
+          let data = ''
+          for (const line of rawEvent.split('\n')) {
+            if (line.startsWith('event: ')) eventType = line.slice(7).trim()
+            else if (line.startsWith('data: ')) data = line.slice(6)
+          }
+
+          if (eventType === 'text') {
+            textAccumulated += data
+            setConvs(prev => prev.map(c =>
+              c.id === cid
+                ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
+                : c
+            ))
+          } else if (eventType === 'tool_use') {
+            try {
+              const tool = JSON.parse(data) as PendingToolCall
+              setPendingToolCall(tool)
+              setToolApplyStatus('idle')
+              setToolApplyError(null)
+            } catch { /* malformed JSON — ignore */ }
+          }
+        }
       }
 
       // ── Persistance DB pour le plan-chat (training_plan_messages) ──
-      if (isPlanChat && planId && accumulated) {
+      if (isPlanChat && planId && textAccumulated) {
         try {
           const { createClient } = await import('@/lib/supabase/client')
           const sb = createClient()
@@ -6972,7 +7288,7 @@ export default function AIPanel({
           if (user) {
             await sb.from('training_plan_messages').insert([
               { training_plan_id: planId, user_id: user.id, role: 'user',      content: displayText },
-              { training_plan_id: planId, user_id: user.id, role: 'assistant', content: accumulated  },
+              { training_plan_id: planId, user_id: user.id, role: 'assistant', content: textAccumulated },
             ])
           }
         } catch { /* non-bloquant */ }
@@ -7557,6 +7873,16 @@ export default function AIPanel({
                       <Dots />
                     </div>
                   </div>
+                )}
+                {/* ── Tool call preview ─────────────────────── */}
+                {pendingToolCall && (
+                  <ToolCallPreview
+                    toolCall={pendingToolCall}
+                    onApply={() => void applyToolCall()}
+                    onCancel={cancelToolCall}
+                    applyStatus={toolApplyStatus}
+                    applyError={toolApplyError}
+                  />
                 )}
                 <div ref={endRef} />
               </div>

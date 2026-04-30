@@ -486,6 +486,23 @@ export function formatTrainingPlanContext(ctx: Record<string, unknown>): string 
     for (const p of points) lines.push(`  - ${p}`)
   }
 
+  // ── Séances réelles avec IDs (pour tool calls) ───────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const planCtx = ctx.plan_context as { training_plan_id: string; sessions: Record<string, any>[] } | undefined
+  if (planCtx?.training_plan_id) {
+    lines.push(`\n### IDs pour tool calls`)
+    lines.push(`  training_plan_id : ${planCtx.training_plan_id}`)
+    if (planCtx.sessions?.length) {
+      lines.push('\n### Séances planifiées (IDs réels — utilise ces IDs dans les tool calls)')
+      for (const s of planCtx.sessions) {
+        const day = DAYS[s.day_index as number] ?? `Jour ${s.day_index}`
+        const week = s.week_start ?? '?'
+        const status = s.status === 'done' ? '✓' : '○'
+        lines.push(`  ${status} [id:${s.id}] semaine ${week} ${day} · [${s.sport}] ${s.title} · ${s.duration_min}min`)
+      }
+    }
+  }
+
   return lines.join('\n')
 }
 

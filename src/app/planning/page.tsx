@@ -1326,8 +1326,31 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
         {/* ── RIGHT : VOLUME HEBDOMADAIRE ── */}
         <div>
           {(() => {
-            const semaines = plan.ai_context?.program?.semaines ?? []
-            if (semaines.length === 0) return null
+            const rawSemaines = plan.ai_context?.program?.semaines ?? []
+            if (rawSemaines.length === 0) return null
+
+            // ── Volume réel depuis planned_sessions ─────────────────
+            // Calcule le volume réel par semaine à partir de sessions (aiPlanSessions)
+            // pour refléter les modifications du coach (add_week, update_session…).
+            // Mappe week_start → numéro de semaine via plan.start_date.
+            const WEEK_MS       = 7 * 24 * 60 * 60 * 1000
+            const planStartMs   = new Date(plan.start_date + 'T00:00:00Z').getTime()
+            const actualVolByNum = new Map<number, number>()
+            for (const s of sessions) {
+              if (!s.week_start) continue
+              const wsMs   = new Date(s.week_start + 'T00:00:00Z').getTime()
+              const weekNum = Math.round((wsMs - planStartMs) / WEEK_MS) + 1
+              const mins    = s.duration_min ?? 0
+              actualVolByNum.set(weekNum, (actualVolByNum.get(weekNum) ?? 0) + mins)
+            }
+
+            // Remplace volume_h par le volume réel si des données existent pour la semaine
+            const semaines = rawSemaines.map(s => {
+              const actualMins = actualVolByNum.get(s.numero)
+              if (actualMins !== undefined) return { ...s, volume_h: actualMins / 60 }
+              return s
+            })
+
             const n = semaines.length
             const BAR_GAP = 4
             const barW = 40           // 40 svg-units = 40px rendu max (< 60px demandé)
@@ -1722,6 +1745,16 @@ function TrainingTab() {
   const [aiPlanSessions, setAiPlanSessions] = useState<AiPlanSessionAgg[]>([])
   // Plan actif qui commence dans une semaine future (pas encore dans la vue courante)
   const [upcomingPlan,  setUpcomingPlan]  = useState<{name:string;startDate:string} | null>(null)
+
+  // Tick incrémenté quand AIPanel applique un tool call → force le refetch du plan
+  // (périodisation, volume chart, données PDF)
+  const [aiPlanReloadTick, setAiPlanReloadTick] = useState(0)
+  useEffect(() => {
+    const handler = () => setAiPlanReloadTick(t => t + 1)
+    window.addEventListener('thw:sessions-changed', handler)
+    return () => window.removeEventListener('thw:sessions-changed', handler)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -1785,7 +1818,9 @@ function TrainingTab() {
       }
     })()
     return () => { cancelled = true }
-  }, [currentWeekStart])
+  // aiPlanReloadTick : re-fetche training_plans + aiPlanSessions après un tool call
+  // (périodisation, volume chart, PDF)
+  }, [currentWeekStart, aiPlanReloadTick])
 
   // Multi-week data for range > 1
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})

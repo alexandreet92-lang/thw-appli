@@ -3,7 +3,7 @@ export const maxDuration = 60
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 // ── Types ─────────────────────────────────────────────────────
 

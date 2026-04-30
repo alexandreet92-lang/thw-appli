@@ -78,6 +78,8 @@ export async function POST(req: NextRequest) {
   const readable = new ReadableStream({
     async start(controller) {
       // Helper SSE — format : "event: <type>\ndata: <payload>\n\n"
+      // IMPORTANT : la valeur data ne doit JAMAIS contenir de \n brut (casse le format SSE).
+      // Pour le texte, on JSON-encode le chunk → le frontend JSON.parse côté client.
       const send = (eventType: string, data: string) => {
         controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`))
       }
@@ -91,19 +93,21 @@ export async function POST(req: NextRequest) {
             if (block.type === 'tool_use') {
               // Initialise l'accumulation pour ce bloc tool_use
               pendingToolUse[event.index] = { name: block.name, json: '' }
+              console.log('[coach-stream] tool_use block started:', block.name, '(index:', event.index, ')')
             }
           }
 
           // ── Delta d'un content block ─────────────────────────
           if (event.type === 'content_block_delta') {
             if (event.delta.type === 'text_delta') {
-              // Chunk texte normal → event: text
-              send('text', event.delta.text)
+              // Chunk texte → JSON.stringify pour éviter les \n bruts dans la ligne data SSE
+              send('text', JSON.stringify(event.delta.text))
             } else if (event.delta.type === 'input_json_delta') {
               // JSON partiel d'un tool_use → accumulation
               const pending = pendingToolUse[event.index]
               if (pending !== undefined) {
-                pending.json += event.delta.partial_json
+                // partial_json est toujours une string, mais on sécurise au cas où
+                pending.json += (event.delta.partial_json ?? '')
               }
             }
           }
@@ -113,19 +117,28 @@ export async function POST(req: NextRequest) {
             const pending = pendingToolUse[event.index]
             if (pending !== undefined) {
               // Le bloc tool_use est complet → on le parse et on l'émet
+              console.log('[coach-stream] content_block_stop for tool', pending.name,
+                '— JSON length:', pending.json.length,
+                '— preview:', pending.json.slice(0, 120))
               try {
                 const toolInput = JSON.parse(pending.json || '{}')
-                send('tool_use', JSON.stringify({
+                const ssePayload = JSON.stringify({
                   tool_name: pending.name,
                   tool_input: toolInput,
-                }))
-              } catch {
-                // JSON mal formé (ne devrait pas arriver) — on ignore silencieusement
+                })
+                console.log('[coach-stream] emitting tool_use SSE:', ssePayload.slice(0, 200))
+                send('tool_use', ssePayload)
+              } catch (err) {
+                // JSON mal formé — log l'erreur pour diagnostic, on n'émet rien
+                console.error('[coach-stream] JSON parse error for tool', pending.name, ':', err)
+                console.error('[coach-stream] accumulated JSON (full):', pending.json)
               }
               delete pendingToolUse[event.index]
             }
           }
         }
+      } catch (err) {
+        console.error('[coach-stream] stream error:', err)
       } finally {
         controller.close()
       }

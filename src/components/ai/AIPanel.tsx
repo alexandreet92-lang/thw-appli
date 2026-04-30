@@ -7351,18 +7351,14 @@ export default function AIPanel({
       ))
 
       // ── Parse SSE stream ─────────────────────────────────────────
-      // Format : event: text\ndata: <chunk>\n\n  |  event: tool_use\ndata: {...}\n\n
+      // Format : event: text\ndata: <JSON-encoded chunk>\n\n  |  event: tool_use\ndata: {...}\n\n
+      // Les chunks texte sont JSON.stringify-és côté backend pour éviter les \n bruts dans data.
       const reader      = res.body.getReader()
       const decoder     = new TextDecoder()
       let textAccumulated = ''
       let sseBuffer       = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        sseBuffer += decoder.decode(value, { stream: true })
-
-        // Split on double newline to extract complete SSE events
+      const processSSEBuffer = () => {
         const parts = sseBuffer.split('\n\n')
         sseBuffer = parts.pop() ?? ''  // keep incomplete trailing event in buffer
 
@@ -7376,7 +7372,13 @@ export default function AIPanel({
           }
 
           if (eventType === 'text') {
-            textAccumulated += data
+            try {
+              // data est JSON.stringify-é côté backend → on parse pour récupérer le texte brut
+              textAccumulated += JSON.parse(data) as string
+            } catch {
+              // fallback : si non JSON-encodé (ancienne version), utilise data brut
+              textAccumulated += data
+            }
             setConvs(prev => prev.map(c =>
               c.id === cid
                 ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
@@ -7392,6 +7394,20 @@ export default function AIPanel({
             } catch { /* malformed JSON — ignore */ }
           }
         }
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          // Flush tout buffer résiduel — le dernier chunk peut arriver sans \n\n final
+          if (sseBuffer.trim()) {
+            sseBuffer += '\n\n'  // force la terminaison pour que split fonctionne
+            processSSEBuffer()
+          }
+          break
+        }
+        sseBuffer += decoder.decode(value, { stream: true })
+        processSSEBuffer()
       }
 
       // ── Persistance DB pour le plan-chat (training_plan_messages) ──

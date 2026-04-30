@@ -562,15 +562,22 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 2000,
+      max_tokens: 4096,
       system: SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
     })
+
+    // Tâche 2 — vérification stop_reason avant tout parsing
     console.log('[training-plan] stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
     if (resp.stop_reason === 'max_tokens') {
-      console.log('[training-plan] WARNING: output truncated at max_tokens')
+      console.log('[training-plan] ERROR: output truncated at max_tokens')
+      return new Response(JSON.stringify({
+        error: 'Réponse tronquée — le plan est trop long pour les limites actuelles',
+        stop_reason: 'max_tokens',
+      }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
 
+    // Tâche 4 — extraction correcte : response.content[0].text
     const textBlock = resp.content.find(b => b.type === 'text')
     const rawText = textBlock?.type === 'text' ? textBlock.text : ''
 
@@ -581,16 +588,18 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
       })
     }
 
+    // Tâche 3 — try/catch spécifique autour du parse avec log et raw_preview
     let plan: GeneratedPlan
     try {
       plan = parseAndRepair<GeneratedPlan>(rawText)
     } catch (parseErr) {
       const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
-      console.log('[training-plan] Parse error:', msg, '| raw tail:', rawText.slice(-300))
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      console.log('[training-plan] Parse error:', msg)
+      console.log('[training-plan] raw preview (500 chars):', rawText.substring(0, 500))
+      return new Response(JSON.stringify({
+        error: 'Réponse invalide du modèle',
+        raw_preview: rawText.substring(0, 200),
+      }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
 
     console.log('FULL DATA RAW:', JSON.stringify(plan, null, 2))

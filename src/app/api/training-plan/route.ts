@@ -76,8 +76,7 @@ interface GeneratedPlan {
 
 const SYSTEM = `Tu es un coach expert en planification d'entraînement sportif de haut niveau.
 Tu crées des programmes structurés, périodisés et personnalisés.
-Tu réponds UNIQUEMENT avec un objet JSON valide selon le schéma fourni.
-Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.`
+Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après. Le JSON doit être aussi compact que possible : pas d'indentation, pas d'espaces inutiles, pas de descriptions longues dans les champs texte.`
 
 // ── JSON schema ────────────────────────────────────────────────
 
@@ -562,7 +561,7 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 4096,
+      max_tokens: 16000,
       system: SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
     })

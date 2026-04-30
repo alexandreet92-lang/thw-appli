@@ -104,34 +104,44 @@ export async function POST(req: NextRequest) {
               send('text', JSON.stringify(event.delta.text))
             } else if (event.delta.type === 'input_json_delta') {
               // JSON partiel d'un tool_use → accumulation
+              const chunk = event.delta.partial_json ?? ''
+              console.log('[coach-stream] delta chunk length:', chunk.length,
+                '(index:', event.index, ') preview:', chunk.slice(0, 60))
               const pending = pendingToolUse[event.index]
               if (pending !== undefined) {
-                // partial_json est toujours une string, mais on sécurise au cas où
-                pending.json += (event.delta.partial_json ?? '')
+                pending.json += chunk
+              } else {
+                console.warn('[coach-stream] delta received for unknown index:', event.index,
+                  '— pendingToolUse keys:', Object.keys(pendingToolUse))
               }
             }
           }
 
           // ── Fin d'un content block ───────────────────────────
           if (event.type === 'content_block_stop') {
+            // Log AVANT le check pending pour voir tous les stops, même les blocs texte
+            console.log('[coach-stream] content_block_stop — index:', event.index,
+              '— pendingToolUse keys:', Object.keys(pendingToolUse))
+
             const pending = pendingToolUse[event.index]
             if (pending !== undefined) {
               // Le bloc tool_use est complet → on le parse et on l'émet
-              console.log('[coach-stream] content_block_stop for tool', pending.name,
-                '— JSON length:', pending.json.length,
+              console.log('[coach-stream] accumulated JSON length:', pending.json.length,
                 '— preview:', pending.json.slice(0, 120))
               try {
                 const toolInput = JSON.parse(pending.json || '{}')
+                console.log('[coach-stream] parsed tool input keys:', Object.keys(toolInput))
                 const ssePayload = JSON.stringify({
                   tool_name: pending.name,
                   tool_input: toolInput,
                 })
-                console.log('[coach-stream] emitting tool_use SSE:', ssePayload.slice(0, 200))
+                console.log('[coach-stream] emitting SSE tool_use:', pending.name,
+                  '— payload length:', ssePayload.length)
                 send('tool_use', ssePayload)
               } catch (err) {
-                // JSON mal formé — log l'erreur pour diagnostic, on n'émet rien
-                console.error('[coach-stream] JSON parse error for tool', pending.name, ':', err)
-                console.error('[coach-stream] accumulated JSON (full):', pending.json)
+                const msg = err instanceof Error ? err.message : String(err)
+                console.error('[coach-stream] tool parse error:', msg,
+                  'buffer preview:', pending.json.substring(0, 200))
               }
               delete pendingToolUse[event.index]
             }

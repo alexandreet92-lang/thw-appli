@@ -486,19 +486,72 @@ export function formatTrainingPlanContext(ctx: Record<string, unknown>): string 
     for (const p of points) lines.push(`  - ${p}`)
   }
 
-  // ── Séances réelles avec IDs (pour tool calls) ───────────────
+  // ── Structure réelle du plan semaine par semaine (depuis planned_sessions) ─
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const planCtx = ctx.plan_context as { training_plan_id: string; sessions: Record<string, any>[] } | undefined
+  const planCtx = ctx.plan_context as {
+    training_plan_id: string
+    name?: string
+    objectif_principal?: string
+    start_date?: string
+    end_date?: string
+    duree_semaines?: number
+    sports?: string[]
+    blocs_periodisation?: Array<Record<string, unknown>>
+    weekly_structure?: Array<{ week_start: string; sessions: Record<string, any>[]; empty: boolean }>
+  } | undefined
+
   if (planCtx?.training_plan_id) {
-    lines.push(`\n### IDs pour tool calls`)
-    lines.push(`  training_plan_id : ${planCtx.training_plan_id}`)
-    if (planCtx.sessions?.length) {
-      lines.push('\n### Séances planifiées (IDs réels — utilise ces IDs dans les tool calls)')
-      for (const s of planCtx.sessions) {
-        const day = DAYS[s.day_index as number] ?? `Jour ${s.day_index}`
-        const week = s.week_start ?? '?'
-        const status = s.status === 'done' ? '✓' : '○'
-        lines.push(`  ${status} [id:${s.id}] semaine ${week} ${day} · [${s.sport}] ${s.title} · ${s.duration_min}min`)
+    lines.push('\n=== PLAN ACTIF — STRUCTURE RÉELLE ===')
+    if (planCtx.name)               lines.push(`Plan : ${planCtx.name}`)
+    if (planCtx.objectif_principal) lines.push(`Objectif : ${planCtx.objectif_principal}`)
+    if (planCtx.start_date && planCtx.end_date) {
+      lines.push(`Période : ${planCtx.start_date} → ${planCtx.end_date} (${planCtx.duree_semaines ?? '?'} semaines)`)
+    }
+    if (planCtx.sports?.length) lines.push(`Sports : ${planCtx.sports.join(', ')}`)
+    lines.push(`training_plan_id : ${planCtx.training_plan_id}`)
+
+    if (planCtx.blocs_periodisation?.length) {
+      lines.push('\nPériodisation :')
+      for (const b of planCtx.blocs_periodisation) {
+        lines.push(`  ${b.nom} (${b.type}) : S${b.semaine_debut}→S${b.semaine_fin} — ${b.volume_hebdo_h ?? '?'}h/sem`)
+      }
+    }
+
+    if (planCtx.weekly_structure?.length) {
+      lines.push('\nStructure semaine par semaine :')
+      for (let wi = 0; wi < planCtx.weekly_structure.length; wi++) {
+        const week = planCtx.weekly_structure[wi]
+        const weekNum = wi + 1
+        lines.push(`\nSEMAINE ${weekNum} (${week.week_start}) :`)
+
+        if (week.empty || week.sessions.length === 0) {
+          lines.push('  ⚠️ AUCUNE SÉANCE — semaine vide')
+        } else {
+          // Grouper par jour pour affichage lisible
+          const byDay: Record<number, Record<string, any>[]> = {}
+          for (const s of week.sessions) {
+            const di = s.day_index as number
+            if (!byDay[di]) byDay[di] = []
+            byDay[di].push(s)
+          }
+          for (let d = 0; d < 7; d++) {
+            const dayName = DAYS[d]
+            const daySessions = byDay[d] ?? []
+            if (daySessions.length === 0) {
+              lines.push(`  ${dayName} : Repos`)
+            } else {
+              for (const s of daySessions) {
+                const durMin = s.duration_min as number
+                const dur = durMin >= 60
+                  ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? String(durMin % 60).padStart(2, '0') : ''}`
+                  : `${durMin}min`
+                const intensity = s.intensity ? ` · ${s.intensity}` : ''
+                const status = s.status === 'done' ? ' ✓' : ''
+                lines.push(`  ${dayName} : ${s.title} [${s.sport}${intensity}, ${dur}${status}, id:${s.id}]`)
+              }
+            }
+          }
+        }
       }
     }
   }

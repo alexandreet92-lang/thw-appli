@@ -6969,20 +6969,81 @@ export default function AIPanel({
     if (dx < 0 && histOpen)  setHistOpen(false)
   }, [isDesktop, histOpen])
 
-  // ── Plan sessions context fetch (pour plan_context au send) ───
-  async function fetchPlanSessionsContext(pid: string): Promise<Record<string, unknown>[]> {
+  // ── Plan context fetch — structure COMPLÈTE du plan (pour tool calls) ──
+  // Renvoie un objet avec métadonnées + toutes les semaines (vides ou non)
+  // pour que Claude choisisse correctement add_week vs update_session.
+  async function fetchPlanSessionsContext(pid: string): Promise<Record<string, unknown>> {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data } = await sb
-        .from('planned_sessions')
-        .select('id, week_start, day_index, sport, title, duration_min, tss, status, intensity')
-        .eq('plan_id', pid)
-        .order('week_start', { ascending: true })
-        .order('day_index',  { ascending: true })
-        .limit(150)
-      return (data ?? []) as Record<string, unknown>[]
-    } catch { return [] }
+
+      const [planRes, sessionsRes] = await Promise.all([
+        sb.from('training_plans')
+          .select('id, name, objectif_principal, start_date, end_date, duree_semaines, sports, blocs_periodisation')
+          .eq('id', pid)
+          .single(),
+        sb.from('planned_sessions')
+          .select('id, week_start, day_index, sport, title, duration_min, tss, status, intensity')
+          .eq('plan_id', pid)
+          .order('week_start', { ascending: true })
+          .order('day_index',  { ascending: true })
+          .limit(300),
+      ])
+
+      const plan = planRes.data
+      const sessions = (sessionsRes.data ?? []) as Record<string, unknown>[]
+
+      if (!plan) return { training_plan_id: pid, sessions, weekly_structure: [] }
+
+      // Calcule le lundi de la semaine de start_date
+      function toMonday(dateStr: string): Date {
+        const d = new Date(dateStr)
+        const dow = d.getDay() === 0 ? 6 : d.getDay() - 1
+        d.setDate(d.getDate() - dow)
+        return d
+      }
+      function toISO(d: Date) { return d.toISOString().slice(0, 10) }
+
+      // Génère toutes les semaines du plan
+      const firstMonday = toMonday(plan.start_date as string)
+      const endDate     = new Date(plan.end_date as string)
+      const weekMap: Record<string, Record<string, unknown>[]> = {}
+      const cur = new Date(firstMonday)
+      while (cur <= endDate) {
+        weekMap[toISO(cur)] = []
+        cur.setDate(cur.getDate() + 7)
+      }
+
+      // Groupe les séances par semaine
+      for (const s of sessions) {
+        const ws = s.week_start as string
+        if (!weekMap[ws]) weekMap[ws] = []
+        weekMap[ws].push(s)
+      }
+
+      const weekly_structure = Object.entries(weekMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([week_start, weekSessions]) => ({
+          week_start,
+          sessions: weekSessions,
+          empty: weekSessions.length === 0,
+        }))
+
+      return {
+        training_plan_id:    pid,
+        name:                plan.name,
+        objectif_principal:  plan.objectif_principal,
+        start_date:          plan.start_date,
+        end_date:            plan.end_date,
+        duree_semaines:      plan.duree_semaines,
+        sports:              plan.sports,
+        blocs_periodisation: plan.blocs_periodisation,
+        weekly_structure,
+        sessions, // liste plate avec IDs pour référence rapide
+      }
+    } catch {
+      return { training_plan_id: pid, sessions: [], weekly_structure: [] }
+    }
   }
 
   // ── Apply tool call ────────────────────────────────────────────
@@ -7253,8 +7314,8 @@ export default function AIPanel({
     const isPlanChat = Boolean(planId && active?.title.startsWith(`[PLAN:${planId}]`))
 
     try {
-      // ── Fetch plan sessions context si plan-chat ─────────────────
-      let planSessionsContext: Record<string, unknown>[] = []
+      // ── Fetch plan context complet si plan-chat ──────────────────
+      let planSessionsContext: Record<string, unknown> = {}
       if (isPlanChat && planId) {
         planSessionsContext = await fetchPlanSessionsContext(planId)
       }

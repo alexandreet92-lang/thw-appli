@@ -433,6 +433,13 @@ function usePlanning(weekStartParam?:string) {
 
   useEffect(()=>{ load() },[load])
 
+  // Refresh déclenché par AIPanel après apply d'un tool call (add/update/delete/move session)
+  useEffect(()=>{
+    const handler = () => { void load() }
+    window.addEventListener('thw:sessions-changed', handler)
+    return () => window.removeEventListener('thw:sessions-changed', handler)
+  },[load])
+
   async function addSession(s:Omit<Session,'id'>) {
     const { data:{ user } } = await supabase.auth.getUser(); if(!user)return
     const { data,error } = await supabase.from('planned_sessions').insert({

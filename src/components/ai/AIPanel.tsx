@@ -7016,8 +7016,20 @@ export default function AIPanel({
       pgErr = error
 
     } else if (tool_name === 'update_session') {
-      const { session_id, ...fields } = inp
-      const { error } = await sb.from('planned_sessions').update(fields).eq('id', session_id)
+      // Mapping explicite des colonnes DB — évite de passer des clés inconnues à Supabase
+      const patch: Record<string, unknown> = {}
+      if (inp.sport        !== undefined) patch.sport        = inp.sport
+      if (inp.title        !== undefined) patch.title        = inp.title
+      if (inp.time         !== undefined) patch.time         = inp.time
+      if (inp.duration_min !== undefined) patch.duration_min = inp.duration_min
+      if (inp.tss          !== undefined) patch.tss          = inp.tss
+      if (inp.intensity    !== undefined) patch.intensity    = inp.intensity
+      if (inp.notes        !== undefined) patch.notes        = inp.notes
+      if (inp.rpe          !== undefined) patch.rpe          = inp.rpe
+      if (inp.blocks       !== undefined) patch.blocks       = inp.blocks
+      if (inp.status       !== undefined) patch.status       = inp.status
+      patch.updated_at = new Date().toISOString()
+      const { error } = await sb.from('planned_sessions').update(patch).eq('id', inp.session_id)
       pgErr = error
 
     } else if (tool_name === 'delete_session') {
@@ -7097,6 +7109,10 @@ export default function AIPanel({
       }
       setPendingToolCalls([])
       setToolApplyStatus('idle')
+
+      // Déclenche le refresh de la page planning (load()) via event window
+      window.dispatchEvent(new CustomEvent('thw:sessions-changed'))
+      console.log('[AIPanel] refresh triggered after apply — thw:sessions-changed')
 
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)

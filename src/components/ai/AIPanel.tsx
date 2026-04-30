@@ -6617,93 +6617,101 @@ const SPORT_LABELS_TOOL: Record<string, string> = {
 }
 
 // ── ToolCallPreview ───────────────────────────────────────────
+// Render helper : info visuelle pour UN tool call
+
+function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string; label: string; description: string } {
+  const { tool_name, tool_input: inp } = tc
+  const day     = typeof inp.day_index === 'number' ? (DAY_NAMES_FR[inp.day_index] ?? `J${inp.day_index}`) : ''
+  const sport   = typeof inp.sport    === 'string'  ? (SPORT_LABELS_TOOL[inp.sport]  ?? inp.sport)         : ''
+  const wStart  = typeof inp.week_start === 'string' ? inp.week_start : ''
+
+  if (tool_name === 'add_session') return {
+    borderColor: '#22c55e', emoji: '+', label: 'Ajouter une séance',
+    description: `${String(inp.title ?? '—')} · ${sport} · ${String(inp.duration_min ?? '?')}min · ${day} semaine du ${wStart}`,
+  }
+  if (tool_name === 'update_session') {
+    const changes = Object.keys(inp).filter(k => k !== 'session_id').join(', ')
+    return { borderColor: '#f97316', emoji: '✎', label: 'Modifier une séance',
+      description: `Séance …${String(inp.session_id ?? '').slice(-8)} · Champs : ${changes || 'aucun'}` }
+  }
+  if (tool_name === 'delete_session') return {
+    borderColor: '#ef4444', emoji: '✕', label: 'Supprimer une séance',
+    description: `⚠ Séance …${String(inp.session_id ?? '').slice(-8)} — action irréversible`,
+  }
+  if (tool_name === 'move_session') {
+    const newDay = typeof inp.new_day_index === 'number' ? (DAY_NAMES_FR[inp.new_day_index] ?? `J${inp.new_day_index}`) : ''
+    return { borderColor: '#3b82f6', emoji: '→', label: 'Déplacer une séance',
+      description: `Séance …${String(inp.session_id ?? '').slice(-8)} → ${newDay} semaine du ${String(inp.new_week_start ?? '')}` }
+  }
+  if (tool_name === 'add_week') {
+    const n = ((inp.sessions as unknown[]) ?? []).length
+    return { borderColor: '#22c55e', emoji: '+', label: 'Ajouter une semaine complète',
+      description: `${String(inp.week_type ?? '')} · semaine du ${String(inp.week_start ?? '')} · ${n} séances` }
+  }
+  if (tool_name === 'update_plan_periodisation') {
+    const n = ((inp.blocs_periodisation as unknown[]) ?? []).length
+    return { borderColor: '#f97316', emoji: '⟳', label: 'Modifier la périodisation',
+      description: `${n} blocs de périodisation remplacés` }
+  }
+  return { borderColor: '#9ca3af', emoji: '?', label: tool_name, description: '' }
+}
+
+// Composant : N tool calls empilés + boutons Appliquer / Annuler partagés
 
 function ToolCallPreview({
-  toolCall, onApply, onCancel, applyStatus, applyError,
+  toolCalls, onApply, onCancel, applyStatus, applyError,
 }: {
-  toolCall: PendingToolCall
+  toolCalls: PendingToolCall[]
   onApply: () => void
   onCancel: () => void
   applyStatus: 'idle' | 'applying' | 'success' | 'error'
   applyError: string | null
 }) {
-  const { tool_name, tool_input: inp } = toolCall
-
-  const day = typeof inp.day_index === 'number' ? (DAY_NAMES_FR[inp.day_index] ?? `J${inp.day_index}`) : ''
-  const sport = typeof inp.sport === 'string' ? (SPORT_LABELS_TOOL[inp.sport] ?? inp.sport) : ''
-  const weekStart = typeof inp.week_start === 'string' ? inp.week_start : ''
-
-  let borderColor = '#22c55e'
-  let emoji = '+'
-  let label = ''
-  let description = ''
-
-  if (tool_name === 'add_session') {
-    borderColor = '#22c55e'; emoji = '+'
-    label = 'Ajouter une séance'
-    description = `${String(inp.title ?? '—')} · ${sport} · ${String(inp.duration_min ?? '?')}min · ${day} semaine du ${weekStart}`
-  } else if (tool_name === 'update_session') {
-    borderColor = '#f97316'; emoji = '✎'
-    label = 'Modifier une séance'
-    const changes = Object.keys(inp).filter(k => k !== 'session_id').join(', ')
-    description = `Séance …${String(inp.session_id ?? '').slice(-8)} · Champs : ${changes || 'aucun'}`
-  } else if (tool_name === 'delete_session') {
-    borderColor = '#ef4444'; emoji = '✕'
-    label = 'Supprimer une séance'
-    description = `⚠ Séance …${String(inp.session_id ?? '').slice(-8)} — action irréversible`
-  } else if (tool_name === 'move_session') {
-    borderColor = '#3b82f6'; emoji = '→'
-    label = 'Déplacer une séance'
-    const newDay = typeof inp.new_day_index === 'number' ? (DAY_NAMES_FR[inp.new_day_index] ?? `J${inp.new_day_index}`) : ''
-    description = `Séance …${String(inp.session_id ?? '').slice(-8)} → ${newDay} semaine du ${String(inp.new_week_start ?? '')}`
-  } else if (tool_name === 'add_week') {
-    borderColor = '#22c55e'; emoji = '+'
-    label = 'Ajouter une semaine complète'
-    const sessions = (inp.sessions as unknown[]) ?? []
-    description = `${String(inp.week_type ?? '')} · semaine du ${String(inp.week_start ?? '')} · ${sessions.length} séances`
-  } else if (tool_name === 'update_plan_periodisation') {
-    borderColor = '#f97316'; emoji = '⟳'
-    label = 'Modifier la périodisation'
-    const blocs = (inp.blocs_periodisation as unknown[]) ?? []
-    description = `${blocs.length} blocs de périodisation remplacés`
-  }
-
   const isApplying = applyStatus === 'applying'
+  const n = toolCalls.length
+  const applyLabel = n > 1 ? `✓ Appliquer les ${n} modifications` : '✓ Appliquer'
 
   return (
-    <div style={{
-      borderRadius: 12,
-      border: `1px solid ${borderColor}44`,
-      borderLeft: `3px solid ${borderColor}`,
-      background: `${borderColor}0e`,
-      padding: '12px 14px',
-      marginLeft: 34,
-      animation: 'ai_msg_in 0.18s ease both',
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
-        <span style={{ fontSize: 13, color: borderColor, fontWeight: 800, lineHeight: 1, fontFamily: 'DM Mono,monospace' }}>{emoji}</span>
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, color: borderColor,
-          fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>
-          {label}
-        </span>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 34, animation: 'ai_msg_in 0.18s ease both' }}>
 
-      {/* Description */}
-      <p style={{ fontSize: 12.5, color: 'var(--ai-text)', margin: '0 0 12px', lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>
-        {description}
-      </p>
+      {/* ── Une card par tool call ──────────────────────────── */}
+      {toolCalls.map((tc, i) => {
+        const { borderColor, emoji, label, description } = toolCallMeta(tc)
+        return (
+          <div key={i} style={{
+            borderRadius: 10,
+            border: `1px solid ${borderColor}44`,
+            borderLeft: `3px solid ${borderColor}`,
+            background: `${borderColor}0e`,
+            padding: '10px 13px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+              {n > 1 && (
+                <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)', minWidth: 18 }}>
+                  {i + 1}/{n}
+                </span>
+              )}
+              <span style={{ fontSize: 13, color: borderColor, fontWeight: 800, lineHeight: 1, fontFamily: 'DM Mono,monospace' }}>{emoji}</span>
+              <span style={{
+                fontSize: 10.5, fontWeight: 700, color: borderColor,
+                fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>{label}</span>
+            </div>
+            <p style={{ fontSize: 12.5, color: 'var(--ai-text)', margin: 0, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>
+              {description}
+            </p>
+          </div>
+        )
+      })}
 
-      {/* Error */}
+      {/* ── Erreur ─────────────────────────────────────────── */}
       {applyStatus === 'error' && applyError && (
-        <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px', padding: '6px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', fontFamily: 'DM Sans,sans-serif' }}>
-          Erreur : {applyError}
+        <p style={{ fontSize: 11, color: '#ef4444', margin: 0, padding: '7px 11px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', fontFamily: 'DM Sans,sans-serif' }}>
+          {applyError}
         </p>
       )}
 
-      {/* Buttons */}
+      {/* ── Boutons partagés ───────────────────────────────── */}
       <div style={{ display: 'flex', gap: 7 }}>
         <button
           onClick={onCancel}
@@ -6733,7 +6741,7 @@ function ToolCallPreview({
             fontFamily: 'DM Sans,sans-serif',
           }}
         >
-          {isApplying ? 'Application…' : '✓ Appliquer'}
+          {isApplying ? 'Application…' : applyLabel}
         </button>
       </div>
     </div>
@@ -6773,9 +6781,9 @@ export default function AIPanel({
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
   const [attachErr,     setAttachErr]     = useState<string | null>(null)
-  const [pendingToolCall, setPendingToolCall] = useState<PendingToolCall | null>(null)
-  const [toolApplyStatus, setToolApplyStatus] = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
-  const [toolApplyError,  setToolApplyError]  = useState<string | null>(null)
+  const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([])
+  const [toolApplyStatus,  setToolApplyStatus]  = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
+  const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -6978,12 +6986,90 @@ export default function AIPanel({
   }
 
   // ── Apply tool call ────────────────────────────────────────────
+  // Exécute un seul tool call et renvoie l'éventuelle erreur
+  async function execOneTool(
+    sb: Awaited<ReturnType<typeof import('@/lib/supabase/client').createClient>>,
+    userId: string,
+    tc: PendingToolCall,
+  ): Promise<string | null> {
+    const { tool_name, tool_input: inp } = tc
+    let pgErr: { message: string } | null = null
+
+    if (tool_name === 'add_session') {
+      const { error } = await sb.from('planned_sessions').insert({
+        user_id:      userId,
+        plan_id:      inp.training_plan_id,
+        week_start:   inp.week_start,
+        day_index:    inp.day_index,
+        sport:        inp.sport,
+        title:        inp.title,
+        time:         inp.time ?? null,
+        duration_min: inp.duration_min,
+        blocks:       inp.blocks ?? null,
+        tss:          inp.tss ?? null,
+        intensity:    inp.intensity ?? null,
+        notes:        inp.notes ?? null,
+        rpe:          inp.rpe ?? null,
+        status:       'planned',
+        source:       'ai',
+      })
+      pgErr = error
+
+    } else if (tool_name === 'update_session') {
+      const { session_id, ...fields } = inp
+      const { error } = await sb.from('planned_sessions').update(fields).eq('id', session_id)
+      pgErr = error
+
+    } else if (tool_name === 'delete_session') {
+      const { error } = await sb.from('planned_sessions').delete().eq('id', inp.session_id)
+      pgErr = error
+
+    } else if (tool_name === 'move_session') {
+      const { error } = await sb.from('planned_sessions').update({
+        week_start: inp.new_week_start,
+        day_index:  inp.new_day_index,
+      }).eq('id', inp.session_id)
+      pgErr = error
+
+    } else if (tool_name === 'add_week') {
+      // Chaque élément de sessions[] reçoit user_id, plan_id, week_start et status
+      const rows = (inp.sessions as Record<string, unknown>[]).map(s => ({
+        user_id:      userId,
+        plan_id:      inp.training_plan_id,
+        week_start:   inp.week_start,
+        day_index:    s.day_index,
+        sport:        s.sport,
+        title:        s.title,
+        time:         s.time ?? null,
+        duration_min: s.duration_min,
+        blocks:       s.blocks ?? null,
+        tss:          s.tss ?? null,
+        intensity:    s.intensity ?? null,
+        notes:        s.notes ?? null,
+        rpe:          s.rpe ?? null,
+        status:       'planned',
+        source:       'ai',
+      }))
+      const { error } = await sb.from('planned_sessions').insert(rows)
+      pgErr = error
+
+    } else if (tool_name === 'update_plan_periodisation') {
+      const { error } = await sb.from('training_plans').update({
+        blocs_periodisation: inp.blocs_periodisation,
+      }).eq('id', inp.training_plan_id)
+      pgErr = error
+
+    } else {
+      return `Tool inconnu : ${tool_name}`
+    }
+
+    return pgErr ? pgErr.message : null
+  }
+
   const applyToolCall = useCallback(async () => {
-    if (!pendingToolCall) return
+    if (pendingToolCalls.length === 0) return
     setToolApplyStatus('applying')
     setToolApplyError(null)
-
-    const { tool_name, tool_input: inp } = pendingToolCall
 
     try {
       const { createClient } = await import('@/lib/supabase/client')
@@ -6991,77 +7077,25 @@ export default function AIPanel({
       const { data: { user } } = await sb.auth.getUser()
       if (!user) throw new Error('Non connecté')
 
-      if (tool_name === 'add_session') {
-        const { error } = await sb.from('planned_sessions').insert({
-          user_id:      user.id,
-          plan_id:      inp.training_plan_id,
-          week_start:   inp.week_start,
-          day_index:    inp.day_index,
-          sport:        inp.sport,
-          title:        inp.title,
-          time:         inp.time ?? null,
-          duration_min: inp.duration_min,
-          blocks:       inp.blocks ?? null,
-          tss:          inp.tss ?? null,
-          intensity:    inp.intensity ?? null,
-          notes:        inp.notes ?? null,
-          rpe:          inp.rpe ?? null,
-          status:       'planned',
-          source:       'ai',
-        })
-        if (error) throw error
-
-      } else if (tool_name === 'update_session') {
-        const { session_id, ...fields } = inp
-        const { error } = await sb.from('planned_sessions').update(fields).eq('id', session_id)
-        if (error) throw error
-
-      } else if (tool_name === 'delete_session') {
-        const { error } = await sb.from('planned_sessions').delete().eq('id', inp.session_id)
-        if (error) throw error
-
-      } else if (tool_name === 'move_session') {
-        const { error } = await sb.from('planned_sessions').update({
-          week_start: inp.new_week_start,
-          day_index:  inp.new_day_index,
-        }).eq('id', inp.session_id)
-        if (error) throw error
-
-      } else if (tool_name === 'add_week') {
-        const sessions = (inp.sessions as Record<string, unknown>[]).map(s => ({
-          ...s,
-          user_id:    user.id,
-          plan_id:    inp.training_plan_id,
-          week_start: inp.week_start,
-          status:     'planned',
-          source:     'ai',
-        }))
-        const { error } = await sb.from('planned_sessions').insert(sessions)
-        if (error) throw error
-
-      } else if (tool_name === 'update_plan_periodisation') {
-        const { error } = await sb.from('training_plans').update({
-          blocs_periodisation: inp.blocs_periodisation,
-        }).eq('id', inp.training_plan_id)
-        if (error) throw error
-
-      } else {
-        throw new Error(`Tool inconnu : ${tool_name}`)
+      const total = pendingToolCalls.length
+      for (let i = 0; i < total; i++) {
+        const err = await execOneTool(sb, user.id, pendingToolCalls[i])
+        if (err) {
+          const prefix = total > 1 ? `Erreur sur l'opération ${i + 1}/${total} (${pendingToolCalls[i].tool_name}) : ` : 'Erreur : '
+          throw new Error(`${prefix}${err}`)
+        }
       }
 
-      // Succès — ajouter un message de confirmation dans le chat
+      // Succès — message de confirmation dans le chat
       const cid = active?.id
       if (cid) {
-        const successMsg: AIMsg = {
-          id: genId(), role: 'assistant',
-          content: '✓ Modification appliquée avec succès.',
-          ts: Date.now(), modelId: model,
-        }
+        const summary = total > 1 ? `✓ ${total} modifications appliquées avec succès.` : '✓ Modification appliquée avec succès.'
+        const successMsg: AIMsg = { id: genId(), role: 'assistant', content: summary, ts: Date.now(), modelId: model }
         setConvs(prev => prev.map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, successMsg], updatedAt: Date.now() } : c
         ))
       }
-      setPendingToolCall(null)
+      setPendingToolCalls([])
       setToolApplyStatus('idle')
 
     } catch (e) {
@@ -7070,11 +7104,11 @@ export default function AIPanel({
       setToolApplyError(msg)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingToolCall, active, model])
+  }, [pendingToolCalls, active, model])
 
   // ── Cancel tool call ───────────────────────────────────────────
   const cancelToolCall = useCallback(() => {
-    setPendingToolCall(null)
+    setPendingToolCalls([])
     setToolApplyStatus('idle')
     setToolApplyError(null)
     const cid = active?.id
@@ -7131,6 +7165,9 @@ export default function AIPanel({
     setInput('')
     setAttachment(null)
     setActiveFlow(null)
+    setPendingToolCalls([])
+    setToolApplyStatus('idle')
+    setToolApplyError(null)
     const qaForSend = activeQA   // capture before clearing
     setActiveQA(null)
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
@@ -7271,7 +7308,8 @@ export default function AIPanel({
           } else if (eventType === 'tool_use') {
             try {
               const tool = JSON.parse(data) as PendingToolCall
-              setPendingToolCall(tool)
+              // Accumule dans le tableau — NE remplace PAS (plusieurs tool_use possibles)
+              setPendingToolCalls(prev => [...prev, tool])
               setToolApplyStatus('idle')
               setToolApplyError(null)
             } catch { /* malformed JSON — ignore */ }
@@ -7875,9 +7913,9 @@ export default function AIPanel({
                   </div>
                 )}
                 {/* ── Tool call preview ─────────────────────── */}
-                {pendingToolCall && (
+                {pendingToolCalls.length > 0 && (
                   <ToolCallPreview
-                    toolCall={pendingToolCall}
+                    toolCalls={pendingToolCalls}
                     onApply={() => void applyToolCall()}
                     onCancel={cancelToolCall}
                     applyStatus={toolApplyStatus}

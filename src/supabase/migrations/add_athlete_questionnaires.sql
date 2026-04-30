@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.athlete_questionnaires (
 
   -- Statut de traitement par le coach
   statut       text        NOT NULL DEFAULT 'nouveau'
-    CHECK (statut IN ('nouveau', 'en_cours', 'accepte', 'archive')),
+    CHECK (statut IN ('nouveau', 'en_cours', 'accepte', 'refuse')),
   notes_coach  text,
 
   -- ── Identité ────────────────────────────────────────────────────

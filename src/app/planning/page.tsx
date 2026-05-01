@@ -861,34 +861,34 @@ function donutArcPath(
 }
 
 function ChartSection({
-  title, subtitle, defaultOpen = true, children,
+  title, subtitle, defaultOpen = true, children, action,
 }: {
-  title: string; subtitle?: string; defaultOpen?: boolean; children: React.ReactNode
+  title: string; subtitle?: string; defaultOpen?: boolean; children: React.ReactNode; action?: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={{ borderTop: '1px solid var(--border)', marginTop: 20, paddingTop: 16 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-          padding: 0, marginBottom: open ? 10 : 0,
-        }}
-      >
-        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 10 : 0 }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'baseline', gap: 6,
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexGrow: 1, textAlign: 'left',
+          }}
+        >
           <span style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', letterSpacing: '0.10em', textTransform: 'uppercase' as const }}>
             {title}
           </span>
           {subtitle && (
             <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>{subtitle}</span>
           )}
-        </span>
-        <span style={{
-          fontSize: 9, color: 'var(--text-dim)', flexShrink: 0, userSelect: 'none' as const,
-          display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s',
-        }}>▼</span>
-      </button>
+          <span style={{
+            fontSize: 9, color: 'var(--text-dim)', flexShrink: 0, userSelect: 'none' as const,
+            display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', marginLeft: 4,
+          }}>▼</span>
+        </button>
+        {action && <div onClick={e => e.stopPropagation()}>{action}</div>}
+      </div>
       {open && <div>{children}</div>}
     </div>
   )
@@ -1149,11 +1149,12 @@ ${semaines.map((sem) => {
 
 // ── Plan header + 4 collapsible charts ────────────────────────────────────
 
-function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
+function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onReload }: {
   plan: AiTrainingPlan
   sessions: AiPlanSessionAgg[]
   currentWeekStart: string
   nextRace?: Race | null
+  onReload?: () => void
 }) {
   const currentWeekNum = (() => {
     const startMs = new Date(plan.start_date + 'T00:00:00').getTime()
@@ -1360,7 +1361,24 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace }: {
             const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
             const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
             return (
-              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`}>
+              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`} action={
+                onReload && (
+                  <button
+                    onClick={onReload}
+                    title="Actualiser les données du planning"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      fontSize: 11, padding: '5px 12px', borderRadius: 8,
+                      border: '1.5px solid #8b5cf6',
+                      background: 'rgba(139,92,246,0.12)',
+                      color: '#8b5cf6', cursor: 'pointer', fontWeight: 700,
+                    }}
+                  >
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>↺</span>
+                    Actualiser
+                  </button>
+                )
+              }>
                 <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer', maxWidth: VOL_W }}>
                   {semaines.map((s, i) => {
                     const vol    = s.volume_h ?? 0
@@ -2063,7 +2081,7 @@ function TrainingTab() {
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif sur cette semaine) ── */}
       {aiPlan && (
-        <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} />
+        <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
       )}
       {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
       {aiPlan && <AiPlanBubble plan={aiPlan} />}

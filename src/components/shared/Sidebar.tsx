@@ -360,6 +360,19 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         display: 'flex', flexDirection: 'column', gap: 2,
         flexShrink: 0,
       }}>
+        {/* Abonnement */}
+        <NavItem
+          href="/settings/subscription"
+          label="Abonnement"
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <rect x="2" y="5" width="20" height="14" rx="2"/>
+              <line x1="2" y1="10" x2="22" y2="10"/>
+            </svg>
+          }
+          active={pathname === '/settings/subscription'}
+          onClick={onClose}
+        />
         {/* Candidatures */}
         <NavItem
           href="/questionnaire"

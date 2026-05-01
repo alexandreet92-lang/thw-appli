@@ -2516,6 +2516,87 @@ function TrainingPlanFlow({
   const [goalRacesLoading, setGoalRacesLoading] = useState(true)
   const [personalRecords, setPersonalRecords] = useState<{ sport: string; distance_label: string; performance: string }[]>([])
 
+  // ── Données live depuis planned_sessions ───────────────────────
+  interface LiveWeekSummary {
+    weekIndex: number
+    weekStart: string
+    type: string
+    theme: string
+    volume_h: number
+    tss_semaine: number
+    seanceCount: number
+    sportStats: { sport: string; count: number; durationH: number }[]
+  }
+  const [liveData,    setLiveData]    = useState<LiveWeekSummary[] | null>(null)
+  const [liveLoading, setLiveLoading] = useState(false)
+  const [selectedBar, setSelectedBar] = useState<number | null>(null)
+
+  async function refreshLiveData() {
+    if (!program || !startDate) return
+    setLiveLoading(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setLiveLoading(false); return }
+
+      // On prend le plan + 8 semaines de marge pour capturer les semaines ajoutées
+      const endDate = addWeeks(startDate, program.duree_semaines + 8 - 1)
+      const { data } = await sb
+        .from('planned_sessions')
+        .select('week_start, sport, duration_min, tss')
+        .eq('user_id', user.id)
+        .gte('week_start', startDate)
+        .lte('week_start', endDate)
+        .order('week_start')
+
+      if (!data || data.length === 0) { setLiveLoading(false); return }
+
+      // Grouper par semaine
+      const weekMap = new Map<string, { sport: string; duration_min: number; tss: number }[]>()
+      for (const row of data as { week_start: string; sport: string; duration_min: number; tss: number | null }[]) {
+        if (!weekMap.has(row.week_start)) weekMap.set(row.week_start, [])
+        weekMap.get(row.week_start)!.push({ sport: row.sport, duration_min: row.duration_min ?? 0, tss: row.tss ?? 0 })
+      }
+
+      const weekStarts = Array.from(weekMap.keys()).sort()
+      const summaries: LiveWeekSummary[] = weekStarts.map((ws, idx) => {
+        const sessions = weekMap.get(ws)!
+        const progWeek = program.semaines.find(s => addWeeks(startDate, s.numero - 1) === ws)
+
+        const volume_h   = Math.round(sessions.reduce((s, x) => s + x.duration_min / 60, 0) * 10) / 10
+        const tss_semaine = Math.round(sessions.reduce((s, x) => s + x.tss, 0))
+
+        const sportMap = new Map<string, { count: number; min: number }>()
+        for (const s of sessions) {
+          const key = s.sport || 'autre'
+          if (!sportMap.has(key)) sportMap.set(key, { count: 0, min: 0 })
+          sportMap.get(key)!.count++
+          sportMap.get(key)!.min += s.duration_min
+        }
+        const sportStats = Array.from(sportMap.entries())
+          .map(([sport, v]) => ({ sport, count: v.count, durationH: Math.round(v.min / 60 * 10) / 10 }))
+          .sort((a, b) => b.durationH - a.durationH)
+
+        return {
+          weekIndex: idx + 1,
+          weekStart: ws,
+          type:  progWeek?.type  ?? 'Base',
+          theme: progWeek?.theme ?? `Semaine ${idx + 1}`,
+          volume_h,
+          tss_semaine,
+          seanceCount: sessions.length,
+          sportStats,
+        }
+      })
+      setLiveData(summaries)
+    } catch (e) {
+      console.error('[refreshLiveData]', e)
+    } finally {
+      setLiveLoading(false)
+    }
+  }
+
   function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
   }
@@ -2909,6 +2990,7 @@ function TrainingPlanFlow({
       setPlanStats({ created, errors })
       setConflictInfo(null)
       setPlanStep(errors > 0 && created === 0 ? 'error' : 'success')
+      void refreshLiveData()
     } catch (e) {
       console.error('[saveToPlanning]', e)
       setPlanStep('error')
@@ -3138,7 +3220,7 @@ function TrainingPlanFlow({
             >
               {(() => {
                 const blocs = program.blocs_periodisation ?? []
-                const total = program.duree_semaines || 1
+                const total = (liveData ? liveData.length : program.duree_semaines) || 1
                 let offsetX = 0
                 return blocs.map((b, i) => {
                   const dur = b.semaine_fin - b.semaine_debut + 1
@@ -3354,13 +3436,20 @@ function TrainingPlanFlow({
         )}
 
         {/* ── GRAPHIQUE VOLUME ──────────────────────── */}
-        {program.semaines.length > 0 && (() => {
-          const semaines = program.semaines
-          const maxH = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
-          const chartH = 80
-          const chartW = 400
-          const barW = Math.max(2, chartW / semaines.length - 2)
-          const stepX = chartW / semaines.length
+        {(() => {
+          // Source : données live (planned_sessions) si disponibles, sinon plan IA
+          const weeks: { label: string; type: string; theme: string; volume_h: number; tss_semaine: number; seanceCount: number; sportStats: { sport: string; count: number; durationH: number }[] }[] =
+            liveData
+              ? liveData.map(w => ({ label: `S${w.weekIndex}`, type: w.type, theme: w.theme, volume_h: w.volume_h, tss_semaine: w.tss_semaine, seanceCount: w.seanceCount, sportStats: w.sportStats }))
+              : program.semaines.map(s => ({ label: `S${s.numero}`, type: s.type, theme: s.theme, volume_h: s.volume_h ?? 0, tss_semaine: s.tss_semaine ?? 0, seanceCount: (s.seances ?? []).length, sportStats: [] }))
+
+          if (weeks.length === 0) return null
+
+          const maxH    = Math.max(...weeks.map(w => w.volume_h), 1)
+          const chartH  = 80
+          const chartW  = 400
+          const barW    = Math.max(2, chartW / weeks.length - 2)
+          const stepX   = chartW / weeks.length
 
           function getBarColor(type: string | null | undefined): string {
             const t = (type ?? '').toLowerCase()
@@ -3371,46 +3460,68 @@ function TrainingPlanFlow({
             return '#8b5cf6'
           }
 
-          const yPad = 24 // espace à gauche pour les labels d'heures
+          function fmtH(h: number): string {
+            const hh = Math.floor(h)
+            const mm = Math.round((h - hh) * 60)
+            return mm > 0 ? `${hh}h${String(mm).padStart(2, '0')}` : `${hh}h`
+          }
+
+          const sel = selectedBar !== null ? weeks[selectedBar] : null
+
           return (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              {/* En-tête avec bouton sync */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Volume hebdomadaire
+                  <span style={{ fontWeight: 400, color: 'var(--ai-dim)', marginLeft: 6 }}>
+                    {weeks.length} sem{liveData ? ' · live' : ''}
+                  </span>
                 </p>
-                <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>
-                  max {Math.round(maxH)}h · moy {Math.round(semaines.reduce((s, w) => s + (w.volume_h ?? 0), 0) / Math.max(semaines.length, 1))}h
-                </span>
+                <button
+                  onClick={() => void refreshLiveData()}
+                  disabled={liveLoading}
+                  title="Synchroniser avec le planning"
+                  style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'transparent', color: liveLoading ? 'var(--ai-dim)' : '#8b5cf6', cursor: liveLoading ? 'default' : 'pointer', fontWeight: 600 }}
+                >
+                  {liveLoading ? '…' : '↺ Sync'}
+                </button>
               </div>
-              <svg width="100%" viewBox={`0 0 ${chartW + yPad} ${chartH + 20}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-                {/* Axe Y guides + labels */}
-                {[0, 0.5, 1].map((frac, i) => {
-                  const y = chartH - frac * chartH
-                  const value = Math.round(maxH * frac)
+
+              {/* SVG barres — cliquables */}
+              <svg
+                width="100%"
+                viewBox={`0 0 ${chartW} ${chartH + 20}`}
+                preserveAspectRatio="none"
+                style={{ display: 'block', cursor: 'pointer' }}
+              >
+                {[0, 0.5, 1].map((frac, i) => (
+                  <line key={i} x1={0} y1={chartH - frac * chartH} x2={chartW} y2={chartH - frac * chartH}
+                    stroke="rgba(107,114,128,0.2)" strokeWidth={1} strokeDasharray="4 3" />
+                ))}
+                {weeks.map((w, i) => {
+                  const h     = Math.max(2, (w.volume_h / maxH) * chartH)
+                  const x     = i * stepX + (stepX - barW) / 2
+                  const y     = chartH - h
+                  const color = getBarColor(w.type)
+                  const isSel = selectedBar === i
+                  const label = weeks.length <= 16 ? w.label : (i % 2 === 0 ? w.label : '')
                   return (
-                    <g key={i}>
-                      <line x1={yPad} y1={y} x2={chartW + yPad} y2={y}
-                        stroke="rgba(107,114,128,0.2)" strokeWidth={1} strokeDasharray="4 3" />
-                      <text x={yPad - 3} y={y + 3} textAnchor="end" fontSize={9} fill="var(--ai-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {value}h
-                      </text>
-                    </g>
-                  )
-                })}
-                {/* Barres */}
-                {semaines.map((sem, i) => {
-                  const h = Math.max(2, ((sem.volume_h ?? 0) / maxH) * chartH)
-                  const x = yPad + i * stepX + (stepX - barW) / 2
-                  const y = chartH - h
-                  const color = getBarColor(sem.type)
-                  const label = semaines.length <= 16 ? `S${sem.numero}` : (i % 2 === 0 ? `S${sem.numero}` : '')
-                  return (
-                    <g key={i}>
-                      <rect x={x} y={y} width={barW} height={h} fill={color} opacity={0.8} rx={2}>
-                        <title>{`S${sem.numero} — ${sem.theme}\n${sem.volume_h}h · TSS ${sem.tss_semaine}`}</title>
+                    <g key={i} onClick={() => setSelectedBar(isSel ? null : i)} style={{ cursor: 'pointer' }}>
+                      <rect x={i * stepX} y={0} width={stepX} height={chartH + 20} fill="transparent" />
+                      <rect
+                        x={x} y={y} width={barW} height={h}
+                        fill={color}
+                        opacity={selectedBar === null || isSel ? 0.85 : 0.35}
+                        rx={2}
+                        stroke={isSel ? '#fff' : 'none'}
+                        strokeWidth={isSel ? 1.5 : 0}
+                      >
+                        <title>{`${w.label} — ${w.theme}\n${w.volume_h}h · TSS ${w.tss_semaine} · ${w.seanceCount} séance${w.seanceCount > 1 ? 's' : ''}`}</title>
                       </rect>
                       {label && (
-                        <text x={yPad + i * stepX + stepX / 2} y={chartH + 14} textAnchor="middle" fontSize={9} fill="var(--ai-dim)">
+                        <text x={i * stepX + stepX / 2} y={chartH + 14} textAnchor="middle" fontSize={9}
+                          fill={isSel ? '#8b5cf6' : 'var(--ai-dim)'} fontWeight={isSel ? '700' : '400'}>
                           {label}
                         </text>
                       )}
@@ -3418,6 +3529,52 @@ function TrainingPlanFlow({
                   )
                 })}
               </svg>
+
+              {/* Panel détail semaine sélectionnée */}
+              {sel && (
+                <div style={{
+                  marginTop: 10, padding: '10px 12px', borderRadius: 9,
+                  border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  position: 'relative',
+                }}>
+                  <button onClick={() => setSelectedBar(null)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: 'var(--ai-dim)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+                      {sel.label} — {sel.type}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{sel.theme}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { l: 'Volume', v: fmtH(sel.volume_h) },
+                      { l: 'TSS',    v: `${sel.tss_semaine}` },
+                      { l: 'Séances',v: `${sel.seanceCount}` },
+                    ].map(kpi => (
+                      <div key={kpi.l}>
+                        <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{kpi.l}</p>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'DM Mono,monospace' }}>{kpi.v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {sel.sportStats.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {sel.sportStats.map((st, si) => (
+                        <div key={si} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, color: 'var(--ai-mid)', textTransform: 'capitalize' }}>{st.sport}</span>
+                          <span style={{ fontSize: 11, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
+                            {st.count}× {fmtH(st.durationH)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!liveData && (
+                    <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '8px 0 0', fontStyle: 'italic' }}>
+                      Appuie sur ↺ Sync pour voir les données réelles du planning
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )
         })()}

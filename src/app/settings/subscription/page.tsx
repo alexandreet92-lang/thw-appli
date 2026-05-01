@@ -97,7 +97,7 @@ const USAGE_LABELS: Partial<Record<UsageType, string>> = {
 
 // ── Skeleton ───────────────────────────────────────────────────
 
-function Skeleton({ className = '' }: { className?: string }) {
+function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
       className={className}
@@ -106,6 +106,7 @@ function Skeleton({ className = '' }: { className?: string }) {
         backgroundSize:  '200% 100%',
         animation:       'shimmer 1.4s infinite linear',
         borderRadius:    8,
+        ...style,
       }}
     />
   )
@@ -373,7 +374,7 @@ export default function SubscriptionPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {loading ? (
-                <Skeleton className="" style={{ width: 80, height: 22 } as React.CSSProperties} />
+                <Skeleton className="" style={{ width: 80, height: 22 }} />
               ) : (
                 <>
                   <span style={{
@@ -406,7 +407,7 @@ export default function SubscriptionPage() {
               )}
             </div>
             {loading ? (
-              <Skeleton className="" style={{ width: 200, height: 16 } as React.CSSProperties} />
+              <Skeleton className="" style={{ width: 200, height: 16 }} />
             ) : periodEnd ? (
               <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
                 Prochaine facturation le {periodEnd}
@@ -443,9 +444,9 @@ export default function SubscriptionPage() {
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <Skeleton className="" style={{ width: '60%', height: 14 } as React.CSSProperties} />
-                    <Skeleton className="" style={{ width: '100%', height: 4  } as React.CSSProperties} />
-                    <Skeleton className="" style={{ width: '40%', height: 11 } as React.CSSProperties} />
+                    <Skeleton className="" style={{ width: '60%', height: 14 }} />
+                    <Skeleton className="" style={{ width: '100%', height: 4 }} />
+                    <Skeleton className="" style={{ width: '40%', height: 11 }} />
                   </div>
                 ))
               : (Object.entries(USAGE_LABELS) as [UsageType, string][]).map(([type, label]) => {

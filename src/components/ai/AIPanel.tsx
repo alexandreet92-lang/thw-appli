@@ -2531,64 +2531,103 @@ function TrainingPlanFlow({
   const [liveLoading, setLiveLoading] = useState(false)
   const [selectedBar, setSelectedBar] = useState<number | null>(null)
 
+  // Charge TOUTES les séances du planning depuis Supabase — indépendant du plan IA généré.
+  // Appelé au mount ET après chaque sauvegarde.
   async function refreshLiveData() {
-    if (!program || !startDate) return
     setLiveLoading(true)
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setLiveLoading(false); return }
+      if (!user) return
 
-      // On prend le plan + 8 semaines de marge pour capturer les semaines ajoutées
-      const endDate = addWeeks(startDate, program.duree_semaines + 8 - 1)
-      const { data } = await sb
+      // 1. Récupère toutes les séances planifiées (fenêtre large : -4 sem à +104 sem)
+      const today = new Date()
+      const from = new Date(today); from.setDate(from.getDate() - 28)
+      const to   = new Date(today); to.setDate(to.getDate() + 104 * 7)
+      const fromStr = from.toISOString().slice(0, 10)
+      const toStr   = to.toISOString().slice(0, 10)
+
+      const { data: sessions } = await sb
         .from('planned_sessions')
-        .select('week_start, sport, duration_min, tss')
+        .select('week_start, sport, duration_min, tss, plan_id')
         .eq('user_id', user.id)
-        .gte('week_start', startDate)
-        .lte('week_start', endDate)
+        .gte('week_start', fromStr)
+        .lte('week_start', toStr)
         .order('week_start')
 
-      if (!data || data.length === 0) { setLiveLoading(false); return }
+      if (!sessions || sessions.length === 0) return
 
-      // Grouper par semaine
+      // 2. Tente de récupérer les métadonnées de semaines (type, thème) depuis le plan IA
+      //    en priorité depuis le plan en cours (program), sinon depuis training_plans en DB
+      type WeekMeta = { weekStart: string; type: string; theme: string }
+      const weekMetaMap = new Map<string, WeekMeta>()
+
+      // Source 1 : plan IA chargé en mémoire (le plus à jour)
+      if (program && startDate) {
+        program.semaines.forEach((s, idx) => {
+          const ws = addWeeks(startDate, idx)
+          weekMetaMap.set(ws, { weekStart: ws, type: s.type ?? 'Base', theme: s.theme ?? `Semaine ${s.numero}` })
+        })
+      } else {
+        // Source 2 : training_plans actif en DB
+        const planIds = [...new Set((sessions as { plan_id: string | null }[]).map(s => s.plan_id).filter(Boolean))]
+        if (planIds.length > 0) {
+          const { data: planRows } = await sb
+            .from('training_plans')
+            .select('start_date, ai_context')
+            .in('id', planIds)
+            .limit(5)
+          for (const plan of planRows ?? []) {
+            const planStart = (plan as { start_date: string }).start_date
+            const semaines  = ((plan as { ai_context: { program?: { semaines?: { type?: string; theme?: string; numero?: number }[] } } }).ai_context?.program?.semaines) ?? []
+            semaines.forEach((s, idx) => {
+              const ws = addWeeks(planStart, idx)
+              if (!weekMetaMap.has(ws)) {
+                weekMetaMap.set(ws, { weekStart: ws, type: s.type ?? 'Base', theme: s.theme ?? `Semaine ${(s.numero ?? idx + 1)}` })
+              }
+            })
+          }
+        }
+      }
+
+      // 3. Groupe par semaine et calcule les stats
       const weekMap = new Map<string, { sport: string; duration_min: number; tss: number }[]>()
-      for (const row of data as { week_start: string; sport: string; duration_min: number; tss: number | null }[]) {
+      for (const row of sessions as { week_start: string; sport: string; duration_min: number; tss: number | null; plan_id: string | null }[]) {
         if (!weekMap.has(row.week_start)) weekMap.set(row.week_start, [])
-        weekMap.get(row.week_start)!.push({ sport: row.sport, duration_min: row.duration_min ?? 0, tss: row.tss ?? 0 })
+        weekMap.get(row.week_start)!.push({ sport: row.sport || 'autre', duration_min: row.duration_min ?? 0, tss: row.tss ?? 0 })
       }
 
       const weekStarts = Array.from(weekMap.keys()).sort()
       const summaries: LiveWeekSummary[] = weekStarts.map((ws, idx) => {
-        const sessions = weekMap.get(ws)!
-        const progWeek = program.semaines.find(s => addWeeks(startDate, s.numero - 1) === ws)
+        const rows    = weekMap.get(ws)!
+        const meta    = weekMetaMap.get(ws)
 
-        const volume_h   = Math.round(sessions.reduce((s, x) => s + x.duration_min / 60, 0) * 10) / 10
-        const tss_semaine = Math.round(sessions.reduce((s, x) => s + x.tss, 0))
+        const volume_h    = Math.round(rows.reduce((s, x) => s + x.duration_min / 60, 0) * 10) / 10
+        const tss_semaine = Math.round(rows.reduce((s, x) => s + x.tss, 0))
 
-        const sportMap = new Map<string, { count: number; min: number }>()
-        for (const s of sessions) {
-          const key = s.sport || 'autre'
-          if (!sportMap.has(key)) sportMap.set(key, { count: 0, min: 0 })
-          sportMap.get(key)!.count++
-          sportMap.get(key)!.min += s.duration_min
+        const sMap = new Map<string, { count: number; min: number }>()
+        for (const r of rows) {
+          if (!sMap.has(r.sport)) sMap.set(r.sport, { count: 0, min: 0 })
+          sMap.get(r.sport)!.count++
+          sMap.get(r.sport)!.min += r.duration_min
         }
-        const sportStats = Array.from(sportMap.entries())
+        const sportStats = Array.from(sMap.entries())
           .map(([sport, v]) => ({ sport, count: v.count, durationH: Math.round(v.min / 60 * 10) / 10 }))
           .sort((a, b) => b.durationH - a.durationH)
 
         return {
-          weekIndex: idx + 1,
-          weekStart: ws,
-          type:  progWeek?.type  ?? 'Base',
-          theme: progWeek?.theme ?? `Semaine ${idx + 1}`,
+          weekIndex:  idx + 1,
+          weekStart:  ws,
+          type:       meta?.type  ?? 'Base',
+          theme:      meta?.theme ?? `Semaine ${idx + 1}`,
           volume_h,
           tss_semaine,
-          seanceCount: sessions.length,
+          seanceCount: rows.length,
           sportStats,
         }
       })
+
       setLiveData(summaries)
     } catch (e) {
       console.error('[refreshLiveData]', e)
@@ -2596,6 +2635,9 @@ function TrainingPlanFlow({
       setLiveLoading(false)
     }
   }
+
+  // Charge les données live au mount (affiche immédiatement les vraies données du planning)
+  useEffect(() => { void refreshLiveData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function setField<K extends keyof TrainingPlanForm>(key: K, value: TrainingPlanForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -3079,14 +3121,20 @@ function TrainingPlanFlow({
   }
 
   if (phase === 'result' && program) {
-    const totalSeances = program.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
+    // KPIs : live si dispo, sinon plan IA
+    const totalSeances = liveData
+      ? liveData.reduce((s, w) => s + w.seanceCount, 0)
+      : program.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
+    const totalWeeks = liveData ? liveData.length : program.duree_semaines
     const weeksToShow = showAllWeeks ? program.semaines : program.semaines.slice(0, 2)
 
-    // Déduire les sports depuis la semaine 1
-    const sportsS1 = Array.from(new Set(
-      (program.semaines[0]?.seances ?? []).map(s => s.sport)
-    ))
-    const sportsLabel = sportsS1.length > 0 ? sportsS1.join(' · ') : form.sport_principal
+    // Sports : live en priorité
+    const sportsLabel = liveData && liveData.length > 0
+      ? Array.from(new Set(liveData.flatMap(w => w.sportStats.map(s => s.sport)))).join(' · ')
+      : (() => {
+          const s1 = Array.from(new Set((program.semaines[0]?.seances ?? []).map(s => s.sport)))
+          return s1.length > 0 ? s1.join(' · ') : form.sport_principal
+        })()
 
     // Couleur badge selon type de semaine — null-safe : si l'agent omet
     // le champ `type` sur une semaine, le .toLowerCase() throw et casse
@@ -3185,10 +3233,10 @@ function TrainingPlanFlow({
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
-              {program.duree_semaines} semaines
+              {totalWeeks} semaines{liveData ? ' · live' : ''}
             </span>
-            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }} title="Séances détaillées sur S1 et S2 uniquement. Les semaines suivantes sont résumées.">
-              {totalSeances} séances détaillées
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+              {totalSeances} séances{liveData ? '' : ' détaillées'}
             </span>
             <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
               {sportsLabel}

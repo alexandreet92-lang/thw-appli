@@ -57,7 +57,7 @@ Fonctionnalités / Evolutions pour plus tard :
 - Intégrations externes - transfert de séances 
 - Page Challenge (a mettre en place lorsque l’app a plusieurs milliers d’utilisateurs) 
 - Outils HRV inclus dans l’app (a partir de l’abonnement Pro) 
-- 
+- Interface coach 
 - Exécuté phase 4 = mémoire chat discussions + plan B
 - Exécuté phase 5 = 
 - Rajouter action rapide : Analyser une activité 

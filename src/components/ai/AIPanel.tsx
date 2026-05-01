@@ -3518,7 +3518,7 @@ function TrainingPlanFlow({
 
           return (
             <div style={{ marginBottom: 20 }}>
-              {/* En-tête avec bouton sync */}
+              {/* En-tête */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Volume hebdomadaire
@@ -3530,9 +3530,18 @@ function TrainingPlanFlow({
                   onClick={() => void refreshLiveData()}
                   disabled={liveLoading}
                   title="Synchroniser avec le planning"
-                  style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'transparent', color: liveLoading ? 'var(--ai-dim)' : '#8b5cf6', cursor: liveLoading ? 'default' : 'pointer', fontWeight: 600 }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    fontSize: 11, padding: '5px 12px', borderRadius: 8,
+                    border: '1.5px solid #8b5cf6',
+                    background: liveLoading ? 'transparent' : 'rgba(139,92,246,0.12)',
+                    color: liveLoading ? 'var(--ai-dim)' : '#8b5cf6',
+                    cursor: liveLoading ? 'default' : 'pointer',
+                    fontWeight: 700, transition: 'all 0.15s',
+                  }}
                 >
-                  {liveLoading ? '…' : '↺ Sync'}
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>{liveLoading ? '…' : '↺'}</span>
+                  {liveLoading ? 'Chargement…' : 'Actualiser'}
                 </button>
               </div>
 

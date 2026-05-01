@@ -71,3 +71,9 @@ All Pages
 - Lister TOUTES les actions rapides 
 - Lister le process des main actions rapides 
 - Priorité action rapide = Créer un plan d’entrainement 
+- Premium mensuel : prod_URHseib8S3m0IS
+- Premium annuel : prod_URHtb7uHT5PmuY
+- Pro mensuel : prod_URHuYQ3f5Au23d
+- Pro annuel : prod_URHv8IpGY74rZ1
+- Expert mensuel : prod_URHvV0KCTwkkeq
+- Expert annuel : prod_URHwEcFdNdk0hJ

@@ -7,8 +7,26 @@ import {
   getProgression,
   type AthleteProfile,
 } from '@/lib/agents/performanceAgents'
+import { createClient } from '@/lib/supabase/server'
+import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
+import { logUsage } from '@/lib/subscriptions/check-quota'
 
 export async function POST(req: NextRequest) {
+  // ── Auth ────────────────────────────────────────────────────
+  let userId: string
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    userId = user.id
+  } catch {
+    return NextResponse.json({ error: 'Erreur d\'authentification' }, { status: 401 })
+  }
+
+  // ── Quota micro_agent ────────────────────────────────────────
+  const check = await enforceQuota(userId, 'micro_agent')
+  if (!check.allowed) return check.response
+
   try {
     const body = await req.json()
     const { action, payload } = body as {
@@ -57,6 +75,8 @@ export async function POST(req: NextRequest) {
         )
     }
 
+    // ── Log usage micro_agent (fire-and-forget) ─────────────────
+    void logUsage(userId, 'micro_agent', { action })
     return NextResponse.json({ reply })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erreur interne'

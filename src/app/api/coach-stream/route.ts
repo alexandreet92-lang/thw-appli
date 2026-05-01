@@ -18,6 +18,9 @@ import { getAnthropicClient } from '@/lib/agents/base'
 import { buildChatParams, getModelConfig } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
 import { coachTools } from '@/lib/coach/tools-definition'
+import { createClient } from '@/lib/supabase/server'
+import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
+import { logUsage } from '@/lib/subscriptions/check-quota'
 
 // ── Instructions tool use — ajoutées à la fin de tous les system prompts ──
 
@@ -48,6 +51,21 @@ DIRECTIVES POUR UNE SEMAINE DE DELOAD (avant compétition ou fin de bloc) :
 // ── Route handler ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // ── Auth ─────────────────────────────────────────────────────
+  let userId: string
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
+    userId = user.id
+  } catch {
+    return new Response(JSON.stringify({ error: 'Erreur d\'authentification' }), { status: 401 })
+  }
+
+  // ── Quota message ─────────────────────────────────────────────
+  const check = await enforceQuota(userId, 'message')
+  if (!check.allowed) return check.response
+
   let body: ChatInput
 
   try {
@@ -116,6 +134,14 @@ export async function POST(req: NextRequest) {
 
       controller.close()
     },
+  })
+
+  // ── Log usage message (fire-and-forget) ─────────────────────
+  void logUsage(userId, 'message', {
+    model,
+    stop_reason: response.stop_reason,
+    input_tokens:  response.usage.input_tokens,
+    output_tokens: response.usage.output_tokens,
   })
 
   return new Response(readable, {

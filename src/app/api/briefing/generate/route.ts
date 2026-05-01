@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient, parseJsonResponse } from '@/lib/agents/base'
 import { createServiceClient } from '@/lib/supabase/server'
+import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
+import { logUsage } from '@/lib/subscriptions/check-quota'
 
 // ── System prompt ─────────────────────────────────────────────
 
@@ -288,6 +290,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   }
 
+  // ── Quota briefing (vérifie fréquence hebdo pour le creator) ─
+  const check = await enforceQuota(creatorId, 'briefing')
+  if (!check.allowed) return check.response as NextResponse
+
   // Body optionnel — contexte additionnel injecté dans le prompt user
   let extraContext: Record<string, unknown> = {}
   try {
@@ -364,6 +370,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       console.log('[briefing/generate] DB upsert failed:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // ── Log usage briefing (fire-and-forget) ─────────────────────
+    void logUsage(creatorId, 'briefing', {
+      model: 'claude-sonnet-4-6',
+      web_search: true,
+      date,
+    })
 
     return NextResponse.json({ briefing: data })
   } catch (err) {

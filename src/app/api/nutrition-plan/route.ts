@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
+import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
 
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest): Promise<Response> {
   try {
     const body = await req.json() as {
       profile: { weight_kg: number | null; full_name: string | null }
@@ -128,3 +129,7 @@ Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calcu
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
+
+export const POST = withQuotaCheck('nutrition_plan')(
+  postHandler as (req: NextRequest, ctx: { params?: Promise<Record<string, string>> }) => Promise<Response>
+)

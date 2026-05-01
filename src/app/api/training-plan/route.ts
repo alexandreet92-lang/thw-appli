@@ -2,6 +2,7 @@ export const maxDuration = 60
 
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
+import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
 
 export const runtime = 'nodejs'
 
@@ -456,7 +457,7 @@ ${s('precision_nutrition') ? `Précisions nutrition: ${s('precision_nutrition')}
 
 // ─────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest): Promise<Response> {
+async function postHandler(req: NextRequest): Promise<Response> {
   let body: TrainingPlanRequestBody
   try {
     body = await req.json() as TrainingPlanRequestBody
@@ -615,3 +616,7 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
     })
   }
 }
+
+export const POST = withQuotaCheck('plan_generation')(
+  postHandler as (req: NextRequest, ctx: { params?: Promise<Record<string, string>> }) => Promise<Response>
+)

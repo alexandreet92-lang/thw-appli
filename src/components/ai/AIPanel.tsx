@@ -7385,6 +7385,16 @@ export default function AIPanel({
       setPendingToolCalls([])
       setToolApplyStatus('idle')
 
+      // ── Log tool_use (fire-and-forget via Supabase client) ──────
+      void sb.from('usage_logs').insert({
+        user_id: user.id,
+        type: 'tool_use',
+        metadata: {
+          tool_count: total,
+          tool_names: pendingToolCalls.map(t => t.tool_name),
+        },
+      })
+
       // Déclenche le refresh de la page planning (load()) via event window
       window.dispatchEvent(new CustomEvent('thw:sessions-changed'))
       console.log('[AIPanel] refresh triggered after apply — thw:sessions-changed')
@@ -7554,6 +7564,24 @@ export default function AIPanel({
             : (context ?? {}),
         }),
       })
+
+      // ── 429 Quota dépassé — message convivial dans le chat ──────
+      if (res.status === 429) {
+        let quotaMsg = '⚠️ **Quota mensuel atteint.** Tu as utilisé toutes tes interactions IA ce mois-ci.\n\n[Améliorer mon abonnement →](/settings/subscription)'
+        try {
+          const qd = await res.json() as { used?: number; limit?: number; tier?: string; reset_at?: string }
+          if (qd.reset_at) {
+            const resetDate = new Date(qd.reset_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+            quotaMsg = `⚠️ **Quota mensuel atteint** (${qd.used ?? '?'}/${qd.limit ?? '?'} messages utilisés).\n\nRemise à zéro le **${resetDate}**. [Améliorer mon abonnement →](/settings/subscription)`
+          }
+        } catch { /* fallback */ }
+        const quotaErrMsg: AIMsg = { id: genId(), role: 'assistant', content: quotaMsg, ts: Date.now() }
+        setConvs(prev => prev.map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, quotaErrMsg], updatedAt: Date.now() } : c
+        ))
+        setLoading(false)
+        return
+      }
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
 

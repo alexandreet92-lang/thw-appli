@@ -1163,7 +1163,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
   })()
 
   const [selectedBloc, setSelectedBloc] = useState<number | null>(null)
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
 
   // Dimensions SVG
   const PERIOD_W = 400, PERIOD_H = 36
@@ -1324,44 +1324,70 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
           )}
         </div>
 
-        {/* ── RIGHT : VOLUME HEBDOMADAIRE ── */}
+        {/* ── RIGHT : VOLUME HEBDOMADAIRE — 100% live depuis planned_sessions ── */}
         <div>
           {(() => {
-            const rawSemaines = plan.ai_context?.program?.semaines ?? []
-            if (rawSemaines.length === 0) return null
+            if (sessions.length === 0) return null
 
-            // ── Volume réel depuis planned_sessions ─────────────────
-            // Calcule le volume réel par semaine à partir de sessions (aiPlanSessions)
-            // pour refléter les modifications du coach (add_week, update_session…).
-            // Mappe week_start → numéro de semaine via plan.start_date.
-            const WEEK_MS       = 7 * 24 * 60 * 60 * 1000
-            const planStartMs   = new Date(plan.start_date + 'T00:00:00Z').getTime()
-            const actualVolByNum = new Map<number, number>()
+            // ── Construire les semaines depuis les vraies séances ──────────
+            const WEEK_MS     = 7 * 24 * 60 * 60 * 1000
+            const planStartMs = new Date(plan.start_date + 'T00:00:00Z').getTime()
+
+            // Métadonnées type/thème depuis le plan IA (enrichissement optionnel)
+            type AiSem = { numero?: number; type?: string; theme?: string }
+            const aiSemaines: AiSem[] = plan.ai_context?.program?.semaines ?? []
+
+            // Groupe sessions par week_start
+            const weekMap = new Map<string, { sport: string; duration_min: number; intensity?: string }[]>()
             for (const s of sessions) {
               if (!s.week_start) continue
-              const wsMs   = new Date(s.week_start + 'T00:00:00Z').getTime()
-              const weekNum = Math.round((wsMs - planStartMs) / WEEK_MS) + 1
-              const mins    = s.duration_min ?? 0
-              actualVolByNum.set(weekNum, (actualVolByNum.get(weekNum) ?? 0) + mins)
+              if (!weekMap.has(s.week_start)) weekMap.set(s.week_start, [])
+              weekMap.get(s.week_start)!.push({ sport: s.sport ?? 'autre', duration_min: s.duration_min ?? 0, intensity: s.intensity ?? undefined })
             }
+            const weekStarts = Array.from(weekMap.keys()).sort()
+            if (weekStarts.length === 0) return null
 
-            // Remplace volume_h par le volume réel si des données existent pour la semaine
-            const semaines = rawSemaines.map(s => {
-              const actualMins = actualVolByNum.get(s.numero)
-              if (actualMins !== undefined) return { ...s, volume_h: actualMins / 60 }
-              return s
+            type WeekBar = { weekStart: string; weekNum: number; type: string; theme: string; volume_h: number; seanceCount: number; sportStats: { sport: string; count: number; mins: number }[] }
+            const weekBars: WeekBar[] = weekStarts.map((ws, idx) => {
+              const rows     = weekMap.get(ws)!
+              const weekNum  = Math.round((new Date(ws + 'T00:00:00Z').getTime() - planStartMs) / WEEK_MS) + 1
+              const aiSem    = aiSemaines.find(s => s.numero === weekNum)
+              const volume_h = rows.reduce((s, r) => s + r.duration_min / 60, 0)
+
+              const sMap = new Map<string, { count: number; mins: number }>()
+              for (const r of rows) {
+                if (!sMap.has(r.sport)) sMap.set(r.sport, { count: 0, mins: 0 })
+                sMap.get(r.sport)!.count++
+                sMap.get(r.sport)!.mins += r.duration_min
+              }
+              const sportStats = Array.from(sMap.entries()).map(([sport, v]) => ({ sport, count: v.count, mins: v.mins })).sort((a, b) => b.mins - a.mins)
+
+              return {
+                weekStart: ws,
+                weekNum,
+                type:  aiSem?.type  ?? 'Base',
+                theme: aiSem?.theme ?? `Semaine ${idx + 1}`,
+                volume_h: Math.round(volume_h * 10) / 10,
+                seanceCount: rows.length,
+                sportStats,
+              }
             })
 
-            const n = semaines.length
+            const n      = weekBars.length
             const BAR_GAP = 4
-            const barW = 40           // 40 svg-units = 40px rendu max (< 60px demandé)
-            const VOL_W = barW * n + BAR_GAP * (n - 1)
-            const VOL_H = 80          // max 120px demandé — on prend 80 pour rester compact
-            const Y_PAD = 14
-            const maxVol = Math.max(...semaines.map(s => s.volume_h ?? 0), 1)
-            const selSem = selectedWeek !== null ? (semaines.find(s => s.numero === selectedWeek) ?? null) : null
+            const barW   = 40
+            const VOL_W  = barW * n + BAR_GAP * (n - 1)
+            const VOL_H  = 80
+            const Y_PAD  = 14
+            const maxVol = Math.max(...weekBars.map(w => w.volume_h), 1)
+            const selBar = selectedWeek !== null ? weekBars.find(w => w.weekStart === selectedWeek) ?? null : null
+
+            // Semaine courante
+            const curWsMs = new Date(currentWeekStart + 'T00:00:00Z').getTime()
+            const curWeekNum = Math.round((curWsMs - planStartMs) / WEEK_MS) + 1
+
             return (
-              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaines`} action={
+              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaine${n > 1 ? 's' : ''} · live`} action={
                 onReload && (
                   <button
                     onClick={onReload}
@@ -1380,121 +1406,61 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                 )
               }>
                 <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer', maxWidth: VOL_W }}>
-                  {semaines.map((s, i) => {
-                    const vol    = s.volume_h ?? 0
-                    const barH   = Math.max(vol > 0 ? (vol / maxVol) * VOL_H : 0, vol > 0 ? 2 : 0)
-                    const x      = i * (barW + BAR_GAP)
-                    const y      = VOL_H - barH
-                    const active = s.numero === currentWeekNum
-                    const isSel  = s.numero === selectedWeek
-                    const col    = safeWeekTypeBg(s.type)
-                    const txtCol = safeWeekTypeText(s.type)
+                  {weekBars.map((w, i) => {
+                    const barH  = Math.max(w.volume_h > 0 ? (w.volume_h / maxVol) * VOL_H : 0, w.volume_h > 0 ? 2 : 0)
+                    const x     = i * (barW + BAR_GAP)
+                    const y     = VOL_H - barH
+                    const active = w.weekNum === curWeekNum
+                    const isSel  = w.weekStart === selectedWeek
+                    const col    = safeWeekTypeBg(w.type)
+                    const txtCol = safeWeekTypeText(w.type)
                     return (
-                      <g key={i} onClick={() => setSelectedWeek(isSel ? null : s.numero)} style={{ cursor: 'pointer' }}>
-                        {/* invisible hit area */}
+                      <g key={w.weekStart} onClick={() => setSelectedWeek(isSel ? null : w.weekStart)} style={{ cursor: 'pointer' }}>
                         <rect x={x} y={0} width={barW} height={VOL_H + Y_PAD} fill="transparent" />
-                        <rect x={x} y={y} width={barW} height={barH}
-                          fill={col} opacity={isSel ? 1 : active ? 1 : 0.5} rx={2}>
-                          <title>{`S${s.numero}${s.type ? ` · ${s.type}` : ''}${s.theme ? ` · ${s.theme}` : ''}\n${vol > 0 ? formatDuration(Math.round(vol * 60)) : '—'}`}</title>
+                        <rect x={x} y={y} width={barW} height={barH} fill={col} opacity={isSel ? 1 : active ? 1 : 0.5} rx={2}>
+                          <title>{`S${w.weekNum} — ${w.type}\n${w.theme}\n${formatDuration(Math.round(w.volume_h * 60))} · ${w.seanceCount} séance${w.seanceCount > 1 ? 's' : ''}`}</title>
                         </rect>
                         {(active || isSel) && (
-                          <rect x={x} y={y} width={barW} height={barH} rx={2}
-                            fill="none" stroke={txtCol} strokeWidth={1} opacity={0.4} />
+                          <rect x={x} y={y} width={barW} height={barH} rx={2} fill="none" stroke={txtCol} strokeWidth={1} opacity={0.4} />
                         )}
-                        {/* week number label below bar */}
                         <text x={x + barW / 2} y={VOL_H + Y_PAD - 1} textAnchor="middle"
                           fontSize={6} fill={isSel || active ? txtCol : '#aaa'}
                           fontWeight={isSel || active ? 600 : 400}>
-                          {`S${s.numero}`}
+                          {`S${w.weekNum}`}
                         </text>
                       </g>
                     )
                   })}
                 </svg>
-                {/* Detail panel on click */}
-                {selSem && (() => {
-                  const accentCol = safeWeekTypeText(selSem.type)
 
-                  // ── Lecture défensive : accepte seances ET sessions (alias agent) ──
-                  type RawSeance = { sport?: string; intensite?: string; duree_min?: number; titre?: string; title?: string }
-                  const selSemAny = selSem as unknown as Record<string, unknown>
-                  const seancesRaw = selSemAny.seances ?? selSemAny.sessions
-                  const rawSeances = (Array.isArray(seancesRaw) ? seancesRaw : []) as RawSeance[]
-
-                  // ── Labels lisibles pour l'intensité ──
-                  const INTENS_LABEL: Record<string, string> = {
-                    low:      'Endurance',
-                    moderate: 'Tempo / Z3',
-                    high:     'Intensif / Z4',
-                    max:      'VO2max / Z5',
-                  }
-
-                  // ── Agrégation par sport ──
-                  const volBySport:   Record<string, number>   = {}
-                  const cntBySport:   Record<string, number>   = {}
-                  const intenBySport: Record<string, string[]> = {}
-                  for (const s of rawSeances) {
-                    if (!s.sport) continue
-                    volBySport[s.sport]   = (volBySport[s.sport]   ?? 0) + (s.duree_min ?? 0)
-                    cntBySport[s.sport]   = (cntBySport[s.sport]   ?? 0) + 1
-                    if (!intenBySport[s.sport]) intenBySport[s.sport] = []
-                    // stocke le label lisible de l'intensité
-                    const iLabel = INTENS_LABEL[s.intensite ?? ''] ?? s.titre ?? s.title ?? ''
-                    if (iLabel) intenBySport[s.sport].push(iLabel)
-                  }
-                  const hasSportDetail = Object.keys(volBySport).length > 0
-                  const totalSeances   = rawSeances.length   // 0 pour S3+
-
+                {/* ── Détail semaine cliquée ── */}
+                {selBar && (() => {
+                  const accentCol = safeWeekTypeText(selBar.type)
                   return (
                     <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30` }}>
-
-                      {/* ── En-tête ── */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selSem.numero} — {selSem.type ?? ''}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selBar.weekNum} — {selBar.type}</span>
                         <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
                       </div>
-                      {selSem.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selSem.theme}</p>}
-
-                      {/* ── KPIs globaux ── */}
-                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: hasSportDetail ? 10 : 4 }}>
+                      {selBar.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selBar.theme}</p>}
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: selBar.sportStats.length > 0 ? 10 : 0 }}>
                         <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                          Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round((selSem.volume_h ?? 0) * 60))}</strong>
+                          Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(selBar.volume_h * 60))}</strong>
                         </span>
                         <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                          TSS <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{selSem.tss_semaine ?? '—'}</strong>
+                          Séances <strong style={{ color: 'var(--text)' }}>{selBar.seanceCount}</strong>
                         </span>
-                        {totalSeances > 0 && (
-                          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                            Séances <strong style={{ color: 'var(--text)' }}>{totalSeances}</strong>
-                          </span>
-                        )}
                       </div>
-
-                      {/* ── Détail par sport (S1-S2 uniquement) ── */}
-                      {hasSportDetail && (
+                      {selBar.sportStats.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {Object.entries(volBySport).sort((a, b) => b[1] - a[1]).map(([sport, mins]) => {
-                            const col  = sportColor(sport)
-                            const cnt  = cntBySport[sport] ?? 0
-                            const labels = intenBySport[sport] ?? []
-                            // Type dominant = label le plus fréquent
-                            const freqMap = labels.reduce<Record<string, number>>((acc, l) => { acc[l] = (acc[l] ?? 0) + 1; return acc }, {})
-                            const dominant = Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
-                            return (
-                              <div key={sport} style={{ display: 'grid', gridTemplateColumns: '70px 22px 44px 1fr', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: col, textTransform: 'capitalize' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
-                                <span style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'right' as const }}>{cnt}×</span>
-                                <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
-                                {dominant && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dominant}</span>}
-                              </div>
-                            )
-                          })}
+                          {selBar.sportStats.map(({ sport, count, mins }) => (
+                            <div key={sport} style={{ display: 'grid', gridTemplateColumns: '70px 22px 44px', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: sportColor(sport), textTransform: 'capitalize' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'right' as const }}>{count}×</span>
+                              <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
+                            </div>
+                          ))}
                         </div>
-                      )}
-
-                      {/* ── Résumé coach pour S3+ (pas de détail séances) ── */}
-                      {selSem.note_coach && !hasSportDetail && (
-                        <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '2px 0 0', fontStyle: 'italic', lineHeight: 1.5 }}>{selSem.note_coach}</p>
                       )}
                     </div>
                   )

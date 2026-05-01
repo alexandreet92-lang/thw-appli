@@ -8,7 +8,7 @@ import type { TierName } from '@/lib/subscriptions/tier-limits'
 // ── Client Stripe (server-only) ────────────────────────────────
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2024-06-20',
 })
 
 // ── Résolution Price ID → tier ─────────────────────────────────

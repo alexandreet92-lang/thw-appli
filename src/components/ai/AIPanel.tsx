@@ -7567,12 +7567,13 @@ export default function AIPanel({
 
       // ── 429 Quota dépassé — message convivial dans le chat ──────
       if (res.status === 429) {
-        let quotaMsg = '⚠️ **Quota mensuel atteint.** Tu as utilisé toutes tes interactions IA ce mois-ci.\n\n[Améliorer mon abonnement →](/settings/subscription)'
+        let quotaMsg = '⚠️ **Quota mensuel atteint.** Tu as utilisé toutes tes interactions IA ce mois-ci.\n\n👉 [Passer à un plan supérieur →](/settings/subscription)'
         try {
           const qd = await res.json() as { used?: number; limit?: number; tier?: string; reset_at?: string }
+          const tierLabel = qd.tier === 'pro' ? 'Pro' : qd.tier === 'expert' ? 'Expert' : 'Premium'
           if (qd.reset_at) {
             const resetDate = new Date(qd.reset_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
-            quotaMsg = `⚠️ **Quota mensuel atteint** (${qd.used ?? '?'}/${qd.limit ?? '?'} messages utilisés).\n\nRemise à zéro le **${resetDate}**. [Améliorer mon abonnement →](/settings/subscription)`
+            quotaMsg = `⚠️ **Quota mensuel atteint** — ${qd.used ?? '?'}/${qd.limit ?? '?'} messages utilisés (plan ${tierLabel}).\n\nRemise à zéro le **${resetDate}**.\n\n👉 [Améliorer mon abonnement →](/settings/subscription)`
           }
         } catch { /* fallback */ }
         const quotaErrMsg: AIMsg = { id: genId(), role: 'assistant', content: quotaMsg, ts: Date.now() }

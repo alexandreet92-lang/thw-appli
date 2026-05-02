@@ -14,11 +14,12 @@ interface UsageStat {
 }
 
 interface SubscriptionInfo {
-  tier:                 string | null
-  status:               string | null
-  stripe_customer_id:   string | null
-  current_period_end:   string | null
-  current_period_start: string | null
+  tier:                    string | null
+  status:                  string | null
+  stripe_customer_id:      string | null
+  stripe_subscription_id:  string | null   // null = plan gratuit, jamais souscrit
+  current_period_end:      string | null
+  current_period_start:    string | null
 }
 
 interface SummaryData {
@@ -230,7 +231,10 @@ export default function SubscriptionPage() {
   }, [])
 
   const currentTier = data?.tier ?? 'premium'
-  const hasBilling  = Boolean(data?.subscription?.stripe_customer_id)
+  // "Gérer mon abonnement" → uniquement si un abonnement Stripe réel existe.
+  // stripe_customer_id peut exister sans abonnement (checkout abandonné) ; c'est
+  // stripe_subscription_id qui confirme un vrai abonnement actif ou passé.
+  const hasBilling  = Boolean(data?.subscription?.stripe_subscription_id)
   const periodEnd   = data?.subscription?.current_period_end
     ? new Date(data.subscription.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null

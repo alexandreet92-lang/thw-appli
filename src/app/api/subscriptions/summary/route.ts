@@ -20,7 +20,7 @@ export async function GET() {
   const sb = createServiceClient()
   const { data: sub } = await sb
     .from('user_subscriptions')
-    .select('tier, status, stripe_customer_id, current_period_end, current_period_start')
+    .select('tier, status, stripe_customer_id, stripe_subscription_id, current_period_end, current_period_start')
     .eq('user_id', user.id)
     .single()
 

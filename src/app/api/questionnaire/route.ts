@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('[questionnaire] insert error:', error)
-    return NextResponse.json({ error: 'Erreur base de données' }, { status: 500, headers: corsHeaders })
+    return NextResponse.json({ error: 'Erreur base de données', details: error.message, code: error.code }, { status: 500, headers: corsHeaders })
   }
 
   return NextResponse.json(

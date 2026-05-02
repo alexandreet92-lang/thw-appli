@@ -16,48 +16,64 @@ interface AutreCourse {
   temps_vise?: string
 }
 
+// Tous les champs acceptent string pour gérer les envois de formulaires HTML
 interface QuestionnairePayload {
-  // Identité
   prenom: string
   nom: string
   email: string
-  age?: number | string
-  sexe?: 'homme' | 'femme' | 'autre' | 'non_precise'
-
-  // Objectif principal
-  objectif_sport?: string
-  objectif_course?: string
-  objectif_date?: string
-  objectif_temps?: string
-
-  // Autres courses
+  age?: unknown
+  sexe?: unknown
+  objectif_sport?: unknown
+  objectif_course?: unknown
+  objectif_date?: unknown
+  objectif_temps?: unknown
   autres_courses?: AutreCourse[]
-
-  // Mode de vie
-  heures_par_semaine?: number | string
+  heures_par_semaine?: unknown
   jours_disponibles?: string[]
-  contraintes?: string
-  blessures?: string
+  contraintes?: unknown
+  blessures?: unknown
+  montre_gps?: unknown
+  capteur_puissance?: unknown
+  home_trainer?: unknown
+  salle_muscu?: unknown
+  strava_connecte?: unknown
+  coaching_type?: unknown
+  coaching_duree?: unknown
+  coaching_sport?: unknown
+  coaching_objectif?: unknown
+  option_renfo?: unknown
+  niveau_suivi?: unknown
+  infos_complementaires?: unknown
+}
 
-  // Matériel
-  montre_gps?: boolean | string
-  capteur_puissance?: boolean | string
-  home_trainer?: boolean | string
-  salle_muscu?: boolean | string
-  strava_connecte?: boolean | string
+// ── Cast helpers ───────────────────────────────────────────────────
+// Chaque helper gère "", undefined, null et les strings "true"/"false"
 
-  // Coaching choisi
-  coaching_type?: 'pack' | 'abonnement'
-  coaching_duree?: string
-  coaching_sport?: string
-  coaching_objectif?: string
+function toInt(val: unknown): number | null {
+  if (val === '' || val === undefined || val === null) return null
+  const n = parseInt(String(val), 10)
+  return isNaN(n) ? null : n
+}
 
-  // Options
-  option_renfo?: boolean | string
-  niveau_suivi?: 'essentiel' | 'standard' | 'premium'
+// boolean NOT NULL en DB → jamais null, fallback false
+function toBool(val: unknown): boolean {
+  if (val === '' || val === undefined || val === null) return false
+  if (val === 'false' || val === '0') return false
+  return Boolean(val)
+}
 
-  // Infos complémentaires
-  infos_complementaires?: string
+// text nullable → "" devient null pour respecter les CHECK enum
+function toText(val: unknown): string | null {
+  if (val === undefined || val === null) return null
+  const s = String(val).trim()
+  return s === '' ? null : s
+}
+
+// date nullable → "" interdit par Postgres (erreur 22007)
+function toDate(val: unknown): string | null {
+  if (val === undefined || val === null) return null
+  const s = String(val).trim()
+  return s === '' ? null : s
 }
 
 // ── CORS preflight ─────────────────────────────────────────────────
@@ -66,7 +82,7 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: corsHeaders })
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
+// ── Response helpers ───────────────────────────────────────────────
 
 function unauthorized() {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders })
@@ -106,57 +122,73 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('athlete_questionnaires')
     .insert({
+      // text NOT NULL — validés ci-dessus
       prenom: prenom.trim(),
       nom: nom.trim(),
       email: email.trim().toLowerCase(),
-      // integer — parseInt ou null
-      age: body.age ? parseInt(String(body.age), 10) : null,
-      // text — "" OK, undefined → null
-      sexe: body.sexe || null,
 
-      // text — "" OK, undefined → null
-      objectif_sport: body.objectif_sport || null,
-      objectif_course: body.objectif_course || null,
-      // date NOT NULL en DB — "" interdit (code 22007), doit être null
-      objectif_date: body.objectif_date || null,
-      // text
-      objectif_temps: body.objectif_temps || null,
+      // integer nullable, CHECK (age > 0 AND age < 120)
+      age: toInt(body.age),
 
+      // text nullable, CHECK enum ('homme','femme','autre','non_precise')
+      sexe: toText(body.sexe),
+
+      // text nullable
+      objectif_sport: toText(body.objectif_sport),
+      objectif_course: toText(body.objectif_course),
+
+      // date nullable — "" → erreur 22007, doit être null
+      objectif_date: toDate(body.objectif_date),
+
+      // text nullable
+      objectif_temps: toText(body.objectif_temps),
+
+      // jsonb NOT NULL, default []
       autres_courses: body.autres_courses ?? [],
 
-      // integer — parseInt ou null
-      heures_par_semaine: body.heures_par_semaine ? parseInt(String(body.heures_par_semaine), 10) : null,
+      // integer nullable, CHECK (heures_par_semaine >= 0)
+      heures_par_semaine: toInt(body.heures_par_semaine),
+
+      // jsonb NOT NULL, default []
       jours_disponibles: body.jours_disponibles ?? [],
-      // text
-      contraintes: body.contraintes || null,
-      blessures: body.blessures || null,
 
-      // boolean NOT NULL en DB — "" ou undefined → false (jamais null)
-      montre_gps: body.montre_gps === '' || body.montre_gps === undefined ? false : Boolean(body.montre_gps),
-      capteur_puissance: body.capteur_puissance === '' || body.capteur_puissance === undefined ? false : Boolean(body.capteur_puissance),
-      home_trainer: body.home_trainer === '' || body.home_trainer === undefined ? false : Boolean(body.home_trainer),
-      salle_muscu: body.salle_muscu === '' || body.salle_muscu === undefined ? false : Boolean(body.salle_muscu),
-      strava_connecte: body.strava_connecte === '' || body.strava_connecte === undefined ? false : Boolean(body.strava_connecte),
+      // text nullable
+      contraintes: toText(body.contraintes),
+      blessures: toText(body.blessures),
 
-      // text
-      coaching_type: body.coaching_type || null,
-      coaching_duree: body.coaching_duree || null,
-      coaching_sport: body.coaching_sport || null,
-      coaching_objectif: body.coaching_objectif || null,
+      // boolean NOT NULL, default false
+      montre_gps: toBool(body.montre_gps),
+      capteur_puissance: toBool(body.capteur_puissance),
+      home_trainer: toBool(body.home_trainer),
+      salle_muscu: toBool(body.salle_muscu),
+      strava_connecte: toBool(body.strava_connecte),
 
-      // boolean NOT NULL en DB
-      option_renfo: body.option_renfo === '' || body.option_renfo === undefined ? false : Boolean(body.option_renfo),
-      // text
-      niveau_suivi: body.niveau_suivi || null,
+      // text nullable, CHECK enum ('pack','abonnement')
+      coaching_type: toText(body.coaching_type),
 
-      infos_complementaires: body.infos_complementaires || null,
+      // text nullable
+      coaching_duree: toText(body.coaching_duree),
+      coaching_sport: toText(body.coaching_sport),
+      coaching_objectif: toText(body.coaching_objectif),
+
+      // boolean NOT NULL, default false
+      option_renfo: toBool(body.option_renfo),
+
+      // text nullable, CHECK enum ('essentiel','standard','premium')
+      niveau_suivi: toText(body.niveau_suivi),
+
+      // text nullable
+      infos_complementaires: toText(body.infos_complementaires),
     })
     .select('id, created_at')
     .single()
 
   if (error) {
     console.error('[questionnaire] insert error:', error)
-    return NextResponse.json({ error: 'Erreur base de données', details: error.message, code: error.code }, { status: 500, headers: corsHeaders })
+    return NextResponse.json(
+      { error: 'Erreur base de données', details: error.message, code: error.code },
+      { status: 500, headers: corsHeaders }
+    )
   }
 
   return NextResponse.json(

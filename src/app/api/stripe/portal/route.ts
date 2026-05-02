@@ -34,10 +34,30 @@ export async function POST(req: NextRequest) {
     ?? process.env.NEXT_PUBLIC_APP_URL
     ?? 'https://thw-coaching.vercel.app'
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer:   sub.stripe_customer_id,
-    return_url: `${origin}/settings/subscription`,
-  })
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer:   sub.stripe_customer_id,
+      return_url: `${origin}/settings/subscription`,
+    })
+    return NextResponse.json({ url: session.url })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[portal] stripe error:', msg)
 
-  return NextResponse.json({ url: session.url })
+    // Customer introuvable (ex : customer Live utilisé en mode Test)
+    // On nettoie l'ID obsolète afin que le prochain checkout en crée un nouveau.
+    if (msg.includes('No such customer')) {
+      await sb
+        .from('user_subscriptions')
+        .update({ stripe_customer_id: null })
+        .eq('user_id', user.id)
+
+      return NextResponse.json(
+        { error: 'Aucun abonnement actif trouvé. Veuillez souscrire un abonnement pour accéder au portail.' },
+        { status: 404 },
+      )
+    }
+
+    return NextResponse.json({ error: `Erreur Stripe : ${msg}` }, { status: 500 })
+  }
 }

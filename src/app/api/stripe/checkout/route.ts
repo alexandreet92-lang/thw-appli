@@ -78,7 +78,30 @@ export async function POST(req: NextRequest) {
     const existing = sub?.stripe_customer_id ?? null
 
     if (existing) {
-      customerId = existing
+      // Vérifie que le customer existe dans le mode Stripe actuel (Live vs Test).
+      // Un customer créé en Live n'existe pas en Test, et vice-versa.
+      try {
+        await stripe.customers.retrieve(existing)
+        customerId = existing
+        console.log('[checkout] existing customer verified:', existing)
+      } catch (retrieveErr) {
+        const retrieveMsg = retrieveErr instanceof Error ? retrieveErr.message : String(retrieveErr)
+        console.warn('[checkout] stale customer ID, creating fresh one. Reason:', retrieveMsg)
+
+        // Customer introuvable dans ce mode → on en crée un nouveau
+        const freshCustomer = await stripe.customers.create({
+          email:    userEmail,
+          metadata: { userId },
+        })
+        customerId = freshCustomer.id
+
+        // Met à jour la ligne user_subscriptions avec le nouveau customer ID
+        await sb.from('user_subscriptions').upsert(
+          { user_id: userId, tier: 'premium', stripe_customer_id: customerId, status: 'active' },
+          { onConflict: 'user_id' },
+        )
+        console.log('[checkout] fresh customer created:', customerId)
+      }
     } else {
       const customer = await stripe.customers.create({
         email:    userEmail,
@@ -91,6 +114,7 @@ export async function POST(req: NextRequest) {
         { user_id: userId, tier: 'premium', stripe_customer_id: customerId, status: 'active' },
         { onConflict: 'user_id' },
       )
+      console.log('[checkout] new customer created:', customerId)
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

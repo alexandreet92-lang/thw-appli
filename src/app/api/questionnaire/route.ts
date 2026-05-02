@@ -109,36 +109,47 @@ export async function POST(req: NextRequest) {
       prenom: prenom.trim(),
       nom: nom.trim(),
       email: email.trim().toLowerCase(),
+      // integer — parseInt ou null
       age: body.age ? parseInt(String(body.age), 10) : null,
-      sexe: body.sexe ?? null,
+      // text — "" OK, undefined → null
+      sexe: body.sexe || null,
 
-      objectif_sport: body.objectif_sport ?? null,
-      objectif_course: body.objectif_course ?? null,
-      objectif_date: body.objectif_date ?? null,
-      objectif_temps: body.objectif_temps ?? null,
+      // text — "" OK, undefined → null
+      objectif_sport: body.objectif_sport || null,
+      objectif_course: body.objectif_course || null,
+      // date NOT NULL en DB — "" interdit (code 22007), doit être null
+      objectif_date: body.objectif_date || null,
+      // text
+      objectif_temps: body.objectif_temps || null,
 
       autres_courses: body.autres_courses ?? [],
 
+      // integer — parseInt ou null
       heures_par_semaine: body.heures_par_semaine ? parseInt(String(body.heures_par_semaine), 10) : null,
       jours_disponibles: body.jours_disponibles ?? [],
-      contraintes: body.contraintes ?? null,
-      blessures: body.blessures ?? null,
+      // text
+      contraintes: body.contraintes || null,
+      blessures: body.blessures || null,
 
-      montre_gps: body.montre_gps === '' || body.montre_gps === undefined ? null : Boolean(body.montre_gps),
-      capteur_puissance: body.capteur_puissance === '' || body.capteur_puissance === undefined ? null : Boolean(body.capteur_puissance),
-      home_trainer: body.home_trainer === '' || body.home_trainer === undefined ? null : Boolean(body.home_trainer),
-      salle_muscu: body.salle_muscu === '' || body.salle_muscu === undefined ? null : Boolean(body.salle_muscu),
-      strava_connecte: body.strava_connecte === '' || body.strava_connecte === undefined ? null : Boolean(body.strava_connecte),
+      // boolean NOT NULL en DB — "" ou undefined → false (jamais null)
+      montre_gps: body.montre_gps === '' || body.montre_gps === undefined ? false : Boolean(body.montre_gps),
+      capteur_puissance: body.capteur_puissance === '' || body.capteur_puissance === undefined ? false : Boolean(body.capteur_puissance),
+      home_trainer: body.home_trainer === '' || body.home_trainer === undefined ? false : Boolean(body.home_trainer),
+      salle_muscu: body.salle_muscu === '' || body.salle_muscu === undefined ? false : Boolean(body.salle_muscu),
+      strava_connecte: body.strava_connecte === '' || body.strava_connecte === undefined ? false : Boolean(body.strava_connecte),
 
-      coaching_type: body.coaching_type ?? null,
-      coaching_duree: body.coaching_duree ?? null,
-      coaching_sport: body.coaching_sport ?? null,
-      coaching_objectif: body.coaching_objectif ?? null,
+      // text
+      coaching_type: body.coaching_type || null,
+      coaching_duree: body.coaching_duree || null,
+      coaching_sport: body.coaching_sport || null,
+      coaching_objectif: body.coaching_objectif || null,
 
-      option_renfo: body.option_renfo === '' || body.option_renfo === undefined ? null : Boolean(body.option_renfo),
-      niveau_suivi: body.niveau_suivi ?? null,
+      // boolean NOT NULL en DB
+      option_renfo: body.option_renfo === '' || body.option_renfo === undefined ? false : Boolean(body.option_renfo),
+      // text
+      niveau_suivi: body.niveau_suivi || null,
 
-      infos_complementaires: body.infos_complementaires ?? null,
+      infos_complementaires: body.infos_complementaires || null,
     })
     .select('id, created_at')
     .single()

@@ -15,12 +15,13 @@ export const maxDuration = 60
 
 import { NextRequest } from 'next/server'
 import { getAnthropicClient } from '@/lib/agents/base'
-import { buildChatParams, getModelConfig } from '@/lib/agents/chatAgent'
+import { buildChatParams } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
 import { coachTools } from '@/lib/coach/tools-definition'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
-import { logUsage } from '@/lib/subscriptions/check-quota'
+import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
+import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 
 // ── Instructions tool use — ajoutées à la fin de tous les system prompts ──
 
@@ -66,6 +67,14 @@ export async function POST(req: NextRequest) {
   const check = await enforceQuota(userId, 'message')
   if (!check.allowed) return check.response
 
+  // ── Sélection du modèle selon le tier ─────────────────────────
+  const tier      = await getUserTier(userId)
+  const tierModel = TIER_LIMITS[tier].model          // 'hermes' | 'athena' | 'zeus'
+  const model     = MODEL_IDS[tierModel]             // Anthropic model ID
+  const maxTokens = MODEL_MAX_TOKENS[tierModel]      // 4096 ou 8192 pour Zeus
+
+  console.log(`[coach-stream] tier=${tier} model=${tierModel} → ${model} max_tokens=${maxTokens}`)
+
   let body: ChatInput
 
   try {
@@ -79,7 +88,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { systemPrompt, anthropicMessages } = buildChatParams(body)
-  const { model, maxTokens } = getModelConfig(body.modelId)
   const client = getAnthropicClient()
 
   const systemWithTools = `${systemPrompt}\n\n${TOOL_INSTRUCTIONS}`
@@ -90,9 +98,11 @@ export async function POST(req: NextRequest) {
   //             pas de keepalive, pas de problème d'index.
   // Inconvénient : le texte n'apparaît plus progressivement (acceptable).
   //
-  // maxTokens est augmenté à 4096 min pour garantir que add_week (JSON lourd)
-  // n'est pas tronqué. getModelConfig retourne 1400 par défaut — insuffisant.
-  const effectiveMaxTokens = Math.max(maxTokens, 4096)
+  // Le modèle et les max_tokens viennent du tier de l'utilisateur :
+  //   premium → hermes (Haiku)  → 4096 tokens
+  //   pro     → athena (Sonnet) → 4096 tokens
+  //   expert  → zeus   (Sonnet) → 8192 tokens
+  const effectiveMaxTokens = maxTokens
 
   const response = await client.messages.create({
     model,

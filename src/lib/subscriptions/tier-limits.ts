@@ -72,6 +72,14 @@ export const MODEL_IDS: Record<TierModel, string> = {
   zeus:   'claude-sonnet-4-6',   // même modèle, contexte + créativité max
 }
 
+// ── Mapping modèle → max_tokens Anthropic ──────────────────────────
+// Zeus bénéficie d'un contexte étendu pour des analyses longues.
+export const MODEL_MAX_TOKENS: Record<TierModel, number> = {
+  hermes: 4096,
+  athena: 4096,
+  zeus:   8192,
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 
 /** Retourne les limites pour un tier donné */

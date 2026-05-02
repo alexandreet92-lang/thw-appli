@@ -15,7 +15,8 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient, parseJsonResponse } from '@/lib/agents/base'
 import { createServiceClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
-import { logUsage } from '@/lib/subscriptions/check-quota'
+import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
+import { TIER_LIMITS } from '@/lib/subscriptions/tier-limits'
 
 // ── System prompt ─────────────────────────────────────────────
 
@@ -294,6 +295,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const check = await enforceQuota(creatorId, 'briefing')
   if (!check.allowed) return check.response as NextResponse
 
+  // ── Web search conditionnel selon le tier ─────────────────────
+  // Premium → briefing_web_search: false (Sonnet sans web_search, ~$0.03/appel)
+  // Pro/Expert → briefing_web_search: true  (Sonnet + web_search, ~$0.10/appel)
+  const tier         = await getUserTier(creatorId)
+  const useWebSearch = TIER_LIMITS[tier].briefing_web_search
+  console.log(`[briefing/generate] tier=${tier} web_search=${useWebSearch}`)
+
   // Body optionnel — contexte additionnel injecté dans le prompt user
   let extraContext: Record<string, unknown> = {}
   try {
@@ -312,18 +320,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         ? `\n\nContexte complémentaire :\n${JSON.stringify(extraContext, null, 2)}`
         : '')
 
+    // web_search inclus uniquement pour Pro/Expert (briefing_web_search: true).
+    // Pour Premium, le modèle génère à partir de ses connaissances (pas de
+    // recherche temps-réel, coût réduit).
+    const webSearchTool = useWebSearch
+      ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 20 }] as unknown as
+          Parameters<typeof client.messages.create>[0]['tools']
+      : undefined
+
     const resp = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
       system: SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
-      tools: [
-        {
-          type: 'web_search_20250305',
-          name: 'web_search',
-          max_uses: 20,
-        },
-      ] as unknown as Parameters<typeof client.messages.create>[0]['tools'],
+      ...(webSearchTool ? { tools: webSearchTool } : {}),
     })
 
     // Avec web_search, le modèle peut émettre plusieurs blocs (tool_use
@@ -374,7 +384,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // ── Log usage briefing (fire-and-forget) ─────────────────────
     void logUsage(creatorId, 'briefing', {
       model: 'claude-sonnet-4-6',
-      web_search: true,
+      web_search: useWebSearch,
+      tier,
       date,
     })
 

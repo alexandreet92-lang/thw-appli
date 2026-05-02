@@ -40,11 +40,11 @@ interface QuestionnairePayload {
   blessures?: string
 
   // Matériel
-  montre_gps?: boolean
-  capteur_puissance?: boolean
-  home_trainer?: boolean
-  salle_muscu?: boolean
-  strava_connecte?: boolean
+  montre_gps?: boolean | string
+  capteur_puissance?: boolean | string
+  home_trainer?: boolean | string
+  salle_muscu?: boolean | string
+  strava_connecte?: boolean | string
 
   // Coaching choisi
   coaching_type?: 'pack' | 'abonnement'
@@ -53,7 +53,7 @@ interface QuestionnairePayload {
   coaching_objectif?: string
 
   // Options
-  option_renfo?: boolean
+  option_renfo?: boolean | string
   niveau_suivi?: 'essentiel' | 'standard' | 'premium'
 
   // Infos complémentaires
@@ -124,18 +124,18 @@ export async function POST(req: NextRequest) {
       contraintes: body.contraintes ?? null,
       blessures: body.blessures ?? null,
 
-      montre_gps: body.montre_gps ?? false,
-      capteur_puissance: body.capteur_puissance ?? false,
-      home_trainer: body.home_trainer ?? false,
-      salle_muscu: body.salle_muscu ?? false,
-      strava_connecte: body.strava_connecte ?? false,
+      montre_gps: body.montre_gps === '' || body.montre_gps === undefined ? null : Boolean(body.montre_gps),
+      capteur_puissance: body.capteur_puissance === '' || body.capteur_puissance === undefined ? null : Boolean(body.capteur_puissance),
+      home_trainer: body.home_trainer === '' || body.home_trainer === undefined ? null : Boolean(body.home_trainer),
+      salle_muscu: body.salle_muscu === '' || body.salle_muscu === undefined ? null : Boolean(body.salle_muscu),
+      strava_connecte: body.strava_connecte === '' || body.strava_connecte === undefined ? null : Boolean(body.strava_connecte),
 
       coaching_type: body.coaching_type ?? null,
       coaching_duree: body.coaching_duree ?? null,
       coaching_sport: body.coaching_sport ?? null,
       coaching_objectif: body.coaching_objectif ?? null,
 
-      option_renfo: body.option_renfo ?? false,
+      option_renfo: body.option_renfo === '' || body.option_renfo === undefined ? null : Boolean(body.option_renfo),
       niveau_suivi: body.niveau_suivi ?? null,
 
       infos_complementaires: body.infos_complementaires ?? null,

@@ -21,7 +21,7 @@ interface QuestionnairePayload {
   prenom: string
   nom: string
   email: string
-  age?: number
+  age?: number | string
   sexe?: 'homme' | 'femme' | 'autre' | 'non_precise'
 
   // Objectif principal
@@ -34,7 +34,7 @@ interface QuestionnairePayload {
   autres_courses?: AutreCourse[]
 
   // Mode de vie
-  heures_par_semaine?: number
+  heures_par_semaine?: number | string
   jours_disponibles?: string[]
   contraintes?: string
   blessures?: string
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       prenom: prenom.trim(),
       nom: nom.trim(),
       email: email.trim().toLowerCase(),
-      age: body.age ?? null,
+      age: body.age ? parseInt(String(body.age), 10) : null,
       sexe: body.sexe ?? null,
 
       objectif_sport: body.objectif_sport ?? null,
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
       autres_courses: body.autres_courses ?? [],
 
-      heures_par_semaine: body.heures_par_semaine ?? null,
+      heures_par_semaine: body.heures_par_semaine ? parseInt(String(body.heures_par_semaine), 10) : null,
       jours_disponibles: body.jours_disponibles ?? [],
       contraintes: body.contraintes ?? null,
       blessures: body.blessures ?? null,

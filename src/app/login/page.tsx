@@ -149,7 +149,7 @@ export default function LoginPage() {
                 if (!email) { setError('Entre ton email d\'abord.'); return }
                 setLoading(true)
                 const supabase = createClient()
-                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo:`${window.location.origin}/profile` })
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo:`${window.location.origin}/auth/callback?next=/auth/update-password` })
                 setLoading(false)
                 if (error) setError(error.message)
                 else setSuccess('Email de réinitialisation envoyé !')

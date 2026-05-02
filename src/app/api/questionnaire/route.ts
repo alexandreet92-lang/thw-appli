@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
 // ── Types ──────────────────────────────────────────────────────────
 
 interface AutreCourse {
@@ -54,14 +60,20 @@ interface QuestionnairePayload {
   infos_complementaires?: string
 }
 
+// ── CORS preflight ─────────────────────────────────────────────────
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: corsHeaders })
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 
 function unauthorized() {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders })
 }
 
 function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 })
+  return NextResponse.json({ error: message }, { status: 400, headers: corsHeaders })
 }
 
 // ── POST /api/questionnaire ────────────────────────────────────────
@@ -133,12 +145,12 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('[questionnaire] insert error:', error)
-    return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 })
+    return NextResponse.json({ error: 'Erreur base de données' }, { status: 500, headers: corsHeaders })
   }
 
   return NextResponse.json(
     { success: true, id: data.id, created_at: data.created_at },
-    { status: 201 }
+    { status: 201, headers: corsHeaders }
   )
 }
 

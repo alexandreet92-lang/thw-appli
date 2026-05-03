@@ -25,6 +25,7 @@ interface AIMsg {
   content: string
   ts: number
   modelId?: THWModel   // modèle utilisé pour cette réponse
+  sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
 }
 interface AIConv {
   id: string
@@ -5637,9 +5638,100 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
   )
 }
 
+// ── SBSessionCard — rendu historique d'une séance SessionBuilder ──
+// Version lecture seule du result view du SessionBuilderFlow.
+// Utilisée pour réafficher une séance dans l'historique de chat.
+function SBSessionCard({ session }: { session: SBSession }) {
+  const sportObj = SB_SPORTS.find(s => s.id === session.sport)
+  const color    = sportObj?.color ?? '#5b6fff'
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 5px', lineHeight: 1.2 }}>
+              {session.nom}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+              <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${color}22`, color, fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+                {sportObj?.label ?? session.sport}
+              </span>
+              <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${INTENSITE_COLOR[session.intensite] ?? '#5b6fff'}22`, color: INTENSITE_COLOR[session.intensite] ?? '#5b6fff', fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+                {session.intensite}
+              </span>
+              {(session.tags ?? []).slice(0, 3).map(tag => (
+                <span key={tag} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: 'var(--ai-bg2)', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Métriques */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+          {[
+            { label: 'Durée', val: `${session.duree_estimee} min` },
+            { label: 'TSS',   val: String(session.tss_estime) },
+            { label: 'RPE',   val: `${session.rpe_cible}/10` },
+          ].map(({ label, val }) => (
+            <div key={label} style={{ textAlign: 'center' as const, padding: '8px 6px', borderRadius: 9, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <div style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{val}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Profil d'intensité */}
+        <SBIntensityChart blocs={session.blocs} sport={session.sport} />
+
+        {/* Description */}
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' as const }}>
+          {session.description}
+        </p>
+      </div>
+
+      {/* Blocs */}
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
+        Structure — {session.blocs.length} blocs
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {session.blocs.map((bloc, i) => (
+          <div key={i} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>{bloc.nom}</span>
+              <span style={{ fontSize: 10, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>
+                {bloc.repetitions > 1 ? `${bloc.repetitions}×` : ''}{bloc.duree_effort}min
+                {bloc.recup > 0 ? ` / ${bloc.recup}min récup` : ''}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 4 }}>
+              {(bloc.zone_effort ?? []).map(z => (
+                <span key={z} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, fontFamily: 'DM Mono,monospace' }}>{z}</span>
+              ))}
+              {bloc.watts != null && (
+                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(249,115,22,0.15)', color: '#f97316', fontFamily: 'DM Mono,monospace' }}>{bloc.watts}W</span>
+              )}
+              {bloc.allure_cible && (
+                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>{bloc.allure_cible}</span>
+              )}
+              {bloc.fc_cible != null && (
+                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>{bloc.fc_cible}bpm</span>
+              )}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4 }}>{bloc.consigne}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SessionBuilderFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
-  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onRecordConv?: (userMsg: string, aiMsg: string, sessionData?: SBSession) => void
 }) {
   type Phase = 'sport' | 'type' | 'generating' | 'result' | 'modify' | 'saved'
 
@@ -5793,7 +5885,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             `\n${b.consigne}`
           ),
         ].join('\n')
-        onRecordConv(userMsg, aiMsg)
+        onRecordConv(userMsg, aiMsg, generated)
       }
       setPhase('result')
     } catch (e) {
@@ -8257,7 +8349,7 @@ export default function AIPanel({
                 {activeFlow === 'sessionbuilder' && (
                   <SessionBuilderFlow
                     onCancel={() => setActiveFlow(null)}
-                    onRecordConv={(userMsg, aiMsg) => {
+                    onRecordConv={(userMsg, aiMsg, sessionData) => {
                       const conv: AIConv = {
                         id: genId(),
                         title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
@@ -8265,7 +8357,7 @@ export default function AIPanel({
                         updatedAt: Date.now(),
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
-                          { id: genId(), role: 'assistant', content: aiMsg,  ts: Date.now() + 1, modelId: 'zeus' as THWModel },
+                          { id: genId(), role: 'assistant', content: aiMsg,  ts: Date.now() + 1, modelId: 'zeus' as THWModel, sessionData },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
@@ -8373,8 +8465,13 @@ export default function AIPanel({
                         )
                       })()}
                     </div>
-                    {/* Session card */}
-                    {msg.role === 'assistant' && (
+                    {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
+                    {msg.role === 'assistant' && msg.sessionData && (
+                      <div style={{ marginLeft: 34 }}>
+                        <SBSessionCard session={msg.sessionData} />
+                      </div>
+                    )}
+                    {msg.role === 'assistant' && !msg.sessionData && (
                       <SessionCard
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}

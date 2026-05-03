@@ -888,18 +888,27 @@ export default function NutritionPage() {
 
   const todayLog = dailyLogs.find(l => l.date === today)
 
-  // ── Totaux validés avec macros exactes par slot ─────────────────
-  // Priorité : 1) actual_* saisi par l'user  2) macros du plan par slot
-  // (nouveaux plans ont {description,kcal,proteines,...} par repas)
-  // Pas de fallback equal-split — si pas de données, on ne contribue pas
+  // ── Totaux validés — 3 niveaux de précision ─────────────────────
+  // 1. actual_* saisi par l'user (précision maximale)
+  // 2. macros du plan par slot   (nouveaux plans IA avec objets)
+  // 3. total journée ÷ nb slots  (anciens plans string, fallback visuel)
   function slotFallback(
     mealLogs: MealLog[],
-    _dayKcal: number,
-    _dayProt: number,
-    _dayGluc: number,
-    _dayLip: number,
+    dayKcal: number,
+    dayProt: number,
+    dayGluc: number,
+    dayLip: number,
     mealSetRef: MealSet | null,
   ) {
+    const activeSlots = mealSetRef
+      ? MEAL_KEYS.filter(k => slotText(mealSetRef[k]) !== '-').length || 1
+      : MEAL_KEYS.length
+    const perSlot = {
+      kcal: dayKcal / activeSlots,
+      prot: dayProt / activeSlots,
+      gluc: dayGluc / activeSlots,
+      lip:  dayLip  / activeSlots,
+    }
     return mealLogs
       .filter(l => l.validated)
       .reduce(
@@ -908,10 +917,10 @@ export default function NutritionPage() {
             ? slotMacros(mealSetRef[l.meal_slot as MealKey] as MealSlotValue)
             : null
           return {
-            kcal: acc.kcal + (l.actual_kcal ?? planSlot?.kcal       ?? 0),
-            prot: acc.prot + (l.actual_prot ?? planSlot?.proteines   ?? 0),
-            gluc: acc.gluc + (l.actual_gluc ?? planSlot?.glucides    ?? 0),
-            lip:  acc.lip  + (l.actual_lip  ?? planSlot?.lipides     ?? 0),
+            kcal: acc.kcal + (l.actual_kcal ?? planSlot?.kcal       ?? perSlot.kcal),
+            prot: acc.prot + (l.actual_prot ?? planSlot?.proteines   ?? perSlot.prot),
+            gluc: acc.gluc + (l.actual_gluc ?? planSlot?.glucides    ?? perSlot.gluc),
+            lip:  acc.lip  + (l.actual_lip  ?? planSlot?.lipides     ?? perSlot.lip),
           }
         },
         { kcal: 0, prot: 0, gluc: 0, lip: 0 },

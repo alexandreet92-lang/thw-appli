@@ -984,7 +984,7 @@ export default function NutritionPage() {
           <div style={{ display: 'flex', gap: 12, justifyContent: 'space-around', flexWrap: 'wrap' }}>
             <MacroDonut
               label="Calories"
-              consumed={todayMealTotals.kcal || (todayLog?.kcal_consommees ?? 0)}
+              consumed={todayMealTotals.kcal}
               objective={todayKcalObj}
               unit="kcal"
               color="#00c8e0"
@@ -992,7 +992,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Proteines"
-              consumed={todayMealTotals.prot || (todayLog?.proteines ?? 0)}
+              consumed={todayMealTotals.prot}
               objective={todayMacroObj.proteines}
               unit="g"
               color="#22c55e"
@@ -1000,7 +1000,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Glucides"
-              consumed={todayMealTotals.gluc || (todayLog?.glucides ?? 0)}
+              consumed={todayMealTotals.gluc}
               objective={todayMacroObj.glucides}
               unit="g"
               color="#eab308"
@@ -1008,7 +1008,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Lipides"
-              consumed={todayMealTotals.lip || (todayLog?.lipides ?? 0)}
+              consumed={todayMealTotals.lip}
               objective={todayMacroObj.lipides}
               unit="g"
               color="#f97316"

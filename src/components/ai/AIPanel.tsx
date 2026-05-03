@@ -1348,6 +1348,14 @@ const NUTRITION_STEPS: NutritionStep[] = [
     options: ['Légère (moins de 3h)', 'Modérée (3 à 6h)', 'Élevée (6 à 10h)', 'Très élevée (plus de 10h)'],
   },
   {
+    question: 'Quand t\'entraînes-tu habituellement ?',
+    options: ['Matin (avant 8h)', 'Milieu de journée', 'Fin de journée (17h-20h)', 'Horaires variables'],
+  },
+  {
+    question: 'Comment gères-tu tes repas au quotidien ?',
+    options: ['Je cuisine la plupart du temps', 'Mix cuisine maison et extérieur', 'Majoritairement extérieur ou livraison', 'Meal prep (préparation en avance)'],
+  },
+  {
     question: 'Comment décris-tu ton mode de vie hors entraînement ?',
     options: ['Sédentaire (bureau, télétravail)', 'Peu actif', 'Actif (debout, déplacements)', 'Très actif (travail physique)'],
   },
@@ -1376,11 +1384,145 @@ interface TemplateForPrompt {
   lipides: number | null
 }
 
+// ── NutritionGate — vérification des données profil avant le questionnaire ──
+
+interface NutritionGateStatus {
+  hasWeight: boolean
+  hasHeight: boolean
+  weight?: number
+  height?: number
+  activitiesCount: number
+  racesCount: number
+  hasZones: boolean
+}
+
+function NutritionGate({ onContinue, onCancel }: {
+  onContinue: (profile: { weight?: number; height?: number }) => void
+  onCancel: () => void
+}) {
+  const [status, setStatus] = useState<NutritionGateStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setLoading(false); return }
+
+        const d3m = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+
+        const [profRes, actRes, racesRes, zonesRes] = await Promise.all([
+          sb.from('profiles').select('weight_kg,height_cm').eq('id', user.id).maybeSingle(),
+          sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
+          sb.from('planned_races').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          sb.from('training_zones').select('sport').eq('user_id', user.id).eq('is_current', true),
+        ])
+
+        setStatus({
+          hasWeight:      !!(profRes.data?.weight_kg),
+          hasHeight:      !!(profRes.data?.height_cm),
+          weight:         profRes.data?.weight_kg ?? undefined,
+          height:         profRes.data?.height_cm ?? undefined,
+          activitiesCount: actRes.count ?? 0,
+          racesCount:     racesRes.count ?? 0,
+          hasZones:       (zonesRes.data ?? []).length > 0,
+        })
+      } catch (err) {
+        console.error('[NutritionGate]', err)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px 0', textAlign: 'center' }}>
+        <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(249,115,22,0.2)', borderTop: '2px solid #f97316', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Vérification du profil…</p>
+      </div>
+    )
+  }
+
+  const s = status
+  const checks = [
+    { label: 'Poids',                         ok: s?.hasWeight ?? false,              link: '/profile',     detail: s?.weight ? `${s.weight} kg` : null },
+    { label: 'Taille',                         ok: s?.hasHeight ?? false,              link: '/profile',     detail: s?.height ? `${s.height} cm` : null },
+    { label: 'Activités récentes (3 mois)',    ok: (s?.activitiesCount ?? 0) > 0,      link: '/activities',  detail: s?.activitiesCount ? `${s.activitiesCount} activités` : null },
+    { label: 'Courses planifiées',             ok: (s?.racesCount ?? 0) > 0,           link: '/planning',    detail: s?.racesCount ? `${s.racesCount} courses` : null },
+    { label: "Zones d'entraînement",          ok: s?.hasZones ?? false,              link: '/performance', detail: null },
+  ]
+
+  const okCount = checks.filter(c => c.ok).length
+  const criticalMissing = !(s?.hasWeight)
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        Plan nutritionnel
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
+        {criticalMissing
+          ? "Ton poids n'est pas renseigné — le plan sera moins précis. Tu peux le compléter dans ton profil."
+          : 'Tes données sont vérifiées. Plus ton profil est complet, plus le plan sera précis.'}
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+        {checks.map((c, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: c.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {c.ok ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+              ) : (
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              )}
+            </div>
+            <span style={{ flex: 1, fontSize: 12, color: c.ok ? 'var(--ai-text)' : 'var(--ai-mid)', fontWeight: c.ok ? 500 : 400 }}>
+              {c.label}
+            </span>
+            {c.detail && (
+              <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{c.detail}</span>
+            )}
+            {!c.ok && (
+              <a href={c.link} style={{ fontSize: 10, color: '#5b6fff', fontWeight: 600, textDecoration: 'none' }}>
+                Compléter
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', textAlign: 'center' }}>
+        {okCount}/{checks.length} données disponibles
+      </p>
+
+      <button onClick={() => onContinue({ weight: s?.weight, height: s?.height })} style={{
+        width: '100%', padding: '11px', borderRadius: 10,
+        background: 'linear-gradient(135deg,#f97316,#ef4444)',
+        border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
+        cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+      }}>
+        Continuer vers le questionnaire →
+      </button>
+      <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+        Annuler
+      </button>
+    </div>
+  )
+}
+
+// ── NutritionFlow ──────────────────────────────────────────────
+
 function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
-  const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState<string[][]>(Array(NUTRITION_STEPS.length).fill([]))
+  const [phase,           setPhase]           = useState<'gate' | 'questionnaire'>('gate')
+  const [profileData,     setProfileData]     = useState<{ weight?: number; height?: number }>({})
+  const [step,            setStep]            = useState(0)
+  const [answers,         setAnswers]         = useState<string[][]>(Array(NUTRITION_STEPS.length).fill([]))
   const [activeTemplates, setActiveTemplates] = useState<TemplateForPrompt[]>([])
 
+  // Charger les templates dès le montage (pas de early return avant les hooks)
   useEffect(() => {
     async function loadTemplates() {
       try {
@@ -1398,6 +1540,16 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
     }
     void loadTemplates()
   }, [])
+
+  // Gate → afficher l'écran de vérification de profil en premier
+  if (phase === 'gate') {
+    return (
+      <NutritionGate
+        onContinue={(profile) => { setProfileData(profile); setPhase('questionnaire') }}
+        onCancel={onCancel}
+      />
+    )
+  }
 
   const cur = NUTRITION_STEPS[step]
 
@@ -1424,10 +1576,24 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
         )
         templatesBlock = `\n\nRepas types actifs de l'athlète à intégrer dans le plan :\n${lines.join('\n')}\nBase le plan sur ces repas ou fais-les légèrement évoluer selon l'objectif. Ne jamais ignorer un repas type actif.`
       }
+
+      // Données physiologiques issues du gate
+      let physioBlock = "\nDonnées physiologiques de l'athlète :"
+      if (profileData.weight) physioBlock += `\n- Poids : ${profileData.weight} kg`
+      if (profileData.height) physioBlock += `\n- Taille : ${profileData.height} cm`
+      if (!profileData.weight && !profileData.height) physioBlock += "\n- Non renseignées (proposer des valeurs adaptées au profil sportif)"
+
       const apiPrompt =
-        `Crée un plan nutritionnel personnalisé basé sur mes réponses :\n${parts.join('\n')}${templatesBlock}\n\n` +
-        `Appuie-toi sur mes données réelles disponibles dans l'application (activités, poids, objectifs). ` +
-        `Sois précis et pratique.`
+        `Crée un plan nutritionnel personnalisé basé sur mes réponses :\n${parts.join('\n')}` +
+        physioBlock +
+        templatesBlock +
+        `\n\nInstructions :\n` +
+        `- Calcule les besoins caloriques journaliers en fonction du poids, de la taille, du niveau d'activité et de l'objectif\n` +
+        `- Structure le plan avec les repas et collations, en précisant les macros (protéines, glucides, lipides) pour chaque repas\n` +
+        `- Adapte le timing des repas aux horaires d'entraînement indiqués\n` +
+        `- Si des courses sont planifiées prochainement, inclus un protocole nutrition pré-compétition\n` +
+        `- Utilise un tableau pour présenter le plan jour type avec les macros\n` +
+        `- Appuie-toi sur les données réelles disponibles dans le contexte (activités, planning, courses)`
       onPrepare(apiPrompt, 'Plan nutritionnel personnalisé')
     }
   }
@@ -8477,25 +8643,25 @@ export default function AIPanel({
               <div style={{ animation: 'ai_slidein 0.2s ease', paddingBottom: 16 }}>
                 {activeFlow === 'weakpoints' && (
                   <WeakpointsFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); setActiveQA({ label, apiPrompt, model }); setTimeout(() => areaRef.current?.focus(), 60) }}
+                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
                 {activeFlow === 'nutrition' && (
                   <NutritionFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); setActiveQA({ label, apiPrompt, model }); setTimeout(() => areaRef.current?.focus(), 60) }}
+                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
                 {activeFlow === 'analyzetest' && (
                   <AnalyzeTestFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); setActiveQA({ label, apiPrompt, model }); setTimeout(() => areaRef.current?.focus(), 60) }}
+                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}
                 {activeFlow === 'recharge' && (
                   <RechargeFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); setActiveQA({ label, apiPrompt, model }); setTimeout(() => areaRef.current?.focus(), 60) }}
+                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
                   />
                 )}

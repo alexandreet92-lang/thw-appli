@@ -851,6 +851,7 @@ export default function NutritionPage() {
   const modalDate = dayDetailOpen?.date ?? ''
   const {
     logs: modalMealLogs,
+    totals: modalMealTotals,
     toggleValidated: modalToggleValidated,
     updateLog: modalUpdateLog,
   } = useMealLogs(activePlan?.id, modalDate)
@@ -1558,10 +1559,10 @@ export default function NutritionPage() {
               borderRadius: 12, border: '1px solid var(--border)',
               marginBottom: 16,
             }}>
-              <MacroDonut label="Calories"  consumed={dayDetailOpen.kcal}       objective={dayDetailOpen.kcal}       unit="kcal" color="#00c8e0" size={72} />
-              <MacroDonut label="Proteines" consumed={dayDetailOpen.proteines}   objective={dayDetailOpen.proteines}   unit="g"    color="#22c55e" size={72} />
-              <MacroDonut label="Glucides"  consumed={dayDetailOpen.glucides}    objective={dayDetailOpen.glucides}    unit="g"    color="#eab308" size={72} />
-              <MacroDonut label="Lipides"   consumed={dayDetailOpen.lipides}     objective={dayDetailOpen.lipides}     unit="g"    color="#f97316" size={72} />
+              <MacroDonut label="Calories"  consumed={modalMealTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#00c8e0" size={72} />
+              <MacroDonut label="Proteines" consumed={modalMealTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={72} />
+              <MacroDonut label="Glucides"  consumed={modalMealTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={72} />
+              <MacroDonut label="Lipides"   consumed={modalMealTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={72} />
             </div>
 
             {/* ── Option A / B toggle ────────────────────────── */}

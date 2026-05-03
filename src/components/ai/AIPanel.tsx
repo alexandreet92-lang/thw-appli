@@ -1394,6 +1394,7 @@ interface NutritionGateStatus {
   activitiesCount: number
   racesCount: number
   hasZones: boolean
+  mealTemplatesCount: number
 }
 
 function NutritionGate({ onContinue, onCancel }: {
@@ -1413,21 +1414,23 @@ function NutritionGate({ onContinue, onCancel }: {
 
         const d3m = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
 
-        const [profRes, actRes, racesRes, zonesRes] = await Promise.all([
+        const [profRes, actRes, racesRes, zonesRes, mealsRes] = await Promise.all([
           sb.from('profiles').select('weight_kg,height_cm').eq('id', user.id).maybeSingle(),
           sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
           sb.from('planned_races').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
           sb.from('training_zones').select('sport').eq('user_id', user.id).eq('is_current', true),
+          sb.from('nutrition_meal_templates').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('actif', true),
         ])
 
         setStatus({
-          hasWeight:      !!(profRes.data?.weight_kg),
-          hasHeight:      !!(profRes.data?.height_cm),
-          weight:         profRes.data?.weight_kg ?? undefined,
-          height:         profRes.data?.height_cm ?? undefined,
-          activitiesCount: actRes.count ?? 0,
-          racesCount:     racesRes.count ?? 0,
-          hasZones:       (zonesRes.data ?? []).length > 0,
+          hasWeight:          !!(profRes.data?.weight_kg),
+          hasHeight:          !!(profRes.data?.height_cm),
+          weight:             profRes.data?.weight_kg ?? undefined,
+          height:             profRes.data?.height_cm ?? undefined,
+          activitiesCount:    actRes.count ?? 0,
+          racesCount:         racesRes.count ?? 0,
+          hasZones:           (zonesRes.data ?? []).length > 0,
+          mealTemplatesCount: mealsRes.count ?? 0,
         })
       } catch (err) {
         console.error('[NutritionGate]', err)
@@ -1453,6 +1456,7 @@ function NutritionGate({ onContinue, onCancel }: {
     { label: 'Activités récentes (3 mois)',    ok: (s?.activitiesCount ?? 0) > 0,      link: '/activities',  detail: s?.activitiesCount ? `${s.activitiesCount} activités` : null },
     { label: 'Courses planifiées',             ok: (s?.racesCount ?? 0) > 0,           link: '/planning',    detail: s?.racesCount ? `${s.racesCount} courses` : null },
     { label: "Zones d'entraînement",          ok: s?.hasZones ?? false,              link: '/performance', detail: null },
+    { label: 'Habitudes alimentaires',         ok: (s?.mealTemplatesCount ?? 0) > 0,  link: '/nutrition',   detail: s?.mealTemplatesCount ? `${s.mealTemplatesCount} repas types` : null },
   ]
 
   const okCount = checks.filter(c => c.ok).length

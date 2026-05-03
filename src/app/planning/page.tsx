@@ -1908,7 +1908,7 @@ function TrainingTab() {
     return DAY_NAMES.map((day,i)=>({
       day, date:wDates[i],
       intensity:(ws===currentWeekStart?(intensities[i]??'low'):'low') as DayIntensity,
-      sessions: wSessions.filter(s=>s.dayIndex===i),
+      sessions: wSessions.filter(s=>s.dayIndex===i && !isRestSession(s)),
       activities: wActs.filter(a=>a.dayIndex===i),
     }))
   }

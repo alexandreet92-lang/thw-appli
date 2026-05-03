@@ -2976,6 +2976,11 @@ function TrainingPlanFlow({
       for (const semaine of program.semaines) {
         const weekStart = addWeeks(startDate, semaine.numero - 1)
         for (const seance of (semaine.seances ?? [])) {
+          // Skip séances repos — aucune valeur à persister, fausseraient les graphiques
+          const titreLC = (seance.titre ?? '').toLowerCase().trim()
+          if (/^(repos|rest|rest day|jour (de )?repos|off|jour off)$/i.test(titreLC)) continue
+          if ((seance.duree_min ?? 0) === 0 && !titreLC) continue
+
           // Si merge, skip si le jour est déjà occupé
           if (mode === 'merge' && occupiedKeys.has(`${weekStart}_${seance.jour}`)) continue
 

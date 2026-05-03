@@ -857,11 +857,43 @@ export default function NutritionPage() {
   } = useMealLogs(activePlan?.id, modalDate)
 
   // Wrapper : si on valide un repas pour aujourd'hui depuis la modal,
-  // on rafraîchit aussi le hook Bilan du jour (instances séparées)
-  const modalToggleValidated = useCallback(async (slot: string, validated: boolean) => {
+  // on rafraîchit aussi le hook Bilan du jour (instances séparées).
+  // Si validation (et non dé-validation) + texte du repas fourni,
+  // on estime les macros via Haiku et on les sauvegarde.
+  const modalToggleValidated = useCallback(async (
+    slot: string,
+    validated: boolean,
+    mealText?: string,
+  ) => {
     await _modalToggleValidated(slot, validated)
+
+    if (validated && mealText && mealText.trim() !== '-') {
+      // Ne ré-estime pas si l'user a déjà saisi ses propres macros
+      const existingLog = modalMealLogs.find(l => l.meal_slot === slot)
+      if (!existingLog?.actual_kcal) {
+        try {
+          const res = await fetch('/api/estimate-meal-macros', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: mealText }),
+          })
+          if (res.ok) {
+            const r = await res.json() as { kcal: number; proteines: number; glucides: number; lipides: number }
+            await modalUpdateLog(slot, {
+              actual_kcal: r.kcal,
+              actual_prot: r.proteines,
+              actual_gluc: r.glucides,
+              actual_lip:  r.lipides,
+            })
+          }
+        } catch (err) {
+          console.error('[modalToggleValidated] estimate failed:', err)
+        }
+      }
+    }
+
     if (modalDate === today) void reloadTodayLogs()
-  }, [_modalToggleValidated, modalDate, today, reloadTodayLogs])
+  }, [_modalToggleValidated, modalUpdateLog, modalMealLogs, modalDate, today, reloadTodayLogs])
 
   // ── Today's data ───────────────────────────────────────────────
   const todaySessions = sessions.filter(s => {
@@ -1718,7 +1750,7 @@ export default function NutritionPage() {
 
                       {/* Validate pill button */}
                       <button
-                        onClick={() => void modalToggleValidated(mealKey, !isValidated)}
+                        onClick={() => void modalToggleValidated(mealKey, !isValidated, text)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 5,
                           padding: '4px 10px', borderRadius: 20, flexShrink: 0,

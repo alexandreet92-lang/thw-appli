@@ -7257,8 +7257,12 @@ export default function AIPanel({
       if (val && FONT_MAP[val]) setChatFontFamily(FONT_MAP[val])
     }
     apply()
+    window.addEventListener('thw:chat-font-changed', apply)
     window.addEventListener('storage', apply)
-    return () => window.removeEventListener('storage', apply)
+    return () => {
+      window.removeEventListener('thw:chat-font-changed', apply)
+      window.removeEventListener('storage', apply)
+    }
   }, [])
 
   // Écoute l'event depuis la page profil (bouton "Formuler avec l'IA")

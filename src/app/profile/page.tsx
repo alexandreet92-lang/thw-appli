@@ -1239,7 +1239,7 @@ function IASettingsBloc() {
           {CHAT_FONTS.map(f => {
             const active = chatFont === f.id
             return (
-              <button key={f.id} onClick={() => { setChatFont(f.id); save('thw_ai_chat_font', f.id) }}
+              <button key={f.id} onClick={() => { setChatFont(f.id); save('thw_ai_chat_font', f.id); window.dispatchEvent(new Event('thw:chat-font-changed')) }}
                 style={{
                   display:'flex', alignItems:'center', justifyContent:'space-between',
                   padding:'12px 16px', borderRadius:12,

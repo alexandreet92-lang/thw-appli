@@ -154,6 +154,50 @@ function MsgContent({ text }: { text: string }) {
     // Hidden metadata tag (e.g. sport:running) — skip rendering
     if (/^sport:[a-z_]+$/.test(line.trim())) { i++; continue }
 
+    // ── Tableau Markdown — groupe les lignes | ... | consécutives ──
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      const tableLines: string[] = []
+      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+        tableLines.push(lines[i].trim())
+        i++
+      }
+      // Exclure la ligne de séparation |---|---| et parser les cellules
+      const rows = tableLines
+        .filter(l => !/^\|[\s\-:|]+\|$/.test(l))
+        .map(l => l.split('|').slice(1, -1).map(c => c.trim()))
+      if (rows.length >= 1) {
+        const headers = rows[0]
+        const dataRows = rows.slice(1)
+        blocks.push(
+          <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '10px 0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif' }}>
+              <thead>
+                <tr>
+                  {headers.map((h, hi) => (
+                    <th key={hi} style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--ai-text)', borderBottom: '2px solid var(--ai-border)', whiteSpace: 'nowrap' as const }}>
+                      {parseBold(h)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dataRows.map((row, ri) => (
+                  <tr key={ri} style={{ background: ri % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} style={{ padding: '6px 10px', fontSize: 12, color: 'var(--ai-mid)', borderBottom: '1px solid var(--ai-border)' }}>
+                        {parseBold(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      continue
+    }
+
     const hMatch = line.match(/^(#{1,4})\s+(.+)/)
     if (hMatch) {
       const lvl = Math.min(hMatch[1].length, 4) as 1 | 2 | 3 | 4

@@ -707,32 +707,188 @@ function useAiRules() {
   return { rules, loading, addRule, toggleRule, deleteRule }
 }
 
+// ── Composant RuleCreator — modal IA de formulation de règle ──
+function RuleCreator({ addRule, onClose }: {
+  addRule: (category: string, text: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [step,       setStep]       = useState<'input' | 'review'>('input')
+  const [category,   setCategory]   = useState('training')
+  const [userInput,  setUserInput]  = useState('')
+  const [aiResult,   setAiResult]   = useState<{ rule: string; suggestions: string[] } | null>(null)
+  const [modifyText, setModifyText] = useState('')
+  const [showModify, setShowModify] = useState(false)
+  const [loading,    setLoading]    = useState(false)
+  const [saving,     setSaving]     = useState(false)
+
+  const currentMeta = RULE_CATEGORIES.find(c => c.id === category) ?? RULE_CATEGORIES[0]
+  const ready = userInput.trim().length >= 5
+
+  async function callRuleHelper(input: string, previousRule?: string, modification?: string) {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/rule-helper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          previousRule
+            ? { previousRule, modification: modification ?? input, category }
+            : { userInput: input, category }
+        ),
+      })
+      const data = await res.json() as { rule: string; suggestions: string[] }
+      setAiResult(data)
+      setStep('review')
+      setShowModify(false)
+      setModifyText('')
+    } catch {
+      setAiResult({ rule: input, suggestions: [] })
+      setStep('review')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleValidate() {
+    if (!aiResult?.rule) return
+    setSaving(true)
+    await addRule(category, aiResult.rule)
+    setSaving(false)
+    onClose()
+  }
+
+  async function handleSaveDirect() {
+    if (!userInput.trim()) return
+    setSaving(true)
+    await addRule(category, userInput.trim())
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:'fixed', inset:0, zIndex:600, background:'rgba(0,0,0,0.4)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width:'100%', maxWidth:480, background:'var(--bg-card)', borderRadius:18, padding:28, boxShadow:'0 20px 60px rgba(0,0,0,0.15)', border:'1px solid var(--border)', position:'relative' as const }}
+      >
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+          <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>Nouvelle règle</p>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, lineHeight:1, padding:'2px 4px' }}>✕</button>
+        </div>
+
+        {step === 'input' ? (
+          <>
+            {/* Category */}
+            <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-dim)', marginBottom:6, textTransform:'uppercase' as const, letterSpacing:'0.05em' }}>Catégorie</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              style={{ width:'100%', padding:'10px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Sans,sans-serif', outline:'none' }}
+            >
+              {RULE_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+
+            {/* Textarea */}
+            <textarea
+              autoFocus
+              value={userInput}
+              onChange={e => setUserInput(e.target.value)}
+              placeholder={currentMeta.placeholder}
+              rows={4}
+              style={{ width:'100%', padding:'12px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.6, boxSizing:'border-box' as const }}
+            />
+
+            {/* Send to AI */}
+            <button
+              onClick={() => void callRuleHelper(userInput)}
+              disabled={!ready || loading}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
+            >{loading ? 'L\'IA réfléchit…' : 'Envoyer à l\'IA →'}</button>
+
+            {/* Direct save */}
+            <p
+              onClick={() => ready && void handleSaveDirect()}
+              style={{ textAlign:'center' as const, fontSize:11, color:'var(--text-dim)', cursor: ready ? 'pointer' : 'default', margin:0, opacity: ready ? 1 : 0.4, userSelect:'none' as const }}
+            >Ou enregistrer directement</p>
+          </>
+        ) : (
+          <>
+            {/* Proposed rule */}
+            <div style={{ padding:'16px 18px', borderRadius:12, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.18)', marginBottom:16 }}>
+              <p style={{ fontSize:10, fontWeight:700, color:'#5b6fff', textTransform:'uppercase' as const, letterSpacing:'0.06em', margin:'0 0 8px' }}>Règle proposée</p>
+              <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', lineHeight:1.65, fontStyle:'italic' as const, margin:0 }}>&quot;{aiResult?.rule}&quot;</p>
+            </div>
+
+            {/* Suggestions */}
+            {(aiResult?.suggestions?.length ?? 0) > 0 && (
+              <>
+                <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.05em', margin:'0 0 8px' }}>Suggestions d'amélioration :</p>
+                <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
+                  {aiResult!.suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => void callRuleHelper(userInput, aiResult!.rule, s)}
+                      disabled={loading}
+                      style={{ padding:'10px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg-card2)', fontSize:12, color:'var(--text-mid)', lineHeight:1.4, cursor: loading ? 'wait' : 'pointer', textAlign:'left' as const, width:'100%', display:'flex', gap:8, alignItems:'flex-start' as const }}
+                    >
+                      <span style={{ color:'#22c55e', fontWeight:700, flexShrink:0 }}>+</span>{s}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Validate */}
+            <button
+              onClick={() => void handleValidate()}
+              disabled={saving}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
+            >{saving ? 'Enregistrement…' : '✓ Valider cette règle'}</button>
+
+            {/* Modify */}
+            {showModify ? (
+              <div style={{ marginTop:4 }}>
+                <textarea
+                  autoFocus
+                  value={modifyText}
+                  onChange={e => setModifyText(e.target.value)}
+                  placeholder="Décris ta modification..."
+                  rows={2}
+                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, marginBottom:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.5, boxSizing:'border-box' as const }}
+                />
+                <button
+                  onClick={() => void callRuleHelper(userInput, aiResult?.rule, modifyText)}
+                  disabled={modifyText.trim().length < 3 || loading}
+                  style={{ width:'100%', padding:10, borderRadius:10, border:'1px solid rgba(91,111,255,0.3)', background:'rgba(91,111,255,0.08)', color:'#5b6fff', fontSize:12, fontWeight:600, fontFamily:'DM Sans,sans-serif', cursor: modifyText.trim().length >= 3 && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.6 : 1 }}
+                >{loading ? 'Reformulation…' : 'Renvoyer →'}</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowModify(true)}
+                style={{ width:'100%', padding:11, borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}
+              >Modifier</button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Composant RulesCard ───────────────────────────────────────
 function RulesCard() {
   const { rules, loading, addRule, toggleRule, deleteRule } = useAiRules()
-  const [activeTab,    setActiveTab]    = useState<string>('all')
-  const [showModal,    setShowModal]    = useState(false)
-  const [modalStep,    setModalStep]    = useState<1|2>(1)
-  const [selCategory,  setSelCategory]  = useState('')
-  const [ruleText,     setRuleText]     = useState('')
-  const [saving,       setSaving]       = useState(false)
-  const [confirmDel,   setConfirmDel]   = useState<string|null>(null)
-  const [hoveredId,    setHoveredId]    = useState<string|null>(null)
+  const [activeTab,  setActiveTab]  = useState<string>('all')
+  const [showModal,  setShowModal]  = useState(false)
+  const [confirmDel, setConfirmDel] = useState<string|null>(null)
+  const [hoveredId,  setHoveredId]  = useState<string|null>(null)
 
   const catMeta = (id: string) => RULE_CATEGORIES.find(c => c.id === id) ?? { label: id, color: '#6b7280', icon: '📌', placeholder: '' }
-
   const filtered = activeTab === 'all' ? rules : rules.filter(r => r.category === activeTab)
-
-  function openModal() { setShowModal(true); setModalStep(1); setSelCategory(''); setRuleText('') }
-  function closeModal() { setShowModal(false); setModalStep(1); setSelCategory(''); setRuleText('') }
-
-  async function handleSave() {
-    if (!selCategory || !ruleText.trim()) return
-    setSaving(true)
-    await addRule(selCategory, ruleText.trim())
-    setSaving(false)
-    closeModal()
-  }
 
   async function handleDelete(id: string) {
     await deleteRule(id)
@@ -757,14 +913,8 @@ function RulesCard() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
           <CardTitle icon={<svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="1" width="10" height="14" rx="2"/><path d="M6 1v1a2 2 0 004 0V1M6 7h4M6 10h3"/></svg>}>Mes règles</CardTitle>
           <button
-            onClick={openModal}
-            style={{
-              display:'flex', alignItems:'center', gap:5,
-              padding:'6px 12px', borderRadius:8,
-              background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
-              border:'none', color:'#fff', fontSize:12, fontWeight:700,
-              cursor:'pointer', flexShrink:0,
-            }}
+            onClick={() => setShowModal(true)}
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}
           >
             <span style={{ fontSize:16, lineHeight:1 }}>+</span> Ajouter
           </button>
@@ -778,13 +928,7 @@ function RulesCard() {
           {TABS.map(t => {
             const active = activeTab === t.id
             return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                padding:'5px 12px', borderRadius:20, border:`1px solid ${active ? t.color+'66' : 'var(--border)'}`,
-                background: active ? t.color+'18' : 'transparent',
-                color: active ? t.color : 'var(--text-dim)',
-                fontSize:11, fontWeight: active ? 700 : 400,
-                cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0, transition:'all 0.15s',
-              }}>{t.label}</button>
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${active ? t.color+'66' : 'var(--border)'}`, background: active ? t.color+'18' : 'transparent', color: active ? t.color : 'var(--text-dim)', fontSize:11, fontWeight: active ? 700 : 400, cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0, transition:'all 0.15s' }}>{t.label}</button>
             )
           })}
         </div>
@@ -798,13 +942,11 @@ function RulesCard() {
           <div style={{ textAlign:'center' as const, padding:'28px 16px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
             <svg width={40} height={40} viewBox="0 0 40 40" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ opacity:0.4 }}><rect x="8" y="4" width="24" height="32" rx="4"/><path d="M15 4v2a5 5 0 0010 0V4M15 18h10M15 24h8"/></svg>
             <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.55 }}>
-              {activeTab === 'all'
-                ? 'Aucune règle configurée.'
-                : `Aucune règle dans cette catégorie.`}
+              {activeTab === 'all' ? 'Aucune règle configurée.' : 'Aucune règle dans cette catégorie.'}
             </p>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, opacity:0.7 }}>Ajoute des règles pour personnaliser ton Coach IA.</p>
             {activeTab === 'all' && (
-              <button onClick={openModal} style={{ marginTop:4, padding:'7px 18px', borderRadius:20, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:12, fontWeight:500, cursor:'pointer' }}>
+              <button onClick={() => setShowModal(true)} style={{ marginTop:4, padding:'7px 18px', borderRadius:20, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:12, fontWeight:500, cursor:'pointer' }}>
                 Ajouter une règle
               </button>
             )}
@@ -819,28 +961,15 @@ function RulesCard() {
                   className="rule-row"
                   onMouseEnter={() => setHoveredId(rule.id)}
                   onMouseLeave={() => setHoveredId(null)}
-                  style={{
-                    display:'flex', alignItems:'center', gap:10,
-                    padding:'10px 12px', borderRadius:10,
-                    border:`1px solid ${rule.active ? meta.color+'22' : 'var(--border)'}`,
-                    background: rule.active ? meta.color+'0a' : 'var(--bg-card2)',
-                    transition:'all 0.15s', opacity: rule.active ? 1 : 0.55,
-                  }}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:`1px solid ${rule.active ? meta.color+'22' : 'var(--border)'}`, background: rule.active ? meta.color+'0a' : 'var(--bg-card2)', transition:'all 0.15s', opacity: rule.active ? 1 : 0.55 }}
                 >
-                  {/* Pastille */}
                   <div style={{ width:8, height:8, borderRadius:'50%', background: meta.color, flexShrink:0 }} />
-
-                  {/* Texte + badge */}
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:12, color:'var(--text)', margin:0, lineHeight:1.4, wordBreak:'break-word' as const }}>{rule.rule_text}</p>
-                    <span style={{
-                      display:'inline-flex', alignItems:'center', gap:3, marginTop:3,
-                      fontSize:9, fontWeight:600, padding:'2px 8px', borderRadius:10,
-                      background: meta.color+'18', color: meta.color,
-                    }}>{categoryIcon(rule.category, meta.color, 9)} {meta.label}</span>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:3, marginTop:3, fontSize:9, fontWeight:600, padding:'2px 8px', borderRadius:10, background: meta.color+'18', color: meta.color }}>
+                      {categoryIcon(rule.category, meta.color, 9)} {meta.label}
+                    </span>
                   </div>
-
-                  {/* Toggle + suppression */}
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                     <Toggle value={rule.active} onChange={v => void toggleRule(rule.id, v)} />
                     {(hoveredId === rule.id || confirmDel === rule.id) && (
@@ -861,94 +990,7 @@ function RulesCard() {
         )}
       </Card>
 
-      {/* ── Modal ajout de règle ──────────────────────── */}
-      {showModal && (
-        <div onClick={closeModal} style={{ position:'fixed', inset:0, zIndex:600, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            width:'100%', maxWidth:440,
-            background:'var(--bg-card)', borderRadius:16,
-            padding:'24px', boxShadow:'0 8px 40px rgba(0,0,0,0.35)',
-            border:'1px solid var(--border)',
-          }}>
-
-            {modalStep === 1 ? (
-              <>
-                <p style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)', margin:'0 0 4px' }}>Ajouter une règle</p>
-                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 18px' }}>Choisis la catégorie de ta règle.</p>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  {RULE_CATEGORIES.map(cat => (
-                    <button key={cat.id} onClick={() => { setSelCategory(cat.id); setModalStep(2) }}
-                      style={{
-                        display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4,
-                        padding:'14px 14px', borderRadius:12,
-                        border:`1.5px solid ${cat.color}33`,
-                        background:`${cat.color}0d`,
-                        cursor:'pointer', textAlign:'left' as const, transition:'all 0.15s',
-                      }}>
-                      {categoryIcon(cat.id, cat.color, 18)}
-                      <span style={{ fontSize:12, fontWeight:700, color: cat.color }}>{cat.label}</span>
-                      <span style={{ fontSize:10, color:'var(--text-dim)', lineHeight:1.4 }}>{cat.placeholder}</span>
-                    </button>
-                  ))}
-                </div>
-                <button onClick={closeModal} style={{ marginTop:16, width:'100%', padding:'11px', borderRadius:10, background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>Annuler</button>
-              </>
-            ) : (
-              <>
-                {/* Étape 2 — Rédaction */}
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-                  <button onClick={() => setModalStep(1)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, padding:0, lineHeight:1 }}>←</button>
-                  {categoryIcon(selCategory, catMeta(selCategory).color, 18)}
-                  <p style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:catMeta(selCategory).color, margin:0 }}>{catMeta(selCategory).label}</p>
-                </div>
-                <textarea
-                  autoFocus
-                  value={ruleText}
-                  onChange={e => setRuleText(e.target.value.slice(0, 300))}
-                  placeholder={catMeta(selCategory).placeholder}
-                  rows={4}
-                  style={{
-                    width:'100%', padding:'12px 14px', borderRadius:12,
-                    border:`1.5px solid ${catMeta(selCategory).color}44`,
-                    background:'var(--input-bg)', color:'var(--text)',
-                    fontSize:13, outline:'none', resize:'none' as const,
-                    fontFamily:'DM Sans,sans-serif', lineHeight:1.65,
-                    boxSizing:'border-box' as const,
-                  }}
-                />
-                <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', marginTop:6, marginBottom:10 }}>
-                  <span style={{ fontSize:10, color: ruleText.length >= 280 ? '#ef4444' : 'var(--text-dim)' }}>{ruleText.length} / 300</span>
-                </div>
-                <button
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('thw:open-ai-rule-helper', { detail: { category: selCategory } }))
-                    closeModal()
-                  }}
-                  style={{
-                    width:'100%', padding:'8px 14px', marginBottom:10,
-                    border:'1px solid rgba(91,111,255,0.3)', background:'rgba(91,111,255,0.06)',
-                    color:'#5b6fff', fontSize:11, fontWeight:600, borderRadius:8,
-                    cursor:'pointer', fontFamily:'DM Sans,sans-serif',
-                  }}
-                >Formuler avec l'IA</button>
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  <button
-                    onClick={() => void handleSave()}
-                    disabled={!ruleText.trim() || saving}
-                    style={{
-                      padding:'12px', borderRadius:10,
-                      background: !ruleText.trim() ? 'var(--bg-card2)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-                      border:'none', color: !ruleText.trim() ? 'var(--text-dim)' : '#fff',
-                      fontSize:13, fontWeight:700, cursor: !ruleText.trim() ? 'not-allowed' : 'pointer', transition:'all 0.15s',
-                    }}
-                  >{saving ? 'Enregistrement…' : 'Enregistrer la règle'}</button>
-                  <button onClick={closeModal} style={{ padding:'11px', borderRadius:10, background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>Annuler</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {showModal && <RuleCreator addRule={addRule} onClose={() => setShowModal(false)} />}
     </>
   )
 }

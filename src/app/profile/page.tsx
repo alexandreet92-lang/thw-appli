@@ -32,6 +32,18 @@ const RULE_CATEGORIES = [
   { id: 'other',          label: 'Autre',            color: '#6b7280', icon: '📌', placeholder: 'Ex : Toujours proposer des alternatives quand tu suggères un exercice' },
 ] as const
 
+function categoryIcon(id: string, color = 'currentColor', size = 14): React.ReactNode {
+  const p = { width: size, height: size, viewBox: '0 0 14 14', fill: 'none', stroke: color, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  switch (id) {
+    case 'response_style': return <svg {...p}><path d="M2 3a1 1 0 011-1h8a1 1 0 011 1v6a1 1 0 01-1 1H8l-2 2-2-2H3a1 1 0 01-1-1V3z"/></svg>
+    case 'training':       return <svg {...p}><path d="M1 7h2m8 0h2M3 5v4m8-4v4M5 6h4v2H5z"/></svg>
+    case 'health':         return <svg {...p}><path d="M7 11C4 9 2 7 2 5a2.5 2.5 0 015-1 2.5 2.5 0 015 1c0 2-2 4-5 6z"/><path d="M7 7V5m-1 1h2"/></svg>
+    case 'nutrition':      return <svg {...p}><path d="M5 2v4c0 1.1.9 2 2 2s2-.9 2-2V2M7 8v4M4 12h6"/></svg>
+    case 'schedule':       return <svg {...p}><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 2"/></svg>
+    default:               return <svg {...p}><path d="M7 2l1.5 3.5 3.5.5-2.5 2.5.5 3.5L7 10l-3 1.5.5-3.5L2 6l3.5-.5z"/></svg>
+  }
+}
+
 interface Connection {
   id: string; provider?: OAuthProvider; label: string
   connected: boolean; lastSync: string; loading: boolean; available: boolean
@@ -743,7 +755,7 @@ function RulesCard() {
       <Card>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <CardTitle icon="📋">Mes règles</CardTitle>
+          <CardTitle icon={<svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="1" width="10" height="14" rx="2"/><path d="M6 1v1a2 2 0 004 0V1M6 7h4M6 10h3"/></svg>}>Mes règles</CardTitle>
           <button
             onClick={openModal}
             style={{
@@ -784,15 +796,16 @@ function RulesCard() {
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign:'center' as const, padding:'28px 16px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:28, opacity:0.4 }}>📋</span>
+            <svg width={40} height={40} viewBox="0 0 40 40" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ opacity:0.4 }}><rect x="8" y="4" width="24" height="32" rx="4"/><path d="M15 4v2a5 5 0 0010 0V4M15 18h10M15 24h8"/></svg>
             <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.55 }}>
               {activeTab === 'all'
-                ? 'Aucune règle configurée. Ajoute des règles pour personnaliser le comportement de ton Coach IA.'
-                : `Aucune règle dans la catégorie "${catMeta(activeTab).label}".`}
+                ? 'Aucune règle configurée.'
+                : `Aucune règle dans cette catégorie.`}
             </p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, opacity:0.7 }}>Ajoute des règles pour personnaliser ton Coach IA.</p>
             {activeTab === 'all' && (
-              <button onClick={openModal} style={{ marginTop:4, padding:'8px 18px', borderRadius:20, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                Ajouter ma première règle
+              <button onClick={openModal} style={{ marginTop:4, padding:'7px 18px', borderRadius:20, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:12, fontWeight:500, cursor:'pointer' }}>
+                Ajouter une règle
               </button>
             )}
           </div>
@@ -821,10 +834,10 @@ function RulesCard() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:12, color:'var(--text)', margin:0, lineHeight:1.4, wordBreak:'break-word' as const }}>{rule.rule_text}</p>
                     <span style={{
-                      display:'inline-block', marginTop:3,
-                      fontSize:9, fontWeight:600, padding:'1px 6px', borderRadius:4,
+                      display:'inline-flex', alignItems:'center', gap:3, marginTop:3,
+                      fontSize:9, fontWeight:600, padding:'2px 8px', borderRadius:10,
                       background: meta.color+'18', color: meta.color,
-                    }}>{meta.icon} {meta.label}</span>
+                    }}>{categoryIcon(rule.category, meta.color, 9)} {meta.label}</span>
                   </div>
 
                   {/* Toggle + suppression */}
@@ -850,14 +863,13 @@ function RulesCard() {
 
       {/* ── Modal ajout de règle ──────────────────────── */}
       {showModal && (
-        <div onClick={closeModal} style={{ position:'fixed', inset:0, zIndex:600, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:0 }}>
+        <div onClick={closeModal} style={{ position:'fixed', inset:0, zIndex:600, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={e => e.stopPropagation()} style={{
-            width:'100%', maxWidth:480,
-            background:'var(--bg-card)', borderRadius:'18px 18px 0 0',
-            padding:'24px 20px 32px', boxShadow:'0 -8px 40px rgba(0,0,0,0.35)',
+            width:'100%', maxWidth:440,
+            background:'var(--bg-card)', borderRadius:16,
+            padding:'24px', boxShadow:'0 8px 40px rgba(0,0,0,0.35)',
+            border:'1px solid var(--border)',
           }}>
-            {/* Barre drag */}
-            <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 20px' }} />
 
             {modalStep === 1 ? (
               <>
@@ -873,7 +885,7 @@ function RulesCard() {
                         background:`${cat.color}0d`,
                         cursor:'pointer', textAlign:'left' as const, transition:'all 0.15s',
                       }}>
-                      <span style={{ fontSize:20 }}>{cat.icon}</span>
+                      {categoryIcon(cat.id, cat.color, 18)}
                       <span style={{ fontSize:12, fontWeight:700, color: cat.color }}>{cat.label}</span>
                       <span style={{ fontSize:10, color:'var(--text-dim)', lineHeight:1.4 }}>{cat.placeholder}</span>
                     </button>
@@ -886,7 +898,7 @@ function RulesCard() {
                 {/* Étape 2 — Rédaction */}
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
                   <button onClick={() => setModalStep(1)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, padding:0, lineHeight:1 }}>←</button>
-                  <span style={{ fontSize:20 }}>{catMeta(selCategory).icon}</span>
+                  {categoryIcon(selCategory, catMeta(selCategory).color, 18)}
                   <p style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:catMeta(selCategory).color, margin:0 }}>{catMeta(selCategory).label}</p>
                 </div>
                 <textarea
@@ -904,9 +916,21 @@ function RulesCard() {
                     boxSizing:'border-box' as const,
                   }}
                 />
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6, marginBottom:16 }}>
+                <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', marginTop:6, marginBottom:10 }}>
                   <span style={{ fontSize:10, color: ruleText.length >= 280 ? '#ef4444' : 'var(--text-dim)' }}>{ruleText.length} / 300</span>
                 </div>
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('thw:open-ai-rule-helper', { detail: { category: selCategory } }))
+                    closeModal()
+                  }}
+                  style={{
+                    width:'100%', padding:'8px 14px', marginBottom:10,
+                    border:'1px solid rgba(91,111,255,0.3)', background:'rgba(91,111,255,0.06)',
+                    color:'#5b6fff', fontSize:11, fontWeight:600, borderRadius:8,
+                    cursor:'pointer', fontFamily:'DM Sans,sans-serif',
+                  }}
+                >Formuler avec l'IA</button>
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   <button
                     onClick={() => void handleSave()}

@@ -34,7 +34,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -6967,6 +6967,72 @@ function ToolCallPreview({
   )
 }
 
+function RuleHelperFlow({ category, onPrepare, onCancel }: {
+  category: string | null
+  onPrepare: (prompt: string, label: string) => void
+  onCancel: () => void
+}) {
+  const [description, setDescription] = useState('')
+
+  const CAT_LABELS: Record<string, string> = {
+    response_style: 'Style de réponse',
+    training:       'Entraînement',
+    health:         'Santé',
+    nutrition:      'Nutrition',
+    schedule:       'Organisation',
+    other:          'Autre',
+  }
+
+  const catLabel = CAT_LABELS[category ?? ''] ?? 'Autre'
+
+  function generate() {
+    const prompt = `L'utilisateur veut créer une règle IA pour la catégorie "${catLabel}". Voici ce qu'il veut exprimer : "${description}". Reformule cette idée en une règle claire, concise et actionnable (1 à 2 phrases max) que le Coach IA devra toujours respecter. Réponds UNIQUEMENT avec la règle formulée, sans explication ni introduction.`
+    onPrepare(prompt, `Formuler une règle — ${catLabel}`)
+  }
+
+  return (
+    <div style={{ padding: '8px 0 4px' }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        Formuler une règle — {catLabel}
+      </p>
+      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+        Décris ce que tu veux, l'IA formulera la règle pour toi.
+      </p>
+      <textarea
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        placeholder="Ex : je ne veux pas faire de squats parce que j'ai mal au genou..."
+        rows={3}
+        style={{
+          width: '100%', padding: '10px 12px', borderRadius: 10,
+          border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+          color: 'var(--ai-text)', fontSize: 12, outline: 'none',
+          resize: 'none', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5,
+          boxSizing: 'border-box',
+        }}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button
+          onClick={onCancel}
+          style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+        >Annuler</button>
+        <button
+          onClick={generate}
+          disabled={description.trim().length < 5}
+          style={{
+            flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+            background: description.trim().length >= 5 ? 'linear-gradient(135deg, #00c8e0, #5b6fff)' : 'var(--ai-bg2)',
+            color: description.trim().length >= 5 ? '#fff' : 'var(--ai-dim)',
+            fontSize: 12, fontWeight: 600,
+            cursor: description.trim().length >= 5 ? 'pointer' : 'not-allowed',
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >Formuler la règle</button>
+      </div>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════
@@ -7004,6 +7070,7 @@ export default function AIPanel({
   const [toolApplyStatus,  setToolApplyStatus]  = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
   const [aiRules,          setAiRules]          = useState<{ category: string; rule_text: string }[]>([])
+  const [ruleHelperCategory, setRuleHelperCategory] = useState<string | null>(null)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -7038,6 +7105,18 @@ export default function AIPanel({
       setAiRules((data ?? []) as { category: string; rule_text: string }[])
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Écoute l'event depuis la page profil (bouton "Formuler avec l'IA")
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      setRuleHelperCategory(detail?.category ?? null)
+      setActiveFlow('rule_helper')
+    }
+    window.addEventListener('thw:open-ai-rule-helper', handler)
+    return () => window.removeEventListener('thw:open-ai-rule-helper', handler)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { if (mounted) saveConvs(convs) }, [convs, mounted])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
@@ -8174,6 +8253,17 @@ export default function AIPanel({
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
                       // setActiveId(conv.id) ← volontairement omis (cf. note ci-dessus)
                     }}
+                  />
+                )}
+                {activeFlow === 'rule_helper' && (
+                  <RuleHelperFlow
+                    category={ruleHelperCategory}
+                    onPrepare={(prompt, label) => {
+                      setActiveQA({ label, apiPrompt: prompt, model: 'hermes' })
+                      setActiveFlow(null)
+                      setTimeout(() => areaRef.current?.focus(), 60)
+                    }}
+                    onCancel={() => setActiveFlow(null)}
                   />
                 )}
               </div>

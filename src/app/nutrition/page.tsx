@@ -3,11 +3,14 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
+import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
+import { useMealLogs } from '@/hooks/useMealLogs'
 import type { NutritionPlanData, PlanDay, MealSet, DailyLog, WeightLog } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -824,6 +827,33 @@ export default function NutritionPage() {
   const [manualL, setManualL] = useState<string>('')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+  // edit sub-modal: which meal slot is being edited + form values
+  const [editSlot, setEditSlot] = useState<MealKey | null>(null)
+  const [editDesc, setEditDesc] = useState('')
+  const [editKcal, setEditKcal] = useState('')
+  const [editProt, setEditProt] = useState('')
+  const [editGluc, setEditGluc] = useState('')
+  const [editLip, setEditLip] = useState('')
+
+  // ── Desktop breakpoint ─────────────────────────────────────────
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // ── Meal logs for today (Bilan du jour) ───────────────────────
+  const { totals: todayMealTotals } = useMealLogs(activePlan?.id, today)
+
+  // ── Meal logs for the open day detail modal ───────────────────
+  const modalDate = dayDetailOpen?.date ?? ''
+  const {
+    logs: modalMealLogs,
+    toggleValidated: modalToggleValidated,
+    updateLog: modalUpdateLog,
+  } = useMealLogs(activePlan?.id, modalDate)
 
   // ── Today's data ───────────────────────────────────────────────
   const todaySessions = sessions.filter(s => {
@@ -951,37 +981,45 @@ export default function NutritionPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <KcalGauge
-              consumed={todayLog?.kcal_consommees ?? 0}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'space-around', flexWrap: 'wrap' }}>
+            <MacroDonut
+              label="Calories"
+              consumed={todayMealTotals.kcal || (todayLog?.kcal_consommees ?? 0)}
               objective={todayKcalObj}
+              unit="kcal"
+              color="#00c8e0"
+              size={96}
             />
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <MacroBar
-                label="Proteines"
-                consumed={todayLog?.proteines ?? 0}
-                objective={todayMacroObj.proteines}
-                color="#22c55e"
-              />
-              <MacroBar
-                label="Glucides"
-                consumed={todayLog?.glucides ?? 0}
-                objective={todayMacroObj.glucides}
-                color="#eab308"
-              />
-              <MacroBar
-                label="Lipides"
-                consumed={todayLog?.lipides ?? 0}
-                objective={todayMacroObj.lipides}
-                color="#f97316"
-              />
-              {!activePlan && (
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8 }}>
-                  Aucun plan actif - importez un plan pour voir vos objectifs.
-                </p>
-              )}
-            </div>
+            <MacroDonut
+              label="Proteines"
+              consumed={todayMealTotals.prot || (todayLog?.proteines ?? 0)}
+              objective={todayMacroObj.proteines}
+              unit="g"
+              color="#22c55e"
+              size={96}
+            />
+            <MacroDonut
+              label="Glucides"
+              consumed={todayMealTotals.gluc || (todayLog?.glucides ?? 0)}
+              objective={todayMacroObj.glucides}
+              unit="g"
+              color="#eab308"
+              size={96}
+            />
+            <MacroDonut
+              label="Lipides"
+              consumed={todayMealTotals.lip || (todayLog?.lipides ?? 0)}
+              objective={todayMacroObj.lipides}
+              unit="g"
+              color="#f97316"
+              size={96}
+            />
           </div>
+          {!activePlan && (
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 12, textAlign: 'center' }}>
+              Aucun plan actif — créez un plan pour voir vos objectifs.
+            </p>
+          )}
         </div>
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -1460,30 +1498,33 @@ export default function NutritionPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
-      {/* DAY DETAIL MODAL                                          */}
+      {/* DAY DETAIL MODAL — portal, centered desktop / bottom mobile */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {dayDetailOpen && (
+      {dayDetailOpen && createPortal(
         <div
           style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.55)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(0,0,0,0.62)',
+            display: 'flex',
+            alignItems: isDesktop ? 'center' : 'flex-end',
+            justifyContent: 'center',
           }}
-          onClick={() => setDayDetailOpen(null)}
+          onClick={() => { setDayDetailOpen(null); setEditSlot(null) }}
         >
           <div
             style={{
-              width: '100%', maxWidth: 520,
-              background: 'var(--bg-card)', borderRadius: '16px 16px 0 0',
-              padding: 20, maxHeight: '85vh', overflowY: 'auto',
-              animation: 'slideUp 0.25s ease',
+              width: '100%', maxWidth: 640,
+              background: 'var(--bg-card)',
+              borderRadius: isDesktop ? 16 : '16px 16px 0 0',
+              padding: 24, maxHeight: '90vh', overflowY: 'auto',
+              animation: isDesktop ? 'cardEnter 0.25s ease both' : 'slideUp 0.25s ease',
             }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Header */}
+            {/* ── Header ─────────────────────────────────────── */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
-                <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>
+                <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
                   {formatDate(dayDetailOpen.date)}
                 </div>
                 <div style={{
@@ -1498,38 +1539,32 @@ export default function NutritionPage() {
                 </div>
               </div>
               <button
-                onClick={() => setDayDetailOpen(null)}
+                onClick={() => { setDayDetailOpen(null); setEditSlot(null) }}
                 style={{
-                  background: 'none', border: 'none',
-                  color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '4px 8px',
+                  width: 32, height: 32, borderRadius: 8,
+                  background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                  color: 'var(--text-dim)', fontSize: 16, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                x
+                ×
               </button>
             </div>
 
-            {/* Macros summary */}
+            {/* ── Macro donuts ───────────────────────────────── */}
             <div style={{
-              display: 'flex', gap: 12, marginBottom: 16,
-              padding: '10px 12px', background: 'var(--bg-card2)',
-              borderRadius: 10, border: '1px solid var(--border)',
+              display: 'flex', gap: 8, justifyContent: 'space-around',
+              padding: '12px 8px', background: 'var(--bg-card2)',
+              borderRadius: 12, border: '1px solid var(--border)',
+              marginBottom: 16,
             }}>
-              {[
-                { label: 'Kcal', val: dayDetailOpen.kcal, mono: true },
-                { label: 'Prot', val: `${dayDetailOpen.proteines}g`, mono: true },
-                { label: 'Gluc', val: `${dayDetailOpen.glucides}g`, mono: true },
-                { label: 'Lip', val: `${dayDetailOpen.lipides}g`, mono: true },
-              ].map(({ label, val, mono }) => (
-                <div key={label} style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 2 }}>{label}</div>
-                  <div style={{ fontSize: 13, fontFamily: mono ? 'DM Mono,monospace' : undefined, fontWeight: 600, color: 'var(--text)' }}>
-                    {val}
-                  </div>
-                </div>
-              ))}
+              <MacroDonut label="Calories"  consumed={dayDetailOpen.kcal}       objective={dayDetailOpen.kcal}       unit="kcal" color="#00c8e0" size={72} />
+              <MacroDonut label="Proteines" consumed={dayDetailOpen.proteines}   objective={dayDetailOpen.proteines}   unit="g"    color="#22c55e" size={72} />
+              <MacroDonut label="Glucides"  consumed={dayDetailOpen.glucides}    objective={dayDetailOpen.glucides}    unit="g"    color="#eab308" size={72} />
+              <MacroDonut label="Lipides"   consumed={dayDetailOpen.lipides}     objective={dayDetailOpen.lipides}     unit="g"    color="#f97316" size={72} />
             </div>
 
-            {/* Option toggle */}
+            {/* ── Option A / B toggle ────────────────────────── */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
               {(['A', 'B'] as PlanVariant[]).map(v => (
                 <button
@@ -1549,31 +1584,174 @@ export default function NutritionPage() {
               ))}
             </div>
 
-            {/* Meals */}
+            {/* ── Meal rows ──────────────────────────────────── */}
             {MEAL_KEYS.map(mealKey => {
               const mealSet: MealSet = planVariant === 'A'
                 ? dayDetailOpen.repas.option_A
                 : dayDetailOpen.repas.option_B
               const text = mealSet[mealKey]
+              if (text === '-') return null
+              const mealLog = modalMealLogs.find(l => l.meal_slot === mealKey)
+              const isValidated = mealLog?.validated ?? false
+              const isEditing = editSlot === mealKey
               return (
                 <div
                   key={mealKey}
                   style={{
-                    padding: '10px 12px', borderRadius: 10,
-                    background: 'var(--bg-card2)',
-                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    background: isValidated ? 'rgba(34,197,94,0.05)' : 'var(--bg-card2)',
+                    border: `1px solid ${isValidated ? 'rgba(34,197,94,0.25)' : 'var(--border)'}`,
                     marginBottom: 8,
+                    overflow: 'hidden',
                   }}
                 >
-                  <div style={{ fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700, color: 'var(--text-mid)', marginBottom: 4 }}>
-                    {MEAL_LABELS[mealKey]}
+                  {/* Row header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
+                    {/* Validate checkbox */}
+                    <button
+                      onClick={() => void modalToggleValidated(mealKey, !isValidated)}
+                      title={isValidated ? 'Annuler' : 'Valider'}
+                      style={{
+                        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                        border: `2px solid ${isValidated ? '#22c55e' : 'var(--border)'}`,
+                        background: isValidated ? '#22c55e' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {isValidated && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700, color: 'var(--text-mid)', marginBottom: 2 }}>
+                        {MEAL_LABELS[mealKey]}
+                      </div>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text)', lineHeight: 1.4 }}>
+                        {mealLog?.actual_description ?? text}
+                      </p>
+                      {mealLog?.actual_kcal != null && (
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 3 }}>
+                          {mealLog.actual_kcal} kcal
+                          {mealLog.actual_prot != null ? ` · P:${mealLog.actual_prot}g` : ''}
+                          {mealLog.actual_gluc != null ? ` G:${mealLog.actual_gluc}g` : ''}
+                          {mealLog.actual_lip  != null ? ` L:${mealLog.actual_lip}g`  : ''}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Edit button */}
+                    <button
+                      onClick={() => {
+                        if (isEditing) { setEditSlot(null); return }
+                        setEditSlot(mealKey)
+                        setEditDesc(mealLog?.actual_description ?? text)
+                        setEditKcal(mealLog?.actual_kcal != null ? String(mealLog.actual_kcal) : '')
+                        setEditProt(mealLog?.actual_prot != null ? String(mealLog.actual_prot) : '')
+                        setEditGluc(mealLog?.actual_gluc != null ? String(mealLog.actual_gluc) : '')
+                        setEditLip(mealLog?.actual_lip  != null ? String(mealLog.actual_lip)  : '')
+                      }}
+                      style={{
+                        width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                        border: `1px solid ${isEditing ? 'rgba(91,111,255,0.5)' : 'var(--border)'}`,
+                        background: isEditing ? 'rgba(91,111,255,0.12)' : 'transparent',
+                        color: isEditing ? '#5b6fff' : 'var(--text-dim)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{text}</p>
+
+                  {/* Edit sub-form */}
+                  {isEditing && (
+                    <div style={{
+                      padding: '12px 12px 14px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'rgba(91,111,255,0.04)',
+                    }}>
+                      <textarea
+                        rows={2}
+                        value={editDesc}
+                        onChange={e => setEditDesc(e.target.value)}
+                        placeholder="Description réelle..."
+                        style={{
+                          width: '100%', background: 'var(--input-bg)',
+                          border: '1px solid var(--border)', borderRadius: 8,
+                          padding: '7px 10px', fontSize: 12, color: 'var(--text)',
+                          fontFamily: 'DM Sans,sans-serif', resize: 'vertical',
+                          marginBottom: 8, boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 10 }}>
+                        {[
+                          { label: 'Kcal',    val: editKcal, set: setEditKcal },
+                          { label: 'Prot (g)',val: editProt, set: setEditProt },
+                          { label: 'Gluc (g)',val: editGluc, set: setEditGluc },
+                          { label: 'Lip (g)', val: editLip,  set: setEditLip  },
+                        ].map(({ label, val, set }) => (
+                          <div key={label}>
+                            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 3 }}>{label}</div>
+                            <input
+                              type="number"
+                              value={val}
+                              onChange={e => set(e.target.value)}
+                              style={{
+                                width: '100%', background: 'var(--input-bg)',
+                                border: '1px solid var(--border)', borderRadius: 7,
+                                padding: '5px 7px', fontSize: 12, color: 'var(--text)',
+                                fontFamily: 'DM Mono,monospace', boxSizing: 'border-box',
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={() => {
+                            void modalUpdateLog(mealKey, {
+                              actual_description: editDesc || null,
+                              actual_kcal: editKcal ? parseInt(editKcal, 10) : null,
+                              actual_prot: editProt ? parseFloat(editProt) : null,
+                              actual_gluc: editGluc ? parseFloat(editGluc) : null,
+                              actual_lip:  editLip  ? parseFloat(editLip)  : null,
+                            })
+                            setEditSlot(null)
+                          }}
+                          style={{
+                            flex: 1, padding: '7px 0', borderRadius: 8,
+                            background: 'rgba(0,200,224,0.15)', border: '1px solid rgba(0,200,224,0.35)',
+                            color: '#00c8e0', fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                            fontSize: 12, cursor: 'pointer',
+                          }}
+                        >
+                          Enregistrer
+                        </button>
+                        <button
+                          onClick={() => setEditSlot(null)}
+                          style={{
+                            padding: '7px 14px', borderRadius: 8,
+                            background: 'transparent', border: '1px solid var(--border)',
+                            color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Bouton Mes repas types */}

@@ -11,7 +11,8 @@ import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
-import type { NutritionPlanData, PlanDay, MealSet, DailyLog, WeightLog } from '@/hooks/useNutrition'
+import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
+import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
@@ -887,32 +888,32 @@ export default function NutritionPage() {
 
   const todayLog = dailyLogs.find(l => l.date === today)
 
-  // ── Adjusted totals: validated slots fallback to plan÷nbSlots ──
-  // Si actual_kcal non renseigné → on estime la part du slot dans le total journée
+  // ── Totaux validés avec macros exactes par slot ─────────────────
+  // Priorité : 1) actual_* saisi par l'user  2) macros du plan par slot
+  // (nouveaux plans ont {description,kcal,proteines,...} par repas)
+  // Pas de fallback equal-split — si pas de données, on ne contribue pas
   function slotFallback(
     mealLogs: MealLog[],
-    dayKcal: number,
-    dayProt: number,
-    dayGluc: number,
-    dayLip: number,
+    _dayKcal: number,
+    _dayProt: number,
+    _dayGluc: number,
+    _dayLip: number,
     mealSetRef: MealSet | null,
   ) {
-    const activeSlots = MEAL_KEYS.filter(k => !mealSetRef || mealSetRef[k] !== '-').length || 1
-    const perSlot = {
-      kcal: dayKcal / activeSlots,
-      prot: dayProt / activeSlots,
-      gluc: dayGluc / activeSlots,
-      lip:  dayLip  / activeSlots,
-    }
     return mealLogs
       .filter(l => l.validated)
       .reduce(
-        (acc, l) => ({
-          kcal: acc.kcal + (l.actual_kcal ?? perSlot.kcal),
-          prot: acc.prot + (l.actual_prot ?? perSlot.prot),
-          gluc: acc.gluc + (l.actual_gluc ?? perSlot.gluc),
-          lip:  acc.lip  + (l.actual_lip  ?? perSlot.lip),
-        }),
+        (acc, l) => {
+          const planSlot = mealSetRef
+            ? slotMacros(mealSetRef[l.meal_slot as MealKey] as MealSlotValue)
+            : null
+          return {
+            kcal: acc.kcal + (l.actual_kcal ?? planSlot?.kcal       ?? 0),
+            prot: acc.prot + (l.actual_prot ?? planSlot?.proteines   ?? 0),
+            gluc: acc.gluc + (l.actual_gluc ?? planSlot?.glucides    ?? 0),
+            lip:  acc.lip  + (l.actual_lip  ?? planSlot?.lipides     ?? 0),
+          }
+        },
         { kcal: 0, prot: 0, gluc: 0, lip: 0 },
       )
   }
@@ -1274,9 +1275,11 @@ export default function NutritionPage() {
                 const mealSet: MealSet = planVariant === 'A'
                   ? selectedPlanDay.repas.option_A
                   : selectedPlanDay.repas.option_B
-                const text = mealSet[mealKey]
+                const slotVal = mealSet[mealKey]
+                const text = slotText(slotVal)
                 const isConsumed = selectedLog?.repas_details?.[mealKey]?.consumed ?? false
                 const isToday = selectedDate === today
+                if (text === '-') return null
                 return (
                   <div
                     key={mealKey}
@@ -1651,7 +1654,8 @@ export default function NutritionPage() {
               const mealSet: MealSet = planVariant === 'A'
                 ? dayDetailOpen.repas.option_A
                 : dayDetailOpen.repas.option_B
-              const text = mealSet[mealKey]
+              const slotVal = mealSet[mealKey]
+              const text = slotText(slotVal)
               if (text === '-') return null
               const mealLog = modalMealLogs.find(l => l.meal_slot === mealKey)
               const isValidated = mealLog?.validated ?? false

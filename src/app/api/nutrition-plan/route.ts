@@ -48,7 +48,10 @@ INSTRUCTIONS :
 - Chaque jour doit avoir un type_jour (low, mid, hard) cohérent avec le planning d'entraînement
 - Les dates doivent être les vraies dates à partir d'aujourd'hui
 - Pour les repas, sois concis : 1 ligne par repas, pas de descriptions longues
-- Si un repas n'est pas nécessaire (ex: collation soir), mets "-"
+- Si un repas n'est pas nécessaire (ex: collation soir), mets description "-" et kcal/macros à 0
+- CHAQUE repas doit avoir ses propres kcal et macros (proteines, glucides, lipides) calculés précisément
+- La somme des kcal de tous les repas d'un jour doit être égale au kcal total du jour
+- La somme des macros de tous les repas d'un jour doit être égale aux macros totales du jour
 
 Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calculées) :
 {
@@ -70,20 +73,20 @@ Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calcu
         "lipides": 0,
         "repas": {
           "option_A": {
-            "petit_dejeuner": "string",
-            "collation_matin": "string",
-            "dejeuner": "string",
-            "collation_apres_midi": "string",
-            "diner": "string",
-            "collation_soir": "string"
+            "petit_dejeuner":       { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_matin":      { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "dejeuner":             { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_apres_midi": { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "diner":                { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_soir":       { "description": "- si non nécessaire", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 }
           },
           "option_B": {
-            "petit_dejeuner": "string",
-            "collation_matin": "string",
-            "dejeuner": "string",
-            "collation_apres_midi": "string",
-            "diner": "string",
-            "collation_soir": "string"
+            "petit_dejeuner":       { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_matin":      { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "dejeuner":             { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_apres_midi": { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "diner":                { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_soir":       { "description": "- si non nécessaire", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 }
           }
         }
       }
@@ -107,20 +110,20 @@ Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calcu
         "lipides": 0,
         "repas": {
           "option_A": {
-            "petit_dejeuner": "string",
-            "collation_matin": "string",
-            "dejeuner": "string",
-            "collation_apres_midi": "string",
-            "diner": "string",
-            "collation_soir": "string"
+            "petit_dejeuner":       { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_matin":      { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "dejeuner":             { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_apres_midi": { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "diner":                { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_soir":       { "description": "- si non nécessaire", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 }
           },
           "option_B": {
-            "petit_dejeuner": "string",
-            "collation_matin": "string",
-            "dejeuner": "string",
-            "collation_apres_midi": "string",
-            "diner": "string",
-            "collation_soir": "string"
+            "petit_dejeuner":       { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_matin":      { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "dejeuner":             { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_apres_midi": { "description": "string ou -", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "diner":                { "description": "string", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 },
+            "collation_soir":       { "description": "- si non nécessaire", "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 }
           }
         }
       }

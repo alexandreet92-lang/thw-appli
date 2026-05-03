@@ -56,13 +56,34 @@ export interface PlanDay {
   }
 }
 
+// Nouveau format : object avec macros par repas
+export interface MealSlot {
+  description: string
+  kcal: number
+  proteines: number
+  glucides: number
+  lipides: number
+}
+
+// Union pour compat arrière : anciens plans stockent string, nouveaux stockent MealSlot
+export type MealSlotValue = string | MealSlot
+
 export interface MealSet {
-  petit_dejeuner: string
-  collation_matin: string
-  dejeuner: string
-  collation_apres_midi: string
-  diner: string
-  collation_soir: string
+  petit_dejeuner: MealSlotValue
+  collation_matin: MealSlotValue
+  dejeuner: MealSlotValue
+  collation_apres_midi: MealSlotValue
+  diner: MealSlotValue
+  collation_soir: MealSlotValue
+}
+
+// Helpers pour lire le format old/new de manière transparente
+export function slotText(v: MealSlotValue): string {
+  return typeof v === 'string' ? v : v.description
+}
+export function slotMacros(v: MealSlotValue): MealSlot | null {
+  if (typeof v === 'string') return null
+  return v
 }
 
 export interface DailyLog {

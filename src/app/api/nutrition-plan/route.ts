@@ -5,12 +5,14 @@ import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
 async function postHandler(req: NextRequest): Promise<Response> {
   try {
     const body = await req.json() as {
-      profile: { weight_kg: number | null; full_name: string | null }
+      profile: { weight_kg: number | null; height_cm?: number | null; full_name?: string | null }
       sessions: unknown[]
       races: unknown[]
       historyLogs: unknown[]
+      questionnaire?: { question: string; response: string }[]
+      mealTemplates?: { nom: string; type_repas: string; kcal: number | null; proteines: number | null; glucides: number | null; lipides: number | null }[]
     }
-    const { profile, sessions, races, historyLogs } = body
+    const { profile, sessions, races, historyLogs, questionnaire, mealTemplates } = body
 
     const client = getAnthropicClient()
 
@@ -21,7 +23,9 @@ Zéro texte avant ou après le JSON. Zéro commentaire dans le JSON.`
     const userPrompt = `Génère un plan nutritionnel pour cet athlète.
 
 PROFIL :
-${JSON.stringify(profile, null, 2)}
+- Poids : ${profile.weight_kg ? `${profile.weight_kg} kg` : 'Non renseigné'}
+- Taille : ${profile.height_cm ? `${profile.height_cm} cm` : 'Non renseignée'}
+${profile.full_name ? `- Nom : ${profile.full_name}` : ''}
 
 PLANNING 14 PROCHAINS JOURS :
 ${JSON.stringify(sessions, null, 2)}
@@ -31,6 +35,13 @@ ${JSON.stringify(races, null, 2)}
 
 HISTORIQUE NUTRITIONNEL RÉCENT :
 ${JSON.stringify(historyLogs, null, 2)}
+${questionnaire && questionnaire.length > 0 ? `
+RÉPONSES AU QUESTIONNAIRE :
+${questionnaire.map(q => `${q.question} → ${q.response}`).join('\n')}` : ''}
+${mealTemplates && mealTemplates.length > 0 ? `
+REPAS TYPES HABITUELS DE L'ATHLÈTE (à intégrer dans le plan) :
+${mealTemplates.map(t => `- [${t.type_repas}] ${t.nom} | ${t.kcal ?? '?'} kcal | P:${t.proteines ?? '?'}g G:${t.glucides ?? '?'}g L:${t.lipides ?? '?'}g`).join('\n')}
+IMPORTANT : Base le plan sur ces repas habituels. Adapte-les si nécessaire mais ne les ignore jamais.` : ''}
 
 Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calculées) :
 {

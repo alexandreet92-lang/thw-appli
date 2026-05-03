@@ -1386,6 +1386,11 @@ interface TemplateForPrompt {
 
 // ── NutritionGate — vérification des données profil avant le questionnaire ──
 
+type NutriMealTemplate = {
+  nom: string; type_repas: string
+  kcal: number | null; proteines: number | null; glucides: number | null; lipides: number | null
+}
+
 interface NutritionGateStatus {
   hasWeight: boolean
   hasHeight: boolean
@@ -1398,11 +1403,12 @@ interface NutritionGateStatus {
 }
 
 function NutritionGate({ onContinue, onCancel }: {
-  onContinue: (profile: { weight?: number; height?: number }) => void
+  onContinue: (profile: { weight?: number; height?: number }, templates: NutriMealTemplate[]) => void
   onCancel: () => void
 }) {
-  const [status, setStatus] = useState<NutritionGateStatus | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [status,    setStatus]    = useState<NutritionGateStatus | null>(null)
+  const [templates, setTemplates] = useState<NutriMealTemplate[]>([])
+  const [loading,   setLoading]   = useState(true)
 
   useEffect(() => {
     void (async () => {
@@ -1419,9 +1425,13 @@ function NutritionGate({ onContinue, onCancel }: {
           sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
           sb.from('planned_races').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
           sb.from('training_zones').select('sport').eq('user_id', user.id).eq('is_current', true),
-          sb.from('nutrition_meal_templates').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('actif', true),
+          sb.from('nutrition_meal_templates')
+            .select('nom,type_repas,kcal,proteines,glucides,lipides')
+            .eq('user_id', user.id).eq('actif', true),
         ])
 
+        const tmpl = (mealsRes.data ?? []) as NutriMealTemplate[]
+        setTemplates(tmpl)
         setStatus({
           hasWeight:          !!(profRes.data?.weight_kg),
           hasHeight:          !!(profRes.data?.height_cm),
@@ -1430,7 +1440,7 @@ function NutritionGate({ onContinue, onCancel }: {
           activitiesCount:    actRes.count ?? 0,
           racesCount:         racesRes.count ?? 0,
           hasZones:           (zonesRes.data ?? []).length > 0,
-          mealTemplatesCount: mealsRes.count ?? 0,
+          mealTemplatesCount: tmpl.length,
         })
       } catch (err) {
         console.error('[NutritionGate]', err)
@@ -1502,7 +1512,7 @@ function NutritionGate({ onContinue, onCancel }: {
         {okCount}/{checks.length} données disponibles
       </p>
 
-      <button onClick={() => onContinue({ weight: s?.weight, height: s?.height })} style={{
+      <button onClick={() => onContinue({ weight: s?.weight, height: s?.height }, templates)} style={{
         width: '100%', padding: '11px', borderRadius: 10,
         background: 'linear-gradient(135deg,#f97316,#ef4444)',
         border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
@@ -1517,45 +1527,325 @@ function NutritionGate({ onContinue, onCancel }: {
   )
 }
 
+// ── NutritionFlow — types ──────────────────────────────────────
+
+interface NutriPlanDay {
+  date: string
+  type_jour: 'low' | 'mid' | 'hard'
+  kcal: number
+  proteines: number
+  glucides: number
+  lipides: number
+  repas: {
+    option_A: { petit_dejeuner: string; collation_matin: string; dejeuner: string; collation_apres_midi: string; diner: string; collation_soir: string }
+    option_B: { petit_dejeuner: string; collation_matin: string; dejeuner: string; collation_apres_midi: string; diner: string; collation_soir: string }
+  }
+}
+
+interface NutriPlanBlock {
+  description: string
+  calories_low: number; calories_mid: number; calories_hard: number
+  macros_low: { proteines: number; glucides: number; lipides: number }
+  macros_mid: { proteines: number; glucides: number; lipides: number }
+  macros_hard: { proteines: number; glucides: number; lipides: number }
+  jours: NutriPlanDay[]
+}
+
+interface NutriPlanGenerated {
+  plan_minimal: NutriPlanBlock
+  plan_maximal: NutriPlanBlock
+  warnings: string[]
+  resume: string
+}
+
 // ── NutritionFlow ──────────────────────────────────────────────
 
-function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
-  const [phase,           setPhase]           = useState<'gate' | 'questionnaire'>('gate')
-  const [profileData,     setProfileData]     = useState<{ weight?: number; height?: number }>({})
-  const [step,            setStep]            = useState(0)
-  const [answers,         setAnswers]         = useState<string[][]>(Array(NUTRITION_STEPS.length).fill([]))
-  const [activeTemplates, setActiveTemplates] = useState<TemplateForPrompt[]>([])
+function NutritionFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  type NutriPhase = 'gate' | 'questionnaire' | 'generating' | 'result' | 'saved'
 
-  // Charger les templates dès le montage (pas de early return avant les hooks)
-  useEffect(() => {
-    async function loadTemplates() {
-      try {
-        const { createClient } = await import('@/lib/supabase/client')
-        const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
-        const { data } = await sb
-          .from('nutrition_meal_templates')
-          .select('nom,type_repas,description,kcal,proteines,glucides,lipides')
-          .eq('user_id', user.id)
-          .eq('actif', true)
-        setActiveTemplates((data ?? []) as TemplateForPrompt[])
-      } catch { /* silently ignore */ }
-    }
-    void loadTemplates()
-  }, [])
+  // ── All hooks first (no conditional return before hooks) ──────
+  const [phase,          setPhase]          = useState<NutriPhase>('gate')
+  const [step,           setStep]           = useState(0)
+  const [answers,        setAnswers]        = useState<string[][]>(Array(NUTRITION_STEPS.length).fill([]))
+  const [profileData,    setProfileData]    = useState<{ weight?: number; height?: number }>({})
+  const [templates,      setTemplates]      = useState<NutriMealTemplate[]>([])
+  const [plan,           setPlan]           = useState<NutriPlanGenerated | null>(null)
+  const [activePlanType, setActivePlanType] = useState<'minimal' | 'maximal'>('minimal')
+  const [error,          setError]          = useState<string | null>(null)
+  const [saving,         setSaving]         = useState(false)
+  const [expandedDay,    setExpandedDay]    = useState<number | null>(null)
 
-  // Gate → afficher l'écran de vérification de profil en premier
+  // ── Gate ──────────────────────────────────────────────────────
   if (phase === 'gate') {
     return (
       <NutritionGate
-        onContinue={(profile) => { setProfileData(profile); setPhase('questionnaire') }}
+        onContinue={(profile, tmpl) => { setProfileData(profile); setTemplates(tmpl); setPhase('questionnaire') }}
         onCancel={onCancel}
       />
     )
   }
 
-  const cur = NUTRITION_STEPS[step]
+  // ── Generating ───────────────────────────────────────────────
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '32px 0', textAlign: 'center' }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(249,115,22,0.2)', borderTop: '3px solid #f97316', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>Ton plan nutritionnel est en cours de création…</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>Analyse de ton profil, tes entraînements et tes objectifs.</p>
+      </div>
+    )
+  }
+
+  // ── Saved ────────────────────────────────────────────────────
+  if (phase === 'saved') {
+    return (
+      <div style={{ padding: '32px 0', textAlign: 'center' }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>Plan nutritionnel enregistré</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 20px', lineHeight: 1.5 }}>
+          Ton plan est actif dans la section Nutrition. Tu peux le consulter et suivre tes repas au quotidien.
+        </p>
+        <button onClick={onCancel} style={{
+          padding: '10px 24px', borderRadius: 10, border: '1px solid var(--ai-border)',
+          background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
+        }}>
+          Fermer
+        </button>
+      </div>
+    )
+  }
+
+  // ── Generate ─────────────────────────────────────────────────
+  async function generate() {
+    setPhase('generating')
+    setError(null)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      const today    = new Date().toISOString().split('T')[0]
+      const in14days = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
+
+      const [sessionsRes, racesRes] = await Promise.all([
+        sb.from('planned_sessions')
+          .select('week_start,day_index,sport,title,duration_min,intensity')
+          .eq('user_id', user.id).gte('week_start', today).lte('week_start', in14days),
+        sb.from('planned_races')
+          .select('name,sport,date,level,goal_time')
+          .eq('user_id', user.id).order('date'),
+      ])
+
+      const questionnaireData = NUTRITION_STEPS.map((s, i) => ({
+        question: s.question,
+        response: answers[i].join(', ') || 'Non précisé',
+      }))
+
+      const res = await fetch('/api/nutrition-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile:       { weight_kg: profileData.weight ?? null, height_cm: profileData.height ?? null },
+          sessions:      sessionsRes.data ?? [],
+          races:         racesRes.data ?? [],
+          historyLogs:   [],
+          questionnaire: questionnaireData,
+          mealTemplates: templates,
+        }),
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json() as { plan?: NutriPlanGenerated; error?: string }
+      if (data.error) throw new Error(data.error)
+      if (!data.plan) throw new Error('Plan vide')
+      setPlan(data.plan)
+      setPhase('result')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de génération')
+      setPhase('questionnaire')
+      setStep(NUTRITION_STEPS.length - 1)
+    }
+  }
+
+  // ── Save ─────────────────────────────────────────────────────
+  async function savePlan() {
+    if (!plan) return
+    setSaving(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const planData = activePlanType === 'minimal' ? plan.plan_minimal : plan.plan_maximal
+
+      await sb.from('nutrition_plans').update({ actif: false }).eq('user_id', user.id)
+      await sb.from('nutrition_plans').insert({
+        user_id:   user.id,
+        type:      activePlanType,
+        plan_data: planData,
+        actif:     true,
+      })
+
+      if (onRecordConv) {
+        const userMsg = `Créer un plan nutritionnel — ${activePlanType}`
+        const aiMsg   = `**Plan nutritionnel ${activePlanType === 'minimal' ? 'essentiel' : 'complet'}** généré et ajouté à ton planning nutrition.\n\n${plan.resume}\n\n**${planData.jours.length} jours** programmés · **${planData.calories_mid} kcal/jour** en moyenne`
+        onRecordConv(userMsg, aiMsg)
+      }
+      setPhase('saved')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de sauvegarde')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Result ───────────────────────────────────────────────────
+  if (phase === 'result' && plan) {
+    const currentPlan = activePlanType === 'minimal' ? plan.plan_minimal : plan.plan_maximal
+    const MEAL_LABELS: Record<string, string> = {
+      petit_dejeuner: 'Petit-déjeuner', collation_matin: 'Collation matin',
+      dejeuner: 'Déjeuner', collation_apres_midi: 'Collation après-midi',
+      diner: 'Dîner', collation_soir: 'Collation soir',
+    }
+
+    return (
+      <div style={{ padding: '4px 0' }}>
+        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>Plan nutritionnel</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{plan.resume}</p>
+
+        {/* Sélecteur Essentiel / Complet */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {(['minimal', 'maximal'] as const).map(type => {
+            const active = activePlanType === type
+            const p = type === 'minimal' ? plan.plan_minimal : plan.plan_maximal
+            return (
+              <button key={type} onClick={() => setActivePlanType(type)} style={{
+                flex: 1, padding: '12px', borderRadius: 12, textAlign: 'center',
+                border: `1.5px solid ${active ? '#f97316' : 'var(--ai-border)'}`,
+                background: active ? 'rgba(249,115,22,0.08)' : 'var(--ai-bg2)',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: active ? '#f97316' : 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {type === 'minimal' ? 'Essentiel' : 'Complet'}
+                </p>
+                <p style={{ fontSize: 10, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>
+                  {p.description.slice(0, 60)}{p.description.length > 60 ? '…' : ''}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* KPIs 3 colonnes */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: 'Jour light',    kcal: currentPlan.calories_low,  macros: currentPlan.macros_low,  color: '#22c55e' },
+            { label: 'Jour moyen',    kcal: currentPlan.calories_mid,  macros: currentPlan.macros_mid,  color: '#f97316' },
+            { label: 'Jour intensif', kcal: currentPlan.calories_hard, macros: currentPlan.macros_hard, color: '#ef4444' },
+          ].map(d => (
+            <div key={d.label} style={{ padding: '10px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: d.color, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{d.label}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'DM Mono,monospace' }}>{d.kcal}</p>
+              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0 }}>kcal</p>
+              <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center', gap: 6, fontSize: 9, color: 'var(--ai-mid)' }}>
+                <span>P:{d.macros.proteines}g</span>
+                <span>G:{d.macros.glucides}g</span>
+                <span>L:{d.macros.lipides}g</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Warnings */}
+        {plan.warnings.length > 0 && (
+          <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
+            {plan.warnings.map((w, i) => (
+              <p key={i} style={{ fontSize: 11, color: '#f97316', margin: i > 0 ? '4px 0 0' : 0, lineHeight: 1.5 }}>⚠ {w}</p>
+            ))}
+          </div>
+        )}
+
+        {/* Jours accordéon */}
+        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+          Programme jour par jour — {currentPlan.jours.length} jours
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16, maxHeight: 300, overflowY: 'auto' }}>
+          {currentPlan.jours.map((jour, i) => {
+            const isExpanded = expandedDay === i
+            const typeColor  = jour.type_jour === 'low' ? '#22c55e' : jour.type_jour === 'mid' ? '#f97316' : '#ef4444'
+            const typeLabel  = jour.type_jour === 'low' ? 'Light' : jour.type_jour === 'mid' ? 'Moyen' : 'Intensif'
+            const dayLabel   = new Date(jour.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+            return (
+              <div key={i}>
+                <button onClick={() => setExpandedDay(isExpanded ? null : i)} style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 12px', borderRadius: isExpanded ? '8px 8px 0 0' : 8,
+                  border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  cursor: 'pointer', textAlign: 'left',
+                }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: typeColor, minWidth: 50 }}>{typeLabel}</span>
+                  <span style={{ flex: 1, fontSize: 12, color: 'var(--ai-text)', fontWeight: 500 }}>{dayLabel}</span>
+                  <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{jour.kcal} kcal</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                {isExpanded && (
+                  <div style={{ padding: '10px 12px', borderRadius: '0 0 8px 8px', border: '1px solid var(--ai-border)', borderTop: 'none', background: 'var(--ai-bg)' }}>
+                    <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 10, color: 'var(--ai-mid)' }}>
+                      <span>P: <strong>{jour.proteines}g</strong></span>
+                      <span>G: <strong>{jour.glucides}g</strong></span>
+                      <span>L: <strong>{jour.lipides}g</strong></span>
+                    </div>
+                    {(['petit_dejeuner', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir'] as const).map(meal => {
+                      const text = jour.repas.option_A[meal]
+                      if (!text || text === '-') return null
+                      return (
+                        <div key={meal} style={{ marginBottom: 6 }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', margin: '0 0 2px' }}>{MEAL_LABELS[meal]}</p>
+                          <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: 0, lineHeight: 1.5 }}>{text}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {error && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 8px', textAlign: 'center' }}>{error}</p>}
+
+        <button onClick={() => void savePlan()} disabled={saving} style={{
+          width: '100%', padding: '12px', borderRadius: 10,
+          background: saving ? 'var(--ai-border)' : 'linear-gradient(135deg,#f97316,#ef4444)',
+          border: 'none', color: saving ? 'var(--ai-dim)' : '#fff', fontSize: 13, fontWeight: 700,
+          cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'Syne,sans-serif', marginBottom: 8,
+        }}>
+          {saving ? 'Enregistrement…' : 'Ajouter au planning nutrition →'}
+        </button>
+        <button onClick={onCancel} style={{
+          width: '100%', padding: '10px', borderRadius: 10,
+          border: '1px solid var(--ai-border)', background: 'transparent',
+          color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
+        }}>
+          Annuler
+        </button>
+      </div>
+    )
+  }
+
+  // ── Questionnaire ─────────────────────────────────────────────
+  const cur     = NUTRITION_STEPS[step]
+  const canNext = answers[step].length > 0
+  const isLast  = step === NUTRITION_STEPS.length - 1
 
   function toggleOption(opt: string) {
     setAnswers(prev => {
@@ -1569,41 +1859,9 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
   }
 
   function next() {
-    if (step < NUTRITION_STEPS.length - 1) {
-      setStep(s => s + 1)
-    } else {
-      const parts = NUTRITION_STEPS.map((s, i) => `${s.question} → ${answers[i].join(', ') || 'Non précisé'}`)
-      let templatesBlock = ''
-      if (activeTemplates.length > 0) {
-        const lines = activeTemplates.map(t =>
-          `- [${t.type_repas}] ${t.nom}${t.description ? ` — ${t.description}` : ''} | ${t.kcal ?? 0} kcal | P:${t.proteines ?? 0}g G:${t.glucides ?? 0}g L:${t.lipides ?? 0}g`
-        )
-        templatesBlock = `\n\nRepas types actifs de l'athlète à intégrer dans le plan :\n${lines.join('\n')}\nBase le plan sur ces repas ou fais-les légèrement évoluer selon l'objectif. Ne jamais ignorer un repas type actif.`
-      }
-
-      // Données physiologiques issues du gate
-      let physioBlock = "\nDonnées physiologiques de l'athlète :"
-      if (profileData.weight) physioBlock += `\n- Poids : ${profileData.weight} kg`
-      if (profileData.height) physioBlock += `\n- Taille : ${profileData.height} cm`
-      if (!profileData.weight && !profileData.height) physioBlock += "\n- Non renseignées (proposer des valeurs adaptées au profil sportif)"
-
-      const apiPrompt =
-        `Crée un plan nutritionnel personnalisé basé sur mes réponses :\n${parts.join('\n')}` +
-        physioBlock +
-        templatesBlock +
-        `\n\nInstructions :\n` +
-        `- Calcule les besoins caloriques journaliers en fonction du poids, de la taille, du niveau d'activité et de l'objectif\n` +
-        `- Structure le plan avec les repas et collations, en précisant les macros (protéines, glucides, lipides) pour chaque repas\n` +
-        `- Adapte le timing des repas aux horaires d'entraînement indiqués\n` +
-        `- Si des courses sont planifiées prochainement, inclus un protocole nutrition pré-compétition\n` +
-        `- Utilise un tableau pour présenter le plan jour type avec les macros\n` +
-        `- Appuie-toi sur les données réelles disponibles dans le contexte (activités, planning, courses)`
-      onPrepare(apiPrompt, 'Plan nutritionnel personnalisé')
-    }
+    if (step < NUTRITION_STEPS.length - 1) setStep(s => s + 1)
+    else void generate()
   }
-
-  const canNext = answers[step].length > 0
-  const isLast = step === NUTRITION_STEPS.length - 1
 
   return (
     <div style={{ padding: '8px 0 4px' }}>
@@ -1613,7 +1871,7 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
           <div style={{
             height: '100%', borderRadius: 2,
             width: `${((step + 1) / NUTRITION_STEPS.length) * 100}%`,
-            background: 'linear-gradient(90deg,#00c8e0,#5b6fff)',
+            background: 'linear-gradient(90deg,#f97316,#ef4444)',
             transition: 'width 0.3s ease',
           }} />
         </div>
@@ -1632,9 +1890,9 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
           return (
             <button key={opt} onClick={() => toggleOption(opt)} style={{
               padding: '9px 13px', borderRadius: 9, textAlign: 'left',
-              border: `1px solid ${on ? '#5b6fff' : 'var(--ai-border)'}`,
-              background: on ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
-              color: on ? '#5b6fff' : 'var(--ai-mid)',
+              border: `1px solid ${on ? '#f97316' : 'var(--ai-border)'}`,
+              background: on ? 'rgba(249,115,22,0.1)' : 'var(--ai-bg2)',
+              color: on ? '#f97316' : 'var(--ai-mid)',
               fontSize: 12, fontWeight: on ? 600 : 400,
               cursor: 'pointer', transition: 'all 0.12s',
               fontFamily: 'DM Sans,sans-serif',
@@ -1642,7 +1900,7 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
             }}>
               <span>{opt}</span>
               {on && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
               )}
@@ -1651,6 +1909,8 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
         })}
       </div>
 
+      {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px', textAlign: 'center' }}>{error}</p>}
+
       <div style={{ display: 'flex', gap: 8 }}>
         {step > 0 && (
           <button onClick={() => setStep(s => s - 1)} style={{
@@ -1658,9 +1918,7 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
             fontFamily: 'DM Sans,sans-serif',
-          }}>
-            Retour
-          </button>
+          }}>Retour</button>
         )}
         {step === 0 && (
           <button onClick={onCancel} style={{
@@ -1668,13 +1926,11 @@ function NutritionFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string,
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
             fontFamily: 'DM Sans,sans-serif',
-          }}>
-            Annuler
-          </button>
+          }}>Annuler</button>
         )}
         <button onClick={next} disabled={!canNext} style={{
           flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
-          background: canNext ? 'var(--ai-gradient)' : 'var(--ai-border)',
+          background: canNext ? 'linear-gradient(135deg,#f97316,#ef4444)' : 'var(--ai-border)',
           color: '#fff', fontSize: 12, fontWeight: 700,
           cursor: canNext ? 'pointer' : 'not-allowed',
           fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
@@ -8653,8 +8909,20 @@ export default function AIPanel({
                 )}
                 {activeFlow === 'nutrition' && (
                   <NutritionFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
                   />
                 )}
                 {activeFlow === 'analyzetest' && (

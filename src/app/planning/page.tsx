@@ -327,6 +327,23 @@ function normalizeSportType(s:string):SportType {
   return m[s]??((['run','bike','swim','hyrox','gym','rowing'] as SportType[]).includes(s as SportType)?s as SportType:'run')
 }
 
+// Retourne true si la séance est une séance repos/off (durée 0 ou sport/titre repos).
+// Utilisé pour exclure les repos de tous les graphiques de PlanHeaderAndGraphics.
+function isRestSession(s: {
+  sport?: string | null
+  title?: string
+  intensity?: string | null
+  durationMin?: number | null
+  duration_min?: number | null
+}): boolean {
+  const sport = (s.sport ?? '').toLowerCase()
+  const title = (s.title ?? '').toLowerCase()
+  if (['repos','rest','recovery','off','jour off','rest day'].includes(sport)) return true
+  if (/\b(repos|rest day|jour (de )?repos|off|récup(ération)? passive)\b/i.test(title) && (s.durationMin ?? s.duration_min ?? 0) === 0) return true
+  if ((s.durationMin ?? s.duration_min ?? 0) === 0) return true
+  return false
+}
+
 function matchActivity(activity:TrainingActivity, sessions:Session[]):Session|null {
   const actMin = Math.round(activity.elapsedTime/60)
   const actSport = normalizeSportType(activity.sport)
@@ -449,7 +466,10 @@ function usePlanning(weekStartParam?:string) {
       rpe:s.rpe??null, blocks:s.blocks??[], validation_data:{},
       plan_variant:s.planVariant??'A',
     }).select().single()
-    if(!error&&data) setSessions(p=>[...p,{...s,id:data.id}])
+    if(!error&&data) {
+      setSessions(p=>[...p,{...s,id:data.id}])
+      window.dispatchEvent(new Event('thw:sessions-changed'))
+    }
   }
 
   async function updateSession(id:string, upd:Partial<Session>) {
@@ -464,16 +484,19 @@ function usePlanning(weekStartParam?:string) {
     if (upd.sport) patch.sport = upd.sport
     await supabase.from('planned_sessions').update(patch).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
+    window.dispatchEvent(new Event('thw:sessions-changed'))
   }
 
   async function deleteSession(id:string) {
     await supabase.from('planned_sessions').delete().eq('id',id)
     setSessions(p=>p.filter(s=>s.id!==id))
+    window.dispatchEvent(new Event('thw:sessions-changed'))
   }
 
   async function moveSession(id:string, toDay:number) {
     await supabase.from('planned_sessions').update({ day_index:toDay, updated_at:new Date().toISOString() }).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,dayIndex:toDay}:s))
+    window.dispatchEvent(new Event('thw:sessions-changed'))
   }
 
   async function addTask(t:Omit<WeekTask,'id'>) {
@@ -810,6 +833,31 @@ function safeWeekTypeBg(type: string | null | undefined): string {
 }
 function safeWeekTypeText(type: string | null | undefined): string {
   return safeWeekTypeBg(type)
+}
+
+// Calcule dynamiquement le type de semaine à partir des séances réelles.
+// Priorité : volume relatif à la moyenne (Deload) > intensité dominante (Peak/Build) > Base.
+// Le type IA (aiType) est utilisé comme fallback si les données sont insuffisantes.
+function computeWeekType(
+  sessions: { intensity?: string; duration_min?: number | null; sport?: string | null; title?: string; durationMin?: number | null }[],
+  avgVolume: number,
+  aiType?: string | null,
+): string {
+  const real = sessions.filter(s => !isRestSession(s))
+  if (real.length === 0) return aiType ?? 'Base'
+  const volume = real.reduce((s, r) => s + ((r.duration_min ?? r.durationMin ?? 0) / 60), 0)
+  const intensCount: Record<string, number> = {}
+  for (const s of real) {
+    const k = s.intensity ?? 'low'
+    intensCount[k] = (intensCount[k] ?? 0) + 1
+  }
+  const total   = real.length
+  const highPct = ((intensCount['high'] ?? 0) + (intensCount['max'] ?? 0)) / total
+  const modPct  = (intensCount['moderate'] ?? 0) / total
+  if (avgVolume > 0 && volume <= avgVolume * 0.6) return 'Deload'
+  if (highPct > 0.5)                              return 'Peak'
+  if (highPct + modPct > 0.4)                    return 'Build'
+  return 'Base'
 }
 
 const SPORT_COLOR_FALLBACK: Record<string, string> = {
@@ -1337,10 +1385,11 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
             type AiSem = { numero?: number; type?: string; theme?: string }
             const aiSemaines: AiSem[] = plan.ai_context?.program?.semaines ?? []
 
-            // Groupe sessions par week_start
+            // Groupe sessions par week_start (hors repos)
             const weekMap = new Map<string, { sport: string; duration_min: number; intensity?: string }[]>()
             for (const s of sessions) {
               if (!s.week_start) continue
+              if (isRestSession(s)) continue   // exclure repos des graphiques
               if (!weekMap.has(s.week_start)) weekMap.set(s.week_start, [])
               weekMap.get(s.week_start)!.push({ sport: s.sport ?? 'autre', duration_min: s.duration_min ?? 0, intensity: s.intensity ?? undefined })
             }
@@ -1348,12 +1397,21 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
             if (weekStarts.length === 0) return null
 
             type WeekBar = { weekStart: string; weekNum: number; type: string; theme: string; volume_h: number; seanceCount: number; sportStats: { sport: string; count: number; mins: number }[] }
-            const weekBars: WeekBar[] = weekStarts.map((ws, idx) => {
-              const rows     = weekMap.get(ws)!
-              const weekNum  = Math.round((new Date(ws + 'T00:00:00Z').getTime() - planStartMs) / WEEK_MS) + 1
-              const aiSem    = aiSemaines.find(s => s.numero === weekNum)
-              const volume_h = rows.reduce((s, r) => s + r.duration_min / 60, 0)
 
+            // Passe 1 : volumes bruts pour calculer la moyenne (nécessaire à computeWeekType)
+            const rawWeeks = weekStarts.map((ws, idx) => {
+              const rows    = weekMap.get(ws)!
+              const weekNum = Math.round((new Date(ws + 'T00:00:00Z').getTime() - planStartMs) / WEEK_MS) + 1
+              const aiSem   = aiSemaines.find(s => s.numero === weekNum)
+              const volume_h = rows.reduce((s, r) => s + r.duration_min / 60, 0)
+              return { ws, idx, rows, weekNum, aiSem, volume_h }
+            })
+            const avgVolume = rawWeeks.length > 0
+              ? rawWeeks.reduce((s, w) => s + w.volume_h, 0) / rawWeeks.length
+              : 0
+
+            // Passe 2 : weekBars avec type calculé dynamiquement
+            const weekBars: WeekBar[] = rawWeeks.map(({ ws, idx, rows, weekNum, aiSem, volume_h }) => {
               const sMap = new Map<string, { count: number; mins: number }>()
               for (const r of rows) {
                 if (!sMap.has(r.sport)) sMap.set(r.sport, { count: 0, mins: 0 })
@@ -1365,7 +1423,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
               return {
                 weekStart: ws,
                 weekNum,
-                type:  aiSem?.type  ?? 'Base',
+                type:  computeWeekType(rows, avgVolume, aiSem?.type),
                 theme: aiSem?.theme ?? `Semaine ${idx + 1}`,
                 volume_h: Math.round(volume_h * 10) / 10,
                 seanceCount: rows.length,
@@ -1477,6 +1535,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
           const map = new Map<string, number>()
           for (const s of sessions) {
             if (!s.sport) continue
+            if (isRestSession(s)) continue   // exclure repos
             map.set(s.sport, (map.get(s.sport) ?? 0) + (s.duration_min ?? 0))
           }
           return Array.from(map.entries())
@@ -1540,8 +1599,8 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
           })
         }
 
-        // ── DONUT 1 : Zones (semaine actuelle) ───────────────────
-        const currentWeekSessions = sessions.filter(s => s.week_start === currentWeekStart)
+        // ── DONUT 1 : Zones (semaine actuelle, hors repos) ───────
+        const currentWeekSessions = sessions.filter(s => s.week_start === currentWeekStart && !isRestSession(s))
         const zoneMins = [0, 0, 0, 0, 0]
         for (const s of currentWeekSessions) {
           const z = intensityToZone(s.intensity)
@@ -1559,6 +1618,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
         const sportMap: Record<string, number> = {}
         for (const s of sessions) {
           if (!s.sport) continue
+          if (isRestSession(s)) continue   // exclure repos
           sportMap[s.sport] = (sportMap[s.sport] ?? 0) + (s.duration_min ?? 0)
         }
         const totalSportMins = Object.values(sportMap).reduce((a, b) => a + b, 0)
@@ -1570,6 +1630,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
         // ── DONUT 3 : Répartition charge plan (toutes les planned_sessions) ──────
         const intensMap: Record<string, number> = {}
         for (const s of sessions) {
+          if (isRestSession(s)) continue   // exclure repos
           const key = s.intensity ?? 'low'
           intensMap[key] = (intensMap[key] ?? 0) + 1
         }

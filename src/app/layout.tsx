@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
 import GlobalAIButton from '@/components/ai/GlobalAIButton'
@@ -9,6 +9,15 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'THW Coaching',
   description: 'Application de coaching sportif premium',
+}
+
+export function generateViewport(): Viewport {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  }
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

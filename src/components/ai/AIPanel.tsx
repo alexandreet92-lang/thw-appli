@@ -6501,6 +6501,93 @@ const PLUS_CATS: PlusCat[] = [
   },
 ]
 
+// ── FontPicker — sélecteur de police inline dans la barre de saisie ──────────
+
+const FONT_PICKER_OPTIONS = [
+  { id: 'dm_sans', label: 'DM Sans',  family: 'DM Sans, sans-serif' },
+  { id: 'inter',   label: 'Inter',    family: 'Inter, sans-serif' },
+  { id: 'system',  label: 'Système',  family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' },
+  { id: 'serif',   label: 'Serif',    family: 'Georgia, Times New Roman, serif' },
+  { id: 'mono',    label: 'Mono',     family: 'DM Mono, monospace' },
+]
+
+function FontPicker({ current, onChange }: { current: string; onChange: (family: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+
+  const currentFont = FONT_PICKER_OPTIONS.find(f => f.family === current) ?? FONT_PICKER_OPTIONS[0]
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(p => !p)}
+        title="Police du chat"
+        style={{
+          height: 24, padding: '0 8px', borderRadius: 6, flexShrink: 0,
+          border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
+          background: open ? 'var(--ai-bg)' : 'transparent',
+          cursor: 'pointer', color: 'var(--ai-dim)',
+          display: 'flex', alignItems: 'center', gap: 4,
+          transition: 'all 0.12s',
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
+        </svg>
+        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em', fontFamily: 'DM Sans, sans-serif' }}>
+          {currentFont.label}
+        </span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: 0,
+          marginBottom: 6, padding: 4,
+          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
+          borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+          zIndex: 40, minWidth: 130,
+        }}>
+          {FONT_PICKER_OPTIONS.map(f => {
+            const active = f.family === current
+            return (
+              <button
+                key={f.id}
+                onClick={() => {
+                  onChange(f.family)
+                  localStorage.setItem('thw_ai_chat_font', f.id)
+                  window.dispatchEvent(new Event('thw:chat-font-changed'))
+                  setOpen(false)
+                }}
+                style={{
+                  display: 'block', width: '100%', padding: '6px 10px',
+                  border: 'none', borderRadius: 7,
+                  background: active ? 'var(--ai-accent-dim)' : 'transparent',
+                  color: active ? 'var(--ai-accent)' : 'var(--ai-text)',
+                  fontSize: 12, fontWeight: active ? 600 : 400,
+                  fontFamily: f.family,
+                  cursor: 'pointer', textAlign: 'left',
+                  transition: 'background 0.1s',
+                }}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PlusMenu({
   onPrepare,
   onFlow,
@@ -6517,6 +6604,11 @@ function PlusMenu({
   onFiles:   () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -6526,13 +6618,13 @@ function PlusMenu({
     return () => document.removeEventListener('mousedown', h)
   }, [onClose])
 
-  // Cartes d'attachement — style iOS sombre
+  // Cartes d'attachement — adaptées au thème
   const ATTACH_CARDS: { label: string; icon: React.ReactNode; onClick: () => void }[] = [
     {
       label: 'Caméra',
       onClick: () => { onClose(); setTimeout(onCamera, 80) },
       icon: (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
           <circle cx="12" cy="13" r="4"/>
         </svg>
@@ -6542,7 +6634,7 @@ function PlusMenu({
       label: 'Photos',
       onClick: () => { onClose(); setTimeout(onPhotos, 80) },
       icon: (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <circle cx="8.5" cy="8.5" r="1.5"/>
           <path d="M21 15l-5-5L5 21"/>
@@ -6553,13 +6645,15 @@ function PlusMenu({
       label: 'Fichiers',
       onClick: () => { onClose(); setTimeout(onFiles, 80) },
       icon: (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
           <path d="M14 2v6h6M12 12v6M9 15h6"/>
         </svg>
       ),
     },
   ]
+
+  const visibleCards = ATTACH_CARDS.filter(card => isMobile || card.label !== 'Caméra')
 
   return (
     <div ref={ref} style={{
@@ -6578,13 +6672,13 @@ function PlusMenu({
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ai-border)' }} />
       </div>
 
-      {/* ── Grille Joindre — style iOS ── */}
+      {/* ── Grille Joindre ── */}
       <div style={{ padding: '0 14px 16px' }}>
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 4px 10px' }}>
           Joindre
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-          {ATTACH_CARDS.map(card => (
+        <div style={{ display: 'grid', gridTemplateColumns: visibleCards.length === 2 ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 10 }}>
+          {visibleCards.map(card => (
             <button
               key={card.label}
               onClick={card.onClick}
@@ -6592,9 +6686,10 @@ function PlusMenu({
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: 10, padding: '18px 8px',
                 borderRadius: 16,
-                background: 'rgba(28,28,30,0.92)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--ai-bg2)',
+                border: '1px solid var(--ai-border)',
                 cursor: 'pointer',
+                color: 'var(--ai-text)',
                 backdropFilter: 'blur(8px)',
                 transition: 'transform 0.1s, opacity 0.1s',
               }}
@@ -6604,7 +6699,7 @@ function PlusMenu({
               onMouseUp={e    => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
             >
               {card.icon}
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.92)', letterSpacing: '0.01em' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)', letterSpacing: '0.01em' }}>
                 {card.label}
               </span>
             </button>
@@ -8672,6 +8767,9 @@ export default function AIPanel({
                   </svg>
                 </button>
 
+                {/* Police */}
+                <FontPicker current={chatFontFamily} onChange={setChatFontFamily} />
+
                 {/* Sélecteur modèle */}
                 <ModelPicker model={model} onChange={setModel} />
 
@@ -8730,10 +8828,11 @@ export default function AIPanel({
               const excerpt = selPopup.text.length > 250
                 ? selPopup.text.slice(0, 250) + '…'
                 : selPopup.text
-              setInput(`Approfondis ce point : "${excerpt}"`)
+              const prompt = `Approfondis ce point : "${excerpt}"`
+              setInput(prompt)
               setSelPopup(null)
               window.getSelection()?.removeAllRanges()
-              setTimeout(() => areaRef.current?.focus(), 80)
+              setTimeout(() => void send(prompt), 150)
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,

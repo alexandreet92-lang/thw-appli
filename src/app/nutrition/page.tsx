@@ -845,16 +845,23 @@ export default function NutritionPage() {
   }, [])
 
   // ── Meal logs for today (Bilan du jour) ───────────────────────
-  const { totals: todayMealTotals } = useMealLogs(activePlan?.id, today)
+  const { totals: todayMealTotals, reload: reloadTodayLogs } = useMealLogs(activePlan?.id, today)
 
   // ── Meal logs for the open day detail modal ───────────────────
   const modalDate = dayDetailOpen?.date ?? ''
   const {
     logs: modalMealLogs,
     totals: modalMealTotals,
-    toggleValidated: modalToggleValidated,
+    toggleValidated: _modalToggleValidated,
     updateLog: modalUpdateLog,
   } = useMealLogs(activePlan?.id, modalDate)
+
+  // Wrapper : si on valide un repas pour aujourd'hui depuis la modal,
+  // on rafraîchit aussi le hook Bilan du jour (instances séparées)
+  const modalToggleValidated = useCallback(async (slot: string, validated: boolean) => {
+    await _modalToggleValidated(slot, validated)
+    if (modalDate === today) void reloadTodayLogs()
+  }, [_modalToggleValidated, modalDate, today, reloadTodayLogs])
 
   // ── Today's data ───────────────────────────────────────────────
   const todaySessions = sessions.filter(s => {
@@ -1606,68 +1613,94 @@ export default function NutritionPage() {
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Row header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
-                    {/* Validate checkbox */}
-                    <button
-                      onClick={() => void modalToggleValidated(mealKey, !isValidated)}
-                      title={isValidated ? 'Annuler' : 'Valider'}
-                      style={{
-                        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                        border: `2px solid ${isValidated ? '#22c55e' : 'var(--border)'}`,
-                        background: isValidated ? '#22c55e' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      {isValidated && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700, color: 'var(--text-mid)', marginBottom: 2 }}>
+                  {/* ── Row header ── */}
+                  <div style={{ padding: '10px 12px' }}>
+                    {/* Top: label + actions */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <div style={{
+                        fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                        color: 'var(--text-mid)', flex: 1,
+                      }}>
                         {MEAL_LABELS[mealKey]}
                       </div>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text)', lineHeight: 1.4 }}>
-                        {mealLog?.actual_description ?? text}
-                      </p>
-                      {mealLog?.actual_kcal != null && (
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 3 }}>
-                          {mealLog.actual_kcal} kcal
-                          {mealLog.actual_prot != null ? ` · P:${mealLog.actual_prot}g` : ''}
-                          {mealLog.actual_gluc != null ? ` G:${mealLog.actual_gluc}g` : ''}
-                          {mealLog.actual_lip  != null ? ` L:${mealLog.actual_lip}g`  : ''}
-                        </div>
-                      )}
+
+                      {/* Edit button */}
+                      <button
+                        onClick={() => {
+                          if (isEditing) { setEditSlot(null); return }
+                          setEditSlot(mealKey)
+                          setEditDesc(mealLog?.actual_description ?? text)
+                          setEditKcal(mealLog?.actual_kcal != null ? String(mealLog.actual_kcal) : '')
+                          setEditProt(mealLog?.actual_prot != null ? String(mealLog.actual_prot) : '')
+                          setEditGluc(mealLog?.actual_gluc != null ? String(mealLog.actual_gluc) : '')
+                          setEditLip(mealLog?.actual_lip  != null ? String(mealLog.actual_lip)  : '')
+                        }}
+                        style={{
+                          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                          border: `1px solid ${isEditing ? 'rgba(91,111,255,0.5)' : 'var(--border)'}`,
+                          background: isEditing ? 'rgba(91,111,255,0.12)' : 'transparent',
+                          color: isEditing ? '#5b6fff' : 'var(--text-dim)', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+
+                      {/* Validate pill button */}
+                      <button
+                        onClick={() => void modalToggleValidated(mealKey, !isValidated)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '4px 10px', borderRadius: 20, flexShrink: 0,
+                          border: `1.5px solid ${isValidated ? '#22c55e' : 'var(--border)'}`,
+                          background: isValidated
+                            ? 'rgba(34,197,94,0.15)'
+                            : 'var(--bg-card)',
+                          color: isValidated ? '#22c55e' : 'var(--text-dim)',
+                          fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 11,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          transform: isValidated ? 'scale(1.05)' : 'scale(1)',
+                        }}
+                      >
+                        {isValidated ? (
+                          <>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            Validé
+                          </>
+                        ) : (
+                          <>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <circle cx="12" cy="12" r="10"/>
+                              <polyline points="12 8 12 12 14 14"/>
+                            </svg>
+                            Valider
+                          </>
+                        )}
+                      </button>
                     </div>
 
-                    {/* Edit button */}
-                    <button
-                      onClick={() => {
-                        if (isEditing) { setEditSlot(null); return }
-                        setEditSlot(mealKey)
-                        setEditDesc(mealLog?.actual_description ?? text)
-                        setEditKcal(mealLog?.actual_kcal != null ? String(mealLog.actual_kcal) : '')
-                        setEditProt(mealLog?.actual_prot != null ? String(mealLog.actual_prot) : '')
-                        setEditGluc(mealLog?.actual_gluc != null ? String(mealLog.actual_gluc) : '')
-                        setEditLip(mealLog?.actual_lip  != null ? String(mealLog.actual_lip)  : '')
-                      }}
-                      style={{
-                        width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                        border: `1px solid ${isEditing ? 'rgba(91,111,255,0.5)' : 'var(--border)'}`,
-                        background: isEditing ? 'rgba(91,111,255,0.12)' : 'transparent',
-                        color: isEditing ? '#5b6fff' : 'var(--text-dim)', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
+                    {/* Meal content + macros */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
+                          {mealLog?.actual_description ?? text}
+                        </p>
+                        {mealLog?.actual_kcal != null && (
+                          <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 4 }}>
+                            {mealLog.actual_kcal} kcal
+                            {mealLog.actual_prot != null ? ` · P:${mealLog.actual_prot}g` : ''}
+                            {mealLog.actual_gluc != null ? ` G:${mealLog.actual_gluc}g` : ''}
+                            {mealLog.actual_lip  != null ? ` L:${mealLog.actual_lip}g`  : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Edit sub-form */}

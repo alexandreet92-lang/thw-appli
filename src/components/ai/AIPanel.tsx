@@ -7026,6 +7026,7 @@ export default function AIPanel({
   // Charge les règles IA actives de l'utilisateur au mount
   useEffect(() => {
     void (async () => {
+      const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) return
       const { data } = await sb

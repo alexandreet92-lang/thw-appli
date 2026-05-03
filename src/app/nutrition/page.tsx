@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
-import { useMealLogs } from '@/hooks/useMealLogs'
+import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import type { NutritionPlanData, PlanDay, MealSet, DailyLog, WeightLog } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -845,13 +845,12 @@ export default function NutritionPage() {
   }, [])
 
   // ── Meal logs for today (Bilan du jour) ───────────────────────
-  const { totals: todayMealTotals, reload: reloadTodayLogs } = useMealLogs(activePlan?.id, today)
+  const { logs: todayMealLogs, reload: reloadTodayLogs } = useMealLogs(activePlan?.id, today)
 
   // ── Meal logs for the open day detail modal ───────────────────
   const modalDate = dayDetailOpen?.date ?? ''
   const {
     logs: modalMealLogs,
-    totals: modalMealTotals,
     toggleValidated: _modalToggleValidated,
     updateLog: modalUpdateLog,
   } = useMealLogs(activePlan?.id, modalDate)
@@ -887,6 +886,48 @@ export default function NutritionPage() {
       ) ?? { proteines: 0, glucides: 0, lipides: 0 }
 
   const todayLog = dailyLogs.find(l => l.date === today)
+
+  // ── Adjusted totals: validated slots fallback to plan÷nbSlots ──
+  // Si actual_kcal non renseigné → on estime la part du slot dans le total journée
+  function slotFallback(
+    mealLogs: MealLog[],
+    dayKcal: number,
+    dayProt: number,
+    dayGluc: number,
+    dayLip: number,
+    mealSetRef: MealSet | null,
+  ) {
+    const activeSlots = MEAL_KEYS.filter(k => !mealSetRef || mealSetRef[k] !== '-').length || 1
+    const perSlot = {
+      kcal: dayKcal / activeSlots,
+      prot: dayProt / activeSlots,
+      gluc: dayGluc / activeSlots,
+      lip:  dayLip  / activeSlots,
+    }
+    return mealLogs
+      .filter(l => l.validated)
+      .reduce(
+        (acc, l) => ({
+          kcal: acc.kcal + (l.actual_kcal ?? perSlot.kcal),
+          prot: acc.prot + (l.actual_prot ?? perSlot.prot),
+          gluc: acc.gluc + (l.actual_gluc ?? perSlot.gluc),
+          lip:  acc.lip  + (l.actual_lip  ?? perSlot.lip),
+        }),
+        { kcal: 0, prot: 0, gluc: 0, lip: 0 },
+      )
+  }
+
+  const todayMealSet = todayPlanDay
+    ? (planVariant === 'A' ? todayPlanDay.repas.option_A : todayPlanDay.repas.option_B)
+    : null
+  const todayMealTotals = slotFallback(
+    todayMealLogs,
+    todayKcalObj,
+    todayMacroObj.proteines,
+    todayMacroObj.glucides,
+    todayMacroObj.lipides,
+    todayMealSet,
+  )
 
   // ── Selected date data ─────────────────────────────────────────
   const selectedPlanDay = activePlan?.plan_data?.jours?.find(j => j.date === selectedDate) ?? null
@@ -1508,7 +1549,20 @@ export default function NutritionPage() {
       {/* ══════════════════════════════════════════════════════════ */}
       {/* DAY DETAIL MODAL — portal, centered desktop / bottom mobile */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {dayDetailOpen && createPortal(
+      {dayDetailOpen && (() => {
+        // Totaux ajustés pour la modal : fallback plan÷slots si actual non renseigné
+        const modalMealSet = planVariant === 'A'
+          ? dayDetailOpen.repas.option_A
+          : dayDetailOpen.repas.option_B
+        const modalTotals = slotFallback(
+          modalMealLogs,
+          dayDetailOpen.kcal,
+          dayDetailOpen.proteines,
+          dayDetailOpen.glucides,
+          dayDetailOpen.lipides,
+          modalMealSet,
+        )
+        return createPortal(
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 2000,
@@ -1566,10 +1620,10 @@ export default function NutritionPage() {
               borderRadius: 12, border: '1px solid var(--border)',
               marginBottom: 16,
             }}>
-              <MacroDonut label="Calories"  consumed={modalMealTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#00c8e0" size={72} />
-              <MacroDonut label="Proteines" consumed={modalMealTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={72} />
-              <MacroDonut label="Glucides"  consumed={modalMealTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={72} />
-              <MacroDonut label="Lipides"   consumed={modalMealTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={72} />
+              <MacroDonut label="Calories"  consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#00c8e0" size={72} />
+              <MacroDonut label="Proteines" consumed={modalTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={72} />
+              <MacroDonut label="Glucides"  consumed={modalTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={72} />
+              <MacroDonut label="Lipides"   consumed={modalTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={72} />
             </div>
 
             {/* ── Option A / B toggle ────────────────────────── */}
@@ -1786,7 +1840,8 @@ export default function NutritionPage() {
           </div>
         </div>,
         document.body,
-      )}
+        )
+      })()}
 
       {/* Bouton Mes repas types */}
       <div style={{ padding: '8px 16px 24px', textAlign: 'center' }}>

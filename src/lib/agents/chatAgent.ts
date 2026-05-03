@@ -30,6 +30,33 @@ RÈGLES ABSOLUES — JAMAIS DE DÉROGATION :
 4. Tu bases TOUJOURS ta réponse sur les données réelles du contexte. Jamais sur des suppositions.
 5. Tu réponds en français, de façon directe, structurée et sans emojis inutiles.`
 
+const MISSING_DATA_RULE = `
+RÈGLE DONNÉES MANQUANTES — OBLIGATOIRE :
+Si une donnée n'est pas disponible dans l'application, tu dois :
+1. L'indiquer clairement et brièvement (ex: "Tes zones de course ne sont pas encore configurées")
+2. Indiquer exactement où l'utilisateur peut la renseigner :
+   - Objectifs et courses → Calendar (icône calendrier dans la navigation)
+   - Zones d'entraînement → Performance > onglet Datas > section Zones
+   - Données de récupération → section Recovery (icône cœur dans la navigation)
+   - Plan nutritionnel → section Nutrition
+   - Tests de performance → Performance > onglet Tests
+   - Activités Strava → bouton Sync dans Activities, ou saisie manuelle
+3. Proposer un conseil général adapté en attendant — ne jamais bloquer la conversation`
+
+const FORMAT_RULE = `
+RÈGLES DE FORMAT — OBLIGATOIRES :
+- Utilise le Markdown pour structurer tes réponses : ## pour les titres de sections, ### pour les sous-titres
+- Mets en **gras** les mots-clés importants, les valeurs numériques clés et les recommandations principales
+- Utilise des listes à tirets (-) pour les points multiples
+- Utilise des listes numérotées (1. 2. 3.) pour les étapes séquentielles
+- Pour les comparaisons ou les données tabulaires, utilise des tableaux Markdown :
+  | Colonne 1 | Colonne 2 | Colonne 3 |
+  |-----------|-----------|-----------|
+  | valeur    | valeur    | valeur    |
+- N'utilise JAMAIS d'emojis
+- Ne mets jamais de ligne de séparation --- seule
+- Garde une structure aérée : une ligne vide entre chaque section`
+
 const SESSIONS_RULE = `
 SÉANCES AVEC INTERVALLES :
 Quand tu proposes une séance avec des intervalles, propose toujours deux variantes :
@@ -122,33 +149,6 @@ Comportement attendu :
 }
 
 // ── Prompts spécifiques à l'IA centrale (3 modèles) ───────────
-
-const MISSING_DATA_RULE = `
-RÈGLE DONNÉES MANQUANTES — OBLIGATOIRE :
-Si une donnée n'est pas disponible dans l'application, tu dois :
-1. L'indiquer clairement et brièvement (ex: "Tes zones de course ne sont pas encore configurées")
-2. Indiquer exactement où l'utilisateur peut la renseigner :
-   - Objectifs et courses → Calendar (icône calendrier dans la navigation)
-   - Zones d'entraînement → Performance > onglet Datas > section Zones
-   - Données de récupération → section Recovery (icône cœur dans la navigation)
-   - Plan nutritionnel → section Nutrition
-   - Tests de performance → Performance > onglet Tests
-   - Activités Strava → bouton Sync dans Activities, ou saisie manuelle
-3. Proposer un conseil général adapté en attendant — ne jamais bloquer la conversation`
-
-const FORMAT_RULE = `
-RÈGLES DE FORMAT — OBLIGATOIRES :
-- Utilise le Markdown pour structurer tes réponses : ## pour les titres de sections, ### pour les sous-titres
-- Mets en **gras** les mots-clés importants, les valeurs numériques clés et les recommandations principales
-- Utilise des listes à tirets (-) pour les points multiples
-- Utilise des listes numérotées (1. 2. 3.) pour les étapes séquentielles
-- Pour les comparaisons ou les données tabulaires, utilise des tableaux Markdown :
-  | Colonne 1 | Colonne 2 | Colonne 3 |
-  |-----------|-----------|-----------|
-  | valeur    | valeur    | valeur    |
-- N'utilise JAMAIS d'emojis
-- Ne mets jamais de ligne de séparation --- seule
-- Garde une structure aérée : une ligne vide entre chaque section`
 
 const CENTRAL_PROMPTS: Record<string, string> = {
 

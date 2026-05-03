@@ -141,7 +141,7 @@ const HEADING_STYLES: Record<number, React.CSSProperties> = {
        color: 'var(--ai-mid)', letterSpacing: '0.02em' },
 }
 
-function MsgContent({ text }: { text: string }) {
+function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string }) {
   const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
   let i = 0
@@ -246,14 +246,14 @@ function MsgContent({ text }: { text: string }) {
     i++
   }
 
-  return <div style={{ fontFamily: 'DM Sans, sans-serif' }}>{blocks}</div>
+  return <div style={{ fontFamily: fontFamily ?? 'DM Sans, sans-serif' }}>{blocks}</div>
 }
 
 // ── Typed text — streaming character-by-character reveal ──────────
 // Matches the Claude / ChatGPT "typewriter" feel: reveals chars at
 // ~16 ms/char during streaming, snaps to full text when done.
 
-function TypedText({ text, isStreaming }: { text: string; isStreaming: boolean }) {
+function TypedText({ text, isStreaming, fontFamily }: { text: string; isStreaming: boolean; fontFamily?: string }) {
   const [shown, setShown]     = useState(isStreaming ? 0 : text.length)
   const rafRef                = useRef<number | null>(null)
   const targetLenRef          = useRef(text.length)
@@ -309,7 +309,7 @@ function TypedText({ text, isStreaming }: { text: string; isStreaming: boolean }
 
   return (
     <div style={{ position: 'relative' }}>
-      <MsgContent text={text.slice(0, shown)} />
+      <MsgContent text={text.slice(0, shown)} fontFamily={fontFamily} />
       {cursor}
     </div>
   )
@@ -7207,6 +7207,7 @@ export default function AIPanel({
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
   const [aiRules,          setAiRules]          = useState<{ category: string; rule_text: string }[]>([])
   const [ruleHelperCategory, setRuleHelperCategory] = useState<string | null>(null)
+  const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -7241,6 +7242,24 @@ export default function AIPanel({
       setAiRules((data ?? []) as { category: string; rule_text: string }[])
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Charge et écoute la police de chat depuis localStorage
+  useEffect(() => {
+    const FONT_MAP: Record<string, string> = {
+      dm_sans: 'DM Sans, sans-serif',
+      inter:   'Inter, sans-serif',
+      system:  '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+      serif:   'Georgia, Times New Roman, serif',
+      mono:    'DM Mono, monospace',
+    }
+    const apply = () => {
+      const val = localStorage.getItem('thw_ai_chat_font')
+      if (val && FONT_MAP[val]) setChatFontFamily(FONT_MAP[val])
+    }
+    apply()
+    window.addEventListener('storage', apply)
+    return () => window.removeEventListener('storage', apply)
+  }, [])
 
   // Écoute l'event depuis la page profil (bouton "Formuler avec l'IA")
   useEffect(() => {
@@ -8454,13 +8473,10 @@ export default function AIPanel({
                         return (
                           <div style={{
                             flex: 1, minWidth: 0,
-                            background: 'var(--ai-bg2)',
-                            border: '1px solid var(--ai-border)',
-                            borderRadius: '4px 18px 18px 18px',
-                            padding: '10px 14px 10px 14px',
+                            padding: '4px 0',
                             animation: 'ai_msg_in 0.15s ease both',
                           }}>
-                            <TypedText text={msg.content} isStreaming={isStreamingMsg} />
+                            <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
                           </div>
                         )
                       })()}

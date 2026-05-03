@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 type ProfileTab    = 'profil' | 'notifications' | 'ia'
 type OAuthProvider = 'strava' | 'wahoo' | 'polar' | 'withings'
 type THWModel      = 'hermes' | 'athena' | 'zeus'
+type ChatFontId    = 'dm_sans' | 'inter' | 'system' | 'serif' | 'mono'
 
 // ── Système de règles IA ─────────────────────────────────────
 interface AiRule {
@@ -22,6 +23,14 @@ interface AiRule {
   active: boolean
   created_at: string
 }
+
+const CHAT_FONTS: { id: ChatFontId; label: string; family: string; preview: string }[] = [
+  { id: 'dm_sans', label: 'DM Sans',  family: 'DM Sans, sans-serif',                                        preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'inter',   label: 'Inter',    family: 'Inter, sans-serif',                                           preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'system',  label: 'Système',  family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',     preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'serif',   label: 'Serif',    family: 'Georgia, Times New Roman, serif',                             preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'mono',    label: 'Mono',     family: 'DM Mono, monospace',                                          preview: 'Analyse ta semaine et optimise ta charge.' },
+]
 
 const RULE_CATEGORIES = [
   { id: 'response_style', label: 'Style',          color: '#5b6fff', icon: '💬', placeholder: 'Ex : Réponds de manière concise et directe' },
@@ -1009,14 +1018,17 @@ function IASettingsBloc() {
   const [defaultModel,    setDefaultModel]    = useState<THWModel>('athena')
   const [creditSaving,    setCreditSaving]    = useState(false)
   const [allowSuggestions,setAllowSuggestions]= useState(true)
+  const [chatFont,        setChatFont]        = useState<ChatFontId>('dm_sans')
 
   useEffect(() => {
     const m  = localStorage.getItem('thw_ai_default_model')
     const cs = localStorage.getItem('thw_ai_credit_saving')
     const as = localStorage.getItem('thw_ai_allow_suggestions')
+    const cf = localStorage.getItem('thw_ai_chat_font')
     if (m === 'hermes' || m === 'athena' || m === 'zeus') setDefaultModel(m)
     if (cs) setCreditSaving(cs === 'true')
     if (as) setAllowSuggestions(as !== 'false')
+    if (cf === 'dm_sans' || cf === 'inter' || cf === 'system' || cf === 'serif' || cf === 'mono') setChatFont(cf)
   }, [])
 
   function save(key:string, val:string) { localStorage.setItem(key, val) }
@@ -1211,6 +1223,39 @@ function IASettingsBloc() {
                   {id==='hermes'?'Rapide':id==='athena'?'Équilibré':'Avancé'}
                 </div>
                 {label}
+              </button>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* ── Police du chat ────────────────────────────── */}
+      <Card>
+        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>}>Police du chat</CardTitle>
+        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 12px', lineHeight:1.5 }}>
+          Change la police de lecture des réponses du Coach IA.
+        </p>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {CHAT_FONTS.map(f => {
+            const active = chatFont === f.id
+            return (
+              <button key={f.id} onClick={() => { setChatFont(f.id); save('thw_ai_chat_font', f.id) }}
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'space-between',
+                  padding:'12px 16px', borderRadius:12,
+                  border:`1.5px solid ${active ? 'rgba(91,111,255,0.5)' : 'var(--border)'}`,
+                  background: active ? 'rgba(91,111,255,0.06)' : 'transparent',
+                  cursor:'pointer', transition:'all 0.15s', width:'100%', textAlign:'left' as const,
+                }}>
+                <div>
+                  <p style={{ fontFamily:f.family, fontSize:14, fontWeight:500, color: active ? '#5b6fff' : 'var(--text)', margin:'0 0 2px' }}>{f.label}</p>
+                  <p style={{ fontFamily:f.family, fontSize:12, color:'var(--text-dim)', margin:0 }}>{f.preview}</p>
+                </div>
+                {active && (
+                  <div style={{ width:20, height:20, borderRadius:'50%', background:'#5b6fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                )}
               </button>
             )
           })}

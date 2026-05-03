@@ -7303,6 +7303,7 @@ export default function AIPanel({
   const [aiRules,          setAiRules]          = useState<{ category: string; rule_text: string }[]>([])
   const [ruleHelperCategory, setRuleHelperCategory] = useState<string | null>(null)
   const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
+  const [quotedText,       setQuotedText]       = useState<string | null>(null)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -7315,6 +7316,8 @@ export default function AIPanel({
   const cameraRef  = useRef<HTMLInputElement>(null)
   const photosRef  = useRef<HTMLInputElement>(null)
   const filesRef   = useRef<HTMLInputElement>(null)
+  // AbortController pour annuler la requête en cours
+  const abortRef   = useRef<AbortController | null>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
 
@@ -7781,6 +7784,13 @@ export default function AIPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, model])
 
+  const stopGeneration = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+  }, [])
+
   const handleMsgMouseUp = useCallback(() => {
     const sel = window.getSelection()
     const txt = sel?.toString().trim() ?? ''
@@ -7824,8 +7834,10 @@ export default function AIPanel({
     setPendingToolCalls([])
     setToolApplyStatus('idle')
     setToolApplyError(null)
-    const qaForSend = activeQA   // capture before clearing
+    const qaForSend   = activeQA    // capture before clearing
+    const quoteForSend = quotedText // capture before clearing
     setActiveQA(null)
+    setQuotedText(null)
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
 
@@ -7841,7 +7853,12 @@ export default function AIPanel({
       isNew = true
     }
 
-    const userMsg: AIMsg = { id: genId(), role: 'user', content: displayText, ts: Date.now() }
+    // Si une citation est active, la préfixer dans le message affiché
+    const finalDisplayText = quoteForSend
+      ? `> ${quoteForSend.slice(0, 120)}${quoteForSend.length > 120 ? '…' : ''}\n\n${displayText}`
+      : displayText
+
+    const userMsg: AIMsg = { id: genId(), role: 'user', content: finalDisplayText, ts: Date.now() }
     const updated: AIConv = {
       ...conv,
       msgs: [...conv.msgs, userMsg],
@@ -7865,7 +7882,7 @@ export default function AIPanel({
     const apiMsgs: MsgForApi[] = updated.msgs.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
 
     // Build the API content (enriched with QA context if active)
-    const apiContentText: string = (() => {
+    const rawApiText: string = (() => {
       if (presetApi) return presetApi  // flow already built full prompt
       if (qaForSend) {
         // Prepend action context to user's message
@@ -7875,6 +7892,10 @@ export default function AIPanel({
       }
       return displayText
     })()
+    // Si une citation est active, la préfixer dans le prompt API
+    const apiContentText = quoteForSend
+      ? `À propos de ce passage : "${quoteForSend}"\n\n${rawApiText}`
+      : rawApiText
 
     if (hasAttachment && attachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
@@ -7899,9 +7920,14 @@ export default function AIPanel({
         planSessionsContext = await fetchPlanSessionsContext(planId)
       }
 
+      // AbortController pour permettre l'annulation via le bouton Stop
+      const controller = new AbortController()
+      abortRef.current = controller
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           agentId:  isPlanChat ? 'plan_coach' : 'central',
           modelId:  snapshot,
@@ -8009,6 +8035,8 @@ export default function AIPanel({
         processSSEBuffer()
       }
 
+      abortRef.current = null
+
       // ── Persistance DB pour le plan-chat (training_plan_messages) ──
       if (isPlanChat && planId && textAccumulated) {
         try {
@@ -8024,16 +8052,23 @@ export default function AIPanel({
         } catch { /* non-bloquant */ }
       }
 
-    } catch {
+    } catch (e) {
+      // Abort volontaire — on garde le texte déjà affiché, pas d'erreur
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        abortRef.current = null
+        setLoading(false)
+        return
+      }
       const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
       setConvs(prev => prev.map(c =>
         c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
       ))
     } finally {
+      abortRef.current = null
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA, planId, planContext])
+  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext])
 
   // SSR guard
   if (!mounted) return null
@@ -8664,6 +8699,40 @@ export default function AIPanel({
               transition: 'border-color 0.15s',
             }}>
 
+              {/* Citation de texte sélectionné */}
+              {quotedText && (
+                <div style={{
+                  margin: '8px 10px 0',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  borderLeft: '3px solid var(--ai-accent)',
+                  background: 'var(--ai-accent-dim)',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  maxHeight: 80, overflow: 'hidden',
+                }}>
+                  <p style={{
+                    flex: 1, margin: 0, fontSize: 12, color: 'var(--ai-mid)',
+                    lineHeight: 1.5, fontStyle: 'italic',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical' as const,
+                    overflow: 'hidden',
+                  }}>
+                    {quotedText}
+                  </p>
+                  <button
+                    onClick={() => setQuotedText(null)}
+                    style={{
+                      width: 18, height: 18, borderRadius: '50%', border: 'none',
+                      background: 'transparent', color: 'var(--ai-dim)',
+                      cursor: 'pointer', fontSize: 14, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      lineHeight: 1,
+                    }}
+                  >×</button>
+                </div>
+              )}
+
               {/* Attachment preview */}
               {attachment && (
                 <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -8776,25 +8845,44 @@ export default function AIPanel({
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
-                {/* Envoyer */}
-                <button
-                  onClick={() => void send()}
-                  disabled={(!input.trim() && !attachment && !activeQA) || loading}
-                  style={{
-                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                    border: 'none',
-                    background: (input.trim() || attachment || activeQA) && !loading ? 'var(--ai-text)' : 'var(--ai-border)',
-                    cursor: (input.trim() || attachment || activeQA) && !loading ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke={(input.trim() || attachment || activeQA) && !loading ? 'var(--ai-bg)' : 'var(--ai-dim)'}
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
-                  </svg>
-                </button>
+                {/* Envoyer / Stop */}
+                {loading ? (
+                  <button
+                    onClick={stopGeneration}
+                    title="Arrêter la génération"
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      border: 'none',
+                      background: '#ef4444',
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="none">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void send()}
+                    disabled={!input.trim() && !attachment && !activeQA && !quotedText}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      border: 'none',
+                      background: (input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-text)' : 'var(--ai-border)',
+                      cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      stroke={(input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-bg)' : 'var(--ai-dim)'}
+                      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -8825,14 +8913,13 @@ export default function AIPanel({
           <button
             onMouseDown={e => e.preventDefault()}
             onClick={() => {
-              const excerpt = selPopup.text.length > 250
-                ? selPopup.text.slice(0, 250) + '…'
+              const excerpt = selPopup.text.length > 500
+                ? selPopup.text.slice(0, 500) + '…'
                 : selPopup.text
-              const prompt = `Approfondis ce point : "${excerpt}"`
-              setInput(prompt)
+              setQuotedText(excerpt)
               setSelPopup(null)
               window.getSelection()?.removeAllRanges()
-              setTimeout(() => void send(prompt), 150)
+              setTimeout(() => areaRef.current?.focus(), 80)
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,

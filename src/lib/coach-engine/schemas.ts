@@ -312,11 +312,17 @@ export interface ChatMessage {
 // Modèles IA disponibles dans l'IA centrale
 export type THWModelId = 'hermes' | 'athena' | 'zeus'
 
+export interface AiRule {
+  category: string
+  rule_text: string
+}
+
 export interface ChatInput {
   agentId: string           // 'central' | 'planning' | 'readiness' | etc.
   messages: ChatMessage[]   // historique complet
   context?: Record<string, unknown>  // contexte page (stats, séances, etc.)
   modelId?: THWModelId      // modèle sélectionné (central uniquement)
+  aiRules?: AiRule[]        // règles personnalisées de l'athlète (active seulement)
 }
 
 export interface ChatOutput {

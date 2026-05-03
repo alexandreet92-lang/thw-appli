@@ -75,10 +75,10 @@ export async function POST(req: NextRequest) {
 
   console.log(`[coach-stream] tier=${tier} model=${tierModel} → ${model} max_tokens=${maxTokens}`)
 
-  let body: ChatInput
+  let body: ChatInput & { aiRules?: { category: string; rule_text: string }[] }
 
   try {
-    body = await req.json() as ChatInput
+    body = await req.json() as typeof body
   } catch {
     return new Response('Invalid JSON', { status: 400 })
   }
@@ -87,7 +87,10 @@ export async function POST(req: NextRequest) {
     return new Response('No messages provided', { status: 400 })
   }
 
-  const { systemPrompt, anthropicMessages } = buildChatParams(body)
+  const { systemPrompt, anthropicMessages } = buildChatParams({
+    ...body,
+    aiRules: body.aiRules ?? [],
+  })
   const client = getAnthropicClient()
 
   const systemWithTools = `${systemPrompt}\n\n${TOOL_INSTRUCTIONS}`

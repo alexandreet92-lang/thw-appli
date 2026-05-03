@@ -13,8 +13,24 @@ import { createClient } from '@/lib/supabase/client'
 type ProfileTab    = 'profil' | 'notifications' | 'ia'
 type OAuthProvider = 'strava' | 'wahoo' | 'polar' | 'withings'
 type THWModel      = 'hermes' | 'athena' | 'zeus'
-type ToneId        = 'pro' | 'warm' | 'spontaneous' | 'offbeat' | 'efficient'
-type DetailId      = 'short' | 'normal' | 'deep'
+
+// ── Système de règles IA ─────────────────────────────────────
+interface AiRule {
+  id: string
+  category: string
+  rule_text: string
+  active: boolean
+  created_at: string
+}
+
+const RULE_CATEGORIES = [
+  { id: 'response_style', label: 'Style',          color: '#5b6fff', icon: '💬', placeholder: 'Ex : Réponds de manière concise et directe' },
+  { id: 'training',       label: 'Entraînement',   color: '#22c55e', icon: '🏋️', placeholder: 'Ex : Pas de squats avec charge lourde' },
+  { id: 'health',         label: 'Santé',           color: '#ef4444', icon: '🩺', placeholder: 'Ex : Tendinite rotulienne genou droit, éviter les impacts' },
+  { id: 'nutrition',      label: 'Nutrition',       color: '#f97316', icon: '🥗', placeholder: 'Ex : Végétarien, intolérant au lactose' },
+  { id: 'schedule',       label: 'Organisation',    color: '#8b5cf6', icon: '📅', placeholder: 'Ex : Disponible uniquement le matin avant 7h30' },
+  { id: 'other',          label: 'Autre',            color: '#6b7280', icon: '📌', placeholder: 'Ex : Toujours proposer des alternatives quand tu suggères un exercice' },
+] as const
 
 interface Connection {
   id: string; provider?: OAuthProvider; label: string
@@ -634,6 +650,285 @@ const MODEL_META = {
   },
 } satisfies Record<THWModel, { color:string; tagline:string; cost:number; desc:string; uses:string[]; levels:string[]; effigy:React.ReactNode }>
 
+// ── Hook useAiRules ───────────────────────────────────────────
+function useAiRules() {
+  const supabase = createClient()
+  const [rules,   setRules]   = useState<AiRule[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+      const { data } = await supabase
+        .from('ai_rules')
+        .select('id,category,rule_text,active,created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+      setRules((data ?? []) as AiRule[])
+      setLoading(false)
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function addRule(category: string, ruleText: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data, error } = await supabase
+      .from('ai_rules')
+      .insert({ user_id: user.id, category, rule_text: ruleText, active: true })
+      .select('id,category,rule_text,active,created_at')
+      .single()
+    if (!error && data) setRules(p => [...p, data as AiRule])
+  }
+
+  async function toggleRule(id: string, active: boolean) {
+    await supabase.from('ai_rules').update({ active, updated_at: new Date().toISOString() }).eq('id', id)
+    setRules(p => p.map(r => r.id === id ? { ...r, active } : r))
+  }
+
+  async function deleteRule(id: string) {
+    await supabase.from('ai_rules').delete().eq('id', id)
+    setRules(p => p.filter(r => r.id !== id))
+  }
+
+  return { rules, loading, addRule, toggleRule, deleteRule }
+}
+
+// ── Composant RulesCard ───────────────────────────────────────
+function RulesCard() {
+  const { rules, loading, addRule, toggleRule, deleteRule } = useAiRules()
+  const [activeTab,    setActiveTab]    = useState<string>('all')
+  const [showModal,    setShowModal]    = useState(false)
+  const [modalStep,    setModalStep]    = useState<1|2>(1)
+  const [selCategory,  setSelCategory]  = useState('')
+  const [ruleText,     setRuleText]     = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [confirmDel,   setConfirmDel]   = useState<string|null>(null)
+  const [hoveredId,    setHoveredId]    = useState<string|null>(null)
+
+  const catMeta = (id: string) => RULE_CATEGORIES.find(c => c.id === id) ?? { label: id, color: '#6b7280', icon: '📌', placeholder: '' }
+
+  const filtered = activeTab === 'all' ? rules : rules.filter(r => r.category === activeTab)
+
+  function openModal() { setShowModal(true); setModalStep(1); setSelCategory(''); setRuleText('') }
+  function closeModal() { setShowModal(false); setModalStep(1); setSelCategory(''); setRuleText('') }
+
+  async function handleSave() {
+    if (!selCategory || !ruleText.trim()) return
+    setSaving(true)
+    await addRule(selCategory, ruleText.trim())
+    setSaving(false)
+    closeModal()
+  }
+
+  async function handleDelete(id: string) {
+    await deleteRule(id)
+    setConfirmDel(null)
+  }
+
+  const TABS = [
+    { id: 'all', label: 'Toutes', color: 'var(--text-mid)' },
+    ...RULE_CATEGORIES.map(c => ({ id: c.id, label: c.label, color: c.color })),
+  ]
+
+  return (
+    <>
+      <style>{`
+        @keyframes ruleSlideIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:none } }
+        .rule-row { animation: ruleSlideIn 0.18s ease both }
+        .rules-tabs::-webkit-scrollbar { display:none }
+      `}</style>
+
+      <Card>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <CardTitle icon="📋">Mes règles</CardTitle>
+          <button
+            onClick={openModal}
+            style={{
+              display:'flex', alignItems:'center', gap:5,
+              padding:'6px 12px', borderRadius:8,
+              background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+              border:'none', color:'#fff', fontSize:12, fontWeight:700,
+              cursor:'pointer', flexShrink:0,
+            }}
+          >
+            <span style={{ fontSize:16, lineHeight:1 }}>+</span> Ajouter
+          </button>
+        </div>
+        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 14px', lineHeight:1.5 }}>
+          L'IA prend en compte ces règles dans chacune de ses réponses.
+        </p>
+
+        {/* Tabs catégories */}
+        <div className="rules-tabs" style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:14, paddingBottom:2 }}>
+          {TABS.map(t => {
+            const active = activeTab === t.id
+            return (
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+                padding:'5px 12px', borderRadius:20, border:`1px solid ${active ? t.color+'66' : 'var(--border)'}`,
+                background: active ? t.color+'18' : 'transparent',
+                color: active ? t.color : 'var(--text-dim)',
+                fontSize:11, fontWeight: active ? 700 : 400,
+                cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0, transition:'all 0.15s',
+              }}>{t.label}</button>
+            )
+          })}
+        </div>
+
+        {/* Liste des règles */}
+        {loading ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {[1,2].map(i => <div key={i} style={{ height:44, borderRadius:10, background:'var(--bg-card2)', opacity:0.5 }} />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign:'center' as const, padding:'28px 16px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:28, opacity:0.4 }}>📋</span>
+            <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.55 }}>
+              {activeTab === 'all'
+                ? 'Aucune règle configurée. Ajoute des règles pour personnaliser le comportement de ton Coach IA.'
+                : `Aucune règle dans la catégorie "${catMeta(activeTab).label}".`}
+            </p>
+            {activeTab === 'all' && (
+              <button onClick={openModal} style={{ marginTop:4, padding:'8px 18px', borderRadius:20, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                Ajouter ma première règle
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {filtered.map(rule => {
+              const meta = catMeta(rule.category)
+              return (
+                <div
+                  key={rule.id}
+                  className="rule-row"
+                  onMouseEnter={() => setHoveredId(rule.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  style={{
+                    display:'flex', alignItems:'center', gap:10,
+                    padding:'10px 12px', borderRadius:10,
+                    border:`1px solid ${rule.active ? meta.color+'22' : 'var(--border)'}`,
+                    background: rule.active ? meta.color+'0a' : 'var(--bg-card2)',
+                    transition:'all 0.15s', opacity: rule.active ? 1 : 0.55,
+                  }}
+                >
+                  {/* Pastille */}
+                  <div style={{ width:8, height:8, borderRadius:'50%', background: meta.color, flexShrink:0 }} />
+
+                  {/* Texte + badge */}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:12, color:'var(--text)', margin:0, lineHeight:1.4, wordBreak:'break-word' as const }}>{rule.rule_text}</p>
+                    <span style={{
+                      display:'inline-block', marginTop:3,
+                      fontSize:9, fontWeight:600, padding:'1px 6px', borderRadius:4,
+                      background: meta.color+'18', color: meta.color,
+                    }}>{meta.icon} {meta.label}</span>
+                  </div>
+
+                  {/* Toggle + suppression */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                    <Toggle value={rule.active} onChange={v => void toggleRule(rule.id, v)} />
+                    {(hoveredId === rule.id || confirmDel === rule.id) && (
+                      confirmDel === rule.id ? (
+                        <div style={{ display:'flex', gap:4 }}>
+                          <button onClick={() => void handleDelete(rule.id)} style={{ padding:'3px 8px', borderRadius:6, background:'#ef4444', border:'none', color:'#fff', fontSize:10, fontWeight:700, cursor:'pointer' }}>Oui</button>
+                          <button onClick={() => setConfirmDel(null)} style={{ padding:'3px 8px', borderRadius:6, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>Non</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDel(rule.id)} title="Supprimer" style={{ width:22, height:22, borderRadius:6, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.18)', color:'#ef4444', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Modal ajout de règle ──────────────────────── */}
+      {showModal && (
+        <div onClick={closeModal} style={{ position:'fixed', inset:0, zIndex:600, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:0 }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width:'100%', maxWidth:480,
+            background:'var(--bg-card)', borderRadius:'18px 18px 0 0',
+            padding:'24px 20px 32px', boxShadow:'0 -8px 40px rgba(0,0,0,0.35)',
+          }}>
+            {/* Barre drag */}
+            <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 20px' }} />
+
+            {modalStep === 1 ? (
+              <>
+                <p style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)', margin:'0 0 4px' }}>Ajouter une règle</p>
+                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 18px' }}>Choisis la catégorie de ta règle.</p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {RULE_CATEGORIES.map(cat => (
+                    <button key={cat.id} onClick={() => { setSelCategory(cat.id); setModalStep(2) }}
+                      style={{
+                        display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4,
+                        padding:'14px 14px', borderRadius:12,
+                        border:`1.5px solid ${cat.color}33`,
+                        background:`${cat.color}0d`,
+                        cursor:'pointer', textAlign:'left' as const, transition:'all 0.15s',
+                      }}>
+                      <span style={{ fontSize:20 }}>{cat.icon}</span>
+                      <span style={{ fontSize:12, fontWeight:700, color: cat.color }}>{cat.label}</span>
+                      <span style={{ fontSize:10, color:'var(--text-dim)', lineHeight:1.4 }}>{cat.placeholder}</span>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={closeModal} style={{ marginTop:16, width:'100%', padding:'11px', borderRadius:10, background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>Annuler</button>
+              </>
+            ) : (
+              <>
+                {/* Étape 2 — Rédaction */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+                  <button onClick={() => setModalStep(1)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, padding:0, lineHeight:1 }}>←</button>
+                  <span style={{ fontSize:20 }}>{catMeta(selCategory).icon}</span>
+                  <p style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:catMeta(selCategory).color, margin:0 }}>{catMeta(selCategory).label}</p>
+                </div>
+                <textarea
+                  autoFocus
+                  value={ruleText}
+                  onChange={e => setRuleText(e.target.value.slice(0, 300))}
+                  placeholder={catMeta(selCategory).placeholder}
+                  rows={4}
+                  style={{
+                    width:'100%', padding:'12px 14px', borderRadius:12,
+                    border:`1.5px solid ${catMeta(selCategory).color}44`,
+                    background:'var(--input-bg)', color:'var(--text)',
+                    fontSize:13, outline:'none', resize:'none' as const,
+                    fontFamily:'DM Sans,sans-serif', lineHeight:1.65,
+                    boxSizing:'border-box' as const,
+                  }}
+                />
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6, marginBottom:16 }}>
+                  <span style={{ fontSize:10, color: ruleText.length >= 280 ? '#ef4444' : 'var(--text-dim)' }}>{ruleText.length} / 300</span>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  <button
+                    onClick={() => void handleSave()}
+                    disabled={!ruleText.trim() || saving}
+                    style={{
+                      padding:'12px', borderRadius:10,
+                      background: !ruleText.trim() ? 'var(--bg-card2)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                      border:'none', color: !ruleText.trim() ? 'var(--text-dim)' : '#fff',
+                      fontSize:13, fontWeight:700, cursor: !ruleText.trim() ? 'not-allowed' : 'pointer', transition:'all 0.15s',
+                    }}
+                  >{saving ? 'Enregistrement…' : 'Enregistrer la règle'}</button>
+                  <button onClick={closeModal} style={{ padding:'11px', borderRadius:10, background:'transparent', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>Annuler</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function IASettingsBloc() {
   const trialLeft = 9; const trialDays = 14
   const dailyUsed = 23; const dailyMax = 80
@@ -647,27 +942,15 @@ function IASettingsBloc() {
   // AI settings — localStorage
   const [defaultModel,    setDefaultModel]    = useState<THWModel>('athena')
   const [creditSaving,    setCreditSaving]    = useState(false)
-  const [customPrompt,    setCustomPrompt]    = useState('')
-  const [tone,            setTone]            = useState<ToneId>('pro')
-  const [detail,          setDetail]          = useState<DetailId>('normal')
   const [allowSuggestions,setAllowSuggestions]= useState(true)
-  const [prefTypes, setPrefTypes] = useState({ practical:true, detailed:false, plans:false, analysis:true })
 
   useEffect(() => {
-    const m = localStorage.getItem('thw_ai_default_model')
+    const m  = localStorage.getItem('thw_ai_default_model')
     const cs = localStorage.getItem('thw_ai_credit_saving')
-    const cp = localStorage.getItem('thw_ai_custom_prompt')
-    const t  = localStorage.getItem('thw_ai_tone')
-    const d  = localStorage.getItem('thw_ai_detail')
     const as = localStorage.getItem('thw_ai_allow_suggestions')
-    const pt = localStorage.getItem('thw_ai_pref_types')
     if (m === 'hermes' || m === 'athena' || m === 'zeus') setDefaultModel(m)
     if (cs) setCreditSaving(cs === 'true')
-    if (cp) setCustomPrompt(cp)
-    if (t === 'pro'||t==='warm'||t==='spontaneous'||t==='offbeat'||t==='efficient') setTone(t)
-    if (d === 'short'||d==='normal'||d==='deep') setDetail(d)
     if (as) setAllowSuggestions(as !== 'false')
-    if (pt) { try { setPrefTypes(JSON.parse(pt)) } catch {} }
   }, [])
 
   function save(key:string, val:string) { localStorage.setItem(key, val) }
@@ -868,72 +1151,8 @@ function IASettingsBloc() {
         </div>
       </Card>
 
-      {/* ── Style de réponse ──────────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>}>Style de réponse</CardTitle>
-
-        <SectionLabel>Ton</SectionLabel>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const, marginBottom:16 }}>
-          {([['pro','Pro'],['warm','Chaleureux'],['spontaneous','Spontané'],['offbeat','Décalé'],['efficient','Efficace']] as const).map(([id,label])=>{
-            const active = tone===id
-            return (
-              <button key={id} onClick={()=>{ setTone(id); save('thw_ai_tone',id) }}
-                style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${active?'rgba(91,111,255,0.55)':'var(--border)'}`, background:active?'rgba(91,111,255,0.12)':'transparent', color:active?'#5b6fff':'var(--text-dim)', fontSize:12, fontWeight:active?600:400, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit' }}>
-                {label}
-              </button>
-            )
-          })}
-        </div>
-
-        <SectionLabel>Niveau de détail</SectionLabel>
-        <div style={{ display:'flex', gap:8 }}>
-          {([['short','Court'],['normal','Normal'],['deep','Approfondi']] as const).map(([id,label])=>{
-            const active = detail===id
-            return (
-              <button key={id} onClick={()=>{ setDetail(id); save('thw_ai_detail',id) }}
-                style={{ flex:1, padding:'9px 6px', borderRadius:10, border:`1.5px solid ${active?'rgba(120,120,150,0.55)':'var(--border)'}`, background:active?'var(--bg-card2)':'transparent', color:active?'var(--text)':'var(--text-dim)', fontSize:12, fontWeight:active?600:400, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit', textAlign:'center' as const }}>
-                {label}
-              </button>
-            )
-          })}
-        </div>
-      </Card>
-
-      {/* ── Préférences de contenu ────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>}>Préférences de contenu</CardTitle>
-        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 14px', lineHeight:1.5 }}>L'IA adapte le style de ses réponses à tes préférences.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-          {([
-            ['practical', 'Conseils pratiques',     'Actions directement applicables'],
-            ['detailed',  'Explications détaillées','Contexte scientifique et raisons'],
-            ['plans',     'Plans structurés',        'Organisation par étapes et calendrier'],
-            ['analysis',  'Analyse de données',      'Interprétation chiffrée et tendances'],
-          ] as const).map(([key,label,sub], idx)=>(
-            <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
-              <div style={{ flex:1, paddingRight:14 }}>
-                <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{label}</p>
-                <p style={{ fontSize:10, color:'var(--text-dim)', margin:0 }}>{sub}</p>
-              </div>
-              <Toggle value={prefTypes[key]} onChange={v=>{ const next={...prefTypes,[key]:v}; setPrefTypes(next); save('thw_ai_pref_types',JSON.stringify(next)) }}/>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* ── Prompt personnalisé ───────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>}>Prompt personnalisé</CardTitle>
-        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 10px', lineHeight:1.55 }}>Décris comment tu veux que l'IA te réponde — objectifs, style, attentes, contraintes particulières.</p>
-        <textarea
-          value={customPrompt}
-          onChange={e=>{ setCustomPrompt(e.target.value); save('thw_ai_custom_prompt',e.target.value) }}
-          placeholder="Ex : Je préfère les réponses concises. Je m'entraîne le matin. Mon objectif est un Ironman en octobre..."
-          rows={4}
-          style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12.5, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.65, boxSizing:'border-box' as const }}
-        />
-        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'7px 0 0', textAlign:'right' as const }}>{customPrompt.length} / 500 caractères</p>
-      </Card>
+      {/* ── Mes règles IA ─────────────────────────────── */}
+      <RulesCard />
 
       {/* ── Connexion aux données ─────────────────────── */}
       <Card>

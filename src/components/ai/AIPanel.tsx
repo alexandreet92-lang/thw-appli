@@ -7003,6 +7003,7 @@ export default function AIPanel({
   const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([])
   const [toolApplyStatus,  setToolApplyStatus]  = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
+  const [aiRules,          setAiRules]          = useState<{ category: string; rule_text: string }[]>([])
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -7021,6 +7022,20 @@ export default function AIPanel({
   // ── Effects ────────────────────────────────────────────────
 
   useEffect(() => { setMounted(true); setConvs(loadConvs()) }, [])
+
+  // Charge les règles IA actives de l'utilisateur au mount
+  useEffect(() => {
+    void (async () => {
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data } = await sb
+        .from('ai_rules')
+        .select('category,rule_text')
+        .eq('user_id', user.id)
+        .eq('active', true)
+      setAiRules((data ?? []) as { category: string; rule_text: string }[])
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (mounted) saveConvs(convs) }, [convs, mounted])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
@@ -7556,6 +7571,7 @@ export default function AIPanel({
           agentId:  isPlanChat ? 'plan_coach' : 'central',
           modelId:  snapshot,
           messages: apiMsgs,
+          aiRules:  aiRules.length > 0 ? aiRules : undefined,
           // Merge plan_context (session IDs) into the existing context so that
           // formatTrainingPlanContext can inject them into the system prompt.
           context: isPlanChat

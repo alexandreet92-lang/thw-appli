@@ -182,17 +182,45 @@ const DEFAULT_SYSTEM = `Tu es THW Coach, un assistant sportif expert.
 Tu aides l'athlète à progresser et optimiser son entraînement.
 ${GOLDEN_RULE}`
 
+// ── Labels catégories pour le bloc règles ─────────────────────
+
+const CATEGORY_LABELS: Record<string, string> = {
+  response_style: 'Style de réponse',
+  training:       'Entraînement',
+  health:         'Santé & contraintes physiques',
+  nutrition:      'Nutrition',
+  schedule:       'Organisation & disponibilités',
+  other:          'Autres consignes',
+}
+
 // ── Chat Agent ────────────────────────────────────────────────
 
 export function buildChatParams(input: ChatInput) {
-  const { agentId, messages, context, modelId } = input
+  const { agentId, messages, context, modelId, aiRules } = input
   const baseSystem = agentId === 'central'
     ? (CENTRAL_PROMPTS[modelId ?? 'athena'] ?? CENTRAL_PROMPTS.athena)
     : (AGENT_SYSTEM_PROMPTS[agentId] ?? DEFAULT_SYSTEM)
   const contextBlock = context && Object.keys(context).length > 0
     ? formatContextForAgent(agentId, context)
     : ''
-  const systemPrompt = contextBlock ? `${baseSystem}\n\n${contextBlock}` : baseSystem
+
+  // Bloc règles personnalisées — injecté entre le system prompt de base et le contexte
+  let rulesBlock = ''
+  if (aiRules && aiRules.length > 0) {
+    const grouped: Record<string, string[]> = {}
+    for (const r of aiRules) {
+      if (!grouped[r.category]) grouped[r.category] = []
+      grouped[r.category].push(r.rule_text)
+    }
+    const sections = Object.entries(grouped)
+      .map(([cat, rules]) => `${CATEGORY_LABELS[cat] ?? cat} :\n${rules.map(r => `- ${r}`).join('\n')}`)
+      .join('\n\n')
+    rulesBlock = `\n\nRÈGLES PERSONNELLES DE L'ATHLÈTE — À RESPECTER IMPÉRATIVEMENT :\n${sections}`
+  }
+
+  const systemPrompt = contextBlock
+    ? `${baseSystem}${rulesBlock}\n\n${contextBlock}`
+    : `${baseSystem}${rulesBlock}`
   const anthropicMessages = messages.map(m => {
     if (typeof m.content === 'string') {
       return { role: m.role as 'user' | 'assistant', content: m.content }

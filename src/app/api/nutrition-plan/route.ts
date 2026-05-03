@@ -43,6 +43,13 @@ REPAS TYPES HABITUELS DE L'ATHLÈTE (à intégrer dans le plan) :
 ${mealTemplates.map(t => `- [${t.type_repas}] ${t.nom} | ${t.kcal ?? '?'} kcal | P:${t.proteines ?? '?'}g G:${t.glucides ?? '?'}g L:${t.lipides ?? '?'}g`).join('\n')}
 IMPORTANT : Base le plan sur ces repas habituels. Adapte-les si nécessaire mais ne les ignore jamais.` : ''}
 
+INSTRUCTIONS :
+- Génère exactement 7 jours (une semaine type) à partir d'aujourd'hui
+- Chaque jour doit avoir un type_jour (low, mid, hard) cohérent avec le planning d'entraînement
+- Les dates doivent être les vraies dates à partir d'aujourd'hui
+- Pour les repas, sois concis : 1 ligne par repas, pas de descriptions longues
+- Si un repas n'est pas nécessaire (ex: collation soir), mets "-"
+
 Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calculées) :
 {
   "plan_minimal": {
@@ -125,7 +132,7 @@ Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calcu
 
     const response = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })
@@ -133,7 +140,34 @@ Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calcu
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('No text response')
 
-    const plan = parseJsonResponse(textBlock.text)
+    let plan
+    try {
+      plan = parseJsonResponse(textBlock.text)
+    } catch (parseErr) {
+      // Tentative de réparation : le JSON est probablement tronqué
+      console.error('[nutrition-plan] JSON parse failed, attempting repair')
+      let raw = textBlock.text.trim()
+      // Retirer les backticks markdown
+      const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/)
+      if (mdMatch) raw = mdMatch[1].trim()
+      // Trouver le début du JSON
+      const start = raw.search(/[{[]/)
+      if (start > 0) raw = raw.slice(start)
+      // Fermer les accolades/crochets manquants
+      let braces = 0, brackets = 0
+      for (const c of raw) {
+        if (c === '{') braces++
+        if (c === '}') braces--
+        if (c === '[') brackets++
+        if (c === ']') brackets--
+      }
+      raw += ']'.repeat(Math.max(0, brackets)) + '}'.repeat(Math.max(0, braces))
+      try {
+        plan = JSON.parse(raw)
+      } catch {
+        throw new Error(`JSON repair failed: ${String(parseErr)}`)
+      }
+    }
     return NextResponse.json({ plan })
   } catch (err) {
     console.error('[nutrition-plan]', err)

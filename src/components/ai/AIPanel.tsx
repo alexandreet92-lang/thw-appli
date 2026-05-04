@@ -35,7 +35,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -8450,7 +8450,7 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Application',
     items: [
-      { label: 'Comprendre l\'application', enrichedId: 'comprendre_app' },
+      { label: 'Comprendre l\'application', flow: 'app_guide' as FlowId },
     ],
   },
 ]
@@ -9002,7 +9002,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Comprendre l\'application',
     sub: 'Fonctionnalités, navigation et configuration',
     model: 'hermes',
-    enrichedId: 'comprendre_app',
+    flow: 'app_guide' as FlowId,
   },
   {
     label: 'Analyser un entraînement',
@@ -9392,6 +9392,297 @@ Niveau de confiance : ${confidence}`
 
   // TODO: inject injuries when table exists
   sendFn(label, systemPrompt + '\n\n' + userPrompt)
+}
+
+// ── AppGuideFlow ──────────────────────────────────────────────────────────────
+// Flow structuré pour "Comprendre l'application" : App Health Score + sélection
+// de pages + génération d'un guide personnalisé.
+
+type AppHealthCheck = { id: string; label: string; ok: boolean; detail: string | null }
+type AppHealthState = { score: number; checks: AppHealthCheck[] }
+
+const APP_GUIDE_PAGES = [
+  { id: 'planning',     label: 'Planning',      sub: 'Semaines, séances, courses' },
+  { id: 'activities',   label: 'Activités',     sub: 'Sync Strava, graphiques, analyse' },
+  { id: 'performance',  label: 'Performance',   sub: 'Tests, zones, profil athlète' },
+  { id: 'nutrition',    label: 'Nutrition',      sub: 'Plan, suivi macros, poids' },
+  { id: 'recovery',     label: 'Récupération',   sub: 'HRV, sommeil, readiness' },
+  { id: 'zones',        label: 'Zones',          sub: 'FC, allure, puissance' },
+  { id: 'connections',  label: 'Connexions',     sub: 'Strava, Garmin, Whoop' },
+  { id: 'coach',        label: 'Coach IA',       sub: 'Chat, actions, règles' },
+  { id: 'profile',      label: 'Profil',         sub: 'Réglages, modèle, police' },
+  { id: 'calendar',     label: 'Calendrier',     sub: 'Courses, événements' },
+  { id: 'briefing',     label: 'Briefing',       sub: 'Résumé quotidien' },
+]
+
+// Mapping check-id → page-id
+const CHECK_TO_PAGE: Record<string, string> = {
+  zones: 'zones', tests: 'performance', nutrition: 'nutrition',
+  races: 'calendar', strava: 'connections', recovery: 'recovery', rules: 'coach',
+}
+
+function AppGuideFlow({ onPrepare, onCancel }: {
+  onPrepare: (apiPrompt: string, label: string) => void
+  onCancel: () => void
+}) {
+  const [phase, setPhase] = useState<'loading' | 'select'>('loading')
+  const [selected, setSelected] = useState<string[]>([])
+  const [health, setHealth] = useState<AppHealthState | null>(null)
+  const [profile, setProfile] = useState<{ firstName: string; sports: string; goal: string } | null>(null)
+  const [healthScore, setHealthScore] = useState(0)
+  const [configuredFeatures, setConfiguredFeatures] = useState<string[]>([])
+  const [missingFeatures, setMissingFeatures] = useState<string[]>([])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setPhase('select'); return }
+
+        const now = new Date()
+        const today = now.toISOString().slice(0, 10)
+        const since30d = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
+        const since14d = new Date(now.getTime() - 14 * 86400000).toISOString().slice(0, 10)
+
+        const [profileRes, zonesRes, testsRes, planRes, racesRes, actsRes, metricsRes, rulesRes] = await Promise.all([
+          sb.from('user_profiles').select('first_name,sports,main_goal').eq('user_id', user.id).maybeSingle(),
+          sb.from('training_zones').select('id,sport').eq('user_id', user.id).eq('is_current', true),
+          sb.from('test_results').select('id').eq('user_id', user.id),
+          sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
+          sb.from('planned_races').select('id').eq('user_id', user.id).gte('date', today),
+          sb.from('activities').select('id').eq('user_id', user.id).gte('started_at', since30d + 'T00:00:00'),
+          sb.from('metrics_daily').select('id').eq('user_id', user.id).gte('date', since14d),
+          sb.from('ai_rules').select('id').eq('user_id', user.id).eq('active', true),
+        ])
+
+        const zonesCount = zonesRes.data?.length ?? 0
+        const testsCount = testsRes.data?.length ?? 0
+        const hasPlan = !!planRes.data
+        const racesCount = racesRes.data?.length ?? 0
+        const actsCount = actsRes.data?.length ?? 0
+        const metricsCount = metricsRes.data?.length ?? 0
+        const rulesCount = rulesRes.data?.length ?? 0
+
+        const checks: AppHealthCheck[] = [
+          { id: 'zones',    label: 'Zones',              ok: zonesCount > 0,   detail: zonesCount > 0 ? `${zonesCount} sport(s)` : null },
+          { id: 'tests',    label: 'Tests',              ok: testsCount > 0,   detail: testsCount > 0 ? `${testsCount} résultat(s)` : null },
+          { id: 'nutrition',label: 'Plan nutritionnel',  ok: hasPlan,          detail: hasPlan ? 'Actif' : null },
+          { id: 'races',    label: 'Courses planifiées', ok: racesCount > 0,   detail: racesCount > 0 ? `${racesCount} course(s)` : null },
+          { id: 'strava',   label: 'Strava actif',       ok: actsCount > 5,    detail: actsCount > 0 ? `${actsCount} activités` : null },
+          { id: 'recovery', label: 'Suivi récupération', ok: metricsCount > 5, detail: metricsCount > 0 ? `${metricsCount} jours` : null },
+          { id: 'rules',    label: 'Règles IA',          ok: rulesCount > 0,   detail: rulesCount > 0 ? `${rulesCount} règle(s)` : null },
+        ]
+        const weights = [15, 15, 15, 15, 20, 10, 10]
+        const score = checks.reduce((s, c, i) => s + (c.ok ? weights[i] : 0), 0)
+
+        const cfg: string[] = []
+        const missing: string[] = []
+        if (zonesCount > 0) cfg.push(`Zones (${zonesCount} sport(s))`)
+        else missing.push('Zones (−15pts) → conseils IA génériques sans zones')
+        if (testsCount > 0) cfg.push(`Tests (${testsCount} résultat(s))`)
+        else missing.push('Tests (−15pts) → VMA/FTP inconnus')
+        if (hasPlan) cfg.push('Plan nutritionnel actif')
+        else missing.push('Plan nutritionnel (−15pts)')
+        if (racesCount > 0) cfg.push(`${racesCount} course(s) planifiée(s)`)
+        else missing.push('Courses planifiées (−15pts)')
+        if (actsCount > 5) cfg.push(`${actsCount} activités Strava`)
+        else missing.push('Strava (−20pts) → connecter dans Connexions')
+        if (metricsCount > 5) cfg.push(`Récupération (${metricsCount} jours)`)
+        else missing.push('Récupération (−10pts) → HRV/sommeil requis')
+        if (rulesCount > 0) cfg.push(`${rulesCount} règle(s) IA`)
+        else missing.push('Règles IA (−10pts) → Paramètres → Règles IA')
+
+        const p = profileRes.data
+        setProfile({
+          firstName: p?.first_name ?? '',
+          sports: (p?.sports as string[] | null)?.join(', ') ?? 'non renseignés',
+          goal: p?.main_goal ?? 'non renseigné',
+        })
+        setHealth({ score, checks })
+        setHealthScore(score)
+        setConfiguredFeatures(cfg)
+        setMissingFeatures(missing)
+      } catch { /* non-bloquant */ }
+      setPhase('select')
+    })()
+  }, [])
+
+  const toggle = (id: string) =>
+    setSelected(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
+
+  const selectAll = () => setSelected(APP_GUIDE_PAGES.map(p => p.id))
+  const selectMissing = () => {
+    if (!health) return
+    const ids = health.checks
+      .filter(c => !c.ok)
+      .map(c => CHECK_TO_PAGE[c.id])
+      .filter((id): id is string => Boolean(id))
+    setSelected(ids)
+  }
+
+  const handleGenerate = () => {
+    if (selected.length === 0) return
+    const pagesLabels = selected
+      .map(id => APP_GUIDE_PAGES.find(p => p.id === id)?.label)
+      .filter(Boolean)
+      .join(', ')
+
+    const APP_KNOWLEDGE = `CONNAISSANCE COMPLÈTE DE L'APPLICATION THW COACHING :
+
+**Planning** : Calendrier semaine/mois. Sessions planifiées avec blocs (durée, intensité, type). Création manuelle bouton + ou via Coach IA → Construire une séance. Courses planifiées visibles dans le calendrier. Tâches semaine.
+
+**Activités** : Feed Strava synchronisé automatiquement. Filtres sport/période. Détail avec streams graphiques (FC, vitesse, watts, altitude, cadence). Analyse par zones. Laps détaillés.
+
+**Performance** : Onglet Profil (FTP, VMA, LTHR, VO2max, poids). Onglet Tests (protocoles VMA, CP20, Ruffier + saisie + historique). Onglet Zones (calcul zones course LTHR→Z1-Z5, vélo FTP→Z1-Z5, natation CSS→allures).
+
+**Nutrition** : Plan IA généré via Coach IA → Créer un plan nutritionnel. 3 niveaux caloriques. 2 variantes A/B. Suivi journalier macros/calories. Suivi poids.
+
+**Récupération** : Métriques subjectives quotidiennes (fatigue, énergie, stress, motivation, douleur). Données objectives HRV/FC repos/sommeil via wearable. Connexion Garmin, Whoop, Oura, Apple Health.
+
+**Zones** : Calcul zones par sport depuis les marqueurs physiologiques (LTHR, FTP, CSS). Utilisées par tous les modules IA — à configurer en priorité absolue.
+
+**Connexions** : Strava (sync auto), Garmin/Wahoo/Polar, wearables récupération (Whoop, Oura), Apple Health.
+
+**Coach IA** : Chat 3 modèles (Hermès/rapide, Athéna/équilibré, Zeus/profond). 10 actions rapides via bouton + . Règles personnelles : Paramètres → Règles IA. Historique conversations.
+
+**Profil** : Infos personnelles, avatar, liste sports, connexions OAuth, réglages modèle IA et police.
+
+**Calendrier** : Courses planifiées avec dates, objectifs et niveaux. Ajout via + dans la page.
+
+**Briefing** : Résumé quotidien (séance du jour + tâches + actualités). Accessible depuis l'accueil.`
+
+    const fn = profile?.firstName ?? ''
+    const sports = profile?.sports ?? 'non renseignés'
+    const goal = profile?.goal ?? 'non renseigné'
+
+    const systemPrompt = `Tu es l'assistant expert de l'application THW Coaching. Tu connais parfaitement chaque fonctionnalité, chaque bouton, chaque flux.
+
+${APP_KNOWLEDGE}
+
+PROFIL DE L'ATHLÈTE :
+- ${fn ? `Prénom : ${fn} | ` : ''}Sports : ${sports} | Objectif : ${goal}
+- App Health Score : ${healthScore}/100
+- Fonctionnalités configurées : ${configuredFeatures.join(', ') || 'aucune'}
+- Fonctionnalités manquantes : ${missingFeatures.join(', ') || 'aucune'}
+
+SECTIONS DEMANDÉES : ${pagesLabels}
+
+TON RÔLE :
+1. Présenter l'App Health Score avec détails (configuré / manquant)
+2. Expliquer comment utiliser les sections sélectionnées pour ${fn || 'cet athlète'} (profil ${sports}/${goal})
+3. Pour chaque fonctionnalité NON configurée parmi les sections : expliquer POURQUOI utile pour ce profil + chemin de configuration précis
+4. Donner un chemin pas-à-pas personnalisé
+5. Terminer avec les 3 prochaines étapes CONCRÈTES
+
+RÈGLES :
+- Toujours contextualiser pour ${sports} et ${goal}
+- Être précis sur les chemins de navigation (ex: "dans Performance → onglet Zones → ...")
+- Ne pas être générique`
+
+    const userPrompt = `Explique-moi les sections suivantes de l'app : ${pagesLabels}
+
+App Health Score : ${healthScore}/100
+Configuré : ${configuredFeatures.join(' · ') || 'rien'}
+Manquant : ${missingFeatures.join(' · ') || 'rien'}
+Sports : ${sports} | Objectif : ${goal}`
+
+    onPrepare(systemPrompt + '\n\n' + userPrompt, 'Comprendre l\'application')
+  }
+
+  // ── Phase loading ──────────────────────────────────────────────
+  if (phase === 'loading') {
+    return (
+      <div style={{ padding: '32px 0', textAlign: 'center' }}>
+        <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(91,111,255,0.2)', borderTop: '2px solid #5b6fff', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Analyse de ta configuration...</p>
+      </div>
+    )
+  }
+
+  // ── Phase select ───────────────────────────────────────────────
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>Comprendre l'application</p>
+      <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 14px', lineHeight: 1.5 }}>
+        Sélectionne les sections à explorer. Le guide s'adapte à ton profil.
+      </p>
+
+      {/* App Health Score */}
+      {health && (
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Configuration</span>
+            <span style={{
+              fontSize: 16, fontWeight: 800, fontFamily: 'DM Mono,monospace',
+              color: health.score >= 70 ? '#22c55e' : health.score >= 40 ? '#f97316' : '#ef4444',
+            }}>{health.score}%</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {health.checks.map(c => (
+              <span key={c.id} style={{
+                fontSize: 10, padding: '3px 8px', borderRadius: 6, fontWeight: 600,
+                background: c.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)',
+                color: c.ok ? '#22c55e' : '#ef4444',
+              }}>
+                {c.ok ? '✓' : '✗'} {c.label}{c.detail ? ` — ${c.detail}` : ''}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Raccourcis */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <button onClick={selectAll} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          Tout sélectionner
+        </button>
+        <button onClick={selectMissing} disabled={!health || health.checks.every(c => c.ok)} style={{
+          flex: 1, padding: '7px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)',
+          background: 'rgba(239,68,68,0.05)', color: '#ef4444', fontSize: 11, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          opacity: !health || health.checks.every(c => c.ok) ? 0.4 : 1,
+        }}>
+          Ce que je n'utilise pas
+        </button>
+      </div>
+
+      {/* Grille pages */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 16 }}>
+        {APP_GUIDE_PAGES.map(page => {
+          const active = selected.includes(page.id)
+          return (
+            <button key={page.id} onClick={() => toggle(page.id)} style={{
+              padding: '10px 12px', borderRadius: 10, textAlign: 'left',
+              border: `1.5px solid ${active ? 'rgba(91,111,255,0.5)' : 'var(--ai-border)'}`,
+              background: active ? 'rgba(91,111,255,0.06)' : 'transparent',
+              cursor: 'pointer', transition: 'all 0.12s',
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: active ? '#5b6fff' : 'var(--ai-text)', margin: '0 0 2px' }}>{page.label}</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{page.sub}</p>
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        onClick={handleGenerate}
+        disabled={selected.length === 0}
+        style={{
+          width: '100%', padding: '11px', borderRadius: 10,
+          background: selected.length > 0 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+          border: 'none', color: selected.length > 0 ? '#fff' : 'var(--ai-dim)',
+          fontSize: 13, fontWeight: 700, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
+          fontFamily: 'Syne,sans-serif',
+        }}>
+        Explorer {selected.length > 0 ? `(${selected.length} section${selected.length > 1 ? 's' : ''})` : ''}
+      </button>
+      <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+        Annuler
+      </button>
+    </div>
+  )
 }
 
 async function enrichedComprendreApp(
@@ -12036,6 +12327,9 @@ export default function AIPanel({
     // Plan-aware chat : utilise l'agent plan_coach + contexte plan injecté
     const isPlanChat = Boolean(planId && active?.title.startsWith(`[PLAN:${planId}]`))
 
+    // Flag : true si le stream s'est terminé normalement (vs abort/erreur)
+    let streamDone = false
+
     try {
       // ── Fetch plan context complet si plan-chat ──────────────────
       let planSessionsContext: Record<string, unknown> = {}
@@ -12159,6 +12453,7 @@ export default function AIPanel({
       }
 
       abortRef.current = null
+      streamDone = true  // stream complété normalement
 
       // ── Persistance DB pour le plan-chat (training_plan_messages) ──
       if (isPlanChat && planId && textAccumulated) {
@@ -12188,7 +12483,16 @@ export default function AIPanel({
       ))
     } finally {
       abortRef.current = null
-      setLoading(false)
+      if (streamDone) {
+        // Stream terminé normalement : on retarde setLoading(false) d'un tick pour
+        // éviter que React batchise ce call avec le dernier setConvs. Sans ce délai,
+        // TypedText reçoit isStreaming=false + texte complet dans le même render et
+        // snape immédiatement au lieu d'animer progressivement.
+        setTimeout(() => setLoading(false), 0)
+      } else {
+        // Abort ou erreur : nettoyage immédiat
+        setLoading(false)
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext])
@@ -12809,6 +13113,12 @@ export default function AIPanel({
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
                     }}
+                  />
+                )}
+                {activeFlow === 'app_guide' && (
+                  <AppGuideFlow
+                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
+                    onCancel={() => setActiveFlow(null)}
                   />
                 )}
               </div>

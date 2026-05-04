@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import type { DailyBrief, BriefIdea, RawIdea } from "@/lib/marketing/types";
+
+// ── Admin email check (client-side, UI only) ───────────────────
+function isAdminEmail(email: string | undefined | null): boolean {
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  if (!adminEmail || !email) return false;
+  return email.toLowerCase() === adminEmail.toLowerCase();
+}
 
 const PILLAR_COLORS: Record<string, string> = {
   athlete: "#00c8e0",
@@ -32,6 +41,22 @@ interface BriefHistoryItem {
 }
 
 export default function MarketingAdminPage() {
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // ── Guard : redirect silencieux si pas admin ───────────────
+  useEffect(() => {
+    const supabase = createClient();
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!isAdminEmail(user?.email)) {
+        void router.replace("/");
+        return;
+      }
+      setAuthChecked(true);
+    })();
+  }, [router]);
+
   const [brief, setBrief] = useState<DailyBrief | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +69,10 @@ export default function MarketingAdminPage() {
   const [history, setHistory] = useState<BriefHistoryItem[]>([]);
 
   useEffect(() => {
+    if (!authChecked) return;
     void loadHistory();
     void loadIdeas();
-  }, []);
+  }, [authChecked]);
 
   async function loadHistory() {
     const res = await fetch("/api/marketing/daily-brief");
@@ -114,6 +140,9 @@ export default function MarketingAdminPage() {
     await fetch(`/api/marketing/ideas?id=${id}`, { method: "DELETE" });
     void loadIdeas();
   }
+
+  // Rendu vide pendant la vérification (évite le flash de contenu)
+  if (!authChecked) return null;
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24, fontFamily: "DM Sans, system-ui, sans-serif" }}>

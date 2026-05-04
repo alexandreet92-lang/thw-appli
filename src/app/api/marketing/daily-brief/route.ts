@@ -8,39 +8,41 @@ import {
   fetchRecentPosts,
 } from "@/lib/marketing/context-fetcher";
 import { generateDailyBrief } from "@/lib/marketing/generate-brief";
+import { requireAdmin } from "@/lib/marketing/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+function makeSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {},
+      },
+    }
+  );
+}
+
 export async function POST() {
   try {
     const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {},
-        },
-      }
-    );
+    const supabase = makeSupabase(cookieStore);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // ── Admin-only ─────────────────────────────────────────────
+    const denied = await requireAdmin(supabase);
+    if (denied) return denied;
 
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    // user is guaranteed non-null after requireAdmin passes
 
     const [activities, commits, rawIdeas, recentPosts] = await Promise.all([
-      fetchRecentActivities(supabase, user.id),
+      fetchRecentActivities(supabase, user!.id),
       fetchRecentCommits(),
-      fetchUnusedIdeas(supabase, user.id),
-      fetchRecentPosts(supabase, user.id),
+      fetchUnusedIdeas(supabase, user!.id),
+      fetchRecentPosts(supabase, user!.id),
     ]);
 
     const { brief, meta } = await generateDailyBrief({
@@ -53,7 +55,7 @@ export async function POST() {
     const { data: saved, error: saveError } = await supabase
       .from("marketing_briefs")
       .insert({
-        user_id: user.id,
+        user_id: user!.id,
         brief_date: new Date().toISOString().split("T")[0],
         brief_type: "daily",
         context_activities: activities,
@@ -70,7 +72,6 @@ export async function POST() {
       console.error("[marketing] Save error:", saveError);
     }
 
-    // Marque les idées brutes utilisées
     if (rawIdeas.length > 0) {
       await supabase
         .from("marketing_raw_ideas")
@@ -100,31 +101,18 @@ export async function POST() {
 
 export async function GET() {
   const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = makeSupabase(cookieStore);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // ── Admin-only ───────────────────────────────────────────────
+  const denied = await requireAdmin(supabase);
+  if (denied) return denied;
 
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-  }
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
     .from("marketing_briefs")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", user!.id)
     .order("created_at", { ascending: false })
     .limit(30);
 

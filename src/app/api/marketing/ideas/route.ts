@@ -1,32 +1,33 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { requireAdmin } from "@/lib/marketing/auth";
 
 export const runtime = "nodejs";
 
-async function getSupabaseAndUser() {
+async function makeSupabaseAndCheck() {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
+        getAll() { return cookieStore.getAll(); },
         setAll() {},
       },
     }
   );
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+
+  // ── Admin-only ─────────────────────────────────────────────
+  const denied = await requireAdmin(supabase);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  return { supabase, user, denied };
 }
 
 export async function POST(req: Request) {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const { supabase, user, denied } = await makeSupabaseAndCheck();
+  if (denied) return denied;
 
   const body = await req.json() as { content?: unknown; context?: unknown };
   const { content, context } = body;
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from("marketing_raw_ideas")
     .insert({
-      user_id: user.id,
+      user_id: user!.id,
       content: content.trim(),
       context: typeof context === "string" ? context.trim() || null : null,
     })
@@ -50,13 +51,13 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const { supabase, user, denied } = await makeSupabaseAndCheck();
+  if (denied) return denied;
 
   const { data, error } = await supabase
     .from("marketing_raw_ideas")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", user!.id)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -65,8 +66,8 @@ export async function GET() {
 }
 
 export async function DELETE(req: Request) {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const { supabase, user, denied } = await makeSupabaseAndCheck();
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
@@ -76,7 +77,7 @@ export async function DELETE(req: Request) {
     .from("marketing_raw_ideas")
     .delete()
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user!.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

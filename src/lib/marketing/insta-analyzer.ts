@@ -63,12 +63,14 @@ export async function analyzeInstaScreenshots(
   // Build content blocks: image blocks + final instruction
   const imageBlocks: Anthropic.ImageBlockParam[] = images.map((dataUrl) => {
     // Strip data: prefix → get media_type + base64
-    const match = dataUrl.match(/^data:(image\/[a-z]+);base64,(.+)$/s);
-    if (!match) {
+    const commaIdx = dataUrl.indexOf(",");
+    if (commaIdx === -1 || !dataUrl.startsWith("data:image/")) {
       throw new Error(`Format d'image invalide : ${dataUrl.substring(0, 50)}`);
     }
-    const mediaType = match[1] as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-    const base64Data = match[2];
+    const header = dataUrl.substring(0, commaIdx); // "data:image/jpeg;base64"
+    const base64Data = dataUrl.substring(commaIdx + 1);
+    const rawMime = header.replace("data:", "").replace(";base64", "");
+    const mediaType = (rawMime || "image/jpeg") as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
     return {
       type: "image" as const,

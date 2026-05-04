@@ -127,6 +127,6 @@ Retourne EXACTEMENT ce JSON :
   }
 }
 
-export const POST = withQuotaCheck('coach_analysis')(
+export const POST = withQuotaCheck('tool_use')(
   postHandler as (req: NextRequest, ctx: { params?: Promise<Record<string, string>> }) => Promise<Response>
 )

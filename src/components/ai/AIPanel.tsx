@@ -7321,8 +7321,8 @@ const PLUS_CATS: PlusCat[] = [
     label: 'Entraînement',
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
-      { label: 'Analyser ma semaine', prompt: 'Analyse ma semaine d\'entraînement en cours. Évalue la répartition des charges, les intensités et l\'équilibre global. Donne des recommandations concrètes pour la suite.' },
-      { label: 'Ajuster mon plan', prompt: 'Mon plan d\'entraînement actuel nécessite-t-il des ajustements selon mon état de forme et ma fatigue actuels ? Propose des modifications concrètes si nécessaire.' },
+      { label: 'Stratégie de course', prompt: 'Je veux préparer une stratégie de course. Demande-moi quel sport (course, vélo, triathlon…), quelle course, le profil du parcours (distance, dénivelé), et mon objectif de temps. Ensuite propose-moi une stratégie complète : allures/watts par section, nutrition pendant la course, gestion de l\'effort, et plan B en cas de conditions difficiles. Utilise mes zones d\'entraînement et mes données de performance pour personnaliser.' },
+      { label: 'Analyser ma semaine', prompt: 'Analyse ma semaine d\'entraînement en cours. Évalue la répartition des charges, les intensités, l\'équilibre entre les disciplines et les recommandations pour la suite. Appuie-toi sur mes données réelles.' },
     ],
   },
   {
@@ -7330,36 +7330,28 @@ const PLUS_CATS: PlusCat[] = [
     items: [
       { label: 'Créer un plan nutritionnel', flow: 'nutrition' },
       { label: 'Recharge glucidique', flow: 'recharge' },
-      { label: 'Timing nutritionnel', prompt: 'Explique-moi le timing nutritionnel optimal pour mes entraînements : que manger et quand, avant, pendant et après l\'effort, en fonction de mon profil et de mes activités.' },
     ],
   },
   {
     label: 'Récupération',
     items: [
-      { label: 'Récupération du jour', prompt: 'Analyse mes données de récupération du jour et dis-moi si je peux m\'entraîner intensément aujourd\'hui ou si j\'ai besoin de récupérer.' },
-      { label: 'Conseils sommeil', prompt: 'Donne-moi des conseils pratiques et concrets pour optimiser mon sommeil en tant qu\'athlète.' },
-      { label: 'Gestion de la fatigue', prompt: 'Analyse ma fatigue chronique et ma charge d\'entraînement cumulée. Comment équilibrer progression et récupération sur les prochaines semaines ?' },
+      { label: 'Analyser ma récupération', prompt: 'Analyse mon état de récupération global. Croise mes données disponibles (readiness, HRV, sommeil, charge d\'entraînement récente, fatigue) et dis-moi concrètement si je peux m\'entraîner intensément aujourd\'hui ou si je dois récupérer. Donne des recommandations pratiques.' },
+      { label: 'Conseils sommeil', prompt: 'Analyse mes données de sommeil et donne-moi des conseils concrets et personnalisés pour optimiser mon sommeil en tant qu\'athlète d\'endurance. Prends en compte ma charge d\'entraînement et mes habitudes.' },
     ],
   },
   {
     label: 'Performance',
     items: [
-      { label: 'Identifier mes lacunes', flow: 'weakpoints' },
-      { label: 'Analyser ma progression', prompt: 'Analyse ma progression sportive sur les dernières semaines. Quels sont mes points forts, mes tendances et comment continuer à progresser efficacement ?' },
-    ],
-  },
-  {
-    label: 'Tests',
-    items: [
+      { label: 'Analyser ma progression', prompt: 'Analyse ma progression sportive sur les derniers mois dans tous mes sports. Compare les volumes, intensités, métriques clés (allure, puissance, FC). Identifie les tendances positives et négatives. Utilise un tableau pour les comparaisons. Propose des actions concrètes pour continuer à progresser.' },
       { label: 'Analyser un test', flow: 'analyzetest' },
-      { label: 'Calculer mes zones', prompt: 'Explique-moi comment calculer et utiliser mes zones d\'entraînement (fréquence cardiaque, allure, puissance). Propose une méthode adaptée à mes sports pratiqués.' },
+      { label: 'Analyser une activité', prompt: 'Analyse en détail ma dernière activité ou une activité que je te précise. Décompose les métriques : durée, distance, FC moyenne/max, allure ou puissance, TSS, distribution des zones, cadence. Identifie les points forts et les faiblesses de cette séance. Si je te donne 2 activités, compare-les dans un tableau.' },
+      { label: 'Estimer mes zones', prompt: 'Estime mes zones d\'entraînement à partir de mes données récentes (activités, tests de performance). Pour chaque sport que je pratique, propose des zones de FC, d\'allure et/ou de puissance en te basant sur les données les plus récentes disponibles. Explique ta méthodologie et précise le niveau de confiance de chaque estimation.' },
     ],
   },
   {
     label: 'Application',
     items: [
-      { label: 'Comprendre l\'application', prompt: 'Explique-moi les fonctionnalités clés de l\'application THW Coaching : comment structurer mon planning, configurer mes zones d\'entraînement, saisir mes données de récupération et suivre ma nutrition.' },
-      { label: 'Configurer mes zones', prompt: 'Comment configurer mes zones d\'entraînement dans l\'application ? Où les trouver et comment les utiliser pour piloter mes séances ?' },
+      { label: 'Comprendre l\'application', prompt: 'Tu es l\'assistant de l\'application THW Coaching. L\'utilisateur veut comprendre comment utiliser l\'application. Explique-lui les sections principales : Planning, Activités, Performance, Nutrition, Coach IA, Profil. Sois concis et pratique. Demande quelle section approfondir.' },
     ],
   },
 ]
@@ -7886,12 +7878,6 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    label: 'Analyser la semaine d\'entraînement',
-    sub: 'Charge, intensités, équilibre et recommandations',
-    model: 'athena',
-    prompt: 'Analyse ma semaine d\'entraînement actuelle. Évalue la répartition des charges, les intensités, l\'équilibre entre les disciplines et la progression globale. Donne des recommandations concrètes et actionnables pour la semaine suivante.',
-  },
-  {
     label: 'Créer un plan d\'entraînement',
     sub: 'Plan structuré adapté à tes objectifs',
     model: 'zeus',
@@ -7899,21 +7885,27 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     label: 'Identifier mes points faibles',
-    sub: 'Analyse multi-sports de tes lacunes',
+    sub: 'Analyse croisée de tes données et lacunes',
     model: 'athena',
     flow: 'weakpoints',
-  },
-  {
-    label: 'Analyser ma récupération globale',
-    sub: 'Readiness, HRV, sommeil et conseils du jour',
-    model: 'hermes',
-    prompt: 'Analyse mon état de récupération global. Interprète mes données disponibles (readiness, HRV, sommeil, fatigue subjective) et dis-moi concrètement si je peux m\'entraîner intensément aujourd\'hui, à quelle intensité, et ce que je dois surveiller.',
   },
   {
     label: 'Créer un plan nutritionnel',
     sub: 'Plan personnalisé selon ton profil et tes sports',
     model: 'athena',
     flow: 'nutrition',
+  },
+  {
+    label: 'Comprendre l\'application',
+    sub: 'Fonctionnalités, navigation et configuration',
+    model: 'hermes',
+    prompt: 'Tu es l\'assistant de l\'application THW Coaching. L\'utilisateur veut comprendre comment utiliser l\'application. Explique-lui les sections principales :\n\n1. **Planning** : calendrier d\'entraînement avec les semaines, les séances planifiées, les courses. Comment naviguer entre les semaines, ajouter des séances, voir les détails.\n2. **Activités** : synchronisation Strava, détail d\'une activité avec graphiques (HR, pace, watts, altitude), onglets (overview, charts, intervals, enrichment).\n3. **Performance** : tests de performance, zones d\'entraînement par sport (FC, allure, puissance), profil athlète.\n4. **Nutrition** : plan nutritionnel actif, suivi quotidien des repas et macros, repas types, suivi du poids.\n5. **Coach IA** : chat avec le coach, actions rapides, règles personnelles dans les réglages.\n6. **Profil** : paramètres, réglages IA (modèle, règles, police), connexion données (Strava, HRV).\n\nSois concis et pratique. Demande à l\'utilisateur quelle section il veut approfondir.',
+  },
+  {
+    label: 'Analyser un entraînement',
+    sub: 'Analyse détaillée ou comparaison de 2 activités',
+    model: 'athena',
+    prompt: 'Analyse mes activités d\'entraînement récentes. Présente les métriques clés (durée, distance, FC moyenne/max, allure/puissance, TSS) et identifie les points forts et les axes d\'amélioration. Si je te donne 2 activités, compare-les en détail dans un tableau. Appuie-toi sur mes données réelles disponibles.',
   },
 ]
 
@@ -8167,6 +8159,7 @@ export default function AIPanel({
   const [ruleHelperCategory, setRuleHelperCategory] = useState<string | null>(null)
   const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
+  const [showQuickActions, setShowQuickActions] = useState(true)
 
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
@@ -8186,7 +8179,12 @@ export default function AIPanel({
 
   // ── Effects ────────────────────────────────────────────────
 
-  useEffect(() => { setMounted(true); setConvs(loadConvs()) }, [])
+  useEffect(() => {
+    setMounted(true)
+    setConvs(loadConvs())
+    const sqaVal = localStorage.getItem('thw_ai_show_quick_actions')
+    if (sqaVal === 'false') setShowQuickActions(false)
+  }, [])
 
   // Charge les règles IA actives de l'utilisateur au mount
   useEffect(() => {
@@ -9254,74 +9252,103 @@ export default function AIPanel({
                   Comment puis-je t'aider ?
                 </p>
 
-                <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-                  textTransform: 'uppercase', color: 'var(--ai-dim)',
-                  marginBottom: 9,
-                }}>
-                  Actions rapides
-                </div>
+                <button
+                  onClick={() => {
+                    const next = !showQuickActions
+                    setShowQuickActions(next)
+                    localStorage.setItem('thw_ai_show_quick_actions', String(next))
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '0 0 9px',
+                  }}
+                >
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+                    textTransform: 'uppercase', color: 'var(--ai-dim)',
+                  }}>
+                    Actions rapides
+                  </span>
+                  <svg
+                    width="10" height="10" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
+                    style={{ transform: showQuickActions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                  >
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                  {QUICK_ACTIONS.map((qa, i) => {
-                    const mcfg = MODEL_CONFIGS[qa.model]
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          setModel(qa.model)
-                          if (qa.flow) {
-                            setActiveFlow(qa.flow)
-                            setActiveQA(null)
-                          } else if (qa.prompt) {
-                            // NEW: set intermediate state, never send directly
-                            setActiveQA({ label: qa.label, apiPrompt: qa.prompt, model: qa.model })
-                            setActiveFlow(null)
-                            setTimeout(() => areaRef.current?.focus(), 60)
-                          }
-                        }}
-                        disabled={loading}
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                          gap: 10, padding: '11px 14px', borderRadius: 10,
-                          border: '1px solid var(--ai-border)',
-                          background: 'var(--ai-bg2)',
-                          cursor: loading ? 'not-allowed' : 'pointer',
-                          textAlign: 'left', width: '100%',
-                          opacity: loading ? 0.5 : 1,
-                          transition: 'border-color 0.12s, background 0.12s',
-                        }}
-                        onMouseEnter={e => { if (!loading) {
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = mcfg.color + '50'
-                          ;(e.currentTarget as HTMLButtonElement).style.background = mcfg.colorBg
-                        }}}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
-                          ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                            {qa.label}
+                {showQuickActions && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+                    {QUICK_ACTIONS.map((qa, i) => {
+                      const mcfg = MODEL_CONFIGS[qa.model]
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setModel(qa.model)
+                            if (qa.flow) {
+                              setActiveFlow(qa.flow)
+                              setActiveQA(null)
+                            } else if (qa.prompt) {
+                              setActiveFlow(null)
+                              setActiveQA(null)
+                              void send(qa.label, qa.prompt)
+                            }
+                          }}
+                          disabled={loading}
+                          style={{
+                            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                            gap: 10, padding: '11px 14px', borderRadius: 10,
+                            border: '1px solid var(--ai-border)',
+                            background: 'var(--ai-bg2)',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            textAlign: 'left', width: '100%',
+                            opacity: loading ? 0.5 : 1,
+                            transition: 'border-color 0.12s, background 0.12s',
+                          }}
+                          onMouseEnter={e => { if (!loading) {
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = mcfg.color + '50'
+                            ;(e.currentTarget as HTMLButtonElement).style.background = mcfg.colorBg
+                          }}}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
+                            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
+                              {qa.label}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
+                              {qa.sub}
+                            </div>
+                            {/* Modèle recommandé */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                              <ModelEffigy model={qa.model} isAnimating={false} size={10} />
+                              <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
+                                {mcfg.name}
+                              </span>
+                            </div>
                           </div>
-                          <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
-                            {qa.sub}
-                          </div>
-                          {/* Modèle recommandé */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                            <ModelEffigy model={qa.model} isAnimating={false} size={10} />
-                            <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
-                              {mcfg.name}
-                            </span>
-                          </div>
-                        </div>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
-                          <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    )
-                  })}
-                </div>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {!showQuickActions && (
+                  <p
+                    style={{ fontSize: 11, color: 'var(--ai-dim)', textAlign: 'center', margin: '0 0 16px', cursor: 'pointer' }}
+                    onClick={() => { setShowQuickActions(true); localStorage.setItem('thw_ai_show_quick_actions', 'true') }}
+                  >
+                    Afficher les actions rapides
+                  </p>
+                )}
 
                 <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 14, margin: 0 }}>
                   ou utilise + pour explorer toutes les options
@@ -9564,7 +9591,7 @@ export default function AIPanel({
             {/* Plus menu */}
             {plusOpen && (
               <PlusMenu
-                onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA({ label, apiPrompt: p, model }); setTimeout(() => areaRef.current?.focus(), 60) }}
+                onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
                 onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
                 onClose={() => setPlusOpen(false)}
                 onCamera={() => cameraRef.current?.click()}

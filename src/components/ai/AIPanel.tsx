@@ -2423,116 +2423,437 @@ function NutritionFlow({ onCancel, onRecordConv }: {
 
 // ── RechargeFlow ───────────────────────────────────────────────
 
-function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
-  const [type,      setType]      = useState<'competition' | 'training' | null>(null)
-  const [intensity, setIntensity] = useState('')
-  const [date,      setDate]      = useState('')
+type RechargeEventType = 'race_planned' | 'race_manual' | 'training'
+type RechargeStep = 'gate' | 'event' | 'questions' | 'generating'
 
-  function submit() {
-    if (!type) return
-    let apiPrompt: string
-    if (type === 'competition') {
-      apiPrompt =
-        `Crée-moi un plan de recharge glucidique pour une compétition${date ? ` le ${date}` : ''}.` +
-        ` Indique les quantités précises de glucides jour par jour avant l'épreuve, les aliments recommandés, ` +
-        `le timing des repas et les points de vigilance. Base-toi sur mes données d'entraînement et mon profil.`
-    } else {
-      apiPrompt =
-        `Crée-moi un plan de recharge glucidique pour une session d'entraînement de haute intensité.` +
-        `${intensity ? ` Intensité prévue : ${intensity}.` : ''}` +
-        ` Explique comment charger avant, comment gérer l'apport pendant et la récupération après. ` +
-        `Adapte les quantités à mon profil et mes données disponibles dans l'application.`
+interface PlannedRaceOption {
+  id: string
+  name: string
+  sport: string
+  date: string
+  level: string | null
+  goal_time: string | null
+}
+
+function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
+  const [step, setStep] = useState<RechargeStep>('gate')
+  const [loading, setLoading] = useState(false)
+
+  // Gate data
+  const [gateData, setGateData] = useState<{
+    weight: number | null
+    planNutritionActive: boolean
+    plannedSessions: number
+    plannedRaces: PlannedRaceOption[]
+  } | null>(null)
+
+  // Event step
+  const [eventType, setEventType] = useState<RechargeEventType | null>(null)
+  const [selectedRace, setSelectedRace] = useState<PlannedRaceOption | null>(null)
+  const [manualRaceName, setManualRaceName] = useState('')
+  const [manualRaceSport, setManualRaceSport] = useState('')
+  const [manualRaceDate, setManualRaceDate] = useState('')
+  const [trainingIntensity, setTrainingIntensity] = useState('')
+
+  // Questions step
+  const [nutritionExp, setNutritionExp] = useState('')
+  const [solidsTolerance, setSolidsTolerance] = useState('')
+
+  // Load gate data on mount
+  useEffect(() => {
+    void (async () => {
+      setLoading(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setLoading(false); return }
+
+        const now = new Date()
+        const in2weeks = new Date(now); in2weeks.setDate(now.getDate() + 14)
+
+        const [profileRes, planRes, sessionsRes, racesRes] = await Promise.all([
+          sb.from('user_profiles').select('weight_kg').eq('user_id', user.id).maybeSingle(),
+          sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
+          sb.from('planned_sessions').select('id').eq('user_id', user.id).gte('week_start', now.toISOString().split('T')[0]).lte('week_start', in2weeks.toISOString().split('T')[0]),
+          sb.from('planned_races').select('id,name,sport,date,level,goal_time').eq('user_id', user.id).gte('date', now.toISOString().split('T')[0]).order('date', { ascending: true }).limit(5),
+        ])
+
+        setGateData({
+          weight: (profileRes.data?.weight_kg as number | null) ?? null,
+          planNutritionActive: !!planRes.data,
+          plannedSessions: sessionsRes.data?.length ?? 0,
+          plannedRaces: (racesRes.data ?? []) as PlannedRaceOption[],
+        })
+      } catch {
+        setGateData({ weight: null, planNutritionActive: false, plannedSessions: 0, plannedRaces: [] })
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  // Detect if it's triathlon/ultra (needs solids question)
+  function needsSolidsQuestion(): boolean {
+    if (!eventType) return false
+    if (eventType === 'race_planned' && selectedRace) {
+      return selectedRace.sport === 'triathlon' || selectedRace.sport === 'trail'
     }
-    onPrepare(apiPrompt, 'Recharge glucidique — ' + (type === 'competition' ? 'Compétition' : 'Entraînement'))
+    if (eventType === 'race_manual') {
+      return manualRaceSport === 'triathlon' || manualRaceSport === 'trail'
+    }
+    return false
   }
 
-  return (
-    <div style={{ padding: '8px 0 4px' }}>
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-        Dans quel contexte ?
-      </p>
-      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-        La stratégie diffère selon l'objectif
-      </p>
+  function buildPrompt(): string {
+    const weightStr = gateData?.weight ? `${gateData.weight}kg` : 'non renseigné'
+    const planStr = gateData?.planNutritionActive ? 'actif' : 'non configuré'
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        {([
-          { id: 'competition' as const, label: 'Compétition', sub: 'Course ou événement cible' },
-          { id: 'training' as const, label: 'Entraînement', sub: 'Séance haute intensité' },
-        ]).map(opt => (
-          <button key={opt.id} onClick={() => setType(opt.id)} style={{
-            flex: 1, padding: '11px 10px', borderRadius: 10, textAlign: 'center',
-            border: `1px solid ${type === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
-            background: type === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+    const nutritionExpLabel =
+      nutritionExp === 'never' ? 'Jamais testé / ne mange pas pendant l\'effort'
+      : nutritionExp === 'occasional' ? 'Gels ou boissons énergétiques occasionnellement'
+      : nutritionExp === 'protocol' ? 'Protocole rodé : sait ce qu\'il tolère et combien'
+      : ''
+
+    const solidsLabel =
+      solidsTolerance === 'yes' ? 'Oui, sans problème'
+      : solidsTolerance === 'low_intensity' ? 'Seulement à faible intensité (marche, Z1-Z2)'
+      : solidsTolerance === 'no' ? 'Non, uniquement liquide/gel'
+      : ''
+
+    let contextBlock = ''
+    if (eventType === 'race_planned' && selectedRace) {
+      contextBlock = `ÉVÉNEMENT CIBLE :
+Course planifiée : ${selectedRace.name}
+Sport : ${selectedRace.sport}
+Date : ${selectedRace.date}
+Niveau : ${selectedRace.level ?? 'non renseigné'}
+Objectif temps : ${selectedRace.goal_time ?? 'non renseigné'}`
+    } else if (eventType === 'race_manual') {
+      contextBlock = `ÉVÉNEMENT CIBLE :
+Course (saisie manuelle) : ${manualRaceName || 'non précisé'}
+Sport : ${manualRaceSport || 'non précisé'}
+Date : ${manualRaceDate || 'non précisée'}`
+    } else {
+      contextBlock = `CONTEXTE : Séance d'entraînement haute intensité
+Intensité prévue : ${trainingIntensity || 'haute'}`
+    }
+
+    const systemPrompt = `Tu es un expert en nutrition sportive et stratégie glucidique pour athlètes d'endurance.
+
+Crée un plan de recharge glucidique PERSONNALISÉ et PRÉCIS.
+
+STRUCTURE OBLIGATOIRE :
+${eventType !== 'training' ? `## Phase 1 — Recharge avant (J-3 à J-1)
+Quantités précises en g/kg/jour. Aliments recommandés. Timing des repas. Aliments à éviter.
+
+## Phase 2 — Jour J (avant l'épreuve)
+Dernier repas : timing, contenu, quantités. Collation pré-départ si applicable.
+
+## Phase 3 — Pendant l'effort
+Stratégie glucidique en g/h selon la durée et l'intensité. Sources recommandées (gel, boisson, solides si toléré). Hydratation. Planning sur la durée de l'épreuve.
+
+## Phase 4 — Récupération post-effort
+Fenêtre anabolique 30-60min. Repas récupération. Durée de la phase.` : `## Avant la séance (J-1 et matin J)
+Quantités en g/kg. Timing optimal.
+
+## Pendant la séance
+Stratégie en g/h si durée > 75min. Sources adaptées.
+
+## Après la séance
+Récupération glucidique et protéique.`}
+
+## Points de vigilance personnalisés
+Basé sur l'expérience nutrition déclarée : ${nutritionExpLabel || 'non renseignée'}
+
+TERMINE TOUJOURS PAR :
+## Sources et niveau de confiance
+Sources utilisées : [liste des données disponibles]
+Niveau de confiance : [élevé/modéré/faible] — [justification]`
+
+    const userPrompt = `${contextBlock}
+
+PROFIL ATHLÈTE :
+Poids : ${weightStr}
+Plan nutritionnel : ${planStr}
+Séances planifiées (2 semaines) : ${gateData?.plannedSessions ?? 0}
+
+EXPÉRIENCE NUTRITION EFFORT : ${nutritionExpLabel || 'non renseignée'}
+${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` : ''}`
+
+    return systemPrompt + '\n\n' + userPrompt
+  }
+
+  // ── Step: gate ──────────────────────────────────────────────
+  if (step === 'gate') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Recharge glucidique
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Stratégie nutritionnelle avant un effort important
+        </p>
+
+        {loading ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11, marginBottom: 14 }}>
+            <Dots />
+            <span>Chargement de ton profil…</span>
+          </div>
+        ) : gateData && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Poids</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: gateData.weight ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>
+                {gateData.weight ? `${gateData.weight} kg` : 'non renseigné'}
+              </span>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Plan nutritionnel</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: gateData.planNutritionActive ? '#22c55e' : '#f97316', fontFamily: 'DM Sans,sans-serif' }}>
+                {gateData.planNutritionActive ? 'actif' : 'non configuré'}
+              </span>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Séances planifiées (2 sem.)</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>
+                {gateData.plannedSessions}
+              </span>
+            </div>
+            {gateData.plannedRaces.length > 0 && (
+              <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Courses planifiées</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>
+                  {gateData.plannedRaces.length} course{gateData.plannedRaces.length > 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Annuler
+          </button>
+          <button onClick={() => setStep('event')} disabled={loading} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: loading ? 'var(--ai-border)' : 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Continuer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: event ──────────────────────────────────────────────
+  if (step === 'event') {
+    const plannedRaces = gateData?.plannedRaces ?? []
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Pour quel objectif ?
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          La stratégie diffère selon le contexte
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
+          {plannedRaces.length > 0 && (
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'DM Sans,sans-serif' }}>
+                Courses planifiées
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {plannedRaces.map(race => (
+                  <button key={race.id} onClick={() => { setEventType('race_planned'); setSelectedRace(race) }} style={{
+                    padding: '10px 12px', borderRadius: 9, textAlign: 'left',
+                    border: `1px solid ${eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-border)'}`,
+                    background: eventType === 'race_planned' && selectedRace?.id === race.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+                    cursor: 'pointer', transition: 'all 0.12s',
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+                      {race.name}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>
+                      {race.sport} · {race.date}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button onClick={() => { setEventType('race_manual'); setSelectedRace(null) }} style={{
+            padding: '10px 12px', borderRadius: 9, textAlign: 'left',
+            border: `1px solid ${eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-border)'}`,
+            background: eventType === 'race_manual' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: type === opt.id ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif', marginBottom: 3 }}>
-              {opt.label}
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+              Autre compétition
             </div>
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }}>
-              {opt.sub}
+            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>
+              Saisir manuellement nom, sport et date
             </div>
           </button>
-        ))}
-      </div>
 
-      {type === 'competition' && (
-        <div style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Date de la compétition (optionnel)
-          </p>
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}
-          />
+          <button onClick={() => { setEventType('training'); setSelectedRace(null) }} style={{
+            padding: '10px 12px', borderRadius: 9, textAlign: 'left',
+            border: `1px solid ${eventType === 'training' ? '#5b6fff' : 'var(--ai-border)'}`,
+            background: eventType === 'training' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+            cursor: 'pointer', transition: 'all 0.12s',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+              Séance d'entraînement
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>
+              Session haute intensité ou longue distance
+            </div>
+          </button>
         </div>
-      )}
 
-      {type === 'training' && (
+        {eventType === 'race_manual' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            <input
+              placeholder="Nom de la compétition"
+              value={manualRaceName}
+              onChange={e => setManualRaceName(e.target.value)}
+              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }}
+            />
+            <div style={{ display: 'flex', gap: 7 }}>
+              {['running', 'cycling', 'triathlon', 'trail'].map(sp => (
+                <button key={sp} onClick={() => setManualRaceSport(sp)} style={{
+                  flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 10,
+                  border: `1px solid ${manualRaceSport === sp ? '#5b6fff' : 'var(--ai-border)'}`,
+                  background: manualRaceSport === sp ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+                  color: manualRaceSport === sp ? '#5b6fff' : 'var(--ai-mid)',
+                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                }}>
+                  {sp === 'running' ? 'Course' : sp === 'cycling' ? 'Vélo' : sp === 'triathlon' ? 'Tri' : 'Trail'}
+                </button>
+              ))}
+            </div>
+            <input
+              type="date"
+              value={manualRaceDate}
+              onChange={e => setManualRaceDate(e.target.value)}
+              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }}
+            />
+          </div>
+        )}
+
+        {eventType === 'training' && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Intensité prévue</p>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {['Haute', 'Très haute', 'Longue distance'].map(lvl => (
+                <button key={lvl} onClick={() => setTrainingIntensity(lvl)} style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 10,
+                  border: `1px solid ${trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-border)'}`,
+                  background: trainingIntensity === lvl ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+                  color: trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-mid)',
+                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                }}>
+                  {lvl}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setStep('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Retour
+          </button>
+          <button onClick={() => setStep('questions')} disabled={!eventType} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: eventType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: eventType ? 'pointer' : 'not-allowed', fontFamily: 'DM Sans,sans-serif' }}>
+            Continuer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: questions ───────────────────────────────────────────
+  if (step === 'questions') {
+    const showSolids = needsSolidsQuestion()
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Ton expérience nutrition
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          {showSolids ? '2 questions pour personnaliser ton plan' : '1 question pour personnaliser ton plan'}
+        </p>
+
         <div style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Intensité prévue
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
+            Quelle est ton expérience avec la nutrition pendant l'effort ?
           </p>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['Haute', 'Très haute'].map(lvl => (
-              <button key={lvl} onClick={() => setIntensity(lvl)} style={{
-                flex: 1, padding: '8px', borderRadius: 8,
-                border: `1px solid ${intensity === lvl ? '#5b6fff' : 'var(--ai-border)'}`,
-                background: intensity === lvl ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
-                color: intensity === lvl ? '#5b6fff' : 'var(--ai-mid)',
-                fontSize: 12, fontWeight: intensity === lvl ? 600 : 400,
-                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {([
+              { id: 'never', label: 'Jamais testé / je ne mange pas pendant l\'effort' },
+              { id: 'occasional', label: 'Gels ou boissons énergétiques occasionnellement' },
+              { id: 'protocol', label: 'Protocole rodé : je sais ce que je tolère et combien' },
+            ] as { id: string; label: string }[]).map(opt => (
+              <button key={opt.id} onClick={() => setNutritionExp(opt.id)} style={{
+                padding: '10px 12px', borderRadius: 8, textAlign: 'left',
+                border: `1px solid ${nutritionExp === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
+                background: nutritionExp === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+                color: nutritionExp === opt.id ? '#5b6fff' : 'var(--ai-mid)',
+                fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s',
               }}>
-                {lvl}
+                {opt.label}
               </button>
             ))}
           </div>
         </div>
-      )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={onCancel} style={{
-          padding: '9px 16px', borderRadius: 9,
-          border: '1px solid var(--ai-border)', background: 'transparent',
-          color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
-          fontFamily: 'DM Sans,sans-serif',
-        }}>
-          Annuler
-        </button>
-        <button onClick={submit} disabled={!type} style={{
-          flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
-          background: type ? 'var(--ai-gradient)' : 'var(--ai-border)',
-          color: '#fff', fontSize: 12, fontWeight: 700,
-          cursor: type ? 'pointer' : 'not-allowed',
-          fontFamily: 'DM Sans,sans-serif',
-        }}>
-          Créer mon plan
-        </button>
+        {showSolids && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
+              Tolères-tu les aliments solides pendant l'effort ?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {([
+                { id: 'yes', label: 'Oui, sans problème' },
+                { id: 'low_intensity', label: 'Seulement à faible intensité (marche, Z1-Z2)' },
+                { id: 'no', label: 'Non, uniquement du liquide/gel' },
+              ] as { id: string; label: string }[]).map(opt => (
+                <button key={opt.id} onClick={() => setSolidsTolerance(opt.id)} style={{
+                  padding: '10px 12px', borderRadius: 8, textAlign: 'left',
+                  border: `1px solid ${solidsTolerance === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
+                  background: solidsTolerance === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
+                  color: solidsTolerance === opt.id ? '#5b6fff' : 'var(--ai-mid)',
+                  fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s',
+                }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setStep('event')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Retour
+          </button>
+          <button onClick={() => {
+            const prompt = buildPrompt()
+            const label = 'Recharge glucidique — ' + (eventType === 'training' ? 'Entraînement' : (selectedRace?.name ?? manualRaceName ?? 'Compétition'))
+            onPrepare(prompt, label)
+          }} disabled={!nutritionExp || (showSolids && !solidsTolerance)} style={{
+            flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
+            background: (!nutritionExp || (showSolids && !solidsTolerance)) ? 'var(--ai-border)' : 'var(--ai-gradient)',
+            color: '#fff', fontSize: 12, fontWeight: 700,
+            cursor: (!nutritionExp || (showSolids && !solidsTolerance)) ? 'not-allowed' : 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+          }}>
+            Créer mon plan
+          </button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return null
 }
 
 // ── AnalyzeTestFlow ───────────────────────────────────────────
@@ -7387,7 +7708,6 @@ const PLUS_CATS: PlusCat[] = [
     items: [
       { label: 'Analyser ma progression', prompt: 'Analyse ma progression sportive sur les derniers mois dans tous mes sports. Compare les volumes, intensités, métriques clés (allure, puissance, FC). Identifie les tendances positives et négatives. Utilise un tableau pour les comparaisons. Propose des actions concrètes pour continuer à progresser.' },
       { label: 'Analyser un test', flow: 'analyzetest' },
-      { label: 'Analyser une activité', prompt: 'Analyse en détail ma dernière activité ou une activité que je te précise. Décompose les métriques : durée, distance, FC moyenne/max, allure ou puissance, TSS, distribution des zones, cadence. Identifie les points forts et les faiblesses de cette séance. Si je te donne 2 activités, compare-les dans un tableau.' },
       { label: 'Estimer mes zones', prompt: 'Estime mes zones d\'entraînement à partir de mes données récentes (activités, tests de performance). Pour chaque sport que je pratique, propose des zones de FC, d\'allure et/ou de puissance en te basant sur les données les plus récentes disponibles. Explique ta méthodologie et précise le niveau de confiance de chaque estimation.' },
     ],
   },
@@ -7969,86 +8289,141 @@ async function enrichedAnalyserSemaine(
   userId: string,
   rulesBlock: string,
   label: string,
-  sendFn: SendFn,
+  sendFn: SendFn
 ): Promise<void> {
   const now = new Date()
-  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1 // lun=0
   const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() - dayOfWeek)
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))
   weekStart.setHours(0, 0, 0, 0)
   const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 7)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  weekEnd.setHours(23, 59, 59, 999)
+  const since4weeks = new Date(weekStart)
+  since4weeks.setDate(since4weeks.getDate() - 28)
 
-  const [activitiesRes, plannedRes, metricsRes] = await Promise.all([
-    sb.from('activities')
-      .select('id,sport,date,duration,distance,load,raw_data')
-      .eq('user_id', userId)
-      .gte('date', weekStart.toISOString().slice(0, 10))
-      .lt('date', weekEnd.toISOString().slice(0, 10))
-      .order('date', { ascending: true }),
-    sb.from('planned_sessions')
-      .select('id,sport,date,title,duration_min,description,week_start')
-      .eq('user_id', userId)
-      .gte('date', weekStart.toISOString().slice(0, 10))
-      .lt('date', weekEnd.toISOString().slice(0, 10))
-      .order('date', { ascending: true }),
-    sb.from('metrics_daily')
-      .select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb')
-      .eq('user_id', userId)
-      .gte('date', weekStart.toISOString().slice(0, 10))
-      .lt('date', weekEnd.toISOString().slice(0, 10))
-      .order('date', { ascending: true }),
+  const [activitiesRes, plannedRes, metricsRes, past4wActivitiesRes, past4wPlannedRes, upcomingRacesRes] = await Promise.all([
+    sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor').eq('user_id', userId).gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString()).order('started_at', { ascending: true }),
+    sb.from('planned_sessions').select('id,sport,title,duration_min,tss,intensite,heure,type_seance,status,day_index').eq('user_id', userId).gte('week_start', weekStart.toISOString().split('T')[0]).lte('week_start', weekEnd.toISOString().split('T')[0]),
+    sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb,fatigue,energy,stress').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).lte('date', weekEnd.toISOString().split('T')[0]).order('date', { ascending: true }),
+    sb.from('activities').select('sport_type,started_at,moving_time_s,tss,intensity_factor,avg_hr,avg_watts,avg_pace_s_km').eq('user_id', userId).gte('started_at', since4weeks.toISOString()).lt('started_at', weekStart.toISOString()).order('started_at', { ascending: true }),
+    sb.from('planned_sessions').select('sport,duration_min,intensite,type_seance,status,day_index,week_start').eq('user_id', userId).gte('week_start', since4weeks.toISOString().split('T')[0]).lt('week_start', weekStart.toISOString().split('T')[0]).order('week_start', { ascending: true }),
+    sb.from('planned_races').select('name,sport,date,level,goal_time').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).order('date', { ascending: true }).limit(3),
   ])
 
   const activities = activitiesRes.data ?? []
   const planned = plannedRes.data ?? []
   const metrics = metricsRes.data ?? []
+  const past4wActivities = past4wActivitiesRes.data ?? []
+  const past4wPlanned = past4wPlannedRes.data ?? []
+  const upcomingRaces = upcomingRacesRes.data ?? []
 
-  const totalTSS = activities.reduce((sum, a) => sum + (typeof a.load === 'number' ? a.load : 0), 0)
-  const totalDuration = activities.reduce((sum, a) => sum + (typeof a.duration === 'number' ? a.duration : 0), 0)
-  const sportBreakdown: Record<string, { count: number; duration: number; tss: number }> = {}
-  for (const a of activities) {
-    const s = String(a.sport ?? 'autre')
-    if (!sportBreakdown[s]) sportBreakdown[s] = { count: 0, duration: 0, tss: 0 }
-    sportBreakdown[s].count++
-    sportBreakdown[s].duration += typeof a.duration === 'number' ? a.duration : 0
-    sportBreakdown[s].tss += typeof a.load === 'number' ? a.load : 0
-  }
+  // Compliance matrix
+  type ComplianceRow = { dayIndex: number; sport: string; plannedDuration: number; plannedIntensity: string; realizedDuration: number | null; realizedTss: number | null; status: 'ok' | 'partial' | 'missed' }
+  const complianceMatrix: ComplianceRow[] = planned.map(session => {
+    const sessionDate = new Date(weekStart)
+    const dayIdx = session.day_index ?? 0
+    sessionDate.setDate(weekStart.getDate() + dayIdx)
+    const match = activities.find(a => {
+      const aDate = new Date(a.started_at)
+      return a.sport_type === session.sport && Math.abs(aDate.getTime() - sessionDate.getTime()) < 86400000 * 1.5
+    })
+    return {
+      dayIndex: dayIdx,
+      sport: session.sport ?? '',
+      plannedDuration: session.duration_min ?? 0,
+      plannedIntensity: session.intensite ?? '',
+      realizedDuration: match ? Math.round((match.moving_time_s ?? 0) / 60) : null,
+      realizedTss: match ? (match.tss ?? null) : null,
+      status: match ? ((match.tss ?? 0) >= (session.tss ?? 0) * 0.8 ? 'ok' : 'partial') : 'missed',
+    }
+  })
+  const complianceScore = planned.length > 0 ? Math.round((complianceMatrix.filter(r => r.status === 'ok').length / planned.length) * 100) : null
 
-  const today = now.toISOString().slice(0, 10)
-  const remainingPlanned = planned.filter(p => String(p.date) >= today)
+  // Type drift detection (4 past weeks)
+  type TypeDriftEntry = { plannedIntensity: string; realizedTss: number; realizedDuration: number }
+  const typeDriftData: TypeDriftEntry[] = []
+  past4wPlanned.forEach(ps => {
+    const psDate = new Date(ps.week_start)
+    psDate.setDate(psDate.getDate() + (ps.day_index ?? 0))
+    const match = past4wActivities.find(a => {
+      const aDate = new Date(a.started_at)
+      return a.sport_type === ps.sport && Math.abs(aDate.getTime() - psDate.getTime()) < 86400000 * 1.5
+    })
+    if (match && ps.intensite) {
+      typeDriftData.push({ plannedIntensity: ps.intensite, realizedTss: match.tss ?? 0, realizedDuration: Math.round((match.moving_time_s ?? 0) / 60) })
+    }
+  })
 
-  const prompt = `Tu es un coach sportif expert. Analyse la semaine d'entraînement en cours de cet athlète (semaine du ${weekStart.toISOString().slice(0, 10)}).
+  const tssCumul = activities.reduce((s, a) => s + (a.tss ?? 0), 0)
+  const sportBreakdown: Record<string, number> = {}
+  activities.forEach(a => { sportBreakdown[a.sport_type] = (sportBreakdown[a.sport_type] ?? 0) + Math.round((a.moving_time_s ?? 0) / 60) })
+  const remainingPlanned = planned.filter(p => {
+    const sessionDate = new Date(weekStart)
+    sessionDate.setDate(weekStart.getDate() + (p.day_index ?? 0))
+    return sessionDate > now
+  })
 
-ACTIVITÉS RÉALISÉES CETTE SEMAINE (${activities.length} séances) :
-${activities.length === 0 ? 'Aucune activité enregistrée cette semaine.' : JSON.stringify(activities.map(a => ({
-  date: a.date, sport: a.sport, duration_min: Math.round((typeof a.duration === 'number' ? a.duration : 0) / 60),
-  distance_km: typeof a.distance === 'number' ? Math.round(a.distance / 100) / 10 : null,
-  tss: a.load,
-})), null, 2)}
+  // Sources & confidence
+  const sources: string[] = []
+  if (activities.length > 0) sources.push(`${activities.length} activité(s) cette semaine`)
+  if (planned.length > 0) sources.push(`${planned.length} séance(s) planifiée(s)`)
+  if (metrics.length > 0) sources.push(`${metrics.length} jour(s) de métriques récupération`)
+  if (past4wActivities.length > 0) sources.push(`${past4wActivities.length} activités sur 4 semaines (patterns)`)
+  if (upcomingRaces.length > 0) sources.push(`${upcomingRaces.length} course(s) planifiée(s)`)
+  const confidence = sources.length >= 4 ? 'élevé' : sources.length >= 2 ? 'modéré' : 'faible'
 
-RÉPARTITION PAR SPORT :
-${JSON.stringify(sportBreakdown, null, 2)}
+  const systemPrompt = `Tu es un coach expert en analyse hebdomadaire d'entraînement. Analyse la semaine EN CROISANT ces 3 dimensions obligatoirement.
 
-TOTAL SEMAINE : ${activities.length} séances · ${Math.round(totalDuration / 60)}min · ${Math.round(totalTSS)} TSS
+DIMENSION 1 — COMPLIANCE PLAN/RÉALISÉ
+Analyse la matrice de compliance fournie. Calcule le score de compliance, identifie les séances ok/partielles/manquées, commente le respect des intensités. Présente sous forme de tableau markdown.
 
-SÉANCES PLANIFIÉES RESTANTES CETTE SEMAINE (${remainingPlanned.length} séances) :
-${remainingPlanned.length === 0 ? 'Aucune séance planifiée restante.' : JSON.stringify(remainingPlanned.map(p => ({ date: p.date, sport: p.sport, title: p.title, duration_min: p.duration_min })), null, 2)}
+DIMENSION 2 — PATTERNS SUR 4 SEMAINES
+Analyse les données des 4 semaines passées. Détecte les comportements répétés : jours sautés chroniquement, type drift (séances planifiées à haute intensité mais réalisées en Z2), séances raccourcies systématiquement. NOMME le pattern explicitement. Si peu de données : le signaler.
 
-DONNÉES RÉCUPÉRATION SEMAINE :
-${metrics.length === 0 ? 'Aucune donnée de récupération disponible.' : JSON.stringify(metrics, null, 2)}
-${rulesBlock}
+DIMENSION 3 — ÉTAT DE RÉCUPÉRATION ET PROJECTION
+Synthèse des métriques de la semaine (HRV, sommeil, fatigue) + TSS cumulé + cohérence avec les courses à venir.
 
-ANALYSE DEMANDÉE :
-1. Bilan des séances réalisées : volume, intensité, répartition disciplinaire
-2. Points positifs et alertes (surcharge, sous-volume, déséquilibres)
-3. État de récupération basé sur les métriques disponibles
-4. Recommandations pour les séances restantes de la semaine
-5. Projection sur la fin de semaine : est-ce une semaine de charge, de récupération, ou neutre ?
+TON : Coach direct, factuel, constructif. Pas de précautions oratoires.
+STRUCTURE : ## pour chaque dimension + ## Synthèse + ## 3 recommandations actionnables
 
-Sois direct, structuré avec des titres markdown, et appuie-toi sur les chiffres réels.`
+TERMINE TOUJOURS PAR :
+## Sources et niveau de confiance
+Sources utilisées : [liste]
+Niveau de confiance : [élevé/modéré/faible] — [justification]
 
-  sendFn(label, prompt)
+## Actions suggérées
+Propose 1-2 actions rapides pertinentes parmi : "Analyser ma récupération", "Analyser un entraînement", "Estimer mes zones", "Conseils sommeil"${rulesBlock}`
+
+  const userPrompt = `Analyse ma semaine du ${weekStart.toLocaleDateString('fr-FR')} au ${weekEnd.toLocaleDateString('fr-FR')}.
+
+ACTIVITÉS RÉALISÉES :
+${activities.length > 0 ? JSON.stringify(activities, null, 2) : 'Aucune activité cette semaine.'}
+
+SÉANCES PLANIFIÉES :
+${planned.length > 0 ? JSON.stringify(planned, null, 2) : 'Aucune séance planifiée.'}
+
+MATRICE COMPLIANCE (planned vs réalisé) :
+${complianceMatrix.length > 0 ? JSON.stringify(complianceMatrix, null, 2) : 'Pas de données de compliance disponibles.'}
+Score de compliance estimé : ${complianceScore !== null ? `${complianceScore}%` : 'N/A'}
+
+MÉTRIQUES DE RÉCUPÉRATION SEMAINE :
+${metrics.length > 0 ? JSON.stringify(metrics, null, 2) : 'Pas de données de récupération.'}
+
+TSS CUMULÉ SEMAINE : ${tssCumul}
+RÉPARTITION PAR SPORT (minutes) : ${JSON.stringify(sportBreakdown)}
+SÉANCES RESTANTES DE LA SEMAINE : ${remainingPlanned.length} séances
+
+DONNÉES PATTERNS (4 semaines passées — ${past4wActivities.length} activités, ${past4wPlanned.length} séances planifiées) :
+${typeDriftData.length > 0 ? `Type drift data : ${JSON.stringify(typeDriftData)}` : 'Données insuffisantes pour détecter un pattern.'}
+
+COURSES À VENIR :
+${upcomingRaces.length > 0 ? JSON.stringify(upcomingRaces, null, 2) : 'Aucune course planifiée.'}
+
+Sources utilisées : ${sources.join(' · ')}
+Niveau de confiance : ${confidence}`
+
+  // TODO: inject injuries when table exists
+  sendFn(label, systemPrompt + '\n\n' + userPrompt)
 }
 
 async function enrichedAnalyserRecuperation(
@@ -8056,86 +8431,110 @@ async function enrichedAnalyserRecuperation(
   userId: string,
   rulesBlock: string,
   label: string,
-  sendFn: SendFn,
+  sendFn: SendFn
 ): Promise<void> {
   const now = new Date()
-  const since14d = new Date(now)
-  since14d.setDate(now.getDate() - 14)
-  const since7d = new Date(now)
-  since7d.setDate(now.getDate() - 7)
-  const next48h = new Date(now)
-  next48h.setDate(now.getDate() + 2)
+  const since28d = new Date(now); since28d.setDate(now.getDate() - 28)
+  const in2days = new Date(now); in2days.setDate(now.getDate() + 2)
 
-  const [metricsRes, activitiesRes, plannedRes] = await Promise.all([
-    sb.from('metrics_daily')
-      .select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb')
-      .eq('user_id', userId)
-      .gte('date', since14d.toISOString().slice(0, 10))
-      .order('date', { ascending: false }),
-    sb.from('activities')
-      .select('id,sport,date,duration,load,raw_data')
-      .eq('user_id', userId)
-      .gte('date', since14d.toISOString().slice(0, 10))
-      .order('date', { ascending: false })
-      .limit(30),
-    sb.from('planned_sessions')
-      .select('id,sport,date,title,duration_min')
-      .eq('user_id', userId)
-      .gte('date', now.toISOString().slice(0, 10))
-      .lte('date', next48h.toISOString().slice(0, 10))
-      .order('date', { ascending: true }),
+  const [metrics28dRes, activities28dRes, next48hRes] = await Promise.all([
+    sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb,fatigue,energy,stress,motivation').eq('user_id', userId).gte('date', since28d.toISOString().split('T')[0]).order('date', { ascending: true }),
+    sb.from('activities').select('sport_type,started_at,moving_time_s,tss,avg_hr,intensity_factor').eq('user_id', userId).gte('started_at', since28d.toISOString()).order('started_at', { ascending: true }),
+    sb.from('planned_sessions').select('date,sport,title,duration_min,intensite,tss').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]).lte('date', in2days.toISOString().split('T')[0]).order('date', { ascending: true }),
   ])
 
-  const metrics = metricsRes.data ?? []
-  const activities = activitiesRes.data ?? []
-  const planned = plannedRes.data ?? []
+  const metrics28d = metrics28dRes.data ?? []
+  const activities28d = activities28dRes.data ?? []
+  const next48h = next48hRes.data ?? []
 
-  if (metrics.length < 3) {
-    sendFn(label, `Analyse mon état de récupération. Je n'ai pas encore assez de données de récupération enregistrées (moins de 3 jours disponibles). Explique-moi comment améliorer le suivi de ma récupération dans l'application et quels indicateurs je devrais renseigner chaque jour (HRV, FC repos, sommeil, readiness). Donne-moi des conseils généraux de récupération pour un athlète d'endurance.${rulesBlock}`)
+  if (metrics28d.length < 3) {
+    sendFn(label, `${rulesBlock ? rulesBlock + '\n\n' : ''}Analyse ma récupération. Je n'ai pas encore assez de données de suivi (${metrics28d.length} jour(s) disponible(s), minimum 3 requis). Donne-moi des conseils généraux de récupération pour un athlète d'endurance et explique comment configurer le suivi quotidien (HRV, sommeil, readiness) pour obtenir une analyse personnalisée. Indique clairement que l'analyse est générique faute de données suffisantes.`)
     return
   }
 
-  const tss7j = activities
-    .filter(a => String(a.date) >= since7d.toISOString().slice(0, 10))
-    .reduce((sum, a) => sum + (typeof a.load === 'number' ? a.load : 0), 0)
-  const tss14j = activities.reduce((sum, a) => sum + (typeof a.load === 'number' ? a.load : 0), 0)
+  // HRV baseline & current
+  const hrvValues = metrics28d.filter(m => m.hrv != null).map(m => m.hrv as number)
+  const hrvBaseline = hrvValues.length > 0 ? Math.round(hrvValues.reduce((a, b) => a + b, 0) / hrvValues.length) : null
+  const latestMetrics = metrics28d[metrics28d.length - 1]
+  const latestHrv = latestMetrics?.hrv ?? null
 
-  const latestMetrics = metrics.slice(0, 3)
-  const avgHRV = metrics.filter(m => m.hrv != null).slice(0, 7).reduce((s, m, _, arr) => s + (m.hrv as number) / arr.length, 0)
-  const avgReadiness = metrics.filter(m => m.readiness != null).slice(0, 7).reduce((s, m, _, arr) => s + (m.readiness as number) / arr.length, 0)
+  // TSS weekly buckets for overload threshold detection
+  type WeekTss = { weekStart: string; totalTss: number; avgHrvNextWeek: number | null }
+  const weeklyTss: WeekTss[] = []
+  for (let w = 0; w < 4; w++) {
+    const wStart = new Date(since28d); wStart.setDate(since28d.getDate() + w * 7)
+    const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 6)
+    const wTss = activities28d
+      .filter(a => new Date(a.started_at) >= wStart && new Date(a.started_at) <= wEnd)
+      .reduce((s, a) => s + (a.tss ?? 0), 0)
+    const nextWStart = new Date(wEnd); nextWStart.setDate(wEnd.getDate() + 1)
+    const nextWMetrics = metrics28d.filter(m => m.date > wEnd.toISOString().split('T')[0] && m.date <= nextWStart.toISOString().split('T')[0] && m.hrv != null)
+    const avgHrvNext = nextWMetrics.length > 0 ? Math.round(nextWMetrics.reduce((s, m) => s + (m.hrv as number), 0) / nextWMetrics.length) : null
+    weeklyTss.push({ weekStart: wStart.toISOString().split('T')[0], totalTss: Math.round(wTss), avgHrvNextWeek: avgHrvNext })
+  }
 
-  const prompt = `Tu es un coach sportif expert en récupération et performance. Analyse l'état de récupération de cet athlète aujourd'hui (${now.toISOString().slice(0, 10)}).
+  const tss7d = Math.round(activities28d.filter(a => new Date(a.started_at) >= new Date(now.getTime() - 7 * 86400000)).reduce((s, a) => s + (a.tss ?? 0), 0))
+  const tss14d = Math.round(activities28d.filter(a => new Date(a.started_at) >= new Date(now.getTime() - 14 * 86400000)).reduce((s, a) => s + (a.tss ?? 0), 0))
 
-MÉTRIQUES DE RÉCUPÉRATION (14 DERNIERS JOURS) :
-${JSON.stringify(metrics, null, 2)}
+  // Sources & confidence
+  const sources: string[] = []
+  if (metrics28d.length > 0) sources.push(`${metrics28d.length} jours de métriques (28j)`)
+  if (hrvBaseline !== null) sources.push(`baseline HRV calculée : ${hrvBaseline}ms`)
+  if (activities28d.length > 0) sources.push(`${activities28d.length} activités (28j)`)
+  if (next48h.length > 0) sources.push(`${next48h.length} séance(s) prévue(s) 48h`)
+  const confidence = metrics28d.length >= 14 && hrvValues.length >= 10 ? 'élevé' : metrics28d.length >= 7 ? 'modéré' : 'faible'
 
-DONNÉES CLÉS :
-- HRV moyen 7j : ${avgHRV > 0 ? Math.round(avgHRV) : 'N/A'}
-- Readiness moyen 7j : ${avgReadiness > 0 ? Math.round(avgReadiness) : 'N/A'}
-- Derniers jours (J-3 à J-1) : ${JSON.stringify(latestMetrics, null, 2)}
+  const systemPrompt = `Tu es un expert en récupération et performance sportive. Produis une analyse en 3 niveaux.
 
-CHARGE D'ENTRAÎNEMENT :
-- TSS 7 derniers jours : ${Math.round(tss7j)}
-- TSS 14 derniers jours : ${Math.round(tss14j)}
-- Ratio charge : ${tss14j > 0 ? Math.round((tss7j / (tss14j / 2)) * 100) : 'N/A'}%
+NIVEAU 1 — VERDICT DU JOUR
+Statut clair : Vert (bien récupéré) / Orange (récupération partielle) / Rouge (fatigue significative)
+Chiffre clé : HRV actuel vs baseline + écart en %.
 
-ACTIVITÉS RÉCENTES (14j, ${activities.length} séances) :
-${JSON.stringify(activities.slice(0, 10).map(a => ({ date: a.date, sport: a.sport, duration_min: Math.round((typeof a.duration === 'number' ? a.duration : 0) / 60), tss: a.load })), null, 2)}
+NIVEAU 2 — SIGNATURE DE RÉCUPÉRATION PERSONNELLE (28 jours)
+Analyse les patterns sur 28 jours. Détecte :
+- Le délai de récupération habituel après séance haute intensité (en heures)
+- Le seuil TSS hebdomadaire qui déclenche une dépression HRV chez CET athlète
+- Les signaux précoces de surcharge (FC repos élevée, sommeil court, readiness bas)
+- Quel type de récupération fonctionne le mieux (repos complet ou sortie Z1 légère)
+Nomme les patterns avec les chiffres. Sois précis.
 
-SÉANCES PRÉVUES 48H SUIVANTES :
-${planned.length === 0 ? 'Aucune séance planifiée.' : JSON.stringify(planned, null, 2)}
-${rulesBlock}
+NIVEAU 3 — RECOMMANDATION IMMÉDIATE
+Pour la prochaine séance planifiée : verdict précis (faire / adapter comment exactement / repousser de combien).
 
-ANALYSE DEMANDÉE :
-1. **État de récupération aujourd'hui** : verdict clair (Vert/Orange/Rouge) avec justification
-2. **Analyse des tendances** : HRV, sommeil, readiness sur 7-14j
-3. **Ratio charge/récupération** : es-tu en zone de surcharge, d'équilibre ou de sous-charge ?
-4. **Recommandation immédiate** : entraînement intensif OK ? Récupération active ? Repos ?
-5. **Adaptation des séances prévues** : que faire des séances planifiées dans les 48h ?
+TERMINE TOUJOURS PAR :
+## Sources et niveau de confiance
+Sources utilisées : [liste]
+Niveau de confiance : [élevé/modéré/faible] — [justification]
 
-Sois direct et actionnable. Utilise les données réelles.`
+## Actions suggérées
+Propose 1-2 actions parmi : "Analyser ma semaine", "Conseils sommeil", "Analyser un entraînement"${rulesBlock}`
 
-  sendFn(label, prompt)
+  const userPrompt = `Analyse ma récupération.
+
+MÉTRIQUES 28 DERNIERS JOURS :
+${JSON.stringify(metrics28d, null, 2)}
+
+BASELINE HRV PERSONNELLE : ${hrvBaseline ?? 'non calculable'}ms (sur ${hrvValues.length} mesures)
+HRV ACTUEL (dernier jour) : ${latestHrv ?? 'non disponible'}ms
+${latestHrv && hrvBaseline ? `Écart : ${Math.round(((latestHrv - hrvBaseline) / hrvBaseline) * 100)}%` : ''}
+
+TSS 7 DERNIERS JOURS : ${tss7d}
+TSS 14 DERNIERS JOURS : ${tss14d}
+
+CHARGE HEBDOMADAIRE × HRV SEMAINE SUIVANTE (pour détecter le seuil de surcharge) :
+${JSON.stringify(weeklyTss, null, 2)}
+
+ACTIVITÉS 28 JOURS :
+${activities28d.length > 0 ? JSON.stringify(activities28d, null, 2) : 'Aucune activité.'}
+
+PROCHAINES SÉANCES (48h) :
+${next48h.length > 0 ? JSON.stringify(next48h, null, 2) : 'Aucune séance planifiée.'}
+
+Sources utilisées : ${sources.join(' · ')}
+Niveau de confiance : ${confidence}`
+
+  // TODO: inject injuries when table exists
+  sendFn(label, systemPrompt + '\n\n' + userPrompt)
 }
 
 async function enrichedConseilsSommeil(
@@ -8143,120 +8542,232 @@ async function enrichedConseilsSommeil(
   userId: string,
   rulesBlock: string,
   label: string,
-  sendFn: SendFn,
+  sendFn: SendFn
 ): Promise<void> {
   const now = new Date()
-  const since30d = new Date(now)
-  since30d.setDate(now.getDate() - 30)
+  const since60d = new Date(now); since60d.setDate(now.getDate() - 60)
 
-  const [metricsRes, activitiesRes, profileRes] = await Promise.all([
-    sb.from('metrics_daily')
-      .select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness')
-      .eq('user_id', userId)
-      .gte('date', since30d.toISOString().slice(0, 10))
-      .order('date', { ascending: false }),
-    sb.from('activities')
-      .select('id,sport,date,duration,raw_data')
-      .eq('user_id', userId)
-      .gte('date', since30d.toISOString().slice(0, 10))
-      .order('date', { ascending: false })
-      .limit(60),
-    sb.from('user_profiles')
-      .select('sports,weekly_volume_target,main_goal,age,weight_kg')
-      .eq('user_id', userId)
-      .maybeSingle(),
+  const [metrics60dRes, activities60dRes, profileRes] = await Promise.all([
+    sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,fatigue,energy').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true }),
+    sb.from('activities').select('sport_type,started_at,moving_time_s,tss,raw_data,intensity_factor').eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
+    sb.from('user_profiles').select('sports,main_goal,age,weight_kg').eq('user_id', userId).maybeSingle(),
   ])
 
-  const metrics = metricsRes.data ?? []
-  const activities = activitiesRes.data ?? []
+  const metrics60d = metrics60dRes.data ?? []
+  const activities60d = activities60dRes.data ?? []
   const profile = profileRes.data
 
-  const sleepDays = metrics.filter(m => m.sleep_duration != null)
-  if (sleepDays.length < 5) {
-    sendFn(label, `Je veux des conseils pour optimiser mon sommeil en tant qu\'athlète. Je n'ai pas encore assez de données de sommeil dans l'application (moins de 5 nuits enregistrées). Donne-moi des conseils généraux et praticables pour améliorer le sommeil d'un athlète d'endurance : routine du soir, température, lumière, nutrition pré-sommeil, gestion du stress d'entraînement. Explique aussi comment mieux suivre mon sommeil dans l'app.${rulesBlock}`)
+  const nightsWithSleep = metrics60d.filter(m => m.sleep_duration != null && m.sleep_duration > 0)
+
+  if (nightsWithSleep.length < 5) {
+    sendFn(label, `${rulesBlock ? rulesBlock + '\n\n' : ''}Donne-moi des conseils pour optimiser mon sommeil en tant qu'athlète d'endurance. Je n'ai pas encore assez de données de suivi du sommeil (${nightsWithSleep.length} nuit(s) enregistrée(s), minimum 5 requises). Inclus des recommandations générales sur l'hygiène du sommeil pour les athlètes, et explique comment connecter un wearable (Garmin, Whoop, Oura, Apple Health) dans l'app pour obtenir une analyse personnalisée. Signale clairement que les conseils sont génériques.`)
     return
   }
 
-  const avgSleep = sleepDays.reduce((s, m) => s + (m.sleep_duration as number), 0) / sleepDays.length
-  const avgQuality = metrics.filter(m => m.sleep_quality != null).reduce((s, m, _, arr) => s + (m.sleep_quality as number) / arr.length, 0)
-  const nightsUnder7h = sleepDays.filter(m => (m.sleep_duration as number) < 7).length
-  const avgHRV = metrics.filter(m => m.hrv != null).reduce((s, m, _, arr) => s + (m.hrv as number) / arr.length, 0)
-
-  // Séances après 19h dans les 30 derniers jours
-  const eveningSessions = activities.filter(a => {
-    const rawData = a.raw_data as { start_date?: string } | null
-    if (!rawData?.start_date) return false
-    const hour = new Date(rawData.start_date).getHours()
-    return hour >= 19
+  // Heure de fin de séance + qualité sommeil nuit suivante
+  type SessionSleepEntry = { endHour: number; sport: string; tss: number; sleepQualityNextNight: number | null }
+  const sessionSleepCorrelations: SessionSleepEntry[] = []
+  activities60d.forEach(a => {
+    const rawStartDate = (a.raw_data as { start_date?: string } | null)?.start_date
+    if (!rawStartDate || !a.moving_time_s) return
+    const endTime = new Date(new Date(rawStartDate).getTime() + (a.moving_time_s as number) * 1000)
+    const endHour = endTime.getHours() + endTime.getMinutes() / 60
+    const nextDay = new Date(endTime); nextDay.setDate(nextDay.getDate() + 1)
+    const nextDayStr = nextDay.toISOString().split('T')[0]
+    const nextMetrics = metrics60d.find(m => m.date === nextDayStr)
+    sessionSleepCorrelations.push({ endHour: Math.round(endHour * 10) / 10, sport: a.sport_type, tss: a.tss ?? 0, sleepQualityNextNight: nextMetrics?.sleep_quality ?? null })
   })
 
-  const prompt = `Tu es un expert en récupération sportive et optimisation du sommeil. Analyse les données de sommeil de cet athlète sur les 30 derniers jours et donne des conseils personnalisés et actionnables.
+  // Calculate personal cutoff time
+  const eveningSessions = sessionSleepCorrelations.filter(s => s.endHour >= 17 && s.sleepQualityNextNight != null)
+  const avgSleep = nightsWithSleep.length > 0 ? Math.round((nightsWithSleep.reduce((s, m) => s + (m.sleep_duration as number), 0) / nightsWithSleep.length) * 10) / 10 : null
+  const avgQuality = nightsWithSleep.filter(m => m.sleep_quality != null).length > 0
+    ? Math.round(nightsWithSleep.filter(m => m.sleep_quality != null).reduce((s, m) => s + (m.sleep_quality as number), 0) / nightsWithSleep.filter(m => m.sleep_quality != null).length)
+    : null
+  const nightsUnder7h = nightsWithSleep.filter(m => (m.sleep_duration as number) < 7).length
 
-PROFIL ATHLÈTE :
-${profile ? JSON.stringify(profile, null, 2) : 'Non disponible'}
+  // Cutoff time analysis: group by hour bucket
+  type HourBucket = { bucket: string; avgQuality: number; count: number }
+  const hourBuckets: Record<string, { totalQuality: number; count: number }> = {}
+  eveningSessions.forEach(s => {
+    const bucket = s.endHour < 18 ? 'avant-18h' : s.endHour < 19 ? '18h-19h' : s.endHour < 20 ? '19h-20h' : 'après-20h'
+    if (!hourBuckets[bucket]) hourBuckets[bucket] = { totalQuality: 0, count: 0 }
+    hourBuckets[bucket].totalQuality += s.sleepQualityNextNight ?? 0
+    hourBuckets[bucket].count++
+  })
+  const cutoffAnalysis: HourBucket[] = Object.entries(hourBuckets).map(([bucket, data]) => ({
+    bucket,
+    avgQuality: data.count > 0 ? Math.round(data.totalQuality / data.count) : 0,
+    count: data.count,
+  }))
 
-STATISTIQUES SOMMEIL (30 derniers jours, ${sleepDays.length} nuits enregistrées) :
-- Durée moyenne : ${avgSleep.toFixed(1)}h
-- Qualité moyenne : ${avgQuality > 0 ? Math.round(avgQuality) + '/100' : 'N/A'}
-- Nuits < 7h : ${nightsUnder7h} (${Math.round(nightsUnder7h / sleepDays.length * 100)}%)
-- HRV moyen : ${avgHRV > 0 ? Math.round(avgHRV) : 'N/A'}
+  // Sources & confidence
+  const sources: string[] = [`${nightsWithSleep.length} nuits enregistrées (60j)`]
+  if (activities60d.length > 0) sources.push(`${activities60d.length} activités (60j)`)
+  if (eveningSessions.length > 0) sources.push(`${eveningSessions.length} séances soirée avec données sommeil`)
+  if (profile) sources.push('profil athlète')
+  const confidence = nightsWithSleep.length >= 20 && eveningSessions.length >= 5 ? 'élevé' : nightsWithSleep.length >= 10 ? 'modéré' : 'faible'
 
-DONNÉES DÉTAILLÉES SOMMEIL (30j) :
-${JSON.stringify(sleepDays.slice(0, 30), null, 2)}
+  const systemPrompt = `Tu es un expert en optimisation du sommeil pour athlètes d'endurance.
 
-SÉANCES EN SOIRÉE (après 19h, 30j) : ${eveningSessions.length} séances
-${eveningSessions.length > 0 ? JSON.stringify(eveningSessions.slice(0, 5).map(a => ({ date: a.date, sport: a.sport, duration_min: Math.round((typeof a.duration === 'number' ? a.duration : 0) / 60) })), null, 2) : ''}
-${rulesBlock}
+Tes conseils DOIVENT être basés sur les données réelles de cet athlète. Si une corrélation est forte, nomme-la avec les chiffres exacts. Ne donne JAMAIS de conseils génériques si les données permettent d'être précis.
 
-ANALYSE DEMANDÉE :
-1. **Diagnostic sommeil** : est-ce que la durée et la qualité sont suffisantes pour un athlète ?
-2. **Corrélations identifiées** : liens entre sommeil et HRV, readiness, performance ?
-3. **Facteurs perturbateurs** : séances tardives, irrégularités, tendances négatives ?
-4. **Conseils personnalisés** (5-7 conseils concrets adaptés à ce profil) : routine du soir, horaires, nutrition, gestion du stress d'entraînement
-5. **Priorité #1** : le changement le plus impactant à faire immédiatement
+STRUCTURE OBLIGATOIRE :
+1. ## Diagnostic sommeil (statut : bon / perfectible / problématique + justification chiffrée)
+2. ## Ses 3 saboteurs identifiés (avec preuves dans les données — si pas de données suffisantes, le dire)
+3. ## Son heure limite d'entraînement personnelle (calcul transparent depuis les données, sinon recommandation générale)
+4. ## 5 recommandations PERSONNALISÉES et actionnables (pas de généralités)
+5. ## Sa priorité #1 : le changement avec le plus fort impact estimé
 
-Appuie-toi sur les données réelles. Sois direct et pratique.`
+TERMINE TOUJOURS PAR :
+## Sources et niveau de confiance
+Sources utilisées : [liste]
+Niveau de confiance : [élevé/modéré/faible] — [justification]
 
-  sendFn(label, prompt)
+## Actions suggérées
+Propose 1-2 actions parmi : "Analyser ma récupération", "Analyser ma semaine"${rulesBlock}`
+
+  const userPrompt = `Analyse mon sommeil et donne-moi des conseils personnalisés.
+
+PROFIL : ${profile ? `sports: ${profile.sports}, objectif: ${profile.main_goal}, âge: ${profile.age}` : 'non disponible'}
+
+MÉTRIQUES SOMMEIL (60 jours — ${nightsWithSleep.length} nuits) :
+Durée moyenne : ${avgSleep ?? 'N/A'}h
+Qualité moyenne : ${avgQuality ?? 'N/A'}/100
+Nuits < 7h : ${nightsUnder7h}/${nightsWithSleep.length}
+
+DONNÉES BRUTES MÉTRIQUES :
+${JSON.stringify(metrics60d.slice(-30), null, 2)}
+
+IMPACT DES SÉANCES EN SOIRÉE SUR LE SOMMEIL :
+${eveningSessions.length > 0 ? JSON.stringify(sessionSleepCorrelations.filter(s => s.endHour >= 17), null, 2) : 'Pas assez de séances en soirée pour calculer une corrélation.'}
+
+ANALYSE PAR TRANCHE HORAIRE (qualité sommeil selon heure de fin de séance) :
+${cutoffAnalysis.length > 0 ? JSON.stringify(cutoffAnalysis, null, 2) : 'Données insuffisantes.'}
+
+Sources utilisées : ${sources.join(' · ')}
+Niveau de confiance : ${confidence}`
+
+  // TODO: inject injuries when table exists
+  sendFn(label, systemPrompt + '\n\n' + userPrompt)
 }
 
 async function enrichedComprendreApp(
   sb: SupabaseClient,
   userId: string,
   label: string,
-  sendFn: SendFn,
+  sendFn: SendFn
 ): Promise<void> {
-  const profileRes = await sb.from('user_profiles')
-    .select('first_name,sports,main_goal')
-    .eq('user_id', userId)
-    .maybeSingle()
+  const now = new Date()
+  const since30d = new Date(now); since30d.setDate(now.getDate() - 30)
+  const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
+
+  const [profileRes, zonesRes, testsRes, planNutritionRes, racesRes, activitiesCountRes, metricsCountRes, rulesCountRes] = await Promise.all([
+    sb.from('user_profiles').select('first_name,sports,main_goal,age').eq('user_id', userId).maybeSingle(),
+    sb.from('training_zones').select('id,sport').eq('user_id', userId).eq('is_current', true),
+    sb.from('test_results').select('id').eq('user_id', userId),
+    sb.from('nutrition_plans').select('id').eq('user_id', userId).eq('actif', true).maybeSingle(),
+    sb.from('planned_races').select('id,name,sport,date').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]),
+    sb.from('activities').select('id').eq('user_id', userId).gte('started_at', since30d.toISOString()),
+    sb.from('metrics_daily').select('id').eq('user_id', userId).gte('date', since14d.toISOString().split('T')[0]),
+    sb.from('ai_rules').select('id').eq('user_id', userId).eq('active', true),
+  ])
 
   const profile = profileRes.data
-  const firstName = profile?.first_name ? String(profile.first_name) : ''
-  const sports = Array.isArray(profile?.sports) ? (profile.sports as string[]).join(', ') : 'non renseigné'
-  const goal = profile?.main_goal ? String(profile.main_goal) : 'non renseigné'
+  const zones = zonesRes.data ?? []
+  const tests = testsRes.data ?? []
+  const planNutrition = planNutritionRes.data
+  const races = racesRes.data ?? []
+  const activitiesCount = activitiesCountRes.data?.length ?? 0
+  const metricsCount = metricsCountRes.data?.length ?? 0
+  const rulesCount = rulesCountRes.data?.length ?? 0
 
-  const prompt = `Tu es l'assistant de l'application THW Coaching.${firstName ? ` L'athlète s'appelle ${firstName}.` : ''} Il pratique : ${sports}. Son objectif principal : ${goal}.
+  // App Health Score
+  let healthScore = 0
+  if (zones.length > 0) healthScore += 15
+  if (tests.length > 0) healthScore += 15
+  if (planNutrition) healthScore += 15
+  if (races.length > 0) healthScore += 15
+  if (activitiesCount > 5) healthScore += 20
+  if (metricsCount > 5) healthScore += 10
+  if (rulesCount > 0) healthScore += 10
 
-Présente-lui les sections de l'application de façon personnalisée et pratique :
+  const configuredFeatures: string[] = []
+  const missingFeatures: string[] = []
+  if (zones.length > 0) configuredFeatures.push(`Zones (${zones.length} sport(s))`)
+  else missingFeatures.push('Zones d\'entraînement (−15pts) → tous les conseils IA sont génériques sans zones')
+  if (tests.length > 0) configuredFeatures.push(`Tests (${tests.length} résultat(s))`)
+  else missingFeatures.push('Tests de performance (−15pts) → VMA/FTP inconnus, estimations imprécises')
+  if (planNutrition) configuredFeatures.push('Plan nutritionnel actif')
+  else missingFeatures.push('Plan nutritionnel (−15pts) → pas de conseils nutrition personnalisés')
+  if (races.length > 0) configuredFeatures.push(`${races.length} course(s) planifiée(s)`)
+  else missingFeatures.push('Courses planifiées (−15pts) → pas de planification orientée objectif')
+  if (activitiesCount > 5) configuredFeatures.push(`${activitiesCount} activités récentes (Strava actif)`)
+  else missingFeatures.push('Activités Strava (−20pts) → connecter Strava pour l\'analyse des entraînements')
+  if (metricsCount > 5) configuredFeatures.push(`Suivi récupération actif (${metricsCount} jours)`)
+  else missingFeatures.push('Suivi récupération (−10pts) → HRV/sommeil requis pour l\'analyse de forme')
+  if (rulesCount > 0) configuredFeatures.push(`${rulesCount} règle(s) IA personnelle(s)`)
+  else missingFeatures.push('Règles IA (−10pts) → aller dans Paramètres → Règles IA')
 
-1. **Planning** : calendrier d'entraînement avec les semaines, les séances planifiées et les courses. Naviguer entre semaines, ajouter/modifier des séances, voir les détails. Idéal pour planifier les entraînements à venir.
+  const firstName = profile?.first_name ?? 'l\'athlète'
+  const sports = (profile?.sports as string[] | null)?.join(', ') ?? 'non renseignés'
+  const goal = profile?.main_goal ?? 'non renseigné'
 
-2. **Activités** : synchronisation Strava automatique, détail de chaque activité avec graphiques interactifs (FC, allure, puissance, altitude), analyse par zones, onglets overview/charts/intervals.
+  const APP_KNOWLEDGE = `CONNAISSANCE COMPLÈTE DE L'APPLICATION THW COACHING :
 
-3. **Performance** : tests de performance, zones d'entraînement par sport (FC, allure, puissance), suivi de la progression, profil athlète complet.
+**Planning** : Calendrier semaine/mois. Sessions planifiées avec leurs blocs (durée, intensité, type). Gestion manuelle via bouton + → créer session. Génération IA via Coach IA → Construire une séance. Courses planifiées (planned_races) visibles dans le calendrier. Tâches semaine (week_tasks). Visualisation day_intensity.
 
-4. **Nutrition** : plan nutritionnel actif, suivi quotidien des repas et macros, repas types, suivi du poids et de la composition corporelle.
+**Activités** : Feed Strava synchronisé automatiquement. Filtres sport/période. Détail activité avec streams graphiques (FC, vitesse, watts, altitude, cadence) — disponibles pour activités Strava récentes. Analyse par zones. Laps détaillés.
 
-5. **Coach IA** (ici même) : chat avec ton coach personnel, actions rapides, analyses enrichies. Dans les Réglages (icône engrenage), tu peux définir des règles personnelles pour personnaliser les réponses et choisir le modèle IA (Hermès/Athéna/Zeus).
+**Performance** : Onglet Profil (FTP, VMA, LTHR, VO2max, poids). Onglet Datas (historique métriques). Onglet Tests (protocoles complets : VMA, CP20, Ruffier, etc. + saisie résultats + historique). Onglet Zones (calcul zones course depuis LTHR, vélo depuis FTP, natation depuis CSS).
 
-6. **Profil** : paramètres personnels, connexion des données externes (Strava, HRV), préférences d'affichage.
+**Nutrition** : Plan nutritionnel IA généré via Coach IA → Créer un plan nutritionnel. 3 niveaux caloriques (jour léger/moyen/intense). 2 variantes (A/B). Suivi journalier macros/calories. Suivi poids. Templates repas types. Ajustements automatiques selon la charge.
 
-Adapte ton explication en mettant en avant les sections les plus utiles pour ${firstName || 'cet athlète'} compte tenu de ses sports (${sports}) et objectif (${goal}).
+**Récupération** : Métriques subjectives quotidiennes (fatigue, énergie, stress, motivation, douleur — 1-10). Données objectives (HRV, FC repos, durée sommeil, qualité sommeil) via wearable. Connexion Garmin, Whoop, Oura, Apple Health dans Connexions.
 
-Termine en demandant quelle section il veut approfondir ou quelle fonctionnalité l'intéresse.`
+**Zones** : Calcul zones course (LTHR → Z1-Z5 FC + allures), vélo (FTP → Z1-Z5 watts), natation (CSS → allures). Utilisées par TOUS les modules IA — à configurer en priorité absolue.
 
-  sendFn(label, prompt)
+**Connexions** : Strava (sync automatique activités). Garmin/Wahoo/Polar (données entraînement). Wearables récupération : Whoop, Oura, Garmin (HRV/sommeil). Apple Health.
+
+**Coach IA** : Chat IA avec 3 modèles (Hermès/rapide, Athéna/équilibré, Zeus/profond). 10 actions rapides accessibles via bouton + ou actions principales. Règles personnelles : Paramètres → Règles IA. Historique conversations.
+
+**Profil** : Infos personnelles (prénom, age, poids, taille). Avatar. Liste sports. Connexions OAuth.
+
+**Briefing** : Résumé quotidien (séance du jour + tâches + actualités sportives). Accessible depuis l'écran d'accueil.`
+
+  const systemPrompt = `Tu es l'assistant expert de l'application THW Coaching. Tu connais parfaitement chaque fonctionnalité, chaque bouton, chaque flux.
+
+${APP_KNOWLEDGE}
+
+PROFIL DE L'ATHLÈTE :
+- Prénom : ${firstName} | Sports : ${sports} | Objectif : ${goal}
+- App Health Score : ${healthScore}/100
+- Fonctionnalités configurées : ${configuredFeatures.join(', ') || 'aucune'}
+- Fonctionnalités manquantes : ${missingFeatures.join(', ') || 'aucune'}
+
+TON RÔLE :
+1. Commencer par présenter l'App Health Score avec les détails (ce qui est configuré / ce qui manque)
+2. Expliquer les fonctionnalités les plus utiles pour ${firstName} avec son profil (${sports}/${goal})
+3. Pour chaque fonctionnalité NON configurée : expliquer POURQUOI c'est utile pour CE profil et comment accéder à la configuration
+4. Donner un chemin pas-à-pas personnalisé ("Commence par X, puis Y")
+5. Terminer avec les 3 prochaines étapes CONCRÈTES pour maximiser l'app
+
+RÈGLES :
+- Toujours contextualiser pour ${sports} et ${goal}
+- Être précis sur les chemins de navigation ("dans Performance → onglet Zones → ...")
+- Proposer proactivement des fonctionnalités connexes non demandées mais pertinentes
+- Le score est affiché de façon structurée avec chaque item`
+
+  const userPrompt = `Présente-moi l'application et explique comment en tirer le maximum pour mon profil.
+
+APP HEALTH SCORE : ${healthScore}/100
+Configuré : ${configuredFeatures.join(' · ') || 'rien encore'}
+Manquant : ${missingFeatures.join(' · ') || 'rien'}
+
+Sports pratiqués : ${sports}
+Objectif principal : ${goal}`
+
+  sendFn(label, systemPrompt + '\n\n' + userPrompt)
 }
 
 // ══════════════════════════════════════════════════════════════

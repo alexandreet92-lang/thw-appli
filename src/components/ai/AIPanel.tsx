@@ -35,7 +35,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -2871,14 +2871,44 @@ interface TestResultRow {
   date: string
   valeurs: Record<string, unknown>
   notes: string | null
+  test_definition_id: string
   test_definitions: { nom: string; sport: string } | null
 }
 
+interface TestContext {
+  tssWeek: number
+  avgTssWeek: number
+  hrv: number | null
+  hrvBaseline: number | null
+  highIntensity48h: boolean
+}
+
+function computeTestValidity(
+  hrv: number | null,
+  hrvBaseline: number | null,
+  tssWeek: number,
+  avgTssWeek: number,
+  highIntensity48h: boolean
+): { score: number; label: 'haute' | 'modérée' | 'basse'; conditions: 'BONNES' | 'INCERTAINES' | 'DÉGRADÉES' } {
+  let score = 100
+  if (hrv !== null && hrvBaseline !== null && hrv < hrvBaseline * 0.9) score -= 25
+  if (avgTssWeek > 0 && tssWeek > avgTssWeek * 1.3) score -= 20
+  if (highIntensity48h) score -= 15
+  const label: 'haute' | 'modérée' | 'basse' = score >= 80 ? 'haute' : score >= 60 ? 'modérée' : 'basse'
+  const conditions: 'BONNES' | 'INCERTAINES' | 'DÉGRADÉES' = score >= 80 ? 'BONNES' : score >= 60 ? 'INCERTAINES' : 'DÉGRADÉES'
+  return { score, label, conditions }
+}
+
 function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
-  const [step,     setStep]     = useState<'sport' | 'results'>('sport')
-  const [sport,    setSport]    = useState<string | null>(null)
-  const [tests,    setTests]    = useState<TestResultRow[] | null>(null)
-  const [loadingT, setLoadingT] = useState(false)
+  const [step,          setStep]          = useState<'sport' | 'results'>('sport')
+  const [sport,         setSport]         = useState<string | null>(null)
+  const [tests,         setTests]         = useState<TestResultRow[] | null>(null)
+  const [testContexts,  setTestContexts]  = useState<Record<string, TestContext>>({})
+  const [sameTypeTests, setSameTypeTests] = useState<Record<string, TestResultRow[]>>({})
+  const [loadingT,      setLoadingT]      = useState(false)
+  const [selectedTest,  setSelectedTest]  = useState<TestResultRow | null>(null)
+  const [compareTest,   setCompareTest]   = useState<TestResultRow | null>(null)
+  const [generating,    setGenerating]    = useState(false)
 
   async function loadTests(sp: string) {
     setLoadingT(true)
@@ -2888,7 +2918,6 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { setTests([]); setLoadingT(false); setStep('results'); return }
 
-      // Fetch test definitions for this sport
       const { data: defs } = await sb
         .from('test_definitions')
         .select('id')
@@ -2900,13 +2929,72 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
 
       const { data: results } = await sb
         .from('test_results')
-        .select('id, date, valeurs, notes, test_definitions(nom, sport)')
+        .select('id, date, valeurs, notes, test_definition_id, test_definitions(nom, sport)')
         .in('test_definition_id', defIds)
         .eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(10)
 
-      setTests((results as unknown as TestResultRow[]) ?? [])
+      const rows = (results as unknown as TestResultRow[]) ?? []
+      setTests(rows)
+
+      if (rows.length > 0) {
+        // Load context for each test in parallel
+        const contextResults = await Promise.all(rows.map(async t => {
+          const testDate = new Date(t.date)
+          const weekBefore = new Date(testDate)
+          weekBefore.setDate(testDate.getDate() - 7)
+          const twoDaysBefore = new Date(testDate)
+          twoDaysBefore.setDate(testDate.getDate() - 2)
+          const since28d = new Date(testDate)
+          since28d.setDate(testDate.getDate() - 28)
+          const since8weeks = new Date(testDate)
+          since8weeks.setDate(testDate.getDate() - 56)
+
+          const [metricsRes, weekActsRes, prevActsRes, highActsRes, allSameRes] = await Promise.all([
+            sb.from('metrics_daily').select('hrv,resting_hr,readiness,fatigue').eq('user_id', user.id).eq('date', t.date).maybeSingle(),
+            sb.from('activities').select('tss').eq('user_id', user.id).gte('started_at', weekBefore.toISOString()).lt('started_at', testDate.toISOString()),
+            sb.from('activities').select('tss').eq('user_id', user.id).gte('started_at', since8weeks.toISOString()).lt('started_at', weekBefore.toISOString()),
+            sb.from('activities').select('intensity_factor').eq('user_id', user.id).gte('started_at', twoDaysBefore.toISOString()).lt('started_at', testDate.toISOString()),
+            sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', t.date),
+          ])
+
+          const tssWeek = (weekActsRes.data ?? []).reduce((a: number, b: { tss: number | null }) => a + (b.tss ?? 0), 0)
+          const prevActs = prevActsRes.data ?? []
+          const prevWeekCount = Math.max(1, Math.ceil(prevActs.length / 7))
+          const avgTssWeek = prevActs.length > 0 ? Math.round(prevActs.reduce((a: number, b: { tss: number | null }) => a + (b.tss ?? 0), 0) / prevWeekCount) : 0
+          const highIntensity48h = (highActsRes.data ?? []).some((a: { intensity_factor: number | null }) => (a.intensity_factor ?? 0) > 0.85)
+          const allHrvData = (allSameRes.data ?? []) as { hrv: number | null }[]
+          const hrvNums = allHrvData.filter(m => m.hrv != null).map(m => m.hrv as number)
+          const hrvBaseline = hrvNums.length > 0 ? Math.round(hrvNums.reduce((a, b) => a + b, 0) / hrvNums.length) : null
+
+          const ctx: TestContext = {
+            tssWeek: Math.round(tssWeek),
+            avgTssWeek,
+            hrv: (metricsRes.data?.hrv as number | null) ?? null,
+            hrvBaseline,
+            highIntensity48h,
+          }
+          return { id: t.id, ctx }
+        }))
+
+        const ctxMap: Record<string, TestContext> = {}
+        for (const r of contextResults) ctxMap[r.id] = r.ctx
+        setTestContexts(ctxMap)
+
+        // Load all tests of same definition for progression history
+        const uniqueDefIds = [...new Set(rows.map(r => r.test_definition_id))]
+        const sameTypeMap: Record<string, TestResultRow[]> = {}
+        await Promise.all(uniqueDefIds.map(async defId => {
+          const { data } = await sb.from('test_results')
+            .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport)')
+            .eq('user_id', user.id)
+            .eq('test_definition_id', defId)
+            .order('date', { ascending: true })
+          sameTypeMap[defId] = (data as unknown as TestResultRow[]) ?? []
+        }))
+        setSameTypeTests(sameTypeMap)
+      }
     } catch {
       setTests([])
     } finally {
@@ -2920,23 +3008,84 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
     void loadTests(sp)
   }
 
-  function buildPrompt() {
-    if (!tests?.length || !sport) return
-    const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
-    const testLines = tests.map(t => {
-      const nom = t.test_definitions?.nom ?? 'Test'
-      const vals = Object.entries(t.valeurs)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ')
-      return `- ${nom} (${t.date}) : ${vals}${t.notes ? ` — Notes: ${t.notes}` : ''}`
-    }).join('\n')
+  async function handleGenerate() {
+    if (!selectedTest || !sport) return
+    setGenerating(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
 
-    const apiPrompt =
-      `Analyse mes résultats de tests en ${sportLabel}.\n\n` +
-      `Résultats disponibles :\n${testLines}\n\n` +
-      `Interprète ces données : progression, niveaux atteints, points forts, faiblesses identifiées. ` +
-      `Propose des axes de travail concrets basés sur ces mesures réelles.`
-    onPrepare(apiPrompt, `Analyser mes tests — ${sportLabel}`)
+      const ctx = testContexts[selectedTest.id]
+      const validity = ctx ? computeTestValidity(ctx.hrv, ctx.hrvBaseline, ctx.tssWeek, ctx.avgTssWeek, ctx.highIntensity48h) : null
+      const allSame = sameTypeTests[selectedTest.test_definition_id] ?? []
+
+      const [zonesRes, perfRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', sport).eq('is_current', true).maybeSingle(),
+        sb.from('athlete_performance_profile').select('ftp,lthr,vma,css,vo2max').eq('user_id', user.id).maybeSingle(),
+      ])
+
+      // TODO: inject injuries when table exists
+
+      const testNom = selectedTest.test_definitions?.nom ?? 'Test'
+      const testVals = Object.entries(selectedTest.valeurs).map(([k, v]) => `${k}: ${v}`).join(', ')
+
+      const historyLines = allSame.map(t => {
+        const vals = Object.entries(t.valeurs).map(([k, v]) => `${k}: ${v}`).join(', ')
+        return `- ${t.date} : ${vals}`
+      }).join('\n')
+
+      const deltaStr = ctx?.hrv != null && ctx?.hrvBaseline != null
+        ? ` (écart : ${Math.round(((ctx.hrv - ctx.hrvBaseline) / ctx.hrvBaseline) * 100)}%)`
+        : ''
+
+      let compareBlock = ''
+      if (compareTest) {
+        const cNom = compareTest.test_definitions?.nom ?? 'Test'
+        const cVals = Object.entries(compareTest.valeurs).map(([k, v]) => `${k}: ${v}`).join(', ')
+        const cCtx = testContexts[compareTest.id]
+        const cValidity = cCtx ? computeTestValidity(cCtx.hrv, cCtx.hrvBaseline, cCtx.tssWeek, cCtx.avgTssWeek, cCtx.highIntensity48h) : null
+        compareBlock = `\n\nTEST COMPARÉ :
+${cNom} · ${compareTest.date} · ${cVals}
+TSS semaine : ${cCtx?.tssWeek ?? 'N/A'}pts | HRV : ${cCtx?.hrv ?? 'N/A'}ms${cCtx?.hrv != null && cCtx?.hrvBaseline != null ? ` (baseline ${cCtx.hrvBaseline}ms)` : ''}
+Validity score : ${cValidity?.score ?? 'N/A'}/100 — Conditions : ${cValidity?.conditions ?? 'N/A'} — Fiabilité : ${cValidity?.label ?? 'N/A'}`
+      }
+
+      const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
+
+      const apiPrompt = `Tu es un expert en physiologie du sport et analyse de tests de performance.
+
+TEST ANALYSÉ : ${testNom} · ${selectedTest.date} · ${testVals}
+CONTEXTE DE FORME AU MOMENT DU TEST :
+  TSS semaine précédente : ${ctx?.tssWeek ?? 'N/A'}pts (moyenne habituelle : ${ctx?.avgTssWeek ?? 'N/A'}pts)
+  HRV : ${ctx?.hrv ?? 'non disponible'}ms (baseline personnelle : ${ctx?.hrvBaseline ?? 'non disponible'}ms${deltaStr})
+  Test validity score : ${validity?.score ?? 'N/A'}/100 — Conditions : ${validity?.conditions ?? 'N/A'} — Fiabilité : ${validity?.label ?? 'N/A'}
+${compareBlock}
+
+HISTORIQUE TESTS DU MÊME TYPE (du plus ancien au plus récent) :
+${historyLines || 'Premier test de ce type'}
+
+ZONES ACTUELLEMENT CONFIGURÉES : ${zonesRes.data ? JSON.stringify(zonesRes.data) : 'non configurées'}
+PROFIL PHYSIOLOGIQUE : ${perfRes.data ? JSON.stringify(perfRes.data) : 'non renseigné'}
+SPORT : ${sportLabel}
+
+ANALYSE EN 4 PARTIES OBLIGATOIRES :
+1. INTERPRÉTATION DU RÉSULTAT (niveau, signification, comparaison normes pour ce sport)
+2. FIABILITÉ DU TEST (si validity < 80 : estimer le résultat corrigé, expliquer le biais)
+3. ÉVOLUTION (courbe depuis l'historique — si 1 seul test : suggérer de répéter dans 3 mois)
+4. IMPACT SUR LES ZONES (comparer résultat avec zones configurées : sont-elles valides ou obsolètes ?)
+
+RÈGLE CRITIQUE : Ne survends JAMAIS la précision. Si validity score < 60, dis clairement que le test est potentiellement biaisé et donne une fourchette plutôt qu'une valeur exacte.
+
+TERMINE PAR :
+## Sources et niveau de confiance
+## Actions suggérées (parmi : "Estimer mes zones", "Analyser ma progression", "Analyser un entraînement")`
+
+      onPrepare(apiPrompt, `Analyser mes tests — ${sportLabel}`)
+    } catch {
+      setGenerating(false)
+    }
   }
 
   // ── Étape 1 : sélection du sport ──
@@ -2980,7 +3129,7 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
     )
   }
 
-  // ── Étape 2 : résultats ──
+  // ── Étape 2 : liste des tests avec contexte enrichi ──
   const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
 
   if (!tests?.length) {
@@ -3016,46 +3165,627 @@ function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: strin
     )
   }
 
-  return (
-    <div style={{ padding: '8px 0 4px' }}>
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-        {tests.length} test{tests.length > 1 ? 's' : ''} en {sportLabel}
-      </p>
-      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
-        Résultats les plus récents
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
-        {tests.slice(0, 5).map(t => (
-          <div key={t.id} style={{
-            padding: '8px 12px', borderRadius: 8,
-            border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
-                {t.test_definitions?.nom ?? 'Test'}
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
-                {t.date}
-              </span>
+  if (step === 'results') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          {tests.length} test{tests.length > 1 ? 's' : ''} en {sportLabel}
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
+          Sélectionne un test à analyser
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
+          {tests.slice(0, 8).map(t => {
+            const ctx = testContexts[t.id]
+            const validity = ctx ? computeTestValidity(ctx.hrv, ctx.hrvBaseline, ctx.tssWeek, ctx.avgTssWeek, ctx.highIntensity48h) : null
+            const isSelected = selectedTest?.id === t.id
+            const isCompare = compareTest?.id === t.id
+            const condColor = validity?.conditions === 'BONNES' ? '#22c55e' : validity?.conditions === 'INCERTAINES' ? '#f97316' : validity?.conditions === 'DÉGRADÉES' ? '#ef4444' : 'var(--ai-dim)'
+            return (
+              <div key={t.id}
+                onClick={() => {
+                  if (isSelected) { setSelectedTest(null); return }
+                  if (isCompare) { setCompareTest(null); return }
+                  if (!selectedTest) { setSelectedTest(t); return }
+                  // Second selection — allow compare if same definition
+                  if (t.test_definition_id === selectedTest.test_definition_id) {
+                    setCompareTest(t)
+                  } else {
+                    setSelectedTest(t)
+                    setCompareTest(null)
+                  }
+                }}
+                style={{
+                  padding: '10px 12px', borderRadius: 9, cursor: 'pointer',
+                  border: `1px solid ${isSelected ? '#5b6fff' : isCompare ? '#00c8e0' : 'var(--ai-border)'}`,
+                  background: isSelected ? 'rgba(91,111,255,0.08)' : isCompare ? 'rgba(0,200,224,0.08)' : 'var(--ai-bg2)',
+                  transition: 'all 0.12s',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                    {t.test_definitions?.nom ?? 'Test'}
+                    {isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>TEST PRINCIPAL</span>}
+                    {isCompare && <span style={{ marginLeft: 6, fontSize: 10, color: '#00c8e0', fontWeight: 700 }}>COMPARAISON</span>}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
+                    {t.date}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
+                  {Object.entries(t.valeurs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                </div>
+                {ctx && (
+                  <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 6, background: 'var(--ai-bg)', fontSize: 10, color: 'var(--ai-dim)', lineHeight: 1.6 }}>
+                    <div>TSS semaine précédente : <strong style={{ color: 'var(--ai-mid)' }}>{ctx.tssWeek}pts</strong></div>
+                    {ctx.hrv != null && (
+                      <div>HRV ce jour : <strong style={{ color: 'var(--ai-mid)' }}>{ctx.hrv}ms</strong>
+                        {ctx.hrvBaseline != null && (
+                          <span> vs baseline {ctx.hrvBaseline}ms
+                            <span style={{ color: ctx.hrv >= ctx.hrvBaseline ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                              {' '}{ctx.hrv >= ctx.hrvBaseline ? '+' : ''}{Math.round(((ctx.hrv - ctx.hrvBaseline) / ctx.hrvBaseline) * 100)}%
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {validity && (
+                      <div style={{ marginTop: 2 }}>
+                        Conditions : <strong style={{ color: condColor }}>{validity.conditions}</strong>
+                        {' · '}Fiabilité : <strong style={{ color: condColor }}>{validity.label}</strong>
+                        {' · '}Score : <strong>{validity.score}/100</strong>
+                      </div>
+                    )}
+                    {!ctx.hrv && <div style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>HRV non disponible ce jour</div>}
+                  </div>
+                )}
+                {!ctx && (
+                  <div style={{ marginTop: 4, fontSize: 10, color: 'var(--ai-dim)', fontStyle: 'italic' }}>
+                    Chargement du contexte…
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        {selectedTest && compareTest && (
+          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(0,200,224,0.08)', border: '1px solid rgba(0,200,224,0.25)', marginBottom: 10, fontSize: 11, color: '#00c8e0' }}>
+            Comparaison activée : {selectedTest.test_definitions?.nom ?? 'Test'} ({selectedTest.date}) vs ({compareTest.date})
+          </div>
+        )}
+        {selectedTest && !compareTest && (sameTypeTests[selectedTest.test_definition_id]?.length ?? 0) > 1 && (
+          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px', fontStyle: 'italic' }}>
+            Clique sur un autre test du même type pour comparer
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
+            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Retour
+          </button>
+          <button onClick={() => { if (selectedTest) void handleGenerate() }}
+            disabled={!selectedTest || generating}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: selectedTest && !generating ? 'var(--ai-gradient)' : 'var(--ai-bg2)',
+              color: selectedTest && !generating ? '#fff' : 'var(--ai-dim)',
+              fontSize: 12, fontWeight: 700,
+              cursor: selectedTest && !generating ? 'pointer' : 'not-allowed',
+              fontFamily: 'DM Sans,sans-serif',
+            }}>
+            {generating ? 'Préparation…' : selectedTest ? 'Analyser ce test' : 'Sélectionne un test'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
+// ── AnalyserEntrainementFlow ───────────────────────────────────
+
+type Streams = { heartrate?: number[]; velocity_smooth?: number[]; watts?: number[]; altitude?: number[]; cadence?: number[] }
+
+interface ActivityRow {
+  id: string
+  sport_type: string
+  started_at: string
+  distance_m: number | null
+  moving_time_s: number | null
+  avg_hr: number | null
+  max_hr: number | null
+  avg_watts: number | null
+  avg_pace_s_km: number | null
+  tss: number | null
+  intensity_factor: number | null
+  aerobic_decoupling: number | null
+  streams: Streams | null
+}
+
+function computeCardiacDrift(streams: Streams): number | null {
+  const hr = streams.heartrate
+  if (!hr || hr.length < 20) return null
+  const half = Math.floor(hr.length / 2)
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
+  return Math.round(((avg(hr.slice(half)) - avg(hr.slice(0, half))) / avg(hr.slice(0, half))) * 1000) / 10
+}
+
+function computeEfficiencyIndex(streams: Streams, sport: string): number | null {
+  const hr = streams.heartrate
+  const power = streams.watts
+  const velocity = streams.velocity_smooth
+  if (!hr || hr.length < 10) return null
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
+  const avgHr = avg(hr)
+  if (sport === 'cycling' && power && power.length > 0) return Math.round((avg(power) / avgHr) * 100) / 100
+  if (sport === 'running' && velocity && velocity.length > 0) return Math.round((avg(velocity) / avgHr) * 1000) / 1000
+  return null
+}
+
+function fmtDuration(s: number | null): string {
+  if (!s) return 'N/A'
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`
+}
+
+function fmtPace(sPerKm: number | null): string {
+  if (!sPerKm) return 'N/A'
+  const m = Math.floor(sPerKm / 60)
+  const s = Math.round(sPerKm % 60)
+  return `${m}'${String(s).padStart(2, '0')}''/km`
+}
+
+function fmtDist(m: number | null): string {
+  if (!m) return 'N/A'
+  return m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`
+}
+
+const AE_SPORT_LABELS: Record<string, string> = {
+  running: 'Running', cycling: 'Vélo', hyrox: 'Hyrox', gym: 'Gym',
+  trail: 'Trail', triathlon: 'Triathlon', natation: 'Natation',
+}
+
+function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
+  const [step,           setStep]           = useState<'select' | 'context'>('select')
+  const [activities,     setActivities]     = useState<ActivityRow[] | null>(null)
+  const [loadingActs,    setLoadingActs]    = useState(false)
+  const [selectedAct,    setSelectedAct]    = useState<ActivityRow | null>(null)
+  const [compareAct,     setCompareAct]     = useState<ActivityRow | null>(null)
+  const [compareMode,    setCompareMode]    = useState(false)
+  const [ctxData,        setCtxData]        = useState<{
+    zones: Record<string, unknown> | null
+    hrvYesterday: number | null
+    hrvBaseline: number | null
+    planned: { title?: string | null } | null
+    similarCount: number
+    streamsAvailable: boolean
+  } | null>(null)
+  const [loadingCtx,     setLoadingCtx]     = useState(false)
+  const [generating,     setGenerating]     = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      setLoadingActs(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setActivities([]); return }
+
+        const { data } = await sb
+          .from('activities')
+          .select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,streams')
+          .eq('user_id', user.id)
+          .order('started_at', { ascending: false })
+          .limit(30)
+
+        setActivities((data as unknown as ActivityRow[]) ?? [])
+      } catch {
+        setActivities([])
+      } finally {
+        setLoadingActs(false)
+      }
+    })()
+  }, [])
+
+  async function loadContext(act: ActivityRow) {
+    setLoadingCtx(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const actDate = act.started_at.split('T')[0]
+      const yesterday = new Date(actDate)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const dayBefore = yesterday.toISOString().split('T')[0]
+      const dayAfterDate = new Date(actDate)
+      dayAfterDate.setDate(dayAfterDate.getDate() + 1)
+      const dayAfter = dayAfterDate.toISOString().split('T')[0]
+      const since28d = new Date(actDate)
+      since28d.setDate(since28d.getDate() - 28)
+
+      // TODO: inject injuries when table exists
+      const [zonesRes, metricsYestRes, plannedRes, similarRes, hrvHistRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', act.sport_type).eq('is_current', true).maybeSingle(),
+        sb.from('metrics_daily').select('hrv,resting_hr').eq('user_id', user.id).eq('date', dayBefore).maybeSingle(),
+        sb.from('planned_sessions').select('title,duration_min,intensite,type_seance').eq('user_id', user.id).gte('date', dayBefore).lte('date', dayAfter).eq('sport', act.sport_type).maybeSingle(),
+        sb.from('activities').select('id').eq('user_id', user.id).eq('sport_type', act.sport_type).gte('moving_time_s', (act.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (act.moving_time_s ?? 0) * 1.3).neq('id', act.id).limit(10),
+        sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate),
+      ])
+
+      const hrvValues = ((hrvHistRes.data ?? []) as { hrv: number | null }[]).filter(m => m.hrv != null).map(m => m.hrv as number)
+      const hrvBaseline = hrvValues.length > 0 ? Math.round(hrvValues.reduce((a, b) => a + b, 0) / hrvValues.length) : null
+
+      setCtxData({
+        zones: (zonesRes.data as Record<string, unknown> | null) ?? null,
+        hrvYesterday: (metricsYestRes.data?.hrv as number | null) ?? null,
+        hrvBaseline,
+        planned: (plannedRes.data as { title?: string | null } | null) ?? null,
+        similarCount: similarRes.data?.length ?? 0,
+        streamsAvailable: act.streams != null && Object.keys(act.streams).length > 0,
+      })
+    } catch {
+      setCtxData(null)
+    } finally {
+      setLoadingCtx(false)
+    }
+  }
+
+  function handleSelectActivity(act: ActivityRow) {
+    if (compareMode && selectedAct) {
+      if (act.id === selectedAct.id) return
+      if (act.sport_type !== selectedAct.sport_type) {
+        // warn but allow
+      }
+      setCompareAct(act)
+      return
+    }
+    setSelectedAct(act)
+    setCompareAct(null)
+    void loadContext(act)
+    setStep('context')
+  }
+
+  async function handleGenerate() {
+    if (!selectedAct) return
+    setGenerating(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const actDate = selectedAct.started_at.split('T')[0]
+      const threeDaysBefore = new Date(actDate)
+      threeDaysBefore.setDate(threeDaysBefore.getDate() - 3)
+      const dayBefore = new Date(actDate)
+      dayBefore.setDate(dayBefore.getDate() - 1)
+      const dayAfter = new Date(actDate)
+      dayAfter.setDate(dayAfter.getDate() + 1)
+
+      // TODO: inject injuries when table exists
+      const [zonesRes, recoveryRes, plannedRes, similarRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', selectedAct.sport_type).eq('is_current', true).maybeSingle(),
+        sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,readiness,fatigue,energy').eq('user_id', user.id).gte('date', threeDaysBefore.toISOString().split('T')[0]).lte('date', actDate),
+        sb.from('planned_sessions').select('*').eq('user_id', user.id).gte('date', dayBefore.toISOString().split('T')[0]).lte('date', dayAfter.toISOString().split('T')[0]).eq('sport', selectedAct.sport_type).maybeSingle(),
+        sb.from('activities').select('started_at,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling').eq('user_id', user.id).eq('sport_type', selectedAct.sport_type).gte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 1.3).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
+      ])
+
+      // HRV baseline 28d
+      const since28d = new Date(actDate)
+      since28d.setDate(since28d.getDate() - 28)
+      const hrvDataRes = await sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate)
+      const hrvValues = ((hrvDataRes.data ?? []) as { hrv: number | null }[]).filter(m => m.hrv != null).map(m => m.hrv as number)
+      const hrvBaseline = hrvValues.length > 0 ? Math.round(hrvValues.reduce((a, b) => a + b, 0) / hrvValues.length) : null
+
+      const recoveryData = recoveryRes.data ?? []
+      const hrvYesterday = recoveryData.length > 0 ? ((recoveryData[recoveryData.length - 1] as { hrv?: number | null }).hrv ?? null) : null
+
+      // Stream analysis
+      const streams = selectedAct.streams
+      const cardiacDrift = streams ? computeCardiacDrift(streams) : null
+      const ei = streams ? computeEfficiencyIndex(streams, selectedAct.sport_type) : null
+
+      // Similar activities average EI
+      const similar = similarRes.data ?? []
+
+      // Compare activity
+      let compareBlock = ''
+      if (compareAct) {
+        const cStreams = compareAct.streams
+        const cDrift = cStreams ? computeCardiacDrift(cStreams) : null
+        const cEi = cStreams ? computeEfficiencyIndex(cStreams, compareAct.sport_type) : null
+        const sportWarning = compareAct.sport_type !== selectedAct.sport_type ? `\nATTENTION : sports différents (${selectedAct.sport_type} vs ${compareAct.sport_type})` : ''
+        compareBlock = `
+
+COMPARAISON CÔTE-À-CÔTE (mode activé) :${sportWarning}
+Activité A : ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · TSS ${selectedAct.tss ?? 'N/A'} · IF ${selectedAct.intensity_factor ?? 'N/A'} · FC moy ${selectedAct.avg_hr ?? 'N/A'}bpm · Watts ${selectedAct.avg_watts ?? 'N/A'}W · Drift ${cardiacDrift ?? 'N/A'}% · EI ${ei ?? 'N/A'}
+Activité B : ${compareAct.started_at.split('T')[0]} · ${fmtDuration(compareAct.moving_time_s)} · TSS ${compareAct.tss ?? 'N/A'} · IF ${compareAct.intensity_factor ?? 'N/A'} · FC moy ${compareAct.avg_hr ?? 'N/A'}bpm · Watts ${compareAct.avg_watts ?? 'N/A'}W · Drift ${cDrift ?? 'N/A'}% · EI ${cEi ?? 'N/A'}
+
+Présente un tableau markdown de comparaison complet puis donne un verdict sur quelle séance était la plus efficace et pourquoi.`
+      }
+
+      const streamsBlock = streams
+        ? `\nANALYSE DES DONNÉES BRUTES (streams) :
+Drift cardiaque calculé : ${cardiacDrift ?? 'N/A'}% (norme : <5% en Z2, <3% en Z3+, >8% = dérive significative)
+Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponibles pour comparaison)`
+        : `\nNote : pas de données streams disponibles pour cette activité. Analyse basée sur métriques agrégées uniquement.`
+
+      const recoveryBlock = recoveryData.length > 0
+        ? recoveryData.map((d: Record<string, unknown>) => `${d.date} — HRV: ${d.hrv ?? 'N/A'}ms · Repos HR: ${d.resting_hr ?? 'N/A'}bpm · Readiness: ${d.readiness ?? 'N/A'} · Fatigue: ${d.fatigue ?? 'N/A'} · Énergie: ${d.energy ?? 'N/A'}`).join('\n')
+        : 'Pas de données de récupération disponibles'
+
+      const apiPrompt = `Tu es un expert en analyse de séances d'entraînement et physiologie sportive.
+
+SÉANCE ANALYSÉE :
+${selectedAct.sport_type} · ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · ${fmtDist(selectedAct.distance_m)} · TSS: ${selectedAct.tss ?? 'N/A'}
+FC moy/max : ${selectedAct.avg_hr ?? 'N/A'}/${selectedAct.max_hr ?? 'N/A'}bpm · Watts : ${selectedAct.avg_watts ?? 'N/A'}W · Allure : ${fmtPace(selectedAct.avg_pace_s_km)} · IF: ${selectedAct.intensity_factor ?? 'N/A'}
+Aerobic decoupling déclaré : ${selectedAct.aerobic_decoupling ?? 'N/A'}%
+${streamsBlock}
+
+CONTEXTE RÉCUPÉRATION (3 jours avant la séance) :
+${recoveryBlock}
+Baseline HRV personnelle : ${hrvBaseline ?? 'non disponible'}ms | HRV veille : ${hrvYesterday ?? 'non disponible'}ms
+
+SÉANCE PLANIFIÉE CORRESPONDANTE : ${plannedRes.data ? JSON.stringify(plannedRes.data) : 'aucune trouvée'}
+
+${similar.length} SÉANCES SIMILAIRES (même sport, durée ±30%) : ${similar.length > 0 ? JSON.stringify(similar) : 'aucune dans l\'historique'}
+
+ZONES CONFIGURÉES : ${zonesRes.data ? JSON.stringify(zonesRes.data) : 'non configurées'}
+${compareBlock}
+
+ANALYSE EN 4 COUCHES OBLIGATOIRES :
+
+COUCHE 1 — EXÉCUTION
+Distribution d'intensité réelle (depuis streams si dispo, sinon depuis métriques agrégées + zones).
+Qualité d'exécution : respect de l'intensité, gestion de l'effort.
+${streams ? 'Drift cardiaque et ce qu\'il révèle.' : ''}
+
+COUCHE 2 — CONTEXTE RÉCUPÉRATION
+HRV veille vs baseline + fatigue cumulée + verdict (séance pertinente/risquée/sous-optimale).
+
+COUCHE 3 — PLAN VS RÉALISÉ
+${plannedRes.data ? 'Comparer durée, intensité, type prévus vs réalisés.' : 'Analyser sans référence plan (aucune séance planifiée trouvée pour cette date).'}
+
+COUCHE 4 — COMPARAISON HISTORIQUE
+FC/watts/pace actuels vs moyenne des séances similaires. Tendance : progression/stagnation/régression.
+
+Conclus avec 1 recommandation pour la prochaine séance de ce sport.
+
+TERMINE PAR :
+## Sources et niveau de confiance
+Sources utilisées : [liste précise des données utilisées]
+Niveau de confiance : [élevé/modéré/faible] — [justification courte]
+
+## Actions suggérées
+(parmi : "Analyser ma semaine", "Analyser ma récupération", "Estimer mes zones", "Analyser ma progression")`
+
+      onPrepare(apiPrompt, `Analyser un entraînement — ${AE_SPORT_LABELS[selectedAct.sport_type] ?? selectedAct.sport_type}`)
+    } catch {
+      setGenerating(false)
+    }
+  }
+
+  // ── Step 1 : activity selection ──
+  if (step === 'select') {
+    if (loadingActs) {
+      return (
+        <div style={{ padding: '8px 0 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
+            <Dots />
+            <span>Chargement des activités…</span>
+          </div>
+        </div>
+      )
+    }
+
+    if (!activities?.length) {
+      return (
+        <div style={{ padding: '8px 0 4px' }}>
+          <div style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+              Pas encore d'activités synchronisées
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>
+              Connecte Strava dans <strong style={{ color: 'var(--ai-text)' }}>Connexions → Strava → Synchroniser</strong>.
+            </p>
+          </div>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Fermer
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          Quelle séance analyser ?
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>
+          30 dernières activités
+        </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <label style={{ fontSize: 11, color: 'var(--ai-mid)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <div
+              onClick={() => { setCompareMode(p => !p); setCompareAct(null) }}
+              style={{
+                width: 28, height: 16, borderRadius: 8,
+                background: compareMode ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+                position: 'relative', cursor: 'pointer', transition: 'background 0.15s',
+              }}
+            >
+              <div style={{
+                width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                position: 'absolute', top: 2,
+                left: compareMode ? 14 : 2,
+                transition: 'left 0.15s',
+              }} />
             </div>
-            <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
-              {Object.entries(t.valeurs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+            Comparer 2 activités
+          </label>
+          {compareMode && selectedAct && (
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontStyle: 'italic' }}>
+              {compareAct ? 'Comparaison prête' : 'Sélectionne une 2e activité'}
+            </span>
+          )}
+        </div>
+
+        {compareMode && selectedAct && compareAct && compareAct.sport_type !== selectedAct.sport_type && (
+          <div style={{ padding: '6px 10px', borderRadius: 7, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', fontSize: 11, color: '#f97316', marginBottom: 8 }}>
+            Sports différents ({selectedAct.sport_type} vs {compareAct.sport_type}) — comparaison possible mais interprétation limitée
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12, maxHeight: 320, overflowY: 'auto' }}>
+          {activities.map(a => {
+            const isMain = selectedAct?.id === a.id
+            const isCmp = compareAct?.id === a.id
+            const hasStreams = a.streams != null && Object.keys(a.streams).length > 0
+            const dateStr = a.started_at.split('T')[0]
+            return (
+              <div key={a.id}
+                onClick={() => handleSelectActivity(a)}
+                style={{
+                  padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
+                  border: `1px solid ${isMain ? '#5b6fff' : isCmp ? '#00c8e0' : 'var(--ai-border)'}`,
+                  background: isMain ? 'rgba(91,111,255,0.08)' : isCmp ? 'rgba(0,200,224,0.08)' : 'var(--ai-bg2)',
+                  transition: 'all 0.1s',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                    {AE_SPORT_LABELS[a.sport_type] ?? a.sport_type}
+                    {isMain && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>PRINCIPAL</span>}
+                    {isCmp && <span style={{ marginLeft: 6, fontSize: 10, color: '#00c8e0', fontWeight: 700 }}>COMPARE</span>}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{dateStr}</span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
+                  {fmtDuration(a.moving_time_s)} · {fmtDist(a.distance_m)} · TSS {a.tss ?? '—'} · FC {a.avg_hr ?? '—'}bpm
+                  <span style={{
+                    marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
+                    background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
+                    color: hasStreams ? '#22c55e' : '#f97316',
+                  }}>
+                    {hasStreams ? 'Streams disponibles' : 'Données limitées'}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Annuler
+          </button>
+          {selectedAct && compareMode && compareAct && (
+            <button
+              onClick={() => void handleGenerate()}
+              disabled={generating}
+              style={{
+                flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+                background: generating ? 'var(--ai-bg2)' : 'var(--ai-gradient)',
+                color: generating ? 'var(--ai-dim)' : '#fff',
+                fontSize: 12, fontWeight: 700, cursor: generating ? 'not-allowed' : 'pointer',
+                fontFamily: 'DM Sans,sans-serif',
+              }}>
+              {generating ? 'Préparation…' : 'Comparer les 2 séances'}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step 2 : context display ──
+  if (step === 'context') {
+    const act = selectedAct!
+    const hasStreams = act.streams != null && Object.keys(act.streams).length > 0
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          Contexte chargé
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
+          {AE_SPORT_LABELS[act.sport_type] ?? act.sport_type} · {act.started_at.split('T')[0]} · {fmtDuration(act.moving_time_s)}
+        </p>
+
+        {loadingCtx ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11, marginBottom: 14 }}>
+            <Dots />
+            <span>Chargement du contexte…</span>
+          </div>
+        ) : ctxData ? (
+          <div style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: 'var(--ai-mid)' }}>
+            <div>
+              <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>Zones {act.sport_type}</span>
+              {ctxData.zones
+                ? <span style={{ color: '#22c55e', marginLeft: 6 }}>configurées</span>
+                : <span style={{ color: '#f97316', marginLeft: 6 }}>non configurées</span>}
+            </div>
+            <div>
+              Récupération veille : HRV {ctxData.hrvYesterday ?? 'N/A'}ms
+              {ctxData.hrvBaseline != null && (
+                <span> (baseline {ctxData.hrvBaseline}ms
+                  {ctxData.hrvYesterday != null && (
+                    <span style={{ color: (ctxData.hrvYesterday ?? 0) >= ctxData.hrvBaseline ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                      {' '}{(ctxData.hrvYesterday ?? 0) >= ctxData.hrvBaseline ? '+' : ''}{Math.round((((ctxData.hrvYesterday ?? 0) - ctxData.hrvBaseline) / ctxData.hrvBaseline) * 100)}%)
+                    </span>
+                  )}
+                </span>
+              )}
+              {!ctxData.hrvBaseline && <span style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}> — non disponible</span>}
+            </div>
+            <div>
+              Séance planifiée : {ctxData.planned
+                ? <span style={{ color: '#22c55e' }}>{(ctxData.planned as { title?: string | null }).title ?? 'trouvée'}</span>
+                : <span style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>non trouvée</span>}
+            </div>
+            <div>{ctxData.similarCount} séance{ctxData.similarCount !== 1 ? 's' : ''} similaire{ctxData.similarCount !== 1 ? 's' : ''} disponible{ctxData.similarCount !== 1 ? 's' : ''} pour comparaison</div>
+            <div style={{ marginTop: 4 }}>
+              <span style={{
+                padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600,
+                background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
+                color: hasStreams ? '#22c55e' : '#f97316',
+              }}>
+                {hasStreams ? 'Analyse approfondie disponible (drift, zones depuis streams)' : 'Analyse partielle — pas de données streams'}
+              </span>
             </div>
           </div>
-        ))}
+        ) : null}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setStep('select')}
+            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Retour
+          </button>
+          <button
+            onClick={() => void handleGenerate()}
+            disabled={generating || loadingCtx}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: generating || loadingCtx ? 'var(--ai-bg2)' : 'var(--ai-gradient)',
+              color: generating || loadingCtx ? 'var(--ai-dim)' : '#fff',
+              fontSize: 12, fontWeight: 700,
+              cursor: generating || loadingCtx ? 'not-allowed' : 'pointer',
+              fontFamily: 'DM Sans,sans-serif',
+            }}>
+            {generating ? 'Préparation…' : loadingCtx ? 'Chargement…' : 'Générer l\'analyse'}
+          </button>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
-          style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          Retour
-        </button>
-        <button onClick={buildPrompt}
-          style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          Analyser mes tests
-        </button>
-      </div>
-    </div>
-  )
+    )
+  }
+
+  return null
 }
 
 // ── TrainingPlanFlow ───────────────────────────────────────────
@@ -7685,6 +8415,7 @@ const PLUS_CATS: PlusCat[] = [
     label: 'Entraînement',
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
+      { label: 'Analyser un entraînement', flow: 'analyser_entrainement' as FlowId },
       { label: 'Stratégie de course', prompt: 'Je veux préparer une stratégie de course. Demande-moi quel sport (course, vélo, triathlon…), quelle course, le profil du parcours (distance, dénivelé), et mon objectif de temps. Ensuite propose-moi une stratégie complète : allures/watts par section, nutrition pendant la course, gestion de l\'effort, et plan B en cas de conditions difficiles. Utilise mes zones d\'entraînement et mes données de performance pour personnaliser.' },
       { label: 'Analyser ma semaine', enrichedId: 'analyser_semaine' },
     ],
@@ -8272,7 +9003,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Analyser un entraînement',
     sub: 'Analyse détaillée ou comparaison de 2 activités',
     model: 'athena',
-    prompt: 'Analyse mes activités d\'entraînement récentes. Présente les métriques clés (durée, distance, FC moyenne/max, allure/puissance, TSS) et identifie les points forts et les axes d\'amélioration. Si je te donne 2 activités, compare-les en détail dans un tableau. Appuie-toi sur mes données réelles disponibles.',
+    flow: 'analyser_entrainement' as FlowId,
   },
 ]
 
@@ -10287,6 +11018,12 @@ export default function AIPanel({
                 )}
                 {activeFlow === 'analyzetest' && (
                   <AnalyzeTestFlow
+                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
+                    onCancel={() => setActiveFlow(null)}
+                  />
+                )}
+                {activeFlow === 'analyser_entrainement' && (
+                  <AnalyserEntrainementFlow
                     onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
                   />

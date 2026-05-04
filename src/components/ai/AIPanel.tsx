@@ -7351,6 +7351,7 @@ function fileToAttachment(file: File): Promise<AttachedFile> {
 interface PlusItem {
   label: string
   prompt?: string
+  enrichedId?: string
   flow?: FlowId
 }
 interface PlusCat {
@@ -7364,7 +7365,7 @@ const PLUS_CATS: PlusCat[] = [
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
       { label: 'Stratégie de course', prompt: 'Je veux préparer une stratégie de course. Demande-moi quel sport (course, vélo, triathlon…), quelle course, le profil du parcours (distance, dénivelé), et mon objectif de temps. Ensuite propose-moi une stratégie complète : allures/watts par section, nutrition pendant la course, gestion de l\'effort, et plan B en cas de conditions difficiles. Utilise mes zones d\'entraînement et mes données de performance pour personnaliser.' },
-      { label: 'Analyser ma semaine', prompt: 'Analyse ma semaine d\'entraînement en cours. Évalue la répartition des charges, les intensités, l\'équilibre entre les disciplines et les recommandations pour la suite. Appuie-toi sur mes données réelles.' },
+      { label: 'Analyser ma semaine', enrichedId: 'analyser_semaine' },
     ],
   },
   {
@@ -7377,8 +7378,8 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Récupération',
     items: [
-      { label: 'Analyser ma récupération', prompt: 'Analyse mon état de récupération global. Croise mes données disponibles (readiness, HRV, sommeil, charge d\'entraînement récente, fatigue) et dis-moi concrètement si je peux m\'entraîner intensément aujourd\'hui ou si je dois récupérer. Donne des recommandations pratiques.' },
-      { label: 'Conseils sommeil', prompt: 'Analyse mes données de sommeil et donne-moi des conseils concrets et personnalisés pour optimiser mon sommeil en tant qu\'athlète d\'endurance. Prends en compte ma charge d\'entraînement et mes habitudes.' },
+      { label: 'Analyser ma récupération', enrichedId: 'analyser_recuperation' },
+      { label: 'Conseils sommeil', enrichedId: 'conseils_sommeil' },
     ],
   },
   {
@@ -7393,7 +7394,7 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Application',
     items: [
-      { label: 'Comprendre l\'application', prompt: 'Tu es l\'assistant de l\'application THW Coaching. L\'utilisateur veut comprendre comment utiliser l\'application. Explique-lui les sections principales : Planning, Activités, Performance, Nutrition, Coach IA, Profil. Sois concis et pratique. Demande quelle section approfondir.' },
+      { label: 'Comprendre l\'application', enrichedId: 'comprendre_app' },
     ],
   },
 ]
@@ -7487,18 +7488,20 @@ function FontPicker({ current, onChange }: { current: string; onChange: (family:
 
 function PlusMenu({
   onPrepare,
+  onEnriched,
   onFlow,
   onClose,
   onCamera,
   onPhotos,
   onFiles,
 }: {
-  onPrepare: (label: string, apiPrompt: string) => void
-  onFlow:    (f: FlowId) => void
-  onClose:   () => void
-  onCamera:  () => void
-  onPhotos:  () => void
-  onFiles:   () => void
+  onPrepare:  (label: string, apiPrompt: string) => void
+  onEnriched: (id: string, label: string) => void
+  onFlow:     (f: FlowId) => void
+  onClose:    () => void
+  onCamera:   () => void
+  onPhotos:   () => void
+  onFiles:    () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -7623,6 +7626,7 @@ function PlusMenu({
               onClick={() => {
                 onClose()
                 if (item.flow) onFlow(item.flow)
+                else if (item.enrichedId) onEnriched(item.enrichedId, item.label)
                 else if (item.prompt) onPrepare(item.label, item.prompt)
               }}
               style={{
@@ -7914,6 +7918,7 @@ interface QuickAction {
   label: string
   sub: string
   prompt?: string
+  enrichedId?: string
   flow?: FlowId
   model: THWModel   // modèle recommandé pour cette action
 }
@@ -7941,7 +7946,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Comprendre l\'application',
     sub: 'Fonctionnalités, navigation et configuration',
     model: 'hermes',
-    prompt: 'Tu es l\'assistant de l\'application THW Coaching. L\'utilisateur veut comprendre comment utiliser l\'application. Explique-lui les sections principales :\n\n1. **Planning** : calendrier d\'entraînement avec les semaines, les séances planifiées, les courses. Comment naviguer entre les semaines, ajouter des séances, voir les détails.\n2. **Activités** : synchronisation Strava, détail d\'une activité avec graphiques (HR, pace, watts, altitude), onglets (overview, charts, intervals, enrichment).\n3. **Performance** : tests de performance, zones d\'entraînement par sport (FC, allure, puissance), profil athlète.\n4. **Nutrition** : plan nutritionnel actif, suivi quotidien des repas et macros, repas types, suivi du poids.\n5. **Coach IA** : chat avec le coach, actions rapides, règles personnelles dans les réglages.\n6. **Profil** : paramètres, réglages IA (modèle, règles, police), connexion données (Strava, HRV).\n\nSois concis et pratique. Demande à l\'utilisateur quelle section il veut approfondir.',
+    enrichedId: 'comprendre_app',
   },
   {
     label: 'Analyser un entraînement',
@@ -7950,6 +7955,309 @@ const QUICK_ACTIONS: QuickAction[] = [
     prompt: 'Analyse mes activités d\'entraînement récentes. Présente les métriques clés (durée, distance, FC moyenne/max, allure/puissance, TSS) et identifie les points forts et les axes d\'amélioration. Si je te donne 2 activités, compare-les en détail dans un tableau. Appuie-toi sur mes données réelles disponibles.',
   },
 ]
+
+// ══════════════════════════════════════════════════════════════
+// ENRICHED ACTIONS — fonctions async hors composant
+// Chaque fonction charge les données Supabase et appelle send()
+// ══════════════════════════════════════════════════════════════
+
+type SupabaseClient = Awaited<ReturnType<typeof import('@/lib/supabase/client')['createClient']>>
+type SendFn = (displayText: string, apiPrompt: string) => void
+
+async function enrichedAnalyserSemaine(
+  sb: SupabaseClient,
+  userId: string,
+  rulesBlock: string,
+  label: string,
+  sendFn: SendFn,
+): Promise<void> {
+  const now = new Date()
+  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1 // lun=0
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() - dayOfWeek)
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 7)
+
+  const [activitiesRes, plannedRes, metricsRes] = await Promise.all([
+    sb.from('activities')
+      .select('id,sport,date,duration,distance,load,raw_data')
+      .eq('user_id', userId)
+      .gte('date', weekStart.toISOString().slice(0, 10))
+      .lt('date', weekEnd.toISOString().slice(0, 10))
+      .order('date', { ascending: true }),
+    sb.from('planned_sessions')
+      .select('id,sport,date,title,duration_min,description,week_start')
+      .eq('user_id', userId)
+      .gte('date', weekStart.toISOString().slice(0, 10))
+      .lt('date', weekEnd.toISOString().slice(0, 10))
+      .order('date', { ascending: true }),
+    sb.from('metrics_daily')
+      .select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb')
+      .eq('user_id', userId)
+      .gte('date', weekStart.toISOString().slice(0, 10))
+      .lt('date', weekEnd.toISOString().slice(0, 10))
+      .order('date', { ascending: true }),
+  ])
+
+  const activities = activitiesRes.data ?? []
+  const planned = plannedRes.data ?? []
+  const metrics = metricsRes.data ?? []
+
+  const totalTSS = activities.reduce((sum, a) => sum + (typeof a.load === 'number' ? a.load : 0), 0)
+  const totalDuration = activities.reduce((sum, a) => sum + (typeof a.duration === 'number' ? a.duration : 0), 0)
+  const sportBreakdown: Record<string, { count: number; duration: number; tss: number }> = {}
+  for (const a of activities) {
+    const s = String(a.sport ?? 'autre')
+    if (!sportBreakdown[s]) sportBreakdown[s] = { count: 0, duration: 0, tss: 0 }
+    sportBreakdown[s].count++
+    sportBreakdown[s].duration += typeof a.duration === 'number' ? a.duration : 0
+    sportBreakdown[s].tss += typeof a.load === 'number' ? a.load : 0
+  }
+
+  const today = now.toISOString().slice(0, 10)
+  const remainingPlanned = planned.filter(p => String(p.date) >= today)
+
+  const prompt = `Tu es un coach sportif expert. Analyse la semaine d'entraînement en cours de cet athlète (semaine du ${weekStart.toISOString().slice(0, 10)}).
+
+ACTIVITÉS RÉALISÉES CETTE SEMAINE (${activities.length} séances) :
+${activities.length === 0 ? 'Aucune activité enregistrée cette semaine.' : JSON.stringify(activities.map(a => ({
+  date: a.date, sport: a.sport, duration_min: Math.round((typeof a.duration === 'number' ? a.duration : 0) / 60),
+  distance_km: typeof a.distance === 'number' ? Math.round(a.distance / 100) / 10 : null,
+  tss: a.load,
+})), null, 2)}
+
+RÉPARTITION PAR SPORT :
+${JSON.stringify(sportBreakdown, null, 2)}
+
+TOTAL SEMAINE : ${activities.length} séances · ${Math.round(totalDuration / 60)}min · ${Math.round(totalTSS)} TSS
+
+SÉANCES PLANIFIÉES RESTANTES CETTE SEMAINE (${remainingPlanned.length} séances) :
+${remainingPlanned.length === 0 ? 'Aucune séance planifiée restante.' : JSON.stringify(remainingPlanned.map(p => ({ date: p.date, sport: p.sport, title: p.title, duration_min: p.duration_min })), null, 2)}
+
+DONNÉES RÉCUPÉRATION SEMAINE :
+${metrics.length === 0 ? 'Aucune donnée de récupération disponible.' : JSON.stringify(metrics, null, 2)}
+${rulesBlock}
+
+ANALYSE DEMANDÉE :
+1. Bilan des séances réalisées : volume, intensité, répartition disciplinaire
+2. Points positifs et alertes (surcharge, sous-volume, déséquilibres)
+3. État de récupération basé sur les métriques disponibles
+4. Recommandations pour les séances restantes de la semaine
+5. Projection sur la fin de semaine : est-ce une semaine de charge, de récupération, ou neutre ?
+
+Sois direct, structuré avec des titres markdown, et appuie-toi sur les chiffres réels.`
+
+  sendFn(label, prompt)
+}
+
+async function enrichedAnalyserRecuperation(
+  sb: SupabaseClient,
+  userId: string,
+  rulesBlock: string,
+  label: string,
+  sendFn: SendFn,
+): Promise<void> {
+  const now = new Date()
+  const since14d = new Date(now)
+  since14d.setDate(now.getDate() - 14)
+  const since7d = new Date(now)
+  since7d.setDate(now.getDate() - 7)
+  const next48h = new Date(now)
+  next48h.setDate(now.getDate() + 2)
+
+  const [metricsRes, activitiesRes, plannedRes] = await Promise.all([
+    sb.from('metrics_daily')
+      .select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb')
+      .eq('user_id', userId)
+      .gte('date', since14d.toISOString().slice(0, 10))
+      .order('date', { ascending: false }),
+    sb.from('activities')
+      .select('id,sport,date,duration,load,raw_data')
+      .eq('user_id', userId)
+      .gte('date', since14d.toISOString().slice(0, 10))
+      .order('date', { ascending: false })
+      .limit(30),
+    sb.from('planned_sessions')
+      .select('id,sport,date,title,duration_min')
+      .eq('user_id', userId)
+      .gte('date', now.toISOString().slice(0, 10))
+      .lte('date', next48h.toISOString().slice(0, 10))
+      .order('date', { ascending: true }),
+  ])
+
+  const metrics = metricsRes.data ?? []
+  const activities = activitiesRes.data ?? []
+  const planned = plannedRes.data ?? []
+
+  if (metrics.length < 3) {
+    sendFn(label, `Analyse mon état de récupération. Je n'ai pas encore assez de données de récupération enregistrées (moins de 3 jours disponibles). Explique-moi comment améliorer le suivi de ma récupération dans l'application et quels indicateurs je devrais renseigner chaque jour (HRV, FC repos, sommeil, readiness). Donne-moi des conseils généraux de récupération pour un athlète d'endurance.${rulesBlock}`)
+    return
+  }
+
+  const tss7j = activities
+    .filter(a => String(a.date) >= since7d.toISOString().slice(0, 10))
+    .reduce((sum, a) => sum + (typeof a.load === 'number' ? a.load : 0), 0)
+  const tss14j = activities.reduce((sum, a) => sum + (typeof a.load === 'number' ? a.load : 0), 0)
+
+  const latestMetrics = metrics.slice(0, 3)
+  const avgHRV = metrics.filter(m => m.hrv != null).slice(0, 7).reduce((s, m, _, arr) => s + (m.hrv as number) / arr.length, 0)
+  const avgReadiness = metrics.filter(m => m.readiness != null).slice(0, 7).reduce((s, m, _, arr) => s + (m.readiness as number) / arr.length, 0)
+
+  const prompt = `Tu es un coach sportif expert en récupération et performance. Analyse l'état de récupération de cet athlète aujourd'hui (${now.toISOString().slice(0, 10)}).
+
+MÉTRIQUES DE RÉCUPÉRATION (14 DERNIERS JOURS) :
+${JSON.stringify(metrics, null, 2)}
+
+DONNÉES CLÉS :
+- HRV moyen 7j : ${avgHRV > 0 ? Math.round(avgHRV) : 'N/A'}
+- Readiness moyen 7j : ${avgReadiness > 0 ? Math.round(avgReadiness) : 'N/A'}
+- Derniers jours (J-3 à J-1) : ${JSON.stringify(latestMetrics, null, 2)}
+
+CHARGE D'ENTRAÎNEMENT :
+- TSS 7 derniers jours : ${Math.round(tss7j)}
+- TSS 14 derniers jours : ${Math.round(tss14j)}
+- Ratio charge : ${tss14j > 0 ? Math.round((tss7j / (tss14j / 2)) * 100) : 'N/A'}%
+
+ACTIVITÉS RÉCENTES (14j, ${activities.length} séances) :
+${JSON.stringify(activities.slice(0, 10).map(a => ({ date: a.date, sport: a.sport, duration_min: Math.round((typeof a.duration === 'number' ? a.duration : 0) / 60), tss: a.load })), null, 2)}
+
+SÉANCES PRÉVUES 48H SUIVANTES :
+${planned.length === 0 ? 'Aucune séance planifiée.' : JSON.stringify(planned, null, 2)}
+${rulesBlock}
+
+ANALYSE DEMANDÉE :
+1. **État de récupération aujourd'hui** : verdict clair (Vert/Orange/Rouge) avec justification
+2. **Analyse des tendances** : HRV, sommeil, readiness sur 7-14j
+3. **Ratio charge/récupération** : es-tu en zone de surcharge, d'équilibre ou de sous-charge ?
+4. **Recommandation immédiate** : entraînement intensif OK ? Récupération active ? Repos ?
+5. **Adaptation des séances prévues** : que faire des séances planifiées dans les 48h ?
+
+Sois direct et actionnable. Utilise les données réelles.`
+
+  sendFn(label, prompt)
+}
+
+async function enrichedConseilsSommeil(
+  sb: SupabaseClient,
+  userId: string,
+  rulesBlock: string,
+  label: string,
+  sendFn: SendFn,
+): Promise<void> {
+  const now = new Date()
+  const since30d = new Date(now)
+  since30d.setDate(now.getDate() - 30)
+
+  const [metricsRes, activitiesRes, profileRes] = await Promise.all([
+    sb.from('metrics_daily')
+      .select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness')
+      .eq('user_id', userId)
+      .gte('date', since30d.toISOString().slice(0, 10))
+      .order('date', { ascending: false }),
+    sb.from('activities')
+      .select('id,sport,date,duration,raw_data')
+      .eq('user_id', userId)
+      .gte('date', since30d.toISOString().slice(0, 10))
+      .order('date', { ascending: false })
+      .limit(60),
+    sb.from('user_profiles')
+      .select('sports,weekly_volume_target,main_goal,age,weight_kg')
+      .eq('user_id', userId)
+      .maybeSingle(),
+  ])
+
+  const metrics = metricsRes.data ?? []
+  const activities = activitiesRes.data ?? []
+  const profile = profileRes.data
+
+  const sleepDays = metrics.filter(m => m.sleep_duration != null)
+  if (sleepDays.length < 5) {
+    sendFn(label, `Je veux des conseils pour optimiser mon sommeil en tant qu\'athlète. Je n'ai pas encore assez de données de sommeil dans l'application (moins de 5 nuits enregistrées). Donne-moi des conseils généraux et praticables pour améliorer le sommeil d'un athlète d'endurance : routine du soir, température, lumière, nutrition pré-sommeil, gestion du stress d'entraînement. Explique aussi comment mieux suivre mon sommeil dans l'app.${rulesBlock}`)
+    return
+  }
+
+  const avgSleep = sleepDays.reduce((s, m) => s + (m.sleep_duration as number), 0) / sleepDays.length
+  const avgQuality = metrics.filter(m => m.sleep_quality != null).reduce((s, m, _, arr) => s + (m.sleep_quality as number) / arr.length, 0)
+  const nightsUnder7h = sleepDays.filter(m => (m.sleep_duration as number) < 7).length
+  const avgHRV = metrics.filter(m => m.hrv != null).reduce((s, m, _, arr) => s + (m.hrv as number) / arr.length, 0)
+
+  // Séances après 19h dans les 30 derniers jours
+  const eveningSessions = activities.filter(a => {
+    const rawData = a.raw_data as { start_date?: string } | null
+    if (!rawData?.start_date) return false
+    const hour = new Date(rawData.start_date).getHours()
+    return hour >= 19
+  })
+
+  const prompt = `Tu es un expert en récupération sportive et optimisation du sommeil. Analyse les données de sommeil de cet athlète sur les 30 derniers jours et donne des conseils personnalisés et actionnables.
+
+PROFIL ATHLÈTE :
+${profile ? JSON.stringify(profile, null, 2) : 'Non disponible'}
+
+STATISTIQUES SOMMEIL (30 derniers jours, ${sleepDays.length} nuits enregistrées) :
+- Durée moyenne : ${avgSleep.toFixed(1)}h
+- Qualité moyenne : ${avgQuality > 0 ? Math.round(avgQuality) + '/100' : 'N/A'}
+- Nuits < 7h : ${nightsUnder7h} (${Math.round(nightsUnder7h / sleepDays.length * 100)}%)
+- HRV moyen : ${avgHRV > 0 ? Math.round(avgHRV) : 'N/A'}
+
+DONNÉES DÉTAILLÉES SOMMEIL (30j) :
+${JSON.stringify(sleepDays.slice(0, 30), null, 2)}
+
+SÉANCES EN SOIRÉE (après 19h, 30j) : ${eveningSessions.length} séances
+${eveningSessions.length > 0 ? JSON.stringify(eveningSessions.slice(0, 5).map(a => ({ date: a.date, sport: a.sport, duration_min: Math.round((typeof a.duration === 'number' ? a.duration : 0) / 60) })), null, 2) : ''}
+${rulesBlock}
+
+ANALYSE DEMANDÉE :
+1. **Diagnostic sommeil** : est-ce que la durée et la qualité sont suffisantes pour un athlète ?
+2. **Corrélations identifiées** : liens entre sommeil et HRV, readiness, performance ?
+3. **Facteurs perturbateurs** : séances tardives, irrégularités, tendances négatives ?
+4. **Conseils personnalisés** (5-7 conseils concrets adaptés à ce profil) : routine du soir, horaires, nutrition, gestion du stress d'entraînement
+5. **Priorité #1** : le changement le plus impactant à faire immédiatement
+
+Appuie-toi sur les données réelles. Sois direct et pratique.`
+
+  sendFn(label, prompt)
+}
+
+async function enrichedComprendreApp(
+  sb: SupabaseClient,
+  userId: string,
+  label: string,
+  sendFn: SendFn,
+): Promise<void> {
+  const profileRes = await sb.from('user_profiles')
+    .select('first_name,sports,main_goal')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const profile = profileRes.data
+  const firstName = profile?.first_name ? String(profile.first_name) : ''
+  const sports = Array.isArray(profile?.sports) ? (profile.sports as string[]).join(', ') : 'non renseigné'
+  const goal = profile?.main_goal ? String(profile.main_goal) : 'non renseigné'
+
+  const prompt = `Tu es l'assistant de l'application THW Coaching.${firstName ? ` L'athlète s'appelle ${firstName}.` : ''} Il pratique : ${sports}. Son objectif principal : ${goal}.
+
+Présente-lui les sections de l'application de façon personnalisée et pratique :
+
+1. **Planning** : calendrier d'entraînement avec les semaines, les séances planifiées et les courses. Naviguer entre semaines, ajouter/modifier des séances, voir les détails. Idéal pour planifier les entraînements à venir.
+
+2. **Activités** : synchronisation Strava automatique, détail de chaque activité avec graphiques interactifs (FC, allure, puissance, altitude), analyse par zones, onglets overview/charts/intervals.
+
+3. **Performance** : tests de performance, zones d'entraînement par sport (FC, allure, puissance), suivi de la progression, profil athlète complet.
+
+4. **Nutrition** : plan nutritionnel actif, suivi quotidien des repas et macros, repas types, suivi du poids et de la composition corporelle.
+
+5. **Coach IA** (ici même) : chat avec ton coach personnel, actions rapides, analyses enrichies. Dans les Réglages (icône engrenage), tu peux définir des règles personnelles pour personnaliser les réponses et choisir le modèle IA (Hermès/Athéna/Zeus).
+
+6. **Profil** : paramètres personnels, connexion des données externes (Strava, HRV), préférences d'affichage.
+
+Adapte ton explication en mettant en avant les sections les plus utiles pour ${firstName || 'cet athlète'} compte tenu de ses sports (${sports}) et objectif (${goal}).
+
+Termine en demandant quelle section il veut approfondir ou quelle fonctionnalité l'intéresse.`
+
+  sendFn(label, prompt)
+}
 
 // ══════════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
@@ -8973,6 +9281,25 @@ export default function AIPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext])
 
+  // ── Enriched actions — charge les données puis appelle send ──
+  const handleEnrichedAction = useCallback(async (id: string, label: string) => {
+    const sbModule = await import('@/lib/supabase/client')
+    const sb = sbModule.createClient()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+    const { data: rulesData } = await sb.from('ai_rules').select('category,rule_text').eq('user_id', user.id).eq('active', true)
+    const rulesBlock = rulesData && rulesData.length > 0
+      ? '\n\nRÈGLES PERSONNELLES DE L\'ATHLÈTE :\n' + rulesData.map((r: { category: string; rule_text: string }) => `- [${r.category}] ${r.rule_text}`).join('\n')
+      : ''
+    const sendFn: SendFn = (displayText: string, apiPrompt: string) => { void send(displayText, apiPrompt) }
+    switch (id) {
+      case 'analyser_semaine':      await enrichedAnalyserSemaine(sb, user.id, rulesBlock, label, sendFn); break
+      case 'analyser_recuperation': await enrichedAnalyserRecuperation(sb, user.id, rulesBlock, label, sendFn); break
+      case 'conseils_sommeil':      await enrichedConseilsSommeil(sb, user.id, rulesBlock, label, sendFn); break
+      case 'comprendre_app':        await enrichedComprendreApp(sb, user.id, label, sendFn); break
+    }
+  }, [send])
+
   // SSR guard
   if (!mounted) return null
 
@@ -9333,6 +9660,10 @@ export default function AIPanel({
                             if (qa.flow) {
                               setActiveFlow(qa.flow)
                               setActiveQA(null)
+                            } else if (qa.enrichedId) {
+                              setActiveFlow(null)
+                              setActiveQA(null)
+                              void handleEnrichedAction(qa.enrichedId, qa.label)
                             } else if (qa.prompt) {
                               setActiveFlow(null)
                               setActiveQA(null)
@@ -9634,6 +9965,7 @@ export default function AIPanel({
             {plusOpen && (
               <PlusMenu
                 onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
+                onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
                 onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
                 onClose={() => setPlusOpen(false)}
                 onCamera={() => cameraRef.current?.click()}

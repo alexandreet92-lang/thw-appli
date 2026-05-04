@@ -91,9 +91,21 @@ export async function POST() {
       },
     });
   } catch (err) {
-    console.error("[marketing] daily-brief route error:", err);
+    // Logging détaillé — distingue les erreurs Anthropic des autres
+    const isApiError = err instanceof Error && "status" in err;
+    if (isApiError) {
+      const apiErr = err as Error & { status?: number };
+      console.error(`[marketing] Anthropic API error — status: ${apiErr.status ?? "?"} — ${apiErr.message}`);
+    } else {
+      console.error("[marketing] daily-brief route error:", err);
+    }
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Erreur inconnue" },
+      {
+        error: err instanceof Error ? err.message : "Erreur inconnue",
+        ...(process.env.NODE_ENV !== "production" && err instanceof Error
+          ? { detail: err.stack }
+          : {}),
+      },
       { status: 500 }
     );
   }

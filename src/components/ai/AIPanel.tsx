@@ -35,7 +35,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -8416,8 +8416,13 @@ const PLUS_CATS: PlusCat[] = [
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
       { label: 'Analyser un entraînement', flow: 'analyser_entrainement' as FlowId },
-      { label: 'Stratégie de course', prompt: 'Je veux préparer une stratégie de course. Demande-moi quel sport (course, vélo, triathlon…), quelle course, le profil du parcours (distance, dénivelé), et mon objectif de temps. Ensuite propose-moi une stratégie complète : allures/watts par section, nutrition pendant la course, gestion de l\'effort, et plan B en cas de conditions difficiles. Utilise mes zones d\'entraînement et mes données de performance pour personnaliser.' },
       { label: 'Analyser ma semaine', enrichedId: 'analyser_semaine' },
+    ],
+  },
+  {
+    label: 'Compétition / Courses',
+    items: [
+      { label: 'Stratégie de course', flow: 'strategie_course' as FlowId },
     ],
   },
   {
@@ -8437,9 +8442,9 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Performance',
     items: [
-      { label: 'Analyser ma progression', prompt: 'Analyse ma progression sportive sur les derniers mois dans tous mes sports. Compare les volumes, intensités, métriques clés (allure, puissance, FC). Identifie les tendances positives et négatives. Utilise un tableau pour les comparaisons. Propose des actions concrètes pour continuer à progresser.' },
+      { label: 'Analyser ma progression', flow: 'analyser_progression' as FlowId },
       { label: 'Analyser un test', flow: 'analyzetest' },
-      { label: 'Estimer mes zones', prompt: 'Estime mes zones d\'entraînement à partir de mes données récentes (activités, tests de performance). Pour chaque sport que je pratique, propose des zones de FC, d\'allure et/ou de puissance en te basant sur les données les plus récentes disponibles. Explique ta méthodologie et précise le niveau de confiance de chaque estimation.' },
+      { label: 'Estimer mes zones', flow: 'estimer_zones' as FlowId },
     ],
   },
   {
@@ -9004,6 +9009,12 @@ const QUICK_ACTIONS: QuickAction[] = [
     sub: 'Analyse détaillée ou comparaison de 2 activités',
     model: 'athena',
     flow: 'analyser_entrainement' as FlowId,
+  },
+  {
+    label: 'Stratégie de course',
+    sub: 'Plan de course personnalisé allures, nutrition, Plan B',
+    flow: 'strategie_course' as FlowId,
+    model: 'athena',
   },
 ]
 
@@ -9707,6 +9718,1666 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
           }}
         >Formuler la règle</button>
       </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLOW — EstimerZonesFlow
+// ══════════════════════════════════════════════════════════════
+
+type ActivityRowZones = {
+  started_at: string
+  moving_time_s: number | null
+  avg_hr: number | null
+  max_hr: number | null
+  avg_watts: number | null
+  max_watts: number | null
+  avg_pace_s_km: number | null
+  tss: number | null
+  intensity_factor: number | null
+  rpe: number | null
+}
+
+type ConfidenceLevel = 'élevé' | 'modéré' | 'insuffisant'
+
+function estimateFTP(acts: ActivityRowZones[]): number | null {
+  const relevant = acts.filter(a => a.moving_time_s != null && a.moving_time_s >= 1200 && a.moving_time_s <= 3600 && a.avg_watts != null)
+  if (relevant.length === 0) return null
+  const sorted = [...relevant].sort((a, b) => (b.avg_watts ?? 0) - (a.avg_watts ?? 0))
+  const top = sorted.slice(0, Math.max(1, Math.ceil(sorted.length * 0.05)))
+  const avgTop = top.reduce((s, a) => s + (a.avg_watts ?? 0), 0) / top.length
+  return Math.round(avgTop * 0.95)
+}
+
+function estimateLTHR(acts: ActivityRowZones[]): number | null {
+  const relevant = acts.filter(a => a.avg_hr != null && ((a.intensity_factor != null && a.intensity_factor >= 0.9) || (a.rpe != null && a.rpe >= 7)))
+  if (relevant.length < 3) return null
+  const avgHr = relevant.reduce((s, a) => s + (a.avg_hr ?? 0), 0) / relevant.length
+  return Math.round(avgHr * 1.02)
+}
+
+function detectZoneDrift(acts: ActivityRowZones[]): { detected: boolean; deltaBpm: number | null; detail: string } {
+  const sorted = [...acts].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
+  const third = Math.floor(sorted.length / 3)
+  if (third < 3) return { detected: false, deltaBpm: null, detail: 'Pas assez d\'activités pour détecter une dérive.' }
+  const firstThird = sorted.slice(0, third).filter(a => a.avg_hr != null && a.avg_watts != null)
+  const lastThird = sorted.slice(-third).filter(a => a.avg_hr != null && a.avg_watts != null)
+  if (firstThird.length < 2 || lastThird.length < 2) return { detected: false, deltaBpm: null, detail: 'Données insuffisantes pour la comparaison.' }
+  const avgHrFirst = firstThird.reduce((s, a) => s + (a.avg_hr ?? 0), 0) / firstThird.length
+  const avgHrLast = lastThird.reduce((s, a) => s + (a.avg_hr ?? 0), 0) / lastThird.length
+  const delta = Math.round(avgHrFirst - avgHrLast)
+  if (Math.abs(delta) < 3) return { detected: false, deltaBpm: delta, detail: 'Pas de dérive significative détectée (< 3bpm).' }
+  return {
+    detected: true,
+    deltaBpm: delta,
+    detail: delta > 0
+      ? `Ta FC a baissé de ${delta}bpm pour une charge similaire → tu as progressé mais tes zones HR ne le reflètent peut-être pas.`
+      : `Ta FC a augmenté de ${Math.abs(delta)}bpm pour une charge similaire → possible suraccumulation de fatigue ou régression.`,
+  }
+}
+
+function computeConfidence(testsCount: number, activitiesCount: number, hasRecentTest: boolean): { level: ConfidenceLevel; reason: string } {
+  if (hasRecentTest) return { level: 'élevé', reason: 'Test récent disponible comme source primaire' }
+  if (activitiesCount >= 15) return { level: 'modéré', reason: 'Estimation depuis activités uniquement — un test VMA/FTP donnerait un résultat plus fiable' }
+  void testsCount
+  return { level: 'insuffisant', reason: 'Données insuffisantes pour une estimation fiable' }
+}
+
+type ZoneEstimationResult = {
+  confiance: ConfidenceLevel
+  raison_confiance: string
+  estimation: {
+    ftp: number | null
+    lthr: number | null
+    vma_kmh: number | null
+    zones: Array<{ id: string; label: string; hr_max: number | null; watts_max: number | null; pace_max_s_km: number | null }>
+  }
+  comparaison: {
+    status: string
+    ecart_ftp_pct: number | null
+    detail: string
+    impact: string
+    recommandation: string
+  }
+  zone_drift: { detected: boolean; delta_bpm: number | null; detail: string }
+  methode_estimation: string
+  sources: string[]
+  actions_suggerees: string[]
+}
+
+function EstimerZonesFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  const [phase, setPhase] = useState<'sport' | 'gate' | 'generating' | 'result'>('sport')
+  const [selectedSport, setSelectedSport] = useState<string | null>(null)
+  const [userSports, setUserSports] = useState<string[]>([])
+  const [loadingSports, setLoadingSports] = useState(true)
+  const [gateData, setGateData] = useState<{
+    activitiesCount: number
+    testsCount: number
+    currentZonesDate: string | null
+    activities: ActivityRowZones[]
+    tests: unknown[]
+    currentZones: unknown
+    zonesHistory: unknown[]
+    profile: unknown
+  } | null>(null)
+  const [loadingGate, setLoadingGate] = useState(false)
+  const [result, setResult] = useState<ZoneEstimationResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      setLoadingSports(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setLoadingSports(false); return }
+        const { data } = await sb.from('user_profiles').select('sports').eq('user_id', user.id).maybeSingle()
+        const sports = (data?.sports as string[] | null) ?? []
+        setUserSports(sports.length > 0 ? sports : ['running', 'cycling', 'hyrox', 'gym'])
+      } catch {
+        setUserSports(['running', 'cycling', 'hyrox', 'gym'])
+      } finally {
+        setLoadingSports(false)
+      }
+    })()
+  }, [])
+
+  async function handleSportSelect(sport: string) {
+    setSelectedSport(sport)
+    setLoadingGate(true)
+    setPhase('gate')
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setLoadingGate(false); return }
+
+      const now = new Date()
+      const since3months = new Date(now); since3months.setMonth(now.getMonth() - 3)
+      const since6months = new Date(now); since6months.setMonth(now.getMonth() - 6)
+
+      // TODO: inject injuries when table exists
+      const [currentZonesRes, zonesHistoryRes, testsRes, activitiesRes, profileRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', sport).eq('is_current', true).maybeSingle(),
+        sb.from('training_zones').select('id,created_at,ftp_watts,lthr,vma_ms,threshold_pace_s_km').eq('user_id', user.id).eq('sport', sport).order('created_at', { ascending: false }),
+        sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(5),
+        sb.from('activities').select('started_at,moving_time_s,avg_hr,max_hr,avg_watts,max_watts,avg_pace_s_km,tss,intensity_factor,rpe').eq('user_id', user.id).eq('sport_type', sport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }),
+        sb.from('athlete_performance_profile').select('ftp,lthr,vma,css,vo2max,weight_kg').eq('user_id', user.id).maybeSingle(),
+      ])
+
+      const currentZonesDate = (currentZonesRes.data as Record<string, unknown> | null)?.created_at as string | null ?? null
+      setGateData({
+        activitiesCount: activitiesRes.data?.length ?? 0,
+        testsCount: testsRes.data?.length ?? 0,
+        currentZonesDate,
+        activities: (activitiesRes.data ?? []) as ActivityRowZones[],
+        tests: testsRes.data ?? [],
+        currentZones: currentZonesRes.data,
+        zonesHistory: zonesHistoryRes.data ?? [],
+        profile: profileRes.data,
+      })
+    } catch {
+      setGateData(null)
+    } finally {
+      setLoadingGate(false)
+    }
+  }
+
+  async function generate() {
+    if (!selectedSport || !gateData) return
+    setPhase('generating')
+    setError(null)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      const ftpEstimated = estimateFTP(gateData.activities)
+      const lthrEstimated = estimateLTHR(gateData.activities)
+      const zoneDrift = detectZoneDrift(gateData.activities)
+      const hasRecentTest = gateData.testsCount > 0
+      const confidence = computeConfidence(gateData.testsCount, gateData.activitiesCount, hasRecentTest)
+
+      const zonesDateStr = gateData.currentZonesDate
+        ? new Date(gateData.currentZonesDate).toLocaleDateString('fr-FR')
+        : 'non configurées'
+
+      const systemPrompt = `Tu es un expert en physiologie du sport et calcul de zones d'entraînement.
+
+SPORT : ${selectedSport}
+DONNÉES SOURCE : ${gateData.activitiesCount} activités (3 mois) | ${gateData.testsCount} tests récents (6 mois)
+
+ESTIMATION CALCULÉE CÔTÉ CLIENT :
+FTP estimé (vélo) : ${ftpEstimated !== null ? ftpEstimated + 'W' : 'null'}
+LTHR estimé : ${lthrEstimated !== null ? lthrEstimated + 'bpm' : 'null'}
+Méthode : algorithme client (top 5% watts × 0.95 pour FTP ; FC moyenne sessions IF≥0.9 × 1.02 pour LTHR)
+
+ZONES ACTUELLEMENT CONFIGURÉES : ${gateData.currentZones ? JSON.stringify(gateData.currentZones) : 'aucune'} (configurées le ${zonesDateStr})
+HISTORIQUE ZONES : ${JSON.stringify(gateData.zonesHistory)}
+PROFIL PHYSIOLOGIQUE : ${JSON.stringify(gateData.profile)}
+TESTS RÉCENTS : ${JSON.stringify(gateData.tests)}
+
+ZONE DRIFT ANALYSIS : ${JSON.stringify(zoneDrift)}
+
+RÈGLE ABSOLUE : Ne survends JAMAIS la précision.
+- Si tests disponibles : les utiliser comme source primaire, dire "basé sur ton test du {date}"
+- Si estimation depuis activités : dire EXPLICITEMENT "estimation sans test — niveau de confiance modéré — un test ${selectedSport} donnerait un résultat plus précis"
+- Si données insuffisantes : NE PAS donner de valeurs, rediriger vers un test
+
+FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
+{
+  "confiance": "élevé|modéré|insuffisant",
+  "raison_confiance": "...",
+  "estimation": {
+    "ftp": null_ou_nombre,
+    "lthr": null_ou_nombre,
+    "vma_kmh": null_ou_nombre,
+    "zones": [
+      { "id": "Z1", "label": "Récupération active", "hr_max": null_ou_nombre, "watts_max": null_ou_nombre, "pace_max_s_km": null_ou_nombre }
+    ]
+  },
+  "comparaison": {
+    "status": "obsolètes|a_jour|inconnues",
+    "ecart_ftp_pct": null_ou_nombre,
+    "detail": "...",
+    "impact": "...",
+    "recommandation": "..."
+  },
+  "zone_drift": {
+    "detected": false,
+    "delta_bpm": null_ou_nombre,
+    "detail": "..."
+  },
+  "methode_estimation": "...",
+  "sources": ["..."],
+  "actions_suggerees": ["Mettre à jour mes zones manuellement dans Performance → Zones", "..."]
+}`
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'central',
+          modelId: 'athena',
+          messages: [{ role: 'user', content: systemPrompt }],
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      // Collect SSE text chunks
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No body')
+      const decoder = new TextDecoder()
+      let raw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const d = line.slice(6).trim()
+            if (d === '[DONE]') break
+            try { raw += JSON.parse(d) as string } catch { /* skip */ }
+          }
+        }
+      }
+
+      // Parse JSON from raw text
+      const jsonMatch = raw.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Réponse non parseable')
+      const parsed = JSON.parse(jsonMatch[0]) as ZoneEstimationResult
+      setResult(parsed)
+      if (onRecordConv) {
+        const userMsg = `Estimer mes zones — ${selectedSport}`
+        const aiMsg = `Confiance : ${parsed.confiance} — ${parsed.raison_confiance}\n${parsed.methode_estimation}`
+        onRecordConv(userMsg, aiMsg)
+      }
+      setPhase('result')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de génération')
+      setPhase('gate')
+    }
+  }
+
+  const SPORT_LABELS: Record<string, string> = { running: 'Running', cycling: 'Vélo', hyrox: 'Hyrox', gym: 'Gym' }
+  const confidenceColor = (c: ConfidenceLevel) => c === 'élevé' ? '#22c55e' : c === 'modéré' ? '#f97316' : '#ef4444'
+  const confidenceBg = (c: ConfidenceLevel) => c === 'élevé' ? 'rgba(34,197,94,0.1)' : c === 'modéré' ? 'rgba(249,115,22,0.1)' : 'rgba(239,68,68,0.1)'
+
+  function fmtPace(s: number | null): string {
+    if (s == null) return '—'
+    const m = Math.floor(s / 60); const sec = Math.round(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}/km`
+  }
+
+  // ── Phase sport ──
+  if (phase === 'sport') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Estimer mes zones
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Choisir le sport pour lequel estimer tes zones
+        </p>
+        {loadingSports ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+            {userSports.map(s => (
+              <button key={s} onClick={() => { void handleSportSelect(s) }} style={{
+                padding: '7px 13px', borderRadius: 20,
+                border: '1px solid var(--ai-border)',
+                background: 'var(--ai-bg2)',
+                color: 'var(--ai-mid)',
+                fontSize: 12, cursor: 'pointer',
+                fontFamily: 'DM Sans,sans-serif',
+              }}>
+                {SPORT_LABELS[s] ?? s}
+              </button>
+            ))}
+          </div>
+        )}
+        <button onClick={onCancel} style={{ display: 'block', margin: '4px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          Annuler
+        </button>
+      </div>
+    )
+  }
+
+  // ── Phase gate ──
+  if (phase === 'gate') {
+    if (loadingGate) {
+      return (
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement de tes données…</p>
+        </div>
+      )
+    }
+    if (!gateData) {
+      return (
+        <div style={{ padding: '8px 0' }}>
+          <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 12px' }}>Erreur de chargement des données.</p>
+          <button onClick={() => setPhase('sport')} style={{ fontSize: 12, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Retour</button>
+        </div>
+      )
+    }
+    const isBlocked = gateData.activitiesCount < 5 && gateData.testsCount === 0
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'Syne,sans-serif' }}>
+          Estimer mes zones — {SPORT_LABELS[selectedSport ?? ''] ?? selectedSport}
+        </p>
+        {isBlocked ? (
+          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: '#ef4444', margin: 0, lineHeight: 1.6 }}>
+              Pas assez de données pour estimer tes zones ({gateData.activitiesCount} activité(s) disponible(s), minimum 5 requises). Pour obtenir des zones précises : réalise un test dans Performance → Tests, ou saisis tes valeurs manuellement dans Performance → Zones.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: '12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                Données disponibles pour l&apos;estimation
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: 'var(--ai-mid)' }}>Activités (3 mois)</span>
+                  <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{gateData.activitiesCount}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: 'var(--ai-mid)' }}>Tests récents (6 mois)</span>
+                  <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{gateData.testsCount}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: 'var(--ai-mid)' }}>Zones actuelles</span>
+                  <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>
+                    {gateData.currentZonesDate
+                      ? `configurées le ${new Date(gateData.currentZonesDate).toLocaleDateString('fr-FR')}`
+                      : 'non configurées'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+            <button onClick={() => { void generate() }} style={{
+              width: '100%', padding: '11px', borderRadius: 10,
+              background: 'var(--ai-gradient)', border: 'none',
+              color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+            }}>
+              Estimer mes zones
+            </button>
+          </>
+        )}
+        <button onClick={() => setPhase('sport')} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          Retour
+        </button>
+      </div>
+    )
+  }
+
+  // ── Phase generating ──
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '48px 0', textAlign: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          Estimation en cours…
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
+          Analyse de tes activités, tests et historique de zones
+        </p>
+      </div>
+    )
+  }
+
+  // ── Phase result ──
+  if (!result) return null
+  return (
+    <div style={{ padding: '4px 0' }}>
+      {/* Confidence badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+          background: confidenceBg(result.confiance),
+          color: confidenceColor(result.confiance),
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          Confiance {result.confiance}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>{result.raison_confiance}</span>
+      </div>
+
+      {/* Zone table */}
+      {result.estimation.zones.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+            Zones estimées
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {result.estimation.zones.map((z, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', minWidth: 24 }}>{z.id}</span>
+                <span style={{ flex: 1, fontSize: 12, color: 'var(--ai-text)', fontWeight: 500 }}>{z.label}</span>
+                {z.hr_max != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{z.hr_max} bpm</span>}
+                {z.watts_max != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{z.watts_max}W</span>}
+                {z.pace_max_s_km != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{fmtPace(z.pace_max_s_km)}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Comparison vs current zones */}
+      {result.comparaison && (
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Comparaison zones actuelles
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: '0 0 4px' }}>{result.comparaison.detail}</p>
+          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 4px' }}>{result.comparaison.impact}</p>
+          <p style={{ fontSize: 11, color: 'var(--ai-accent)', margin: 0, fontWeight: 600 }}>{result.comparaison.recommandation}</p>
+        </div>
+      )}
+
+      {/* Zone drift */}
+      {result.zone_drift && (
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: result.zone_drift.detected ? 'rgba(249,115,22,0.08)' : 'var(--ai-bg2)', border: `1px solid ${result.zone_drift.detected ? 'rgba(249,115,22,0.25)' : 'var(--ai-border)'}`, marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: result.zone_drift.detected ? '#f97316' : 'var(--ai-dim)', margin: '0 0 4px' }}>
+            Dérive de zones{result.zone_drift.detected ? ' détectée' : ''}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>{result.zone_drift.detail}</p>
+        </div>
+      )}
+
+      {/* Method + sources */}
+      <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', fontStyle: 'italic' }}>Méthode : {result.methode_estimation}</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>Sources : {result.sources.join(' · ')}</p>
+      </div>
+
+      {/* Actions suggerees */}
+      {result.actions_suggerees.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Actions suggérées
+          </p>
+          {result.actions_suggerees.map((a, i) => (
+            <p key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px', paddingLeft: 10 }}>• {a}</p>
+          ))}
+        </div>
+      )}
+
+      <button onClick={onCancel} style={{ display: 'block', margin: '4px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+        Fermer
+      </button>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLOW — AnalyserProgressionFlow
+// ══════════════════════════════════════════════════════════════
+
+type ProgressionActivity = {
+  id: string
+  sport_type: string
+  started_at: string
+  distance_m: number | null
+  moving_time_s: number | null
+  avg_hr: number | null
+  max_hr: number | null
+  avg_watts: number | null
+  avg_pace_s_km: number | null
+  tss: number | null
+  intensity_factor: number | null
+  aerobic_decoupling: number | null
+  avg_cadence: number | null
+  is_race: boolean | null
+}
+
+type ProgressionResult = {
+  periode: string
+  score_progression_global: number
+  sports_analyses: Array<{
+    sport: string
+    score_progression: number
+    tendance: string
+    progressions_visibles: Array<{ metrique: string; debut: string; fin: string; delta_pct: number }>
+    progressions_invisibles: Array<{ metrique: string; detail: string; significance: string }>
+    stagnations: Array<{ domaine: string; depuis: string; hypothese: string }>
+  }>
+  insight_principal: string
+  recommandations: Array<{ priorite: number; action: string; impact_estime: string }>
+  sources: string[]
+  confiance: string
+  raison_confiance: string
+}
+
+function monthlyTssDensity(acts: ProgressionActivity[]): Record<string, number> {
+  const result: Record<string, number> = {}
+  acts.forEach(a => {
+    const month = a.started_at.substring(0, 7)
+    result[month] = (result[month] ?? 0) + (a.tss ?? 0)
+  })
+  return result
+}
+
+function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  const [phase, setPhase] = useState<'config' | 'generating' | 'result'>('config')
+  const [period, setPeriod] = useState<3 | 6 | 12>(3)
+  const [userSports, setUserSports] = useState<string[]>([])
+  const [selectedSports, setSelectedSports] = useState<string[]>([])
+  const [loadingSports, setLoadingSports] = useState(true)
+  const [gateCount, setGateCount] = useState<number | null>(null)
+  const [checkingGate, setCheckingGate] = useState(false)
+  const [result, setResult] = useState<ProgressionResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      setLoadingSports(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setLoadingSports(false); return }
+        const { data } = await sb.from('user_profiles').select('sports').eq('user_id', user.id).maybeSingle()
+        const sports = (data?.sports as string[] | null) ?? []
+        const list = sports.length > 0 ? sports : ['running', 'cycling', 'hyrox', 'gym']
+        setUserSports(list)
+        setSelectedSports(list)
+      } catch {
+        setUserSports(['running', 'cycling', 'hyrox', 'gym'])
+        setSelectedSports(['running', 'cycling', 'hyrox', 'gym'])
+      } finally {
+        setLoadingSports(false)
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    if (selectedSports.length === 0) { setGateCount(null); return }
+    setCheckingGate(true)
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setCheckingGate(false); return }
+        const startDate = new Date(); startDate.setMonth(startDate.getMonth() - period)
+        const { count } = await sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString())
+        setGateCount(count ?? 0)
+      } catch {
+        setGateCount(null)
+      } finally {
+        setCheckingGate(false)
+      }
+    })()
+  }, [selectedSports, period])
+
+  function toggleSport(s: string) {
+    setSelectedSports(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+  }
+
+  async function generate() {
+    if (selectedSports.length === 0) return
+    setPhase('generating')
+    setError(null)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      const startDate = new Date(); startDate.setMonth(startDate.getMonth() - period)
+      const today = new Date().toISOString().split('T')[0]
+
+      // TODO: inject injuries when table exists
+      const [activitiesRes, testsRes, zonesHistoryRes, profileRes] = await Promise.all([
+        sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race').eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString()).order('started_at', { ascending: true }),
+        sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', startDate.toISOString().split('T')[0]).order('date', { ascending: true }),
+        sb.from('training_zones').select('ftp_watts,lthr,vma_ms,threshold_pace_s_km,created_at,sport').eq('user_id', user.id).in('sport', selectedSports).order('created_at', { ascending: true }),
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+      ])
+
+      const activities = (activitiesRes.data ?? []) as ProgressionActivity[]
+      const tssDensity = monthlyTssDensity(activities)
+
+      const systemPrompt = `Tu es un expert en analyse de progression sportive. Détecte les progressions VISIBLES et INVISIBLES.
+
+PÉRIODE : ${startDate.toISOString().split('T')[0]} → ${today} (${period} mois)
+SPORTS : ${selectedSports.join(', ')}
+DONNÉES : ${activities.length} activités | ${testsRes.data?.length ?? 0} tests
+
+ACTIVITÉS (chronologique) : ${JSON.stringify(activities)}
+TESTS : ${JSON.stringify(testsRes.data ?? [])}
+HISTORIQUE ZONES : ${JSON.stringify(zonesHistoryRes.data ?? [])}
+PROFIL : ${JSON.stringify(profileRes.data)}
+TSS MENSUEL : ${JSON.stringify(tssDensity)}
+
+ANALYSE OBLIGATOIRE EN 2 DIMENSIONS :
+
+PROGRESSIONS VISIBLES : records personnels, meilleure allure, meilleur FTP, etc.
+
+PROGRESSIONS INVISIBLES (le plus important) :
+- FC à même allure/watts sur différentes périodes → efficacité aérobie
+- Aerobic decoupling qui baisse → meilleure endurance
+- Même pace à FC plus basse = amélioration que l'athlète n'a pas remarquée
+
+STAGNATIONS ET RÉGRESSIONS : détecter et formuler une hypothèse explicative.
+
+FORMAT OBLIGATOIRE (JSON uniquement) :
+{
+  "periode": "...",
+  "score_progression_global": 0,
+  "sports_analyses": [{
+    "sport": "...",
+    "score_progression": 0,
+    "tendance": "en_progression|stable|en_regression",
+    "progressions_visibles": [{ "metrique": "...", "debut": "...", "fin": "...", "delta_pct": 0 }],
+    "progressions_invisibles": [{ "metrique": "...", "detail": "...", "significance": "élevée|modérée|faible" }],
+    "stagnations": [{ "domaine": "...", "depuis": "...", "hypothese": "..." }]
+  }],
+  "insight_principal": "...",
+  "recommandations": [{ "priorite": 1, "action": "...", "impact_estime": "..." }],
+  "sources": ["..."],
+  "confiance": "élevé|modéré|faible",
+  "raison_confiance": "..."
+}`
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'central',
+          modelId: 'athena',
+          messages: [{ role: 'user', content: systemPrompt }],
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No body')
+      const decoder = new TextDecoder()
+      let raw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data: ')) {
+            const d = line.slice(6).trim()
+            if (d === '[DONE]') break
+            try { raw += JSON.parse(d) as string } catch { /* skip */ }
+          }
+        }
+      }
+
+      const jsonMatch = raw.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Réponse non parseable')
+      const parsed = JSON.parse(jsonMatch[0]) as ProgressionResult
+      setResult(parsed)
+      if (onRecordConv) {
+        const userMsg = `Analyser ma progression — ${selectedSports.join(', ')} — ${period} mois`
+        const aiMsg = `Score global : ${parsed.score_progression_global}/100\n\n${parsed.insight_principal}`
+        onRecordConv(userMsg, aiMsg)
+      }
+      setPhase('result')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de génération')
+      setPhase('config')
+    }
+  }
+
+  const SPORT_LABELS: Record<string, string> = { running: 'Running', cycling: 'Vélo', hyrox: 'Hyrox', gym: 'Gym' }
+  const PERIODS: Array<{ v: 3 | 6 | 12; label: string }> = [
+    { v: 3, label: '3 mois' },
+    { v: 6, label: '6 mois' },
+    { v: 12, label: '12 mois' },
+  ]
+  const tendanceColor = (t: string) => t === 'en_progression' ? '#22c55e' : t === 'en_regression' ? '#ef4444' : '#f97316'
+  const tendanceLabel = (t: string) => t === 'en_progression' ? 'Progression' : t === 'en_regression' ? 'Régression' : 'Stable'
+  const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 40 ? '#f97316' : '#ef4444'
+
+  // ── Phase config ──
+  if (phase === 'config') {
+    const isGateBlocked = gateCount !== null && gateCount < 20
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'Syne,sans-serif' }}>
+          Analyser ma progression
+        </p>
+
+        {/* Period */}
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 8px', fontWeight: 600 }}>Période</p>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {PERIODS.map(p => (
+            <button key={p.v} onClick={() => setPeriod(p.v)} style={{
+              flex: 1, padding: '7px', borderRadius: 8,
+              border: `1px solid ${period === p.v ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+              background: period === p.v ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+              color: period === p.v ? 'var(--ai-accent)' : 'var(--ai-mid)',
+              fontSize: 12, fontWeight: period === p.v ? 700 : 400,
+              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sports */}
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 8px', fontWeight: 600 }}>Sports</p>
+        {loadingSports ? (
+          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+            <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {userSports.map(s => {
+              const on = selectedSports.includes(s)
+              return (
+                <button key={s} onClick={() => toggleSport(s)} style={{
+                  padding: '6px 12px', borderRadius: 18,
+                  border: `1px solid ${on ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                  background: on ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                  color: on ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                  fontSize: 12, fontWeight: on ? 600 : 400,
+                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                }}>
+                  {SPORT_LABELS[s] ?? s}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Gate check */}
+        {checkingGate && (
+          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>Vérification des données…</p>
+        )}
+        {isGateBlocked && !checkingGate && (
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
+            <p style={{ fontSize: 12, color: '#ef4444', margin: 0, lineHeight: 1.5 }}>
+              Pas assez de données ({gateCount} activités) pour une tendance significative. Il faut au moins 20 activités.
+            </p>
+          </div>
+        )}
+        {!isGateBlocked && !checkingGate && gateCount !== null && (
+          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>{gateCount} activités disponibles sur la période</p>
+        )}
+
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+
+        <button
+          onClick={() => { void generate() }}
+          disabled={selectedSports.length === 0 || isGateBlocked || checkingGate}
+          style={{
+            width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+            background: (selectedSports.length > 0 && !isGateBlocked && !checkingGate) ? 'var(--ai-gradient)' : 'var(--ai-border)',
+            color: '#fff', fontSize: 13, fontWeight: 700,
+            cursor: (selectedSports.length > 0 && !isGateBlocked && !checkingGate) ? 'pointer' : 'not-allowed',
+            fontFamily: 'Syne,sans-serif',
+          }}
+        >
+          Analyser
+        </button>
+        <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          Annuler
+        </button>
+      </div>
+    )
+  }
+
+  // ── Phase generating ──
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '48px 0', textAlign: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          Analyse de progression…
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
+          Détection des progressions visibles et invisibles
+        </p>
+      </div>
+    )
+  }
+
+  // ── Phase result ──
+  if (!result) return null
+
+  const circumference = 2 * Math.PI * 34
+  const dashOffset = circumference * (1 - result.score_progression_global / 100)
+  const sc = scoreColor(result.score_progression_global)
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      {/* Score gauge + insight */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+        <svg width="80" height="80" viewBox="0 0 80 80" style={{ flexShrink: 0 }}>
+          <circle cx="40" cy="40" r="34" fill="none" stroke="var(--ai-border)" strokeWidth="5" />
+          <circle cx="40" cy="40" r="34" fill="none" stroke={sc} strokeWidth="5"
+            strokeDasharray={circumference} strokeDashoffset={dashOffset}
+            strokeLinecap="round" transform="rotate(-90 40 40)" />
+          <text x="40" y="44" textAnchor="middle" fontSize="16" fontWeight="700" fill={sc} fontFamily="Syne,sans-serif">
+            {result.score_progression_global}
+          </text>
+          <text x="40" y="55" textAnchor="middle" fontSize="8" fill="var(--ai-dim)" fontFamily="DM Sans,sans-serif">
+            /100
+          </text>
+        </svg>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>
+            Insight principal
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: 0, lineHeight: 1.6, fontWeight: 500 }}>
+            {result.insight_principal}
+          </p>
+        </div>
+      </div>
+
+      {/* Per-sport analysis */}
+      {result.sports_analyses.map((sa, i) => (
+        <div key={i} style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', textTransform: 'capitalize' }}>{sa.sport}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: `${tendanceColor(sa.tendance)}18`, color: tendanceColor(sa.tendance) }}>
+              {tendanceLabel(sa.tendance)}
+            </span>
+          </div>
+          {sa.progressions_visibles.length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Progrès visibles</p>
+              {sa.progressions_visibles.map((pv, j) => (
+                <p key={j} style={{ fontSize: 11, color: '#22c55e', margin: '0 0 2px' }}>
+                  {pv.metrique} : {pv.debut} → {pv.fin} ({pv.delta_pct > 0 ? '+' : ''}{pv.delta_pct}%)
+                </p>
+              ))}
+            </div>
+          )}
+          {sa.progressions_invisibles.length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Progrès invisibles</p>
+              {sa.progressions_invisibles.map((pi, j) => (
+                <p key={j} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>
+                  {pi.metrique} — {pi.detail} <span style={{ color: pi.significance === 'élevée' ? '#22c55e' : pi.significance === 'modérée' ? '#f97316' : 'var(--ai-dim)', fontWeight: 600 }}>({pi.significance})</span>
+                </p>
+              ))}
+            </div>
+          )}
+          {sa.stagnations.length > 0 && (
+            <div>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Stagnations</p>
+              {sa.stagnations.map((st, j) => (
+                <p key={j} style={{ fontSize: 11, color: '#f97316', margin: '0 0 2px', lineHeight: 1.4 }}>
+                  {st.domaine} (depuis {st.depuis}) — {st.hypothese}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Recommandations */}
+      {result.recommandations.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Recommandations
+          </p>
+          {result.recommandations.sort((a, b) => a.priorite - b.priorite).map((r, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{r.priorite}</span>
+              <div>
+                <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: '0 0 2px', fontWeight: 500 }}>{r.action}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>{r.impact_estime}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Sources + confiance */}
+      <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', fontStyle: 'italic' }}>Confiance : {result.confiance} — {result.raison_confiance}</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>Sources : {result.sources.join(' · ')}</p>
+      </div>
+
+      <button onClick={onCancel} style={{ display: 'block', margin: '4px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+        Fermer
+      </button>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLOW — StrategieCourseFlow
+// ══════════════════════════════════════════════════════════════
+
+type PlannedRaceOption2 = {
+  id: string
+  name: string
+  sport: string
+  date: string
+  goal_time: string | null
+  distance_m: number | null
+  denivelé_m: number | null
+}
+
+type StrategieResult = {
+  verdict_objectif: { status: string; confiance: number; detail: string }
+  forme_au_jour_j: { tsb_actuel: number | null; tsb_projete: number | null; methode: string; verdict: string; risque: string }
+  strategie_sections: Array<{ section: string; allure_cible: string | null; watts_cibles: number | null; zone: string; pourcentage_ftp: number | null; rpe_cible: string; conseil: string }>
+  nutrition_course: Array<{ timing: string; glucides_g: number; hydratation_ml: number; conseil: string }>
+  gestion_effort: { depart: string; milieu: string; final_20pct: string }
+  plan_b: { declencheur: string; action: string; objectif_fallback: string }
+  points_cles: string[]
+  sources: string[]
+  confiance: string
+  raison_confiance: string
+}
+
+function StrategieCourseFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  const [phase, setPhase] = useState<'race' | 'questions' | 'context' | 'generating' | 'result'>('race')
+  const [races, setRaces] = useState<PlannedRaceOption2[]>([])
+  const [loadingRaces, setLoadingRaces] = useState(true)
+  const [selectedRace, setSelectedRace] = useState<PlannedRaceOption2 | null>(null)
+  const [manualMode, setManualMode] = useState(false)
+  const [manualSport, setManualSport] = useState('running')
+  const [manualDistance, setManualDistance] = useState('')
+  const [manualDenivelé, setManualDenivelé] = useState('')
+  const [manualDate, setManualDate] = useState('')
+  const [manualGoalTime, setManualGoalTime] = useState('')
+
+  // Questions
+  const [profilParcours, setProfilParcours] = useState<'Plat' | 'Vallonné' | 'Montagneux' | null>(null)
+  const [ressenti, setRessenti] = useState<number>(3)
+  const [objectifTemps, setObjectifTemps] = useState('')
+
+  // Context
+  const [contextData, setContextData] = useState<{
+    zones: unknown
+    tests: unknown[]
+    recentActivities: unknown[]
+    metrics14d: unknown[]
+    pastRaces: unknown[]
+    profile: unknown
+    hasAtlCtl: boolean
+    tsbActuel: number | null
+    tsbProjecte: number | null
+    tsbMethode: string
+    hasZonesOrTests: boolean
+  } | null>(null)
+  const [loadingContext, setLoadingContext] = useState(false)
+
+  const [result, setResult] = useState<StrategieResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      setLoadingRaces(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setLoadingRaces(false); return }
+        const today = new Date().toISOString().split('T')[0]
+        const { data } = await sb.from('planned_races').select('id,name,sport,date,goal_time,distance_m,denivelé_m').eq('user_id', user.id).gte('date', today).order('date', { ascending: true }).limit(10)
+        setRaces((data ?? []) as PlannedRaceOption2[])
+      } catch {
+        setRaces([])
+      } finally {
+        setLoadingRaces(false)
+      }
+    })()
+  }, [])
+
+  function getRaceSport(): string {
+    return manualMode ? manualSport : (selectedRace?.sport ?? 'running')
+  }
+
+  function getRaceDistance(): number | null {
+    if (manualMode) return manualDistance ? parseFloat(manualDistance) * 1000 : null
+    return selectedRace?.distance_m ?? null
+  }
+
+  function getRaceDenivelé(): number | null {
+    if (manualMode) return manualDenivelé ? parseFloat(manualDenivelé) : null
+    return selectedRace?.denivelé_m ?? null
+  }
+
+  function getGoalTime(): string | null {
+    if (objectifTemps.trim()) return objectifTemps.trim()
+    if (!manualMode && selectedRace?.goal_time) return selectedRace.goal_time
+    if (manualMode && manualGoalTime.trim()) return manualGoalTime.trim()
+    return null
+  }
+
+  function needsProfilQuestion(): boolean {
+    const d = getRaceDenivelé()
+    return d == null || d === 0
+  }
+
+  function needsObjectifQuestion(): boolean {
+    return getGoalTime() == null
+  }
+
+  async function loadContext() {
+    setLoadingContext(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setLoadingContext(false); return }
+
+      const raceSport = getRaceSport()
+      const now = new Date()
+      const since3months = new Date(now); since3months.setMonth(now.getMonth() - 3)
+      const since6months = new Date(now); since6months.setMonth(now.getMonth() - 6)
+      const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
+
+      // TODO: inject injuries when table exists
+      const [zonesRes, testsRes, recentActsRes, metrics14dRes, pastRacesRes, profileRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', raceSport).eq('is_current', true).maybeSingle(),
+        sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(5),
+        sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race').eq('user_id', user.id).eq('sport_type', raceSport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(30),
+        sb.from('metrics_daily').select('date,hrv,readiness,atl,ctl,tsb,fatigue').eq('user_id', user.id).gte('date', since14d.toISOString().split('T')[0]).order('date', { ascending: false }),
+        sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss').eq('user_id', user.id).eq('sport_type', raceSport).eq('is_race', true).order('started_at', { ascending: false }).limit(5),
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+      ])
+
+      type MetricRow = { date: string; hrv: number | null; readiness: number | null; atl: number | null; ctl: number | null; tsb: number | null; fatigue: number | null }
+      const metrics = (metrics14dRes.data ?? []) as MetricRow[]
+      const hasAtlCtl = metrics.some(m => m.atl != null && m.ctl != null)
+
+      let tsbActuel: number | null = null
+      let tsbProjecte: number | null = null
+      let tsbMethode = ''
+
+      if (hasAtlCtl) {
+        const latest = metrics.find(m => m.tsb != null)
+        tsbActuel = latest?.tsb ?? null
+        const raceDate = new Date(manualMode ? manualDate : (selectedRace?.date ?? new Date().toISOString().split('T')[0]))
+        const daysToRace = Math.max(0, Math.round((raceDate.getTime() - now.getTime()) / 86400000))
+        tsbProjecte = tsbActuel !== null ? Math.round(tsbActuel + daysToRace * 1.5) : null
+        tsbMethode = 'TSB projeté (estimation depuis données ATL/CTL)'
+      } else {
+        // Approximate from recent TSS
+        type ActRow = { tss: number | null; started_at: string }
+        const acts = (recentActsRes.data ?? []) as ActRow[]
+        if (acts.length > 0) {
+          const since42d = new Date(now); since42d.setDate(now.getDate() - 42)
+          const since7d = new Date(now); since7d.setDate(now.getDate() - 7)
+          const acts42 = acts.filter(a => new Date(a.started_at) >= since42d)
+          const acts7 = acts.filter(a => new Date(a.started_at) >= since7d)
+          const ctlApprox = acts42.reduce((s, a) => s + (a.tss ?? 0), 0) / 42
+          const atlApprox = acts7.reduce((s, a) => s + (a.tss ?? 0), 0) / 7
+          tsbActuel = Math.round(ctlApprox - atlApprox)
+          tsbProjecte = tsbActuel
+          tsbMethode = 'TSB projeté (estimation approximative depuis TSS activités)'
+        }
+      }
+
+      const hasZonesOrTests = !!(zonesRes.data || (testsRes.data && testsRes.data.length > 0))
+
+      setContextData({
+        zones: zonesRes.data,
+        tests: testsRes.data ?? [],
+        recentActivities: recentActsRes.data ?? [],
+        metrics14d: metrics,
+        pastRaces: pastRacesRes.data ?? [],
+        profile: profileRes.data,
+        hasAtlCtl,
+        tsbActuel,
+        tsbProjecte,
+        tsbMethode,
+        hasZonesOrTests,
+      })
+    } catch {
+      setContextData(null)
+    } finally {
+      setLoadingContext(false)
+    }
+  }
+
+  async function generate() {
+    if (!contextData) return
+    setPhase('generating')
+    setError(null)
+    try {
+      const raceSport = getRaceSport()
+      const raceDistKm = getRaceDistance() != null ? (getRaceDistance()! / 1000).toFixed(1) : 'non précisé'
+      const raceDenivelé = getRaceDenivelé()
+      const raceDate = manualMode ? manualDate : (selectedRace?.date ?? '')
+      const raceName = manualMode ? `${raceSport} ${raceDistKm}km` : (selectedRace?.name ?? 'Course')
+      const goalTime = getGoalTime() ?? 'non précisé'
+      const parcoursProfil = profilParcours ?? (raceDenivelé != null && raceDenivelé > 500 ? 'Montagneux' : raceDenivelé != null && raceDenivelé > 100 ? 'Vallonné' : 'Plat')
+      const ressentiBrut = ressenti
+
+      const ressentLabel = ['Très fatigué', 'Fatigué', 'Neutre', 'En forme', 'Excellent'][ressentiBrut - 1] ?? 'Neutre'
+
+      const systemPrompt = `Tu es un expert en stratégie de course et performance sportive.
+
+COURSE : ${raceName} · ${raceSport} · ${raceDistKm}km · D+ ${raceDenivelé ?? 0}m · Date : ${raceDate}
+OBJECTIF : ${goalTime} | PROFIL PARCOURS : ${parcoursProfil}
+RESSENTI DE FORME : ${ressentiBrut}/5 (${ressentLabel})
+
+ZONES ${raceSport} : ${contextData.zones ? JSON.stringify(contextData.zones) : 'non configurées'}
+TESTS RÉCENTS : ${JSON.stringify(contextData.tests)}
+ACTIVITÉS ${raceSport} (3 mois) : ${JSON.stringify(contextData.recentActivities)}
+FORME ACTUELLE (14 jours) : ${JSON.stringify(contextData.metrics14d)}
+TSB ACTUEL : ${contextData.tsbActuel ?? 'non disponible'}
+TSB PROJETÉ AU JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextData.tsbMethode})
+COURSES PASSÉES : ${JSON.stringify(contextData.pastRaces)}
+PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}
+
+RÈGLES ABSOLUES :
+1. Toutes les allures/watts DOIVENT venir des données réelles — jamais de valeurs génériques
+2. Si TSB projeté est négatif : ALERTER et proposer une stratégie conservative + objectif B
+3. Si objectif "hors portée" selon les données : le dire clairement avec objectif réaliste
+4. Si pas de zones ET pas de test : stratégie en termes de perception uniquement (RPE)
+
+FORMAT JSON OBLIGATOIRE :
+{
+  "verdict_objectif": { "status": "realiste|ambitieux|hors_portee", "confiance": 0, "detail": "..." },
+  "forme_au_jour_j": { "tsb_actuel": null, "tsb_projete": null, "methode": "...", "verdict": "...", "risque": "..." },
+  "strategie_sections": [
+    { "section": "0-X km", "allure_cible": null, "watts_cibles": null, "zone": "Z3", "pourcentage_ftp": null, "rpe_cible": "6/10", "conseil": "..." }
+  ],
+  "nutrition_course": [
+    { "timing": "0-45min", "glucides_g": 0, "hydratation_ml": 150, "conseil": "..." }
+  ],
+  "gestion_effort": { "depart": "...", "milieu": "...", "final_20pct": "..." },
+  "plan_b": { "declencheur": "...", "action": "...", "objectif_fallback": "..." },
+  "points_cles": ["...", "...", "..."],
+  "sources": ["..."],
+  "confiance": "élevé|modéré|faible",
+  "raison_confiance": "..."
+}`
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'central',
+          modelId: 'athena',
+          messages: [{ role: 'user', content: systemPrompt }],
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No body')
+      const decoder = new TextDecoder()
+      let raw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data: ')) {
+            const d = line.slice(6).trim()
+            if (d === '[DONE]') break
+            try { raw += JSON.parse(d) as string } catch { /* skip */ }
+          }
+        }
+      }
+
+      const jsonMatch = raw.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Réponse non parseable')
+      const parsed = JSON.parse(jsonMatch[0]) as StrategieResult
+      setResult(parsed)
+      if (onRecordConv) {
+        const userMsg = `Stratégie de course — ${raceName} — ${raceDate}`
+        const aiMsg = `Verdict : ${parsed.verdict_objectif.status} (${parsed.verdict_objectif.confiance}% confiance)\n\n${parsed.verdict_objectif.detail}`
+        onRecordConv(userMsg, aiMsg)
+      }
+      setPhase('result')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de génération')
+      setPhase('context')
+    }
+  }
+
+  const SUPPORTED_SPORTS = ['running', 'cycling', 'hyrox', 'gym']
+  const SPORT_LABELS: Record<string, string> = { running: 'Running', cycling: 'Vélo', hyrox: 'Hyrox', gym: 'Gym' }
+  const verdictColor = (s: string) => s === 'realiste' ? '#22c55e' : s === 'ambitieux' ? '#f97316' : '#ef4444'
+  const verdictLabel = (s: string) => s === 'realiste' ? 'Objectif réaliste' : s === 'ambitieux' ? 'Objectif ambitieux' : 'Hors de portée'
+
+  // ── Phase race ──
+  if (phase === 'race') {
+    const today = new Date()
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Stratégie de course
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Choisir une course planifiée ou saisir manuellement
+        </p>
+
+        {loadingRaces ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
+          </div>
+        ) : (
+          <>
+            {races.length > 0 && !manualMode && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                {races.map(r => {
+                  const daysToRace = Math.round((new Date(r.date).getTime() - today.getTime()) / 86400000)
+                  const isImminent = daysToRace <= 7
+                  const isSelected = selectedRace?.id === r.id
+                  return (
+                    <button key={r.id} onClick={() => setSelectedRace(r)} style={{
+                      padding: '10px 12px', borderRadius: 10, textAlign: 'left',
+                      border: `1px solid ${isSelected ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                      background: isSelected ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                      cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: isSelected ? 'var(--ai-accent)' : 'var(--ai-text)' }}>{r.name}</span>
+                        {isImminent && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.15)', color: '#ef4444', letterSpacing: '0.06em' }}>
+                            IMMINENT
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>
+                        {SPORT_LABELS[r.sport] ?? r.sport} · {r.date} {r.goal_time ? `· Objectif : ${r.goal_time}` : ''}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {manualMode ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {SUPPORTED_SPORTS.map(s => (
+                    <button key={s} onClick={() => setManualSport(s)} style={{
+                      flex: 1, padding: '6px', borderRadius: 7, fontSize: 11,
+                      border: `1px solid ${manualSport === s ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                      background: manualSport === s ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                      color: manualSport === s ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                      cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                    }}>
+                      {SPORT_LABELS[s] ?? s}
+                    </button>
+                  ))}
+                </div>
+                <input type="number" placeholder="Distance (km)" value={manualDistance} onChange={e => setManualDistance(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                <input type="number" placeholder="Dénivelé positif (m) — optionnel" value={manualDenivelé} onChange={e => setManualDenivelé(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                <input type="text" placeholder="Objectif de temps — optionnel (ex: 3h30)" value={manualGoalTime} onChange={e => setManualGoalTime(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                <button onClick={() => setManualMode(false)} style={{ fontSize: 11, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                  ← Utiliser une course planifiée
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => { setSelectedRace(null); setManualMode(true) }} style={{
+                width: '100%', padding: '9px', borderRadius: 9, marginBottom: 12,
+                border: '1px solid var(--ai-border)', background: 'transparent',
+                color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
+                fontFamily: 'DM Sans,sans-serif',
+              }}>
+                Saisir manuellement
+              </button>
+            )}
+          </>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Annuler
+          </button>
+          <button
+            onClick={() => setPhase('questions')}
+            disabled={!manualMode && !selectedRace}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: (manualMode || selectedRace) ? 'var(--ai-gradient)' : 'var(--ai-border)',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              cursor: (manualMode || selectedRace) ? 'pointer' : 'not-allowed',
+              fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            Continuer →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase questions ──
+  if (phase === 'questions') {
+    const showProfil = needsProfilQuestion()
+    const showObjectif = needsObjectifQuestion()
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'Syne,sans-serif' }}>
+          Quelques questions
+        </p>
+
+        {showProfil && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Profil du parcours</p>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['Plat', 'Vallonné', 'Montagneux'] as const).map(p => (
+                <button key={p} onClick={() => setProfilParcours(p)} style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 11,
+                  border: `1px solid ${profilParcours === p ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                  background: profilParcours === p ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                  color: profilParcours === p ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                  cursor: 'pointer', fontWeight: profilParcours === p ? 700 : 400,
+                  fontFamily: 'DM Sans,sans-serif',
+                }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Ressenti de forme actuel</p>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[1, 2, 3, 4, 5].map(v => (
+              <button key={v} onClick={() => setRessenti(v)} style={{
+                flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 11,
+                border: `1px solid ${ressenti === v ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                background: ressenti === v ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                color: ressenti === v ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                cursor: 'pointer', fontWeight: ressenti === v ? 700 : 400,
+                fontFamily: 'DM Sans,sans-serif',
+              }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Très fatigué</span>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Excellent</span>
+          </div>
+        </div>
+
+        {showObjectif && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Objectif de temps (optionnel)</p>
+            <input type="text" placeholder="Ex: 3h30, 45min…" value={objectifTemps} onChange={e => setObjectifTemps(e.target.value)}
+              style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }} />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('race')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Retour
+          </button>
+          <button
+            onClick={() => { void loadContext(); setPhase('context') }}
+            disabled={showProfil && profilParcours == null}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              background: (!showProfil || profilParcours != null) ? 'var(--ai-gradient)' : 'var(--ai-border)',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              cursor: (!showProfil || profilParcours != null) ? 'pointer' : 'not-allowed',
+              fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            Continuer →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase context ──
+  if (phase === 'context') {
+    if (loadingContext || contextData == null) {
+      return (
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement du contexte…</p>
+        </div>
+      )
+    }
+
+    if (!contextData.hasZonesOrTests) {
+      return (
+        <div style={{ padding: '8px 0' }}>
+          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: '#f97316', margin: 0, lineHeight: 1.6 }}>
+              Pour des allures personnalisées, configure tes zones dans Performance → Zones ou réalise un test dans Performance → Tests.
+            </p>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 12px', lineHeight: 1.5 }}>
+            Tu peux quand même générer une stratégie basée sur la perception (RPE).
+          </p>
+          {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setPhase('questions')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              Retour
+            </button>
+            <button onClick={() => { void generate() }} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              Générer ma stratégie
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ padding: '8px 0' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+          Contexte chargé
+        </p>
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: 'var(--ai-mid)' }}>Zones configurées</span>
+              <span style={{ color: contextData.zones ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{contextData.zones ? 'Oui' : 'Non'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: 'var(--ai-mid)' }}>Tests récents</span>
+              <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{contextData.tests.length}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: 'var(--ai-mid)' }}>Activités (3 mois)</span>
+              <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{contextData.recentActivities.length}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: 'var(--ai-mid)' }}>TSB actuel (estimé)</span>
+              <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{contextData.tsbActuel ?? 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('questions')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Retour
+          </button>
+          <button onClick={() => { void generate() }} style={{
+            flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+            background: 'var(--ai-gradient)',
+            color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+          }}>
+            Générer ma stratégie
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase generating ──
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '48px 0', textAlign: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          Génération de la stratégie…
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
+          Analyse de ta forme, tes zones et ton historique de courses
+        </p>
+      </div>
+    )
+  }
+
+  // ── Phase result ──
+  if (!result) return null
+
+  const raceName = manualMode ? `${getRaceSport()} ${getRaceDistance() != null ? (getRaceDistance()! / 1000).toFixed(1) + 'km' : ''}` : (selectedRace?.name ?? 'Course')
+  const vc = verdictColor(result.verdict_objectif.status)
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      {/* Verdict card */}
+      <div style={{ padding: '12px', borderRadius: 10, background: `${vc}12`, border: `1px solid ${vc}30`, marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: vc }}>{verdictLabel(result.verdict_objectif.status)}</span>
+          <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{result.verdict_objectif.confiance}% confiance</span>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>{result.verdict_objectif.detail}</p>
+      </div>
+
+      {/* Forme au jour J */}
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+          Forme au jour J
+        </p>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 6 }}>
+          {result.forme_au_jour_j.tsb_actuel != null && (
+            <div>
+              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>TSB actuel</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_actuel >= 0 ? '#22c55e' : '#ef4444', margin: 0 }}>{result.forme_au_jour_j.tsb_actuel}</p>
+            </div>
+          )}
+          {result.forme_au_jour_j.tsb_projete != null && (
+            <div>
+              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>TSB jour J</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_projete >= 0 ? '#22c55e' : '#f97316', margin: 0 }}>{result.forme_au_jour_j.tsb_projete}</p>
+            </div>
+          )}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px' }}>{result.forme_au_jour_j.verdict}</p>
+        {result.forme_au_jour_j.risque && (
+          <p style={{ fontSize: 11, color: '#f97316', margin: 0, fontStyle: 'italic' }}>{result.forme_au_jour_j.risque}</p>
+        )}
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0', fontStyle: 'italic' }}>{result.forme_au_jour_j.methode}</p>
+      </div>
+
+      {/* Stratégie sections */}
+      {result.strategie_sections.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Stratégie par section
+          </p>
+          {result.strategie_sections.map((s, i) => (
+            <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{s.section}</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>{s.zone}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>RPE {s.rpe_cible}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
+                {s.allure_cible && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.allure_cible}</span>}
+                {s.watts_cibles && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.watts_cibles}W</span>}
+                {s.pourcentage_ftp != null && <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{s.pourcentage_ftp}% FTP</span>}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4, fontStyle: 'italic' }}>{s.conseil}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Nutrition */}
+      {result.nutrition_course.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Nutrition course
+          </p>
+          {result.nutrition_course.map((n, i) => (
+            <div key={i} style={{ padding: '7px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', minWidth: 60, flexShrink: 0 }}>{n.timing}</span>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{n.glucides_g}g glucides · {n.hydratation_ml}ml</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{n.conseil}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Gestion effort */}
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+          Gestion de l&apos;effort
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 4px' }}><strong style={{ color: 'var(--ai-text)' }}>Départ :</strong> {result.gestion_effort.depart}</p>
+        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 4px' }}><strong style={{ color: 'var(--ai-text)' }}>Milieu :</strong> {result.gestion_effort.milieu}</p>
+        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Dernier 20% :</strong> {result.gestion_effort.final_20pct}</p>
+      </div>
+
+      {/* Plan B */}
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 6px' }}>
+          Plan B
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Déclencheur :</strong> {result.plan_b.declencheur}</p>
+        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Action :</strong> {result.plan_b.action}</p>
+        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Objectif fallback :</strong> {result.plan_b.objectif_fallback}</p>
+      </div>
+
+      {/* Points clés */}
+      {result.points_cles.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Points clés
+          </p>
+          {result.points_cles.map((p, i) => (
+            <p key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px', paddingLeft: 10 }}>• {p}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Sources + confiance */}
+      <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', fontStyle: 'italic' }}>
+          Confiance : {result.confiance} — {result.raison_confiance}
+        </p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>
+          Course : {raceName} · Sources : {result.sources.join(' · ')}
+        </p>
+      </div>
+
+      <button onClick={onCancel} style={{ display: 'block', margin: '4px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+        Fermer
+      </button>
     </div>
   )
 }
@@ -11088,6 +12759,57 @@ export default function AIPanel({
                       setTimeout(() => areaRef.current?.focus(), 60)
                     }}
                     onCancel={() => setActiveFlow(null)}
+                  />
+                )}
+                {activeFlow === 'estimer_zones' && (
+                  <EstimerZonesFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                    }}
+                  />
+                )}
+                {activeFlow === 'analyser_progression' && (
+                  <AnalyserProgressionFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                    }}
+                  />
+                )}
+                {activeFlow === 'strategie_course' && (
+                  <StrategieCourseFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                    }}
                   />
                 )}
               </div>

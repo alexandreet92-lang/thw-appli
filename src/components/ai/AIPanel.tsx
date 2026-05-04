@@ -1256,23 +1256,27 @@ const WP_SPORTS = ['Cyclisme', 'Running', 'Natation', 'Hyrox', 'Musculation', 'A
 interface WPReport {
   resume: string
   score_global: number
+  profil_athletique: {
+    forces_majeures:   { label: string; detail: string; evidence?: string }[]
+    faiblesses_majeures: { label: string; detail: string; evidence?: string; priority: number }[]
+  }
   sports_analysis: {
     sport: string
     score: number
-    forces: { label: string; detail: string }[]
-    faiblesses: { label: string; detail: string; priority: number }[]
+    profil: string
+    forces:    { label: string; detail: string; evidence?: string }[]
+    faiblesses: { label: string; detail: string; priority: number; evidence?: string }[]
+    evolution: string
   }[]
-  cross_analysis: Record<string, { status: 'ok' | 'warning' | 'critical'; detail: string }>
-  plan_action: { priority: number; action: string; sport: string; impact: string; detail: string }[]
+  diagnostic_entrainement: {
+    resume: string
+    points_positifs: { label: string; detail: string }[]
+    points_negatifs: { label: string; detail: string; priority: number }[]
+    coherence_objectifs: { status: 'ok' | 'warning' | 'critical'; detail: string }
+    recuperation:        { status: 'ok' | 'warning' | 'critical'; detail: string }
+  }
+  plan_action: { priority: number; action: string; sport: string; cible: string; impact: string; detail: string }[]
   sources_used: string[]
-}
-
-const CROSS_LABELS: Record<string, string> = {
-  recuperation:            'Récupération',
-  distribution_intensite:  "Distribution d'intensité",
-  volume_global:           'Volume global',
-  coherence_objectifs:     'Cohérence avec objectifs',
-  equilibre_sports:        'Équilibre entre sports',
 }
 
 function wpScoreColor(score: number): string {
@@ -1321,7 +1325,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { setGateLoading(false); return }
 
-        const since3m = new Date(Date.now() - 90 * 86400000).toISOString()
+        const since1y = new Date(Date.now() - 365 * 86400000).toISOString()
 
         const [profRes, zonesRes, actRes, testsRes, racesRes, healthRes, rulesRes] = await Promise.all([
           sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
@@ -1329,14 +1333,14 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           sb.from('activities')
             .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,avg_hr,max_hr,avg_watts,max_watts,suffer_score')
             .eq('user_id', user.id)
-            .gte('started_at', since3m)
+            .gte('started_at', since1y)
             .order('started_at', { ascending: false })
-            .limit(60),
+            .limit(150),
           sb.from('test_results')
             .select('id,date,valeurs,notes,test_definitions(nom,sport)')
             .eq('user_id', user.id)
             .order('date', { ascending: false })
-            .limit(20),
+            .limit(50),
           sb.from('planned_races')
             .select('name,sport,date,level,goal_time')
             .eq('user_id', user.id)
@@ -1570,22 +1574,18 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
   const scoreColor = wpScoreColor(report.score_global)
   const circumference = 2 * Math.PI * 36
   const dashOffset = circumference * (1 - report.score_global / 100)
+  const diag = report.diagnostic_entrainement
 
   return (
     <div style={{ padding: '4px 0' }}>
 
       {/* ─── 1. Header — score global ─────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
         <svg width="88" height="88" viewBox="0 0 88 88" style={{ flexShrink: 0 }}>
           <circle cx="44" cy="44" r="36" fill="none" stroke="var(--ai-border)" strokeWidth="6" />
-          <circle
-            cx="44" cy="44" r="36"
-            fill="none" stroke={scoreColor} strokeWidth="6"
-            strokeDasharray={circumference}
-            strokeDashoffset={dashOffset}
-            strokeLinecap="round"
-            transform="rotate(-90 44 44)"
-          />
+          <circle cx="44" cy="44" r="36" fill="none" stroke={scoreColor} strokeWidth="6"
+            strokeDasharray={circumference} strokeDashoffset={dashOffset}
+            strokeLinecap="round" transform="rotate(-90 44 44)" />
           <text x="44" y="48" textAnchor="middle" fontSize="18" fontWeight="700" fill={scoreColor} fontFamily="Syne,sans-serif">
             {report.score_global}
           </text>
@@ -1603,65 +1603,95 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         </div>
       </div>
 
-      {/* ─── 2. Analyse par sport — accordéon ─────────────── */}
+      {/* ─── 2. Profil athlétique global ──────────────────── */}
+      {report.profil_athletique && (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+            Profil athlétique
+          </p>
+          {(report.profil_athletique.forces_majeures ?? []).map((f, i) => (
+            <div key={`fg-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{f.label}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
+              {f.evidence && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{f.evidence}</p>}
+            </div>
+          ))}
+          {(report.profil_athletique.faiblesses_majeures ?? []).map((f, i) => (
+            <div key={`fw-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{f.label}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
+                {f.evidence && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{f.evidence}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ─── 3. Analyse par sport — accordéon ─────────────── */}
       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
         Analyse par sport
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-        {report.sports_analysis.map((sa, i) => {
-          const open  = expandedSport === i
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {(report.sports_analysis ?? []).map((sa, i) => {
+          const open   = expandedSport === i
           const sColor = wpScoreColor(sa.score)
           return (
             <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
               <button
                 onClick={() => setExpandedSport(open ? null : i)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 12px', background: 'var(--ai-bg2)',
-                  border: 'none', cursor: 'pointer', textAlign: 'left',
-                }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--ai-bg2)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
               >
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', textTransform: 'capitalize' }}>
-                  {sa.sport}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: sColor, fontVariantNumeric: 'tabular-nums' }}>
-                  {sa.score}/100
-                </span>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', textTransform: 'capitalize' }}>{sa.sport}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: sColor, fontVariantNumeric: 'tabular-nums' }}>{sa.score}/100</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
                   <path d="M6 9l6 6 6-6"/>
                 </svg>
               </button>
-
               {open && (
                 <div style={{ padding: '12px 12px 14px', borderTop: '1px solid var(--ai-border)', background: 'var(--ai-bg)' }}>
-                  {sa.forces.length > 0 && (
+                  {/* Profil type */}
+                  {sa.profil && (
+                    <p style={{ fontSize: 11, color: 'var(--ai-mid)', fontStyle: 'italic', margin: '0 0 10px', lineHeight: 1.4 }}>
+                      {sa.profil}
+                    </p>
+                  )}
+                  {/* Forces */}
+                  {(sa.forces ?? []).length > 0 && (
                     <>
                       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#22c55e', margin: '0 0 6px' }}>Forces</p>
-                      {sa.forces.map((f, fi) => (
+                      {(sa.forces ?? []).map((f, fi) => (
                         <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
                           <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{f.label}</p>
-                          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{f.detail}</p>
+                          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
+                          {f.evidence && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{f.evidence}</p>}
                         </div>
                       ))}
                     </>
                   )}
-                  {sa.faiblesses.length > 0 && (
+                  {/* Faiblesses */}
+                  {(sa.faiblesses ?? []).length > 0 && (
                     <>
-                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444', margin: `${sa.forces.length > 0 ? '10px' : '0'} 0 6px` }}>Faiblesses</p>
-                      {sa.faiblesses
-                        .sort((a, b) => a.priority - b.priority)
-                        .map((f, fi) => (
-                          <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>
-                              P{f.priority}
-                            </span>
-                            <div>
-                              <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{f.label}</p>
-                              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{f.detail}</p>
-                            </div>
+                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444', margin: `${(sa.forces ?? []).length > 0 ? '10px' : '0'} 0 6px` }}>Faiblesses</p>
+                      {(sa.faiblesses ?? []).sort((a, b) => a.priority - b.priority).map((f, fi) => (
+                        <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
+                          <div>
+                            <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{f.label}</p>
+                            <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
+                            {f.evidence && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{f.evidence}</p>}
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </>
+                  )}
+                  {/* Évolution */}
+                  {sa.evolution && (
+                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>Tendance</p>
+                      <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{sa.evolution}</p>
+                    </div>
                   )}
                 </div>
               )}
@@ -1670,82 +1700,94 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         })}
       </div>
 
-      {/* ─── 3. Analyse croisée ───────────────────────────── */}
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-        Analyse croisée
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 20 }}>
-        {Object.entries(report.cross_analysis).map(([key, val]) => {
-          const col = wpStatusColor(val.status)
-          return (
-            <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)' }}>
-                  {CROSS_LABELS[key] ?? key}
-                </span>
+      {/* ─── 4. Diagnostic de l'entraînement ─────────────── */}
+      {diag && (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+            Diagnostic de l&apos;entraînement
+          </p>
+          {diag.resume && (
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px', lineHeight: 1.6 }}>{diag.resume}</p>
+          )}
+          {/* Points positifs */}
+          {(diag.points_positifs ?? []).map((p, i) => (
+            <div key={`dp-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{p.label}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{p.detail}</p>
+            </div>
+          ))}
+          {/* Points négatifs */}
+          {(diag.points_negatifs ?? []).sort((a, b) => a.priority - b.priority).map((p, i) => (
+            <div key={`dn-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{p.priority}</span>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{p.label}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{p.detail}</p>
               </div>
-              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{val.detail}</p>
+            </div>
+          ))}
+          {/* 2 indicateurs statut */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
+            {([
+              { key: 'coherence_objectifs', label: 'Cohérence objectifs', val: diag.coherence_objectifs },
+              { key: 'recuperation',        label: 'Récupération',        val: diag.recuperation },
+            ] as const).map(({ key, label, val }) => val ? (
+              <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: wpStatusColor(val.status), flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)' }}>{label}</span>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{val.detail}</p>
+              </div>
+            ) : null)}
+          </div>
+        </div>
+      )}
+
+      {/* ─── 5. Plan d'action ────────────────────────────── */}
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+        Plan d&apos;action
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {(report.plan_action ?? []).sort((a, b) => a.priority - b.priority).map((act, i) => {
+          const open = expandedAction === i
+          return (
+            <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
+              <button
+                onClick={() => setExpandedAction(open ? null : i)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--ai-bg2)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                  P{act.priority}
+                </span>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)' }}>{act.action}</span>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'capitalize', flexShrink: 0 }}>{act.sport}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              {open && (
+                <div style={{ padding: '10px 12px 12px', borderTop: '1px solid var(--ai-border)', background: 'var(--ai-bg)' }}>
+                  {act.cible && (
+                    <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 6px', fontStyle: 'italic' }}>{act.cible}</p>
+                  )}
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', margin: '0 0 6px' }}>{act.impact}</p>
+                  <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6 }}>{act.detail}</p>
+                </div>
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* ─── 4. Plan d'action ────────────────────────────── */}
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-        Plan d&apos;action
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-        {report.plan_action
-          .sort((a, b) => a.priority - b.priority)
-          .map((act, i) => {
-            const open = expandedAction === i
-            return (
-              <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
-                <button
-                  onClick={() => setExpandedAction(open ? null : i)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '10px 12px', background: 'var(--ai-bg2)',
-                    border: 'none', cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
-                    P{act.priority}
-                  </span>
-                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)' }}>
-                    {act.action}
-                  </span>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'capitalize', flexShrink: 0 }}>
-                    {act.sport}
-                  </span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-                {open && (
-                  <div style={{ padding: '10px 12px 12px', borderTop: '1px solid var(--ai-border)', background: 'var(--ai-bg)' }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', margin: '0 0 6px' }}>
-                      {act.impact}
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6 }}>
-                      {act.detail}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-      </div>
-
-      {/* ─── 5. Sources ──────────────────────────────────── */}
-      {report.sources_used.length > 0 && (
+      {/* ─── 6. Sources ──────────────────────────────────── */}
+      {(report.sources_used ?? []).length > 0 && (
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
           Sources : {report.sources_used.join(', ')}
         </p>
       )}
 
-      {/* ─── 6. Fermer ───────────────────────────────────── */}
+      {/* ─── 7. Fermer ───────────────────────────────────── */}
       <button onClick={onCancel} style={{
         width: '100%', padding: '10px', borderRadius: 10,
         border: '1px solid var(--ai-border)', background: 'transparent',

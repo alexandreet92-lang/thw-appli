@@ -20,18 +20,36 @@ async function postHandler(req: NextRequest): Promise<Response> {
     const client = getAnthropicClient()
 
     const systemPrompt = `Tu es un coach sportif expert en analyse de performance.
-Tu dois identifier les points faibles de l'athlète en croisant TOUTES les données disponibles.
-Tu réponds UNIQUEMENT avec un objet JSON valide correspondant exactement au schéma demandé.
-Zéro texte avant ou après le JSON. Zéro commentaire dans le JSON.
 
-Critères d'analyse :
-- Volume et régularité : l'athlète s'entraîne-t-il assez ? Régulièrement ?
-- Distribution d'intensité : trop de Z3 pas assez de Z1-Z2 ? Pas assez de haute intensité ?
-- Progression ou stagnation : les performances s'améliorent-elles ?
-- Équilibre entre sports : s'il est triathlète, est-il bon partout ou a-t-il un maillon faible ?
-- Récupération : signes de surcharge ? Mauvais sommeil ?
-- Lacunes par rapport aux objectifs de course : a-t-il les capacités pour ses courses prévues ?
-- Zones : sont-elles à jour et cohérentes avec les données récentes ?`
+TON RÔLE : identifier les POINTS FAIBLES INTRINSÈQUES de l'athlète dans les disciplines demandées — PAS critiquer son entraînement récent.
+
+MÉTHODE D'ANALYSE EN 2 PARTIES DISTINCTES :
+
+PARTIE 1 — PROFIL ATHLÉTIQUE & POINTS FAIBLES (la plus importante)
+Analyse le profil GLOBAL de l'athlète sur toute la durée des données disponibles (jusqu'à 12 mois).
+Identifie les faiblesses fondamentales dans chaque discipline :
+- Capacité aérobie (VO2max, seuil lactique, endurance fondamentale)
+- Puissance / vitesse maximale
+- Endurance de force (capacité à maintenir l'effort longtemps)
+- Technique / cadence / économie de course ou de pédalage
+- Capacité à performer en compétition vs entraînement
+- Points de rupture : à quelle distance ou durée la performance se dégrade
+- Déséquilibres entre disciplines (si multi-sport)
+Base-toi sur : l'évolution des performances dans le temps, les résultats de tests, les records personnels, les zones d'entraînement, les données physiologiques (FC, puissance, allure) sur des efforts comparables.
+
+PARTIE 2 — DIAGNOSTIC DE L'ENTRAÎNEMENT ACTUEL (secondaire)
+Ensuite seulement, analyse si l'entraînement actuel (dernières semaines) adresse ou aggrave ces points faibles :
+- Distribution d'intensité : est-elle adaptée aux faiblesses identifiées ?
+- Volume : suffisant pour les objectifs ?
+- Cohérence avec les courses à venir
+- Récupération : signes de surcharge ?
+
+IMPORTANT :
+- Ne confonds PAS "l'athlète n'a pas fait de Z5 ce mois-ci" (diagnostic entraînement) avec "l'athlète a un déficit de VO2max" (point faible intrinsèque). Le premier est une observation sur le plan, le second est un profil physiologique.
+- Utilise les TENDANCES sur plusieurs mois, pas juste les données récentes.
+- Compare les performances de l'athlète à différentes époques pour détecter les stagnations ou régressions.
+
+Tu réponds UNIQUEMENT avec un objet JSON valide. Zéro texte avant ou après.`
 
     const userPrompt = `Analyse les points faibles de cet athlète dans : ${body.sports.join(', ')}
 
@@ -41,10 +59,10 @@ ${JSON.stringify(body.profile, null, 2)}
 ZONES D'ENTRAÎNEMENT :
 ${JSON.stringify(body.zones, null, 2)}
 
-ACTIVITÉS (3 DERNIERS MOIS) :
+ACTIVITÉS (12 DERNIERS MOIS) :
 ${JSON.stringify(body.activities, null, 2)}
 
-RÉSULTATS DE TESTS :
+RÉSULTATS DE TESTS (historique complet) :
 ${JSON.stringify(body.testResults, null, 2)}
 
 COURSES PLANIFIÉES :
@@ -57,37 +75,52 @@ ${body.aiRules.length > 0 ? `RÈGLES PERSONNELLES À RESPECTER :\n${body.aiRules
 
 Retourne EXACTEMENT ce JSON :
 {
-  "resume": "Résumé global en 2-3 phrases de l'état de l'athlète",
+  "resume": "Résumé global en 3-4 phrases des forces et faiblesses fondamentales de l'athlète",
   "score_global": 65,
+  "profil_athletique": {
+    "forces_majeures": [
+      { "label": "Endurance fondamentale solide", "detail": "Explication basée sur les données historiques", "evidence": "Données qui le prouvent (ex: FC stable à 145bpm sur 2h, progression constante sur semi-marathon)" }
+    ],
+    "faiblesses_majeures": [
+      { "label": "Déficit de puissance maximale aérobie", "detail": "Explication", "evidence": "Données qui le prouvent", "priority": 1 }
+    ]
+  },
   "sports_analysis": [
     {
       "sport": "course à pied",
       "score": 70,
+      "profil": "Type d'athlète dans ce sport (ex: endurant mais manque de vitesse, puissant mais manque de fond)",
       "forces": [
-        { "label": "Régularité du volume", "detail": "Explication courte" }
+        { "label": "Bonne endurance de base", "detail": "Explication", "evidence": "Données" }
       ],
       "faiblesses": [
-        { "label": "Manque de travail en Z5", "detail": "Explication courte", "priority": 1 }
-      ]
+        { "label": "VMA insuffisante pour objectif 10km sub-40", "detail": "Explication", "priority": 1, "evidence": "Données" }
+      ],
+      "evolution": "Tendance sur les derniers mois : progression, stagnation ou régression, avec explication"
     }
   ],
-  "cross_analysis": {
-    "recuperation": { "status": "ok|warning|critical", "detail": "Explication" },
-    "distribution_intensite": { "status": "ok|warning|critical", "detail": "Explication" },
-    "volume_global": { "status": "ok|warning|critical", "detail": "Explication" },
-    "coherence_objectifs": { "status": "ok|warning|critical", "detail": "Explication" },
-    "equilibre_sports": { "status": "ok|warning|critical", "detail": "Explication" }
+  "diagnostic_entrainement": {
+    "resume": "L'entraînement actuel adresse-t-il les faiblesses identifiées ?",
+    "points_positifs": [
+      { "label": "Bon volume hebdomadaire", "detail": "Explication" }
+    ],
+    "points_negatifs": [
+      { "label": "Pas assez de travail spécifique haute intensité", "detail": "Explication", "priority": 1 }
+    ],
+    "coherence_objectifs": { "status": "ok", "detail": "L'entraînement est-il cohérent avec les courses prévues ?" },
+    "recuperation": { "status": "warning", "detail": "État de récupération" }
   },
   "plan_action": [
     {
       "priority": 1,
-      "action": "Ajouter 1 séance VMA courte par semaine",
+      "action": "Intégrer 1 séance VMA courte (6x800m) par semaine",
       "sport": "course à pied",
-      "impact": "Amélioration VO2max estimée +3% en 6 semaines",
-      "detail": "Explication détaillée de pourquoi et comment"
+      "cible": "Faiblesse visée : déficit VO2max",
+      "impact": "Amélioration estimée et en combien de temps",
+      "detail": "Explication détaillée du pourquoi et du comment"
     }
   ],
-  "sources_used": ["activités 3 mois", "zones course", "tests VMA", "planning courses"]
+  "sources_used": ["activités 12 mois (N activités)", "tests VMA/FTP", "zones FC/allure/puissance", "courses planifiées", "données récupération"]
 }`
 
     const response = await client.messages.create({

@@ -12,8 +12,30 @@
 // (comparé côté client via NEXT_PUBLIC_CREATOR_USER_ID).
 // ══════════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import type { DailyBrief, BriefIdea, RawIdea } from '@/lib/marketing/types'
+
+// ── Marketing constants ────────────────────────────────────────
+const MKT_PILLAR_COLORS: Record<string, string> = {
+  athlete: '#00c8e0',
+  expert:  '#5b6fff',
+  builder: '#f59e0b',
+}
+const MKT_TIER: Record<string, { label: string; color: string }> = {
+  express:  { label: 'EXPRESS · 5 min',  color: '#10b981' },
+  standard: { label: 'STANDARD · 20 min', color: '#5b6fff' },
+  deep:     { label: 'DEEP · 1h+',        color: '#ef4444' },
+}
+
+interface MktContextSummary {
+  activities_count: number; commits_count: number
+  raw_ideas_count: number;  recent_posts_count: number
+}
+interface MktHistoryItem {
+  id: string; brief_date: string; brief_content: DailyBrief
+  tokens_in: number; tokens_out: number; generation_ms: number
+}
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -338,6 +360,72 @@ export default function BriefingPage() {
 
   const [activeTab, setActiveTab]           = useState<TabKey>('ia_tech')
   const [activeSubIndex, setActiveSubIndex] = useState(0)
+
+  // ── Marketing state (visible uniquement si isCreator) ────────
+  const [mktBrief,    setMktBrief]    = useState<DailyBrief | null>(null)
+  const [mktLoading,  setMktLoading]  = useState(false)
+  const [mktError,    setMktError]    = useState<string | null>(null)
+  const [mktCtxSum,   setMktCtxSum]   = useState<MktContextSummary | null>(null)
+  const [mktIdeas,    setMktIdeas]    = useState<RawIdea[]>([])
+  const [mktHistory,  setMktHistory]  = useState<MktHistoryItem[]>([])
+  const [mktNewIdea,  setMktNewIdea]  = useState('')
+  const [mktNewCtx,   setMktNewCtx]   = useState('')
+
+  const loadMktHistory = useCallback(async () => {
+    const res = await fetch('/api/marketing/daily-brief')
+    if (!res.ok) return
+    const json = await res.json() as { briefs: MktHistoryItem[] }
+    setMktHistory(json.briefs ?? [])
+    const today = new Date().toISOString().split('T')[0]
+    const todayBrief = (json.briefs ?? []).find(b => b.brief_date === today)
+    if (todayBrief) setMktBrief(todayBrief.brief_content)
+  }, [])
+
+  const loadMktIdeas = useCallback(async () => {
+    const res = await fetch('/api/marketing/ideas')
+    if (!res.ok) return
+    const json = await res.json() as { ideas: RawIdea[] }
+    setMktIdeas(json.ideas ?? [])
+  }, [])
+
+  // Charge les données marketing dès que l'on sait que c'est le créateur
+  useEffect(() => {
+    if (!isCreator) return
+    void loadMktHistory()
+    void loadMktIdeas()
+  }, [isCreator, loadMktHistory, loadMktIdeas])
+
+  async function generateMktBrief() {
+    setMktLoading(true); setMktError(null)
+    try {
+      const res  = await fetch('/api/marketing/daily-brief', { method: 'POST' })
+      const json = await res.json() as { brief?: DailyBrief; error?: string; context_summary?: MktContextSummary }
+      if (!res.ok) throw new Error(json.error ?? 'Erreur génération')
+      setMktBrief(json.brief ?? null)
+      setMktCtxSum(json.context_summary ?? null)
+      void loadMktHistory()
+      void loadMktIdeas()
+    } catch (err) {
+      setMktError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setMktLoading(false)
+    }
+  }
+
+  async function addMktIdea() {
+    if (!mktNewIdea.trim()) return
+    const res = await fetch('/api/marketing/ideas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: mktNewIdea, context: mktNewCtx || undefined }),
+    })
+    if (res.ok) { setMktNewIdea(''); setMktNewCtx(''); void loadMktIdeas() }
+  }
+
+  async function deleteMktIdea(id: string) {
+    await fetch(`/api/marketing/ideas?id=${id}`, { method: 'DELETE' })
+    void loadMktIdeas()
+  }
 
   // Reset du sous-tab quand on change de catégorie principale
   useEffect(() => { setActiveSubIndex(0) }, [activeTab])
@@ -889,6 +977,279 @@ export default function BriefingPage() {
           )}
         </section>
       )}
+
+      {/* ─────────── SECTION 4 : MARKETING (créateur only) ──────────── */}
+      {isCreator && (
+        <section style={{ marginTop: 40 }}>
+
+          {/* Séparateur visuel */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24,
+          }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border, rgba(0,0,0,0.08))' }} />
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
+              textTransform: 'uppercase', color: '#f59e0b',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+              </svg>
+              Marketing
+            </span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border, rgba(0,0,0,0.08))' }} />
+          </div>
+
+          {/* Bouton générer + résumé contexte */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+            <button
+              onClick={() => { void generateMktBrief() }}
+              disabled={mktLoading}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+                color: 'white', border: 'none',
+                padding: '10px 20px', borderRadius: 10,
+                fontSize: 14, fontWeight: 600,
+                cursor: mktLoading ? 'wait' : 'pointer',
+                opacity: mktLoading ? 0.65 : 1,
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+            >
+              {mktLoading ? 'Génération…' : 'Générer le brief du jour'}
+            </button>
+            {mktCtxSum && (
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                {mktCtxSum.activities_count} activités · {mktCtxSum.commits_count} commits · {mktCtxSum.raw_ideas_count} idées · {mktCtxSum.recent_posts_count} posts
+              </span>
+            )}
+          </div>
+
+          {mktError && (
+            <div style={{
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+              padding: '10px 14px', borderRadius: 8, marginBottom: 14,
+              fontSize: 13, color: '#ef4444',
+            }}>
+              {mktError}
+            </div>
+          )}
+
+          {/* Brief du jour */}
+          {mktBrief && (
+            <div style={{ marginBottom: 32 }}>
+              <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 12 }}>
+                Brief du {mktBrief.date}
+              </p>
+
+              {/* Analyse hebdo */}
+              {mktBrief.weekly_analysis && (
+                <div style={{
+                  ...card,
+                  background: 'rgba(245,158,11,0.04)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  padding: 14, marginBottom: 16,
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>
+                    <strong>Équilibre</strong> — Athlète&nbsp;{mktBrief.weekly_analysis.pillar_balance.athlete} · Expert&nbsp;{mktBrief.weekly_analysis.pillar_balance.expert} · Builder&nbsp;{mktBrief.weekly_analysis.pillar_balance.builder}
+                    &nbsp;·&nbsp;Urgence&nbsp;<strong>{mktBrief.weekly_analysis.urgency}</strong>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-mid)' }}>
+                    {mktBrief.weekly_analysis.recommendation}
+                  </div>
+                </div>
+              )}
+
+              {/* Idées */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {mktBrief.ideas?.map((idea, i) => (
+                  <MktIdeaCard key={i} idea={idea} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Banque d'idées brutes */}
+          <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 10 }}>
+            Idées brutes
+          </p>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+            Balance ici tes pensées en footing, lecture, conversation. L&apos;agent les utilise dans les prochains briefs.
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <textarea
+              value={mktNewIdea}
+              onChange={e => setMktNewIdea(e.target.value)}
+              placeholder="Une pensée, un sujet, une remarque…"
+              rows={2}
+              style={{
+                flex: '1 1 260px', padding: '10px 12px', borderRadius: 8,
+                border: '1px solid var(--border, rgba(0,0,0,0.1))',
+                fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                resize: 'vertical', background: 'var(--bg2)',
+                color: 'var(--text)',
+              }}
+            />
+            <input
+              value={mktNewCtx}
+              onChange={e => setMktNewCtx(e.target.value)}
+              placeholder="Contexte (optionnel)"
+              style={{
+                flex: '0 1 180px', padding: '10px 12px', borderRadius: 8,
+                border: '1px solid var(--border, rgba(0,0,0,0.1))',
+                fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                background: 'var(--bg2)', color: 'var(--text)',
+              }}
+            />
+            <button
+              onClick={() => { void addMktIdea() }}
+              disabled={!mktNewIdea.trim()}
+              style={{
+                background: mktNewIdea.trim() ? '#1a1a1a' : 'var(--border)',
+                color: 'white', border: 'none',
+                padding: '0 18px', borderRadius: 8,
+                fontSize: 13, fontWeight: 600,
+                cursor: mktNewIdea.trim() ? 'pointer' : 'not-allowed',
+                opacity: mktNewIdea.trim() ? 1 : 0.4,
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+            >
+              Ajouter
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 32 }}>
+            {mktIdeas.length === 0 && (
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', fontStyle: 'italic', margin: 0 }}>
+                Aucune idée pour l&apos;instant.
+              </p>
+            )}
+            {mktIdeas.map(idea => (
+              <div key={idea.id} style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '10px 12px',
+                ...card,
+                opacity: idea.used ? 0.5 : 1,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text)' }}>{idea.content}</div>
+                  {idea.context && (
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>
+                      [{idea.context}]
+                    </div>
+                  )}
+                  {idea.used && (
+                    <div style={{ fontSize: 11, color: '#10b981', marginTop: 3 }}>✓ utilisée</div>
+                  )}
+                </div>
+                <button
+                  onClick={() => { void deleteMktIdea(idea.id) }}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    color: 'var(--text-dim)', cursor: 'pointer',
+                    fontSize: 18, lineHeight: 1, padding: 0,
+                  }}
+                  aria-label="Supprimer"
+                >×</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Historique */}
+          {mktHistory.length > 0 && (
+            <>
+              <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 10 }}>
+                Historique
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {mktHistory.slice(0, 10).map(h => (
+                  <details key={h.id} style={{ ...card, padding: 12 }}>
+                    <summary style={{ cursor: 'pointer', fontSize: 13 }}>
+                      <strong>{h.brief_date}</strong> · {h.brief_content?.ideas?.length ?? 0} idées · {h.tokens_in ?? 0}+{h.tokens_out ?? 0} tokens · {h.generation_ms ?? 0}ms
+                    </summary>
+                    <pre style={{
+                      fontSize: 11, marginTop: 8, overflow: 'auto',
+                      maxHeight: 320, background: 'var(--bg2)',
+                      padding: 10, borderRadius: 6,
+                    }}>
+                      {JSON.stringify(h.brief_content, null, 2)}
+                    </pre>
+                  </details>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+    </div>
+  )
+}
+
+// ── Carte idée marketing ───────────────────────────────────────
+
+function MktIdeaCard({ idea }: { idea: BriefIdea }) {
+  const tier    = MKT_TIER[idea.tier]    ?? MKT_TIER.standard
+  const pillarC = MKT_PILLAR_COLORS[idea.pillar] ?? '#666'
+  return (
+    <div style={{ ...card, padding: 18, position: 'relative' } as React.CSSProperties}>
+      {/* Badges */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: tier.color, color: '#fff', letterSpacing: 0.4 }}>
+          {tier.label}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: pillarC, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          {idea.pillar}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: '#1a1a1a', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          {idea.format}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto', alignSelf: 'center' }}>
+          ~{idea.production_minutes} min
+        </span>
+      </div>
+
+      {/* Hook */}
+      <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 10px', lineHeight: 1.35, color: 'var(--text)' }}>
+        {idea.hook}
+      </h3>
+
+      {/* Structure */}
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Structure</div>
+      <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', color: 'var(--text-mid)', marginBottom: 12 }}>{idea.structure}</div>
+
+      {/* Caption */}
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Caption</div>
+      <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', background: 'var(--bg2, rgba(0,0,0,0.03))', padding: '10px 12px', borderRadius: 8, marginBottom: 10, color: 'var(--text-mid)' }}>
+        {idea.caption}
+      </div>
+
+      {/* Hashtags */}
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+        {idea.hashtags?.map(h => (
+          <span key={h} style={{ fontSize: 12, color: '#5b6fff', background: 'rgba(91,111,255,0.1)', padding: '2px 8px', borderRadius: 6 }}>
+            #{h.replace(/^#/, '')}
+          </span>
+        ))}
+      </div>
+
+      {/* Why it works */}
+      <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', borderTop: '1px solid var(--border, rgba(0,0,0,0.06))', paddingTop: 8 }}>
+        💡 {idea.why_it_works}
+      </div>
+
+      {/* Copier */}
+      <button
+        onClick={() => {
+          const text = `${idea.caption}\n\n${idea.hashtags?.map(h => `#${h.replace(/^#/, '')}`).join(' ') ?? ''}`
+          void navigator.clipboard?.writeText(text)
+        }}
+        style={{
+          position: 'absolute', top: 14, right: 14,
+          background: 'transparent', border: '1px solid var(--border, rgba(0,0,0,0.1))',
+          borderRadius: 6, padding: '3px 9px', fontSize: 11,
+          cursor: 'pointer', color: 'var(--text-dim)',
+        }}
+      >Copier</button>
     </div>
   )
 }

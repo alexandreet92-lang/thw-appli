@@ -474,29 +474,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           {label}
         </button>
 
-        {/* ── Marketing (admin only — invisible aux autres utilisateurs) */}
-        {profile?.email &&
-          profile.email.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '').toLowerCase() && (
-          <>
-            <div style={{
-              height: 1,
-              background: 'var(--nav-border)',
-              margin: '6px 4px 4px',
-              opacity: 0.5,
-            }} />
-            <NavItem
-              href="/admin/marketing"
-              label="Marketing"
-              icon={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                  <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-                </svg>
-              }
-              active={pathname === '/admin/marketing'}
-              onClick={onClose}
-            />
-          </>
-        )}
       </div>
     </div>
   )

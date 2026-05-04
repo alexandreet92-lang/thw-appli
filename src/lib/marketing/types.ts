@@ -72,3 +72,56 @@ export interface CommitContext {
   message: string;
   sha: string;
 }
+
+// ── Instagram Insights ─────────────────────────────────────────
+
+export interface InstaTopPost {
+  caption_excerpt: string;
+  format: "reel" | "carousel" | "photo";
+  likes: number;
+  saves: number;
+  reach: number;
+  comments?: number;
+}
+
+export interface InstaDemographics {
+  age_groups?: Record<string, number>;
+  gender?: Record<string, number>;
+  top_locations?: string[];
+}
+
+export interface InstaSnapshot {
+  id: string;
+  snapshot_date: string;
+  period_start: string | null;
+  period_end: string | null;
+  reach_total: number | null;
+  impressions_total: number | null;
+  followers_count: number | null;
+  followers_delta_7d: number | null;
+  top_posts: InstaTopPost[] | null;
+  audience_demographics: InstaDemographics | null;
+  insights_summary: string | null;
+  best_format: string | null;
+  best_posting_times: Record<string, number> | null;
+  raw_extracted_text?: string | null;
+  screenshot_count?: number | null;
+}
+
+// Retour de Claude Vision avant sauvegarde en base
+export interface InstaInsights {
+  reach_total: number | null;
+  impressions_total: number | null;
+  profile_visits: number | null;
+  followers_count: number | null;
+  followers_delta_7d: number | null;
+  top_posts: InstaTopPost[];
+  audience_demographics: InstaDemographics | null;
+  insights_summary: string;
+  best_format: "reel" | "carousel" | "photo" | null;
+  best_posting_times: Record<string, number> | null;
+  period_start: string | null;
+  period_end: string | null;
+  raw_extracted_text: string;
+  ambiguities?: string[];
+}

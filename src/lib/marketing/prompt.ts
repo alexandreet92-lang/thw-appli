@@ -150,6 +150,7 @@ export function buildUserPrompt(context: {
   rawIdeas: RawIdeaContext[];
   recentPosts: RecentPostContext[];
   todayDate: string;
+  instaSnapshot?: InstaSnapshotContext | null;
 }) {
   return `Génère le brief marketing pour aujourd'hui ${context.todayDate}.
 
@@ -181,6 +182,19 @@ ${context.recentPosts.length === 0
     ? "Aucun post publié récemment. URGENT : il faut réamorcer le rythme."
     : context.recentPosts.map(p => `- ${p.published_at} [${p.pillar}/${p.format}] : "${p.hook}" (likes: ${p.likes ?? 0})`).join("\n")}
 
+═══════════════════════════════════════════
+INSTAGRAM INSIGHTS (dernier snapshot disponible)
+═══════════════════════════════════════════
+${!context.instaSnapshot
+    ? "Aucun snapshot Instagram disponible."
+    : `Période : ${context.instaSnapshot.period_start ?? "?"} → ${context.instaSnapshot.period_end ?? "?"}
+Reach total : ${context.instaSnapshot.reach_total ?? "N/A"}
+Impressions : ${context.instaSnapshot.impressions_total ?? "N/A"}
+Followers : ${context.instaSnapshot.followers_count ?? "N/A"} (delta 7j : ${context.instaSnapshot.followers_delta_7d !== null ? (context.instaSnapshot.followers_delta_7d >= 0 ? "+" : "") + context.instaSnapshot.followers_delta_7d : "N/A"})
+Meilleur format : ${context.instaSnapshot.best_format ?? "N/A"}
+Résumé : ${context.instaSnapshot.insights_summary ?? "N/A"}
+Top posts : ${JSON.stringify(context.instaSnapshot.top_posts ?? [])}`}
+
 Génère le brief en respectant strictement le format JSON demandé.`;
 }
 
@@ -209,4 +223,15 @@ interface RecentPostContext {
   format: string | null;
   hook: string | null;
   likes: number | null;
+}
+interface InstaSnapshotContext {
+  period_start: string | null;
+  period_end: string | null;
+  reach_total: number | null;
+  impressions_total: number | null;
+  followers_count: number | null;
+  followers_delta_7d: number | null;
+  best_format: string | null;
+  insights_summary: string | null;
+  top_posts: unknown[] | null;
 }

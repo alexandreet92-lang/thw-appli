@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ActivityContext, CommitContext, RawIdea } from "./types";
+import type { ActivityContext, CommitContext, RawIdea, InstaSnapshot } from "./types";
 
 /**
  * Récupère les activités Strava des 7 derniers jours depuis Supabase.
@@ -141,4 +141,26 @@ export async function fetchRecentPosts(
     return [];
   }
   return data ?? [];
+}
+
+/**
+ * Récupère le dernier snapshot Instagram Insights.
+ */
+export async function fetchLatestInstaSnapshot(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<InstaSnapshot | null> {
+  const { data, error } = await supabase
+    .from("instagram_insights_snapshots")
+    .select("*")
+    .eq("user_id", userId)
+    .order("snapshot_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[marketing] fetchLatestInstaSnapshot error:", error);
+    return null;
+  }
+  return data as InstaSnapshot | null;
 }

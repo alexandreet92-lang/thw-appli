@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { DailyBrief, BriefIdea, RawIdea } from '@/lib/marketing/types'
+import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from '@/lib/marketing/types'
 
 // ── Marketing constants ────────────────────────────────────────
 const MKT_PILLAR_COLORS: Record<string, string> = {
@@ -371,6 +371,43 @@ export default function BriefingPage() {
   const [mktNewIdea,  setMktNewIdea]  = useState('')
   const [mktNewCtx,   setMktNewCtx]   = useState('')
 
+  // ── Instagram Insights state ───────────────────────────────
+  const [instaSnapshots,   setInstaSnapshots]   = useState<InstaSnapshot[]>([])
+  const [instaUploading,   setInstaUploading]   = useState(false)
+  const [instaError,       setInstaError]       = useState<string | null>(null)
+  const [instaDragOver,    setInstaDragOver]    = useState(false)
+  const [instaAmbiguities, setInstaAmbiguities] = useState<string[]>([])
+
+  const loadInstaSnapshots = useCallback(async () => {
+    const res = await fetch('/api/marketing/insta-upload')
+    if (!res.ok) return
+    const json = await res.json() as { snapshots: InstaSnapshot[] }
+    setInstaSnapshots(json.snapshots ?? [])
+  }, [])
+
+  async function uploadInstaScreenshots(files: FileList | File[]) {
+    const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (arr.length === 0) return
+    setInstaUploading(true)
+    setInstaError(null)
+    setInstaAmbiguities([])
+    try {
+      const form = new FormData()
+      arr.forEach(f => form.append('screenshots', f))
+      const res = await fetch('/api/marketing/insta-upload', { method: 'POST', body: form })
+      const json = await res.json() as { insights?: unknown; error?: string; ambiguities?: string[] }
+      if (!res.ok) throw new Error(json.error ?? 'Erreur upload')
+      if (json.ambiguities && json.ambiguities.length > 0) {
+        setInstaAmbiguities(json.ambiguities)
+      }
+      void loadInstaSnapshots()
+    } catch (err) {
+      setInstaError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setInstaUploading(false)
+    }
+  }
+
   const loadMktHistory = useCallback(async () => {
     const res = await fetch('/api/marketing/daily-brief')
     if (!res.ok) return
@@ -393,7 +430,8 @@ export default function BriefingPage() {
     if (!isCreator) return
     void loadMktHistory()
     void loadMktIdeas()
-  }, [isCreator, loadMktHistory, loadMktIdeas])
+    void loadInstaSnapshots()
+  }, [isCreator, loadMktHistory, loadMktIdeas, loadInstaSnapshots])
 
   async function generateMktBrief() {
     setMktLoading(true); setMktError(null)
@@ -1155,6 +1193,98 @@ export default function BriefingPage() {
             ))}
           </div>
 
+          {/* Instagram Insights */}
+          <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 10 }}>
+            Instagram Insights
+          </p>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+            Dépose tes screenshots Insights pour que l&apos;IA les analyse et enrichisse le prochain brief.
+          </p>
+
+          {/* Drop zone */}
+          <div
+            onDragOver={e => { e.preventDefault(); setInstaDragOver(true) }}
+            onDragLeave={() => setInstaDragOver(false)}
+            onDrop={e => {
+              e.preventDefault(); setInstaDragOver(false)
+              void uploadInstaScreenshots(e.dataTransfer.files)
+            }}
+            onClick={() => {
+              const inp = document.createElement('input')
+              inp.type = 'file'; inp.multiple = true; inp.accept = 'image/*'
+              inp.onchange = () => { if (inp.files) void uploadInstaScreenshots(inp.files) }
+              inp.click()
+            }}
+            style={{
+              border: `2px dashed ${instaDragOver ? '#f59e0b' : 'var(--border, rgba(0,0,0,0.12))'}`,
+              borderRadius: 12,
+              padding: '24px 16px',
+              textAlign: 'center',
+              cursor: instaUploading ? 'wait' : 'pointer',
+              background: instaDragOver ? 'rgba(245,158,11,0.05)' : 'transparent',
+              transition: 'all 0.15s',
+              marginBottom: 12,
+              userSelect: 'none',
+            }}
+          >
+            {instaUploading ? (
+              <p style={{ margin: 0, fontSize: 13, color: '#f59e0b' }}>
+                Analyse en cours par Claude Vision…
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                  Dépose tes screenshots ici
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-dim)' }}>
+                  ou clique pour choisir des fichiers (max 10 images)
+                </p>
+              </>
+            )}
+          </div>
+
+          {instaError && (
+            <div style={{
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+              padding: '10px 14px', borderRadius: 8, marginBottom: 10,
+              fontSize: 13, color: '#ef4444',
+            }}>
+              {instaError}
+            </div>
+          )}
+
+          {instaAmbiguities.length > 0 && (
+            <div style={{
+              background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)',
+              padding: '10px 14px', borderRadius: 8, marginBottom: 10,
+              fontSize: 12, color: '#f59e0b',
+            }}>
+              <strong>Ambiguïtés détectées :</strong>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 16 }}>
+                {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {/* Dernier snapshot */}
+          {instaSnapshots.length > 0 && (
+            <InstaSnapshotCard snapshot={instaSnapshots[0]} />
+          )}
+
+          {/* Snapshots précédents */}
+          {instaSnapshots.length > 1 && (
+            <details style={{ marginBottom: 32, marginTop: 8 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--text-dim)' }}>
+                Voir les {instaSnapshots.length - 1} snapshot(s) précédent(s)
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {instaSnapshots.slice(1).map(s => (
+                  <InstaSnapshotCard key={s.id} snapshot={s} compact />
+                ))}
+              </div>
+            </details>
+          )}
+
           {/* Historique */}
           {mktHistory.length > 0 && (
             <>
@@ -1252,6 +1382,135 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
       >Copier</button>
     </div>
   )
+}
+
+// ── Carte Instagram Snapshot ──────────────────────────────────
+
+function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnapshot; compact?: boolean }) {
+  if (compact) {
+    return (
+      <div style={{ ...cardStyle, padding: '10px 14px', opacity: 0.7 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{snapshot.snapshot_date}</span>
+          {snapshot.reach_total != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Reach {snapshot.reach_total.toLocaleString('fr-FR')}</span>}
+          {snapshot.followers_count != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Followers {snapshot.followers_count.toLocaleString('fr-FR')}</span>}
+          {snapshot.best_format && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 600 }}>{snapshot.best_format}</span>}
+        </div>
+      </div>
+    )
+  }
+
+  const delta = snapshot.followers_delta_7d
+  const topPosts = snapshot.top_posts ?? []
+
+  return (
+    <div style={{ ...cardStyle, padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f59e0b' }}>
+          Snapshot {snapshot.snapshot_date}
+        </span>
+        {snapshot.period_start && snapshot.period_end && (
+          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+            {snapshot.period_start} → {snapshot.period_end}
+          </span>
+        )}
+        {snapshot.screenshot_count != null && (
+          <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto' }}>
+            {snapshot.screenshot_count} screenshot{snapshot.screenshot_count > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+
+      {/* Métriques */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+        {snapshot.reach_total != null && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Reach</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{snapshot.reach_total.toLocaleString('fr-FR')}</div>
+          </div>
+        )}
+        {snapshot.impressions_total != null && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Impressions</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{snapshot.impressions_total.toLocaleString('fr-FR')}</div>
+          </div>
+        )}
+        {snapshot.followers_count != null && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Followers</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {snapshot.followers_count.toLocaleString('fr-FR')}
+              {delta != null && (
+                <span style={{ fontSize: 13, color: delta >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                  {delta >= 0 ? '+' : ''}{delta}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {snapshot.best_format && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Meilleur format</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#f59e0b', textTransform: 'capitalize' }}>{snapshot.best_format}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Résumé */}
+      {snapshot.insights_summary && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 8,
+          background: 'rgba(245,158,11,0.05)', borderLeft: '3px solid #f59e0b',
+          fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)',
+          marginBottom: topPosts.length > 0 ? 12 : 0,
+        }}>
+          {snapshot.insights_summary}
+        </div>
+      )}
+
+      {/* Top posts */}
+      {topPosts.length > 0 && (
+        <>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 8, marginTop: 4 }}>
+            Top posts
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {topPosts.slice(0, 3).map((p, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '8px 10px', borderRadius: 8,
+                background: 'var(--bg2, rgba(0,0,0,0.03))',
+              }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                  background: '#1a1a1a', color: '#fff', textTransform: 'uppercase',
+                  letterSpacing: 0.5, flexShrink: 0,
+                }}>{p.format}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text)', fontStyle: 'italic', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.caption_excerpt}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                    <span>❤ {p.likes.toLocaleString('fr-FR')}</span>
+                    <span>🔖 {p.saves.toLocaleString('fr-FR')}</span>
+                    <span>👁 {p.reach.toLocaleString('fr-FR')}</span>
+                    {p.comments != null && <span>💬 {p.comments}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Local style alias for InstaSnapshotCard (can't reference const card from outer scope)
+const cardStyle: React.CSSProperties = {
+  background: 'var(--bg2, #fff)',
+  border: '1px solid var(--border, rgba(0,0,0,0.08))',
+  borderRadius: 14,
 }
 
 // ── Sous-composant métrique ───────────────────────────────────

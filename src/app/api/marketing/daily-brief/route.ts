@@ -6,6 +6,7 @@ import {
   fetchRecentCommits,
   fetchUnusedIdeas,
   fetchRecentPosts,
+  fetchLatestInstaSnapshot,
 } from "@/lib/marketing/context-fetcher";
 import { generateDailyBrief } from "@/lib/marketing/generate-brief";
 import { requireAdmin } from "@/lib/marketing/auth";
@@ -39,11 +40,12 @@ export async function POST() {
     // user is guaranteed non-null after requireAdmin passes
     console.log(`[marketing] POST /daily-brief — démarrage pour ${user!.email}`);
 
-    const [activities, commits, rawIdeas, recentPosts] = await Promise.all([
+    const [activities, commits, rawIdeas, recentPosts, instaSnapshot] = await Promise.all([
       fetchRecentActivities(supabase, user!.id),
       fetchRecentCommits(),
       fetchUnusedIdeas(supabase, user!.id),
       fetchRecentPosts(supabase, user!.id),
+      fetchLatestInstaSnapshot(supabase, user!.id),
     ]);
 
     console.log(
@@ -56,6 +58,7 @@ export async function POST() {
       commits,
       rawIdeas,
       recentPosts,
+      instaSnapshot,
     });
 
     console.log(

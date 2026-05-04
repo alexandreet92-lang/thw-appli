@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { DailyBrief, BriefIdea, RawIdea } from "@/lib/marketing/types";
+import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from "@/lib/marketing/types";
 
 // ── Admin email check (client-side, UI only) ───────────────────
 function isAdminEmail(email: string | undefined | null): boolean {
@@ -68,10 +68,18 @@ export default function MarketingAdminPage() {
 
   const [history, setHistory] = useState<BriefHistoryItem[]>([]);
 
+  // ── Instagram Insights state ────────────────────────────────
+  const [instaSnapshots,   setInstaSnapshots]   = useState<InstaSnapshot[]>([]);
+  const [instaUploading,   setInstaUploading]   = useState(false);
+  const [instaError,       setInstaError]       = useState<string | null>(null);
+  const [instaDragOver,    setInstaDragOver]    = useState(false);
+  const [instaAmbiguities, setInstaAmbiguities] = useState<string[]>([]);
+
   useEffect(() => {
     if (!authChecked) return;
     void loadHistory();
     void loadIdeas();
+    void loadInstaSnapshots();
   }, [authChecked]);
 
   async function loadHistory() {
@@ -139,6 +147,37 @@ export default function MarketingAdminPage() {
   async function deleteIdea(id: string) {
     await fetch(`/api/marketing/ideas?id=${id}`, { method: "DELETE" });
     void loadIdeas();
+  }
+
+  async function loadInstaSnapshots() {
+    const res = await fetch("/api/marketing/insta-upload");
+    if (res.ok) {
+      const json = await res.json() as { snapshots: InstaSnapshot[] };
+      setInstaSnapshots(json.snapshots ?? []);
+    }
+  }
+
+  async function uploadInstaScreenshots(files: FileList | File[]) {
+    const arr = Array.from(files).filter(f => f.type.startsWith("image/"));
+    if (arr.length === 0) return;
+    setInstaUploading(true);
+    setInstaError(null);
+    setInstaAmbiguities([]);
+    try {
+      const form = new FormData();
+      arr.forEach(f => form.append("screenshots", f));
+      const res = await fetch("/api/marketing/insta-upload", { method: "POST", body: form });
+      const json = await res.json() as { error?: string; ambiguities?: string[] };
+      if (!res.ok) throw new Error(json.error ?? "Erreur upload");
+      if (json.ambiguities && json.ambiguities.length > 0) {
+        setInstaAmbiguities(json.ambiguities);
+      }
+      void loadInstaSnapshots();
+    } catch (err) {
+      setInstaError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setInstaUploading(false);
+    }
   }
 
   // Rendu vide pendant la vérification (évite le flash de contenu)
@@ -334,6 +373,84 @@ export default function MarketingAdminPage() {
         </div>
       </section>
 
+      {/* ── Instagram Insights ─────────────────────────────────────── */}
+      <section style={{ marginBottom: 48 }}>
+        <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 8 }}>
+          Instagram Insights
+        </h2>
+        <p style={{ color: "#666", fontSize: 14, marginBottom: 14 }}>
+          Dépose tes screenshots Insights pour que Claude Vision les analyse et enrichisse le prochain brief.
+        </p>
+
+        {/* Drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setInstaDragOver(true); }}
+          onDragLeave={() => setInstaDragOver(false)}
+          onDrop={e => {
+            e.preventDefault(); setInstaDragOver(false);
+            void uploadInstaScreenshots(e.dataTransfer.files);
+          }}
+          onClick={() => {
+            const inp = document.createElement("input");
+            inp.type = "file"; inp.multiple = true; inp.accept = "image/*";
+            inp.onchange = () => { if (inp.files) void uploadInstaScreenshots(inp.files); };
+            inp.click();
+          }}
+          style={{
+            border: `2px dashed ${instaDragOver ? "#5b6fff" : "#ddd"}`,
+            borderRadius: 12,
+            padding: "32px 24px",
+            textAlign: "center",
+            cursor: instaUploading ? "wait" : "pointer",
+            background: instaDragOver ? "rgba(91,111,255,0.04)" : "#fafafa",
+            transition: "all 0.15s",
+            marginBottom: 12,
+            userSelect: "none",
+          }}
+        >
+          {instaUploading ? (
+            <p style={{ margin: 0, fontSize: 14, color: "#5b6fff" }}>Analyse en cours par Claude Vision…</p>
+          ) : (
+            <>
+              <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: "#333" }}>
+                Dépose tes screenshots ici
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: "#999" }}>
+                ou clique pour choisir des fichiers · max 10 images
+              </p>
+            </>
+          )}
+        </div>
+
+        {instaError && (
+          <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 8, marginBottom: 12, color: "#c33", fontSize: 13 }}>
+            {instaError}
+          </div>
+        )}
+        {instaAmbiguities.length > 0 && (
+          <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#92400e" }}>
+            <strong>Ambiguïtés détectées :</strong>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 16 }}>
+              {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {/* Snapshots */}
+        {instaSnapshots.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {instaSnapshots.map((s, i) => (
+              <AdminInstaCard key={s.id} snapshot={s} defaultOpen={i === 0} />
+            ))}
+          </div>
+        )}
+        {instaSnapshots.length === 0 && !instaUploading && (
+          <p style={{ fontSize: 13, color: "#999", fontStyle: "italic" }}>
+            Aucun snapshot encore. Upload tes premiers screenshots !
+          </p>
+        )}
+      </section>
+
       {/* ── Historique ─────────────────────────────────────────────── */}
       <section>
         <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
@@ -476,5 +593,128 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         Copier
       </button>
     </div>
+  );
+}
+
+function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; defaultOpen?: boolean }) {
+  const delta = snapshot.followers_delta_7d;
+  const topPosts = snapshot.top_posts ?? [];
+
+  return (
+    <details
+      open={defaultOpen}
+      style={{
+        background: "white",
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+      }}
+    >
+      <summary style={{ cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <strong>{snapshot.snapshot_date}</strong>
+        {snapshot.reach_total != null && <span style={{ color: "#666" }}>Reach {snapshot.reach_total.toLocaleString("fr-FR")}</span>}
+        {snapshot.followers_count != null && (
+          <span style={{ color: "#666" }}>
+            Followers {snapshot.followers_count.toLocaleString("fr-FR")}
+            {delta != null && (
+              <span style={{ color: delta >= 0 ? "#10b981" : "#ef4444", marginLeft: 4 }}>
+                ({delta >= 0 ? "+" : ""}{delta})
+              </span>
+            )}
+          </span>
+        )}
+        {snapshot.best_format && (
+          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, background: "#fffbeb", color: "#92400e", fontWeight: 700 }}>
+            {snapshot.best_format}
+          </span>
+        )}
+      </summary>
+
+      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Métriques */}
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          {snapshot.impressions_total != null && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1 }}>Impressions</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{snapshot.impressions_total.toLocaleString("fr-FR")}</div>
+            </div>
+          )}
+          {snapshot.reach_total != null && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1 }}>Reach</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{snapshot.reach_total.toLocaleString("fr-FR")}</div>
+            </div>
+          )}
+          {snapshot.followers_count != null && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1 }}>Followers</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>
+                {snapshot.followers_count.toLocaleString("fr-FR")}
+                {delta != null && (
+                  <span style={{ fontSize: 14, color: delta >= 0 ? "#10b981" : "#ef4444", marginLeft: 6 }}>
+                    {delta >= 0 ? "+" : ""}{delta}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Résumé */}
+        {snapshot.insights_summary && (
+          <div style={{
+            padding: "12px 14px", borderRadius: 8,
+            background: "#fffbeb", borderLeft: "3px solid #f59e0b",
+            fontSize: 14, lineHeight: 1.65, color: "#333",
+          }}>
+            {snapshot.insights_summary}
+          </div>
+        )}
+
+        {/* Top posts */}
+        {topPosts.length > 0 && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#666", marginBottom: 8 }}>
+              Top posts
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {topPosts.map((p, i) => (
+                <div key={i} style={{
+                  display: "flex", gap: 10, alignItems: "flex-start",
+                  padding: "10px 12px", borderRadius: 8, background: "#f7f8fa",
+                }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
+                    background: "#1a1a1a", color: "#fff", textTransform: "uppercase",
+                    letterSpacing: 0.5, flexShrink: 0,
+                  }}>{p.format}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: "#333", fontStyle: "italic", marginBottom: 4 }}>
+                      {p.caption_excerpt}
+                    </div>
+                    <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
+                      <span>❤ {p.likes.toLocaleString("fr-FR")}</span>
+                      <span>🔖 {p.saves.toLocaleString("fr-FR")}</span>
+                      <span>👁 {p.reach.toLocaleString("fr-FR")}</span>
+                      {p.comments != null && <span>💬 {p.comments}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Texte brut */}
+        {snapshot.raw_extracted_text && (
+          <details>
+            <summary style={{ cursor: "pointer", fontSize: 12, color: "#999" }}>Voir le texte brut extrait</summary>
+            <pre style={{ fontSize: 11, marginTop: 8, overflow: "auto", maxHeight: 200, background: "#f7f8fa", padding: 10, borderRadius: 6 }}>
+              {snapshot.raw_extracted_text}
+            </pre>
+          </details>
+        )}
+      </div>
+    </details>
   );
 }

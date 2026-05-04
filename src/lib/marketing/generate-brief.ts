@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MARKETING_SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
-import type { DailyBrief, ActivityContext, CommitContext, RawIdea } from "./types";
+import type { DailyBrief, ActivityContext, CommitContext, RawIdea, InstaSnapshot } from "./types";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -20,6 +20,7 @@ export async function generateDailyBrief(context: {
     published_at: string | null;
     likes: number | null;
   }>;
+  instaSnapshot?: InstaSnapshot | null;
 }): Promise<{
   brief: DailyBrief;
   meta: {
@@ -35,6 +36,7 @@ export async function generateDailyBrief(context: {
   const userPrompt = buildUserPrompt({
     ...context,
     todayDate,
+    instaSnapshot: context.instaSnapshot ?? null,
   });
 
   const response = await anthropic.messages.create({

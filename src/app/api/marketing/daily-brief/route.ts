@@ -37,6 +37,7 @@ export async function POST() {
 
     const { data: { user } } = await supabase.auth.getUser();
     // user is guaranteed non-null after requireAdmin passes
+    console.log(`[marketing] POST /daily-brief — démarrage pour ${user!.email}`);
 
     const [activities, commits, rawIdeas, recentPosts] = await Promise.all([
       fetchRecentActivities(supabase, user!.id),
@@ -45,12 +46,22 @@ export async function POST() {
       fetchRecentPosts(supabase, user!.id),
     ]);
 
+    console.log(
+      `[marketing] Contexte: ${activities.length} activités, ${commits.length} commits, ` +
+      `${rawIdeas.length} idées, ${recentPosts.length} posts`
+    );
+
     const { brief, meta } = await generateDailyBrief({
       activities,
       commits,
       rawIdeas,
       recentPosts,
     });
+
+    console.log(
+      `[marketing] Brief généré en ${meta.generation_ms}ms — ` +
+      `${meta.tokens_in} tokens in / ${meta.tokens_out} tokens out`
+    );
 
     const { data: saved, error: saveError } = await supabase
       .from("marketing_briefs")
@@ -69,7 +80,7 @@ export async function POST() {
       .single();
 
     if (saveError) {
-      console.error("[marketing] Save error:", saveError);
+      console.error("[marketing] Erreur sauvegarde Supabase:", saveError.message);
     }
 
     if (rawIdeas.length > 0) {
@@ -90,21 +101,34 @@ export async function POST() {
         recent_posts_count: recentPosts.length,
       },
     });
+
   } catch (err) {
-    // Logging détaillé — distingue les erreurs Anthropic des autres
-    const isApiError = err instanceof Error && "status" in err;
-    if (isApiError) {
-      const apiErr = err as Error & { status?: number };
-      console.error(`[marketing] Anthropic API error — status: ${apiErr.status ?? "?"} — ${apiErr.message}`);
-    } else {
-      console.error("[marketing] daily-brief route error:", err);
+    // ── Logging exhaustif ──────────────────────────────────────
+    console.error("[marketing] ❌ daily-brief ERREUR:", err);
+
+    if (err instanceof Error) {
+      console.error("[marketing] Message:", err.message);
+      console.error("[marketing] Stack:", err.stack);
     }
+
+    // Détail spécifique aux erreurs Anthropic SDK
+    if (err && typeof err === "object" && "status" in err) {
+      const apiErr = err as { status?: number; message?: string; error?: unknown };
+      console.error("[marketing] Anthropic status:", apiErr.status);
+      console.error("[marketing] Anthropic error body:", JSON.stringify(apiErr.error ?? null));
+    }
+
     return NextResponse.json(
       {
         error: err instanceof Error ? err.message : "Erreur inconnue",
-        ...(process.env.NODE_ENV !== "production" && err instanceof Error
-          ? { detail: err.stack }
-          : {}),
+        type:
+          err && typeof err === "object" && "status" in err
+            ? "anthropic_api"
+            : "internal",
+        details:
+          err instanceof Error
+            ? err.stack?.split("\n").slice(0, 4)
+            : undefined,
       },
       { status: 500 }
     );
@@ -112,25 +136,34 @@ export async function POST() {
 }
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = makeSupabase(cookieStore);
+  try {
+    const cookieStore = await cookies();
+    const supabase = makeSupabase(cookieStore);
 
-  // ── Admin-only ───────────────────────────────────────────────
-  const denied = await requireAdmin(supabase);
-  if (denied) return denied;
+    // ── Admin-only ───────────────────────────────────────────────
+    const denied = await requireAdmin(supabase);
+    if (denied) return denied;
 
-  const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const { data, error } = await supabase
-    .from("marketing_briefs")
-    .select("*")
-    .eq("user_id", user!.id)
-    .order("created_at", { ascending: false })
-    .limit(30);
+    const { data, error } = await supabase
+      .from("marketing_briefs")
+      .select("*")
+      .eq("user_id", user!.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("[marketing] GET briefs error:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ briefs: data ?? [] });
+  } catch (err) {
+    console.error("[marketing] ❌ GET /daily-brief ERREUR:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Erreur inconnue" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ briefs: data ?? [] });
 }

@@ -1253,70 +1253,507 @@ function ModelPicker({ model, onChange }: {
 
 const WP_SPORTS = ['Cyclisme', 'Running', 'Natation', 'Hyrox', 'Musculation', 'Aviron', 'Trail']
 
-function WeakpointsFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
-  const [selected, setSelected] = useState<string[]>([])
+interface WPReport {
+  resume: string
+  score_global: number
+  sports_analysis: {
+    sport: string
+    score: number
+    forces: { label: string; detail: string }[]
+    faiblesses: { label: string; detail: string; priority: number }[]
+  }[]
+  cross_analysis: Record<string, { status: 'ok' | 'warning' | 'critical'; detail: string }>
+  plan_action: { priority: number; action: string; sport: string; impact: string; detail: string }[]
+  sources_used: string[]
+}
+
+const CROSS_LABELS: Record<string, string> = {
+  recuperation:            'Récupération',
+  distribution_intensite:  "Distribution d'intensité",
+  volume_global:           'Volume global',
+  coherence_objectifs:     'Cohérence avec objectifs',
+  equilibre_sports:        'Équilibre entre sports',
+}
+
+function wpScoreColor(score: number): string {
+  if (score >= 80) return '#22c55e'
+  if (score >= 60) return '#84cc16'
+  if (score >= 40) return '#f59e0b'
+  return '#ef4444'
+}
+
+function wpStatusColor(status: 'ok' | 'warning' | 'critical'): string {
+  if (status === 'ok') return '#22c55e'
+  if (status === 'warning') return '#f59e0b'
+  return '#ef4444'
+}
+
+function WeakpointsFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  type WPPhase = 'gate' | 'sports' | 'generating' | 'result'
+
+  const [phase,          setPhase]          = useState<WPPhase>('gate')
+  const [selected,       setSelected]       = useState<string[]>([])
+  const [report,         setReport]         = useState<WPReport | null>(null)
+  const [error,          setError]          = useState<string | null>(null)
+  const [expandedSport,  setExpandedSport]  = useState<number | null>(null)
+  const [expandedAction, setExpandedAction] = useState<number | null>(null)
+  const [gateLoading,    setGateLoading]    = useState(true)
+
+  const [ctxData, setCtxData] = useState<{
+    profile: unknown; zones: unknown; activities: unknown[]
+    testResults: unknown[]; races: unknown[]; health: unknown[]
+    aiRules: { category: string; rule_text: string }[]
+  } | null>(null)
+
+  const [gateChecks, setGateChecks] = useState<{
+    label: string; ok: boolean; link: string; detail: string | null
+  }[]>([])
+
+  // ── Load context data on mount ────────────────────────────
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setGateLoading(false); return }
+
+        const since3m = new Date(Date.now() - 90 * 86400000).toISOString()
+
+        const [profRes, zonesRes, actRes, testsRes, racesRes, healthRes, rulesRes] = await Promise.all([
+          sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+          sb.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true),
+          sb.from('activities')
+            .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,avg_hr,max_hr,avg_watts,max_watts,suffer_score')
+            .eq('user_id', user.id)
+            .gte('started_at', since3m)
+            .order('started_at', { ascending: false })
+            .limit(60),
+          sb.from('test_results')
+            .select('id,date,valeurs,notes,test_definitions(nom,sport)')
+            .eq('user_id', user.id)
+            .order('date', { ascending: false })
+            .limit(20),
+          sb.from('planned_races')
+            .select('name,sport,date,level,goal_time')
+            .eq('user_id', user.id)
+            .order('date'),
+          sb.from('metrics_daily')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('date', { ascending: false })
+            .limit(14),
+          sb.from('ai_rules')
+            .select('category,rule_text')
+            .eq('user_id', user.id)
+            .eq('active', true),
+        ])
+
+        const activitiesCount = (actRes.data ?? []).length
+        const testsCount      = (testsRes.data ?? []).length
+        const racesCount      = (racesRes.data ?? []).length
+        const zonesCount      = (zonesRes.data ?? []).length
+        const hasZones        = zonesCount > 0
+
+        setCtxData({
+          profile:     profRes.data,
+          zones:       zonesRes.data ?? [],
+          activities:  actRes.data ?? [],
+          testResults: testsRes.data ?? [],
+          races:       racesRes.data ?? [],
+          health:      healthRes.data ?? [],
+          aiRules:     (rulesRes.data ?? []) as { category: string; rule_text: string }[],
+        })
+
+        setGateChecks([
+          { label: 'Profil de performance',       ok: !!profRes.data,        link: '/performance', detail: null },
+          { label: "Zones d'entraînement",         ok: hasZones,              link: '/performance', detail: hasZones ? `${zonesCount} sport${zonesCount > 1 ? 's' : ''} configuré${zonesCount > 1 ? 's' : ''}` : null },
+          { label: 'Activités récentes (3 mois)',  ok: activitiesCount > 0,   link: '/activities',  detail: activitiesCount ? `${activitiesCount} activités` : null },
+          { label: 'Tests de performance',         ok: testsCount > 0,        link: '/performance', detail: testsCount ? `${testsCount} tests` : null },
+          { label: 'Courses planifiées',           ok: racesCount > 0,        link: '/planning',    detail: racesCount ? `${racesCount} courses` : null },
+        ])
+      } catch (err) {
+        console.error('[WeakpointsFlow gate]', err)
+      } finally {
+        setGateLoading(false)
+      }
+    })()
+  }, [])
 
   function toggle(s: string) {
     setSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
   }
 
-  function submit() {
-    if (selected.length === 0) return
-    const sports = selected.join(', ')
-    const apiPrompt =
-      `Analyse mes points faibles dans les sports suivants : ${sports}. ` +
-      `Pour chaque discipline, identifie les lacunes spécifiques (technique, endurance, puissance, récupération, etc.) ` +
-      `en te basant sur mes données réelles disponibles dans l'application. ` +
-      `Propose ensuite des axes de travail concrets et priorisés pour progresser.`
-    onPrepare(apiPrompt, `Points faibles — ${sports}`)
+  async function generate() {
+    setPhase('generating')
+    setError(null)
+    try {
+      const res = await fetch('/api/weakpoints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sports:      selected,
+          profile:     ctxData?.profile,
+          zones:       ctxData?.zones,
+          activities:  ctxData?.activities  ?? [],
+          testResults: ctxData?.testResults ?? [],
+          races:       ctxData?.races       ?? [],
+          health:      ctxData?.health      ?? [],
+          aiRules:     ctxData?.aiRules     ?? [],
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json() as { report?: WPReport; error?: string }
+      if (data.error) throw new Error(data.error)
+      const r = data.report!
+      setReport(r)
+      setExpandedSport(0)
+      setPhase('result')
+
+      if (onRecordConv) {
+        const userMsg = `Identifier mes points faibles — ${selected.join(', ')}`
+        const aiMsg   = `**Analyse de points faibles** — Score global : ${r.score_global}/100\n\n${r.resume}\n\n**${r.plan_action?.length ?? 0} action${(r.plan_action?.length ?? 0) > 1 ? 's' : ''}** recommandée${(r.plan_action?.length ?? 0) > 1 ? 's' : ''}.`
+        onRecordConv(userMsg, aiMsg)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur')
+      setPhase('sports')
+    }
   }
 
+  // ── Phase : gate ─────────────────────────────────────────
+  if (phase === 'gate') {
+    if (gateLoading) {
+      return (
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement de tes données…</p>
+        </div>
+      )
+    }
+
+    const okCount = gateChecks.filter(c => c.ok).length
+
+    return (
+      <div style={{ padding: '4px 0' }}>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          Analyse de points faibles
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
+          {okCount === 0
+            ? 'Aucune donnée détectée. Complète ton profil pour une analyse précise.'
+            : okCount < 3
+              ? 'Quelques données manquantes — l\'analyse sera moins complète. Tu peux continuer.'
+              : 'Tes données sont prêtes. Plus ton profil est complet, plus l\'analyse sera précise.'}
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+          {gateChecks.map((c, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: c.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {c.ok ? (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                ) : (
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                )}
+              </div>
+              <span style={{ flex: 1, fontSize: 12, color: c.ok ? 'var(--ai-text)' : 'var(--ai-mid)', fontWeight: c.ok ? 500 : 400 }}>
+                {c.label}
+              </span>
+              {c.detail && (
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{c.detail}</span>
+              )}
+              {!c.ok && (
+                <a href={c.link} style={{ fontSize: 10, color: '#5b6fff', fontWeight: 600, textDecoration: 'none' }}>
+                  Compléter
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', textAlign: 'center' }}>
+          {okCount}/{gateChecks.length} données disponibles
+        </p>
+
+        <button onClick={() => setPhase('sports')} style={{
+          width: '100%', padding: '11px', borderRadius: 10,
+          background: 'var(--ai-gradient)', border: 'none',
+          color: '#fff', fontSize: 13, fontWeight: 700,
+          cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+        }}>
+          Choisir les sports à analyser →
+        </button>
+        <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          Annuler
+        </button>
+      </div>
+    )
+  }
+
+  // ── Phase : sports ───────────────────────────────────────
+  if (phase === 'sports') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+          Sur quels sports analyser tes points faibles ?
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Sélectionne un ou plusieurs sports
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+          {WP_SPORTS.map(s => {
+            const on = selected.includes(s)
+            return (
+              <button key={s} onClick={() => toggle(s)} style={{
+                padding: '7px 13px', borderRadius: 20,
+                border: `1px solid ${on ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                background: on ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                color: on ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                fontSize: 12, fontWeight: on ? 600 : 400,
+                cursor: 'pointer', transition: 'all 0.12s',
+                fontFamily: 'DM Sans,sans-serif',
+              }}>
+                {s}
+              </button>
+            )
+          })}
+        </div>
+        {error && (
+          <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('gate')} style={{
+            padding: '9px 16px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'transparent',
+            color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
+            fontFamily: 'DM Sans,sans-serif',
+          }}>
+            Retour
+          </button>
+          <button onClick={() => { void generate() }} disabled={selected.length === 0} style={{
+            flex: 1, padding: '9px 16px', borderRadius: 9,
+            border: 'none',
+            background: selected.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
+            color: '#fff', fontSize: 12, fontWeight: 700,
+            cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
+            fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
+          }}>
+            Analyser {selected.length > 0 ? `(${selected.length})` : ''}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phase : generating ───────────────────────────────────
+  if (phase === 'generating') {
+    return (
+      <div style={{ padding: '48px 0', textAlign: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          Analyse en cours…
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6, maxWidth: 260, marginLeft: 'auto', marginRight: 'auto' }}>
+          Croisement de tes données d&apos;entraînement, tests, zones et récupération
+        </p>
+      </div>
+    )
+  }
+
+  // ── Phase : result ───────────────────────────────────────
+  if (!report) return null
+
+  const scoreColor = wpScoreColor(report.score_global)
+  const circumference = 2 * Math.PI * 36
+  const dashOffset = circumference * (1 - report.score_global / 100)
+
   return (
-    <div style={{ padding: '8px 0 4px' }}>
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-        Sur quels sports analyser tes points faibles ?
+    <div style={{ padding: '4px 0' }}>
+
+      {/* ─── 1. Header — score global ─────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+        <svg width="88" height="88" viewBox="0 0 88 88" style={{ flexShrink: 0 }}>
+          <circle cx="44" cy="44" r="36" fill="none" stroke="var(--ai-border)" strokeWidth="6" />
+          <circle
+            cx="44" cy="44" r="36"
+            fill="none" stroke={scoreColor} strokeWidth="6"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            transform="rotate(-90 44 44)"
+          />
+          <text x="44" y="48" textAnchor="middle" fontSize="18" fontWeight="700" fill={scoreColor} fontFamily="Syne,sans-serif">
+            {report.score_global}
+          </text>
+          <text x="44" y="60" textAnchor="middle" fontSize="9" fill="var(--ai-dim)" fontFamily="DM Sans,sans-serif">
+            /100
+          </text>
+        </svg>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+            Score global
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6 }}>
+            {report.resume}
+          </p>
+        </div>
+      </div>
+
+      {/* ─── 2. Analyse par sport — accordéon ─────────────── */}
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+        Analyse par sport
       </p>
-      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-        Sélectionne un ou plusieurs sports
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
-        {WP_SPORTS.map(s => {
-          const on = selected.includes(s)
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+        {report.sports_analysis.map((sa, i) => {
+          const open  = expandedSport === i
+          const sColor = wpScoreColor(sa.score)
           return (
-            <button key={s} onClick={() => toggle(s)} style={{
-              padding: '7px 13px', borderRadius: 20,
-              border: `1px solid ${on ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-              background: on ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
-              color: on ? 'var(--ai-accent)' : 'var(--ai-mid)',
-              fontSize: 12, fontWeight: on ? 600 : 400,
-              cursor: 'pointer', transition: 'all 0.12s',
-              fontFamily: 'DM Sans,sans-serif',
-            }}>
-              {s}
-            </button>
+            <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
+              <button
+                onClick={() => setExpandedSport(open ? null : i)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', background: 'var(--ai-bg2)',
+                  border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', textTransform: 'capitalize' }}>
+                  {sa.sport}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: sColor, fontVariantNumeric: 'tabular-nums' }}>
+                  {sa.score}/100
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+
+              {open && (
+                <div style={{ padding: '12px 12px 14px', borderTop: '1px solid var(--ai-border)', background: 'var(--ai-bg)' }}>
+                  {sa.forces.length > 0 && (
+                    <>
+                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#22c55e', margin: '0 0 6px' }}>Forces</p>
+                      {sa.forces.map((f, fi) => (
+                        <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{f.label}</p>
+                          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{f.detail}</p>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {sa.faiblesses.length > 0 && (
+                    <>
+                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444', margin: `${sa.forces.length > 0 ? '10px' : '0'} 0 6px` }}>Faiblesses</p>
+                      {sa.faiblesses
+                        .sort((a, b) => a.priority - b.priority)
+                        .map((f, fi) => (
+                          <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>
+                              P{f.priority}
+                            </span>
+                            <div>
+                              <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{f.label}</p>
+                              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{f.detail}</p>
+                            </div>
+                          </div>
+                        ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           )
         })}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={onCancel} style={{
-          padding: '9px 16px', borderRadius: 9,
-          border: '1px solid var(--ai-border)', background: 'transparent',
-          color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
-          fontFamily: 'DM Sans,sans-serif',
-        }}>
-          Annuler
-        </button>
-        <button onClick={submit} disabled={selected.length === 0} style={{
-          flex: 1, padding: '9px 16px', borderRadius: 9,
-          border: 'none',
-          background: selected.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
-          color: '#fff', fontSize: 12, fontWeight: 700,
-          cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-          fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
-        }}>
-          Analyser {selected.length > 0 ? `(${selected.length})` : ''}
-        </button>
+
+      {/* ─── 3. Analyse croisée ───────────────────────────── */}
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+        Analyse croisée
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 20 }}>
+        {Object.entries(report.cross_analysis).map(([key, val]) => {
+          const col = wpStatusColor(val.status)
+          return (
+            <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)' }}>
+                  {CROSS_LABELS[key] ?? key}
+                </span>
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{val.detail}</p>
+            </div>
+          )
+        })}
       </div>
+
+      {/* ─── 4. Plan d'action ────────────────────────────── */}
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+        Plan d&apos;action
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {report.plan_action
+          .sort((a, b) => a.priority - b.priority)
+          .map((act, i) => {
+            const open = expandedAction === i
+            return (
+              <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
+                <button
+                  onClick={() => setExpandedAction(open ? null : i)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 12px', background: 'var(--ai-bg2)',
+                    border: 'none', cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                    P{act.priority}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)' }}>
+                    {act.action}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'capitalize', flexShrink: 0 }}>
+                    {act.sport}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                {open && (
+                  <div style={{ padding: '10px 12px 12px', borderTop: '1px solid var(--ai-border)', background: 'var(--ai-bg)' }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', margin: '0 0 6px' }}>
+                      {act.impact}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6 }}>
+                      {act.detail}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+      </div>
+
+      {/* ─── 5. Sources ──────────────────────────────────── */}
+      {report.sources_used.length > 0 && (
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Sources : {report.sources_used.join(', ')}
+        </p>
+      )}
+
+      {/* ─── 6. Fermer ───────────────────────────────────── */}
+      <button onClick={onCancel} style={{
+        width: '100%', padding: '10px', borderRadius: 10,
+        border: '1px solid var(--ai-border)', background: 'transparent',
+        color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 4,
+        fontFamily: 'DM Sans,sans-serif',
+      }}>
+        Fermer
+      </button>
     </div>
   )
 }
@@ -8903,8 +9340,20 @@ export default function AIPanel({
               <div style={{ animation: 'ai_slidein 0.2s ease', paddingBottom: 16 }}>
                 {activeFlow === 'weakpoints' && (
                   <WeakpointsFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
                   />
                 )}
                 {activeFlow === 'nutrition' && (

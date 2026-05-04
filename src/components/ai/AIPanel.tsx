@@ -35,7 +35,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -2858,424 +2858,580 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
 
 // ── AnalyzeTestFlow ───────────────────────────────────────────
 
-const AT_SPORTS: { id: string; label: string }[] = [
-  { id: 'running',  label: 'Running' },
-  { id: 'cycling',  label: 'Vélo' },
-  { id: 'natation', label: 'Natation' },
-  { id: 'aviron',   label: 'Rowing' },
-  { id: 'hyrox',    label: 'Hyrox' },
-]
-
-interface TestResultRow {
+interface TestRow {
   id: string
   date: string
   valeurs: Record<string, unknown>
   notes: string | null
   test_definition_id: string
-  test_definitions: { nom: string; sport: string } | null
+  test_definitions: { nom: string; sport: string; fields?: unknown } | null
 }
 
-interface TestContext {
-  tssWeek: number
-  avgTssWeek: number
-  hrv: number | null
-  hrvBaseline: number | null
-  highIntensity48h: boolean
+interface TestReport {
+  interpretation: { niveau: string; signification: string; detail: string }
+  fiabilite: {
+    score: number
+    facteurs: { label: string; impact: string; status: 'ok' | 'warning' | 'critical' }[]
+    estimation_corrigee: string | null
+  }
+  evolution: {
+    disponible: boolean
+    tests: { date: string; valeur: number; delta_pct: number | null }[]
+    tendance: string
+    projection_3mois: string | null
+  }
+  impact_zones: {
+    mise_a_jour_necessaire: boolean
+    ecart_pct: number | null
+    zones_estimees: {
+      zone: string; label: string
+      hr_min?: number; hr_max?: number
+      watts_min?: number; watts_max?: number
+      allure_min?: string; allure_max?: string
+    }[] | null
+    detail: string
+  }
+  recommandations: { label: string; detail: string }[]
+  sources_used: string[]
+  confiance: 'élevée' | 'modérée' | 'faible'
 }
 
-function computeTestValidity(
-  hrv: number | null,
-  hrvBaseline: number | null,
-  tssWeek: number,
-  avgTssWeek: number,
-  highIntensity48h: boolean
-): { score: number; label: 'haute' | 'modérée' | 'basse'; conditions: 'BONNES' | 'INCERTAINES' | 'DÉGRADÉES' } {
-  let score = 100
-  if (hrv !== null && hrvBaseline !== null && hrv < hrvBaseline * 0.9) score -= 25
-  if (avgTssWeek > 0 && tssWeek > avgTssWeek * 1.3) score -= 20
-  if (highIntensity48h) score -= 15
-  const label: 'haute' | 'modérée' | 'basse' = score >= 80 ? 'haute' : score >= 60 ? 'modérée' : 'basse'
-  const conditions: 'BONNES' | 'INCERTAINES' | 'DÉGRADÉES' = score >= 80 ? 'BONNES' : score >= 60 ? 'INCERTAINES' : 'DÉGRADÉES'
-  return { score, label, conditions }
+function TestEvolutionMiniChart({ points }: { points: { date: string; valeur: number }[] }) {
+  if (points.length < 2) return null
+  const W = 280, H = 60, PAD = 16
+  const vals = points.map(p => p.valeur)
+  const minV = Math.min(...vals) * 0.97
+  const maxV = Math.max(...vals) * 1.03
+  const sx = (i: number) => PAD + (i / (points.length - 1)) * (W - 2 * PAD)
+  const sy = (v: number) => H - PAD - ((v - minV) / (maxV - minV || 1)) * (H - 2 * PAD)
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(i)},${sy(p.valeur)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 60 }}>
+      <path d={d} fill="none" stroke="var(--ai-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={sx(i)} cy={sy(p.valeur)} r={3} fill="var(--ai-accent)" />
+          <text x={sx(i)} y={sy(p.valeur) - 6} textAnchor="middle" fontSize="8" fill="var(--ai-text)" fontFamily="DM Mono,monospace">{p.valeur}</text>
+          <text x={sx(i)} y={H - 2} textAnchor="middle" fontSize="7" fill="var(--ai-dim)">{new Date(p.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</text>
+        </g>
+      ))}
+    </svg>
+  )
 }
 
-function AnalyzeTestFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
-  const [step,          setStep]          = useState<'sport' | 'results'>('sport')
-  const [sport,         setSport]         = useState<string | null>(null)
-  const [tests,         setTests]         = useState<TestResultRow[] | null>(null)
-  const [testContexts,  setTestContexts]  = useState<Record<string, TestContext>>({})
-  const [sameTypeTests, setSameTypeTests] = useState<Record<string, TestResultRow[]>>({})
-  const [loadingT,      setLoadingT]      = useState(false)
-  const [selectedTest,  setSelectedTest]  = useState<TestResultRow | null>(null)
-  const [compareTest,   setCompareTest]   = useState<TestResultRow | null>(null)
-  const [generating,    setGenerating]    = useState(false)
+function AnalyzeTestFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  type Phase = 'loading' | 'gate' | 'sport' | 'select' | 'generating' | 'result'
+  const [phase, setPhase] = useState<Phase>('loading')
+  const [sport, setSport] = useState<string | null>(null)
+  const [tests, setTests] = useState<TestRow[]>([])
+  const [testContexts, setTestContexts] = useState<Map<string, { tssWeek: number; hrv: number | null; hrvBaseline: number | null; validityScore: number }>>(new Map())
+  const [selectedTest, setSelectedTest] = useState<TestRow | null>(null)
+  const [report, setReport] = useState<TestReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [ctxData, setCtxData] = useState<{ zones: unknown; profile: unknown; allTests: TestRow[] } | null>(null)
+  const [gateData, setGateData] = useState<{
+    testsCount: number
+    sportCounts: Record<string, number>
+    zonesCount: number
+    profileOk: boolean
+  } | null>(null)
 
-  async function loadTests(sp: string) {
-    setLoadingT(true)
-    try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setTests([]); setLoadingT(false); setStep('results'); return }
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setError('Non connecté'); return }
 
-      const { data: defs } = await sb
-        .from('test_definitions')
-        .select('id')
-        .eq('sport', sp)
+        const [testsRes, zonesRes, profileRes] = await Promise.all([
+          sb.from('test_results').select('id,test_definition_id,test_definitions(sport)').eq('user_id', user.id),
+          sb.from('training_zones').select('sport').eq('user_id', user.id).eq('is_current', true),
+          sb.from('athlete_performance_profile').select('id').eq('user_id', user.id).maybeSingle(),
+        ])
 
-      if (!defs?.length) { setTests([]); setLoadingT(false); setStep('results'); return }
+        const rows = (testsRes.data ?? []) as { id: string; test_definition_id: string; test_definitions: { sport: string } | null }[]
+        const sportCounts: Record<string, number> = {}
+        for (const r of rows) {
+          const sp = r.test_definitions?.sport ?? 'inconnu'
+          sportCounts[sp] = (sportCounts[sp] ?? 0) + 1
+        }
 
-      const defIds = defs.map((d: { id: string }) => d.id)
-
-      const { data: results } = await sb
-        .from('test_results')
-        .select('id, date, valeurs, notes, test_definition_id, test_definitions(nom, sport)')
-        .in('test_definition_id', defIds)
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(10)
-
-      const rows = (results as unknown as TestResultRow[]) ?? []
-      setTests(rows)
-
-      if (rows.length > 0) {
-        // Load context for each test in parallel
-        const contextResults = await Promise.all(rows.map(async t => {
-          const testDate = new Date(t.date)
-          const weekBefore = new Date(testDate)
-          weekBefore.setDate(testDate.getDate() - 7)
-          const twoDaysBefore = new Date(testDate)
-          twoDaysBefore.setDate(testDate.getDate() - 2)
-          const since28d = new Date(testDate)
-          since28d.setDate(testDate.getDate() - 28)
-          const since8weeks = new Date(testDate)
-          since8weeks.setDate(testDate.getDate() - 56)
-
-          const [metricsRes, weekActsRes, prevActsRes, highActsRes, allSameRes] = await Promise.all([
-            sb.from('metrics_daily').select('hrv,resting_hr,readiness,fatigue').eq('user_id', user.id).eq('date', t.date).maybeSingle(),
-            sb.from('activities').select('tss').eq('user_id', user.id).gte('started_at', weekBefore.toISOString()).lt('started_at', testDate.toISOString()),
-            sb.from('activities').select('tss').eq('user_id', user.id).gte('started_at', since8weeks.toISOString()).lt('started_at', weekBefore.toISOString()),
-            sb.from('activities').select('intensity_factor').eq('user_id', user.id).gte('started_at', twoDaysBefore.toISOString()).lt('started_at', testDate.toISOString()),
-            sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', t.date),
-          ])
-
-          const tssWeek = (weekActsRes.data ?? []).reduce((a: number, b: { tss: number | null }) => a + (b.tss ?? 0), 0)
-          const prevActs = prevActsRes.data ?? []
-          const prevWeekCount = Math.max(1, Math.ceil(prevActs.length / 7))
-          const avgTssWeek = prevActs.length > 0 ? Math.round(prevActs.reduce((a: number, b: { tss: number | null }) => a + (b.tss ?? 0), 0) / prevWeekCount) : 0
-          const highIntensity48h = (highActsRes.data ?? []).some((a: { intensity_factor: number | null }) => (a.intensity_factor ?? 0) > 0.85)
-          const allHrvData = (allSameRes.data ?? []) as { hrv: number | null }[]
-          const hrvNums = allHrvData.filter(m => m.hrv != null).map(m => m.hrv as number)
-          const hrvBaseline = hrvNums.length > 0 ? Math.round(hrvNums.reduce((a, b) => a + b, 0) / hrvNums.length) : null
-
-          const ctx: TestContext = {
-            tssWeek: Math.round(tssWeek),
-            avgTssWeek,
-            hrv: (metricsRes.data?.hrv as number | null) ?? null,
-            hrvBaseline,
-            highIntensity48h,
-          }
-          return { id: t.id, ctx }
-        }))
-
-        const ctxMap: Record<string, TestContext> = {}
-        for (const r of contextResults) ctxMap[r.id] = r.ctx
-        setTestContexts(ctxMap)
-
-        // Load all tests of same definition for progression history
-        const uniqueDefIds = [...new Set(rows.map(r => r.test_definition_id))]
-        const sameTypeMap: Record<string, TestResultRow[]> = {}
-        await Promise.all(uniqueDefIds.map(async defId => {
-          const { data } = await sb.from('test_results')
-            .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport)')
-            .eq('user_id', user.id)
-            .eq('test_definition_id', defId)
-            .order('date', { ascending: true })
-          sameTypeMap[defId] = (data as unknown as TestResultRow[]) ?? []
-        }))
-        setSameTypeTests(sameTypeMap)
+        setGateData({
+          testsCount: rows.length,
+          sportCounts,
+          zonesCount: (zonesRes.data ?? []).length,
+          profileOk: !!profileRes.data,
+        })
+        setPhase('gate')
+      } catch {
+        setError('Erreur de chargement')
       }
-    } catch {
-      setTests([])
-    } finally {
-      setLoadingT(false)
-      setStep('results')
-    }
-  }
+    })()
+  }, [])
 
-  function handleSportSelect(sp: string) {
+  async function loadTestsForSport(sp: string) {
     setSport(sp)
-    void loadTests(sp)
-  }
-
-  async function handleGenerate() {
-    if (!selectedTest || !sport) return
-    setGenerating(true)
+    setPhase('generating')
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) return
 
-      const ctx = testContexts[selectedTest.id]
-      const validity = ctx ? computeTestValidity(ctx.hrv, ctx.hrvBaseline, ctx.tssWeek, ctx.avgTssWeek, ctx.highIntensity48h) : null
-      const allSame = sameTypeTests[selectedTest.test_definition_id] ?? []
+      const { data: defs } = await sb.from('test_definitions').select('id,nom,sport,fields').eq('sport', sp)
+      if (!defs?.length) { setTests([]); setPhase('select'); return }
 
-      const [zonesRes, perfRes] = await Promise.all([
-        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', sport).eq('is_current', true).maybeSingle(),
-        sb.from('athlete_performance_profile').select('ftp,lthr,vma,css,vo2max').eq('user_id', user.id).maybeSingle(),
+      const defIds = defs.map((d: { id: string }) => d.id)
+      const { data: results } = await sb.from('test_results')
+        .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
+        .in('test_definition_id', defIds).eq('user_id', user.id)
+        .order('date', { ascending: false }).limit(20)
+
+      const rows = (results as unknown as TestRow[]) ?? []
+
+      const [zonesRes, profileRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', sp).eq('is_current', true).maybeSingle(),
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
       ])
 
-      // TODO: inject injuries when table exists
+      setCtxData({ zones: zonesRes.data, profile: profileRes.data, allTests: rows })
 
-      const testNom = selectedTest.test_definitions?.nom ?? 'Test'
-      const testVals = Object.entries(selectedTest.valeurs).map(([k, v]) => `${k}: ${v}`).join(', ')
+      const ctxMap = new Map<string, { tssWeek: number; hrv: number | null; hrvBaseline: number | null; validityScore: number }>()
+      await Promise.all(rows.map(async (test: TestRow) => {
+        const testDate = test.date
+        const d7before = new Date(new Date(testDate).getTime() - 7 * 86400000).toISOString().slice(0, 10)
+        const d28before = new Date(new Date(testDate).getTime() - 28 * 86400000).toISOString().slice(0, 10)
 
-      const historyLines = allSame.map(t => {
-        const vals = Object.entries(t.valeurs).map(([k, v]) => `${k}: ${v}`).join(', ')
-        return `- ${t.date} : ${vals}`
-      }).join('\n')
+        const [actsRes, hrvRes, hrvHistRes] = await Promise.all([
+          sb.from('activities').select('tss').eq('user_id', user.id)
+            .gte('started_at', d7before + 'T00:00:00').lt('started_at', testDate + 'T00:00:00'),
+          sb.from('metrics_daily').select('hrv').eq('user_id', user.id).eq('date', testDate).maybeSingle(),
+          sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', d28before).lte('date', testDate),
+        ])
 
-      const deltaStr = ctx?.hrv != null && ctx?.hrvBaseline != null
-        ? ` (écart : ${Math.round(((ctx.hrv - ctx.hrvBaseline) / ctx.hrvBaseline) * 100)}%)`
-        : ''
+        const tssWeek = (actsRes.data ?? []).reduce((s: number, a: { tss: number | null }) => s + (a.tss ?? 0), 0)
+        const hrv = (hrvRes.data?.hrv as number | null) ?? null
+        const hrvValues = (hrvHistRes.data ?? []).filter((m: { hrv: number | null }) => m.hrv != null).map((m: { hrv: number | null }) => m.hrv as number)
+        const hrvBaseline = hrvValues.length > 5 ? Math.round(hrvValues.reduce((a, b) => a + b, 0) / hrvValues.length) : null
 
-      let compareBlock = ''
-      if (compareTest) {
-        const cNom = compareTest.test_definitions?.nom ?? 'Test'
-        const cVals = Object.entries(compareTest.valeurs).map(([k, v]) => `${k}: ${v}`).join(', ')
-        const cCtx = testContexts[compareTest.id]
-        const cValidity = cCtx ? computeTestValidity(cCtx.hrv, cCtx.hrvBaseline, cCtx.tssWeek, cCtx.avgTssWeek, cCtx.highIntensity48h) : null
-        compareBlock = `\n\nTEST COMPARÉ :
-${cNom} · ${compareTest.date} · ${cVals}
-TSS semaine : ${cCtx?.tssWeek ?? 'N/A'}pts | HRV : ${cCtx?.hrv ?? 'N/A'}ms${cCtx?.hrv != null && cCtx?.hrvBaseline != null ? ` (baseline ${cCtx.hrvBaseline}ms)` : ''}
-Validity score : ${cValidity?.score ?? 'N/A'}/100 — Conditions : ${cValidity?.conditions ?? 'N/A'} — Fiabilité : ${cValidity?.label ?? 'N/A'}`
-      }
+        let validity = 100
+        if (hrv != null && hrvBaseline != null && hrv < hrvBaseline * 0.9) validity -= 25
+        if (tssWeek > 500) validity -= 20
+        else if (tssWeek > 350) validity -= 10
 
-      const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
+        ctxMap.set(test.id, { tssWeek: Math.round(tssWeek), hrv, hrvBaseline, validityScore: Math.max(0, validity) })
+      }))
 
-      const apiPrompt = `Tu es un expert en physiologie du sport et analyse de tests de performance.
-
-TEST ANALYSÉ : ${testNom} · ${selectedTest.date} · ${testVals}
-CONTEXTE DE FORME AU MOMENT DU TEST :
-  TSS semaine précédente : ${ctx?.tssWeek ?? 'N/A'}pts (moyenne habituelle : ${ctx?.avgTssWeek ?? 'N/A'}pts)
-  HRV : ${ctx?.hrv ?? 'non disponible'}ms (baseline personnelle : ${ctx?.hrvBaseline ?? 'non disponible'}ms${deltaStr})
-  Test validity score : ${validity?.score ?? 'N/A'}/100 — Conditions : ${validity?.conditions ?? 'N/A'} — Fiabilité : ${validity?.label ?? 'N/A'}
-${compareBlock}
-
-HISTORIQUE TESTS DU MÊME TYPE (du plus ancien au plus récent) :
-${historyLines || 'Premier test de ce type'}
-
-ZONES ACTUELLEMENT CONFIGURÉES : ${zonesRes.data ? JSON.stringify(zonesRes.data) : 'non configurées'}
-PROFIL PHYSIOLOGIQUE : ${perfRes.data ? JSON.stringify(perfRes.data) : 'non renseigné'}
-SPORT : ${sportLabel}
-
-ANALYSE EN 4 PARTIES OBLIGATOIRES :
-1. INTERPRÉTATION DU RÉSULTAT (niveau, signification, comparaison normes pour ce sport)
-2. FIABILITÉ DU TEST (si validity < 80 : estimer le résultat corrigé, expliquer le biais)
-3. ÉVOLUTION (courbe depuis l'historique — si 1 seul test : suggérer de répéter dans 3 mois)
-4. IMPACT SUR LES ZONES (comparer résultat avec zones configurées : sont-elles valides ou obsolètes ?)
-
-RÈGLE CRITIQUE : Ne survends JAMAIS la précision. Si validity score < 60, dis clairement que le test est potentiellement biaisé et donne une fourchette plutôt qu'une valeur exacte.
-
-TERMINE PAR :
-## Sources et niveau de confiance
-## Actions suggérées (parmi : "Estimer mes zones", "Analyser ma progression", "Analyser un entraînement")`
-
-      onPrepare(apiPrompt, `Analyser mes tests — ${sportLabel}`)
+      setTests(rows)
+      setTestContexts(ctxMap)
+      setPhase('select')
     } catch {
-      setGenerating(false)
+      setPhase('sport')
     }
   }
 
-  // ── Étape 1 : sélection du sport ──
-  if (step === 'sport') {
+  async function handleGenerate() {
+    if (!selectedTest || !ctxData) return
+    setPhase('generating')
+    setError(null)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const { data: rulesData } = await sb.from('ai_rules').select('category,rule_text').eq('user_id', user.id).eq('active', true)
+      const rules = (rulesData ?? []) as { category: string; rule_text: string }[]
+
+      const ctx = testContexts.get(selectedTest.id)
+
+      const res = await fetch('/api/analyze-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test: selectedTest,
+          testContext: ctx ?? null,
+          allTestsSameType: ctxData.allTests.filter(t => t.test_definition_id === selectedTest.test_definition_id),
+          zones: ctxData.zones,
+          profile: ctxData.profile,
+          aiRules: rules,
+        }),
+      })
+      const data = await res.json() as { report?: TestReport; error?: string }
+      if (data.error || !data.report) throw new Error(data.error ?? 'Réponse invalide')
+      setReport(data.report)
+
+      if (onRecordConv) {
+        const testNom = selectedTest.test_definitions?.nom ?? 'Test'
+        const userMsg = `Analyser un test — ${testNom} du ${selectedTest.date}`
+        const aiMsg = `**Analyse du test ${testNom}** — ${selectedTest.date}\n\nNiveau : ${data.report.interpretation.niveau}\nFiabilité : ${data.report.fiabilite.score}%\n${data.report.evolution.disponible ? `Évolution : ${data.report.evolution.tendance}` : ''}\n${data.report.impact_zones.mise_a_jour_necessaire ? '⚠ Mise à jour des zones recommandée' : 'Zones à jour'}`
+        onRecordConv(userMsg, aiMsg)
+      }
+
+      setPhase('result')
+    } catch (err) {
+      setError(String(err))
+      setPhase('select')
+    }
+  }
+
+  if (phase === 'loading') {
+    return (
+      <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12 }}>
+        <Dots /><span>Chargement…</span>
+      </div>
+    )
+  }
+
+  if (phase === 'gate' && gateData) {
+    const hasSports = Object.keys(gateData.sportCounts).length > 0
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-          Quel sport analyser ?
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+          Analyser un test
         </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ color: hasSports ? '#22c55e' : '#ef4444' }}>{hasSports ? '✓' : '✗'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>
+              {hasSports
+                ? `${gateData.testsCount} test${gateData.testsCount > 1 ? 's' : ''} réalisé${gateData.testsCount > 1 ? 's' : ''} (${Object.keys(gateData.sportCounts).join(', ')})`
+                : 'Aucun test réalisé'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ color: gateData.zonesCount > 0 ? '#22c55e' : '#f97316' }}>{gateData.zonesCount > 0 ? '✓' : '⚠'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>
+              {gateData.zonesCount > 0 ? `Zones configurées pour ${gateData.zonesCount} sport${gateData.zonesCount > 1 ? 's' : ''}` : 'Zones non configurées (comparaison limitée)'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ color: gateData.profileOk ? '#22c55e' : '#f97316' }}>{gateData.profileOk ? '✓' : '⚠'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>
+              {gateData.profileOk ? 'Profil de performance renseigné' : 'Profil incomplet'}
+            </span>
+          </div>
+        </div>
+        {!hasSports ? (
+          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
+            Aucun test réalisé. Rends-toi dans <strong>Performance → Tests</strong> pour enregistrer ton premier test.
+          </div>
+        ) : null}
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            Annuler
+          </button>
+          {hasSports && (
+            <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              Continuer
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'sport' && gateData) {
+    const availableSports = Object.keys(gateData.sportCounts)
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>Quel sport analyser ?</p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          Tes tests enregistrés pour ce sport seront affichés
+          {availableSports.map(sp => `${AE_SPORT_LABELS[sp] ?? sp} (${gateData.sportCounts[sp]})`).join(' · ')}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
-          {AT_SPORTS.map(s => (
-            <button key={s.id} onClick={() => handleSportSelect(s.id)}
-              disabled={loadingT}
-              style={{
-                padding: '8px 16px', borderRadius: 20,
-                border: '1px solid var(--ai-border)',
-                background: 'var(--ai-bg2)', color: 'var(--ai-mid)',
-                fontSize: 12, fontWeight: 500, cursor: loadingT ? 'not-allowed' : 'pointer',
-                fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s',
-              }}
-              onMouseEnter={e => { if (!loadingT) { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' } }}
+          {availableSports.map(sp => (
+            <button key={sp} onClick={() => void loadTestsForSport(sp)}
+              style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ai-mid)' }}
             >
-              {s.label}
+              {AE_SPORT_LABELS[sp] ?? sp}
             </button>
           ))}
         </div>
-        {loadingT && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
-            <Dots />
-            <span>Chargement des tests…</span>
-          </div>
-        )}
-        <button onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          Annuler
+        <button onClick={() => setPhase('gate')} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          Retour
         </button>
       </div>
     )
   }
 
-  // ── Étape 2 : liste des tests avec contexte enrichi ──
-  const sportLabel = AT_SPORTS.find(s => s.id === sport)?.label ?? sport
-
-  if (!tests?.length) {
+  if (phase === 'generating' && !report) {
     return (
-      <div style={{ padding: '8px 0 4px' }}>
-        <div style={{
-          padding: '16px', borderRadius: 10,
-          border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-          marginBottom: 14,
-        }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
-            Aucun test en {sportLabel}
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px', lineHeight: 1.5 }}>
-            Tu n'as encore aucun test enregistré pour ce sport.
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>
-            Va dans <strong style={{ color: 'var(--ai-text)' }}>Performance → Tests</strong> pour en ajouter.
-            Cela permettra une analyse précise de ta progression.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Autre sport
-          </button>
-          <button onClick={onCancel}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Fermer
-          </button>
-        </div>
+      <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--ai-dim)' }}>
+        <Dots />
+        <p style={{ fontSize: 12, margin: 0 }}>Analyse en cours — croisement de tes données…</p>
       </div>
     )
   }
 
-  if (step === 'results') {
+  if (phase === 'select') {
+    if (!tests.length) {
+      return (
+        <div style={{ padding: '8px 0 4px' }}>
+          <div style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+              Aucun test en {AE_SPORT_LABELS[sport ?? ''] ?? sport}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0 }}>
+              Va dans <strong>Performance → Tests</strong> pour en ajouter.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+              Autre sport
+            </button>
+            <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    const byDef: Record<string, TestRow[]> = {}
+    for (const t of tests) {
+      if (!byDef[t.test_definition_id]) byDef[t.test_definition_id] = []
+      byDef[t.test_definition_id].push(t)
+    }
+    for (const k of Object.keys(byDef)) byDef[k].sort((a, b) => a.date.localeCompare(b.date))
+
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          {tests.length} test{tests.length > 1 ? 's' : ''} en {sportLabel}
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          {tests.length} test{tests.length > 1 ? 's' : ''} en {AE_SPORT_LABELS[sport ?? ''] ?? sport}
         </p>
-        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
-          Sélectionne un test à analyser
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
-          {tests.slice(0, 8).map(t => {
-            const ctx = testContexts[t.id]
-            const validity = ctx ? computeTestValidity(ctx.hrv, ctx.hrvBaseline, ctx.tssWeek, ctx.avgTssWeek, ctx.highIntensity48h) : null
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>Sélectionne un test à analyser</p>
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          {tests.map(t => {
+            const ctx = testContexts.get(t.id)
             const isSelected = selectedTest?.id === t.id
-            const isCompare = compareTest?.id === t.id
-            const condColor = validity?.conditions === 'BONNES' ? '#22c55e' : validity?.conditions === 'INCERTAINES' ? '#f97316' : validity?.conditions === 'DÉGRADÉES' ? '#ef4444' : 'var(--ai-dim)'
+            const sameType = byDef[t.test_definition_id] ?? []
+            const prevTest = sameType.filter(x => x.date < t.date).slice(-1)[0]
+            let deltaPct: number | null = null
+            if (prevTest) {
+              const prevVal = Object.values(prevTest.valeurs)[0]
+              const curVal = Object.values(t.valeurs)[0]
+              if (typeof prevVal === 'number' && typeof curVal === 'number' && prevVal > 0) {
+                deltaPct = Math.round(((curVal - prevVal) / prevVal) * 1000) / 10
+              }
+            }
+            const validityColor = ctx
+              ? ctx.validityScore >= 80 ? '#22c55e' : ctx.validityScore >= 60 ? '#f97316' : '#ef4444'
+              : 'var(--ai-dim)'
+
             return (
-              <div key={t.id}
-                onClick={() => {
-                  if (isSelected) { setSelectedTest(null); return }
-                  if (isCompare) { setCompareTest(null); return }
-                  if (!selectedTest) { setSelectedTest(t); return }
-                  // Second selection — allow compare if same definition
-                  if (t.test_definition_id === selectedTest.test_definition_id) {
-                    setCompareTest(t)
-                  } else {
-                    setSelectedTest(t)
-                    setCompareTest(null)
-                  }
-                }}
+              <div key={t.id} onClick={() => setSelectedTest(isSelected ? null : t)}
                 style={{
-                  padding: '10px 12px', borderRadius: 9, cursor: 'pointer',
-                  border: `1px solid ${isSelected ? '#5b6fff' : isCompare ? '#00c8e0' : 'var(--ai-border)'}`,
-                  background: isSelected ? 'rgba(91,111,255,0.08)' : isCompare ? 'rgba(0,200,224,0.08)' : 'var(--ai-bg2)',
+                  padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                  border: `1px solid ${isSelected ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                  background: isSelected ? 'rgba(91,111,255,0.06)' : 'var(--ai-bg2)',
                   transition: 'all 0.12s',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
                     {t.test_definitions?.nom ?? 'Test'}
-                    {isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>TEST PRINCIPAL</span>}
-                    {isCompare && <span style={{ marginLeft: 6, fontSize: 10, color: '#00c8e0', fontWeight: 700 }}>COMPARAISON</span>}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
-                    {t.date}
-                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{t.date}</span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
-                  {Object.entries(t.valeurs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)', marginBottom: 6 }}>
+                  {Object.entries(t.valeurs).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(' · ')}
                 </div>
                 {ctx && (
-                  <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 6, background: 'var(--ai-bg)', fontSize: 10, color: 'var(--ai-dim)', lineHeight: 1.6 }}>
-                    <div>TSS semaine précédente : <strong style={{ color: 'var(--ai-mid)' }}>{ctx.tssWeek}pts</strong></div>
-                    {ctx.hrv != null && (
-                      <div>HRV ce jour : <strong style={{ color: 'var(--ai-mid)' }}>{ctx.hrv}ms</strong>
+                  <div style={{ fontSize: 11, color: 'var(--ai-mid)', lineHeight: 1.6, marginBottom: 6 }}>
+                    <div>TSS semaine précédente : <strong>{ctx.tssWeek}pts</strong>
+                      {ctx.tssWeek > 500 ? <span style={{ color: '#ef4444' }}> (charge élevée)</span> : ctx.tssWeek > 350 ? <span style={{ color: '#f97316' }}> (charge modérée)</span> : <span style={{ color: '#22c55e' }}> (charge normale)</span>}
+                    </div>
+                    {ctx.hrv != null ? (
+                      <div>HRV ce jour : <strong>{ctx.hrv}ms</strong>
                         {ctx.hrvBaseline != null && (
                           <span> vs baseline {ctx.hrvBaseline}ms
-                            <span style={{ color: ctx.hrv >= ctx.hrvBaseline ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                            <span style={{ color: ctx.hrv >= ctx.hrvBaseline * 0.9 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
                               {' '}{ctx.hrv >= ctx.hrvBaseline ? '+' : ''}{Math.round(((ctx.hrv - ctx.hrvBaseline) / ctx.hrvBaseline) * 100)}%
                             </span>
                           </span>
                         )}
                       </div>
+                    ) : (
+                      <div style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>HRV non disponible ce jour</div>
                     )}
-                    {validity && (
-                      <div style={{ marginTop: 2 }}>
-                        Conditions : <strong style={{ color: condColor }}>{validity.conditions}</strong>
-                        {' · '}Fiabilité : <strong style={{ color: condColor }}>{validity.label}</strong>
-                        {' · '}Score : <strong>{validity.score}/100</strong>
-                      </div>
-                    )}
-                    {!ctx.hrv && <div style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>HRV non disponible ce jour</div>}
                   </div>
                 )}
-                {!ctx && (
-                  <div style={{ marginTop: 4, fontSize: 10, color: 'var(--ai-dim)', fontStyle: 'italic' }}>
-                    Chargement du contexte…
+                {ctx && (
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 2 }}>
+                      <span>Fiabilité estimée</span>
+                      <span style={{ color: validityColor, fontWeight: 700 }}>{ctx.validityScore}%</span>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 2, background: 'var(--ai-bg)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${ctx.validityScore}%`, background: validityColor, borderRadius: 2, transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                )}
+                {deltaPct !== null && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: deltaPct >= 0 ? '#22c55e' : '#ef4444' }}>
+                    {deltaPct >= 0 ? '↑' : '↓'} {deltaPct >= 0 ? '+' : ''}{deltaPct}% vs {prevTest?.date}
+                  </div>
+                )}
+                {isSelected && sameType.length >= 2 && (
+                  <div style={{ marginTop: 8, padding: '8px', borderRadius: 8, background: 'var(--ai-bg)' }}>
+                    <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Évolution</p>
+                    <TestEvolutionMiniChart points={sameType.map(x => ({
+                      date: x.date,
+                      valeur: typeof Object.values(x.valeurs)[0] === 'number' ? Object.values(x.valeurs)[0] as number : 0,
+                    }))} />
                   </div>
                 )}
               </div>
             )
           })}
         </div>
-        {selectedTest && compareTest && (
-          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(0,200,224,0.08)', border: '1px solid rgba(0,200,224,0.25)', marginBottom: 10, fontSize: 11, color: '#00c8e0' }}>
-            Comparaison activée : {selectedTest.test_definitions?.nom ?? 'Test'} ({selectedTest.date}) vs ({compareTest.date})
-          </div>
-        )}
-        {selectedTest && !compareTest && (sameTypeTests[selectedTest.test_definition_id]?.length ?? 0) > 1 && (
-          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px', fontStyle: 'italic' }}>
-            Clique sur un autre test du même type pour comparer
-          </p>
-        )}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { setSport(null); setTests(null); setStep('sport') }}
-            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => { setPhase('sport'); setTests([]); setTestContexts(new Map()) }}
+            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Retour
           </button>
-          <button onClick={() => { if (selectedTest) void handleGenerate() }}
-            disabled={!selectedTest || generating}
-            style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
-              background: selectedTest && !generating ? 'var(--ai-gradient)' : 'var(--ai-bg2)',
-              color: selectedTest && !generating ? '#fff' : 'var(--ai-dim)',
-              fontSize: 12, fontWeight: 700,
-              cursor: selectedTest && !generating ? 'pointer' : 'not-allowed',
-              fontFamily: 'DM Sans,sans-serif',
-            }}>
-            {generating ? 'Préparation…' : selectedTest ? 'Analyser ce test' : 'Sélectionne un test'}
+          <button onClick={() => void handleGenerate()}
+            disabled={!selectedTest}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: selectedTest ? 'var(--ai-gradient)' : 'var(--ai-bg2)', color: selectedTest ? '#fff' : 'var(--ai-dim)', fontSize: 12, fontWeight: 700, cursor: selectedTest ? 'pointer' : 'not-allowed' }}>
+            Analyser ce test →
           </button>
         </div>
+      </div>
+    )
+  }
+
+  if (phase === 'result' && report && selectedTest) {
+    const testNom = selectedTest.test_definitions?.nom ?? 'Test'
+    const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
+              {testNom} · {selectedTest.date}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>
+              {Object.entries(selectedTest.valeurs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(91,111,255,0.06) 0%, rgba(0,200,224,0.04) 100%)', border: '1px solid rgba(91,111,255,0.15)', marginBottom: 10 }}>
+          <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--ai-accent)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {report.interpretation.niveau}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: '0 0 4px', fontWeight: 500 }}>{report.interpretation.signification}</p>
+          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>{report.interpretation.detail}</p>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fiabilité du test</p>
+            <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: report.fiabilite.score >= 80 ? '#22c55e' : report.fiabilite.score >= 60 ? '#f97316' : '#ef4444' }}>
+              {report.fiabilite.score}%
+            </span>
+          </div>
+          <div style={{ height: 4, borderRadius: 2, background: 'var(--ai-bg)', marginBottom: 8, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${report.fiabilite.score}%`, background: report.fiabilite.score >= 80 ? '#22c55e' : report.fiabilite.score >= 60 ? '#f97316' : '#ef4444', borderRadius: 2 }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {report.fiabilite.facteurs.map((f, i) => (
+              <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11 }}>
+                <span style={{ color: f.status === 'ok' ? '#22c55e' : f.status === 'warning' ? '#f97316' : '#ef4444', flexShrink: 0, marginTop: 1 }}>
+                  {f.status === 'ok' ? '✓' : f.status === 'warning' ? '⚠' : '✗'}
+                </span>
+                <span style={{ color: 'var(--ai-mid)' }}><strong>{f.label}</strong> — {f.impact}</span>
+              </div>
+            ))}
+          </div>
+          {report.fiabilite.estimation_corrigee && (
+            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', fontSize: 11, color: '#f97316', lineHeight: 1.5 }}>
+              {report.fiabilite.estimation_corrigee}
+            </div>
+          )}
+        </div>
+
+        {report.evolution.disponible && report.evolution.tests.length > 0 && (
+          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Évolution</p>
+            {report.evolution.tests.length >= 2 && (
+              <div style={{ marginBottom: 8, padding: '6px', borderRadius: 8, background: 'var(--ai-bg)' }}>
+                <TestEvolutionMiniChart points={report.evolution.tests.map(t => ({ date: t.date, valeur: t.valeur }))} />
+              </div>
+            )}
+            <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 4px', lineHeight: 1.5 }}>{report.evolution.tendance}</p>
+            {report.evolution.projection_3mois && (
+              <p style={{ fontSize: 11, color: 'var(--ai-accent)', margin: 0, fontStyle: 'italic' }}>→ {report.evolution.projection_3mois}</p>
+            )}
+          </div>
+        )}
+
+        <div style={{
+          padding: '12px 14px', borderRadius: 10, marginBottom: 10,
+          border: `1px solid ${report.impact_zones.mise_a_jour_necessaire ? 'rgba(249,115,22,0.3)' : 'var(--ai-border)'}`,
+          background: report.impact_zones.mise_a_jour_necessaire ? 'rgba(249,115,22,0.05)' : 'var(--ai-bg2)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Impact sur les zones</p>
+            {report.impact_zones.ecart_pct != null && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: report.impact_zones.mise_a_jour_necessaire ? '#f97316' : '#22c55e' }}>
+                {report.impact_zones.mise_a_jour_necessaire ? `⚠ Écart ${report.impact_zones.ecart_pct}%` : '✓ À jour'}
+              </span>
+            )}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 8px', lineHeight: 1.5 }}>{report.impact_zones.detail}</p>
+          {report.impact_zones.zones_estimees && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+              <thead>
+                <tr>
+                  {['Zone', 'Label', 'Min', 'Max'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '3px 6px', color: 'var(--ai-dim)', fontWeight: 600, borderBottom: '1px solid var(--ai-border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.impact_zones.zones_estimees.map((z, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: '3px 6px', fontWeight: 700, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)' }}>{z.zone}</td>
+                    <td style={{ padding: '3px 6px', color: 'var(--ai-mid)' }}>{z.label}</td>
+                    <td style={{ padding: '3px 6px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)' }}>{z.watts_min ?? z.hr_min ?? z.allure_min ?? '—'}</td>
+                    <td style={{ padding: '3px 6px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)' }}>{z.watts_max ?? z.hr_max ?? z.allure_max ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {report.recommandations.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            {report.recommandations.map((r, i) => (
+              <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{r.label}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{r.detail}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
+          <p style={{ margin: '0 0 2px' }}>Sources : {report.sources_used.join(' · ')}</p>
+          <p style={{ margin: 0 }}>Confiance : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
+        </div>
+
+        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          Fermer
+        </button>
       </div>
     )
   }
@@ -3781,6 +3937,555 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
             {generating ? 'Préparation…' : loadingCtx ? 'Chargement…' : 'Générer l\'analyse'}
           </button>
         </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
+// ── AnalyzeTrainingFlow ───────────────────────────────────────────
+
+interface TrainingActivityRow {
+  id: string
+  sport_type: string
+  title: string | null
+  started_at: string
+  moving_time_s: number | null
+  distance_m: number | null
+  tss: number | null
+  average_heartrate: number | null
+  max_heartrate: number | null
+  average_speed: number | null
+  average_watts: number | null
+  avg_cadence: number | null
+  intensity_factor: number | null
+  aerobic_decoupling: number | null
+  streams: {
+    time?: number[]
+    heartrate?: number[]
+    velocity_smooth?: number[]
+    watts?: number[]
+    altitude?: number[]
+    cadence?: number[]
+  } | null
+}
+
+interface TrainingReport {
+  mode: 'single' | 'comparison'
+  verdict: 'excellent' | 'bon' | 'passable' | 'a_revoir'
+  kpis: { duree_min: number; distance_km: number; tss: number; efficiency_index: number; ei_vs_average: number | null }
+  zone_distribution: { zone: string; pct: number; minutes: number; color: string }[]
+  cardiac_drift_pct: number | null
+  interpretation: {
+    execution: string
+    contexte_recuperation: string
+    plan_vs_realise: string | null
+    tendance_historique: string
+  }
+  conseils: { label: string; detail: string; data_justification: string }[]
+  comparison: {
+    activite_b: { titre: string; date: string }
+    deltas: { metrique: string; a: string; b: string; delta: string; interpretation: string }[]
+    verdict: string
+    progression: 'progression' | 'regression' | 'stable'
+  } | null
+  sources_used: string[]
+  confiance: 'élevée' | 'modérée' | 'faible'
+  actions_suggerees: { label: string; flow?: string }[]
+}
+
+function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
+  type Phase = 'loading' | 'gate' | 'select' | 'generating' | 'result'
+  const [phase, setPhase] = useState<Phase>('loading')
+  const [activities, setActivities] = useState<TrainingActivityRow[]>([])
+  const [sportFilter, setSportFilter] = useState<string | null>(null)
+  const [periodFilter, setPeriodFilter] = useState<'1m' | '3m' | '6m' | 'all'>('3m')
+  const [compareMode, setCompareMode] = useState(false)
+  const [selected, setSelected] = useState<TrainingActivityRow[]>([])
+  const [report, setReport] = useState<TrainingReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [totalCount, setTotalCount] = useState(0)
+  const [plannedDates, setPlannedDates] = useState<Set<string>>(new Set())
+  const [loadingActs, setLoadingActs] = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { setError('Non connecté'); return }
+
+        const [countRes, plannedRes] = await Promise.all([
+          sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          sb.from('planned_sessions').select('week_start,sport').eq('user_id', user.id).order('week_start', { ascending: false }).limit(50),
+        ])
+
+        setTotalCount(countRes.count ?? 0)
+        const dates = new Set<string>()
+        for (const p of (plannedRes.data ?? [])) {
+          if (p.week_start) dates.add(p.week_start as string)
+        }
+        setPlannedDates(dates)
+        setPhase('gate')
+      } catch {
+        setError('Erreur de chargement')
+        setPhase('gate')
+      }
+    })()
+  }, [])
+
+  async function loadActivities() {
+    setLoadingActs(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const cutoffDays = periodFilter === '1m' ? 30 : periodFilter === '3m' ? 90 : periodFilter === '6m' ? 180 : 365
+      const since = new Date(Date.now() - cutoffDays * 86400000).toISOString()
+
+      let query = sb.from('activities')
+        .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,streams')
+        .eq('user_id', user.id).gte('started_at', since).order('started_at', { ascending: false })
+
+      if (sportFilter) query = query.eq('sport_type', sportFilter)
+
+      const { data } = await query.limit(100)
+      setActivities((data as unknown as TrainingActivityRow[]) ?? [])
+    } catch {
+      setActivities([])
+    } finally {
+      setLoadingActs(false)
+    }
+  }
+
+  async function handleAnalyze() {
+    if (selected.length === 0) return
+    setPhase('generating')
+    setError(null)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const mainAct = selected[0]
+      const actDate = mainAct.started_at.slice(0, 10)
+      const d3before = new Date(new Date(actDate).getTime() - 3 * 86400000).toISOString().slice(0, 10)
+      const weekStartDate = (() => { const d = new Date(actDate); const day = d.getDay(); d.setDate(d.getDate() - day + (day === 0 ? -6 : 1)); return d.toISOString().slice(0, 10) })()
+
+      const [rulesRes, zonesRes, recoveryRes, plannedRes, similarRes, weekActsRes] = await Promise.all([
+        sb.from('ai_rules').select('category,rule_text').eq('user_id', user.id).eq('active', true),
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('is_current', true).maybeSingle(),
+        sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,readiness,fatigue,energy').eq('user_id', user.id).gte('date', d3before).lte('date', actDate),
+        sb.from('planned_sessions').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('week_start', weekStartDate).maybeSingle(),
+        sb.from('activities').select('id,started_at,moving_time_s,average_heartrate,average_watts,tss,intensity_factor,aerobic_decoupling').eq('user_id', user.id).eq('sport_type', mainAct.sport_type)
+          .gte('moving_time_s', (mainAct.moving_time_s ?? 3600) * 0.7)
+          .lte('moving_time_s', (mainAct.moving_time_s ?? 3600) * 1.3)
+          .not('id', 'in', `(${selected.map(s => s.id).join(',')})`)
+          .order('started_at', { ascending: false }).limit(10),
+        sb.from('activities').select('tss').eq('user_id', user.id).gte('started_at', weekStartDate + 'T00:00:00').lt('started_at', mainAct.started_at),
+      ])
+
+      const tssWeekBefore = (weekActsRes.data ?? []).reduce((s: number, a: { tss: number | null }) => s + (a.tss ?? 0), 0)
+
+      const activitiesWithMetrics = selected.map(act => ({
+        ...act,
+        cardiac_drift_pct: act.streams?.heartrate && act.streams.heartrate.length > 20
+          ? computeCardiacDrift({ heartrate: act.streams.heartrate })
+          : null,
+      }))
+
+      const res = await fetch('/api/analyze-training', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activities: activitiesWithMetrics,
+          zones: zonesRes.data,
+          planned: plannedRes.data,
+          recovery: recoveryRes.data ?? [],
+          similar: similarRes.data ?? [],
+          tssWeekBefore,
+          aiRules: rulesRes.data ?? [],
+        }),
+      })
+      const data = await res.json() as { report?: TrainingReport; error?: string }
+      if (data.error || !data.report) throw new Error(data.error ?? 'Réponse invalide')
+      setReport(data.report)
+
+      if (onRecordConv) {
+        const actNom = mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type
+        const userMsg = compareMode
+          ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
+          : `Analyser un entraînement — ${actNom} (${actDate})`
+        const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
+        onRecordConv(userMsg, aiMsg)
+      }
+
+      setPhase('result')
+    } catch (err) {
+      setError(String(err))
+      setPhase('select')
+    }
+  }
+
+  if (phase === 'loading') {
+    return <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12 }}><Dots /><span>Chargement…</span></div>
+  }
+
+  if (phase === 'gate') {
+    const hasActivities = totalCount > 0
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>Analyser un entraînement</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ color: hasActivities ? '#22c55e' : '#ef4444' }}>{hasActivities ? '✓' : '✗'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>{totalCount > 0 ? `${totalCount} activité${totalCount > 1 ? 's' : ''} synchronisée${totalCount > 1 ? 's' : ''}` : 'Aucune activité synchronisée'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ color: plannedDates.size > 0 ? '#22c55e' : '#f97316' }}>{plannedDates.size > 0 ? '✓' : '⚠'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>{plannedDates.size > 0 ? 'Séances planifiées disponibles' : 'Pas de séances planifiées (comparaison plan/réel impossible)'}</span>
+          </div>
+        </div>
+        {!hasActivities && (
+          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
+            Aucune activité. Synchronise Strava ou importe une activité d'abord.
+          </div>
+        )}
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          {hasActivities && (
+            <button onClick={() => { setPhase('select'); void loadActivities() }}
+              style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              Continuer →
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'generating' && !report) {
+    return (
+      <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--ai-dim)' }}>
+        <Dots />
+        <p style={{ fontSize: 12, margin: 0, textAlign: 'center' }}>Analyse en cours — croisement de tes données…</p>
+      </div>
+    )
+  }
+
+  if (phase === 'select') {
+    const sportOptions = [...new Set(activities.map(a => a.sport_type))].filter(Boolean)
+
+    const getSportIcon = (sport: string): string => {
+      const icons: Record<string, string> = { running: '🏃', cycling: '🚴', hyrox: '🏋️', gym: '💪', trail: '🏔️', natation: '🏊', triathlon: '🔱' }
+      return icons[sport] ?? '🏅'
+    }
+
+    const getWeekStart = (date: Date): string => {
+      const d = new Date(date)
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      d.setDate(diff)
+      return d.toISOString().slice(0, 10)
+    }
+
+    const displayedActivities = compareMode && selected.length === 1
+      ? activities.filter(a =>
+          a.id !== selected[0].id &&
+          a.sport_type === selected[0].sport_type &&
+          Math.abs((a.moving_time_s ?? 0) - (selected[0].moving_time_s ?? 0)) / (selected[0].moving_time_s || 1) <= 0.30
+        )
+      : activities
+
+    const handleSelectActivity = (act: TrainingActivityRow) => {
+      if (!compareMode) {
+        setSelected(s => s[0]?.id === act.id ? [] : [act])
+        return
+      }
+      if (selected.length === 0) { setSelected([act]); return }
+      if (selected[0].id === act.id) { setSelected([]); return }
+      if (selected.length >= 1) {
+        if (selected[1]?.id === act.id) { setSelected([selected[0]]); return }
+        setSelected([selected[0], act])
+      }
+    }
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+          {compareMode ? 'Sélectionne 2 entraînements à comparer' : 'Sélectionne un entraînement'}
+        </p>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+          <select value={sportFilter ?? ''} onChange={e => { setSportFilter(e.target.value || null); void loadActivities() }}
+            style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer' }}>
+            <option value=''>Tous les sports</option>
+            {sportOptions.map(sp => <option key={sp} value={sp}>{AE_SPORT_LABELS[sp] ?? sp}</option>)}
+          </select>
+          {(['1m', '3m', '6m', 'all'] as const).map(p => (
+            <button key={p} onClick={() => { setPeriodFilter(p); void loadActivities() }}
+              style={{ padding: '5px 10px', borderRadius: 8, border: `1px solid ${periodFilter === p ? 'var(--ai-accent)' : 'var(--ai-border)'}`, background: periodFilter === p ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)', color: periodFilter === p ? 'var(--ai-accent)' : 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontWeight: periodFilter === p ? 700 : 400 }}>
+              {p === 'all' ? 'Tout' : p}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <button onClick={() => { setCompareMode(m => !m); setSelected([]) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: `1px solid ${compareMode ? 'var(--ai-accent)' : 'var(--ai-border)'}`, background: compareMode ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)', color: compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontWeight: compareMode ? 700 : 400 }}>
+            {compareMode ? '☑' : '☐'} Comparer 2 entraînements
+          </button>
+        </div>
+
+        {compareMode && selected.length === 1 && (
+          <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 8, fontSize: 11, color: 'var(--ai-accent)' }}>
+            Séances similaires à « {selected[0].title ?? AE_SPORT_LABELS[selected[0].sport_type] ?? selected[0].sport_type} » — même sport, durée ±30%
+          </div>
+        )}
+
+        {loadingActs && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11, marginBottom: 8 }}>
+            <Dots /><span>Chargement…</span>
+          </div>
+        )}
+
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14, maxHeight: 420, overflowY: 'auto' }}>
+          {displayedActivities.slice(0, 50).map(act => {
+            const isSelectedA = selected[0]?.id === act.id
+            const isSelectedB = selected[1]?.id === act.id
+            const hasStreams = act.streams && (act.streams.heartrate || act.streams.watts)
+            const actDate = act.started_at.slice(0, 10)
+            const weekStart = getWeekStart(new Date(actDate))
+            const hasPlan = plannedDates.has(weekStart)
+            const isSameRoute = compareMode && selected.length === 1 && act.distance_m != null && selected[0].distance_m != null
+              && Math.abs(act.distance_m - selected[0].distance_m) / selected[0].distance_m <= 0.05
+
+            return (
+              <div key={act.id} onClick={() => handleSelectActivity(act)}
+                style={{
+                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.12s',
+                  border: `1px solid ${isSelectedA ? 'var(--ai-accent)' : isSelectedB ? '#00c8e0' : 'var(--ai-border)'}`,
+                  background: isSelectedA ? 'rgba(91,111,255,0.06)' : isSelectedB ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{getSportIcon(act.sport_type)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {act.title ?? AE_SPORT_LABELS[act.sport_type] ?? act.sport_type}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', flexShrink: 0, marginLeft: 6 }}>
+                    {new Date(act.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 3, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {act.moving_time_s && <span>{fmtDuration(act.moving_time_s)}</span>}
+                  {act.distance_m && <span>{fmtDist(act.distance_m)}</span>}
+                  {act.tss != null && <span>TSS {act.tss}</span>}
+                  {act.average_heartrate && <span>FC {act.average_heartrate}bpm</span>}
+                  {act.average_watts && <span>{act.average_watts}W</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+                  {hasStreams && (
+                    <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>STREAMS</span>
+                  )}
+                  {hasPlan && (
+                    <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 9, fontWeight: 700 }}>PLAN</span>
+                  )}
+                  {isSameRoute && (
+                    <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(250,204,21,0.12)', color: '#eab308', fontSize: 9, fontWeight: 700 }}>MÊME PARCOURS</span>
+                  )}
+                  {isSelectedA && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.15)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700 }}>A</span>}
+                  {isSelectedB && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(0,200,224,0.15)', color: '#00c8e0', fontSize: 9, fontWeight: 700 }}>B</span>}
+                </div>
+              </div>
+            )
+          })}
+          {displayedActivities.length === 0 && !loadingActs && (
+            <p style={{ fontSize: 12, color: 'var(--ai-dim)', textAlign: 'center', padding: '20px 0' }}>Aucune activité dans cette période</p>
+          )}
+        </div>
+
+        {compareMode && selected.length === 2 && (
+          <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(0,200,224,0.06)', border: '1px solid rgba(0,200,224,0.2)', marginBottom: 8, fontSize: 11, color: '#00c8e0' }}>
+            Comparaison : A ({selected[0].title ?? selected[0].sport_type} — {selected[0].started_at.slice(0, 10)}) vs B ({selected[1].title ?? selected[1].sport_type} — {selected[1].started_at.slice(0, 10)})
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('gate')} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
+          <button
+            disabled={selected.length === 0 || (compareMode && selected.length < 2)}
+            onClick={() => void handleAnalyze()}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: (selected.length > 0 && (!compareMode || selected.length >= 2)) ? 'var(--ai-gradient)' : 'var(--ai-bg2)', color: (selected.length > 0 && (!compareMode || selected.length >= 2)) ? '#fff' : 'var(--ai-dim)', fontSize: 12, fontWeight: 700, cursor: (selected.length > 0 && (!compareMode || selected.length >= 2)) ? 'pointer' : 'not-allowed' }}>
+            {compareMode ? (selected.length < 2 ? `Sélectionne ${2 - selected.length} séance${selected.length === 0 ? 's' : ''} de plus` : 'Comparer ces 2 séances →') : (selected.length === 0 ? 'Sélectionne une séance' : 'Analyser →')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'result' && report && selected.length > 0) {
+    const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
+    const verdictLabels: Record<string, string> = { excellent: '🏆 Excellent', bon: '✓ Bon', passable: '~ Passable', a_revoir: '⚠ À revoir' }
+    const vColor = verdictColors[report.verdict] ?? '#3b82f6'
+    const mainAct = selected[0]
+    const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
+              {mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type}
+            </p>
+            <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{mainAct.started_at.slice(0, 10)}</p>
+          </div>
+          <span style={{ padding: '4px 10px', borderRadius: 20, background: `${vColor}1a`, color: vColor, fontSize: 11, fontWeight: 700, border: `1px solid ${vColor}33` }}>
+            {verdictLabels[report.verdict]}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
+          {[
+            { label: 'Durée', value: fmtDuration(Math.round(report.kpis.duree_min * 60)) },
+            { label: 'Distance', value: `${report.kpis.distance_km.toFixed(1)}km` },
+            { label: 'TSS', value: String(report.kpis.tss) },
+            { label: 'EI', value: report.kpis.efficiency_index.toFixed(2), sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
+          ].map(k => (
+            <div key={k.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', margin: 0 }}>{k.value}</p>
+              {k.sub && <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0 }}>{k.sub}</p>}
+            </div>
+          ))}
+        </div>
+
+        {report.zone_distribution.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Distribution des zones</p>
+            <div style={{ display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
+              {report.zone_distribution.filter(z => z.pct > 0).map(z => (
+                <div key={z.zone} title={`${z.zone}: ${z.pct}%`}
+                  style={{ width: `${z.pct}%`, background: z.color, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {z.pct > 8 && <span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>{z.zone}</span>}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {report.zone_distribution.filter(z => z.pct > 0).map(z => (
+                <span key={z.zone} style={{ fontSize: 10, color: 'var(--ai-dim)' }}>
+                  <span style={{ color: z.color, fontWeight: 700 }}>{z.zone}</span> {z.pct}% ({z.minutes}min)
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {report.cardiac_drift_pct != null && (
+          <div style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10, fontSize: 11 }}>
+            <span style={{ color: 'var(--ai-mid)' }}>Drift cardiaque : </span>
+            <strong style={{ color: Math.abs(report.cardiac_drift_pct) < 5 ? '#22c55e' : Math.abs(report.cardiac_drift_pct) < 10 ? '#f97316' : '#ef4444' }}>
+              {report.cardiac_drift_pct > 0 ? '+' : ''}{report.cardiac_drift_pct}%
+            </strong>
+            <span style={{ color: 'var(--ai-dim)', fontSize: 10, marginLeft: 6 }}>
+              {Math.abs(report.cardiac_drift_pct) < 5 ? '(normal)' : Math.abs(report.cardiac_drift_pct) < 10 ? '(légèrement élevé)' : '(élevé)'}
+            </span>
+          </div>
+        )}
+
+        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interprétation</p>
+          {[
+            { title: 'Exécution', text: report.interpretation.execution },
+            { title: 'Récupération', text: report.interpretation.contexte_recuperation },
+            ...(report.interpretation.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
+            { title: 'Tendance historique', text: report.interpretation.tendance_historique },
+          ].map((b, i) => (
+            <div key={i} style={{ marginBottom: i < 3 ? 8 : 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{b.title}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>{b.text}</p>
+            </div>
+          ))}
+        </div>
+
+        {report.comparison && (
+          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(0,200,224,0.2)', background: 'rgba(0,200,224,0.04)', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#00c8e0', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
+              <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
+                {report.comparison.progression === 'progression' ? '↑ Progression' : report.comparison.progression === 'regression' ? '↓ Régression' : '= Stable'}
+              </span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+              <thead>
+                <tr>
+                  {['', 'A', 'B', 'Delta'].map(h => (
+                    <th key={h} style={{ textAlign: h === '' ? 'left' : 'center', padding: '3px 5px', color: 'var(--ai-dim)', fontWeight: 600, borderBottom: '1px solid var(--ai-border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.comparison.deltas.map((d, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: '3px 5px', color: 'var(--ai-mid)' }}>{d.metrique}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', fontWeight: 700, textAlign: 'center', color: d.delta.startsWith('+') ? '#22c55e' : d.delta.startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '8px 0 0', lineHeight: 1.4 }}>{report.comparison.verdict}</p>
+          </div>
+        )}
+
+        {report.conseils.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Conseils d'optimisation</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {report.conseils.map((c, i) => (
+                <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{c.label}</p>
+                  <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{c.detail}</p>
+                  <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{c.data_justification}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {report.actions_suggerees.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {report.actions_suggerees.map((a, i) => (
+              <button key={i}
+                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
+                {a.label} →
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
+          <p style={{ margin: '0 0 2px' }}>Sources : {report.sources_used.join(' · ')}</p>
+          <p style={{ margin: 0 }}>Confiance : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
+        </div>
+
+        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          Fermer
+        </button>
       </div>
     )
   }
@@ -8415,7 +9120,7 @@ const PLUS_CATS: PlusCat[] = [
     label: 'Entraînement',
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
-      { label: 'Analyser un entraînement', flow: 'analyser_entrainement' as FlowId },
+      { label: 'Analyser un entraînement', flow: 'analyze_training' as FlowId },
       { label: 'Analyser ma semaine', enrichedId: 'analyser_semaine' },
     ],
   },
@@ -9008,7 +9713,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Analyser un entraînement',
     sub: 'Analyse détaillée ou comparaison de 2 activités',
     model: 'athena',
-    flow: 'analyser_entrainement' as FlowId,
+    flow: 'analyze_training' as FlowId,
   },
   {
     label: 'Stratégie de course',
@@ -12992,8 +13697,38 @@ export default function AIPanel({
                 )}
                 {activeFlow === 'analyzetest' && (
                   <AnalyzeTestFlow
-                    onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
+                  />
+                )}
+                {activeFlow === 'analyze_training' && (
+                  <AnalyzeTrainingFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
                   />
                 )}
                 {activeFlow === 'analyser_entrainement' && (

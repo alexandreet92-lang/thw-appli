@@ -10674,7 +10674,6 @@ type PlannedRaceOption2 = {
   date: string
   goal_time: string | null
   distance_m: number | null
-  denivelé_m: number | null
 }
 
 type StrategieResult = {
@@ -10701,7 +10700,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
   const [manualMode, setManualMode] = useState(false)
   const [manualSport, setManualSport] = useState('running')
   const [manualDistance, setManualDistance] = useState('')
-  const [manualDenivelé, setManualDenivelé] = useState('')
+  const [manualDenivele, setManualDenivele] = useState('')
   const [manualDate, setManualDate] = useState('')
   const [manualGoalTime, setManualGoalTime] = useState('')
 
@@ -10738,7 +10737,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { setLoadingRaces(false); return }
         const today = new Date().toISOString().split('T')[0]
-        const { data } = await sb.from('planned_races').select('id,name,sport,date,goal_time,distance_m,denivelé_m').eq('user_id', user.id).gte('date', today).order('date', { ascending: true }).limit(10)
+        const { data } = await sb.from('planned_races').select('id,name,sport,date,goal_time,distance_m').eq('user_id', user.id).gte('date', today).order('date', { ascending: true }).limit(10)
         setRaces((data ?? []) as PlannedRaceOption2[])
       } catch {
         setRaces([])
@@ -10757,9 +10756,9 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
     return selectedRace?.distance_m ?? null
   }
 
-  function getRaceDenivelé(): number | null {
-    if (manualMode) return manualDenivelé ? parseFloat(manualDenivelé) : null
-    return selectedRace?.denivelé_m ?? null
+  function getRaceDenivele(): number | null {
+    if (manualMode) return manualDenivele ? parseFloat(manualDenivele) : null
+    return null
   }
 
   function getGoalTime(): string | null {
@@ -10770,7 +10769,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
   }
 
   function needsProfilQuestion(): boolean {
-    const d = getRaceDenivelé()
+    const d = getRaceDenivele()
     return d == null || d === 0
   }
 
@@ -10863,18 +10862,18 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
     try {
       const raceSport = getRaceSport()
       const raceDistKm = getRaceDistance() != null ? (getRaceDistance()! / 1000).toFixed(1) : 'non précisé'
-      const raceDenivelé = getRaceDenivelé()
+      const raceDenivele = getRaceDenivele()
       const raceDate = manualMode ? manualDate : (selectedRace?.date ?? '')
       const raceName = manualMode ? `${raceSport} ${raceDistKm}km` : (selectedRace?.name ?? 'Course')
       const goalTime = getGoalTime() ?? 'non précisé'
-      const parcoursProfil = profilParcours ?? (raceDenivelé != null && raceDenivelé > 500 ? 'Montagneux' : raceDenivelé != null && raceDenivelé > 100 ? 'Vallonné' : 'Plat')
+      const parcoursProfil = profilParcours ?? (raceDenivele != null && raceDenivele > 500 ? 'Montagneux' : raceDenivele != null && raceDenivele > 100 ? 'Vallonné' : 'Plat')
       const ressentiBrut = ressenti
 
       const ressentLabel = ['Très fatigué', 'Fatigué', 'Neutre', 'En forme', 'Excellent'][ressentiBrut - 1] ?? 'Neutre'
 
       const systemPrompt = `Tu es un expert en stratégie de course et performance sportive.
 
-COURSE : ${raceName} · ${raceSport} · ${raceDistKm}km · D+ ${raceDenivelé ?? 0}m · Date : ${raceDate}
+COURSE : ${raceName} · ${raceSport} · ${raceDistKm}km · D+ ${raceDenivele ?? 0}m · Date : ${raceDate}
 OBJECTIF : ${goalTime} | PROFIL PARCOURS : ${parcoursProfil}
 RESSENTI DE FORME : ${ressentiBrut}/5 (${ressentLabel})
 
@@ -11025,7 +11024,7 @@ FORMAT JSON OBLIGATOIRE :
                 </div>
                 <input type="number" placeholder="Distance (km)" value={manualDistance} onChange={e => setManualDistance(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
-                <input type="number" placeholder="Dénivelé positif (m) — optionnel" value={manualDenivelé} onChange={e => setManualDenivelé(e.target.value)}
+                <input type="number" placeholder="Dénivelé positif (m) — optionnel" value={manualDenivele} onChange={e => setManualDenivele(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
                 <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />

@@ -4456,6 +4456,8 @@ interface TrainingActivityRow {
   intensity_factor: number | null
   aerobic_decoupling: number | null
   is_race?: boolean | null
+  normalized_watts?: number | null
+  laps?: { distance_m: number; moving_time_s: number; avg_hr?: number; avg_watts?: number; avg_speed_ms?: number }[]
   streams: {
     time?: number[]
     heartrate?: number[]
@@ -4463,6 +4465,7 @@ interface TrainingActivityRow {
     watts?: number[]
     altitude?: number[]
     cadence?: number[]
+    distance?: number[]
   } | null
 }
 
@@ -4780,12 +4783,34 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       const tssWeekBefore = (weekActsRes.data ?? []).reduce((s: number, a: { tss: number | null }) => s + (a.tss ?? 0), 0)
       setCtxZones(zonesRes.data as { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null)
 
-      const activitiesWithMetrics = selected.map(act => ({
-        ...act,
-        cardiac_drift_pct: act.streams?.heartrate && act.streams.heartrate.length > 20
+      const activitiesWithMetrics = selected.map(act => {
+        const driftPct = act.streams?.heartrate && act.streams.heartrate.length > 20
           ? computeCardiacDrift({ heartrate: act.streams.heartrate })
-          : null,
-      }))
+          : null
+        return { ...act, cardiac_drift_pct: driftPct }
+      })
+
+      // Métriques pré-calculées côté client
+      const mainDrift = activitiesWithMetrics[0]?.cardiac_drift_pct ?? null
+      const mainHr = mainAct.avg_hr
+      const mainEI = mainHr
+        ? mainAct.sport_type.toLowerCase().includes('bike') || mainAct.sport_type.toLowerCase().includes('cycl') || mainAct.sport_type.toLowerCase().includes('velo')
+          ? (mainAct.avg_watts ?? null) != null ? (mainAct.avg_watts! / mainHr) : null
+          : (mainAct.avg_speed_ms ?? null) != null ? (mainAct.avg_speed_ms! / mainHr * 100) : null
+        : null
+      const similarEIList = (similarRes.data ?? []) as { avg_hr?: number; avg_watts?: number; avg_speed_ms?: number }[]
+      const eiSimilarAvg = similarEIList.length > 0
+        ? similarEIList.reduce((sum, s) => {
+            if (!s.avg_hr || s.avg_hr === 0) return sum
+            const ei = mainAct.sport_type.toLowerCase().includes('bike') || mainAct.sport_type.toLowerCase().includes('cycl')
+              ? (s.avg_watts ?? 0) / s.avg_hr
+              : (s.avg_speed_ms ?? 0) / s.avg_hr * 100
+            return sum + ei
+          }, 0) / similarEIList.filter(s => (s.avg_hr ?? 0) > 0).length
+        : null
+      const eiDelta = mainEI != null && eiSimilarAvg != null && eiSimilarAvg > 0
+        ? ((mainEI - eiSimilarAvg) / eiSimilarAvg) * 100
+        : null
 
       const res = await fetch('/api/analyze-training', {
         method: 'POST',
@@ -4797,7 +4822,14 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
           recovery: recoveryRes.data ?? [],
           similar: similarRes.data ?? [],
           tssWeekBefore,
+          isRace: mainAct.is_race ?? false,
+          sport: mainAct.sport_type,
           aiRules: rulesRes.data ?? [],
+          // Métriques pré-calculées
+          cardiac_drift_pct: mainDrift,
+          efficiency_index: mainEI,
+          ei_vs_similar_avg: eiDelta,
+          zone_distribution: null, // calculée par l'IA depuis la FC et les zones
         }),
       })
       const data = await res.json() as { report?: TrainingReport; error?: string }
@@ -5143,20 +5175,23 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
           </div>
         )}
 
-        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interprétation</p>
-          {[
-            { title: 'Exécution', text: report.interpretation?.execution },
-            { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
-            ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
-            { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
-          ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
-            <div key={i} style={{ marginBottom: i < arr.length - 1 ? 8 : 0 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{b.title}</p>
-              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>{b.text}</p>
-            </div>
-          ))}
-        </div>
+        {/* ── Séparateur + titre Analyse du coach ── */}
+        <div style={{ margin: '16px 0 10px', borderBottom: '1px solid var(--ai-border)' }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
+          Analyse du coach
+        </p>
+
+        {[
+          { title: 'Exécution', text: report.interpretation?.execution },
+          { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
+          ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
+          { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
+        ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
+          <div key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 0 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>{b.title}</p>
+            <MsgContent text={b.text!} />
+          </div>
+        ))}
 
         {report.comparison && (
           <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(0,200,224,0.2)', background: 'rgba(0,200,224,0.04)', marginBottom: 10 }}>
@@ -5312,21 +5347,23 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
         </div>
       )}
 
-      {/* Interprétation */}
-      <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interprétation</p>
-        {[
-          { title: 'Exécution', text: report.interpretation?.execution },
-          { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
-          ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
-          { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
-        ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
-          <div key={i} style={{ marginBottom: i < arr.length - 1 ? 8 : 0 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{b.title}</p>
-            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>{b.text}</p>
-          </div>
-        ))}
-      </div>
+      {/* ── Séparateur + titre Analyse du coach ── */}
+      <div style={{ margin: '16px 0 10px', borderBottom: '1px solid var(--ai-border)' }} />
+      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
+        Analyse du coach
+      </p>
+
+      {[
+        { title: 'Exécution', text: report.interpretation?.execution },
+        { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
+        ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
+        { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
+      ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
+        <div key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 10 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>{b.title}</p>
+          <MsgContent text={b.text!} />
+        </div>
+      ))}
 
       {/* Tableau de comparaison */}
       {report.comparison && (

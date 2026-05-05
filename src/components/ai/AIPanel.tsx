@@ -4302,15 +4302,9 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
     })()
   }, [phase])
 
-  // loadActivities est gardé pour handleAnalyze (charge les similaires) — nettoyé
+  // no-op — replaced by month-based loading
   async function loadActivities(_reset = false) {
-    // no-op — replaced by month-based loading
-  }
-    } catch {
-      if (reset) setAllActivities([])
-    } finally {
-      setLoadingActs(false)
-    }
+    void _reset
   }
 
   async function handleAnalyze() {

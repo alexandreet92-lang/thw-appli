@@ -27,6 +27,7 @@ interface AIMsg {
   modelId?: THWModel   // modèle utilisé pour cette réponse
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
+  raceStrategy?: RaceStrategyData      // données structurées StrategieCourseFlow (persiste en localStorage)
 }
 interface AIConv {
   id: string
@@ -12601,22 +12602,93 @@ type PlannedRaceOption2 = {
   distance_m: number | null
 }
 
-type StrategieResult = {
-  verdict_objectif: { status: string; confiance: number; detail: string }
-  forme_au_jour_j: { tsb_actuel: number | null; tsb_projete: number | null; methode: string; verdict: string; risque: string }
+type RaceScenario = {
+  nom: 'conservateur' | 'optimal' | 'agressif'
+  objectif_temps: string
+  probabilite: number
   strategie_sections: Array<{ section: string; allure_cible: string | null; watts_cibles: number | null; zone: string; pourcentage_ftp: number | null; rpe_cible: string; conseil: string }>
   nutrition_course: Array<{ timing: string; glucides_g: number; hydratation_ml: number; conseil: string }>
   gestion_effort: { depart: string; milieu: string; final_20pct: string }
   plan_b: { declencheur: string; action: string; objectif_fallback: string }
   points_cles: string[]
+}
+
+type MeteoImpact = {
+  condition: string
+  impact: string
+  ajustement_allure: string | null
+  conseil: string
+}
+
+type StrategieResult = {
+  verdict_objectif: { status: string; confiance: number; detail: string }
+  forme_au_jour_j: { tsb_actuel: number | null; tsb_projete: number | null; methode: string; verdict: string; risque: string }
+  scenarios: RaceScenario[]
+  meteo_impacts: MeteoImpact[]
+  triathlon_repartition: {
+    natation: { objectif: string; conseil: string } | null
+    velo: { objectif: string; conseil: string } | null
+    cap: { objectif: string; conseil: string } | null
+  } | null
   sources: string[]
   confiance: string
   raison_confiance: string
 }
 
-function StrategieCourseFlow({ onCancel, onRecordConv }: {
+interface RaceStrategyData {
+  result: StrategieResult
+  raceName: string
+  raceSport: string
+  raceDate: string
+  goalTime: string
+}
+
+function getRaceFollowUpActions(sport: string, result: StrategieResult): FollowUpAction[] {
+  const actions: FollowUpAction[] = []
+  const optimal = result.scenarios.find(s => s.nom === 'optimal') ?? result.scenarios[0]
+  if (optimal) {
+    actions.push({
+      label: 'Plan nutrition détaillé',
+      prompt: `Sur la base de la stratégie ${sport} (objectif ${optimal.objectif_temps}), donne-moi un plan nutrition ultra-précis : produits spécifiques, quantités exactes, timing, et alternatives en cas de problème gastrique.`,
+    })
+  }
+  if (sport === 'triathlon') {
+    actions.push({
+      label: 'Optimiser T1/T2',
+      prompt: `Donne-moi des conseils précis pour optimiser les transitions T1 (natation→vélo) et T2 (vélo→cap) en triathlon : ordre d'habillage, timing cible, erreurs fréquentes à éviter.`,
+    })
+  } else if (sport === 'trail') {
+    actions.push({
+      label: 'Stratégie bâtons',
+      prompt: `Pour cette course de trail, quel est l'usage optimal des bâtons ? Quand les sortir, technique montée/descente, gestion de la fatigue des bras.`,
+    })
+  } else {
+    actions.push({
+      label: 'Semaine type J-7',
+      prompt: `Sur la base de ma forme actuelle (TSB estimé ${result.forme_au_jour_j.tsb_actuel ?? 'inconnu'}), donne-moi le plan d'entraînement idéal pour les 7 jours avant la course : volumes, intensités, récupération.`,
+    })
+  }
+  if (sport !== 'triathlon' && sport !== 'trail') {
+    // already added above
+  } else {
+    actions.push({
+      label: 'Semaine type J-7',
+      prompt: `Sur la base de ma forme actuelle (TSB estimé ${result.forme_au_jour_j.tsb_actuel ?? 'inconnu'}), donne-moi le plan d'entraînement idéal pour les 7 jours avant la course.`,
+    })
+  }
+  if (result.meteo_impacts.length > 0) {
+    actions.push({
+      label: 'Adapter à la météo',
+      prompt: `En fonction des impacts météo identifiés (${result.meteo_impacts.map(m => m.condition).join(', ')}), comment ajuster concrètement ma tenue, mes objectifs de temps et ma stratégie d'hydratation ?`,
+    })
+  }
+  return actions.slice(0, 4)
+}
+
+function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   onCancel: () => void
-  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onRecordConv?: (userMsg: string, aiMsg: string, strategyData?: RaceStrategyData) => void
+  onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
   const [phase, setPhase] = useState<'race' | 'questions' | 'context' | 'generating' | 'result'>('race')
   const [races, setRaces] = useState<PlannedRaceOption2[]>([])
@@ -12633,6 +12705,18 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
   const [profilParcours, setProfilParcours] = useState<'Plat' | 'Vallonné' | 'Montagneux' | null>(null)
   const [ressenti, setRessenti] = useState<number>(3)
   const [objectifTemps, setObjectifTemps] = useState('')
+  const [altitudeMax, setAltitudeMax] = useState('')
+  const [meteoScenario, setMeteoScenario] = useState<'idéal' | 'chaud' | 'froid' | 'vent' | 'pluie' | null>(null)
+  const [notesLibres, setNotesLibres] = useState('')
+  // Triathlon
+  const [triDistance, setTriDistance] = useState<'S' | 'M' | 'L' | 'XL' | null>(null)
+  const [triSwimGoal, setTriSwimGoal] = useState('')
+  const [triBikeGoal, setTriBikeGoal] = useState('')
+  const [triRunGoal, setTriRunGoal] = useState('')
+
+  // Result
+  const [activeScenario, setActiveScenario] = useState<'conservateur' | 'optimal' | 'agressif'>('optimal')
+  const [recorded, setRecorded] = useState(false)
 
   // Context
   const [contextData, setContextData] = useState<{
@@ -12711,18 +12795,33 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
       if (!user) { setLoadingContext(false); return }
 
       const raceSport = getRaceSport()
+      const isTriathlon = raceSport === 'triathlon'
       const now = new Date()
       const since3months = new Date(now); since3months.setMonth(now.getMonth() - 3)
       const since6months = new Date(now); since6months.setMonth(now.getMonth() - 6)
       const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
 
+      // For triathlon: load running + cycling activities in parallel; for others: load by sport
+      const activitiesQuery = isTriathlon
+        ? sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race,sport_type')
+            .in('sport_type', ['running', 'cycling', 'swimming'])
+            .gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(40)
+        : sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race')
+            .eq('sport_type', raceSport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(30)
+
+      const pastRacesQuery = isTriathlon
+        ? sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,sport_type')
+            .in('sport_type', ['running', 'cycling', 'swimming']).eq('is_race', true).order('started_at', { ascending: false }).limit(8)
+        : sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss')
+            .eq('sport_type', raceSport).eq('is_race', true).order('started_at', { ascending: false }).limit(5)
+
       // TODO: inject injuries when table exists
       const [zonesRes, testsRes, recentActsRes, metrics14dRes, pastRacesRes, profileRes] = await Promise.all([
-        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', raceSport).eq('is_current', true).maybeSingle(),
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', isTriathlon ? 'running' : raceSport).eq('is_current', true).maybeSingle(),
         sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(5),
-        sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race').eq('user_id', user.id).eq('sport_type', raceSport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(30),
+        activitiesQuery,
         Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', since14d.toISOString().split('T')[0]).order('date', { ascending: false })).catch(() => ({ data: [] })),
-        sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss').eq('user_id', user.id).eq('sport_type', raceSport).eq('is_race', true).order('started_at', { ascending: false }).limit(5),
+        pastRacesQuery,
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
       ])
 
@@ -12786,6 +12885,8 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
     setError(null)
     try {
       const raceSport = getRaceSport()
+      const isTriathlon = raceSport === 'triathlon'
+      const isTrail = raceSport === 'trail'
       const raceDistKm = getRaceDistance() != null ? (getRaceDistance()! / 1000).toFixed(1) : 'non précisé'
       const raceDenivele = getRaceDenivele()
       const raceDate = manualMode ? manualDate : (selectedRace?.date ?? '')
@@ -12793,43 +12894,66 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
       const goalTime = getGoalTime() ?? 'non précisé'
       const parcoursProfil = profilParcours ?? (raceDenivele != null && raceDenivele > 500 ? 'Montagneux' : raceDenivele != null && raceDenivele > 100 ? 'Vallonné' : 'Plat')
       const ressentiBrut = ressenti
-
       const ressentLabel = ['Très fatigué', 'Fatigué', 'Neutre', 'En forme', 'Excellent'][ressentiBrut - 1] ?? 'Neutre'
+
+      const triathlonBlock = isTriathlon ? `
+TRIATHLON — Sous-objectifs :
+  Natation : ${triSwimGoal || 'non précisé'} | Vélo : ${triBikeGoal || 'non précisé'} | Cap : ${triRunGoal || 'non précisé'}
+  Distance : ${triDistance ?? 'non précisée'} (S=sprint, M=olympique, L=70.3, XL=Ironman)
+  Inclure coefficients d'effort par discipline et transition T1/T2.` : ''
+
+      const altitudeBlock = (isTrail && altitudeMax) ? `ALTITUDE MAX : ${altitudeMax}m — Appliquer coefficient effort altitude (+~1% par 100m au-dessus de 1500m)` : ''
 
       const systemPrompt = `Tu es un expert en stratégie de course et performance sportive.
 
-COURSE : ${raceName} · ${raceSport} · ${raceDistKm}km · D+ ${raceDenivele ?? 0}m · Date : ${raceDate}
-OBJECTIF : ${goalTime} | PROFIL PARCOURS : ${parcoursProfil}
-RESSENTI DE FORME : ${ressentiBrut}/5 (${ressentLabel})
+SPORT : ${raceSport.toUpperCase()}
+COURSE : ${raceName} · ${raceDistKm}km · D+ ${raceDenivele ?? 0}m · Date : ${raceDate}
+OBJECTIF CIBLE : ${goalTime} | PROFIL PARCOURS : ${parcoursProfil}
+RESSENTI FORME : ${ressentiBrut}/5 (${ressentLabel})
+MÉTÉO PRÉVUE : ${meteoScenario ?? 'inconnue'}
+${altitudeBlock}${triathlonBlock}
+NOTES ATHLÈTE : ${notesLibres || 'aucune'}
 
 ZONES ${raceSport} : ${contextData.zones ? JSON.stringify(contextData.zones) : 'non configurées'}
 TESTS RÉCENTS : ${JSON.stringify(contextData.tests)}
-ACTIVITÉS ${raceSport} (3 mois) : ${JSON.stringify(contextData.recentActivities)}
+ACTIVITÉS (3 mois) : ${JSON.stringify(contextData.recentActivities)}
 FORME ACTUELLE (14 jours) : ${JSON.stringify(contextData.metrics14d)}
 TSB ACTUEL : ${contextData.tsbActuel ?? 'non disponible'}
-TSB PROJETÉ AU JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextData.tsbMethode})
+TSB PROJETÉ JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextData.tsbMethode})
 COURSES PASSÉES : ${JSON.stringify(contextData.pastRaces)}
 PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}
 
 RÈGLES ABSOLUES :
-1. Toutes les allures/watts DOIVENT venir des données réelles — jamais de valeurs génériques
-2. Si TSB projeté est négatif : ALERTER et proposer une stratégie conservative + objectif B
-3. Si objectif "hors portée" selon les données : le dire clairement avec objectif réaliste
-4. Si pas de zones ET pas de test : stratégie en termes de perception uniquement (RPE)
+1. Générer OBLIGATOIREMENT 3 scénarios : conservateur (probabilité élevée, sécurisé), optimal (cible, réaliste), agressif (risqué, PR potentiel)
+2. Toutes les allures/watts DOIVENT venir des données réelles — jamais de valeurs génériques
+3. Si TSB projeté négatif : alerter dans verdict + scénario conservateur prioritaire
+4. Si objectif hors portée : le dire clairement, proposer objectif réaliste
+5. Si pas de zones ET pas de tests : stratégie RPE uniquement (pas d'allures inventées)
+6. Si météo précisée : inclure meteo_impacts avec ajustements concrets
+7. Si triathlon : inclure triathlon_repartition avec objectifs par discipline
 
-FORMAT JSON OBLIGATOIRE :
+FORMAT JSON STRICT :
 {
   "verdict_objectif": { "status": "realiste|ambitieux|hors_portee", "confiance": 0, "detail": "..." },
   "forme_au_jour_j": { "tsb_actuel": null, "tsb_projete": null, "methode": "...", "verdict": "...", "risque": "..." },
-  "strategie_sections": [
-    { "section": "0-X km", "allure_cible": null, "watts_cibles": null, "zone": "Z3", "pourcentage_ftp": null, "rpe_cible": "6/10", "conseil": "..." }
+  "scenarios": [
+    {
+      "nom": "conservateur",
+      "objectif_temps": "...",
+      "probabilite": 85,
+      "strategie_sections": [{ "section": "0-10km", "allure_cible": null, "watts_cibles": null, "zone": "Z2", "pourcentage_ftp": null, "rpe_cible": "5/10", "conseil": "..." }],
+      "nutrition_course": [{ "timing": "0-45min", "glucides_g": 40, "hydratation_ml": 150, "conseil": "..." }],
+      "gestion_effort": { "depart": "...", "milieu": "...", "final_20pct": "..." },
+      "plan_b": { "declencheur": "...", "action": "...", "objectif_fallback": "..." },
+      "points_cles": ["..."]
+    },
+    { "nom": "optimal", "objectif_temps": "...", "probabilite": 60, ... },
+    { "nom": "agressif", "objectif_temps": "...", "probabilite": 30, ... }
   ],
-  "nutrition_course": [
-    { "timing": "0-45min", "glucides_g": 0, "hydratation_ml": 150, "conseil": "..." }
+  "meteo_impacts": [
+    { "condition": "chaud", "impact": "...", "ajustement_allure": "+15sec/km", "conseil": "..." }
   ],
-  "gestion_effort": { "depart": "...", "milieu": "...", "final_20pct": "..." },
-  "plan_b": { "declencheur": "...", "action": "...", "objectif_fallback": "..." },
-  "points_cles": ["...", "...", "..."],
+  "triathlon_repartition": null,
   "sources": ["..."],
   "confiance": "élevé|modéré|faible",
   "raison_confiance": "..."
@@ -12867,10 +12991,20 @@ FORMAT JSON OBLIGATOIRE :
       if (!jsonMatch) throw new Error('Réponse non parseable')
       const parsed = JSON.parse(jsonMatch[0]) as StrategieResult
       setResult(parsed)
+      setActiveScenario('optimal')
+
       if (onRecordConv) {
         const userMsg = `Stratégie de course — ${raceName} — ${raceDate}`
         const aiMsg = `Verdict : ${parsed.verdict_objectif.status} (${parsed.verdict_objectif.confiance}% confiance)\n\n${parsed.verdict_objectif.detail}`
-        onRecordConv(userMsg, aiMsg)
+        const strategyData: RaceStrategyData = {
+          result: parsed,
+          raceName,
+          raceSport,
+          raceDate,
+          goalTime,
+        }
+        onRecordConv(userMsg, aiMsg, strategyData)
+        setRecorded(true)
       }
       setPhase('result')
     } catch (e) {
@@ -12879,8 +13013,8 @@ FORMAT JSON OBLIGATOIRE :
     }
   }
 
-  const SUPPORTED_SPORTS = ['running', 'cycling', 'hyrox', 'gym']
-  const SPORT_LABELS: Record<string, string> = { running: 'Running', cycling: 'Vélo', hyrox: 'Hyrox', gym: 'Gym' }
+  const SUPPORTED_SPORTS = ['running', 'trail', 'cycling', 'triathlon']
+  const SPORT_LABELS: Record<string, string> = { running: 'Running', trail: 'Trail', cycling: 'Vélo', triathlon: 'Triathlon' }
   const verdictColor = (s: string) => s === 'realiste' ? '#22c55e' : s === 'ambitieux' ? '#f97316' : '#ef4444'
   const verdictLabel = (s: string) => s === 'realiste' ? 'Objectif réaliste' : s === 'ambitieux' ? 'Objectif ambitieux' : 'Hors de portée'
 
@@ -12998,6 +13132,10 @@ FORMAT JSON OBLIGATOIRE :
   if (phase === 'questions') {
     const showProfil = needsProfilQuestion()
     const showObjectif = needsObjectifQuestion()
+    const raceSportQ = getRaceSport()
+    const isTriQ = raceSportQ === 'triathlon'
+    const isTrailQ = raceSportQ === 'trail'
+    const canContinue = (!showProfil || profilParcours != null) && (!isTriQ || triDistance != null)
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
@@ -13005,6 +13143,7 @@ FORMAT JSON OBLIGATOIRE :
           Quelques questions
         </p>
 
+        {/* Profil parcours */}
         {showProfil && (
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Profil du parcours</p>
@@ -13025,6 +13164,50 @@ FORMAT JSON OBLIGATOIRE :
           </div>
         )}
 
+        {/* Altitude max — trail uniquement */}
+        {isTrailQ && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Altitude maximale du parcours (m) — optionnel</p>
+            <input type="number" placeholder="Ex: 2500" value={altitudeMax} onChange={e => setAltitudeMax(e.target.value)}
+              style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }} />
+          </div>
+        )}
+
+        {/* Triathlon — distance + objectifs par discipline */}
+        {isTriQ && (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Format de la course *</p>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['S', 'M', 'L', 'XL'] as const).map(d => (
+                  <button key={d} onClick={() => setTriDistance(d)} style={{
+                    flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 11,
+                    border: `1px solid ${triDistance === d ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                    background: triDistance === d ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                    color: triDistance === d ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                    cursor: 'pointer', fontWeight: triDistance === d ? 700 : 400,
+                    fontFamily: 'DM Sans,sans-serif',
+                  }}>
+                    {d === 'S' ? 'Sprint' : d === 'M' ? 'Olympique' : d === 'L' ? '70.3' : 'Ironman'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Objectifs par discipline (optionnel)</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input type="text" placeholder="Natation (ex: 30min)" value={triSwimGoal} onChange={e => setTriSwimGoal(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                <input type="text" placeholder="Vélo (ex: 2h15)" value={triBikeGoal} onChange={e => setTriBikeGoal(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                <input type="text" placeholder="CAP (ex: 45min)" value={triRunGoal} onChange={e => setTriRunGoal(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Ressenti de forme */}
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Ressenti de forme actuel</p>
           <div style={{ display: 'flex', gap: 4 }}>
@@ -13047,13 +13230,40 @@ FORMAT JSON OBLIGATOIRE :
           </div>
         </div>
 
+        {/* Objectif de temps */}
         {showObjectif && (
           <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Objectif de temps (optionnel)</p>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Objectif de temps {isTriQ ? 'total' : ''} (optionnel)</p>
             <input type="text" placeholder="Ex: 3h30, 45min…" value={objectifTemps} onChange={e => setObjectifTemps(e.target.value)}
               style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }} />
           </div>
         )}
+
+        {/* Météo prévue */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Météo prévue (optionnel)</p>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {(['idéal', 'chaud', 'froid', 'vent', 'pluie'] as const).map(m => (
+              <button key={m} onClick={() => setMeteoScenario(meteoScenario === m ? null : m)} style={{
+                padding: '6px 10px', borderRadius: 7, fontSize: 11,
+                border: `1px solid ${meteoScenario === m ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                background: meteoScenario === m ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
+                color: meteoScenario === m ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                cursor: 'pointer', fontWeight: meteoScenario === m ? 700 : 400,
+                fontFamily: 'DM Sans,sans-serif',
+              }}>
+                {m === 'idéal' ? '☀️ Idéal' : m === 'chaud' ? '🌡️ Chaud' : m === 'froid' ? '🥶 Froid' : m === 'vent' ? '💨 Vent' : '🌧️ Pluie'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Notes libres */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Informations complémentaires (optionnel)</p>
+          <textarea placeholder="Ex: premiere fois sur cette distance, douleur au genou, adversaires ciblés…" value={notesLibres} onChange={e => setNotesLibres(e.target.value)}
+            style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box', resize: 'none', minHeight: 60, lineHeight: 1.5 }} />
+        </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setPhase('race')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
@@ -13061,12 +13271,12 @@ FORMAT JSON OBLIGATOIRE :
           </button>
           <button
             onClick={() => { void loadContext(); setPhase('context') }}
-            disabled={showProfil && profilParcours == null}
+            disabled={!canContinue}
             style={{
               flex: 1, padding: '9px', borderRadius: 9, border: 'none',
-              background: (!showProfil || profilParcours != null) ? 'var(--ai-gradient)' : 'var(--ai-border)',
+              background: canContinue ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
-              cursor: (!showProfil || profilParcours != null) ? 'pointer' : 'not-allowed',
+              cursor: canContinue ? 'pointer' : 'not-allowed',
               fontFamily: 'DM Sans,sans-serif',
             }}
           >
@@ -13175,6 +13385,20 @@ FORMAT JSON OBLIGATOIRE :
 
   const raceName = manualMode ? `${getRaceSport()} ${getRaceDistance() != null ? (getRaceDistance()! / 1000).toFixed(1) + 'km' : ''}` : (selectedRace?.name ?? 'Course')
   const vc = verdictColor(result.verdict_objectif.status)
+  const currentScenario = result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0] ?? null
+  const scenarioColor = (nom: string) => nom === 'conservateur' ? '#22c55e' : nom === 'optimal' ? 'var(--ai-accent)' : '#f97316'
+  const followUpActions = getRaceFollowUpActions(getRaceSport(), result)
+
+  function handleRaceFollowUp(action: FollowUpAction) {
+    if (!recorded && onRecordConv && result) {
+      const userMsg = `Stratégie de course — ${raceName} — ${manualMode ? manualDate : (selectedRace?.date ?? '')}`
+      const aiMsg = `Verdict : ${result.verdict_objectif.status} (${result.verdict_objectif.confiance}% confiance)\n\n${result.verdict_objectif.detail}`
+      const strategyData: RaceStrategyData = { result, raceName, raceSport: getRaceSport(), raceDate: manualMode ? manualDate : (selectedRace?.date ?? ''), goalTime: getGoalTime() ?? '' }
+      onRecordConv(userMsg, aiMsg, strategyData)
+      setRecorded(true)
+    }
+    if (onFollowUp) onFollowUp(action.label, action.prompt)
+  }
 
   return (
     <div style={{ padding: '4px 0' }}>
@@ -13213,79 +13437,141 @@ FORMAT JSON OBLIGATOIRE :
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0', fontStyle: 'italic' }}>{result.forme_au_jour_j.methode}</p>
       </div>
 
-      {/* Stratégie sections */}
-      {result.strategie_sections.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
-            Stratégie par section
-          </p>
-          {result.strategie_sections.map((s, i) => (
-            <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{s.section}</span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>{s.zone}</span>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>RPE {s.rpe_cible}</span>
+      {/* Scenario tabs */}
+      {result.scenarios && result.scenarios.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+            {result.scenarios.map(s => (
+              <button key={s.nom} onClick={() => setActiveScenario(s.nom)} style={{
+                flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
+                border: `1px solid ${activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-border)'}`,
+                background: activeScenario === s.nom ? `${scenarioColor(s.nom)}18` : 'var(--ai-bg2)',
+                color: activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-mid)',
+                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', textTransform: 'capitalize',
+              }}>
+                {s.nom}<br />
+                <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.8 }}>{s.objectif_temps} · {s.probabilite}%</span>
+              </button>
+            ))}
+          </div>
+
+          {currentScenario && (
+            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 14 }}>
+              {/* Stratégie sections */}
+              {currentScenario.strategie_sections.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+                    Stratégie par section
+                  </p>
+                  {currentScenario.strategie_sections.map((s, i) => (
+                    <div key={i} style={{ padding: '7px 9px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{s.section}</span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>{s.zone}</span>
+                          <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>RPE {s.rpe_cible}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
+                        {s.allure_cible && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.allure_cible}</span>}
+                        {s.watts_cibles && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.watts_cibles}W</span>}
+                        {s.pourcentage_ftp != null && <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{s.pourcentage_ftp}% FTP</span>}
+                      </div>
+                      <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4, fontStyle: 'italic' }}>{s.conseil}</p>
+                    </div>
+                  ))}
                 </div>
+              )}
+
+              {/* Nutrition */}
+              {currentScenario.nutrition_course.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+                    Nutrition course
+                  </p>
+                  {currentScenario.nutrition_course.map((n, i) => (
+                    <div key={i} style={{ padding: '6px 9px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 4, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', minWidth: 56, flexShrink: 0 }}>{n.timing}</span>
+                      <div>
+                        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{n.glucides_g}g glucides · {n.hydratation_ml}ml</p>
+                        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{n.conseil}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Gestion effort */}
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+                  Gestion de l&apos;effort
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Départ :</strong> {currentScenario.gestion_effort.depart}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Milieu :</strong> {currentScenario.gestion_effort.milieu}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Dernier 20% :</strong> {currentScenario.gestion_effort.final_20pct}</p>
               </div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
-                {s.allure_cible && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.allure_cible}</span>}
-                {s.watts_cibles && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.watts_cibles}W</span>}
-                {s.pourcentage_ftp != null && <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{s.pourcentage_ftp}% FTP</span>}
+
+              {/* Plan B */}
+              <div style={{ padding: '8px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 5px' }}>Plan B</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Déclencheur :</strong> {currentScenario.plan_b.declencheur}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Action :</strong> {currentScenario.plan_b.action}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Objectif fallback :</strong> {currentScenario.plan_b.objectif_fallback}</p>
               </div>
-              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4, fontStyle: 'italic' }}>{s.conseil}</p>
+
+              {/* Points clés */}
+              {currentScenario.points_cles.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Points clés</p>
+                  {currentScenario.points_cles.map((p, i) => (
+                    <p key={i} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px', paddingLeft: 10 }}>• {p}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Météo impacts */}
+      {result.meteo_impacts && result.meteo_impacts.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Impacts météo
+          </p>
+          {result.meteo_impacts.map((m, i) => (
+            <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'capitalize' }}>{m.condition}</span>
+                {m.ajustement_allure && <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: '#f97316' }}>{m.ajustement_allure}</span>}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{m.impact}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{m.conseil}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Nutrition */}
-      {result.nutrition_course.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
-            Nutrition course
+      {/* Triathlon repartition */}
+      {result.triathlon_repartition && (
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
+            Répartition triathlon
           </p>
-          {result.nutrition_course.map((n, i) => (
-            <div key={i} style={{ padding: '7px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', minWidth: 60, flexShrink: 0 }}>{n.timing}</span>
-              <div>
-                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{n.glucides_g}g glucides · {n.hydratation_ml}ml</p>
-                <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{n.conseil}</p>
+          {(['natation', 'velo', 'cap'] as const).map(disc => {
+            const d = result.triathlon_repartition![disc]
+            if (!d) return null
+            const label = disc === 'natation' ? '🏊 Natation' : disc === 'velo' ? '🚴 Vélo' : '🏃 CAP'
+            return (
+              <div key={disc} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{label}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)' }}>{d.objectif}</span>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{d.conseil}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Gestion effort */}
-      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-          Gestion de l&apos;effort
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 4px' }}><strong style={{ color: 'var(--ai-text)' }}>Départ :</strong> {result.gestion_effort.depart}</p>
-        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 4px' }}><strong style={{ color: 'var(--ai-text)' }}>Milieu :</strong> {result.gestion_effort.milieu}</p>
-        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Dernier 20% :</strong> {result.gestion_effort.final_20pct}</p>
-      </div>
-
-      {/* Plan B */}
-      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 6px' }}>
-          Plan B
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Déclencheur :</strong> {result.plan_b.declencheur}</p>
-        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Action :</strong> {result.plan_b.action}</p>
-        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Objectif fallback :</strong> {result.plan_b.objectif_fallback}</p>
-      </div>
-
-      {/* Points clés */}
-      {result.points_cles.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
-            Points clés
-          </p>
-          {result.points_cles.map((p, i) => (
-            <p key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px', paddingLeft: 10 }}>• {p}</p>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -13299,9 +13585,162 @@ FORMAT JSON OBLIGATOIRE :
         </p>
       </div>
 
+      {/* Follow-up actions */}
+      {followUpActions.length > 0 && onFollowUp && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
+            Approfondir
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {followUpActions.map((action, i) => (
+              <button key={i} onClick={() => handleRaceFollowUp(action)} style={{
+                padding: '8px 12px', borderRadius: 8, textAlign: 'left',
+                border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                color: 'var(--ai-text)', fontSize: 12, cursor: 'pointer',
+                fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4,
+              }}>
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button onClick={onCancel} style={{ display: 'block', margin: '4px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
         Fermer
       </button>
+    </div>
+  )
+}
+
+// ── RaceStrategyView ─────────────────────────────────────────
+// Persisted view rendered from msg.raceStrategy in conversation history
+function RaceStrategyView({ data }: { data: RaceStrategyData }) {
+  const [activeScenario, setActiveScenario] = useState<'conservateur' | 'optimal' | 'agressif'>('optimal')
+  const { result, raceName } = data
+  const vc = result.verdict_objectif.status === 'realiste' ? '#22c55e' : result.verdict_objectif.status === 'ambitieux' ? '#f97316' : '#ef4444'
+  const verdictLbl = result.verdict_objectif.status === 'realiste' ? 'Objectif réaliste' : result.verdict_objectif.status === 'ambitieux' ? 'Objectif ambitieux' : 'Hors de portée'
+  const scenarioColor = (nom: string) => nom === 'conservateur' ? '#22c55e' : nom === 'optimal' ? 'var(--ai-accent)' : '#f97316'
+  const currentScenario = result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0] ?? null
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>
+        Stratégie · {raceName} · {data.raceDate}
+      </p>
+
+      {/* Verdict */}
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: `${vc}12`, border: `1px solid ${vc}30`, marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: vc }}>{verdictLbl}</span>
+          <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{result.verdict_objectif.confiance}% confiance</span>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>{result.verdict_objectif.detail}</p>
+      </div>
+
+      {/* Forme au jour J */}
+      {(result.forme_au_jour_j.tsb_actuel != null || result.forme_au_jour_j.verdict) && (
+        <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Forme au jour J</p>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 4 }}>
+            {result.forme_au_jour_j.tsb_actuel != null && (
+              <div>
+                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>TSB actuel</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_actuel >= 0 ? '#22c55e' : '#ef4444', margin: 0 }}>{result.forme_au_jour_j.tsb_actuel}</p>
+              </div>
+            )}
+            {result.forme_au_jour_j.tsb_projete != null && (
+              <div>
+                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>TSB jour J</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_projete >= 0 ? '#22c55e' : '#f97316', margin: 0 }}>{result.forme_au_jour_j.tsb_projete}</p>
+              </div>
+            )}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}>{result.forme_au_jour_j.verdict}</p>
+        </div>
+      )}
+
+      {/* Scenario tabs */}
+      {result.scenarios && result.scenarios.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+            {result.scenarios.map(s => (
+              <button key={s.nom} onClick={() => setActiveScenario(s.nom)} style={{
+                flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
+                border: `1px solid ${activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-border)'}`,
+                background: activeScenario === s.nom ? `${scenarioColor(s.nom)}18` : 'var(--ai-bg2)',
+                color: activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-mid)',
+                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', textTransform: 'capitalize',
+              }}>
+                {s.nom}<br />
+                <span style={{ fontSize: 9, fontWeight: 400 }}>{s.objectif_temps} · {s.probabilite}%</span>
+              </button>
+            ))}
+          </div>
+
+          {currentScenario && (
+            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 12 }}>
+              {currentScenario.strategie_sections.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Stratégie par section</p>
+                  {currentScenario.strategie_sections.map((s, i) => (
+                    <div key={i} style={{ padding: '6px 8px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 3 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{s.section}</span>
+                        <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>{s.zone} · RPE {s.rpe_cible}</span>
+                      </div>
+                      {(s.allure_cible || s.watts_cibles) && (
+                        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', fontFamily: 'DM Mono,monospace' }}>
+                          {s.allure_cible}{s.allure_cible && s.watts_cibles ? ' · ' : ''}{s.watts_cibles ? `${s.watts_cibles}W` : ''}
+                        </p>
+                      )}
+                      <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{s.conseil}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Départ :</strong> {currentScenario.gestion_effort.depart}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Milieu :</strong> {currentScenario.gestion_effort.milieu}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Dernier 20% :</strong> {currentScenario.gestion_effort.final_20pct}</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Météo impacts */}
+      {result.meteo_impacts && result.meteo_impacts.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Impacts météo</p>
+          {result.meteo_impacts.map((m, i) => (
+            <div key={i} style={{ padding: '7px 10px', borderRadius: 7, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#f97316', margin: '0 0 2px', textTransform: 'capitalize' }}>{m.condition}{m.ajustement_allure ? ` · ${m.ajustement_allure}` : ''}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>{m.conseil}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Triathlon repartition */}
+      {result.triathlon_repartition && (
+        <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>Répartition triathlon</p>
+          {(['natation', 'velo', 'cap'] as const).map(disc => {
+            const d = result.triathlon_repartition![disc]
+            if (!d) return null
+            return (
+              <div key={disc} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, color: 'var(--ai-text)' }}>{disc === 'natation' ? '🏊 Natation' : disc === 'velo' ? '🚴 Vélo' : '🏃 CAP'}</span>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)' }}>{d.objectif}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Sources */}
+      <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>
+        Confiance : {result.confiance} · Sources : {result.sources.join(' · ')}
+      </p>
     </div>
   )
 }
@@ -14768,18 +15207,20 @@ export default function AIPanel({
                 {activeFlow === 'strategie_course' && (
                   <StrategieCourseFlow
                     onCancel={() => setActiveFlow(null)}
-                    onRecordConv={(userMsg, aiMsg) => {
+                    onRecordConv={(userMsg, aiMsg, strategyData) => {
                       const conv: AIConv = {
                         id: genId(),
                         title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
                         createdAt: Date.now(), updatedAt: Date.now(),
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
-                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel, raceStrategy: strategyData },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
                     }}
+                    onFollowUp={(displayLabel, fullPrompt) => { void send(displayLabel, fullPrompt) }}
                   />
                 )}
                 {activeFlow === 'app_guide' && (
@@ -14859,7 +15300,12 @@ export default function AIPanel({
                         <TrainingReportView data={msg.trainingReport} />
                       </div>
                     )}
-                    {msg.role === 'assistant' && !msg.sessionData && !msg.trainingReport && (
+                    {msg.role === 'assistant' && msg.raceStrategy && (
+                      <div style={{ marginLeft: 34 }}>
+                        <RaceStrategyView data={msg.raceStrategy} />
+                      </div>
+                    )}
+                    {msg.role === 'assistant' && !msg.sessionData && !msg.trainingReport && !msg.raceStrategy && (
                       <SessionCard
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}

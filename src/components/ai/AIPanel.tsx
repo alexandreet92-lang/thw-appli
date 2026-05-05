@@ -12602,6 +12602,26 @@ type PlannedRaceOption2 = {
   distance_m: number | null
 }
 
+interface CourseProfile {
+  total_distance_km: number
+  total_denivele_pos: number
+  total_denivele_neg: number
+  altitude_min: number
+  altitude_max: number
+  segments: Array<{
+    start_km: number
+    end_km: number
+    distance_km: number
+    ele_start: number
+    ele_end: number
+    denivele: number
+    pente_moyenne_pct: number
+    type: 'montee' | 'descente' | 'plat'
+    description: string
+  }>
+  elevation_profile: Array<{ dist_km: number; ele: number }>
+}
+
 type RaceScenario = {
   nom: 'conservateur' | 'optimal' | 'agressif'
   objectif_temps: string
@@ -12718,6 +12738,12 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   const [activeScenario, setActiveScenario] = useState<'conservateur' | 'optimal' | 'agressif'>('optimal')
   const [recorded, setRecorded] = useState(false)
 
+  // Course file upload
+  const [courseProfile, setCourseProfile] = useState<CourseProfile | null>(null)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const courseFileRef = useRef<HTMLInputElement>(null)
+
   // Context
   const [contextData, setContextData] = useState<{
     zones: unknown
@@ -12761,11 +12787,13 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   }
 
   function getRaceDistance(): number | null {
+    if (courseProfile) return courseProfile.total_distance_km * 1000
     if (manualMode) return manualDistance ? parseFloat(manualDistance) * 1000 : null
     return selectedRace?.distance_m ?? null
   }
 
   function getRaceDenivele(): number | null {
+    if (courseProfile) return courseProfile.total_denivele_pos
     if (manualMode) return manualDenivele ? parseFloat(manualDenivele) : null
     return null
   }
@@ -12778,12 +12806,47 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   }
 
   function needsProfilQuestion(): boolean {
+    if (courseProfile) return false // profil connu via le fichier uploadé
     const d = getRaceDenivele()
     return d == null || d === 0
   }
 
   function needsObjectifQuestion(): boolean {
     return getGoalTime() == null
+  }
+
+  async function handleCourseFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingFile(true)
+    setUploadError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/parse-course-file', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json() as { profile?: CourseProfile; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Erreur de parsing')
+
+      setCourseProfile(data.profile ?? null)
+
+      // Auto-remplir distance et dénivelé si en mode manuel
+      if (manualMode && data.profile) {
+        setManualDistance(data.profile.total_distance_km.toFixed(1))
+        setManualDenivele(data.profile.total_denivele_pos.toString())
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setUploadingFile(false)
+      if (courseFileRef.current) courseFileRef.current.value = ''
+    }
   }
 
   async function loadContext() {
@@ -12902,7 +12965,16 @@ TRIATHLON — Sous-objectifs :
   Distance : ${triDistance ?? 'non précisée'} (S=sprint, M=olympique, L=70.3, XL=Ironman)
   Inclure coefficients d'effort par discipline et transition T1/T2.` : ''
 
-      const altitudeBlock = (isTrail && altitudeMax) ? `ALTITUDE MAX : ${altitudeMax}m — Appliquer coefficient effort altitude (+~1% par 100m au-dessus de 1500m)` : ''
+      const altitudeBlock = (isTrail && (altitudeMax || courseProfile?.altitude_max))
+        ? `ALTITUDE MAX : ${altitudeMax || courseProfile?.altitude_max}m — Appliquer coefficient effort altitude (+~1% par 100m au-dessus de 1500m)`
+        : ''
+
+      const courseProfileBlock = courseProfile ? `
+PARCOURS IMPORTÉ (${courseProfile.total_distance_km}km · D+ ${courseProfile.total_denivele_pos}m · D- ${courseProfile.total_denivele_neg}m · Alt. ${courseProfile.altitude_min}m → ${courseProfile.altitude_max}m) :
+SEGMENTS DU PARCOURS :
+${courseProfile.segments.map((s, i) => `  ${i + 1}. ${s.description} (${s.start_km}km → ${s.end_km}km, pente ${s.pente_moyenne_pct}%)`).join('\n')}
+
+IMPORTANT : Ta stratégie par sections DOIT correspondre à ces segments réels. Chaque montée significative doit avoir sa cible de watts/allure spécifique. Les descentes doivent avoir des consignes de récupération.` : ''
 
       const systemPrompt = `Tu es un expert en stratégie de course et performance sportive.
 
@@ -12913,6 +12985,7 @@ RESSENTI FORME : ${ressentiBrut}/5 (${ressentLabel})
 MÉTÉO PRÉVUE : ${meteoScenario ?? 'inconnue'}
 ${altitudeBlock}${triathlonBlock}
 NOTES ATHLÈTE : ${notesLibres || 'aucune'}
+${courseProfileBlock}
 
 ZONES ${raceSport} : ${contextData.zones ? JSON.stringify(contextData.zones) : 'non configurées'}
 TESTS RÉCENTS : ${JSON.stringify(contextData.tests)}
@@ -13103,6 +13176,51 @@ FORMAT JSON STRICT :
                 Saisir manuellement
               </button>
             )}
+
+            {/* Upload parcours — disponible dans les deux modes */}
+            {(manualMode || selectedRace) && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 6px' }}>
+                  Importer le parcours (optionnel)
+                </p>
+                <input
+                  ref={courseFileRef}
+                  type="file"
+                  accept=".gpx,.tcx,.kml,.fit"
+                  onChange={e => { void handleCourseFileUpload(e) }}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => courseFileRef.current?.click()}
+                  disabled={uploadingFile}
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: 8,
+                    border: `1px dashed ${courseProfile ? 'rgba(0,200,224,0.5)' : 'var(--ai-border)'}`,
+                    background: courseProfile ? 'rgba(0,200,224,0.04)' : 'var(--ai-bg2)',
+                    color: courseProfile ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                    fontSize: 11, cursor: uploadingFile ? 'default' : 'pointer',
+                    fontFamily: 'DM Sans,sans-serif',
+                  }}
+                >
+                  {uploadingFile
+                    ? 'Analyse du parcours…'
+                    : courseProfile
+                      ? `✓ ${courseProfile.total_distance_km}km · D+ ${courseProfile.total_denivele_pos}m · ${courseProfile.segments.length} segments`
+                      : '📁 Importer un fichier GPX, TCX ou KML'}
+                </button>
+                {courseProfile && (
+                  <button onClick={() => setCourseProfile(null)} style={{ fontSize: 10, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 0', display: 'block' }}>
+                    ✕ Supprimer le parcours
+                  </button>
+                )}
+                {uploadError && (
+                  <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>{uploadError}</p>
+                )}
+                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
+                  Exporte depuis Strava, Garmin Connect, Komoot ou autre
+                </p>
+              </div>
+            )}
           </>
         )}
 
@@ -13143,7 +13261,71 @@ FORMAT JSON STRICT :
           Quelques questions
         </p>
 
-        {/* Profil parcours */}
+        {/* Profil altimétrique si fichier uploadé */}
+        {courseProfile && (
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+              Profil du parcours
+            </p>
+            <svg
+              viewBox="0 0 1000 120"
+              style={{ width: '100%', height: 80, display: 'block', marginBottom: 6 }}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="ele-fill-q" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.04" />
+                </linearGradient>
+              </defs>
+              {(() => {
+                const ep = courseProfile.elevation_profile
+                if (ep.length < 2) return null
+                const maxDist = ep[ep.length - 1].dist_km
+                const minEle = courseProfile.altitude_min
+                const maxEle = courseProfile.altitude_max
+                const range = maxEle - minEle || 1
+                const pts = ep.map(p => {
+                  const x = (p.dist_km / maxDist) * 1000
+                  const y = 110 - ((p.ele - minEle) / range) * 100
+                  return `${x.toFixed(0)},${y.toFixed(0)}`
+                })
+                const fillPath = `M0,120L${pts.join('L')}L1000,120Z`
+                const linePath = `M${pts.join('L')}`
+                return (
+                  <>
+                    <path d={fillPath} fill="url(#ele-fill-q)" />
+                    <path d={linePath} fill="none" stroke="#94a3b8" strokeWidth="2" />
+                  </>
+                )
+              })()}
+              <text x={4} y={14} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_max}m</text>
+              <text x={4} y={116} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_min}m</text>
+            </svg>
+            <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--ai-mid)', marginBottom: 8 }}>
+              <span>{courseProfile.total_distance_km}km</span>
+              <span>D+ {courseProfile.total_denivele_pos}m</span>
+              <span>D- {courseProfile.total_denivele_neg}m</span>
+              <span>{courseProfile.segments.length} segments</span>
+            </div>
+            <div style={{ maxHeight: 110, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {courseProfile.segments.map((seg, i) => (
+                <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                  <span style={{
+                    color: seg.type === 'montee' ? '#ef4444' : seg.type === 'descente' ? '#22c55e' : 'var(--ai-dim)',
+                    fontWeight: 700, minWidth: 12, flexShrink: 0,
+                  }}>
+                    {seg.type === 'montee' ? '▲' : seg.type === 'descente' ? '▼' : '▬'}
+                  </span>
+                  <span style={{ fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>{seg.start_km}–{seg.end_km}km</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{seg.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Profil parcours (boutons) */}
         {showProfil && (
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Profil du parcours</p>
@@ -13436,6 +13618,56 @@ FORMAT JSON STRICT :
         )}
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0', fontStyle: 'italic' }}>{result.forme_au_jour_j.methode}</p>
       </div>
+
+      {/* Profil altimétrique du parcours importé */}
+      {courseProfile && (
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+            Profil du parcours
+          </p>
+          <svg
+            viewBox="0 0 1000 120"
+            style={{ width: '100%', height: 90, display: 'block', marginBottom: 6 }}
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id="ele-fill-r" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.04" />
+              </linearGradient>
+            </defs>
+            {(() => {
+              const ep = courseProfile.elevation_profile
+              if (ep.length < 2) return null
+              const maxDist = ep[ep.length - 1].dist_km
+              const minEle = courseProfile.altitude_min
+              const maxEle = courseProfile.altitude_max
+              const range = maxEle - minEle || 1
+              const pts = ep.map(p => {
+                const x = (p.dist_km / maxDist) * 1000
+                const y = 110 - ((p.ele - minEle) / range) * 100
+                return `${x.toFixed(0)},${y.toFixed(0)}`
+              })
+              const fillPath = `M0,120L${pts.join('L')}L1000,120Z`
+              const linePath = `M${pts.join('L')}`
+              return (
+                <>
+                  <path d={fillPath} fill="url(#ele-fill-r)" />
+                  <path d={linePath} fill="none" stroke="#94a3b8" strokeWidth="2" />
+                </>
+              )
+            })()}
+            <text x={4} y={14} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_max}m</text>
+            <text x={4} y={116} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_min}m</text>
+          </svg>
+          <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--ai-mid)' }}>
+            <span>{courseProfile.total_distance_km}km</span>
+            <span>D+ {courseProfile.total_denivele_pos}m</span>
+            <span>D- {courseProfile.total_denivele_neg}m</span>
+            <span>{courseProfile.segments.length} segments</span>
+          </div>
+        </div>
+      )}
 
       {/* Scenario tabs */}
       {result.scenarios && result.scenarios.length > 0 && (

@@ -1349,7 +1349,8 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             .select('*')
             .eq('user_id', user.id)
             .order('date', { ascending: false })
-            .limit(14),
+            .limit(14)
+            .catch(() => ({ data: [] })),
           sb.from('ai_rules')
             .select('category,rule_text')
             .eq('user_id', user.id)
@@ -3009,8 +3010,8 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         const [actsRes, hrvRes, hrvHistRes] = await Promise.all([
           sb.from('activities').select('tss')
             .gte('started_at', d7before + 'T00:00:00').lt('started_at', testDate + 'T00:00:00'),
-          sb.from('metrics_daily').select('hrv').eq('user_id', user.id).eq('date', testDate).maybeSingle(),
-          sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', d28before).lte('date', testDate),
+          sb.from('metrics_daily').select('*').eq('user_id', user.id).eq('date', testDate).maybeSingle().catch(() => ({ data: null })),
+          sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', d28before).lte('date', testDate).catch(() => ({ data: [] })),
         ])
 
         const tssWeek = (actsRes.data ?? []).reduce((s: number, a: { tss: number | null }) => s + (a.tss ?? 0), 0)
@@ -3566,10 +3567,10 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
       // TODO: inject injuries when table exists
       const [zonesRes, metricsYestRes, plannedRes, similarRes, hrvHistRes] = await Promise.all([
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', act.sport_type).eq('is_current', true).maybeSingle(),
-        sb.from('metrics_daily').select('hrv,resting_hr').eq('user_id', user.id).eq('date', dayBefore).maybeSingle(),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id).eq('date', dayBefore).maybeSingle().catch(() => ({ data: null })),
         sb.from('planned_sessions').select('title,duration_min,intensite,type_seance').eq('user_id', user.id).gte('date', dayBefore).lte('date', dayAfter).eq('sport', act.sport_type).maybeSingle(),
-        sb.from('activities').select('id').eq('sport_type', act.sport_type).gte('moving_time_s', (act.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (act.moving_time_s ?? 0) * 1.3).neq('id', act.id).limit(10),
-        sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate),
+        sb.from('activities').select('id').eq('sport_type', act.sport_type).gte('moving_time_s', Math.round((act.moving_time_s ?? 0) * 0.7)).lte('moving_time_s', Math.round((act.moving_time_s ?? 0) * 1.3)).neq('id', act.id).limit(10),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate).catch(() => ({ data: [] })),
       ])
 
       const hrvValues = ((hrvHistRes.data ?? []) as { hrv: number | null }[]).filter(m => m.hrv != null).map(m => m.hrv as number)
@@ -3625,15 +3626,16 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
       // TODO: inject injuries when table exists
       const [zonesRes, recoveryRes, plannedRes, similarRes] = await Promise.all([
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', selectedAct.sport_type).eq('is_current', true).maybeSingle(),
-        sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,readiness,fatigue,energy').eq('user_id', user.id).gte('date', threeDaysBefore.toISOString().split('T')[0]).lte('date', actDate),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', threeDaysBefore.toISOString().split('T')[0]).lte('date', actDate).catch(() => ({ data: [] })),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).gte('date', dayBefore.toISOString().split('T')[0]).lte('date', dayAfter.toISOString().split('T')[0]).eq('sport', selectedAct.sport_type).maybeSingle(),
-        sb.from('activities').select('started_at,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling').eq('sport_type', selectedAct.sport_type).gte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 1.3).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
+        sb.from('activities').select('started_at,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling').eq('sport_type', selectedAct.sport_type).gte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 0.7)).lte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 1.3)).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
       ])
 
       // HRV baseline 28d
       const since28d = new Date(actDate)
       since28d.setDate(since28d.getDate() - 28)
-      const hrvDataRes = await sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate)
+      let hrvDataRes: { data: { hrv?: number | null }[] | null } = { data: [] }
+      try { hrvDataRes = await sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate) } catch { /* table unavailable */ }
       const hrvValues = ((hrvDataRes.data ?? []) as { hrv: number | null }[]).filter(m => m.hrv != null).map(m => m.hrv as number)
       const hrvBaseline = hrvValues.length > 0 ? Math.round(hrvValues.reduce((a, b) => a + b, 0) / hrvValues.length) : null
 
@@ -4325,11 +4327,11 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
       const [rulesRes, zonesRes, recoveryRes, plannedRes, similarRes, weekActsRes] = await Promise.all([
         sb.from('ai_rules').select('category,rule_text').eq('user_id', user.id).eq('active', true),
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('is_current', true).maybeSingle(),
-        sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,readiness,fatigue,energy').eq('user_id', user.id).gte('date', d3before).lte('date', actDate),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', d3before).lte('date', actDate).catch(() => ({ data: null })),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('week_start', weekStartDate).maybeSingle(),
         sb.from('activities').select('id,started_at,moving_time_s,avg_hr,avg_watts,tss,intensity_factor,aerobic_decoupling').eq('sport_type', mainAct.sport_type)
-          .gte('moving_time_s', (mainAct.moving_time_s ?? 3600) * 0.7)
-          .lte('moving_time_s', (mainAct.moving_time_s ?? 3600) * 1.3)
+          .gte('moving_time_s', Math.round((mainAct.moving_time_s ?? 3600) * 0.7))
+          .lte('moving_time_s', Math.round((mainAct.moving_time_s ?? 3600) * 1.3))
           .not('id', 'in', `(${selected.map(s => s.id).join(',')})`)
           .order('started_at', { ascending: false }).limit(10),
         sb.from('activities').select('tss').gte('started_at', weekStartDate + 'T00:00:00').lt('started_at', mainAct.started_at),
@@ -4682,8 +4684,8 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
             { title: 'Récupération', text: report.interpretation.contexte_recuperation },
             ...(report.interpretation.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
             { title: 'Tendance historique', text: report.interpretation.tendance_historique },
-          ].map((b, i) => (
-            <div key={i} style={{ marginBottom: i < 3 ? 8 : 0 }}>
+          ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
+            <div key={i} style={{ marginBottom: i < arr.length - 1 ? 8 : 0 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{b.title}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>{b.text}</p>
             </div>
@@ -10020,7 +10022,7 @@ async function enrichedAnalyserSemaine(
   const [activitiesRes, plannedRes, metricsRes, past4wActivitiesRes, past4wPlannedRes, upcomingRacesRes] = await Promise.all([
     sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor').eq('user_id', userId).gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('id,sport,title,duration_min,tss,intensite,heure,type_seance,status,day_index').eq('user_id', userId).gte('week_start', weekStart.toISOString().split('T')[0]).lte('week_start', weekEnd.toISOString().split('T')[0]),
-    sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb,fatigue,energy,stress').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).lte('date', weekEnd.toISOString().split('T')[0]).order('date', { ascending: true }),
+    sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).lte('date', weekEnd.toISOString().split('T')[0]).order('date', { ascending: true }).catch(() => ({ data: [] })),
     sb.from('activities').select('sport_type,started_at,moving_time_s,tss,intensity_factor,avg_hr,avg_watts,avg_pace_s_km').eq('user_id', userId).gte('started_at', since4weeks.toISOString()).lt('started_at', weekStart.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('sport,duration_min,intensite,type_seance,status,day_index,week_start').eq('user_id', userId).gte('week_start', since4weeks.toISOString().split('T')[0]).lt('week_start', weekStart.toISOString().split('T')[0]).order('week_start', { ascending: true }),
     sb.from('planned_races').select('name,sport,date,level,goal_time').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).order('date', { ascending: true }).limit(3),
@@ -10154,7 +10156,7 @@ async function enrichedAnalyserRecuperation(
   const in2days = new Date(now); in2days.setDate(now.getDate() + 2)
 
   const [metrics28dRes, activities28dRes, next48hRes] = await Promise.all([
-    sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,tss_actual,atl,ctl,tsb,fatigue,energy,stress,motivation').eq('user_id', userId).gte('date', since28d.toISOString().split('T')[0]).order('date', { ascending: true }),
+    sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since28d.toISOString().split('T')[0]).order('date', { ascending: true }).catch(() => ({ data: [] })),
     sb.from('activities').select('sport_type,started_at,moving_time_s,tss,avg_hr,intensity_factor').eq('user_id', userId).gte('started_at', since28d.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('date,sport,title,duration_min,intensite,tss').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]).lte('date', in2days.toISOString().split('T')[0]).order('date', { ascending: true }),
   ])
@@ -10264,7 +10266,7 @@ async function enrichedConseilsSommeil(
   const since60d = new Date(now); since60d.setDate(now.getDate() - 60)
 
   const [metrics60dRes, activities60dRes, profileRes] = await Promise.all([
-    sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,sleep_quality,readiness,fatigue,energy').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true }),
+    sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true }).catch(() => ({ data: [] })),
     sb.from('activities').select('sport_type,started_at,moving_time_s,tss,raw_data,intensity_factor').eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
     sb.from('user_profiles').select('sports,main_goal,age,weight_kg').eq('user_id', userId).maybeSingle(),
   ])
@@ -10427,7 +10429,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
           sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
           sb.from('planned_races').select('id').eq('user_id', user.id).gte('date', today),
           sb.from('activities').select('id').eq('user_id', user.id).gte('started_at', since30d + 'T00:00:00'),
-          sb.from('metrics_daily').select('id').eq('user_id', user.id).gte('date', since14d),
+          sb.from('metrics_daily').select('id').eq('user_id', user.id).gte('date', since14d).catch(() => ({ data: [] })),
           sb.from('ai_rules').select('id').eq('user_id', user.id).eq('active', true),
         ])
 
@@ -10676,7 +10678,7 @@ async function enrichedComprendreApp(
     sb.from('nutrition_plans').select('id').eq('user_id', userId).eq('actif', true).maybeSingle(),
     sb.from('planned_races').select('id,name,sport,date').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]),
     sb.from('activities').select('id').eq('user_id', userId).gte('started_at', since30d.toISOString()),
-    sb.from('metrics_daily').select('id').eq('user_id', userId).gte('date', since14d.toISOString().split('T')[0]),
+    sb.from('metrics_daily').select('id').eq('user_id', userId).gte('date', since14d.toISOString().split('T')[0]).catch(() => ({ data: [], count: 0 })),
     sb.from('ai_rules').select('id').eq('user_id', userId).eq('active', true),
   ])
 
@@ -12061,7 +12063,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv }: {
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', raceSport).eq('is_current', true).maybeSingle(),
         sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(5),
         sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race').eq('user_id', user.id).eq('sport_type', raceSport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(30),
-        sb.from('metrics_daily').select('date,hrv,readiness,atl,ctl,tsb,fatigue').eq('user_id', user.id).gte('date', since14d.toISOString().split('T')[0]).order('date', { ascending: false }),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', since14d.toISOString().split('T')[0]).order('date', { ascending: false }).catch(() => ({ data: [] })),
         sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss').eq('user_id', user.id).eq('sport_type', raceSport).eq('is_race', true).order('started_at', { ascending: false }).limit(5),
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
       ])

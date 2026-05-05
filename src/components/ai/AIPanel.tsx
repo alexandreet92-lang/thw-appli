@@ -3948,47 +3948,126 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 // ── Stream chart components ────────────────────────────────────────
 
 function StreamProfileChart({ streams, zones, sport }: {
-  streams: { time?: number[]; heartrate?: number[]; watts?: number[]; velocity_smooth?: number[]; altitude?: number[]; distance?: number[] }
+  streams: { time?: number[]; heartrate?: number[]; watts?: number[]; velocity_smooth?: number[]; altitude?: number[]; distance?: number[]; cadence?: number[] }
   zones: { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null
   sport: string
 }) {
-  const hr = streams.heartrate ?? []
-  const watts = streams.watts ?? []
-  const velocity = streams.velocity_smooth ?? []
-  const altitude = streams.altitude ?? []
-  const N = Math.max(hr.length, watts.length, velocity.length, altitude.length)
-  if (N < 10) return null
+  // ── Hooks (all before any early return) ──────────────────────
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [W, setW] = useState(380)
+  const [cursorIdx, setCursorIdx] = useState<number | null>(null)
 
-  const W = 380, H_TRACK = 60, GAP = 4, PAD_L = 28, PAD_R = 6
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new ResizeObserver(entries => {
+      for (const e of entries) {
+        const w = Math.round(e.contentRect.width)
+        if (w > 0) setW(w)
+      }
+    })
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  // ── Constants & pure helpers ─────────────────────────────────
+  const H_TRACK = 80, GAP = 4, PAD_L = 28, PAD_R = 6
 
   function smooth(arr: number[], w = 8): number[] {
     return arr.map((_, i) => {
-      const start = Math.max(0, i - w)
-      const end = Math.min(arr.length, i + w + 1)
-      const slice = arr.slice(start, end)
-      return slice.reduce((a, b) => a + b, 0) / slice.length
+      const s = Math.max(0, i - w), e = Math.min(arr.length, i + w + 1)
+      return arr.slice(s, e).reduce((a, b) => a + b, 0) / (e - s)
     })
   }
-
   function downsample(arr: number[], maxPoints = 400): number[] {
     if (arr.length <= maxPoints) return arr
     const step = arr.length / maxPoints
     return Array.from({ length: maxPoints }, (_, i) => arr[Math.floor(i * step)])
   }
+  function formatPace(v: number): string {
+    if (v <= 0) return '—'
+    const pm = 1000 / 60 / v
+    const min = Math.floor(pm)
+    const sec = Math.round((pm - min) * 60)
+    return `${min}'${sec.toString().padStart(2, '0')}"/km`
+  }
 
-  function buildPath(data: number[], yMin: number, yMax: number, trackH: number, trackY: number): string {
-    const ds = downsample(smooth(data))
-    const n = ds.length
+  // ── Data preparation ─────────────────────────────────────────
+  const hr       = streams.heartrate       ?? []
+  const watts    = streams.watts           ?? []
+  const velocity = streams.velocity_smooth ?? []
+  const altitude = streams.altitude        ?? []
+  const cadence  = streams.cadence         ?? []
+  const N = Math.max(hr.length, watts.length, velocity.length, altitude.length, cadence.length)
+
+  const sportLower = sport.toLowerCase()
+  const isBike = ['bike', 'virtual_bike', 'cycling', 'velo'].some(s => sportLower.includes(s))
+  const isRun  = ['run', 'trail', 'running'].some(s => sportLower.includes(s))
+
+  type TrackDef = { label: string; data: number[]; color: string; fillColor: string; type: 'line' | 'fill' }
+  const tracks: TrackDef[] = []
+  if (altitude.length >= 10) tracks.push({ label: 'Alt',     data: altitude,  color: 'rgba(140,140,140,0.6)', fillColor: 'rgba(140,140,140,0.08)', type: 'fill' })
+  if (hr.length      >= 10) tracks.push({ label: 'FC',      data: hr,        color: '#ef4444',               fillColor: 'rgba(239,68,68,0.07)',   type: 'line' })
+  if (isBike && watts.length    >= 10) tracks.push({ label: 'W',       data: watts,     color: '#5b6fff',               fillColor: 'rgba(91,111,255,0.07)', type: 'line' })
+  if (isRun  && velocity.length >= 10) tracks.push({ label: 'Allure',  data: velocity,  color: '#00c8e0',               fillColor: 'rgba(0,200,224,0.07)',  type: 'line' })
+  if (cadence.length >= 10) tracks.push({ label: 'Cadence', data: cadence,   color: '#8b5cf6',               fillColor: 'rgba(139,92,246,0.07)', type: 'line' })
+
+  // Pre-compute downsampled data (const, not useMemo — avoids hook-ordering issues)
+  const dsData: number[][] = tracks.map(t => downsample(smooth(t.data)))
+  const dsLength = dsData[0]?.length ?? 0
+
+  // ── Early returns (after all hooks) ─────────────────────────
+  if (N < 10) return null
+  if (tracks.length === 0) return null
+
+  // ── Annotations ──────────────────────────────────────────────
+  type AnnDef = { dsIdx: number; label: string; color: string; trackIdx: number }
+  function computeAnnotations(): AnnDef[] {
+    const out: AnnDef[] = []
+    tracks.forEach((track, ti) => {
+      const data = dsData[ti]
+      if (!data || data.length < 10) return
+      if (track.label === 'FC') {
+        const maxV = Math.max(...data)
+        out.push({ dsIdx: data.indexOf(maxV), label: `Max ${Math.round(maxV)}bpm`, color: '#ef4444', trackIdx: ti })
+        const half = Math.floor(data.length / 2)
+        const avg1 = data.slice(0, half).reduce((a, b) => a + b, 0) / half
+        const avg2 = data.slice(half).reduce((a, b) => a + b, 0) / (data.length - half)
+        const drift = ((avg2 - avg1) / (avg1 || 1)) * 100
+        if (drift > 5) out.push({ dsIdx: half, label: `Drift +${drift.toFixed(0)}%`, color: '#f97316', trackIdx: ti })
+      }
+      if (track.label === 'W') {
+        const maxV = Math.max(...data)
+        out.push({ dsIdx: data.indexOf(maxV), label: `Max ${Math.round(maxV)}W`, color: '#5b6fff', trackIdx: ti })
+        const win = 30
+        if (data.length > win * 2) {
+          for (let i = win * 2; i < data.length; i++) {
+            const before = data.slice(i - win * 2, i - win).reduce((a, b) => a + b, 0) / win
+            const after  = data.slice(i - win, i).reduce((a, b) => a + b, 0) / win
+            if (before > 50 && (before - after) / before > 0.15) {
+              out.push({ dsIdx: i - win, label: `–${Math.round(before - after)}W`, color: '#f97316', trackIdx: ti })
+              break
+            }
+          }
+        }
+      }
+    })
+    return out
+  }
+  const annotations = computeAnnotations()
+
+  // ── SVG path builders (use pre-computed dsData) ──────────────
+  const totalH = tracks.length * (H_TRACK + GAP)
+
+  function buildPath(ti: number, yMin: number, yMax: number, trackH: number, trackY: number): string {
+    const ds = dsData[ti]; const n = ds.length
     return ds.map((v, i) => {
       const x = PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R)
       const y = trackY + trackH - ((v - yMin) / ((yMax - yMin) || 1)) * trackH
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${Math.max(trackY, Math.min(trackY + trackH, y)).toFixed(1)}`
     }).join(' ')
   }
-
-  function buildFill(data: number[], yMin: number, yMax: number, trackH: number, trackY: number): string {
-    const ds = downsample(smooth(data))
-    const n = ds.length
+  function buildFill(ti: number, yMin: number, yMax: number, trackH: number, trackY: number): string {
+    const ds = dsData[ti]; const n = ds.length
     const pts = ds.map((v, i) => {
       const x = PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R)
       const y = trackY + trackH - ((v - yMin) / ((yMax - yMin) || 1)) * trackH
@@ -3998,57 +4077,127 @@ function StreamProfileChart({ streams, zones, sport }: {
     return `M${pts[0]} ${pts.slice(1).map(p => `L${p}`).join(' ')} L${xEnd},${(trackY + trackH).toFixed(1)} L${PAD_L},${(trackY + trackH).toFixed(1)} Z`
   }
 
-  const sportLower = sport.toLowerCase()
-  const isBike = ['bike', 'virtual_bike', 'cycling', 'velo'].some(s => sportLower.includes(s))
-  const isRun = ['run', 'trail', 'running'].some(s => sportLower.includes(s))
-
-  type TrackDef = { label: string; data: number[]; color: string; fillColor: string; type: 'line' | 'fill' }
-  const tracks: TrackDef[] = []
-  if (altitude.length >= 10) tracks.push({ label: 'Alt', data: altitude, color: 'rgba(140,140,140,0.6)', fillColor: 'rgba(140,140,140,0.08)', type: 'fill' })
-  if (hr.length >= 10) tracks.push({ label: 'FC', data: hr, color: '#ef4444', fillColor: 'rgba(239,68,68,0.07)', type: 'line' })
-  if (isBike && watts.length >= 10) tracks.push({ label: 'W', data: watts, color: '#5b6fff', fillColor: 'rgba(91,111,255,0.07)', type: 'line' })
-  if (isRun && velocity.length >= 10) tracks.push({ label: 'Allure', data: velocity, color: '#00c8e0', fillColor: 'rgba(0,200,224,0.07)', type: 'line' })
-
-  if (tracks.length === 0) return null
-  const totalH = tracks.length * (H_TRACK + GAP)
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const svgX = (e.clientX - rect.left) / (rect.width || 1) * W
+    const pct = (svgX - PAD_L) / (W - PAD_L - PAD_R)
+    if (pct < 0 || pct > 1) { setCursorIdx(null); return }
+    setCursorIdx(Math.round(pct * (dsLength - 1)))
+  }
 
   return (
     <div style={{ marginBottom: 14 }}>
       <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Profil de la séance</p>
-      <svg viewBox={`0 0 ${W} ${totalH}`} style={{ width: '100%', height: totalH, display: 'block' }}>
-        {tracks.map((track, ti) => {
-          const trackY = ti * (H_TRACK + GAP)
-          const ds = downsample(smooth(track.data))
-          const yMin = Math.min(...ds) * 0.96
-          const yMax = Math.max(...ds) * 1.04
+      <div ref={containerRef}>
+        <svg
+          viewBox={`0 0 ${W} ${totalH}`}
+          width="100%"
+          height={totalH}
+          style={{ display: 'block', cursor: 'crosshair' }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setCursorIdx(null)}
+        >
+          {tracks.map((track, ti) => {
+            const trackY = ti * (H_TRACK + GAP)
+            const ds = dsData[ti]
+            const yMin = Math.min(...ds) * 0.96
+            const yMax = Math.max(...ds) * 1.04
 
-          // Zone rects for HR track
-          const zoneRects: React.ReactNode[] = []
-          if (track.label === 'FC' && zones) {
-            const zColors = ['rgba(34,197,94,0.08)', 'rgba(34,197,94,0.12)', 'rgba(249,115,22,0.10)', 'rgba(239,68,68,0.10)', 'rgba(239,68,68,0.15)']
-            const zMaxes = [zones.z1_max, zones.z2_max, zones.z3_max, zones.z4_max].filter((v): v is number => v != null)
-            let prev = yMin
-            for (let zi = 0; zi < zMaxes.length; zi++) {
-              const zm = zMaxes[zi]
-              const yTop = trackY + H_TRACK - ((zm - yMin) / ((yMax - yMin) || 1)) * H_TRACK
-              const yBot = trackY + H_TRACK - ((prev - yMin) / ((yMax - yMin) || 1)) * H_TRACK
-              zoneRects.push(<rect key={`z${zi}`} x={PAD_L} y={Math.max(trackY, yTop)} width={W - PAD_L - PAD_R} height={Math.max(0, yBot - yTop)} fill={zColors[zi]} />)
-              prev = zm
+            // Zone bande-couleur FC
+            const zoneRects: React.ReactNode[] = []
+            if (track.label === 'FC' && zones) {
+              const zColors = ['rgba(34,197,94,0.08)', 'rgba(34,197,94,0.12)', 'rgba(249,115,22,0.10)', 'rgba(239,68,68,0.10)', 'rgba(239,68,68,0.15)']
+              const zMaxes = [zones.z1_max, zones.z2_max, zones.z3_max, zones.z4_max].filter((v): v is number => v != null)
+              let prev = yMin
+              for (let zi = 0; zi < zMaxes.length; zi++) {
+                const zm = zMaxes[zi]
+                const yTop = trackY + H_TRACK - ((zm - yMin) / ((yMax - yMin) || 1)) * H_TRACK
+                const yBot = trackY + H_TRACK - ((prev - yMin) / ((yMax - yMin) || 1)) * H_TRACK
+                zoneRects.push(<rect key={`z${zi}`} x={PAD_L} y={Math.max(trackY, yTop)} width={W - PAD_L - PAD_R} height={Math.max(0, yBot - yTop)} fill={zColors[zi]} />)
+                prev = zm
+              }
             }
-          }
 
-          return (
-            <g key={track.label}>
-              {zoneRects}
-              {track.type === 'fill' && <path d={buildFill(track.data, yMin, yMax, H_TRACK, trackY)} fill={track.fillColor} />}
-              <path d={buildPath(track.data, yMin, yMax, H_TRACK, trackY)} fill="none" stroke={track.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <text x={2} y={trackY + 10} fontSize="8" fontWeight="700" fill={track.color} fontFamily="DM Sans,sans-serif">{track.label}</text>
-              <text x={2} y={trackY + H_TRACK - 2} fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{Math.round(yMin)}</text>
-              <text x={2} y={trackY + 20} fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{Math.round(yMax)}</text>
-            </g>
-          )
-        })}
-      </svg>
+            // Annotations pour ce track
+            const trackAnns = annotations.filter(a => a.trackIdx === ti)
+
+            return (
+              <g key={track.label}>
+                {zoneRects}
+                {track.type === 'fill' && <path d={buildFill(ti, yMin, yMax, H_TRACK, trackY)} fill={track.fillColor} />}
+                <path d={buildPath(ti, yMin, yMax, H_TRACK, trackY)} fill="none" stroke={track.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <text x={2} y={trackY + 10} fontSize="8" fontWeight="700" fill={track.color} fontFamily="DM Sans,sans-serif">{track.label}</text>
+                <text x={2} y={trackY + H_TRACK - 2} fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{Math.round(yMin)}</text>
+                <text x={2} y={trackY + 20} fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{Math.round(yMax)}</text>
+
+                {/* Labels zones FC */}
+                {track.label === 'FC' && zones && (() => {
+                  const zLabels = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
+                  const zMaxes = [zones.z1_max, zones.z2_max, zones.z3_max, zones.z4_max].filter((v): v is number => v != null)
+                  return zMaxes.map((zm, zi) => {
+                    const y = trackY + H_TRACK - ((zm - yMin) / ((yMax - yMin) || 1)) * H_TRACK
+                    return (
+                      <text key={`zl${zi}`} x={W - 2} y={Math.max(trackY + 6, y + 3)} textAnchor="end" fontSize="6.5" fill="var(--ai-dim)" fontFamily="DM Mono,monospace" opacity="0.6">
+                        {zLabels[zi]}
+                      </text>
+                    )
+                  })
+                })()}
+
+                {/* Annotations */}
+                {trackAnns.map((a, ai) => {
+                  const ax = PAD_L + (a.dsIdx / Math.max(1, dsLength - 1)) * (W - PAD_L - PAD_R)
+                  const prev = trackAnns[ai - 1]
+                  const prevX = prev ? PAD_L + (prev.dsIdx / Math.max(1, dsLength - 1)) * (W - PAD_L - PAD_R) : -Infinity
+                  const yOff = Math.abs(ax - prevX) < 50 ? 12 : 0
+                  return (
+                    <g key={`ann-${ti}-${ai}`}>
+                      <circle cx={ax} cy={trackY + 14 + yOff} r={2} fill={a.color} />
+                      <text x={ax + 5} y={trackY + 10 + yOff} fontSize="7.5" fontWeight="700" fill={a.color} fontFamily="DM Mono,monospace">{a.label}</text>
+                    </g>
+                  )
+                })}
+              </g>
+            )
+          })}
+
+          {/* Curseur vertical + tooltip */}
+          {cursorIdx !== null && dsLength > 1 && (() => {
+            const cx = PAD_L + (cursorIdx / (dsLength - 1)) * (W - PAD_L - PAD_R)
+            const tooltipX = cx + 12 > W - 112 ? cx - 112 : cx + 12
+            const tooltipLines: string[] = tracks.map((track, ti) => {
+              const val = dsData[ti]?.[cursorIdx]
+              if (val == null) return ''
+              if (track.label === 'FC')      return `FC: ${Math.round(val)}bpm`
+              if (track.label === 'W')       return `W: ${Math.round(val)}W`
+              if (track.label === 'Allure')  return `Allure: ${formatPace(val)}`
+              if (track.label === 'Alt')     return `Alt: ${Math.round(val)}m`
+              if (track.label === 'Cadence') return `Cad: ${Math.round(val)}rpm`
+              return ''
+            }).filter(Boolean)
+            return (
+              <g>
+                <line x1={cx} y1={0} x2={cx} y2={totalH} stroke="rgba(255,255,255,0.3)" strokeWidth="0.7" />
+                <foreignObject x={tooltipX} y={8} width={108} height={tooltipLines.length * 16 + 14}>
+                  <div style={{
+                    background: 'rgba(10,10,15,0.88)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 6,
+                    padding: '5px 7px',
+                    fontSize: 9,
+                    color: '#e5e5e5',
+                    fontFamily: 'DM Mono,monospace',
+                    lineHeight: '16px',
+                    pointerEvents: 'none',
+                  }}>
+                    {tooltipLines.map((line, i) => <div key={i}>{line}</div>)}
+                  </div>
+                </foreignObject>
+              </g>
+            )
+          })()}
+        </svg>
+      </div>
     </div>
   )
 }

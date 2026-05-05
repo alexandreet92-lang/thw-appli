@@ -2953,7 +2953,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
           sb.from('athlete_performance_profile').select('id').eq('user_id', user.id).maybeSingle(),
         ])
 
-        const rows = (testsRes.data ?? []) as { id: string; test_definition_id: string; test_definitions: { sport: string } | null }[]
+        const rows = (testsRes.data ?? []) as unknown as { id: string; test_definition_id: string; test_definitions: { sport: string } | null }[]
         const sportCounts: Record<string, number> = {}
         for (const r of rows) {
           const sp = r.test_definitions?.sport ?? 'inconnu'

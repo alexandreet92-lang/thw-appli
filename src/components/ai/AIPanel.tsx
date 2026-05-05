@@ -26,6 +26,7 @@ interface AIMsg {
   ts: number
   modelId?: THWModel   // modèle utilisé pour cette réponse
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
+  trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
 }
 interface AIConv {
   id: string
@@ -4490,9 +4491,37 @@ interface TrainingReport {
   actions_suggerees: { label: string; flow?: string }[]
 }
 
+// Données minimales pour re-rendre une analyse après fermeture du flow
+interface TrainingReportData {
+  report: TrainingReport
+  activities: Array<{
+    id: string
+    sport_type: string
+    title: string | null
+    started_at: string
+    streams?: {
+      time?: number[]
+      heartrate?: number[]
+      watts?: number[]
+      velocity_smooth?: number[]
+      altitude?: number[]
+      distance?: number[]
+      cadence?: number[]
+    }
+  }>
+  zones: { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null
+  compareMode: boolean
+}
+
+function downsampleForStorage(arr: number[], max = 500): number[] {
+  if (arr.length <= max) return arr
+  const step = arr.length / max
+  return Array.from({ length: max }, (_, i) => arr[Math.floor(i * step)])
+}
+
 function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
-  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onRecordConv?: (userMsg: string, aiMsg: string, reportData?: TrainingReportData) => void
 }) {
   type Phase = 'loading' | 'gate' | 'select' | 'generating' | 'result'
   const [phase, setPhase] = useState<Phase>('loading')
@@ -4650,7 +4679,26 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
           ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
           : `Analyser un entraînement — ${actNom} (${actDate})`
         const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
-        onRecordConv(userMsg, aiMsg)
+        const reportData: TrainingReportData = {
+          report: data.report,
+          activities: selected.map(a => ({
+            id: a.id,
+            sport_type: a.sport_type,
+            title: a.title,
+            started_at: a.started_at,
+            streams: a.streams ? {
+              time: a.streams.time ? downsampleForStorage(a.streams.time) : undefined,
+              heartrate: a.streams.heartrate ? downsampleForStorage(a.streams.heartrate) : undefined,
+              watts: a.streams.watts ? downsampleForStorage(a.streams.watts) : undefined,
+              velocity_smooth: a.streams.velocity_smooth ? downsampleForStorage(a.streams.velocity_smooth) : undefined,
+              altitude: a.streams.altitude ? downsampleForStorage(a.streams.altitude) : undefined,
+              cadence: a.streams.cadence ? downsampleForStorage(a.streams.cadence) : undefined,
+            } : undefined,
+          })),
+          zones: ctxZones,
+          compareMode,
+        }
+        onRecordConv(userMsg, aiMsg, reportData)
       }
 
       setPhase('result')
@@ -5042,6 +5090,163 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   }
 
   return null
+}
+
+// ── TrainingReportView ─────────────────────────────────────────
+// Composant de re-rendu d'une analyse d'entraînement depuis l'historique.
+// Reçoit un TrainingReportData (stocké dans AIMsg.trainingReport) et
+// rend exactement le même contenu que la phase 'result' de AnalyzeTrainingFlow,
+// sans le bouton "Fermer".
+
+function TrainingReportView({ data }: { data: TrainingReportData }) {
+  const { report, activities, zones, compareMode } = data
+  const mainAct = activities[0]
+  if (!mainAct) return null
+
+  const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
+  const verdictLabels: Record<string, string> = { excellent: '🏆 Excellent', bon: '✓ Bon', passable: '~ Passable', a_revoir: '⚠ À revoir' }
+  const vColor = verdictColors[report.verdict] ?? '#3b82f6'
+  const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
+
+  return (
+    <div style={{ padding: '8px 0 4px' }}>
+      {/* En-tête */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
+            {mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type}
+          </p>
+          <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{mainAct.started_at.slice(0, 10)}</p>
+        </div>
+        <span style={{ padding: '4px 10px', borderRadius: 20, background: `${vColor}1a`, color: vColor, fontSize: 11, fontWeight: 700, border: `1px solid ${vColor}33` }}>
+          {verdictLabels[report.verdict]}
+        </span>
+      </div>
+
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
+        {[
+          { label: 'Durée', value: fmtDuration(Math.round((report.kpis.duree_min ?? 0) * 60)) },
+          { label: 'Distance', value: report.kpis.distance_km != null ? `${report.kpis.distance_km.toFixed(1)}km` : '—' },
+          { label: 'TSS', value: report.kpis.tss != null ? String(report.kpis.tss) : '—' },
+          { label: 'EI', value: report.kpis.efficiency_index != null ? report.kpis.efficiency_index.toFixed(2) : '—', sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
+        ].map(k => (
+          <div key={k.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
+            <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
+            <p style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', margin: 0 }}>{k.value}</p>
+            {k.sub && <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0 }}>{k.sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Graphiques streams */}
+      {mainAct.streams && (
+        <>
+          <StreamProfileChart streams={mainAct.streams} zones={zones} sport={mainAct.sport_type} />
+          {mainAct.streams.heartrate && report.cardiac_drift_pct != null && (
+            <CardiacDriftChart heartrate={mainAct.streams.heartrate} driftPct={report.cardiac_drift_pct} />
+          )}
+        </>
+      )}
+
+      {/* Distribution des zones */}
+      {(report.zone_distribution ?? []).length > 0 && (
+        <ZoneDistributionBar distribution={report.zone_distribution ?? []} target={report.zone_target ?? null} />
+      )}
+
+      {/* Séance B */}
+      {compareMode && activities[1]?.streams && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 5px' }}>
+            Séance B — {activities[1].title ?? AE_SPORT_LABELS[activities[1].sport_type] ?? activities[1].sport_type}
+          </p>
+          <StreamProfileChart streams={activities[1].streams} zones={zones} sport={activities[1].sport_type} />
+        </div>
+      )}
+
+      {/* Interprétation */}
+      <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interprétation</p>
+        {[
+          { title: 'Exécution', text: report.interpretation?.execution },
+          { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
+          ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
+          { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
+        ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
+          <div key={i} style={{ marginBottom: i < arr.length - 1 ? 8 : 0 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{b.title}</p>
+            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.5 }}>{b.text}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Tableau de comparaison */}
+      {report.comparison && (
+        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(0,200,224,0.2)', background: 'rgba(0,200,224,0.04)', marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#00c8e0', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
+            <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
+              {report.comparison.progression === 'progression' ? '↑ Progression' : report.comparison.progression === 'regression' ? '↓ Régression' : '= Stable'}
+            </span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+            <thead>
+              <tr>
+                {['', 'A', 'B', 'Delta'].map(h => (
+                  <th key={h} style={{ textAlign: h === '' ? 'left' : 'center', padding: '3px 5px', color: 'var(--ai-dim)', fontWeight: 600, borderBottom: '1px solid var(--ai-border)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(report.comparison?.deltas ?? []).map((d, i) => (
+                <tr key={i}>
+                  <td style={{ padding: '3px 5px', color: 'var(--ai-mid)' }}>{d.metrique}</td>
+                  <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a ?? '—'}</td>
+                  <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b ?? '—'}</td>
+                  <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', fontWeight: 700, textAlign: 'center', color: (d.delta ?? '').startsWith('+') ? '#22c55e' : (d.delta ?? '').startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {report.comparison?.verdict && <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '8px 0 0', lineHeight: 1.4 }}>{report.comparison.verdict}</p>}
+        </div>
+      )}
+
+      {/* Conseils */}
+      {(report.conseils ?? []).length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Conseils d&apos;optimisation</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {(report.conseils ?? []).map((c, i) => (
+              <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{c.label}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{c.detail}</p>
+                <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{c.data_justification}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Actions suggérées */}
+      {(report.actions_suggerees ?? []).length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {(report.actions_suggerees ?? []).map((a, i) => (
+            <button key={i}
+              style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
+              {a.label} →
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Sources */}
+      <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)' }}>
+        <p style={{ margin: '0 0 2px' }}>Sources : {(report.sources_used ?? []).join(' · ')}</p>
+        <p style={{ margin: 0 }}>Confiance : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
+      </div>
+    </div>
+  )
 }
 
 // ── TrainingPlanFlow ───────────────────────────────────────────
@@ -14267,14 +14472,14 @@ export default function AIPanel({
                 {activeFlow === 'analyze_training' && (
                   <AnalyzeTrainingFlow
                     onCancel={() => setActiveFlow(null)}
-                    onRecordConv={(userMsg, aiMsg) => {
+                    onRecordConv={(userMsg, aiMsg, reportData) => {
                       const conv: AIConv = {
                         id: genId(),
                         title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
                         createdAt: Date.now(), updatedAt: Date.now(),
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
-                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel, trainingReport: reportData },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
@@ -14473,7 +14678,12 @@ export default function AIPanel({
                         <SBSessionCard session={msg.sessionData} />
                       </div>
                     )}
-                    {msg.role === 'assistant' && !msg.sessionData && (
+                    {msg.role === 'assistant' && msg.trainingReport && (
+                      <div style={{ marginLeft: 34 }}>
+                        <TrainingReportView data={msg.trainingReport} />
+                      </div>
+                    )}
+                    {msg.role === 'assistant' && !msg.sessionData && !msg.trainingReport && (
                       <SessionCard
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}

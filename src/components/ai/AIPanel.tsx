@@ -4147,6 +4147,16 @@ function ZoneDistributionBar({ distribution, target }: {
 
 // ── AnalyzeTrainingFlow ───────────────────────────────────────────
 
+function sportColor(sport: string): string {
+  const s = sport.toLowerCase()
+  if (s.includes('run') || s.includes('trail')) return '#22c55e'
+  if (s.includes('bike') || s.includes('cycl') || s.includes('virtual')) return '#5b6fff'
+  if (s.includes('swim') || s.includes('nata')) return '#00c8e0'
+  if (s.includes('hyrox')) return '#f97316'
+  if (s.includes('gym') || s.includes('weight') || s.includes('strength')) return '#8b5cf6'
+  return '#6b7280'
+}
+
 interface TrainingActivityRow {
   id: string
   sport_type: string
@@ -4162,6 +4172,7 @@ interface TrainingActivityRow {
   avg_cadence: number | null
   intensity_factor: number | null
   aerobic_decoupling: number | null
+  is_race?: boolean | null
   streams: {
     time?: number[]
     heartrate?: number[]
@@ -4203,21 +4214,25 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
 }) {
   type Phase = 'loading' | 'gate' | 'select' | 'generating' | 'result'
   const [phase, setPhase] = useState<Phase>('loading')
-  const [allActivities, setAllActivities] = useState<TrainingActivityRow[]>([])
-  const [sportFilter, setSportFilter] = useState<string | null>(null)
-  const [periodFilter, setPeriodFilter] = useState<'1m' | '3m' | '6m' | 'all'>('3m')
   const [compareMode, setCompareMode] = useState(false)
   const [selected, setSelected] = useState<TrainingActivityRow[]>([])
   const [report, setReport] = useState<TrainingReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [totalCount, setTotalCount] = useState(0)
-  const [plannedDates, setPlannedDates] = useState<Set<string>>(new Set())
-  const [loadingActs, setLoadingActs] = useState(false)
-  const [page, setPage] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
   const [ctxZones, setCtxZones] = useState<{ z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null>(null)
+  // Select phase states
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() }
+  })
+  const [sportFilter, setSportFilter] = useState<string | null>(null)
+  const [monthActivities, setMonthActivities] = useState<TrainingActivityRow[]>([])
+  const [raceActivities, setRaceActivities] = useState<TrainingActivityRow[]>([])
+  const [loadingMonth, setLoadingMonth] = useState(false)
+  const [racesExpanded, setRacesExpanded] = useState(false)
+  const [plannedDates, setPlannedDates] = useState<Set<string>>(new Set())
 
+  // Mount — gate data
   useEffect(() => {
     void (async () => {
       try {
@@ -4245,38 +4260,52 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
     })()
   }, [])
 
-  const PAGE_SIZE = 50
+  // Charger activités du mois sélectionné
+  useEffect(() => {
+    if (phase !== 'select') return
+    void (async () => {
+      setLoadingMonth(true)
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const startOfMonth = new Date(selectedMonth.year, selectedMonth.month, 1).toISOString()
+        const endOfMonth = new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59).toISOString()
+        let query = sb.from('activities')
+          .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,is_race,streams')
+          .eq('user_id', user.id).gte('started_at', startOfMonth).lte('started_at', endOfMonth)
+          .order('started_at', { ascending: false })
+        if (sportFilter) query = query.eq('sport_type', sportFilter)
+        const { data } = await query
+        setMonthActivities((data as unknown as TrainingActivityRow[]) ?? [])
+      } catch { setMonthActivities([]) }
+      finally { setLoadingMonth(false) }
+    })()
+  }, [selectedMonth, sportFilter, phase])
 
-  async function loadActivities(reset = false) {
-    setLoadingActs(true)
-    try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+  // Charger les courses (une seule fois au passage en select)
+  useEffect(() => {
+    if (phase !== 'select') return
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('activities')
+          .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,is_race,streams')
+          .eq('user_id', user.id).eq('is_race', true)
+          .order('started_at', { ascending: false }).limit(50)
+        setRaceActivities((data as unknown as TrainingActivityRow[]) ?? [])
+      } catch { setRaceActivities([]) }
+    })()
+  }, [phase])
 
-      const cutoffDays = periodFilter === '1m' ? 30 : periodFilter === '3m' ? 90 : periodFilter === '6m' ? 180 : 365 * 3
-      const since = new Date(Date.now() - cutoffDays * 86400000).toISOString()
-      const currentPage = reset ? 0 : page
-
-      let query = sb.from('activities')
-        .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,streams')
-        .eq('user_id', user.id).gte('started_at', since).order('started_at', { ascending: false })
-        .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1)
-
-      if (sportFilter) query = query.eq('sport_type', sportFilter)
-
-      const { data } = await query
-      const newData = (data as unknown as TrainingActivityRow[]) ?? []
-
-      if (reset) {
-        setAllActivities(newData)
-        setPage(1)
-      } else {
-        setAllActivities(prev => [...prev, ...newData])
-        setPage(currentPage + 1)
-      }
-      setHasMore(newData.length === PAGE_SIZE)
+  // loadActivities est gardé pour handleAnalyze (charge les similaires) — nettoyé
+  async function loadActivities(_reset = false) {
+    // no-op — replaced by month-based loading
+  }
     } catch {
       if (reset) setAllActivities([])
     } finally {
@@ -4403,171 +4432,176 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   }
 
   if (phase === 'select') {
-    const sportOptions = [...new Set(allActivities.map(a => a.sport_type))].filter(Boolean)
+    const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+    const availableSports = [...new Set([...monthActivities, ...raceActivities].map(a => a.sport_type))].filter(Boolean).sort()
 
-    const getSportIcon = (sport: string): string => {
-      const icons: Record<string, string> = { running: '🏃', cycling: '🚴', hyrox: '🏋️', gym: '💪', trail: '🏔️', natation: '🏊', triathlon: '🔱' }
-      return icons[sport] ?? '🏅'
+    const filteredMonth = sportFilter ? monthActivities.filter(a => a.sport_type === sportFilter) : monthActivities
+    const filteredRaces = sportFilter ? raceActivities.filter(a => a.sport_type === sportFilter) : raceActivities
+
+    const showSimilarOnly = compareMode && selected.length === 1
+    const similarFilter = (a: TrainingActivityRow) => {
+      if (!showSimilarOnly) return true
+      const ref = selected[0]
+      if (a.id === ref.id || a.sport_type !== ref.sport_type) return false
+      const refDur = ref.moving_time_s ?? 3600
+      const aDur = a.moving_time_s ?? 3600
+      return aDur >= refDur * 0.5 && aDur <= refDur * 1.5
     }
 
-    const getWeekStart = (date: Date): string => {
-      const d = new Date(date)
-      const day = d.getDay()
-      d.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
-      return d.toISOString().slice(0, 10)
-    }
+    const displayedMonth = filteredMonth.filter(similarFilter)
+    const displayedRaces = filteredRaces.filter(similarFilter)
 
-    // Filtre par mode comparaison + recherche textuelle
-    const baseActivities = compareMode && selected.length === 1
-      ? allActivities.filter(a =>
-          a.id !== selected[0].id &&
-          a.sport_type === selected[0].sport_type &&
-          Math.abs((a.moving_time_s ?? 0) - (selected[0].moving_time_s ?? 0)) / (selected[0].moving_time_s || 1) <= 0.30
-        )
-      : allActivities
-    const displayedActivities = searchQuery
-      ? baseActivities.filter(a => (a.title ?? a.sport_type).toLowerCase().includes(searchQuery.toLowerCase()))
-      : baseActivities
-
-    const handleSelectActivity = (act: TrainingActivityRow) => {
-      if (!compareMode) {
-        setSelected(s => s[0]?.id === act.id ? [] : [act])
-        return
+    function toggleSelect(activity: TrainingActivityRow) {
+      const alreadySelected = selected.some(s => s.id === activity.id)
+      if (alreadySelected) {
+        setSelected(prev => prev.filter(s => s.id !== activity.id))
+      } else if (compareMode) {
+        setSelected(prev => prev.length >= 2 ? [prev[0], activity] : [...prev, activity])
+      } else {
+        setSelected([activity])
       }
-      if (selected.length === 0) { setSelected([act]); return }
-      if (selected[0].id === act.id) { setSelected([]); return }
-      if (selected[1]?.id === act.id) { setSelected([selected[0]]); return }
-      setSelected([selected[0], act])
+    }
+
+    function renderActivityCard(a: TrainingActivityRow) {
+      const isSelected = selected.some(s => s.id === a.id)
+      const idx = selected.findIndex(s => s.id === a.id)
+      const hasStreams = !!(a.streams && (a.streams.heartrate?.length || a.streams.watts?.length))
+      const dateStr = new Date(a.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      const durMin = Math.round((a.moving_time_s ?? 0) / 60)
+      const distKm = a.distance_m ? (a.distance_m / 1000).toFixed(1) : null
+
+      return (
+        <button key={a.id} onClick={() => toggleSelect(a)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+            padding: '10px 12px', borderRadius: 10, textAlign: 'left',
+            border: `1.5px solid ${isSelected ? '#5b6fff' : 'var(--ai-border)'}`,
+            background: isSelected ? 'rgba(91,111,255,0.06)' : 'var(--ai-bg2)',
+            cursor: 'pointer', transition: 'all 0.12s',
+          }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor(a.sport_type), flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#5b6fff' : 'var(--ai-text)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {a.title ?? a.sport_type.replace('_', ' ')}
+              {a.is_race && <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', marginLeft: 6 }}>COURSE</span>}
+            </p>
+            <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>
+              {dateStr} · {durMin}min{distKm ? ` · ${distKm}km` : ''}{a.tss ? ` · TSS ${a.tss}` : ''}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+            {hasStreams && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: '#5b6fff' }}>Streams</span>}
+            {isSelected && (
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#5b6fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {compareMode
+                  ? <span style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>{idx === 0 ? 'A' : 'B'}</span>
+                  : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
+              </div>
+            )}
+          </div>
+        </button>
+      )
     }
 
     return (
-      <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
-          {compareMode ? 'Sélectionne 2 entraînements à comparer' : 'Sélectionne un entraînement'}
+      <div style={{ padding: '4px 0' }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          Analyser un entraînement
         </p>
 
-        {/* Filtres sport + période */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-          <select value={sportFilter ?? ''} onChange={e => { setSportFilter(e.target.value || null); void loadActivities(true) }}
-            style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer' }}>
-            <option value=''>Tous les sports</option>
-            {sportOptions.map(sp => <option key={sp} value={sp}>{AE_SPORT_LABELS[sp] ?? sp}</option>)}
-          </select>
-          {(['1m', '3m', '6m', 'all'] as const).map(p => (
-            <button key={p} onClick={() => { setPeriodFilter(p); void loadActivities(true) }}
-              style={{ padding: '5px 10px', borderRadius: 8, border: `1px solid ${periodFilter === p ? 'var(--ai-accent)' : 'var(--ai-border)'}`, background: periodFilter === p ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)', color: periodFilter === p ? 'var(--ai-accent)' : 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontWeight: periodFilter === p ? 700 : 400 }}>
-              {p === 'all' ? 'Tout' : p}
+        {/* Toggle comparaison */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 12px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={compareMode} onChange={e => { setCompareMode(e.target.checked); setSelected(prev => prev.slice(0, 1)) }}
+            style={{ accentColor: '#5b6fff' }} />
+          <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>Comparer 2 entraînements similaires</span>
+        </label>
+
+        {showSimilarOnly && (
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 10, fontSize: 11, color: '#5b6fff' }}>
+            Séances similaires à "{selected[0].title ?? selected[0].sport_type}" ({Math.round((selected[0].moving_time_s ?? 0) / 60)}min)
+          </div>
+        )}
+
+        {/* Filtre sport */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
+          {(['', ...availableSports] as string[]).map(sp => (
+            <button key={sp || '__all__'} onClick={() => setSportFilter(sp || null)}
+              style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${(sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-border)'}`, background: (sp === '' ? !sportFilter : sportFilter === sp) ? 'rgba(91,111,255,0.08)' : 'transparent', color: (sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
+              {sp === '' ? 'Tous' : (AE_SPORT_LABELS[sp] ?? sp.replace('_', ' '))}
             </button>
           ))}
         </div>
 
-        {/* Mode comparaison */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <button onClick={() => { setCompareMode(m => !m); setSelected([]) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: `1px solid ${compareMode ? 'var(--ai-accent)' : 'var(--ai-border)'}`, background: compareMode ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)', color: compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontWeight: compareMode ? 700 : 400 }}>
-            {compareMode ? '☑' : '☐'} Comparer 2 entraînements
-          </button>
-        </div>
-
-        {/* Barre de recherche */}
-        <input
-          type="text"
-          placeholder="Rechercher une activité…"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif', marginBottom: 8, boxSizing: 'border-box', outline: 'none' }}
-        />
-
-        {compareMode && selected.length === 1 && (
-          <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 8, fontSize: 11, color: 'var(--ai-accent)' }}>
-            Séances similaires à « {selected[0].title ?? AE_SPORT_LABELS[selected[0].sport_type] ?? selected[0].sport_type} » — même sport, durée ±30%
-          </div>
-        )}
-
-        {loadingActs && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11, marginBottom: 8 }}>
-            <Dots /><span>Chargement…</span>
-          </div>
-        )}
-
-        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
-
-        {/* Liste des activités */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 8, maxHeight: 420, overflowY: 'auto' }}>
-          {displayedActivities.map(act => {
-            const isSelectedA = selected[0]?.id === act.id
-            const isSelectedB = selected[1]?.id === act.id
-            const hasStreams = !!(act.streams && (act.streams.heartrate || act.streams.watts))
-            const actDate = act.started_at.slice(0, 10)
-            const weekStart = getWeekStart(new Date(actDate))
-            const hasPlan = plannedDates.has(weekStart)
-            const isSameRoute = compareMode && selected.length === 1 && act.distance_m != null && selected[0].distance_m != null
-              && Math.abs(act.distance_m - selected[0].distance_m) / selected[0].distance_m <= 0.05
-
-            return (
-              <div key={act.id} onClick={() => handleSelectActivity(act)}
-                style={{
-                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.12s',
-                  border: `1px solid ${isSelectedA ? 'var(--ai-accent)' : isSelectedB ? '#00c8e0' : 'var(--ai-border)'}`,
-                  background: isSelectedA ? 'rgba(91,111,255,0.06)' : isSelectedB ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>{getSportIcon(act.sport_type)}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {act.title ?? AE_SPORT_LABELS[act.sport_type] ?? act.sport_type}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', flexShrink: 0, marginLeft: 6 }}>
-                    {new Date(act.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 3, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {act.moving_time_s && <span>{fmtDuration(act.moving_time_s)}</span>}
-                  {act.distance_m && <span>{fmtDist(act.distance_m)}</span>}
-                  {act.tss != null && <span>TSS {act.tss}</span>}
-                  {act.average_heartrate && <span>FC {act.average_heartrate}bpm</span>}
-                  {act.average_watts && <span>{act.average_watts}W</span>}
-                </div>
-                <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-                  {hasStreams && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>STREAMS</span>}
-                  {hasPlan && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 9, fontWeight: 700 }}>PLAN</span>}
-                  {isSameRoute && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(250,204,21,0.12)', color: '#eab308', fontSize: 9, fontWeight: 700 }}>MÊME PARCOURS</span>}
-                  {isSelectedA && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.15)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700 }}>A</span>}
-                  {isSelectedB && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(0,200,224,0.15)', color: '#00c8e0', fontSize: 9, fontWeight: 700 }}>B</span>}
-                </div>
+        {/* Section Courses */}
+        {displayedRaces.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={() => setRacesExpanded(p => !p)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2.5"
+                style={{ transform: racesExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s', flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Courses ({displayedRaces.length})
+              </span>
+            </button>
+            {racesExpanded && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                {displayedRaces.map(a => renderActivityCard(a))}
               </div>
-            )
-          })}
-          {displayedActivities.length === 0 && !loadingActs && (
-            <p style={{ fontSize: 12, color: 'var(--ai-dim)', textAlign: 'center', padding: '20px 0' }}>Aucune activité dans cette période</p>
-          )}
-        </div>
-
-        {/* Voir plus */}
-        {hasMore && !searchQuery && (
-          <button onClick={() => void loadActivities(false)} disabled={loadingActs}
-            style={{ width: '100%', padding: '9px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', marginBottom: 8 }}>
-            {loadingActs ? 'Chargement…' : 'Voir plus d\'activités'}
-          </button>
-        )}
-
-        {compareMode && selected.length === 2 && (
-          <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(0,200,224,0.06)', border: '1px solid rgba(0,200,224,0.2)', marginBottom: 8, fontSize: 11, color: '#00c8e0' }}>
-            Comparaison : A ({selected[0].title ?? selected[0].sport_type} — {selected[0].started_at.slice(0, 10)}) vs B ({selected[1].title ?? selected[1].sport_type} — {selected[1].started_at.slice(0, 10)})
+            )}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('gate')} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
-          <button
-            disabled={selected.length === 0 || (compareMode && selected.length < 2)}
-            onClick={() => void handleAnalyze()}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: (selected.length > 0 && (!compareMode || selected.length >= 2)) ? 'var(--ai-gradient)' : 'var(--ai-bg2)', color: (selected.length > 0 && (!compareMode || selected.length >= 2)) ? '#fff' : 'var(--ai-dim)', fontSize: 12, fontWeight: 700, cursor: (selected.length > 0 && (!compareMode || selected.length >= 2)) ? 'pointer' : 'not-allowed' }}>
-            {compareMode ? (selected.length < 2 ? `Sélectionne ${2 - selected.length} séance${selected.length === 0 ? 's' : ''} de plus` : 'Comparer ces 2 séances →') : (selected.length === 0 ? 'Sélectionne une séance' : 'Analyser →')}
-          </button>
+        {/* Sélecteur de mois */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 10, padding: '6px 0', borderTop: '1px solid var(--ai-border)', borderBottom: '1px solid var(--ai-border)' }}>
+          <button onClick={() => setSelectedMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ai-mid)', fontSize: 16, padding: '2px 8px', lineHeight: 1 }}>◀</button>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', minWidth: 130, textAlign: 'center' }}>
+            {MONTHS_FR[selectedMonth.month]} {selectedMonth.year}
+          </span>
+          <button onClick={() => setSelectedMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ai-mid)', fontSize: 16, padding: '2px 8px', lineHeight: 1 }}>▶</button>
         </div>
+
+        {/* Liste activités du mois */}
+        <div style={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+          {loadingMonth ? (
+            <div style={{ padding: '20px 0', textAlign: 'center' }}>
+              <Dots />
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '8px 0 0' }}>Chargement…</p>
+            </div>
+          ) : displayedMonth.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--ai-dim)', textAlign: 'center', padding: '20px 0' }}>
+              Aucune activité en {MONTHS_FR[selectedMonth.month]} {selectedMonth.year}
+            </p>
+          ) : displayedMonth.map(a => renderActivityCard(a))}
+        </div>
+
+        {/* Bouton Analyser */}
+        <button
+          onClick={() => void handleAnalyze()}
+          disabled={selected.length === 0 || (compareMode && selected.length < 2)}
+          style={{
+            width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+            background: (selected.length > 0 && (!compareMode || selected.length === 2))
+              ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+            color: (selected.length > 0 && (!compareMode || selected.length === 2)) ? '#fff' : 'var(--ai-dim)',
+            fontSize: 13, fontWeight: 700, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
+            fontFamily: 'Syne,sans-serif', marginBottom: 6,
+          }}>
+          {compareMode
+            ? selected.length === 2
+              ? `Comparer — ${selected[0].title ?? selected[0].sport_type} vs ${selected[1].title ?? selected[1].sport_type}`
+              : `Comparer (${selected.length}/2)`
+            : selected.length > 0
+              ? `Analyser — ${selected[0].title ?? selected[0].sport_type}`
+              : 'Sélectionne une activité'}
+        </button>
+
+        <button onClick={onCancel} style={{ display: 'block', margin: '0 auto', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          Annuler
+        </button>
       </div>
     )
   }

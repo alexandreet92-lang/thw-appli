@@ -12596,10 +12596,16 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
 type PlannedRaceOption2 = {
   id: string
   name: string
-  sport: string
+  sport: string         // DB values: 'run'|'bike'|'swim'|'hyrox'|'triathlon'|'rowing'
   date: string
-  goal_time: string | null
-  distance_m: number | null
+  level?: string
+  goal?: string
+  goal_time?: string | null
+  run_distance?: string | null   // ex: 'Marathon', '10km', 'Semi'
+  tri_distance?: string | null   // ex: '70.3', 'Ironman', 'M', 'S'
+  goal_swim_time?: string | null
+  goal_bike_time?: string | null
+  goal_run_time?: string | null
 }
 
 interface CourseProfile {
@@ -13033,7 +13039,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { setLoadingRaces(false); return }
         const today = new Date().toISOString().split('T')[0]
-        const { data } = await sb.from('planned_races').select('id,name,sport,date,goal_time,distance_m').eq('user_id', user.id).gte('date', today).order('date', { ascending: true }).limit(10)
+        const { data } = await sb.from('planned_races').select('id,name,sport,date,level,goal,goal_time,run_distance,tri_distance,goal_swim_time,goal_bike_time,goal_run_time').eq('user_id', user.id).gte('date', today).order('date', { ascending: true }).limit(10)
         setRaces((data ?? []) as PlannedRaceOption2[])
       } catch {
         setRaces([])
@@ -13043,14 +13049,39 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
     })()
   }, [])
 
+  const SPORT_NORMALIZE: Record<string, string> = {
+    run: 'running', bike: 'cycling', swim: 'swimming',
+    hyrox: 'hyrox', triathlon: 'triathlon', rowing: 'rowing', trail: 'trail',
+  }
+
   function getRaceSport(): string {
-    return manualMode ? manualSport : (selectedRace?.sport ?? 'running')
+    const raw = manualMode ? manualSport : (selectedRace?.sport ?? 'running')
+    return SPORT_NORMALIZE[raw] ?? raw
+  }
+
+  function parseDistanceToMeters(race: PlannedRaceOption2): number | null {
+    if (race.run_distance) {
+      const map: Record<string, number> = {
+        '5km': 5000, '10km': 10000, 'Semi': 21097, 'semi': 21097,
+        'Marathon': 42195, 'marathon': 42195, '100km': 100000,
+      }
+      return map[race.run_distance] ?? (parseFloat(race.run_distance) * 1000 || null)
+    }
+    if (race.tri_distance) {
+      const map: Record<string, number> = {
+        'XS': 12500, 'S': 25750, 'M': 51500, '70.3': 113000,
+        'Ironman': 226000, 'L': 113000, 'XL': 226000,
+      }
+      return map[race.tri_distance] ?? null
+    }
+    return null
   }
 
   function getRaceDistance(): number | null {
     if (courseProfile) return courseProfile.total_distance_km * 1000
     if (manualMode) return manualDistance ? parseFloat(manualDistance) * 1000 : null
-    return selectedRace?.distance_m ?? null
+    if (selectedRace) return parseDistanceToMeters(selectedRace)
+    return null
   }
 
   function getRaceDenivele(): number | null {
@@ -13073,6 +13104,14 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   }
 
   function needsObjectifQuestion(): boolean {
+    // Pour le triathlon, les objectifs par discipline suffisent
+    const sport = getRaceSport()
+    if (sport === 'triathlon') {
+      if (triSwimGoal || triBikeGoal || triRunGoal) return false
+      if (!manualMode && selectedRace) {
+        if (selectedRace.goal_swim_time || selectedRace.goal_bike_time || selectedRace.goal_run_time) return false
+      }
+    }
     return getGoalTime() == null
   }
 
@@ -13353,7 +13392,11 @@ FORMAT JSON STRICT :
   }
 
   const SUPPORTED_SPORTS = ['running', 'trail', 'cycling', 'triathlon']
-  const SPORT_LABELS: Record<string, string> = { running: 'Running', trail: 'Trail', cycling: 'Vélo', triathlon: 'Triathlon' }
+  const SPORT_LABELS: Record<string, string> = {
+    running: 'Running', trail: 'Trail', cycling: 'Vélo', triathlon: 'Triathlon',
+    // DB values
+    run: 'Running', bike: 'Vélo', swim: 'Natation', hyrox: 'Hyrox', rowing: 'Aviron',
+  }
   const verdictColor = (s: string) => s === 'realiste' ? '#22c55e' : s === 'ambitieux' ? '#f97316' : '#ef4444'
   const verdictLabel = (s: string) => s === 'realiste' ? 'Objectif réaliste' : s === 'ambitieux' ? 'Objectif ambitieux' : 'Hors de portée'
 
@@ -13397,7 +13440,10 @@ FORMAT JSON STRICT :
                         )}
                       </div>
                       <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>
-                        {SPORT_LABELS[r.sport] ?? r.sport} · {r.date} {r.goal_time ? `· Objectif : ${r.goal_time}` : ''}
+                        {SPORT_LABELS[r.sport] ?? r.sport}
+                        {(r.run_distance ?? r.tri_distance) ? ` · ${r.run_distance ?? r.tri_distance}` : ''}
+                        {' · '}J-{daysToRace}
+                        {r.goal_time ? ` · Objectif : ${r.goal_time}` : ''}
                       </p>
                     </button>
                   )

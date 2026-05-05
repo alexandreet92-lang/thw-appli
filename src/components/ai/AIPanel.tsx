@@ -4625,10 +4625,10 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
           {[
-            { label: 'Durée', value: fmtDuration(Math.round(report.kpis.duree_min * 60)) },
-            { label: 'Distance', value: `${report.kpis.distance_km.toFixed(1)}km` },
-            { label: 'TSS', value: String(report.kpis.tss) },
-            { label: 'EI', value: report.kpis.efficiency_index.toFixed(2), sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
+            { label: 'Durée', value: fmtDuration(Math.round((report.kpis.duree_min ?? 0) * 60)) },
+            { label: 'Distance', value: report.kpis.distance_km != null ? `${report.kpis.distance_km.toFixed(1)}km` : '—' },
+            { label: 'TSS', value: report.kpis.tss != null ? String(report.kpis.tss) : '—' },
+            { label: 'EI', value: report.kpis.efficiency_index != null ? report.kpis.efficiency_index.toFixed(2) : '—', sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
           ].map(k => (
             <div key={k.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
               <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
@@ -4656,9 +4656,9 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         )}
 
         {/* Distribution des zones */}
-        {report.zone_distribution.length > 0 && (
+        {(report.zone_distribution ?? []).length > 0 && (
           <ZoneDistributionBar
-            distribution={report.zone_distribution}
+            distribution={report.zone_distribution ?? []}
             target={report.zone_target ?? null}
           />
         )}
@@ -4680,10 +4680,10 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interprétation</p>
           {[
-            { title: 'Exécution', text: report.interpretation.execution },
-            { title: 'Récupération', text: report.interpretation.contexte_recuperation },
-            ...(report.interpretation.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
-            { title: 'Tendance historique', text: report.interpretation.tendance_historique },
+            { title: 'Exécution', text: report.interpretation?.execution },
+            { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
+            ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
+            { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
           ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
             <div key={i} style={{ marginBottom: i < arr.length - 1 ? 8 : 0 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{b.title}</p>
@@ -4709,25 +4709,25 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
                 </tr>
               </thead>
               <tbody>
-                {report.comparison.deltas.map((d, i) => (
+                {(report.comparison?.deltas ?? []).map((d, i) => (
                   <tr key={i}>
                     <td style={{ padding: '3px 5px', color: 'var(--ai-mid)' }}>{d.metrique}</td>
-                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a}</td>
-                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b}</td>
-                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', fontWeight: 700, textAlign: 'center', color: d.delta.startsWith('+') ? '#22c55e' : d.delta.startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a ?? '—'}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b ?? '—'}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', fontWeight: 700, textAlign: 'center', color: (d.delta ?? '').startsWith('+') ? '#22c55e' : (d.delta ?? '').startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '8px 0 0', lineHeight: 1.4 }}>{report.comparison.verdict}</p>
+            {report.comparison?.verdict && <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '8px 0 0', lineHeight: 1.4 }}>{report.comparison.verdict}</p>}
           </div>
         )}
 
-        {report.conseils.length > 0 && (
+        {(report.conseils ?? []).length > 0 && (
           <div style={{ marginBottom: 10 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Conseils d'optimisation</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {report.conseils.map((c, i) => (
+              {(report.conseils ?? []).map((c, i) => (
                 <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{c.label}</p>
                   <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{c.detail}</p>
@@ -4738,9 +4738,9 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
           </div>
         )}
 
-        {report.actions_suggerees.length > 0 && (
+        {(report.actions_suggerees ?? []).length > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {report.actions_suggerees.map((a, i) => (
+            {(report.actions_suggerees ?? []).map((a, i) => (
               <button key={i}
                 style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
                 {a.label} →

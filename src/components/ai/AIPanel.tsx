@@ -4519,9 +4519,107 @@ function downsampleForStorage(arr: number[], max = 500): number[] {
   return Array.from({ length: max }, (_, i) => arr[Math.floor(i * step)])
 }
 
-function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
+// ── Follow-up actions ──────────────────────────────────────────
+
+interface FollowUpAction {
+  label: string
+  prompt: string
+}
+
+function getFollowUpActions(
+  sport: string,
+  report: TrainingReport,
+  actTitle: string,
+  actDate: string,
+  streams: { heartrate?: number[]; watts?: number[]; velocity_smooth?: number[]; cadence?: number[] },
+): FollowUpAction[] {
+  const actions: FollowUpAction[] = []
+  const s = sport.toLowerCase()
+  const isBike = ['bike', 'virtual_bike', 'cycling', 'velo'].some(k => s.includes(k))
+  const isRun = ['run', 'trail', 'running'].some(k => s.includes(k))
+  const hasHr = (streams.heartrate?.length ?? 0) > 10
+  const hasWatts = (streams.watts?.length ?? 0) > 10
+  const hasVelocity = (streams.velocity_smooth?.length ?? 0) > 10
+  const hasCadence = (streams.cadence?.length ?? 0) > 10
+  const driftAbove3 = report.cardiac_drift_pct !== null && Math.abs(report.cardiac_drift_pct) > 3
+  const ctx = `Pour la séance "${actTitle}" du ${actDate}`
+
+  if (isRun) {
+    if (hasVelocity) actions.push({
+      label: 'Analyse mon pacing',
+      prompt: `${ctx}, analyse mon pacing en détail. Positive split, negative split, ou even split ? Quelles phases ont été trop rapides ou trop lentes ? La stratégie de pacing était-elle optimale pour ce type d'effort ? Qu'aurais-je dû faire différemment ?`,
+    })
+    if (hasHr && driftAbove3) actions.push({
+      label: `Explique le drift cardiaque (${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}%)`,
+      prompt: `${ctx}, le drift cardiaque est de ${report.cardiac_drift_pct!.toFixed(1)}%. Explique en détail ce que ça signifie physiologiquement. Quelles sont les causes possibles (déshydratation, chaleur, fatigue musculaire, mauvais pacing) ? Qu'est-ce que ça révèle sur mon niveau d'endurance aérobie ? Que faire pour l'améliorer ?`,
+    })
+    if (hasCadence) actions.push({
+      label: 'Analyse ma cadence de course',
+      prompt: `${ctx}, analyse ma cadence de course. Est-elle dans la plage optimale (170-185 spm) ? Comment évolue-t-elle avec la fatigue au fil de la séance ? Est-ce un levier d'amélioration de mon économie de course ? Donne des recommandations concrètes.`,
+    })
+    if (hasHr || hasVelocity) actions.push({
+      label: "Gestion de l'intensité par zones",
+      prompt: `${ctx}, analyse la distribution de l'intensité par zones. La répartition était-elle adaptée au type d'effort ? Ai-je passé trop de temps en zone 3 (no man's land) ? Pas assez en Z1-Z2 si c'était de l'endurance ? Trop conservateur ou trop agressif ? Donne la répartition optimale pour ce type de séance.`,
+    })
+    actions.push({
+      label: 'Compare avec mes séances similaires',
+      prompt: `Compare la séance "${actTitle}" du ${actDate} avec mes séances de course similaires récentes. Est-ce que je progresse, stagne, ou régresse ? Quels indicateurs le montrent (allure, FC, EI, drift) ? Sois précis avec les chiffres et donne une tendance claire.`,
+    })
+    actions.push({
+      label: 'Prochaine séance running idéale',
+      prompt: `Basé sur l'analyse de la course "${actTitle}" du ${actDate} (verdict: ${report.verdict}, EI: ${report.kpis.efficiency_index}, drift: ${report.cardiac_drift_pct?.toFixed(1) ?? 'N/A'}%), quelle serait la séance running idéale pour mon prochain entraînement ? Donne un plan concret : échauffement, corps de séance, retour au calme, zones cibles, durée totale.`,
+    })
+  } else if (isBike) {
+    if (hasWatts) actions.push({
+      label: 'Analyse mon profil de puissance',
+      prompt: `${ctx}, analyse en détail mon profil de puissance. Comment la puissance a-t-elle évolué au cours de la séance ? Y a-t-il des signes de fatigue (chute progressive, incapacité à reproduire les efforts) ? La variabilité de puissance (VI) était-elle adaptée au type d'effort ? Analyse les intervalles si c'était du fractionné.`,
+    })
+    if (hasHr && driftAbove3) actions.push({
+      label: `Explique le drift cardiaque (${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}%)`,
+      prompt: `${ctx}, le drift cardiaque est de ${report.cardiac_drift_pct!.toFixed(1)}%. Explique ce que ça signifie dans le contexte du vélo. Causes possibles : déshydratation, chaleur, fatigue musculaire, intensité trop élevée ? Qu'est-ce que ça révèle sur ma base aérobie ? Recommandations concrètes.`,
+    })
+    if (hasCadence) actions.push({
+      label: 'Analyse ma cadence de pédalage',
+      prompt: `${ctx}, analyse ma cadence de pédalage. Est-elle adaptée au terrain et à l'intensité ? Ai-je tendance à mouliner trop (>100rpm) ou forcer trop (<75rpm) ? Comment évolue-t-elle avec la fatigue ? Quel impact sur l'efficacité neuromusculaire et la fatigue musculaire ? Recommandations concrètes.`,
+    })
+    if (hasWatts && hasHr) actions.push({
+      label: 'Analyse le rapport puissance/FC',
+      prompt: `${ctx}, analyse le rapport entre ma puissance et ma fréquence cardiaque tout au long de la séance. Y a-t-il un découplement aérobie ? À quel moment l'efficience commence-t-elle à baisser ? Qu'est-ce que ça dit sur mon endurance de base et mon niveau de forme actuel ?`,
+    })
+    actions.push({
+      label: 'Compare avec mes séances similaires',
+      prompt: `Compare la séance vélo "${actTitle}" du ${actDate} avec mes sorties vélo similaires récentes. Est-ce que je progresse, stagne, ou régresse ? Quels indicateurs le montrent (puissance, NP, EI, drift, cadence) ? Sois précis avec les chiffres.`,
+    })
+    actions.push({
+      label: 'Prochaine séance vélo idéale',
+      prompt: `Basé sur l'analyse de la séance vélo "${actTitle}" du ${actDate} (verdict: ${report.verdict}, EI: ${report.kpis.efficiency_index}, drift: ${report.cardiac_drift_pct?.toFixed(1) ?? 'N/A'}%), quelle serait la séance vélo idéale pour ma prochaine sortie ? Donne un plan concret : type de séance, zones cibles, durée, structure des intervalles si pertinent.`,
+    })
+  } else {
+    if (hasHr || hasVelocity || hasWatts) actions.push({
+      label: "Détaille la gestion de l'intensité",
+      prompt: `${ctx}, analyse en détail la gestion de l'intensité. Comment l'effort a-t-il été réparti ? Y a-t-il eu des erreurs de pacing ? Des phases trop agressives ou trop conservatrices ?`,
+    })
+    if (hasHr && driftAbove3) actions.push({
+      label: `Explique le drift cardiaque (${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}%)`,
+      prompt: `${ctx}, le drift cardiaque est de ${report.cardiac_drift_pct!.toFixed(1)}%. Explique ce que ça signifie physiologiquement et quelles en sont les causes possibles.`,
+    })
+    actions.push({
+      label: 'Compare avec mes séances similaires',
+      prompt: `Compare la séance "${actTitle}" du ${actDate} avec mes séances similaires récentes. Progression, stagnation ou régression ?`,
+    })
+    actions.push({
+      label: 'Prochaine séance idéale',
+      prompt: `Basé sur l'analyse de "${actTitle}" du ${actDate} (verdict: ${report.verdict}), quelle serait la séance idéale pour mon prochain entraînement ?`,
+    })
+  }
+
+  return actions.slice(0, 4)
+}
+
+function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string, reportData?: TrainingReportData) => void
+  onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
   type Phase = 'loading' | 'gate' | 'select' | 'generating' | 'result'
   const [phase, setPhase] = useState<Phase>('loading')
@@ -4531,6 +4629,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   const [error, setError] = useState<string | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [ctxZones, setCtxZones] = useState<{ z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null>(null)
+  const [recorded, setRecorded] = useState(false)
   // Select phase states
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -4616,6 +4715,38 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   // no-op — replaced by month-based loading
   async function loadActivities(_reset = false) {
     void _reset
+  }
+
+  function handleFollowUp(action: FollowUpAction) {
+    // Si l'analyse n'a pas encore été enregistrée (cas edge où onRecordConv n'a pas été appelé)
+    if (!recorded && onRecordConv && report && selected.length > 0) {
+      const mainAct = selected[0]
+      const actNom = mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type
+      const actDate = mainAct.started_at?.slice(0, 10) ?? ''
+      const userMsg = compareMode
+        ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
+        : `Analyser un entraînement — ${actNom} (${actDate})`
+      const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${report.verdict}\nTSS : ${report.kpis.tss} · EI : ${report.kpis.efficiency_index}\n${report.interpretation.execution}`
+      const reportData: TrainingReportData = {
+        report,
+        activities: selected.map(a => ({
+          id: a.id, sport_type: a.sport_type, title: a.title, started_at: a.started_at,
+          streams: a.streams ? {
+            time: a.streams.time ? downsampleForStorage(a.streams.time) : undefined,
+            heartrate: a.streams.heartrate ? downsampleForStorage(a.streams.heartrate) : undefined,
+            watts: a.streams.watts ? downsampleForStorage(a.streams.watts) : undefined,
+            velocity_smooth: a.streams.velocity_smooth ? downsampleForStorage(a.streams.velocity_smooth) : undefined,
+            altitude: a.streams.altitude ? downsampleForStorage(a.streams.altitude) : undefined,
+            cadence: a.streams.cadence ? downsampleForStorage(a.streams.cadence) : undefined,
+          } : undefined,
+        })),
+        zones: ctxZones,
+        compareMode,
+      }
+      onRecordConv(userMsg, aiMsg, reportData)
+      setRecorded(true)
+    }
+    if (onFollowUp) onFollowUp(action.label, action.prompt)
   }
 
   async function handleAnalyze() {
@@ -4936,6 +5067,13 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
     const vColor = verdictColors[report.verdict] ?? '#3b82f6'
     const mainAct = selected[0]
     const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
+    const followUpActions = getFollowUpActions(
+      mainAct.sport_type,
+      report,
+      mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type,
+      mainAct.started_at?.slice(0, 10) ?? '',
+      mainAct.streams ?? {},
+    )
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
@@ -5066,14 +5204,24 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
           </div>
         )}
 
-        {(report.actions_suggerees ?? []).length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {(report.actions_suggerees ?? []).map((a, i) => (
-              <button key={i}
-                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
-                {a.label} →
-              </button>
-            ))}
+        {followUpActions.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
+              Approfondir l&apos;analyse
+            </p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {followUpActions.map((action, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleFollowUp(action)}
+                  style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', transition: 'border-color 0.15s, background 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,200,224,0.5)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,200,224,0.06)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                >
+                  {action.label} →
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -5225,18 +5373,6 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Actions suggérées */}
-      {(report.actions_suggerees ?? []).length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {(report.actions_suggerees ?? []).map((a, i) => (
-            <button key={i}
-              style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
-              {a.label} →
-            </button>
-          ))}
         </div>
       )}
 
@@ -14484,6 +14620,9 @@ export default function AIPanel({
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
                       setActiveId(conv.id)
+                    }}
+                    onFollowUp={(displayLabel, fullPrompt) => {
+                      void send(displayLabel, fullPrompt)
                     }}
                   />
                 )}

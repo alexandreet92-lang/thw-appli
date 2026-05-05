@@ -3944,6 +3944,207 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
   return null
 }
 
+// ── Stream chart components ────────────────────────────────────────
+
+function StreamProfileChart({ streams, zones, sport }: {
+  streams: { time?: number[]; heartrate?: number[]; watts?: number[]; velocity_smooth?: number[]; altitude?: number[]; distance?: number[] }
+  zones: { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null
+  sport: string
+}) {
+  const hr = streams.heartrate ?? []
+  const watts = streams.watts ?? []
+  const velocity = streams.velocity_smooth ?? []
+  const altitude = streams.altitude ?? []
+  const N = Math.max(hr.length, watts.length, velocity.length, altitude.length)
+  if (N < 10) return null
+
+  const W = 380, H_TRACK = 60, GAP = 4, PAD_L = 28, PAD_R = 6
+
+  function smooth(arr: number[], w = 8): number[] {
+    return arr.map((_, i) => {
+      const start = Math.max(0, i - w)
+      const end = Math.min(arr.length, i + w + 1)
+      const slice = arr.slice(start, end)
+      return slice.reduce((a, b) => a + b, 0) / slice.length
+    })
+  }
+
+  function downsample(arr: number[], maxPoints = 400): number[] {
+    if (arr.length <= maxPoints) return arr
+    const step = arr.length / maxPoints
+    return Array.from({ length: maxPoints }, (_, i) => arr[Math.floor(i * step)])
+  }
+
+  function buildPath(data: number[], yMin: number, yMax: number, trackH: number, trackY: number): string {
+    const ds = downsample(smooth(data))
+    const n = ds.length
+    return ds.map((v, i) => {
+      const x = PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R)
+      const y = trackY + trackH - ((v - yMin) / ((yMax - yMin) || 1)) * trackH
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${Math.max(trackY, Math.min(trackY + trackH, y)).toFixed(1)}`
+    }).join(' ')
+  }
+
+  function buildFill(data: number[], yMin: number, yMax: number, trackH: number, trackY: number): string {
+    const ds = downsample(smooth(data))
+    const n = ds.length
+    const pts = ds.map((v, i) => {
+      const x = PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R)
+      const y = trackY + trackH - ((v - yMin) / ((yMax - yMin) || 1)) * trackH
+      return `${x.toFixed(1)},${Math.max(trackY, Math.min(trackY + trackH, y)).toFixed(1)}`
+    })
+    const xEnd = (PAD_L + (W - PAD_L - PAD_R)).toFixed(1)
+    return `M${pts[0]} ${pts.slice(1).map(p => `L${p}`).join(' ')} L${xEnd},${(trackY + trackH).toFixed(1)} L${PAD_L},${(trackY + trackH).toFixed(1)} Z`
+  }
+
+  const sportLower = sport.toLowerCase()
+  const isBike = ['bike', 'virtual_bike', 'cycling', 'velo'].some(s => sportLower.includes(s))
+  const isRun = ['run', 'trail', 'running'].some(s => sportLower.includes(s))
+
+  type TrackDef = { label: string; data: number[]; color: string; fillColor: string; type: 'line' | 'fill' }
+  const tracks: TrackDef[] = []
+  if (altitude.length >= 10) tracks.push({ label: 'Alt', data: altitude, color: 'rgba(140,140,140,0.6)', fillColor: 'rgba(140,140,140,0.08)', type: 'fill' })
+  if (hr.length >= 10) tracks.push({ label: 'FC', data: hr, color: '#ef4444', fillColor: 'rgba(239,68,68,0.07)', type: 'line' })
+  if (isBike && watts.length >= 10) tracks.push({ label: 'W', data: watts, color: '#5b6fff', fillColor: 'rgba(91,111,255,0.07)', type: 'line' })
+  if (isRun && velocity.length >= 10) tracks.push({ label: 'Allure', data: velocity, color: '#00c8e0', fillColor: 'rgba(0,200,224,0.07)', type: 'line' })
+
+  if (tracks.length === 0) return null
+  const totalH = tracks.length * (H_TRACK + GAP)
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Profil de la séance</p>
+      <svg viewBox={`0 0 ${W} ${totalH}`} style={{ width: '100%', height: totalH, display: 'block' }}>
+        {tracks.map((track, ti) => {
+          const trackY = ti * (H_TRACK + GAP)
+          const ds = downsample(smooth(track.data))
+          const yMin = Math.min(...ds) * 0.96
+          const yMax = Math.max(...ds) * 1.04
+
+          // Zone rects for HR track
+          const zoneRects: React.ReactNode[] = []
+          if (track.label === 'FC' && zones) {
+            const zColors = ['rgba(34,197,94,0.08)', 'rgba(34,197,94,0.12)', 'rgba(249,115,22,0.10)', 'rgba(239,68,68,0.10)', 'rgba(239,68,68,0.15)']
+            const zMaxes = [zones.z1_max, zones.z2_max, zones.z3_max, zones.z4_max].filter((v): v is number => v != null)
+            let prev = yMin
+            for (let zi = 0; zi < zMaxes.length; zi++) {
+              const zm = zMaxes[zi]
+              const yTop = trackY + H_TRACK - ((zm - yMin) / ((yMax - yMin) || 1)) * H_TRACK
+              const yBot = trackY + H_TRACK - ((prev - yMin) / ((yMax - yMin) || 1)) * H_TRACK
+              zoneRects.push(<rect key={`z${zi}`} x={PAD_L} y={Math.max(trackY, yTop)} width={W - PAD_L - PAD_R} height={Math.max(0, yBot - yTop)} fill={zColors[zi]} />)
+              prev = zm
+            }
+          }
+
+          return (
+            <g key={track.label}>
+              {zoneRects}
+              {track.type === 'fill' && <path d={buildFill(track.data, yMin, yMax, H_TRACK, trackY)} fill={track.fillColor} />}
+              <path d={buildPath(track.data, yMin, yMax, H_TRACK, trackY)} fill="none" stroke={track.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <text x={2} y={trackY + 10} fontSize="8" fontWeight="700" fill={track.color} fontFamily="DM Sans,sans-serif">{track.label}</text>
+              <text x={2} y={trackY + H_TRACK - 2} fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{Math.round(yMin)}</text>
+              <text x={2} y={trackY + 20} fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{Math.round(yMax)}</text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+function CardiacDriftChart({ heartrate, driftPct }: { heartrate: number[]; driftPct: number }) {
+  if (heartrate.length < 20) return null
+  const W = 380, H = 52, PAD_L = 28, PAD_R = 6
+
+  function smooth15(arr: number[]): number[] {
+    return arr.map((_, i) => {
+      const s = Math.max(0, i - 15), e = Math.min(arr.length, i + 16)
+      return arr.slice(s, e).reduce((a, b) => a + b, 0) / (e - s)
+    })
+  }
+
+  const ds = smooth15(heartrate)
+  const half = Math.floor(ds.length / 2)
+  const avg1 = ds.slice(0, half).reduce((a, b) => a + b, 0) / half
+  const avg2 = ds.slice(half).reduce((a, b) => a + b, 0) / (ds.length - half)
+  const yMin = Math.min(...ds) * 0.97, yMax = Math.max(...ds) * 1.03
+
+  const scaleX = (i: number) => PAD_L + (i / (ds.length - 1)) * (W - PAD_L - PAD_R)
+  const scaleY = (v: number) => H - 8 - ((v - yMin) / ((yMax - yMin) || 1)) * (H - 16)
+  const driftColor = Math.abs(driftPct) < 5 ? '#22c55e' : Math.abs(driftPct) < 8 ? '#f97316' : '#ef4444'
+
+  // Downsample the path for perf
+  const step = Math.max(1, Math.floor(ds.length / 300))
+  const pts = ds.filter((_, i) => i % step === 0)
+  const path = pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${scaleX(i * step).toFixed(1)},${scaleY(v).toFixed(1)}`).join(' ')
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Dérive cardiaque</p>
+        <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: driftColor }}>{driftPct > 0 ? '+' : ''}{driftPct.toFixed(1)}%</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
+        <path d={path} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="1" />
+        <line x1={scaleX(0)} y1={scaleY(avg1)} x2={scaleX(half)} y2={scaleY(avg1)} stroke={driftColor} strokeWidth="1.5" strokeDasharray="4,3" />
+        <line x1={scaleX(half)} y1={scaleY(avg2)} x2={scaleX(ds.length - 1)} y2={scaleY(avg2)} stroke={driftColor} strokeWidth="1.5" strokeDasharray="4,3" />
+        <text x={scaleX(half / 2)} y={scaleY(avg1) - 4} textAnchor="middle" fontSize="8" fill={driftColor} fontFamily="DM Mono,monospace">{Math.round(avg1)}bpm</text>
+        <text x={scaleX(half + (ds.length - half) / 2)} y={scaleY(avg2) - 4} textAnchor="middle" fontSize="8" fill={driftColor} fontFamily="DM Mono,monospace">{Math.round(avg2)}bpm</text>
+        <line x1={scaleX(half)} y1={4} x2={scaleX(half)} y2={H - 4} stroke="var(--ai-border)" strokeWidth="1" strokeDasharray="2,2" />
+        <text x={scaleX(half)} y={H - 1} textAnchor="middle" fontSize="7" fill="var(--ai-dim)">½</text>
+      </svg>
+      <p style={{ fontSize: 10, color: 'var(--ai-mid)', margin: '3px 0 0', lineHeight: 1.4 }}>
+        {Math.abs(driftPct) < 5
+          ? 'Drift normal — effort bien maîtrisé tout au long de la séance.'
+          : Math.abs(driftPct) < 8
+          ? 'Drift modéré — légère fatigue en 2ème moitié. Surveiller hydratation et intensité.'
+          : 'Drift élevé — fatigue significative. Possible départ trop rapide ou récupération insuffisante.'}
+      </p>
+    </div>
+  )
+}
+
+function ZoneDistributionBar({ distribution, target }: {
+  distribution: { zone: string; pct: number; minutes: number; color: string }[]
+  target: { zone: string; pct: number }[] | null
+}) {
+  const ZONE_COLORS: Record<string, string> = { Z1: '#22c55e', Z2: '#84cc16', Z3: '#f97316', Z4: '#ef4444', Z5: '#dc2626' }
+  const active = distribution.filter(z => z.pct > 0)
+  if (active.length === 0) return null
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Distribution des zones</p>
+      <div style={{ display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', marginBottom: 2 }}>
+        {active.map(z => (
+          <div key={z.zone} style={{ width: `${z.pct}%`, background: ZONE_COLORS[z.zone] ?? z.color, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {z.pct > 8 && <span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>{z.zone}</span>}
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>Réalisé</p>
+      {target && target.filter(z => z.pct > 0).length > 0 && (
+        <>
+          <div style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden', marginBottom: 2, opacity: 0.5 }}>
+            {target.filter(z => z.pct > 0).map(z => (
+              <div key={z.zone} style={{ width: `${z.pct}%`, background: ZONE_COLORS[z.zone] ?? '#999' }} />
+            ))}
+          </div>
+          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>Cible (plan)</p>
+        </>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+        {active.map(z => (
+          <span key={z.zone} style={{ fontSize: 10, color: 'var(--ai-mid)' }}>
+            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 2, background: ZONE_COLORS[z.zone] ?? z.color, marginRight: 3 }} />
+            {z.zone} {z.pct}% ({z.minutes}min)
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── AnalyzeTrainingFlow ───────────────────────────────────────────
 
 interface TrainingActivityRow {
@@ -3976,6 +4177,7 @@ interface TrainingReport {
   verdict: 'excellent' | 'bon' | 'passable' | 'a_revoir'
   kpis: { duree_min: number; distance_km: number; tss: number; efficiency_index: number; ei_vs_average: number | null }
   zone_distribution: { zone: string; pct: number; minutes: number; color: string }[]
+  zone_target: { zone: string; pct: number }[] | null
   cardiac_drift_pct: number | null
   interpretation: {
     execution: string
@@ -4001,7 +4203,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
 }) {
   type Phase = 'loading' | 'gate' | 'select' | 'generating' | 'result'
   const [phase, setPhase] = useState<Phase>('loading')
-  const [activities, setActivities] = useState<TrainingActivityRow[]>([])
+  const [allActivities, setAllActivities] = useState<TrainingActivityRow[]>([])
   const [sportFilter, setSportFilter] = useState<string | null>(null)
   const [periodFilter, setPeriodFilter] = useState<'1m' | '3m' | '6m' | 'all'>('3m')
   const [compareMode, setCompareMode] = useState(false)
@@ -4011,6 +4213,10 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   const [totalCount, setTotalCount] = useState(0)
   const [plannedDates, setPlannedDates] = useState<Set<string>>(new Set())
   const [loadingActs, setLoadingActs] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [ctxZones, setCtxZones] = useState<{ z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -4039,7 +4245,9 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
     })()
   }, [])
 
-  async function loadActivities() {
+  const PAGE_SIZE = 50
+
+  async function loadActivities(reset = false) {
     setLoadingActs(true)
     try {
       const { createClient } = await import('@/lib/supabase/client')
@@ -4047,19 +4255,30 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) return
 
-      const cutoffDays = periodFilter === '1m' ? 30 : periodFilter === '3m' ? 90 : periodFilter === '6m' ? 180 : 365
+      const cutoffDays = periodFilter === '1m' ? 30 : periodFilter === '3m' ? 90 : periodFilter === '6m' ? 180 : 365 * 3
       const since = new Date(Date.now() - cutoffDays * 86400000).toISOString()
+      const currentPage = reset ? 0 : page
 
       let query = sb.from('activities')
         .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,streams')
         .eq('user_id', user.id).gte('started_at', since).order('started_at', { ascending: false })
+        .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1)
 
       if (sportFilter) query = query.eq('sport_type', sportFilter)
 
-      const { data } = await query.limit(100)
-      setActivities((data as unknown as TrainingActivityRow[]) ?? [])
+      const { data } = await query
+      const newData = (data as unknown as TrainingActivityRow[]) ?? []
+
+      if (reset) {
+        setAllActivities(newData)
+        setPage(1)
+      } else {
+        setAllActivities(prev => [...prev, ...newData])
+        setPage(currentPage + 1)
+      }
+      setHasMore(newData.length === PAGE_SIZE)
     } catch {
-      setActivities([])
+      if (reset) setAllActivities([])
     } finally {
       setLoadingActs(false)
     }
@@ -4094,6 +4313,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
       ])
 
       const tssWeekBefore = (weekActsRes.data ?? []).reduce((s: number, a: { tss: number | null }) => s + (a.tss ?? 0), 0)
+      setCtxZones(zonesRes.data as { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null)
 
       const activitiesWithMetrics = selected.map(act => ({
         ...act,
@@ -4163,7 +4383,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
           {hasActivities && (
-            <button onClick={() => { setPhase('select'); void loadActivities() }}
+            <button onClick={() => { setPhase('select'); void loadActivities(true) }}
               style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Continuer →
             </button>
@@ -4183,7 +4403,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
   }
 
   if (phase === 'select') {
-    const sportOptions = [...new Set(activities.map(a => a.sport_type))].filter(Boolean)
+    const sportOptions = [...new Set(allActivities.map(a => a.sport_type))].filter(Boolean)
 
     const getSportIcon = (sport: string): string => {
       const icons: Record<string, string> = { running: '🏃', cycling: '🚴', hyrox: '🏋️', gym: '💪', trail: '🏔️', natation: '🏊', triathlon: '🔱' }
@@ -4193,18 +4413,21 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
     const getWeekStart = (date: Date): string => {
       const d = new Date(date)
       const day = d.getDay()
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-      d.setDate(diff)
+      d.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
       return d.toISOString().slice(0, 10)
     }
 
-    const displayedActivities = compareMode && selected.length === 1
-      ? activities.filter(a =>
+    // Filtre par mode comparaison + recherche textuelle
+    const baseActivities = compareMode && selected.length === 1
+      ? allActivities.filter(a =>
           a.id !== selected[0].id &&
           a.sport_type === selected[0].sport_type &&
           Math.abs((a.moving_time_s ?? 0) - (selected[0].moving_time_s ?? 0)) / (selected[0].moving_time_s || 1) <= 0.30
         )
-      : activities
+      : allActivities
+    const displayedActivities = searchQuery
+      ? baseActivities.filter(a => (a.title ?? a.sport_type).toLowerCase().includes(searchQuery.toLowerCase()))
+      : baseActivities
 
     const handleSelectActivity = (act: TrainingActivityRow) => {
       if (!compareMode) {
@@ -4213,10 +4436,8 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
       }
       if (selected.length === 0) { setSelected([act]); return }
       if (selected[0].id === act.id) { setSelected([]); return }
-      if (selected.length >= 1) {
-        if (selected[1]?.id === act.id) { setSelected([selected[0]]); return }
-        setSelected([selected[0], act])
-      }
+      if (selected[1]?.id === act.id) { setSelected([selected[0]]); return }
+      setSelected([selected[0], act])
     }
 
     return (
@@ -4225,26 +4446,37 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
           {compareMode ? 'Sélectionne 2 entraînements à comparer' : 'Sélectionne un entraînement'}
         </p>
 
+        {/* Filtres sport + période */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-          <select value={sportFilter ?? ''} onChange={e => { setSportFilter(e.target.value || null); void loadActivities() }}
+          <select value={sportFilter ?? ''} onChange={e => { setSportFilter(e.target.value || null); void loadActivities(true) }}
             style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer' }}>
             <option value=''>Tous les sports</option>
             {sportOptions.map(sp => <option key={sp} value={sp}>{AE_SPORT_LABELS[sp] ?? sp}</option>)}
           </select>
           {(['1m', '3m', '6m', 'all'] as const).map(p => (
-            <button key={p} onClick={() => { setPeriodFilter(p); void loadActivities() }}
+            <button key={p} onClick={() => { setPeriodFilter(p); void loadActivities(true) }}
               style={{ padding: '5px 10px', borderRadius: 8, border: `1px solid ${periodFilter === p ? 'var(--ai-accent)' : 'var(--ai-border)'}`, background: periodFilter === p ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)', color: periodFilter === p ? 'var(--ai-accent)' : 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontWeight: periodFilter === p ? 700 : 400 }}>
               {p === 'all' ? 'Tout' : p}
             </button>
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        {/* Mode comparaison */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <button onClick={() => { setCompareMode(m => !m); setSelected([]) }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: `1px solid ${compareMode ? 'var(--ai-accent)' : 'var(--ai-border)'}`, background: compareMode ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)', color: compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontWeight: compareMode ? 700 : 400 }}>
             {compareMode ? '☑' : '☐'} Comparer 2 entraînements
           </button>
         </div>
+
+        {/* Barre de recherche */}
+        <input
+          type="text"
+          placeholder="Rechercher une activité…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif', marginBottom: 8, boxSizing: 'border-box', outline: 'none' }}
+        />
 
         {compareMode && selected.length === 1 && (
           <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 8, fontSize: 11, color: 'var(--ai-accent)' }}>
@@ -4260,11 +4492,12 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
 
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14, maxHeight: 420, overflowY: 'auto' }}>
-          {displayedActivities.slice(0, 50).map(act => {
+        {/* Liste des activités */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 8, maxHeight: 420, overflowY: 'auto' }}>
+          {displayedActivities.map(act => {
             const isSelectedA = selected[0]?.id === act.id
             const isSelectedB = selected[1]?.id === act.id
-            const hasStreams = act.streams && (act.streams.heartrate || act.streams.watts)
+            const hasStreams = !!(act.streams && (act.streams.heartrate || act.streams.watts))
             const actDate = act.started_at.slice(0, 10)
             const weekStart = getWeekStart(new Date(actDate))
             const hasPlan = plannedDates.has(weekStart)
@@ -4298,15 +4531,9 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
                   {act.average_watts && <span>{act.average_watts}W</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-                  {hasStreams && (
-                    <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>STREAMS</span>
-                  )}
-                  {hasPlan && (
-                    <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 9, fontWeight: 700 }}>PLAN</span>
-                  )}
-                  {isSameRoute && (
-                    <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(250,204,21,0.12)', color: '#eab308', fontSize: 9, fontWeight: 700 }}>MÊME PARCOURS</span>
-                  )}
+                  {hasStreams && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>STREAMS</span>}
+                  {hasPlan && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 9, fontWeight: 700 }}>PLAN</span>}
+                  {isSameRoute && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(250,204,21,0.12)', color: '#eab308', fontSize: 9, fontWeight: 700 }}>MÊME PARCOURS</span>}
                   {isSelectedA && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(91,111,255,0.15)', color: 'var(--ai-accent)', fontSize: 9, fontWeight: 700 }}>A</span>}
                   {isSelectedB && <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(0,200,224,0.15)', color: '#00c8e0', fontSize: 9, fontWeight: 700 }}>B</span>}
                 </div>
@@ -4317,6 +4544,14 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', textAlign: 'center', padding: '20px 0' }}>Aucune activité dans cette période</p>
           )}
         </div>
+
+        {/* Voir plus */}
+        {hasMore && !searchQuery && (
+          <button onClick={() => void loadActivities(false)} disabled={loadingActs}
+            style={{ width: '100%', padding: '9px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', marginBottom: 8 }}>
+            {loadingActs ? 'Chargement…' : 'Voir plus d\'activités'}
+          </button>
+        )}
 
         {compareMode && selected.length === 2 && (
           <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(0,200,224,0.06)', border: '1px solid rgba(0,200,224,0.2)', marginBottom: 8, fontSize: 11, color: '#00c8e0' }}>
@@ -4373,36 +4608,42 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
           ))}
         </div>
 
-        {report.zone_distribution.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Distribution des zones</p>
-            <div style={{ display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
-              {report.zone_distribution.filter(z => z.pct > 0).map(z => (
-                <div key={z.zone} title={`${z.zone}: ${z.pct}%`}
-                  style={{ width: `${z.pct}%`, background: z.color, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {z.pct > 8 && <span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>{z.zone}</span>}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {report.zone_distribution.filter(z => z.pct > 0).map(z => (
-                <span key={z.zone} style={{ fontSize: 10, color: 'var(--ai-dim)' }}>
-                  <span style={{ color: z.color, fontWeight: 700 }}>{z.zone}</span> {z.pct}% ({z.minutes}min)
-                </span>
-              ))}
-            </div>
-          </div>
+        {/* Graphiques streams — rendus côté client depuis les données brutes */}
+        {selected[0].streams && (
+          <>
+            <StreamProfileChart
+              streams={selected[0].streams}
+              zones={ctxZones}
+              sport={selected[0].sport_type}
+            />
+            {selected[0].streams.heartrate && report.cardiac_drift_pct != null && (
+              <CardiacDriftChart
+                heartrate={selected[0].streams.heartrate}
+                driftPct={report.cardiac_drift_pct}
+              />
+            )}
+          </>
         )}
 
-        {report.cardiac_drift_pct != null && (
-          <div style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10, fontSize: 11 }}>
-            <span style={{ color: 'var(--ai-mid)' }}>Drift cardiaque : </span>
-            <strong style={{ color: Math.abs(report.cardiac_drift_pct) < 5 ? '#22c55e' : Math.abs(report.cardiac_drift_pct) < 10 ? '#f97316' : '#ef4444' }}>
-              {report.cardiac_drift_pct > 0 ? '+' : ''}{report.cardiac_drift_pct}%
-            </strong>
-            <span style={{ color: 'var(--ai-dim)', fontSize: 10, marginLeft: 6 }}>
-              {Math.abs(report.cardiac_drift_pct) < 5 ? '(normal)' : Math.abs(report.cardiac_drift_pct) < 10 ? '(légèrement élevé)' : '(élevé)'}
-            </span>
+        {/* Distribution des zones */}
+        {report.zone_distribution.length > 0 && (
+          <ZoneDistributionBar
+            distribution={report.zone_distribution}
+            target={report.zone_target ?? null}
+          />
+        )}
+
+        {/* Mode comparaison — graphiques séance B */}
+        {compareMode && selected[1]?.streams && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 5px' }}>
+              Séance B — {selected[1].title ?? AE_SPORT_LABELS[selected[1].sport_type] ?? selected[1].sport_type}
+            </p>
+            <StreamProfileChart
+              streams={selected[1].streams}
+              zones={ctxZones}
+              sport={selected[1].sport_type}
+            />
           </div>
         )}
 

@@ -3007,7 +3007,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         const d28before = new Date(new Date(testDate).getTime() - 28 * 86400000).toISOString().slice(0, 10)
 
         const [actsRes, hrvRes, hrvHistRes] = await Promise.all([
-          sb.from('activities').select('tss').eq('user_id', user.id)
+          sb.from('activities').select('tss')
             .gte('started_at', d7before + 'T00:00:00').lt('started_at', testDate + 'T00:00:00'),
           sb.from('metrics_daily').select('hrv').eq('user_id', user.id).eq('date', testDate).maybeSingle(),
           sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', d28before).lte('date', testDate),
@@ -3533,7 +3533,6 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
         const { data } = await sb
           .from('activities')
           .select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,streams')
-          .eq('user_id', user.id)
           .order('started_at', { ascending: false })
           .limit(30)
 
@@ -3569,7 +3568,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', act.sport_type).eq('is_current', true).maybeSingle(),
         sb.from('metrics_daily').select('hrv,resting_hr').eq('user_id', user.id).eq('date', dayBefore).maybeSingle(),
         sb.from('planned_sessions').select('title,duration_min,intensite,type_seance').eq('user_id', user.id).gte('date', dayBefore).lte('date', dayAfter).eq('sport', act.sport_type).maybeSingle(),
-        sb.from('activities').select('id').eq('user_id', user.id).eq('sport_type', act.sport_type).gte('moving_time_s', (act.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (act.moving_time_s ?? 0) * 1.3).neq('id', act.id).limit(10),
+        sb.from('activities').select('id').eq('sport_type', act.sport_type).gte('moving_time_s', (act.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (act.moving_time_s ?? 0) * 1.3).neq('id', act.id).limit(10),
         sb.from('metrics_daily').select('hrv').eq('user_id', user.id).gte('date', since28d.toISOString().split('T')[0]).lt('date', actDate),
       ])
 
@@ -3628,7 +3627,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', selectedAct.sport_type).eq('is_current', true).maybeSingle(),
         sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,readiness,fatigue,energy').eq('user_id', user.id).gte('date', threeDaysBefore.toISOString().split('T')[0]).lte('date', actDate),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).gte('date', dayBefore.toISOString().split('T')[0]).lte('date', dayAfter.toISOString().split('T')[0]).eq('sport', selectedAct.sport_type).maybeSingle(),
-        sb.from('activities').select('started_at,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling').eq('user_id', user.id).eq('sport_type', selectedAct.sport_type).gte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 1.3).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
+        sb.from('activities').select('started_at,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling').eq('sport_type', selectedAct.sport_type).gte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 0.7).lte('moving_time_s', (selectedAct.moving_time_s ?? 0) * 1.3).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
       ])
 
       // HRV baseline 28d
@@ -4165,11 +4164,12 @@ interface TrainingActivityRow {
   moving_time_s: number | null
   distance_m: number | null
   tss: number | null
-  average_heartrate: number | null
-  max_heartrate: number | null
-  average_speed: number | null
-  average_watts: number | null
+  avg_hr: number | null
+  max_hr: number | null
+  avg_speed_ms: number | null
+  avg_watts: number | null
   avg_cadence: number | null
+  avg_pace_s_km: number | null
   intensity_factor: number | null
   aerobic_decoupling: number | null
   is_race?: boolean | null
@@ -4242,7 +4242,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         if (!user) { setError('Non connecté'); return }
 
         const [countRes, plannedRes] = await Promise.all([
-          sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          sb.from('activities').select('id', { count: 'exact', head: true }),
           sb.from('planned_sessions').select('week_start,sport').eq('user_id', user.id).order('week_start', { ascending: false }).limit(50),
         ])
 
@@ -4273,8 +4273,8 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         const startOfMonth = new Date(selectedMonth.year, selectedMonth.month, 1).toISOString()
         const endOfMonth = new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59).toISOString()
         let query = sb.from('activities')
-          .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,is_race,streams')
-          .eq('user_id', user.id).gte('started_at', startOfMonth).lte('started_at', endOfMonth)
+          .select('*')
+          .gte('started_at', startOfMonth).lte('started_at', endOfMonth)
           .order('started_at', { ascending: false })
         if (sportFilter) query = query.eq('sport_type', sportFilter)
         const { data } = await query
@@ -4294,8 +4294,8 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
         const { data } = await sb.from('activities')
-          .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,average_watts,avg_cadence,intensity_factor,aerobic_decoupling,is_race,streams')
-          .eq('user_id', user.id).eq('is_race', true)
+          .select('*')
+          .eq('is_race', true)
           .order('started_at', { ascending: false }).limit(50)
         setRaceActivities((data as unknown as TrainingActivityRow[]) ?? [])
       } catch { setRaceActivities([]) }
@@ -4327,12 +4327,12 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv }: {
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('is_current', true).maybeSingle(),
         sb.from('metrics_daily').select('date,hrv,resting_hr,sleep_duration,readiness,fatigue,energy').eq('user_id', user.id).gte('date', d3before).lte('date', actDate),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('week_start', weekStartDate).maybeSingle(),
-        sb.from('activities').select('id,started_at,moving_time_s,average_heartrate,average_watts,tss,intensity_factor,aerobic_decoupling').eq('user_id', user.id).eq('sport_type', mainAct.sport_type)
+        sb.from('activities').select('id,started_at,moving_time_s,avg_hr,avg_watts,tss,intensity_factor,aerobic_decoupling').eq('sport_type', mainAct.sport_type)
           .gte('moving_time_s', (mainAct.moving_time_s ?? 3600) * 0.7)
           .lte('moving_time_s', (mainAct.moving_time_s ?? 3600) * 1.3)
           .not('id', 'in', `(${selected.map(s => s.id).join(',')})`)
           .order('started_at', { ascending: false }).limit(10),
-        sb.from('activities').select('tss').eq('user_id', user.id).gte('started_at', weekStartDate + 'T00:00:00').lt('started_at', mainAct.started_at),
+        sb.from('activities').select('tss').gte('started_at', weekStartDate + 'T00:00:00').lt('started_at', mainAct.started_at),
       ])
 
       const tssWeekBefore = (weekActsRes.data ?? []).reduce((s: number, a: { tss: number | null }) => s + (a.tss ?? 0), 0)

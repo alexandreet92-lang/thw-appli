@@ -12663,6 +12663,260 @@ interface RaceStrategyData {
   goalTime: string
 }
 
+async function generateRacePDF(
+  raceName: string,
+  raceDate: string,
+  raceSport: string,
+  raceDistKm: string,
+  raceDenivele: number | null,
+  scenario: RaceScenario,
+  meteoImpacts: MeteoImpact[],
+  courseProfile: CourseProfile | null,
+  triRepartition: StrategieResult['triathlon_repartition'],
+  verdictObjectif: StrategieResult['verdict_objectif'],
+) {
+  const { default: jsPDF } = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as any
+  const pageW = doc.internal.pageSize.getWidth() as number
+  const margin = 14
+  const contentW = pageW - margin * 2
+  let y = margin
+
+  const brand: [number, number, number] = [0, 200, 224]
+  const dark: [number, number, number] = [26, 26, 46]
+  const gray: [number, number, number] = [120, 120, 140]
+  const red: [number, number, number] = [239, 68, 68]
+  const green: [number, number, number] = [34, 197, 94]
+  const orange: [number, number, number] = [249, 115, 22]
+
+  function addSubtitle(text: string) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...brand)
+    doc.text(text.toUpperCase(), margin, y)
+    y += 5
+  }
+
+  function addText(text: string, size = 9, color: [number, number, number] = gray) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(size)
+    doc.setTextColor(...color)
+    const lines: string[] = doc.splitTextToSize(text, contentW)
+    doc.text(lines, margin, y)
+    y += lines.length * (size * 0.4 + 1)
+  }
+
+  function addSpacer(h = 4) { y += h }
+
+  function checkNewPage(needed = 30) {
+    if (y + needed > (doc.internal.pageSize.getHeight() as number) - margin) {
+      doc.addPage()
+      y = margin
+    }
+  }
+
+  // ── En-tête ──
+  doc.setFillColor(...brand)
+  doc.rect(0, 0, pageW, 3, 'F')
+  y = 10
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8)
+  doc.setTextColor(...brand)
+  doc.text('THW COACHING', margin, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...gray)
+  doc.text('Tableau de marche', margin + 38, y)
+  y += 8
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.setTextColor(...dark)
+  doc.text(raceName, margin, y)
+  y += 8
+
+  const infoLine = [raceSport, `${raceDistKm}km`, raceDenivele ? `D+ ${raceDenivele}m` : null, raceDate].filter(Boolean).join(' · ')
+  addText(infoLine, 10, dark)
+  addSpacer(3)
+
+  // ── Verdict ──
+  const vc = verdictObjectif.status === 'realiste' ? green : verdictObjectif.status === 'ambitieux' ? orange : red
+  const vLabel = verdictObjectif.status === 'realiste' ? 'OBJECTIF RÉALISTE' : verdictObjectif.status === 'ambitieux' ? 'OBJECTIF AMBITIEUX' : 'OBJECTIF HORS DE PORTÉE'
+  const scenLabel = scenario.nom === 'conservateur' ? 'Prudent' : scenario.nom === 'optimal' ? 'Optimal' : 'Agressif'
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(...vc)
+  doc.text(`${vLabel} · Scénario ${scenLabel} : ${scenario.objectif_temps} (${scenario.probabilite}%)`, margin, y)
+  y += 5
+  addText(verdictObjectif.detail, 8)
+  addSpacer(3)
+
+  doc.setDrawColor(...brand)
+  doc.setLineWidth(0.3)
+  doc.line(margin, y, pageW - margin, y)
+  y += 5
+
+  // ── Profil parcours (si disponible) ──
+  if (courseProfile) {
+    addSubtitle(`Parcours · ${courseProfile.total_distance_km}km · D+ ${courseProfile.total_denivele_pos}m · D- ${courseProfile.total_denivele_neg}m · Alt. ${courseProfile.altitude_min}–${courseProfile.altitude_max}m`)
+    addSpacer(2)
+  }
+
+  // ── Tableau de marche par sections ──
+  checkNewPage(40)
+  addSubtitle('Tableau de marche par section')
+
+  const sectionHeaders = ['Section', 'Allure / Watts', 'Zone', 'RPE', 'Conseil']
+  const sectionRows = scenario.strategie_sections.map(s => [
+    s.section,
+    s.allure_cible ?? (s.watts_cibles != null ? `${s.watts_cibles}W${s.pourcentage_ftp != null ? ` (${s.pourcentage_ftp}% FTP)` : ''}` : '—'),
+    s.zone,
+    s.rpe_cible,
+    s.conseil.length > 65 ? s.conseil.slice(0, 62) + '…' : s.conseil,
+  ])
+
+  autoTable(doc, {
+    startY: y,
+    head: [sectionHeaders],
+    body: sectionRows,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+    headStyles: { fillColor: brand, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+    columnStyles: {
+      0: { cellWidth: 36 },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 14 },
+      3: { cellWidth: 12 },
+      4: { cellWidth: 'auto' },
+    },
+  })
+  y = (doc.lastAutoTable?.finalY ?? y) + 6
+
+  // ── Nutrition ──
+  checkNewPage(40)
+  addSubtitle('Plan nutrition')
+
+  const nutriRows = scenario.nutrition_course.map(n => [
+    n.timing,
+    `${n.glucides_g}g`,
+    `${n.hydratation_ml}ml`,
+    n.conseil.length > 70 ? n.conseil.slice(0, 67) + '…' : n.conseil,
+  ])
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Timing', 'Glucides', 'Hydratation', 'Conseil']],
+    body: nutriRows,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+    headStyles: { fillColor: green, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+    columnStyles: {
+      0: { cellWidth: 28 },
+      1: { cellWidth: 18 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 'auto' },
+    },
+  })
+  y = (doc.lastAutoTable?.finalY ?? y) + 6
+
+  // ── Triathlon répartition ──
+  if (triRepartition) {
+    checkNewPage(40)
+    addSubtitle('Répartition triathlon')
+    const triRows = [
+      triRepartition.natation ? ['🏊 Natation', triRepartition.natation.objectif, triRepartition.natation.conseil] : null,
+      triRepartition.velo ? ['🚴 Vélo', triRepartition.velo.objectif, triRepartition.velo.conseil] : null,
+      triRepartition.cap ? ['🏃 CAP', triRepartition.cap.objectif, triRepartition.cap.conseil] : null,
+    ].filter(Boolean) as string[][]
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Discipline', 'Objectif', 'Conseil']],
+      body: triRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+      headStyles: { fillColor: brand, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 26 }, 2: { cellWidth: 'auto' } },
+    })
+    y = (doc.lastAutoTable?.finalY ?? y) + 6
+  }
+
+  // ── Gestion de l'effort ──
+  checkNewPage(28)
+  addSubtitle("Gestion de l'effort")
+  addText(`Départ : ${scenario.gestion_effort.depart}`, 8, dark)
+  addSpacer(1)
+  addText(`Milieu : ${scenario.gestion_effort.milieu}`, 8, dark)
+  addSpacer(1)
+  addText(`Dernier 20% : ${scenario.gestion_effort.final_20pct}`, 8, dark)
+  addSpacer(4)
+
+  // ── Impacts météo ──
+  if (meteoImpacts.length > 0) {
+    checkNewPage(30)
+    addSubtitle('Ajustements météo')
+    const meteoRows = meteoImpacts.map(m => [
+      m.condition,
+      m.impact,
+      m.ajustement_allure ?? '—',
+      m.conseil.length > 60 ? m.conseil.slice(0, 57) + '…' : m.conseil,
+    ])
+    autoTable(doc, {
+      startY: y,
+      head: [['Condition', 'Impact', 'Allure', 'Conseil']],
+      body: meteoRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+      headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 28 }, 2: { cellWidth: 20 }, 3: { cellWidth: 'auto' } },
+    })
+    y = (doc.lastAutoTable?.finalY ?? y) + 6
+  }
+
+  // ── Plan B ──
+  checkNewPage(22)
+  addSubtitle('Plan B')
+  doc.setFillColor(255, 242, 242)
+  const planBH = 18
+  doc.roundedRect(margin, y - 2, contentW, planBH, 2, 2, 'F')
+  addText(`Déclencheur : ${scenario.plan_b.declencheur}`, 8, red)
+  addSpacer(1)
+  addText(`Action : ${scenario.plan_b.action}`, 8, dark)
+  addSpacer(1)
+  addText(`Objectif fallback : ${scenario.plan_b.objectif_fallback}`, 8, dark)
+  addSpacer(5)
+
+  // ── Points clés ──
+  if (scenario.points_cles.length > 0) {
+    checkNewPage(20)
+    addSubtitle('Points clés')
+    scenario.points_cles.forEach(p => {
+      addText(`• ${p}`, 8, dark)
+      addSpacer(1)
+    })
+  }
+
+  // ── Footer sur toutes les pages ──
+  const totalPages = doc.getNumberOfPages() as number
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...gray)
+    const pH = doc.internal.pageSize.getHeight() as number
+    doc.text(`THW Coaching · ${raceName} · ${raceDate}`, margin, pH - 6)
+    doc.text(`${i}/${totalPages}`, pageW - margin - 8, pH - 6)
+  }
+
+  const fileName = `THW_${raceName.replace(/[^a-zA-Z0-9]/g, '_')}_${raceDate}.pdf`
+  doc.save(fileName)
+}
+
 function getRaceFollowUpActions(sport: string, result: StrategieResult): FollowUpAction[] {
   const actions: FollowUpAction[] = []
   const optimal = result.scenarios.find(s => s.nom === 'optimal') ?? result.scenarios[0]
@@ -12737,6 +12991,13 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   // Result
   const [activeScenario, setActiveScenario] = useState<'conservateur' | 'optimal' | 'agressif'>('optimal')
   const [recorded, setRecorded] = useState(false)
+
+  // Final race info (set when generation completes, used for PDF export)
+  const [finalRaceName, setFinalRaceName] = useState('')
+  const [finalRaceDate, setFinalRaceDate] = useState('')
+  const [finalRaceSport, setFinalRaceSport] = useState('')
+  const [finalRaceDistKm, setFinalRaceDistKm] = useState('')
+  const [finalRaceDenivele, setFinalRaceDenivele] = useState<number | null>(null)
 
   // Course file upload
   const [courseProfile, setCourseProfile] = useState<CourseProfile | null>(null)
@@ -13063,6 +13324,11 @@ FORMAT JSON STRICT :
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Réponse non parseable')
       const parsed = JSON.parse(jsonMatch[0]) as StrategieResult
+      setFinalRaceName(raceName)
+      setFinalRaceDate(raceDate)
+      setFinalRaceSport(raceSport)
+      setFinalRaceDistKm(raceDistKm)
+      setFinalRaceDenivele(raceDenivele)
       setResult(parsed)
       setActiveScenario('optimal')
 
@@ -13838,9 +14104,45 @@ FORMAT JSON STRICT :
         </div>
       )}
 
-      <button onClick={onCancel} style={{ display: 'block', margin: '4px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
-        Fermer
-      </button>
+      {/* Export PDF + Fermer */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button
+          onClick={() => {
+            const activeScen = result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0]
+            if (!activeScen) return
+            void generateRacePDF(
+              finalRaceName || raceName,
+              finalRaceDate || (manualMode ? manualDate : (selectedRace?.date ?? '')),
+              finalRaceSport || getRaceSport(),
+              finalRaceDistKm || (getRaceDistance() != null ? (getRaceDistance()! / 1000).toFixed(1) : '?'),
+              finalRaceDenivele ?? getRaceDenivele(),
+              activeScen,
+              result.meteo_impacts ?? [],
+              courseProfile,
+              result.triathlon_repartition,
+              result.verdict_objectif,
+            )
+          }}
+          style={{
+            flex: 1, padding: '9px 12px', borderRadius: 9,
+            border: '1px solid rgba(0,200,224,0.4)',
+            background: 'rgba(0,200,224,0.06)',
+            color: 'var(--ai-accent)', fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          📄 Exporter « {(result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'conservateur' ? 'Prudent' : (result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'agressif' ? 'Agressif' : 'Optimal'} » en PDF
+        </button>
+        <button onClick={onCancel} style={{
+          padding: '9px 16px', borderRadius: 9,
+          border: '1px solid var(--ai-border)', background: 'transparent',
+          color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer',
+          fontFamily: 'DM Sans,sans-serif',
+        }}>
+          Fermer
+        </button>
+      </div>
     </div>
   )
 }
@@ -13970,9 +14272,38 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
       )}
 
       {/* Sources */}
-      <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>
+      <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 10px', fontStyle: 'italic' }}>
         Confiance : {result.confiance} · Sources : {result.sources.join(' · ')}
       </p>
+
+      {/* Export PDF */}
+      {currentScenario && (
+        <button
+          onClick={() => {
+            void generateRacePDF(
+              data.raceName,
+              data.raceDate,
+              data.raceSport,
+              String(data.result.scenarios?.find(s => s.nom === activeScenario)?.objectif_temps ?? '?'),
+              null,
+              currentScenario,
+              data.result.meteo_impacts ?? [],
+              null,
+              data.result.triathlon_repartition,
+              data.result.verdict_objectif,
+            )
+          }}
+          style={{
+            width: '100%', padding: '8px 12px', borderRadius: 9,
+            border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
+            color: 'var(--ai-accent)', fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+          }}
+        >
+          📄 Exporter le tableau de marche (PDF)
+        </button>
+      )}
     </div>
   )
 }

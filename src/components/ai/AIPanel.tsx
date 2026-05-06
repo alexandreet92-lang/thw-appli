@@ -1338,7 +1338,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
           sb.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true),
           sb.from('activities')
-            .select('id,sport_type,title,started_at,moving_time_s,distance_m,tss,avg_hr,max_hr,avg_watts,max_watts,suffer_score')
+            .select(ACTIVITIES_SELECT)
             .eq('user_id', user.id)
             .gte('started_at', since1y)
             .order('started_at', { ascending: false })
@@ -3446,17 +3446,19 @@ type Streams = { heartrate?: number[]; velocity_smooth?: number[]; watts?: numbe
 
 interface ActivityRow {
   id: string
+  title: string | null
   sport_type: string
   started_at: string
   distance_m: number | null
   moving_time_s: number | null
-  avg_hr: number | null
-  max_hr: number | null
+  average_heartrate: number | null
+  max_heartrate: number | null
+  average_speed: number | null
   avg_watts: number | null
-  avg_pace_s_km: number | null
+  avg_cadence: number | null
+  cardiac_drift_pct: number | null
   tss: number | null
-  intensity_factor: number | null
-  aerobic_decoupling: number | null
+  is_race: boolean | null
   streams: Streams | null
 }
 
@@ -3533,7 +3535,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
 
         const { data } = await sb
           .from('activities')
-          .select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,streams')
+          .select(ACTIVITIES_SELECT_WITH_STREAMS)
           .order('started_at', { ascending: false })
           .limit(30)
 
@@ -3660,8 +3662,8 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
         compareBlock = `
 
 COMPARAISON CÔTE-À-CÔTE (mode activé) :${sportWarning}
-Activité A : ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · TSS ${selectedAct.tss ?? 'N/A'} · IF ${selectedAct.intensity_factor ?? 'N/A'} · FC moy ${selectedAct.avg_hr ?? 'N/A'}bpm · Watts ${selectedAct.avg_watts ?? 'N/A'}W · Drift ${cardiacDrift ?? 'N/A'}% · EI ${ei ?? 'N/A'}
-Activité B : ${compareAct.started_at.split('T')[0]} · ${fmtDuration(compareAct.moving_time_s)} · TSS ${compareAct.tss ?? 'N/A'} · IF ${compareAct.intensity_factor ?? 'N/A'} · FC moy ${compareAct.avg_hr ?? 'N/A'}bpm · Watts ${compareAct.avg_watts ?? 'N/A'}W · Drift ${cDrift ?? 'N/A'}% · EI ${cEi ?? 'N/A'}
+Activité A : ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · TSS ${selectedAct.tss ?? 'N/A'} · FC moy ${selectedAct.average_heartrate ?? 'N/A'}bpm · Watts ${selectedAct.avg_watts ?? 'N/A'}W · Drift ${cardiacDrift ?? 'N/A'}% · EI ${ei ?? 'N/A'}
+Activité B : ${compareAct.started_at.split('T')[0]} · ${fmtDuration(compareAct.moving_time_s)} · TSS ${compareAct.tss ?? 'N/A'} · FC moy ${compareAct.average_heartrate ?? 'N/A'}bpm · Watts ${compareAct.avg_watts ?? 'N/A'}W · Drift ${cDrift ?? 'N/A'}% · EI ${cEi ?? 'N/A'}
 
 Présente un tableau markdown de comparaison complet puis donne un verdict sur quelle séance était la plus efficace et pourquoi.`
       }
@@ -3680,8 +3682,7 @@ Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponi
 
 SÉANCE ANALYSÉE :
 ${selectedAct.sport_type} · ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · ${fmtDist(selectedAct.distance_m)} · TSS: ${selectedAct.tss ?? 'N/A'}
-FC moy/max : ${selectedAct.avg_hr ?? 'N/A'}/${selectedAct.max_hr ?? 'N/A'}bpm · Watts : ${selectedAct.avg_watts ?? 'N/A'}W · Allure : ${fmtPace(selectedAct.avg_pace_s_km)} · IF: ${selectedAct.intensity_factor ?? 'N/A'}
-Aerobic decoupling déclaré : ${selectedAct.aerobic_decoupling ?? 'N/A'}%
+FC moy/max : ${selectedAct.average_heartrate ?? 'N/A'}/${selectedAct.max_heartrate ?? 'N/A'}bpm · Watts : ${selectedAct.avg_watts ?? 'N/A'}W · Drift cardiaque : ${selectedAct.cardiac_drift_pct ?? 'N/A'}%
 ${streamsBlock}
 
 CONTEXTE RÉCUPÉRATION (3 jours avant la séance) :
@@ -3824,7 +3825,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{dateStr}</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
-                  {fmtDuration(a.moving_time_s)} · {fmtDist(a.distance_m)} · TSS {a.tss ?? '—'} · FC {a.avg_hr ?? '—'}bpm
+                  {fmtDuration(a.moving_time_s)} · {fmtDist(a.distance_m)} · TSS {a.tss ?? '—'} · FC {a.average_heartrate ?? '—'}bpm
                   <span style={{
                     marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
                     background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
@@ -4446,19 +4447,13 @@ interface TrainingActivityRow {
   moving_time_s: number | null
   distance_m: number | null
   tss: number | null
-  avg_hr: number | null
   average_heartrate: number | null
-  max_hr: number | null
-  avg_speed_ms: number | null
+  max_heartrate: number | null
   average_speed: number | null
   avg_watts: number | null
   avg_cadence: number | null
-  avg_pace_s_km: number | null
-  intensity_factor: number | null
-  aerobic_decoupling: number | null
+  cardiac_drift_pct: number | null
   is_race?: boolean | null
-  normalized_watts?: number | null
-  laps?: { distance_m: number; moving_time_s: number; avg_hr?: number; avg_watts?: number; avg_speed_ms?: number }[]
   streams: {
     time?: number[]
     heartrate?: number[]
@@ -4750,7 +4745,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         if (analysisType === 'race') {
           // Pour les courses : tout l'historique, filtre is_race
           const { data } = await sb.from('activities')
-            .select('id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts,streams')
+            .select(ACTIVITIES_SELECT_WITH_STREAMS)
             .eq('user_id', user.id)
             .eq('is_race', true)
             .order('started_at', { ascending: false })
@@ -4760,7 +4755,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
           const startOfMonth = new Date(selectedMonth.year, selectedMonth.month, 1).toISOString()
           const endOfMonth = new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59).toISOString()
           let query = sb.from('activities')
-            .select('id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts,streams')
+            .select(ACTIVITIES_SELECT_WITH_STREAMS)
             .eq('user_id', user.id)
             .gte('started_at', startOfMonth).lte('started_at', endOfMonth)
             .order('started_at', { ascending: false })
@@ -4783,7 +4778,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
         const { data } = await sb.from('activities')
-          .select('*')
+          .select(ACTIVITIES_SELECT_WITH_STREAMS)
           .eq('is_race', true)
           .order('started_at', { ascending: false }).limit(50)
         setRaceActivities((data as unknown as TrainingActivityRow[]) ?? [])
@@ -4872,15 +4867,15 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       const mainEI = mainHr
         ? mainAct.sport_type.toLowerCase().includes('bike') || mainAct.sport_type.toLowerCase().includes('cycl') || mainAct.sport_type.toLowerCase().includes('velo')
           ? (mainAct.avg_watts ?? null) != null ? (mainAct.avg_watts! / mainHr) : null
-          : (mainAct.avg_speed_ms ?? null) != null ? (mainAct.avg_speed_ms! / mainHr * 100) : null
+          : (mainAct.average_speed ?? null) != null ? (mainAct.average_speed! / mainHr * 100) : null
         : null
-      const similarEIList = (similarRes.data ?? []) as { average_heartrate?: number; avg_watts?: number; avg_speed_ms?: number }[]
+      const similarEIList = (similarRes.data ?? []) as { average_heartrate?: number; avg_watts?: number; average_speed?: number }[]
       const eiSimilarAvg = similarEIList.length > 0
         ? similarEIList.reduce((sum, s) => {
             if (!s.average_heartrate || s.average_heartrate === 0) return sum
             const ei = mainAct.sport_type.toLowerCase().includes('bike') || mainAct.sport_type.toLowerCase().includes('cycl')
               ? (s.avg_watts ?? 0) / s.average_heartrate
-              : (s.avg_speed_ms ?? 0) / s.average_heartrate * 100
+              : (s.average_speed ?? 0) / s.average_heartrate * 100
             return sum + ei
           }, 0) / similarEIList.filter(s => (s.average_heartrate ?? 0) > 0).length
         : null
@@ -12264,14 +12259,13 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
 type ActivityRowZones = {
   started_at: string
   moving_time_s: number | null
-  avg_hr: number | null
-  max_hr: number | null
+  average_heartrate: number | null
+  max_heartrate: number | null
+  average_speed: number | null
   avg_watts: number | null
-  max_watts: number | null
-  avg_pace_s_km: number | null
+  avg_cadence: number | null
   tss: number | null
-  intensity_factor: number | null
-  rpe: number | null
+  is_race: boolean | null
 }
 
 type ConfidenceLevel = 'élevé' | 'modéré' | 'insuffisant'
@@ -12286,9 +12280,10 @@ function estimateFTP(acts: ActivityRowZones[]): number | null {
 }
 
 function estimateLTHR(acts: ActivityRowZones[]): number | null {
-  const relevant = acts.filter(a => a.avg_hr != null && ((a.intensity_factor != null && a.intensity_factor >= 0.9) || (a.rpe != null && a.rpe >= 7)))
+  // Approximation LTHR : moyenne FC des séances longues (>45min) à haute charge (TSS>70)
+  const relevant = acts.filter(a => a.average_heartrate != null && (a.moving_time_s ?? 0) >= 2700 && (a.tss ?? 0) >= 70)
   if (relevant.length < 3) return null
-  const avgHr = relevant.reduce((s, a) => s + (a.avg_hr ?? 0), 0) / relevant.length
+  const avgHr = relevant.reduce((s, a) => s + (a.average_heartrate ?? 0), 0) / relevant.length
   return Math.round(avgHr * 1.02)
 }
 
@@ -12296,11 +12291,11 @@ function detectZoneDrift(acts: ActivityRowZones[]): { detected: boolean; deltaBp
   const sorted = [...acts].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
   const third = Math.floor(sorted.length / 3)
   if (third < 3) return { detected: false, deltaBpm: null, detail: 'Pas assez d\'activités pour détecter une dérive.' }
-  const firstThird = sorted.slice(0, third).filter(a => a.avg_hr != null && a.avg_watts != null)
-  const lastThird = sorted.slice(-third).filter(a => a.avg_hr != null && a.avg_watts != null)
+  const firstThird = sorted.slice(0, third).filter(a => a.average_heartrate != null && a.avg_watts != null)
+  const lastThird = sorted.slice(-third).filter(a => a.average_heartrate != null && a.avg_watts != null)
   if (firstThird.length < 2 || lastThird.length < 2) return { detected: false, deltaBpm: null, detail: 'Données insuffisantes pour la comparaison.' }
-  const avgHrFirst = firstThird.reduce((s, a) => s + (a.avg_hr ?? 0), 0) / firstThird.length
-  const avgHrLast = lastThird.reduce((s, a) => s + (a.avg_hr ?? 0), 0) / lastThird.length
+  const avgHrFirst = firstThird.reduce((s, a) => s + (a.average_heartrate ?? 0), 0) / firstThird.length
+  const avgHrLast = lastThird.reduce((s, a) => s + (a.average_heartrate ?? 0), 0) / lastThird.length
   const delta = Math.round(avgHrFirst - avgHrLast)
   if (Math.abs(delta) < 3) return { detected: false, deltaBpm: delta, detail: 'Pas de dérive significative détectée (< 3bpm).' }
   return {
@@ -14378,7 +14373,7 @@ TSB PROJETÉ JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextD
 COMPÉTITIONS PASSÉES (historique complet) :
 ${(contextData.pastRaces ?? []).length > 0
   ? contextData.pastRaces.map((r: Record<string, unknown>) =>
-      `- ${String(r.title ?? r.sport_type ?? '')} (${String(r.started_at ?? '').slice(0, 10)}) : ${r.distance_m != null ? (Number(r.distance_m) / 1000).toFixed(1) + 'km' : 'N/A'} · ${r.moving_time_s != null ? Math.floor(Number(r.moving_time_s) / 3600) + 'h' + String(Math.floor((Number(r.moving_time_s) % 3600) / 60)).padStart(2, '0') : 'N/A'} · FC moy ${r.avg_hr ?? 'N/A'}bpm${r.avg_watts != null ? ' · ' + String(r.avg_watts) + 'W' : ''}`
+      `- ${String(r.title ?? r.sport_type ?? '')} (${String(r.started_at ?? '').slice(0, 10)}) : ${r.distance_m != null ? (Number(r.distance_m) / 1000).toFixed(1) + 'km' : 'N/A'} · ${r.moving_time_s != null ? Math.floor(Number(r.moving_time_s) / 3600) + 'h' + String(Math.floor((Number(r.moving_time_s) % 3600) / 60)).padStart(2, '0') : 'N/A'} · FC moy ${r.average_heartrate ?? 'N/A'}bpm${r.avg_watts != null ? ' · ' + String(r.avg_watts) + 'W' : ''}`
     ).join('\n')
   : 'Aucune compétition enregistrée'}
 PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}

@@ -3716,7 +3716,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 ## Actions suggérées
 (parmi : "Analyser ma semaine", "Analyser ma récupération", "Estimer mes zones", "Analyser ma progression")`
 
-      onPrepare(apiPrompt, `Analyser un entraînement — ${AE_SPORT_LABELS[selectedAct.sport_type] ?? selectedAct.sport_type}`)
+      onPrepare(apiPrompt, `Training Analyse — ${AE_SPORT_LABELS[selectedAct.sport_type] ?? selectedAct.sport_type}`)
     } catch {
       setGenerating(false)
     }
@@ -4442,8 +4442,10 @@ interface TrainingActivityRow {
   distance_m: number | null
   tss: number | null
   avg_hr: number | null
+  average_heartrate: number | null
   max_hr: number | null
   avg_speed_ms: number | null
+  average_speed: number | null
   avg_watts: number | null
   avg_cadence: number | null
   avg_pace_s_km: number | null
@@ -4486,6 +4488,54 @@ interface TrainingReport {
   sources_used: string[]
   confiance: 'élevée' | 'modérée' | 'faible'
   actions_suggerees: { label: string; flow?: string }[]
+}
+
+// ── Types période/année ─────────────────────────────────────────
+
+interface PeriodActivityRow {
+  id: string
+  title: string | null
+  sport_type: string
+  started_at: string
+  moving_time_s: number | null
+  distance_m: number | null
+  tss: number | null
+  average_heartrate: number | null
+  max_heartrate: number | null
+  average_speed: number | null
+  avg_watts: number | null
+  avg_cadence: number | null
+  cardiac_drift_pct: number | null
+  is_race: boolean | null
+}
+
+interface PeriodData {
+  activities: PeriodActivityRow[]
+  races: PeriodActivityRow[]
+  zones: unknown[] | null
+  profile: unknown | null
+  summary: {
+    totalKm: number
+    totalHours: number
+    totalTSS: number
+    totalActivities: number
+    bySport: Record<string, { count: number; km: number; hours: number; tss: number }>
+  }
+}
+
+interface PeriodAnalysisResult {
+  type: 'period' | 'year'
+  analysis: string
+  key_metrics: Array<{ label: string; value: string; trend: 'up' | 'down' | 'stable'; detail: string }>
+  strengths: string[]
+  weaknesses: string[]
+  recommendations: Array<{ label: string; detail: string }>
+  comparison?: {
+    deltas: Array<{ metric: string; period_a: string; period_b: string; delta: string; interpretation: string }>
+    verdict: string
+    progression: 'progression' | 'regression' | 'stable'
+  }
+  confiance: 'élevée' | 'modérée' | 'faible'
 }
 
 // Données minimales pour re-rendre une analyse après fermeture du flow
@@ -4618,7 +4668,8 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
   onRecordConv?: (userMsg: string, aiMsg: string, reportData?: TrainingReportData) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
-  type Phase = 'loading' | 'gate' | 'select' | 'generating' | 'result'
+  type Phase = 'loading' | 'gate' | 'type_select' | 'select' | 'period_select' | 'year_select' | 'generating' | 'result' | 'period_result'
+  type AnalysisType = 'training' | 'race' | 'period' | 'year'
   const [phase, setPhase] = useState<Phase>('loading')
   const [compareMode, setCompareMode] = useState(false)
   const [selected, setSelected] = useState<TrainingActivityRow[]>([])
@@ -4637,6 +4688,19 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
   const [raceActivities, setRaceActivities] = useState<TrainingActivityRow[]>([])
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [racesExpanded, setRacesExpanded] = useState(false)
+  const [analysisType, setAnalysisType] = useState<AnalysisType | null>(null)
+  const [period1, setPeriod1] = useState<{ start: string; end: string; label: string } | null>(null)
+  const [period2, setPeriod2] = useState<{ start: string; end: string; label: string } | null>(null)
+  const [year1, setYear1] = useState<number | null>(null)
+  const [year2, setYear2] = useState<number | null>(null)
+  const [availableYears, setAvailableYears] = useState<number[]>([])
+  const [customStart1, setCustomStart1] = useState('')
+  const [customEnd1, setCustomEnd1] = useState('')
+  const [customStart2, setCustomStart2] = useState('')
+  const [customEnd2, setCustomEnd2] = useState('')
+  const [periodData, setPeriodData] = useState<PeriodData | null>(null)
+  const [periodData2, setPeriodData2] = useState<PeriodData | null>(null)
+  const [periodResult, setPeriodResult] = useState<PeriodAnalysisResult | null>(null)
   const [plannedDates, setPlannedDates] = useState<Set<string>>(new Set())
 
   // Mount — gate data
@@ -4677,19 +4741,32 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
-        const startOfMonth = new Date(selectedMonth.year, selectedMonth.month, 1).toISOString()
-        const endOfMonth = new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59).toISOString()
-        let query = sb.from('activities')
-          .select('*')
-          .gte('started_at', startOfMonth).lte('started_at', endOfMonth)
-          .order('started_at', { ascending: false })
-        if (sportFilter) query = query.eq('sport_type', sportFilter)
-        const { data } = await query
-        setMonthActivities((data as unknown as TrainingActivityRow[]) ?? [])
+
+        if (analysisType === 'race') {
+          // Pour les courses : tout l'historique, filtre is_race
+          const { data } = await sb.from('activities')
+            .select('id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts,streams')
+            .eq('user_id', user.id)
+            .eq('is_race', true)
+            .order('started_at', { ascending: false })
+            .limit(100)
+          setMonthActivities((data as unknown as TrainingActivityRow[]) ?? [])
+        } else {
+          const startOfMonth = new Date(selectedMonth.year, selectedMonth.month, 1).toISOString()
+          const endOfMonth = new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59).toISOString()
+          let query = sb.from('activities')
+            .select('id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts,streams')
+            .eq('user_id', user.id)
+            .gte('started_at', startOfMonth).lte('started_at', endOfMonth)
+            .order('started_at', { ascending: false })
+          if (sportFilter) query = query.eq('sport_type', sportFilter)
+          const { data } = await query
+          setMonthActivities((data as unknown as TrainingActivityRow[]) ?? [])
+        }
       } catch { setMonthActivities([]) }
       finally { setLoadingMonth(false) }
     })()
-  }, [selectedMonth, sportFilter, phase])
+  }, [selectedMonth, sportFilter, phase, analysisType])
 
   // Charger les courses (une seule fois au passage en select)
   useEffect(() => {
@@ -4722,7 +4799,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       const actDate = mainAct.started_at?.slice(0, 10) ?? ''
       const userMsg = compareMode
         ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
-        : `Analyser un entraînement — ${actNom} (${actDate})`
+        : `Training Analyse — ${actNom} (${actDate})`
       const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${report.verdict}\nTSS : ${report.kpis.tss} · EI : ${report.kpis.efficiency_index}\n${report.interpretation.execution}`
       const reportData: TrainingReportData = {
         report,
@@ -4766,7 +4843,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('is_current', true).maybeSingle(),
         Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', d3before).lte('date', actDate)).catch(() => ({ data: null })),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('week_start', weekStartDate).maybeSingle(),
-        sb.from('activities').select('id,started_at,moving_time_s,avg_hr,avg_watts,tss,intensity_factor,aerobic_decoupling').eq('sport_type', mainAct.sport_type)
+        sb.from('activities').select('id,started_at,moving_time_s,average_heartrate,avg_watts,tss').eq('sport_type', mainAct.sport_type)
           .gte('moving_time_s', Math.round((mainAct.moving_time_s ?? 3600) * 0.7))
           .lte('moving_time_s', Math.round((mainAct.moving_time_s ?? 3600) * 1.3))
           .not('id', 'in', `(${selected.map(s => s.id).join(',')})`)
@@ -4786,21 +4863,21 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
 
       // Métriques pré-calculées côté client
       const mainDrift = activitiesWithMetrics[0]?.cardiac_drift_pct ?? null
-      const mainHr = mainAct.avg_hr
+      const mainHr = mainAct.average_heartrate
       const mainEI = mainHr
         ? mainAct.sport_type.toLowerCase().includes('bike') || mainAct.sport_type.toLowerCase().includes('cycl') || mainAct.sport_type.toLowerCase().includes('velo')
           ? (mainAct.avg_watts ?? null) != null ? (mainAct.avg_watts! / mainHr) : null
           : (mainAct.avg_speed_ms ?? null) != null ? (mainAct.avg_speed_ms! / mainHr * 100) : null
         : null
-      const similarEIList = (similarRes.data ?? []) as { avg_hr?: number; avg_watts?: number; avg_speed_ms?: number }[]
+      const similarEIList = (similarRes.data ?? []) as { average_heartrate?: number; avg_watts?: number; avg_speed_ms?: number }[]
       const eiSimilarAvg = similarEIList.length > 0
         ? similarEIList.reduce((sum, s) => {
-            if (!s.avg_hr || s.avg_hr === 0) return sum
+            if (!s.average_heartrate || s.average_heartrate === 0) return sum
             const ei = mainAct.sport_type.toLowerCase().includes('bike') || mainAct.sport_type.toLowerCase().includes('cycl')
-              ? (s.avg_watts ?? 0) / s.avg_hr
-              : (s.avg_speed_ms ?? 0) / s.avg_hr * 100
+              ? (s.avg_watts ?? 0) / s.average_heartrate
+              : (s.avg_speed_ms ?? 0) / s.average_heartrate * 100
             return sum + ei
-          }, 0) / similarEIList.filter(s => (s.avg_hr ?? 0) > 0).length
+          }, 0) / similarEIList.filter(s => (s.average_heartrate ?? 0) > 0).length
         : null
       const eiDelta = mainEI != null && eiSimilarAvg != null && eiSimilarAvg > 0
         ? ((mainEI - eiSimilarAvg) / eiSimilarAvg) * 100
@@ -4834,7 +4911,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         const actNom = mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type
         const userMsg = compareMode
           ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
-          : `Analyser un entraînement — ${actNom} (${actDate})`
+          : `Training Analyse — ${actNom} (${actDate})`
         const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
         const reportData: TrainingReportData = {
           report: data.report,
@@ -4865,6 +4942,216 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     }
   }
 
+  async function loadAvailableYears() {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data } = await sb.from('activities').select('started_at').eq('user_id', user.id).order('started_at', { ascending: true }).limit(1)
+      if (data?.[0]) {
+        const firstYear = new Date(data[0].started_at).getFullYear()
+        const currentYear = new Date().getFullYear()
+        const years: number[] = []
+        for (let y = currentYear; y >= firstYear; y--) years.push(y)
+        setAvailableYears(years)
+      }
+    } catch { /* silencieux */ }
+  }
+
+  async function loadPeriodData(start: string, end: string): Promise<PeriodData | null> {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return null
+
+      const actSel = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts'
+
+      const [activitiesRes, racesRes, zonesRes, profileRes] = await Promise.all([
+        sb.from('activities').select(actSel).eq('user_id', user.id)
+          .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
+          .order('started_at', { ascending: false }).limit(500)
+          .then(r => r).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
+        sb.from('activities').select(actSel).eq('user_id', user.id).eq('is_race', true)
+          .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
+          .order('started_at', { ascending: false })
+          .then(r => r).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
+        sb.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true)
+          .then(r => r).catch(() => ({ data: [], error: null })),
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()
+          .then(r => r).catch(() => ({ data: null, error: null })),
+      ])
+
+      const activities = ((activitiesRes.error ? [] : activitiesRes.data) ?? []) as PeriodActivityRow[]
+      const races = ((racesRes.error ? [] : racesRes.data) ?? []) as PeriodActivityRow[]
+      const totalKm = activities.reduce((s, a) => s + ((a.distance_m ?? 0) / 1000), 0)
+      const totalHours = activities.reduce((s, a) => s + ((a.moving_time_s ?? 0) / 3600), 0)
+      const totalTSS = activities.reduce((s, a) => s + (a.tss ?? 0), 0)
+      const bySport: Record<string, { count: number; km: number; hours: number; tss: number }> = {}
+      for (const a of activities) {
+        const sp = a.sport_type ?? 'other'
+        if (!bySport[sp]) bySport[sp] = { count: 0, km: 0, hours: 0, tss: 0 }
+        bySport[sp].count++
+        bySport[sp].km += (a.distance_m ?? 0) / 1000
+        bySport[sp].hours += (a.moving_time_s ?? 0) / 3600
+        bySport[sp].tss += a.tss ?? 0
+      }
+
+      return {
+        activities,
+        races,
+        zones: (zonesRes.error ? null : zonesRes.data) ?? null,
+        profile: profileRes.error ? null : profileRes.data,
+        summary: { totalKm, totalHours, totalTSS, totalActivities: activities.length, bySport },
+      }
+    } catch { return null }
+  }
+
+  async function loadAndAnalyzePeriod() {
+    setPhase('loading')
+    setError(null)
+    try {
+      const data1 = await loadPeriodData(period1!.start, period1!.end)
+      if (!data1) throw new Error('Impossible de charger les données')
+      setPeriodData(data1)
+      let data2: PeriodData | null = null
+      if (compareMode && period2) {
+        data2 = await loadPeriodData(period2.start, period2.end)
+        setPeriodData2(data2)
+      }
+      await generatePeriodAnalysis(data1, data2)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur')
+      setPhase('period_select')
+    }
+  }
+
+  async function loadAndAnalyzeYear() {
+    setPhase('loading')
+    setError(null)
+    try {
+      const data1 = await loadPeriodData(`${year1}-01-01`, `${year1}-12-31`)
+      if (!data1) throw new Error('Impossible de charger les données')
+      setPeriodData(data1)
+      let data2: PeriodData | null = null
+      if (compareMode && year2) {
+        data2 = await loadPeriodData(`${year2}-01-01`, `${year2}-12-31`)
+        setPeriodData2(data2)
+      }
+      await generatePeriodAnalysis(data1, data2, true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur')
+      setPhase('year_select')
+    }
+  }
+
+  async function generatePeriodAnalysis(data1: PeriodData, data2: PeriodData | null, isYear = false) {
+    const label1 = isYear ? `${year1}` : period1!.label
+    const label2 = data2 ? (isYear ? `${year2}` : period2!.label) : null
+
+    const topActivities = (data: PeriodData) =>
+      [...data.activities]
+        .sort((a, b) => (b.tss ?? 0) - (a.tss ?? 0))
+        .slice(0, 20)
+        .map(a => `- ${a.title ?? a.sport_type} (${a.started_at?.slice(0, 10)}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · ${a.distance_m ? (a.distance_m / 1000).toFixed(1) + 'km' : ''} · TSS ${a.tss ?? 'N/A'} · FC ${a.average_heartrate ?? 'N/A'}bpm · ${a.avg_watts ? a.avg_watts + 'W' : ''}${a.is_race ? ' 🏆 COMPÉTITION' : ''}`)
+        .join('\n')
+
+    const summaryText = (data: PeriodData, label: string) => `
+PÉRIODE : ${label}
+- ${data.summary.totalActivities} activités · ${data.summary.totalKm.toFixed(0)}km · ${data.summary.totalHours.toFixed(1)}h · TSS ${data.summary.totalTSS}
+- Par sport : ${Object.entries(data.summary.bySport).map(([sp, d]) => `${sp}: ${d.count} séances, ${d.km.toFixed(0)}km, ${d.hours.toFixed(1)}h, TSS ${d.tss}`).join(' | ')}
+- Compétitions : ${data.races.length > 0 ? data.races.map(r => `${r.title ?? r.sport_type} (${r.started_at?.slice(0, 10)}) ${r.distance_m ? (r.distance_m / 1000).toFixed(1) + 'km' : ''}`).join(', ') : 'Aucune'}
+
+ACTIVITÉS CLÉS (top 20 par TSS) :
+${topActivities(data)}
+`
+
+    const isComparison = data2 !== null
+    const systemPrompt = isYear
+      ? `Tu es un coach sportif expert. Tu réalises un DIAGNOSTIC ANNUEL COMPLET. Sois exhaustif, précis, structuré. L'athlète doit comprendre où il en était, ce qu'il a fait, où il en est, ce qui a marché et ce qui n'a pas marché.`
+      : `Tu es un coach sportif expert. Tu analyses une PÉRIODE D'ENTRAÎNEMENT pour identifier progression, tendances, forces et faiblesses.`
+
+    const userPrompt = `${isComparison ? `COMPARAISON ${isYear ? 'ANNUELLE' : 'DE PÉRIODES'}` : `ANALYSE ${isYear ? 'ANNUELLE' : 'DE PÉRIODE'}`}
+
+${summaryText(data1, label1)}
+${isComparison && data2 ? summaryText(data2, label2!) : ''}
+
+${isYear ? `
+TON DIAGNOSTIC DOIT COUVRIR :
+1. SYNTHÈSE : 3 phrases percutantes
+2. PROGRESSION GLOBALE : meilleur qu'il y a 12 mois ? Sur quels indicateurs ?
+3. ANALYSE PAR DISCIPLINE : forces et faiblesses par sport
+4. COMPÉTITIONS : analyse de chaque course
+5. CHARGE D'ENTRAÎNEMENT : volume par mois, surcharges, sous-entraînement
+6. CE QUI A FONCTIONNÉ vs CE QUI N'A PAS FONCTIONNÉ
+7. PLAN D'ACTION pour l'année suivante
+` : `
+TON ANALYSE DOIT COUVRIR :
+1. VOLUME ET CHARGE : adapté aux objectifs ? Risque de surmenage ?
+2. RÉPARTITION INTENSITÉS : trop de Z3 ? Polarisation respectée ?
+3. PROGRESSION DES MÉTRIQUES : en progression, stagnation, régression ?
+4. COMPÉTITIONS : résultats vs attentes
+5. POINTS FORTS et POINTS FAIBLES
+6. RECOMMANDATIONS : 3-5 concrètes pour la suite
+`}
+
+${isComparison ? `
+COMPARAISON — identifie :
+1. PROGRESSION ou RÉGRESSION sur quels indicateurs
+2. VOLUME : plus ou moins ? Mieux réparti ?
+3. COMPÉTITIONS : meilleurs résultats ?
+4. RECOMMANDATIONS : que garder, que changer
+` : ''}
+
+IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). Format :
+{
+  "analysis": "Ton analyse complète en markdown (utilise **gras**, ### titres). Plusieurs paragraphes détaillés.",
+  "key_metrics": [{ "label": "Volume", "value": "450km", "trend": "up", "detail": "+15% vs période précédente" }],
+  "strengths": ["Point fort 1", "Point fort 2"],
+  "weaknesses": ["Point faible 1"],
+  "recommendations": [{ "label": "Titre", "detail": "Explication concrète" }],
+  ${isComparison ? `"comparison": { "deltas": [{ "metric": "Volume km", "period_a": "450", "period_b": "380", "delta": "+18%", "interpretation": "Progression significative" }], "verdict": "Interprétation globale", "progression": "progression" },` : ''}
+  "confiance": "élevée"
+}`
+
+    const res = await fetch('/api/coach-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentId: 'central',
+        modelId: 'athena',
+        messages: [
+          { role: 'user', content: userPrompt },
+          { role: 'assistant', content: '{' },
+        ],
+        system: systemPrompt,
+      }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+    const reader = res.body?.getReader()
+    if (!reader) throw new Error('No body')
+    const decoder = new TextDecoder()
+    let raw = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      const chunk = decoder.decode(value)
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          const d = line.slice(6).trim()
+          if (d === '[DONE]') break
+          try { raw += JSON.parse(d) as string } catch { /* skip */ }
+        }
+      }
+    }
+
+    const parsed = parseStrategyResponse('{' + raw) as PeriodAnalysisResult
+    setPeriodResult(parsed)
+    setPhase('period_result')
+  }
+
   if (phase === 'loading') {
     return <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12 }}><Dots /><span>Chargement…</span></div>
   }
@@ -4873,7 +5160,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     const hasActivities = totalCount > 0
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>Analyser un entraînement</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>Training Analyse</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: hasActivities ? '#22c55e' : '#ef4444' }}>{hasActivities ? '✓' : '✗'}</span>
@@ -4893,7 +5180,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
           {hasActivities && (
-            <button onClick={() => { setPhase('select'); void loadActivities(true) }}
+            <button onClick={() => { setPhase('type_select') }}
               style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Continuer →
             </button>
@@ -4908,6 +5195,73 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--ai-dim)' }}>
         <Dots />
         <p style={{ fontSize: 12, margin: 0, textAlign: 'center' }}>Analyse en cours — croisement de tes données…</p>
+      </div>
+    )
+  }
+
+  if (phase === 'type_select') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          Training Analyse
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Que veux-tu analyser ?
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+          {([
+            { id: 'training' as const, label: 'Un entraînement', desc: 'Analyse détaillée d\'une séance', icon: '🏋️' },
+            { id: 'race' as const, label: 'Une compétition', desc: 'Pacing, stratégie, performance', icon: '🏆' },
+            { id: 'period' as const, label: 'Une période', desc: 'Volume, charge, progression', icon: '📊' },
+            { id: 'year' as const, label: 'Une année complète', desc: 'Diagnostic global annuel', icon: '📅' },
+          ]).map(opt => (
+            <button key={opt.id} onClick={() => setAnalysisType(opt.id)} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
+              border: `1px solid ${analysisType === opt.id ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+              background: analysisType === opt.id ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              cursor: 'pointer', textAlign: 'left' as const, width: '100%',
+            }}>
+              <span style={{ fontSize: 18 }}>{opt.icon}</span>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: analysisType === opt.id ? 'var(--ai-accent)' : 'var(--ai-text)', margin: 0 }}>{opt.label}</p>
+                <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '2px 0 0' }}>{opt.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {analysisType && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 6px' }}>Mode</p>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['single', 'compare'] as const).map(m => (
+                <button key={m} onClick={() => setCompareMode(m === 'compare')} style={{
+                  flex: 1, padding: '8px', borderRadius: 8, fontSize: 11,
+                  border: `1px solid ${(m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                  background: (m === 'compare') === compareMode ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+                  color: (m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)',
+                  cursor: 'pointer', fontWeight: (m === 'compare') === compareMode ? 700 : 400,
+                }}>
+                  {m === 'single' ? 'Analyser' : 'Comparer'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          <button
+            onClick={() => {
+              if (analysisType === 'training' || analysisType === 'race') setPhase('select')
+              else if (analysisType === 'period') setPhase('period_select')
+              else if (analysisType === 'year') { void loadAvailableYears(); setPhase('year_select') }
+            }}
+            disabled={!analysisType}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: analysisType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: analysisType ? 'pointer' : 'not-allowed' }}
+          >Continuer →</button>
+        </div>
       </div>
     )
   }
@@ -4987,7 +5341,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     return (
       <div style={{ padding: '4px 0' }}>
         <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          Analyser un entraînement
+          {analysisType === 'race' ? 'Training Analyse — Compétitions' : 'Training Analyse'}
         </p>
 
         {/* Toggle comparaison */}
@@ -5260,6 +5614,259 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         </div>
 
         <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          Fermer
+        </button>
+      </div>
+    )
+  }
+
+  if (phase === 'period_select') {
+    const today = new Date()
+    const shortcuts = [
+      { label: 'Ce mois', start: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
+      { label: 'Mois dernier', start: new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().slice(0, 10), end: new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10) },
+      { label: '3 mois', start: new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
+      { label: '6 mois', start: new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
+    ]
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+          {compareMode ? 'Sélectionne 2 périodes' : 'Sélectionne une période'}
+        </p>
+
+        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const }}>
+          {compareMode ? 'Période A' : 'Période'}
+        </p>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+          {shortcuts.map(s => (
+            <button key={s.label} onClick={() => setPeriod1(s)} style={{
+              padding: '5px 10px', borderRadius: 6, fontSize: 10,
+              border: `1px solid ${period1?.label === s.label ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+              background: period1?.label === s.label ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              color: period1?.label === s.label ? 'var(--ai-accent)' : 'var(--ai-mid)', cursor: 'pointer',
+            }}>{s.label}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Du</label>
+            <input type="date" value={customStart1} onChange={e => setCustomStart1(e.target.value)}
+              style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Au</label>
+            <input type="date" value={customEnd1} onChange={e => setCustomEnd1(e.target.value)}
+              style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+          </div>
+          <button onClick={() => { if (customStart1 && customEnd1) setPeriod1({ start: customStart1, end: customEnd1, label: `${customStart1} → ${customEnd1}` }) }}
+            style={{ padding: '5px 10px', borderRadius: 6, fontSize: 10, border: 'none', background: 'var(--ai-accent)', color: '#fff', cursor: 'pointer', height: 28 }}>OK</button>
+        </div>
+        {period1 && <p style={{ fontSize: 11, color: 'var(--ai-accent)', marginBottom: 10 }}>✓ {period1.label}</p>}
+
+        {compareMode && period1 && (
+          <>
+            <p style={{ fontSize: 10, fontWeight: 600, color: '#f97316', margin: '4px 0 6px', textTransform: 'uppercase' as const }}>Période B</p>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+              {shortcuts.map(s => (
+                <button key={s.label} onClick={() => setPeriod2(s)} style={{
+                  padding: '5px 10px', borderRadius: 6, fontSize: 10,
+                  border: `1px solid ${period2?.label === s.label ? '#f97316' : 'var(--ai-border)'}`,
+                  background: period2?.label === s.label ? 'rgba(249,115,22,0.06)' : 'var(--ai-bg2)',
+                  color: period2?.label === s.label ? '#f97316' : 'var(--ai-mid)', cursor: 'pointer',
+                }}>{s.label}</button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Du</label>
+                <input type="date" value={customStart2} onChange={e => setCustomStart2(e.target.value)}
+                  style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Au</label>
+                <input type="date" value={customEnd2} onChange={e => setCustomEnd2(e.target.value)}
+                  style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+              </div>
+              <button onClick={() => { if (customStart2 && customEnd2) setPeriod2({ start: customStart2, end: customEnd2, label: `${customStart2} → ${customEnd2}` }) }}
+                style={{ padding: '5px 10px', borderRadius: 6, fontSize: 10, border: 'none', background: '#f97316', color: '#fff', cursor: 'pointer', height: 28 }}>OK</button>
+            </div>
+            {period2 && <p style={{ fontSize: 11, color: '#f97316', marginBottom: 10 }}>✓ {period2.label}</p>}
+          </>
+        )}
+
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
+          <button onClick={() => { void loadAndAnalyzePeriod() }}
+            disabled={!period1 || (compareMode && !period2)}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: period1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: period1 ? 'pointer' : 'not-allowed' }}
+          >Analyser →</button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'year_select') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+          {compareMode ? 'Compare 2 années' : 'Sélectionne une année'}
+        </p>
+        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const }}>
+          {compareMode ? 'Année A' : 'Année'}
+        </p>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
+          {availableYears.map(y => (
+            <button key={y} onClick={() => setYear1(y)} style={{
+              padding: '8px 14px', borderRadius: 8, fontSize: 12,
+              border: `1px solid ${year1 === y ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+              background: year1 === y ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              color: year1 === y ? 'var(--ai-accent)' : 'var(--ai-mid)',
+              cursor: 'pointer', fontWeight: year1 === y ? 700 : 400, fontFamily: 'DM Mono,monospace',
+            }}>{y}</button>
+          ))}
+        </div>
+        {compareMode && year1 && (
+          <>
+            <p style={{ fontSize: 10, fontWeight: 600, color: '#f97316', margin: '8px 0 6px', textTransform: 'uppercase' as const }}>Année B</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
+              {availableYears.filter(y => y !== year1).map(y => (
+                <button key={y} onClick={() => setYear2(y)} style={{
+                  padding: '8px 14px', borderRadius: 8, fontSize: 12,
+                  border: `1px solid ${year2 === y ? '#f97316' : 'var(--ai-border)'}`,
+                  background: year2 === y ? 'rgba(249,115,22,0.06)' : 'var(--ai-bg2)',
+                  color: year2 === y ? '#f97316' : 'var(--ai-mid)',
+                  cursor: 'pointer', fontWeight: year2 === y ? 700 : 400, fontFamily: 'DM Mono,monospace',
+                }}>{y}</button>
+              ))}
+            </div>
+          </>
+        )}
+        {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
+          <button onClick={() => { void loadAndAnalyzeYear() }}
+            disabled={!year1 || (compareMode && !year2)}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: year1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: year1 ? 'pointer' : 'not-allowed' }}
+          >Analyser →</button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'period_result' && periodResult && periodData) {
+    const pd = periodData
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
+          {[
+            { label: 'Activités', value: String(pd.summary.totalActivities) },
+            { label: 'Distance', value: pd.summary.totalKm.toFixed(0) + 'km' },
+            { label: 'Durée', value: pd.summary.totalHours.toFixed(0) + 'h' },
+            { label: 'TSS', value: String(Math.round(pd.summary.totalTSS)) },
+          ].map(kpi => (
+            <div key={kpi.label} style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--ai-text)', margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {Object.keys(pd.summary.bySport).length > 1 && (
+          <div style={{ marginBottom: 14 }}>
+            {Object.entries(pd.summary.bySport).map(([sport, d]) => (
+              <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--ai-mid)', width: 60, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--ai-border)', overflow: 'hidden' }}>
+                  <div style={{ width: `${pd.summary.totalKm > 0 ? (d.km / pd.summary.totalKm) * 100 : 0}%`, height: '100%', borderRadius: 3, background: 'var(--ai-accent)' }} />
+                </div>
+                <span style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', width: 50, textAlign: 'right' as const }}>{d.km.toFixed(0)}km</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ margin: '14px 0', borderBottom: '1px solid var(--ai-border)' }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>Analyse du coach</p>
+        <MsgContent text={periodResult.analysis} />
+
+        {(periodResult.key_metrics ?? []).length > 0 && (
+          <div style={{ marginTop: 14, marginBottom: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>Métriques clés</p>
+            {periodResult.key_metrics.map((m, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--ai-border)' }}>
+                <span style={{ fontSize: 14, color: m.trend === 'up' ? '#22c55e' : m.trend === 'down' ? '#ef4444' : 'var(--ai-dim)' }}>
+                  {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '→'}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)' }}>{m.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', marginLeft: 'auto' }}>{m.value}</span>
+                <span style={{ fontSize: 9, color: 'var(--ai-dim)', maxWidth: 120 }}>{m.detail}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(periodResult.strengths ?? []).length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>Points forts</p>
+            {periodResult.strengths.map((s, i) => (
+              <p key={i} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '2px 0', paddingLeft: 10, borderLeft: '2px solid #22c55e' }}>{s}</p>
+            ))}
+          </div>
+        )}
+
+        {(periodResult.weaknesses ?? []).length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#f97316', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>Points faibles</p>
+            {periodResult.weaknesses.map((w, i) => (
+              <p key={i} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '2px 0', paddingLeft: 10, borderLeft: '2px solid #f97316' }}>{w}</p>
+            ))}
+          </div>
+        )}
+
+        {(periodResult.recommendations ?? []).length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>Recommandations</p>
+            {periodResult.recommendations.map((r, i) => (
+              <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)', margin: 0 }}>{r.label}</p>
+                <p style={{ fontSize: 10, color: 'var(--ai-mid)', margin: '3px 0 0' }}>{r.detail}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {periodResult.comparison && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>Comparaison</p>
+            <div style={{ overflowX: 'auto' as const }}>
+              <table style={{ width: '100%', fontSize: 10, borderCollapse: 'collapse' as const }}>
+                <thead>
+                  <tr>
+                    {['Métrique', 'A', 'B', 'Delta'].map(h => (
+                      <th key={h} style={{ textAlign: h === 'Métrique' ? 'left' as const : 'right' as const, padding: '4px 6px', color: 'var(--ai-dim)', borderBottom: '1px solid var(--ai-border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {periodResult.comparison.deltas.map((d, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: '4px 6px', color: 'var(--ai-mid)', borderBottom: '1px solid var(--ai-border)' }}>{d.metric}</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--ai-text)', textAlign: 'right' as const, fontFamily: 'DM Mono,monospace', borderBottom: '1px solid var(--ai-border)' }}>{d.period_a}</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--ai-text)', textAlign: 'right' as const, fontFamily: 'DM Mono,monospace', borderBottom: '1px solid var(--ai-border)' }}>{d.period_b}</td>
+                      <td style={{ padding: '4px 6px', color: d.delta.startsWith('+') ? '#22c55e' : d.delta.startsWith('-') ? '#ef4444' : 'var(--ai-dim)', textAlign: 'right' as const, fontWeight: 600, fontFamily: 'DM Mono,monospace', borderBottom: '1px solid var(--ai-border)' }}>{d.delta}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, color: periodResult.comparison.progression === 'progression' ? '#22c55e' : periodResult.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-dim)', marginTop: 8 }}>
+              {periodResult.comparison.verdict}
+            </p>
+          </div>
+        )}
+
+        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
           Fermer
         </button>
       </div>
@@ -10043,7 +10650,7 @@ const PLUS_CATS: PlusCat[] = [
     label: 'Entraînement',
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
-      { label: 'Analyser un entraînement', flow: 'analyze_training' as FlowId },
+      { label: 'Training Analyse', flow: 'analyze_training' as FlowId },
       { label: 'Analyser ma semaine', enrichedId: 'analyser_semaine' },
     ],
   },
@@ -10633,7 +11240,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     flow: 'app_guide' as FlowId,
   },
   {
-    label: 'Analyser un entraînement',
+    label: 'Training Analyse',
     sub: 'Analyse détaillée ou comparaison de 2 activités',
     model: 'athena',
     flow: 'analyze_training' as FlowId,

@@ -4779,6 +4779,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         if (!user) return
         const { data } = await sb.from('activities')
           .select(ACTIVITIES_SELECT_WITH_STREAMS)
+          .eq('user_id', user.id)
           .eq('is_race', true)
           .order('started_at', { ascending: false }).limit(50)
         setRaceActivities((data as unknown as TrainingActivityRow[]) ?? [])
@@ -13000,7 +13001,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
 
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Réponse non parseable')
-      const parsed = JSON.parse(jsonMatch[0].replace(/'/g, '"')) as ProgressionResult
+      const parsed = JSON.parse(fixJsonSingleQuotes(jsonMatch[0])) as ProgressionResult
       setResult(parsed)
       if (onRecordConv) {
         const userMsg = `Analyser ma progression — ${selectedSports.join(', ')} — ${period} mois`
@@ -13678,6 +13679,33 @@ function robustJsonParse(raw: string): unknown {
   throw new Error(`JSON invalide : ${raw.slice(0, 100)}…`)
 }
 
+// ── fixJsonSingleQuotes — remplace les ' délimiteurs JSON sans toucher aux apostrophes françaises ─
+function fixJsonSingleQuotes(input: string): string {
+  const chars = input.split('')
+  const result: string[] = []
+  let inDoubleQuote = false
+  let inSingleQuote = false
+  let escaped = false
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i]
+    if (escaped) { result.push(c); escaped = false; continue }
+    if (c === '\\') { result.push(c); escaped = true; continue }
+    if (inDoubleQuote) {
+      if (c === '"') inDoubleQuote = false
+      result.push(c); continue
+    }
+    if (c === '"' && !inSingleQuote) { inDoubleQuote = true; result.push(c); continue }
+    if (c === "'") {
+      if (inSingleQuote) { inSingleQuote = false; result.push('"'); continue }
+      const prevNonSpace = input.slice(0, i).replace(/\s+$/, '').slice(-1)
+      if (['{', '[', ':', ','].includes(prevNonSpace)) { inSingleQuote = true; result.push('"'); continue }
+      result.push("'"); continue
+    }
+    result.push(c)
+  }
+  return result.join('')
+}
+
 // ── parseStrategyResponse — parsing robuste incluant fallback Markdown ─
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseStrategyResponse(raw: string): any {
@@ -13706,8 +13734,8 @@ function parseStrategyResponse(raw: string): any {
     }
   }
 
-  // Normaliser les guillemets simples → doubles avant parsing
-  text = text.replace(/'/g, '"')
+  // Normaliser les guillemets simples → doubles (délimiteurs JSON uniquement, pas les apostrophes)
+  text = fixJsonSingleQuotes(text)
 
   // Utiliser robustJsonParse pour le reste (markdown fences, troncature, etc.)
   return robustJsonParse(text)
@@ -14251,14 +14279,14 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         safeQ(sb.from('training_zones').select('*').eq('user_id', user.id).in('sport', zoneFilter).eq('is_current', true).limit(1)
           .then(r => ({ data: r.data?.[0] ?? null, error: r.error })), null),
         Promise.resolve({ data: [] as never[] }),
-        safeQ(sb.from('activities').select(safeActSelect).in('sport_type', actFilter)
+        safeQ(sb.from('activities').select(safeActSelect).eq('user_id', user.id).in('sport_type', actFilter)
           .gte('started_at', since12months.toISOString()).order('started_at', { ascending: false }).limit(50), [] as never[]),
         safeQ(sb.from('metrics_daily').select('*').eq('user_id', user.id)
           .gte('date', since14d.toISOString().split('T')[0]).order('date', { ascending: false }), [] as never[]),
-        safeQ(sb.from('activities').select(safeActSelect).in('sport_type', actFilter)
+        safeQ(sb.from('activities').select(safeActSelect).eq('user_id', user.id).in('sport_type', actFilter)
           .eq('is_race', true).order('started_at', { ascending: false }).limit(50), [] as never[]),
         safeQ(sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(), null),
-        safeQ(sb.from('activities').select(ACTIVITIES_SELECT)
+        safeQ(sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
           .in('sport_type', actFilter).not('avg_watts', 'is', null)
           .gte('started_at', since180d.toISOString()).order('avg_watts', { ascending: false }).limit(10), [] as never[]),
       ])

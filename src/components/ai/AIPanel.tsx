@@ -13303,7 +13303,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
           isManual: true,
         } satisfies ClimbWithFlag
       })
-      .filter((c): c is ClimbWithFlag => c !== null)
+      .filter((c): c is NonNullable<typeof c> => c !== null)
     return [...auto, ...manual].sort((a, b) => a.start_km - b.start_km)
   }, [courseProfile, manualClimbs])
 

@@ -13095,6 +13095,9 @@ function parseStrategyResponse(raw: string): any {
     }
   }
 
+  // Normaliser les guillemets simples → doubles avant parsing
+  text = text.replace(/'/g, '"')
+
   // Utiliser robustJsonParse pour le reste (markdown fences, troncature, etc.)
   return robustJsonParse(text)
 }

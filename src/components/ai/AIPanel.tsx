@@ -17,7 +17,7 @@ import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
-const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts'
+const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
 const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -3456,7 +3456,7 @@ interface ActivityRow {
   average_speed: number | null
   avg_watts: number | null
   avg_cadence: number | null
-  cardiac_drift_pct: number | null
+  cardiac_drift_pct?: number | null
   tss: number | null
   is_race: boolean | null
   streams: Streams | null
@@ -4452,7 +4452,7 @@ interface TrainingActivityRow {
   average_speed: number | null
   avg_watts: number | null
   avg_cadence: number | null
-  cardiac_drift_pct: number | null
+  cardiac_drift_pct?: number | null   // calculé client-side depuis streams, pas en DB
   is_race?: boolean | null
   streams: {
     time?: number[]
@@ -4505,7 +4505,7 @@ interface PeriodActivityRow {
   average_speed: number | null
   avg_watts: number | null
   avg_cadence: number | null
-  cardiac_drift_pct: number | null
+  cardiac_drift_pct?: number | null
   is_race: boolean | null
 }
 
@@ -4713,7 +4713,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         if (!user) { setError('Non connecté'); return }
 
         const [countRes, plannedRes] = await Promise.all([
-          sb.from('activities').select('id', { count: 'exact', head: true }),
+          sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
           sb.from('planned_sessions').select('week_start,sport').eq('user_id', user.id).order('week_start', { ascending: false }).limit(50),
         ])
 
@@ -4969,15 +4969,19 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
 
       const actSel = ACTIVITIES_SELECT
 
+      // Dates en ISO UTC pour une comparaison correcte avec timestamptz
+      const startISO = new Date(start + 'T00:00:00Z').toISOString()
+      const endISO   = new Date(end   + 'T23:59:59Z').toISOString()
+
       const [activitiesRes, racesRes, zonesRes, profileRes] = await Promise.all([
         Promise.resolve(
           sb.from('activities').select(actSel).eq('user_id', user.id)
-            .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
+            .gte('started_at', startISO).lte('started_at', endISO)
             .order('started_at', { ascending: false }).limit(500)
         ).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
         Promise.resolve(
           sb.from('activities').select(actSel).eq('user_id', user.id).eq('is_race', true)
-            .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
+            .gte('started_at', startISO).lte('started_at', endISO)
             .order('started_at', { ascending: false })
         ).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
         Promise.resolve(
@@ -4988,8 +4992,11 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         ).catch(() => ({ data: null, error: null })),
       ])
 
+      if (activitiesRes.error) console.error('[loadPeriodData] activities query error:', activitiesRes.error)
+      if (racesRes.error)      console.error('[loadPeriodData] races query error:',      racesRes.error)
       const activities = ((activitiesRes.error ? [] : activitiesRes.data) ?? []) as PeriodActivityRow[]
       const races = ((racesRes.error ? [] : racesRes.data) ?? []) as PeriodActivityRow[]
+      console.log(`[loadPeriodData] ${start}→${end}: ${activities.length} activités, ${races.length} courses`)
       const totalKm = activities.reduce((s, a) => s + ((a.distance_m ?? 0) / 1000), 0)
       const totalHours = activities.reduce((s, a) => s + ((a.moving_time_s ?? 0) / 3600), 0)
       const totalTSS = activities.reduce((s, a) => s + (a.tss ?? 0), 0)
@@ -12809,7 +12816,7 @@ type ProgressionActivity = {
   average_speed: number | null
   avg_watts: number | null
   avg_cadence: number | null
-  cardiac_drift_pct: number | null
+  cardiac_drift_pct?: number | null
   tss: number | null
   is_race: boolean | null
 }

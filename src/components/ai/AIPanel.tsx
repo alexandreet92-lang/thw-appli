@@ -12624,6 +12624,17 @@ interface CourseProfile {
     pente_moyenne_pct: number
     type: 'montee' | 'descente' | 'plat'
     description: string
+    categorie?: 'HC' | '1' | '2' | '3' | '4' | null
+  }>
+  major_climbs: Array<{
+    start_km: number
+    end_km: number
+    distance_km: number
+    denivele: number
+    pente_moyenne_pct: number
+    pente_max_pct: number
+    altitude_max: number
+    categorie: 'HC' | '1' | '2' | '3' | '4'
   }>
   elevation_profile: Array<{ dist_km: number; ele: number }>
 }
@@ -12965,6 +12976,223 @@ function getRaceFollowUpActions(sport: string, result: StrategieResult): FollowU
   return actions.slice(0, 4)
 }
 
+// ── Constantes catégorisation montées ─────────────────────────────────
+const CLIMB_CAT_COLORS: Record<string, string> = {
+  HC: '#dc2626', '1': '#ef4444', '2': '#f97316', '3': '#eab308', '4': '#84cc16',
+}
+const CLIMB_CAT_LABELS: Record<string, string> = {
+  HC: 'HC', '1': 'Cat 1', '2': 'Cat 2', '3': 'Cat 3', '4': 'Cat 4',
+}
+
+// ── robustJsonParse — tolère les JSON tronqués ─────────────────────────
+function robustJsonParse(raw: string): unknown {
+  let cleaned = raw.trim()
+  // 1. Nettoyer les markdown fences
+  const mdMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/)
+  if (mdMatch) cleaned = mdMatch[1].trim()
+  // 2. Trouver le début du JSON
+  const start = cleaned.search(/[{[]/)
+  if (start > 0) cleaned = cleaned.slice(start)
+  // 3. Essayer directement
+  try { return JSON.parse(cleaned) } catch { /* continue */ }
+  // 4. Réparer la troncature : compter les structures ouvertes
+  let braces = 0, brackets = 0, inString = false, escaped = false
+  for (const c of cleaned) {
+    if (escaped) { escaped = false; continue }
+    if (c === '\\') { escaped = true; continue }
+    if (c === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (c === '{') braces++; if (c === '}') braces--
+    if (c === '[') brackets++; if (c === ']') brackets--
+  }
+  // Couper après la dernière virgule/accolade complète pour éviter les valeurs partielles
+  if (braces > 0 || brackets > 0) {
+    const cutPoint = Math.max(
+      cleaned.lastIndexOf(','),
+      cleaned.lastIndexOf('}'),
+      cleaned.lastIndexOf(']'),
+    )
+    if (cutPoint > cleaned.length * 0.5) {
+      let cut = cleaned.slice(0, cutPoint + 1)
+      // Recalculer
+      let b2 = 0, br2 = 0, s2 = false, e2 = false
+      for (const c of cut) {
+        if (e2) { e2 = false; continue }
+        if (c === '\\') { e2 = true; continue }
+        if (c === '"') { s2 = !s2; continue }
+        if (s2) continue
+        if (c === '{') b2++; if (c === '}') b2--
+        if (c === '[') br2++; if (c === ']') br2--
+      }
+      cut += ']'.repeat(Math.max(0, br2)) + '}'.repeat(Math.max(0, b2))
+      try { return JSON.parse(cut) } catch { /* continue */ }
+    }
+    cleaned += ']'.repeat(Math.max(0, brackets)) + '}'.repeat(Math.max(0, braces))
+    try { return JSON.parse(cleaned) } catch { /* continue */ }
+  }
+  throw new Error(`JSON invalide : ${raw.slice(0, 100)}…`)
+}
+
+// ── ElevationProfileChart — graphique altimétrique style Strava ────────
+function ElevationProfileChart({ profile, height = 140 }: { profile: CourseProfile; height?: number }) {
+  const [cursorPct, setCursorPct] = useState<number | null>(null)
+
+  const ep = profile.elevation_profile
+  if (ep.length < 2) return null
+
+  const maxDist = ep[ep.length - 1].dist_km
+  const minEle = profile.altitude_min
+  const maxEle = profile.altitude_max
+  const range = maxEle - minEle || 1
+
+  // Cursor data
+  const cursorIdx = cursorPct !== null
+    ? Math.min(ep.length - 1, Math.max(0, Math.round(cursorPct * (ep.length - 1))))
+    : null
+  const cursorData = cursorIdx !== null ? ep[cursorIdx] : null
+  const cursorPente = cursorIdx !== null && cursorIdx > 0
+    ? ((ep[cursorIdx].ele - ep[cursorIdx - 1].ele) / ((ep[cursorIdx].dist_km - ep[cursorIdx - 1].dist_km) * 1000 || 1)) * 100
+    : null
+
+  // SVG params
+  const W = 1000
+  const H = height
+  const padL = 42
+  const padR = 8
+  const padT = 22
+  const padB = 18
+  const chartW = W - padL - padR
+  const chartH = H - padT - padB
+
+  function xFromDist(km: number) { return padL + (km / maxDist) * chartW }
+  function yFromEle(ele: number) { return padT + chartH - ((ele - minEle) / range) * chartH }
+
+  const pts = ep.map(p => `${xFromDist(p.dist_km).toFixed(1)},${yFromEle(p.ele).toFixed(1)}`)
+  const fillPath = `M${padL},${padT + chartH}L${pts.join('L')}L${xFromDist(maxDist).toFixed(1)},${padT + chartH}Z`
+  const linePath = `M${pts.join('L')}`
+
+  // Distance labels
+  const distStep = maxDist > 100 ? 20 : maxDist > 40 ? 10 : 5
+  const distLabels: number[] = []
+  for (let d = 0; d <= maxDist; d += distStep) distLabels.push(d)
+
+  // Altitude labels
+  const eleStep = range > 1000 ? 500 : range > 400 ? 200 : 100
+  const eleLabels: number[] = []
+  for (let e = Math.ceil(minEle / eleStep) * eleStep; e <= maxEle; e += eleStep) eleLabels.push(e)
+
+  const majorClimbs = profile.major_climbs ?? []
+
+  return (
+    <div style={{ position: 'relative', userSelect: 'none' }}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', height, display: 'block' }}
+        onMouseMove={e => {
+          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+          // Convertir clientX en fraction de la zone graphique
+          const frac = (e.clientX - rect.left - (padL / W) * rect.width) / ((chartW / W) * rect.width)
+          setCursorPct(Math.min(1, Math.max(0, frac)))
+        }}
+        onMouseLeave={() => setCursorPct(null)}
+      >
+        <defs>
+          <linearGradient id="ele-grad-strava" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6b7280" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#6b7280" stopOpacity="0.06" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lignes horizontales altitude */}
+        {eleLabels.map(e => (
+          <g key={`eg-${e}`}>
+            <line x1={padL} y1={yFromEle(e)} x2={W - padR} y2={yFromEle(e)}
+              stroke="var(--ai-border, #333)" strokeWidth="0.5" strokeDasharray="4,4" />
+            <text x={padL - 4} y={yFromEle(e) + 3} textAnchor="end" fontSize="8"
+              fill="var(--ai-dim, #888)" fontFamily="DM Mono,monospace">{e}m</text>
+          </g>
+        ))}
+
+        {/* Labels distance en bas */}
+        {distLabels.map(d => (
+          <text key={`dg-${d}`} x={xFromDist(d)} y={H - 3} textAnchor="middle" fontSize="8"
+            fill="var(--ai-dim, #888)" fontFamily="DM Mono,monospace">{d}km</text>
+        ))}
+
+        {/* Encadrés montées majeures */}
+        {majorClimbs.map((climb, i) => {
+          const x1 = xFromDist(climb.start_km)
+          const x2 = xFromDist(climb.end_km)
+          const color = CLIMB_CAT_COLORS[climb.categorie] ?? '#f97316'
+          const labelW = Math.min(x2 - x1 - 4, 160)
+          return (
+            <g key={`mc-${i}`}>
+              <rect x={x1} y={padT} width={x2 - x1} height={chartH} fill={color} opacity="0.09" />
+              <line x1={x1} y1={padT} x2={x1} y2={padT + chartH} stroke={color} strokeWidth="1" strokeDasharray="3,2" opacity="0.7" />
+              <line x1={x2} y1={padT} x2={x2} y2={padT + chartH} stroke={color} strokeWidth="1" strokeDasharray="3,2" opacity="0.7" />
+              {labelW > 30 && (
+                <>
+                  <rect x={x1 + 2} y={padT - 2} width={labelW} height={15} rx={3} fill={color} opacity="0.9" />
+                  <text x={x1 + 6} y={padT + 9} fontSize="7" fill="#fff" fontWeight="700" fontFamily="DM Mono,monospace">
+                    {CLIMB_CAT_LABELS[climb.categorie]} · {climb.distance_km}km · {climb.pente_moyenne_pct}% · {climb.altitude_max}m
+                  </text>
+                </>
+              )}
+            </g>
+          )
+        })}
+
+        {/* Fill + stroke du profil */}
+        <path d={fillPath} fill="url(#ele-grad-strava)" />
+        <path d={linePath} fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinejoin="round" />
+
+        {/* Curseur vertical */}
+        {cursorPct !== null && cursorData && (
+          <g>
+            <line
+              x1={xFromDist(cursorData.dist_km)} y1={padT}
+              x2={xFromDist(cursorData.dist_km)} y2={padT + chartH}
+              stroke="var(--ai-text, #ccc)" strokeWidth="1" opacity="0.6"
+            />
+            <circle cx={xFromDist(cursorData.dist_km)} cy={yFromEle(cursorData.ele)} r={3.5}
+              fill="var(--ai-text, #ccc)" stroke="var(--ai-bg, #111)" strokeWidth="1.5" />
+          </g>
+        )}
+      </svg>
+
+      {/* Tooltip flottant */}
+      {cursorPct !== null && cursorData && (
+        <div style={{
+          position: 'absolute',
+          left: `${Math.min(Math.max(cursorPct * 100, 5), 80)}%`,
+          top: 0,
+          transform: cursorPct > 0.7 ? 'translateX(-110%)' : 'translateX(10px)',
+          background: 'var(--ai-bg, rgba(10,10,10,0.95))',
+          border: '1px solid var(--ai-border)',
+          borderRadius: 6,
+          padding: '5px 9px',
+          fontSize: 10,
+          fontFamily: 'DM Mono,monospace',
+          color: 'var(--ai-text, #e5e5e5)',
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+          zIndex: 20,
+          lineHeight: 1.8,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+        }}>
+          <div>Distance <strong>{cursorData.dist_km.toFixed(1)}km</strong></div>
+          <div>Altitude <strong>{cursorData.ele}m</strong></div>
+          {cursorPente !== null && (
+            <div>Pente <strong style={{ color: cursorPente > 5 ? '#ef4444' : cursorPente > 2 ? '#f97316' : 'var(--ai-text)' }}>
+              {cursorPente.toFixed(1)}%
+            </strong></div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string, strategyData?: RaceStrategyData) => void
@@ -13296,6 +13524,8 @@ TSB PROJETÉ JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextD
 COURSES PASSÉES : ${JSON.stringify(contextData.pastRaces)}
 PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}
 
+CONTRAINTE DE LONGUEUR STRICTE : limite strategie_sections à 6-8 entrées max par scénario (regroupe les sections similaires). Limite nutrition_course à 5 entrées max. Sois concis dans tous les champs texte — 80 mots max par champ. Le JSON complet ne doit pas dépasser 6000 tokens.
+
 RÈGLES ABSOLUES :
 1. Générer OBLIGATOIREMENT 3 scénarios : conservateur (probabilité élevée, sécurisé), optimal (cible, réaliste), agressif (risqué, PR potentiel)
 2. Toutes les allures/watts DOIVENT venir des données réelles — jamais de valeurs génériques
@@ -13360,9 +13590,7 @@ FORMAT JSON STRICT :
         }
       }
 
-      const jsonMatch = raw.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('Réponse non parseable')
-      const parsed = JSON.parse(jsonMatch[0]) as StrategieResult
+      const parsed = robustJsonParse(raw) as StrategieResult
       setFinalRaceName(raceName)
       setFinalRaceDate(raceDate)
       setFinalRaceSport(raceSport)
@@ -13579,61 +13807,34 @@ FORMAT JSON STRICT :
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
               Profil du parcours
             </p>
-            <svg
-              viewBox="0 0 1000 120"
-              style={{ width: '100%', height: 80, display: 'block', marginBottom: 6 }}
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="ele-fill-q" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.04" />
-                </linearGradient>
-              </defs>
-              {(() => {
-                const ep = courseProfile.elevation_profile
-                if (ep.length < 2) return null
-                const maxDist = ep[ep.length - 1].dist_km
-                const minEle = courseProfile.altitude_min
-                const maxEle = courseProfile.altitude_max
-                const range = maxEle - minEle || 1
-                const pts = ep.map(p => {
-                  const x = (p.dist_km / maxDist) * 1000
-                  const y = 110 - ((p.ele - minEle) / range) * 100
-                  return `${x.toFixed(0)},${y.toFixed(0)}`
-                })
-                const fillPath = `M0,120L${pts.join('L')}L1000,120Z`
-                const linePath = `M${pts.join('L')}`
-                return (
-                  <>
-                    <path d={fillPath} fill="url(#ele-fill-q)" />
-                    <path d={linePath} fill="none" stroke="#94a3b8" strokeWidth="2" />
-                  </>
-                )
-              })()}
-              <text x={4} y={14} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_max}m</text>
-              <text x={4} y={116} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_min}m</text>
-            </svg>
-            <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--ai-mid)', marginBottom: 8 }}>
-              <span>{courseProfile.total_distance_km}km</span>
-              <span>D+ {courseProfile.total_denivele_pos}m</span>
-              <span>D- {courseProfile.total_denivele_neg}m</span>
-              <span>{courseProfile.segments.length} segments</span>
+            <ElevationProfileChart profile={courseProfile} height={140} />
+            <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 8, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
+              <span><strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_distance_km}</strong>km</span>
+              <span>D+ <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_pos}</strong>m</span>
+              <span>D- <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_neg}</strong>m</span>
+              <span>Alt. <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_min}</strong>–<strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_max}</strong>m</span>
             </div>
-            <div style={{ maxHeight: 110, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {courseProfile.segments.map((seg, i) => (
-                <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                  <span style={{
-                    color: seg.type === 'montee' ? '#ef4444' : seg.type === 'descente' ? '#22c55e' : 'var(--ai-dim)',
-                    fontWeight: 700, minWidth: 12, flexShrink: 0,
-                  }}>
-                    {seg.type === 'montee' ? '▲' : seg.type === 'descente' ? '▼' : '▬'}
-                  </span>
-                  <span style={{ fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>{seg.start_km}–{seg.end_km}km</span>
-                  <span style={{ color: 'var(--ai-dim)' }}>{seg.description}</span>
-                </div>
-              ))}
-            </div>
+            {(courseProfile.major_climbs ?? []).length > 0 && (
+              <div style={{ marginTop: 2, marginBottom: 4 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+                  Difficultés majeures
+                </p>
+                {(courseProfile.major_climbs ?? []).map((c, i) => (
+                  <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                      background: (CLIMB_CAT_COLORS[c.categorie] ?? '#f97316') + '25',
+                      color: CLIMB_CAT_COLORS[c.categorie] ?? '#f97316',
+                      fontFamily: 'DM Mono,monospace',
+                    }}>
+                      {CLIMB_CAT_LABELS[c.categorie]}
+                    </span>
+                    <span style={{ fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
+                    <span>{c.distance_km}km · {c.pente_moyenne_pct}% moy · max {c.pente_max_pct}% · {c.altitude_max}m</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -13937,47 +14138,34 @@ FORMAT JSON STRICT :
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
             Profil du parcours
           </p>
-          <svg
-            viewBox="0 0 1000 120"
-            style={{ width: '100%', height: 90, display: 'block', marginBottom: 6 }}
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <linearGradient id="ele-fill-r" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.04" />
-              </linearGradient>
-            </defs>
-            {(() => {
-              const ep = courseProfile.elevation_profile
-              if (ep.length < 2) return null
-              const maxDist = ep[ep.length - 1].dist_km
-              const minEle = courseProfile.altitude_min
-              const maxEle = courseProfile.altitude_max
-              const range = maxEle - minEle || 1
-              const pts = ep.map(p => {
-                const x = (p.dist_km / maxDist) * 1000
-                const y = 110 - ((p.ele - minEle) / range) * 100
-                return `${x.toFixed(0)},${y.toFixed(0)}`
-              })
-              const fillPath = `M0,120L${pts.join('L')}L1000,120Z`
-              const linePath = `M${pts.join('L')}`
-              return (
-                <>
-                  <path d={fillPath} fill="url(#ele-fill-r)" />
-                  <path d={linePath} fill="none" stroke="#94a3b8" strokeWidth="2" />
-                </>
-              )
-            })()}
-            <text x={4} y={14} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_max}m</text>
-            <text x={4} y={116} fontSize="9" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{courseProfile.altitude_min}m</text>
-          </svg>
-          <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--ai-mid)' }}>
-            <span>{courseProfile.total_distance_km}km</span>
-            <span>D+ {courseProfile.total_denivele_pos}m</span>
-            <span>D- {courseProfile.total_denivele_neg}m</span>
-            <span>{courseProfile.segments.length} segments</span>
+          <ElevationProfileChart profile={courseProfile} height={140} />
+          <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 6, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
+            <span><strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_distance_km}</strong>km</span>
+            <span>D+ <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_pos}</strong>m</span>
+            <span>D- <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_neg}</strong>m</span>
+            <span>Alt. <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_min}</strong>–<strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_max}</strong>m</span>
           </div>
+          {(courseProfile.major_climbs ?? []).length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+                Difficultés majeures
+              </p>
+              {(courseProfile.major_climbs ?? []).map((c, i) => (
+                <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                    background: (CLIMB_CAT_COLORS[c.categorie] ?? '#f97316') + '25',
+                    color: CLIMB_CAT_COLORS[c.categorie] ?? '#f97316',
+                    fontFamily: 'DM Mono,monospace',
+                  }}>
+                    {CLIMB_CAT_LABELS[c.categorie]}
+                  </span>
+                  <span style={{ fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
+                  <span>{c.distance_km}km · {c.pente_moyenne_pct}% moy · max {c.pente_max_pct}% · {c.altitude_max}m</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

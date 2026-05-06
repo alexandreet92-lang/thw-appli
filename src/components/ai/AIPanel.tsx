@@ -13308,13 +13308,15 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   }, [courseProfile, manualClimbs])
 
   // Context
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [contextData, setContextData] = useState<{
-    zones: unknown
-    tests: unknown[]
-    recentActivities: unknown[]
-    metrics14d: unknown[]
-    pastRaces: unknown[]
-    profile: unknown
+    zones: any | null
+    tests: any[]
+    recentActivities: any[]
+    metrics14d: any[]
+    pastRaces: any[]
+    profile: any | null
+    bestPowerActivities: any[]
     hasAtlCtl: boolean
     tsbActuel: number | null
     tsbProjecte: number | null
@@ -13445,6 +13447,18 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
     }
   }
 
+  function getSportVariants(sport: string): string[] {
+    const s = sport.toLowerCase()
+    if (['cycling', 'bike', 'ride', 'virtual_ride', 'virtual_bike', 'velo'].includes(s))
+      return ['cycling', 'bike', 'Ride', 'virtual_ride', 'virtual_bike', 'velo', 'VirtualRide']
+    if (['running', 'run', 'trail', 'trail_run', 'course'].includes(s))
+      return ['running', 'run', 'Run', 'trail', 'trail_run', 'TrailRun']
+    if (['swimming', 'swim', 'pool_swim', 'open_water', 'natation'].includes(s))
+      return ['swimming', 'swim', 'pool_swim', 'open_water', 'Swim']
+    if (['triathlon'].includes(s)) return ['triathlon']
+    return [sport, sport.toLowerCase(), sport.charAt(0).toUpperCase() + sport.slice(1)]
+  }
+
   async function loadContext() {
     setLoadingContext(true)
     try {
@@ -13455,33 +13469,55 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
 
       const raceSport = getRaceSport()
       const isTriathlon = raceSport === 'triathlon'
+      const sportVariants = isTriathlon
+        ? ['running', 'run', 'Run', 'cycling', 'bike', 'Ride', 'swimming', 'swim', 'Swim']
+        : getSportVariants(raceSport)
+      const zonesSport = isTriathlon ? 'running' : raceSport
+      const zonesSportVariants = getSportVariants(zonesSport)
+
       const now = new Date()
       const since3months = new Date(now); since3months.setMonth(now.getMonth() - 3)
       const since6months = new Date(now); since6months.setMonth(now.getMonth() - 6)
       const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
+      const since180d = new Date(now); since180d.setDate(now.getDate() - 180)
 
-      // For triathlon: load running + cycling activities in parallel; for others: load by sport
-      const activitiesQuery = isTriathlon
-        ? sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race,sport_type')
-            .in('sport_type', ['running', 'cycling', 'swimming'])
-            .gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(40)
-        : sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race')
-            .eq('sport_type', raceSport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(30)
+      const activitiesQuery = sb.from('activities')
+        .select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race,sport_type')
+        .in('sport_type', sportVariants)
+        .gte('started_at', since3months.toISOString())
+        .order('started_at', { ascending: false }).limit(40)
 
-      const pastRacesQuery = isTriathlon
-        ? sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,sport_type')
-            .in('sport_type', ['running', 'cycling', 'swimming']).eq('is_race', true).order('started_at', { ascending: false }).limit(8)
-        : sb.from('activities').select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss')
-            .eq('sport_type', raceSport).eq('is_race', true).order('started_at', { ascending: false }).limit(5)
+      const pastRacesQuery = sb.from('activities')
+        .select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,sport_type,title')
+        .in('sport_type', sportVariants)
+        .eq('is_race', true)
+        .order('started_at', { ascending: false }).limit(8)
 
-      // TODO: inject injuries when table exists
-      const [zonesRes, testsRes, recentActsRes, metrics14dRes, pastRacesRes, profileRes] = await Promise.all([
-        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', isTriathlon ? 'running' : raceSport).eq('is_current', true).maybeSingle(),
-        sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(5),
+      const bestPowerQuery = sb.from('activities')
+        .select('started_at,moving_time_s,distance_m,avg_watts,max_watts,normalized_watts,tss,title,sport_type')
+        .in('sport_type', sportVariants)
+        .not('avg_watts', 'is', null)
+        .gte('started_at', since180d.toISOString())
+        .order('avg_watts', { ascending: false }).limit(10)
+
+      const [zonesRes, testsRes, recentActsRes, metrics14dRes, pastRacesRes, profileRes, bestPowerRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id)
+          .in('sport', zonesSportVariants).eq('is_current', true)
+          .limit(1).then(r => ({ data: r.data?.[0] ?? null, error: r.error })),
+        sb.from('test_results')
+          .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
+          .eq('user_id', user.id)
+          .gte('date', since6months.toISOString().split('T')[0])
+          .order('date', { ascending: false }).limit(20),
         activitiesQuery,
-        Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', since14d.toISOString().split('T')[0]).order('date', { ascending: false })).catch(() => ({ data: [] })),
+        sb.from('metrics_daily').select('*').eq('user_id', user.id)
+          .gte('date', since14d.toISOString().split('T')[0])
+          .order('date', { ascending: false })
+          .then(r => ({ data: r.data ?? [], error: r.error }))
+          .catch(() => ({ data: [] as never[], error: null })),
         pastRacesQuery,
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+        bestPowerQuery,
       ])
 
       type MetricRow = { date: string; hrv: number | null; readiness: number | null; atl: number | null; ctl: number | null; tsb: number | null; fatigue: number | null }
@@ -13500,7 +13536,6 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         tsbProjecte = tsbActuel !== null ? Math.round(tsbActuel + daysToRace * 1.5) : null
         tsbMethode = 'TSB projeté (estimation depuis données ATL/CTL)'
       } else {
-        // Approximate from recent TSS
         type ActRow = { tss: number | null; started_at: string }
         const acts = (recentActsRes.data ?? []) as ActRow[]
         if (acts.length > 0) {
@@ -13525,6 +13560,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         metrics14d: metrics,
         pastRaces: pastRacesRes.data ?? [],
         profile: profileRes.data,
+        bestPowerActivities: bestPowerRes.data ?? [],
         hasAtlCtl,
         tsbActuel,
         tsbProjecte,
@@ -13591,6 +13627,7 @@ TSB ACTUEL : ${contextData.tsbActuel ?? 'non disponible'}
 TSB PROJETÉ JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextData.tsbMethode})
 COURSES PASSÉES : ${JSON.stringify(contextData.pastRaces)}
 PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}
+${contextData.bestPowerActivities.length > 0 ? `MEILLEURES PUISSANCES (6 MOIS) : ${JSON.stringify(contextData.bestPowerActivities.slice(0, 5))}` : ''}
 
 CONTRAINTE DE LONGUEUR STRICTE : limite strategie_sections à 6-8 entrées max par scénario (regroupe les sections similaires). Limite nutrition_course à 5 entrées max. Sois concis dans tous les champs texte — 80 mots max par champ. Le JSON complet ne doit pas dépasser 6000 tokens.
 
@@ -14003,6 +14040,67 @@ FORMAT JSON STRICT :
               </div>
             </div>
           </>
+        )}
+
+        {/* Données athlète chargées */}
+        {contextData && (contextData.profile || contextData.tests.length > 0 || contextData.bestPowerActivities.length > 0) && (
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+              Données athlète chargées
+            </p>
+
+            {/* Profil physiologique */}
+            {contextData.profile && (
+              <div style={{ marginBottom: 8 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Profil physiologique</p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)' }}>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(contextData.profile as any).ftp != null && <span>FTP <strong>{(contextData.profile as any).ftp}W</strong></span>}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(contextData.profile as any).ftp != null && (contextData.profile as any).weight != null && (contextData.profile as any).weight > 0 &&
+                    <span><strong>{((contextData.profile as any).ftp / (contextData.profile as any).weight).toFixed(1)}</strong> W/kg</span>}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(contextData.profile as any).vma != null && <span>VMA <strong>{(contextData.profile as any).vma}km/h</strong></span>}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(contextData.profile as any).lthr != null && <span>LTHR <strong>{(contextData.profile as any).lthr}bpm</strong></span>}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(contextData.profile as any).vo2max != null && <span>VO₂max <strong>{(contextData.profile as any).vo2max}</strong></span>}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(contextData.profile as any).weight != null && <span style={{ color: 'var(--ai-mid)' }}>{(contextData.profile as any).weight}kg</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Tests récents */}
+            {contextData.tests.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Tests de performance récents</p>
+                {contextData.tests.slice(0, 3).map((t: any, i: number) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+                  <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '1px 0', fontFamily: 'DM Mono,monospace' }}>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(t as any).test_definitions?.nom ?? (t as any).test_type ?? 'Test'}{(t as any).date ? ` — ${new Date((t as any).date).toLocaleDateString('fr-FR')}` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Meilleures puissances cyclisme */}
+            {contextData.bestPowerActivities.length > 0 && (
+              <div>
+                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Meilleures puissances (6 mois)</p>
+                {contextData.bestPowerActivities.slice(0, 3).map((a: any, i: number) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+                  <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '1px 0', fontFamily: 'DM Mono,monospace' }}>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <strong style={{ color: 'var(--ai-text)' }}>{(a as any).avg_watts}W</strong> moy
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(a as any).distance != null ? ` · ${((a as any).distance / 1000).toFixed(0)}km` : ''}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(a as any).date ? ` — ${new Date((a as any).date).toLocaleDateString('fr-FR')}` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Ressenti de forme */}

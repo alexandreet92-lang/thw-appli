@@ -11788,12 +11788,24 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
       const since6months = new Date(now); since6months.setMonth(now.getMonth() - 6)
 
       // TODO: inject injuries when table exists
+      const sportVariantsGate = sport.toLowerCase().includes('cycl') || sport.toLowerCase().includes('bike') || sport.toLowerCase().includes('vélo')
+        ? ['cycling', 'bike', 'Ride', 'virtual_ride', 'VirtualRide', sport]
+        : sport.toLowerCase().includes('run') || sport.toLowerCase().includes('trail')
+          ? ['running', 'run', 'Run', 'trail', 'trail_run', sport]
+          : [sport]
+
+      // safeGate : vérifie r.error Supabase + catch JS
+      const safeGate = async <T,>(p: PromiseLike<{ data: T | null; error: unknown }>, fb: T): Promise<{ data: T }> => {
+        try { const r = await p; return { data: r.error ? fb : (r.data ?? fb) } } catch { return { data: fb } }
+      }
+
       const [currentZonesRes, zonesHistoryRes, testsRes, activitiesRes, profileRes] = await Promise.all([
-        sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', sport).eq('is_current', true).maybeSingle(),
-        sb.from('training_zones').select('id,created_at,ftp_watts,lthr,vma_ms,threshold_pace_s_km').eq('user_id', user.id).eq('sport', sport).order('created_at', { ascending: false }),
-        sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(5),
-        sb.from('activities').select('started_at,moving_time_s,avg_hr,max_hr,avg_watts,max_watts,avg_pace_s_km,tss,intensity_factor,rpe').eq('user_id', user.id).eq('sport_type', sport).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }),
-        sb.from('athlete_performance_profile').select('ftp,lthr,vma,css,vo2max,weight_kg').eq('user_id', user.id).maybeSingle(),
+        safeGate(sb.from('training_zones').select('*').eq('user_id', user.id).in('sport', sportVariantsGate).eq('is_current', true).limit(1).then(r => ({ data: r.data?.[0] ?? null, error: r.error })), null),
+        safeGate(sb.from('training_zones').select('id,created_at,ftp_watts,lthr,vma_ms,threshold_pace_s_km').eq('user_id', user.id).in('sport', sportVariantsGate).order('created_at', { ascending: false }), []),
+        // test_results peut ne pas exister (404) — retourner [] directement
+        Promise.resolve({ data: [] as never[] }),
+        safeGate(sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race').eq('user_id', user.id).in('sport_type', sportVariantsGate).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(50), []),
+        safeGate(sb.from('athlete_performance_profile').select('ftp,lthr,vma,css,vo2max,weight_kg').eq('user_id', user.id).maybeSingle(), null),
       ])
 
       const currentZonesDate = (currentZonesRes.data as Record<string, unknown> | null)?.created_at as string | null ?? null
@@ -11915,10 +11927,35 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
         }
       }
 
-      // Parse JSON from raw text
+      // Parse JSON from raw text — robuste contre guillemets simples et troncature
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Réponse non parseable')
-      const parsed = JSON.parse(jsonMatch[0]) as ZoneEstimationResult
+      let fixedJson = jsonMatch[0]
+      let parsed: ZoneEstimationResult
+      try {
+        parsed = JSON.parse(fixedJson) as ZoneEstimationResult
+      } catch {
+        // Guillemets simples → doubles
+        fixedJson = fixedJson.replace(/(?<=[\{,:\[]\s*)'([^']*?)'(?=\s*[:,\}\]])/g, '"$1"')
+        try {
+          parsed = JSON.parse(fixedJson) as ZoneEstimationResult
+        } catch {
+          // Fermer les structures tronquées
+          let b = 0, br = 0, inS = false, esc = false
+          for (const c of fixedJson) {
+            if (esc) { esc = false; continue } if (c === '\\') { esc = true; continue }
+            if (c === '"') { inS = !inS; continue } if (inS) continue
+            if (c === '{') b++; if (c === '}') b--
+            if (c === '[') br++; if (c === ']') br--
+          }
+          fixedJson += ']'.repeat(Math.max(0, br)) + '}'.repeat(Math.max(0, b))
+          try {
+            parsed = JSON.parse(fixedJson) as ZoneEstimationResult
+          } catch {
+            throw new Error('JSON invalide : ' + fixedJson.slice(0, 200) + '...')
+          }
+        }
+      }
       setResult(parsed)
       if (onRecordConv) {
         const userMsg = `Estimer mes zones — ${selectedSport}`
@@ -12273,11 +12310,15 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
       const today = new Date().toISOString().split('T')[0]
 
       // TODO: inject injuries when table exists
+      const safeProgQ = async <T,>(p: PromiseLike<{ data: T | null; error: unknown }>, fb: T): Promise<{ data: T }> => {
+        try { const r = await p; return { data: r.error ? fb : (r.data ?? fb) } } catch { return { data: fb } }
+      }
       const [activitiesRes, testsRes, zonesHistoryRes, profileRes] = await Promise.all([
-        sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race').eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString()).order('started_at', { ascending: true }),
-        sb.from('test_results').select('date,valeurs,notes,test_definition_id').eq('user_id', user.id).gte('date', startDate.toISOString().split('T')[0]).order('date', { ascending: true }),
-        sb.from('training_zones').select('ftp_watts,lthr,vma_ms,threshold_pace_s_km,created_at,sport').eq('user_id', user.id).in('sport', selectedSports).order('created_at', { ascending: true }),
-        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+        safeProgQ(sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race').eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString()).order('started_at', { ascending: true }), [] as never[]),
+        // test_results peut ne pas exister (404) → [] directement
+        Promise.resolve({ data: [] as never[] }),
+        safeProgQ(sb.from('training_zones').select('ftp_watts,lthr,vma_ms,threshold_pace_s_km,created_at,sport').eq('user_id', user.id).in('sport', selectedSports).order('created_at', { ascending: true }), [] as never[]),
+        safeProgQ(sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(), null),
       ])
 
       const activities = (activitiesRes.data ?? []) as ProgressionActivity[]

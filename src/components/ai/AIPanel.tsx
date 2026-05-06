@@ -13033,6 +13033,38 @@ function robustJsonParse(raw: string): unknown {
   throw new Error(`JSON invalide : ${raw.slice(0, 100)}…`)
 }
 
+// ── parseStrategyResponse — parsing robuste incluant fallback Markdown ─
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseStrategyResponse(raw: string): any {
+  let text = raw.trim()
+
+  // Si l'IA a écrit du Markdown au lieu du JSON, extraire le JSON s'il existe
+  if (/^[#*A-ZÀ-Ü]/.test(text) && !text.startsWith('{')) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      text = jsonMatch[0]
+    } else {
+      // Aucun JSON — retourner un résultat minimal exploitable
+      return {
+        verdict_objectif: { status: 'realiste', confiance: 20, detail: text.slice(0, 500) },
+        forme_au_jour_j: { tsb_actuel: null, tsb_projete: null, methode: 'estimation', verdict: 'Non disponible', risque: 'Données insuffisantes' },
+        scenarios: [{
+          nom: 'optimal', objectif_temps: 'N/A', probabilite: 50,
+          strategie_sections: [], nutrition_course: [],
+          gestion_effort: { depart: text.slice(0, 300), milieu: '', final_20pct: '' },
+          plan_b: { declencheur: 'N/A', action: 'N/A', objectif_fallback: 'N/A' },
+          points_cles: ['Réponse IA non structurée — relancez la génération'],
+        }],
+        meteo_impacts: [], triathlon_repartition: null,
+        sources: [], confiance: 'faible', raison_confiance: 'Format de réponse invalide',
+      }
+    }
+  }
+
+  // Utiliser robustJsonParse pour le reste (markdown fences, troncature, etc.)
+  return robustJsonParse(text)
+}
+
 // ── ElevationProfileChart — graphique altimétrique style Strava ────────
 type ClimbWithFlag = CourseProfile['major_climbs'][0] & { isManual?: boolean }
 
@@ -13454,6 +13486,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
     profile: any | null
     tests: any[]
     bestActivities: any[]
+    races: any[]
   } | null>(null)
 
   async function preloadAthleteData() {
@@ -13473,7 +13506,9 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
             ? ['swimming', 'swim', 'pool_swim', 'open_water', 'Swim']
             : [raceSport]
 
-      const [zonesRes, profileRes, testsRes, bestActsRes] = await Promise.all([
+      const since12m = new Date(Date.now() - 365 * 86400000).toISOString()
+
+      const [zonesRes, profileRes, testsRes, bestActsRes, racesRes] = await Promise.all([
         sb.from('training_zones').select('*').eq('user_id', user.id)
           .in('sport', sportVariants).eq('is_current', true).limit(1),
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
@@ -13483,8 +13518,13 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         sb.from('activities')
           .select('started_at,moving_time_s,distance_m,avg_watts,max_watts,normalized_watts,average_heartrate,tss,title,sport_type')
           .eq('user_id', user.id).in('sport_type', sportVariants)
-          .gte('started_at', new Date(Date.now() - 180 * 86400000).toISOString())
-          .order('started_at', { ascending: false }).limit(20),
+          .gte('started_at', since12m)
+          .order('started_at', { ascending: false }).limit(50),
+        sb.from('activities')
+          .select('started_at,distance_m,moving_time_s,avg_watts,normalized_watts,average_heartrate,max_heartrate,average_speed,avg_pace_s_km,tss,title,sport_type,cardiac_drift_pct')
+          .eq('user_id', user.id).in('sport_type', sportVariants)
+          .eq('is_race', true)
+          .order('started_at', { ascending: false }).limit(50),
       ])
 
       setAthletePreview({
@@ -13492,6 +13532,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         profile: profileRes.data,
         tests: testsRes.data ?? [],
         bestActivities: bestActsRes.data ?? [],
+        races: racesRes.data ?? [],
       })
     } catch { /* silencieux */ }
   }
@@ -13525,7 +13566,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       const zonesSportVariants = getSportVariants(zonesSport)
 
       const now = new Date()
-      const since3months = new Date(now); since3months.setMonth(now.getMonth() - 3)
+      const since12months = new Date(now); since12months.setMonth(now.getMonth() - 12)
       const since6months = new Date(now); since6months.setMonth(now.getMonth() - 6)
       const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
       const since180d = new Date(now); since180d.setDate(now.getDate() - 180)
@@ -13533,14 +13574,14 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       const activitiesQuery = sb.from('activities')
         .select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race,sport_type')
         .in('sport_type', sportVariants)
-        .gte('started_at', since3months.toISOString())
-        .order('started_at', { ascending: false }).limit(40)
+        .gte('started_at', since12months.toISOString())
+        .order('started_at', { ascending: false }).limit(50)
 
       const pastRacesQuery = sb.from('activities')
-        .select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,sport_type,title')
+        .select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,sport_type,title,average_heartrate,cardiac_drift_pct')
         .in('sport_type', sportVariants)
         .eq('is_race', true)
-        .order('started_at', { ascending: false }).limit(8)
+        .order('started_at', { ascending: false }).limit(50)
 
       const bestPowerQuery = sb.from('activities')
         .select('started_at,moving_time_s,distance_m,avg_watts,max_watts,normalized_watts,tss,title,sport_type')
@@ -13658,7 +13699,9 @@ ${courseProfile.segments.map((s, i) => `  ${i + 1}. ${s.description} (${s.start_
 ${allClimbs.length > 0 ? `\nDIFFICULTÉS MAJEURES${allClimbs.some(c => c.isManual) ? ' (inclut montées ajoutées manuellement)' : ''} :\n${allClimbs.map(c => `  ${c.categorie} · ${c.start_km}-${c.end_km}km · ${c.distance_km}km · ${c.pente_moyenne_pct}% moy · sommet ${c.altitude_max}m`).join('\n')}` : ''}
 IMPORTANT : Ta stratégie par sections DOIT correspondre à ces segments réels. Chaque montée significative doit avoir sa cible de watts/allure spécifique. Les descentes doivent avoir des consignes de récupération.` : ''
 
-      const systemPrompt = `Tu es un expert en stratégie de course et performance sportive.
+      const userPrompt = `IMPORTANT: Tu DOIS répondre UNIQUEMENT en JSON valide. Ta réponse commence par { et finit par }. AUCUN texte avant, AUCUN markdown, AUCUN commentaire. Si tu écris autre chose que du JSON pur, la requête échouera.
+
+Tu es un expert en stratégie de course et performance sportive.
 
 SPORT : ${raceSport.toUpperCase()}
 COURSE : ${raceName} · ${raceDistKm}km · D+ ${raceDenivele ?? 0}m · Date : ${raceDate}
@@ -13671,11 +13714,16 @@ ${courseProfileBlock}
 
 ZONES ${raceSport} : ${contextData.zones ? JSON.stringify(contextData.zones) : 'non configurées'}
 TESTS RÉCENTS : ${JSON.stringify(contextData.tests)}
-ACTIVITÉS (3 mois) : ${JSON.stringify(contextData.recentActivities)}
+ACTIVITÉS (12 mois) : ${JSON.stringify(contextData.recentActivities)}
 FORME ACTUELLE (14 jours) : ${JSON.stringify(contextData.metrics14d)}
 TSB ACTUEL : ${contextData.tsbActuel ?? 'non disponible'}
 TSB PROJETÉ JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextData.tsbMethode})
-COURSES PASSÉES : ${JSON.stringify(contextData.pastRaces)}
+COMPÉTITIONS PASSÉES (historique complet) :
+${(contextData.pastRaces ?? []).length > 0
+  ? contextData.pastRaces.map((r: Record<string, unknown>) =>
+      `- ${String(r.title ?? r.sport_type ?? '')} (${String(r.started_at ?? '').slice(0, 10)}) : ${r.distance_m != null ? (Number(r.distance_m) / 1000).toFixed(1) + 'km' : 'N/A'} · ${r.moving_time_s != null ? Math.floor(Number(r.moving_time_s) / 60) + 'min' : 'N/A'} · FC moy ${r.average_heartrate ?? r.avg_hr ?? 'N/A'}bpm${r.avg_watts != null ? ' · ' + String(r.avg_watts) + 'W' : ''}${r.avg_pace_s_km != null ? ' · ' + Math.floor(Number(r.avg_pace_s_km) / 60) + ':' + String(Math.round(Number(r.avg_pace_s_km) % 60)).padStart(2, '0') + '/km' : ''}`
+    ).join('\n')
+  : 'Aucune compétition enregistrée'}
 PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}
 ${contextData.bestPowerActivities.length > 0 ? `MEILLEURES PUISSANCES (6 MOIS) : ${JSON.stringify(contextData.bestPowerActivities.slice(0, 5))}` : ''}
 
@@ -13723,7 +13771,11 @@ FORMAT JSON STRICT :
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
-          messages: [{ role: 'user', content: systemPrompt }],
+          // Le prefill '{ ' force Claude à commencer directement en JSON
+          messages: [
+            { role: 'user', content: userPrompt },
+            { role: 'assistant', content: '{' },
+          ],
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -13745,7 +13797,8 @@ FORMAT JSON STRICT :
         }
       }
 
-      const parsed = robustJsonParse(raw) as StrategieResult
+      // Le prefill '{' est ajouté avant la réponse car Claude continue après lui
+      const parsed = parseStrategyResponse('{' + raw) as StrategieResult
       setFinalRaceName(raceName)
       setFinalRaceDate(raceDate)
       setFinalRaceSport(raceSport)
@@ -14153,8 +14206,26 @@ FORMAT JSON STRICT :
 
             {/* Activités récentes */}
             {athletePreview.bestActivities.length > 0 && (
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--ai-mid)' }}>{athletePreview.bestActivities.length} activités récentes (6 mois)</span>
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--ai-mid)' }}>{athletePreview.bestActivities.length} activités récentes (12 mois)</span>
+              </div>
+            )}
+
+            {/* Compétitions */}
+            {athletePreview.races.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: '#f97316', fontWeight: 600 }}>🏆 {athletePreview.races.length} compétition(s)</span>
+                <div style={{ marginTop: 3 }}>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {athletePreview.races.slice(0, 5).map((r: any, i: number) => (
+                    <p key={i} style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '1px 0', fontFamily: 'DM Mono,monospace' }}>
+                      {r.title ?? r.sport_type ?? '—'}
+                      {r.distance_m != null ? ` · ${(r.distance_m / 1000).toFixed(1)}km` : ''}
+                      {r.moving_time_s != null ? ` · ${Math.floor(r.moving_time_s / 3600)}h${String(Math.floor((r.moving_time_s % 3600) / 60)).padStart(2, '0')}` : ''}
+                      {r.started_at ? ` · ${String(r.started_at).slice(0, 10)}` : ''}
+                    </p>
+                  ))}
+                </div>
               </div>
             )}
 

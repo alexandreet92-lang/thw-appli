@@ -13121,23 +13121,37 @@ function ElevationProfileChart({ profile, height = 140 }: { profile: CourseProfi
 
         {/* Encadrés montées majeures */}
         {majorClimbs.map((climb, i) => {
-          const x1 = xFromDist(climb.start_km)
-          const x2 = xFromDist(climb.end_km)
+          const x1 = padL + (climb.start_km / maxDist) * chartW
+          const x2 = padL + (climb.end_km / maxDist) * chartW
+          const climbWidth = x2 - x1
           const color = CLIMB_CAT_COLORS[climb.categorie] ?? '#f97316'
-          const labelW = Math.min(x2 - x1 - 4, 160)
+          const labelText = `${CLIMB_CAT_LABELS[climb.categorie]} · ${climb.distance_km}km · ${climb.pente_moyenne_pct}%`
+          const labelWidth = labelText.length * 4.5 + 12
+          const labelFits = climbWidth > labelWidth
           return (
             <g key={`mc-${i}`}>
-              <rect x={x1} y={padT} width={x2 - x1} height={chartH} fill={color} opacity="0.09" />
-              <line x1={x1} y1={padT} x2={x1} y2={padT + chartH} stroke={color} strokeWidth="1" strokeDasharray="3,2" opacity="0.7" />
-              <line x1={x2} y1={padT} x2={x2} y2={padT + chartH} stroke={color} strokeWidth="1" strokeDasharray="3,2" opacity="0.7" />
-              {labelW > 30 && (
-                <>
-                  <rect x={x1 + 2} y={padT - 2} width={labelW} height={15} rx={3} fill={color} opacity="0.9" />
-                  <text x={x1 + 6} y={padT + 9} fontSize="7" fill="#fff" fontWeight="700" fontFamily="DM Mono,monospace">
-                    {CLIMB_CAT_LABELS[climb.categorie]} · {climb.distance_km}km · {climb.pente_moyenne_pct}% · {climb.altitude_max}m
-                  </text>
-                </>
-              )}
+              <rect x={x1} y={padT} width={climbWidth} height={chartH} fill={color} opacity="0.07" />
+              <line x1={x1} y1={padT} x2={x1} y2={padT + chartH} stroke={color} strokeWidth="1" strokeDasharray="3,2" opacity="0.5" />
+              <line x1={x2} y1={padT} x2={x2} y2={padT + chartH} stroke={color} strokeWidth="1" strokeDasharray="3,2" opacity="0.5" />
+              <rect
+                x={labelFits ? x1 + 2 : x1}
+                y={2}
+                width={Math.min(labelWidth, 160)}
+                height={14}
+                rx={3}
+                fill={color}
+                opacity="0.85"
+              />
+              <text
+                x={(labelFits ? x1 + 2 : x1) + 5}
+                y={12}
+                fontSize="7"
+                fill="#fff"
+                fontWeight="700"
+                fontFamily="DM Mono, monospace"
+              >
+                {labelText}
+              </text>
             </g>
           )
         })}

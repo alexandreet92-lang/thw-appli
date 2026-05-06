@@ -15,6 +15,11 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
 
+// ── Colonnes activities — source de vérité unique ──────────────
+/** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
+const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts'
+const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams'
+
 // ── Types ──────────────────────────────────────────────────────
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
@@ -3623,7 +3628,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', selectedAct.sport_type).eq('is_current', true).maybeSingle(),
         Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', threeDaysBefore.toISOString().split('T')[0]).lte('date', actDate)).catch(() => ({ data: [] })),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).gte('date', dayBefore.toISOString().split('T')[0]).lte('date', dayAfter.toISOString().split('T')[0]).eq('sport', selectedAct.sport_type).maybeSingle(),
-        sb.from('activities').select('started_at,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling').eq('sport_type', selectedAct.sport_type).gte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 0.7)).lte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 1.3)).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('sport_type', selectedAct.sport_type).gte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 0.7)).lte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 1.3)).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
       ])
 
       // HRV baseline 28d
@@ -4843,7 +4848,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('is_current', true).maybeSingle(),
         Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', d3before).lte('date', actDate)).catch(() => ({ data: null })),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).eq('sport', mainAct.sport_type).eq('week_start', weekStartDate).maybeSingle(),
-        sb.from('activities').select('id,started_at,moving_time_s,average_heartrate,avg_watts,tss').eq('sport_type', mainAct.sport_type)
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('sport_type', mainAct.sport_type)
           .gte('moving_time_s', Math.round((mainAct.moving_time_s ?? 3600) * 0.7))
           .lte('moving_time_s', Math.round((mainAct.moving_time_s ?? 3600) * 1.3))
           .not('id', 'in', `(${selected.map(s => s.id).join(',')})`)
@@ -4966,7 +4971,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) return null
 
-      const actSel = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts'
+      const actSel = ACTIVITIES_SELECT
 
       const [activitiesRes, racesRes, zonesRes, profileRes] = await Promise.all([
         Promise.resolve(
@@ -6982,7 +6987,7 @@ function TrainingPlanFlow({
       const [profil, zones, activities, events, health] = await Promise.all([
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).single().then(r => r.data ?? null),
         sb.from('athlete_zones').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single().then(r => r.data ?? null),
-        sb.from('activities').select('id,sport,date,duration,distance,load').eq('user_id', user.id).gte('date', cutoff).order('date', { ascending: false }).limit(50).then(r => r.data ?? []),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id).gte('started_at', cutoff).order('started_at', { ascending: false }).limit(50).then(r => r.data ?? []),
         sb.from('calendar_events').select('*').eq('user_id', user.id).gte('date', today).limit(20).then(r => r.data ?? []),
         sb.from('metrics_daily').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(14).then(r => r.data ?? []),
       ])
@@ -11283,10 +11288,10 @@ async function enrichedAnalyserSemaine(
   since4weeks.setDate(since4weeks.getDate() - 28)
 
   const [activitiesRes, plannedRes, metricsRes, past4wActivitiesRes, past4wPlannedRes, upcomingRacesRes] = await Promise.all([
-    sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor').eq('user_id', userId).gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString()).order('started_at', { ascending: true }),
+    sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('id,sport,title,duration_min,tss,intensite,heure,type_seance,status,day_index').eq('user_id', userId).gte('week_start', weekStart.toISOString().split('T')[0]).lte('week_start', weekEnd.toISOString().split('T')[0]),
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).lte('date', weekEnd.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
-    sb.from('activities').select('sport_type,started_at,moving_time_s,tss,intensity_factor,avg_hr,avg_watts,avg_pace_s_km').eq('user_id', userId).gte('started_at', since4weeks.toISOString()).lt('started_at', weekStart.toISOString()).order('started_at', { ascending: true }),
+    sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since4weeks.toISOString()).lt('started_at', weekStart.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('sport,duration_min,intensite,type_seance,status,day_index,week_start').eq('user_id', userId).gte('week_start', since4weeks.toISOString().split('T')[0]).lt('week_start', weekStart.toISOString().split('T')[0]).order('week_start', { ascending: true }),
     sb.from('planned_races').select('name,sport,date,level,goal_time').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).order('date', { ascending: true }).limit(3),
   ])
@@ -11420,7 +11425,7 @@ async function enrichedAnalyserRecuperation(
 
   const [metrics28dRes, activities28dRes, next48hRes] = await Promise.all([
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since28d.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
-    sb.from('activities').select('sport_type,started_at,moving_time_s,tss,avg_hr,intensity_factor').eq('user_id', userId).gte('started_at', since28d.toISOString()).order('started_at', { ascending: true }),
+    sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since28d.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('date,sport,title,duration_min,intensite,tss').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]).lte('date', in2days.toISOString().split('T')[0]).order('date', { ascending: true }),
   ])
 
@@ -11530,7 +11535,7 @@ async function enrichedConseilsSommeil(
 
   const [metrics60dRes, activities60dRes, profileRes] = await Promise.all([
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
-    sb.from('activities').select('sport_type,started_at,moving_time_s,tss,raw_data,intensity_factor').eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
+    sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
     sb.from('user_profiles').select('sports,main_goal,age,weight_kg').eq('user_id', userId).maybeSingle(),
   ])
 
@@ -12408,7 +12413,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
         safeGate(sb.from('training_zones').select('id,created_at,ftp_watts,lthr,vma_ms,threshold_pace_s_km').eq('user_id', user.id).in('sport', sportVariantsGate).order('created_at', { ascending: false }), []),
         // test_results peut ne pas exister (404) — retourner [] directement
         Promise.resolve({ data: [] as never[] }),
-        safeGate(sb.from('activities').select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race').eq('user_id', user.id).in('sport_type', sportVariantsGate).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(50), []),
+        safeGate(sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id).in('sport_type', sportVariantsGate).gte('started_at', since3months.toISOString()).order('started_at', { ascending: false }).limit(50), []),
         safeGate(sb.from('athlete_performance_profile').select('ftp,lthr,vma,css,vo2max,weight_kg').eq('user_id', user.id).maybeSingle(), null),
       ])
 
@@ -12918,7 +12923,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
         try { const r = await p; return { data: r.error ? fb : (r.data ?? fb) } } catch { return { data: fb } }
       }
       const [activitiesRes, testsRes, zonesHistoryRes, profileRes] = await Promise.all([
-        safeProgQ(sb.from('activities').select('id,sport_type,started_at,distance_m,moving_time_s,avg_hr,max_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race').eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString()).order('started_at', { ascending: true }), [] as never[]),
+        safeProgQ(sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString()).order('started_at', { ascending: true }), [] as never[]),
         // test_results peut ne pas exister (404) → [] directement
         Promise.resolve({ data: [] as never[] }),
         safeProgQ(sb.from('training_zones').select('ftp_watts,lthr,vma_ms,threshold_pace_s_km,created_at,sport').eq('user_id', user.id).in('sport', selectedSports).order('created_at', { ascending: true }), [] as never[]),
@@ -14155,8 +14160,8 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
             : [raceSport]
 
       const since12m = new Date(Date.now() - 365 * 86400000).toISOString()
-      // Colonnes confirmées existantes dans activities (noms réels utilisés partout dans le code)
-      const safeActSel = 'id,title,sport_type,started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race'
+      // Colonnes confirmées existantes dans activities (source de vérité : ACTIVITIES_SELECT)
+      const safeActSel = ACTIVITIES_SELECT
       const sportFilter = sportVariants.length > 0 ? sportVariants : [raceSport]
 
       // Chaque requête vérifiée individuellement — erreur HTTP retournée dans .error, pas throwée
@@ -14236,8 +14241,8 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
       const since180d = new Date(now); since180d.setDate(now.getDate() - 180)
 
-      // Colonnes confirmées existantes dans activities (noms réels du DB)
-      const safeActSelect = 'id,title,sport_type,started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,intensity_factor,aerobic_decoupling,avg_cadence,is_race'
+      // Colonnes confirmées existantes dans activities (source de vérité : ACTIVITIES_SELECT)
+      const safeActSelect = ACTIVITIES_SELECT
       const zoneFilter = zonesSportVariants.length > 0 ? zonesSportVariants : [zonesSport]
       const actFilter = sportVariants.length > 0 ? sportVariants : [raceSport]
 
@@ -14258,7 +14263,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
         safeQ(sb.from('activities').select(safeActSelect).in('sport_type', actFilter)
           .eq('is_race', true).order('started_at', { ascending: false }).limit(50), [] as never[]),
         safeQ(sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(), null),
-        safeQ(sb.from('activities').select('id,title,sport_type,started_at,moving_time_s,distance_m,avg_watts,tss')
+        safeQ(sb.from('activities').select(ACTIVITIES_SELECT)
           .in('sport_type', actFilter).not('avg_watts', 'is', null)
           .gte('started_at', since180d.toISOString()).order('avg_watts', { ascending: false }).limit(10), [] as never[]),
       ])

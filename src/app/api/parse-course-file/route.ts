@@ -242,7 +242,7 @@ function mergeConsecutiveSegments(segments: Segment[]): Segment[] {
 
 // ── Catégorisation des montées ────────────────────────────────────────────
 function classifyClimb(distKm: number, penteMoy: number, denivele: number): 'HC' | '1' | '2' | '3' | '4' | null {
-  if (distKm < 1 || penteMoy < 3 || denivele < 80) return null
+  if (distKm < 1 || penteMoy < 2.5 || denivele < 80) return null
   const score = distKm * penteMoy * penteMoy
   if (score > 800 || denivele > 1000 || (distKm > 15 && penteMoy > 7)) return 'HC'
   if (score > 400 || denivele > 600 || (distKm > 10 && penteMoy > 6)) return '1'
@@ -252,97 +252,107 @@ function classifyClimb(distKm: number, penteMoy: number, denivele: number): 'HC'
   return null
 }
 
+// ── Détection des montées : accumulation D+ avec seuil de rupture ─────────
 function identifyMajorClimbs(points: TrackPoint[]): MajorClimb[] {
-  if (points.length < 50) return []
+  if (points.length < 100) return []
 
-  // 1. Lisser l'altitude avec une large fenêtre pour ignorer les petites variations
-  const winSize = Math.min(80, Math.floor(points.length / 15))
-  const smoothed: number[] = points.map((_, i) => {
-    const from = Math.max(0, i - winSize)
-    const to = Math.min(points.length, i + winSize + 1)
-    let sum = 0
-    for (let j = from; j < to; j++) sum += points[j].ele
-    return sum / (to - from)
+  // Lissage léger (fenêtre 20 pts) — retire le bruit GPS sans écraser les cols
+  const sm: number[] = points.map((_, i) => {
+    const from = Math.max(0, i - 10)
+    const to = Math.min(points.length, i + 11)
+    let s = 0
+    for (let j = from; j < to; j++) s += points[j].ele
+    return s / (to - from)
   })
 
-  // 2. Détecter les vallées et sommets par inversion de tendance (seuil 30m)
-  const threshold = 30
-  const extrema: Array<{ idx: number; type: 'valley' | 'peak' }> = []
+  // Seuil de descente pour considérer qu'une montée est terminée
+  const totalDPlus = (() => {
+    let d = 0
+    for (let i = 1; i < sm.length; i++) if (sm[i] > sm[i - 1]) d += sm[i] - sm[i - 1]
+    return d
+  })()
+  const dropThreshold = totalDPlus > 2000 ? 80 : totalDPlus > 1000 ? 60 : 40
 
-  let trend: 'up' | 'down' = 'up'
-  let extremeIdx = 0
-  let extremeVal = smoothed[0]
-
-  for (let i = 1; i < smoothed.length; i++) {
-    if (trend === 'up') {
-      if (smoothed[i] > extremeVal) {
-        extremeVal = smoothed[i]
-        extremeIdx = i
-      } else if (extremeVal - smoothed[i] > threshold) {
-        extrema.push({ idx: extremeIdx, type: 'peak' })
-        trend = 'down'
-        extremeVal = smoothed[i]
-        extremeIdx = i
-      }
-    } else {
-      if (smoothed[i] < extremeVal) {
-        extremeVal = smoothed[i]
-        extremeIdx = i
-      } else if (smoothed[i] - extremeVal > threshold) {
-        extrema.push({ idx: extremeIdx, type: 'valley' })
-        trend = 'up'
-        extremeVal = smoothed[i]
-        extremeIdx = i
-      }
-    }
-  }
-
-  // 3. Construire les montées : chaque paire vallée → sommet = une ascension
   const climbs: MajorClimb[] = []
 
-  for (let i = 0; i < extrema.length - 1; i++) {
-    if (extrema[i].type !== 'valley' || extrema[i + 1].type !== 'peak') continue
+  let climbStartIdx: number | null = null
+  let highPointIdx = 0
+  let highPointEle = sm[0]
+  let lowPointEle = sm[0]
+  let lowPointIdx = 0
 
-    const valleyIdx = extrema[i].idx
-    const peakIdx = extrema[i + 1].idx
+  for (let i = 1; i < sm.length; i++) {
+    const ele = sm[i]
 
-    const startKm = points[valleyIdx].dist_km
-    const endKm = points[peakIdx].dist_km
-    const distKm = endKm - startKm
-    const realStartEle = points[valleyIdx].ele
-    const realPeakEle = points[peakIdx].ele
-    const denivele = realPeakEle - realStartEle
-
-    if (distKm < 0.5 || denivele < 50) continue
-
-    const penteMoy = (denivele / (distKm * 1000)) * 100
-
-    // Pente max sur fenêtres de ~500m
-    let penteMax = 0
-    for (let j = valleyIdx; j < peakIdx; j++) {
-      let k = j + 1
-      while (k < peakIdx && (points[k].dist_km - points[j].dist_km) < 0.5) k++
-      if (k <= peakIdx) {
-        const d = (points[k].dist_km - points[j].dist_km) * 1000
-        if (d > 100) {
-          const p = ((points[k].ele - points[j].ele) / d) * 100
-          if (p > penteMax) penteMax = p
-        }
-      }
+    if (ele > highPointEle) {
+      highPointEle = ele
+      highPointIdx = i
     }
 
-    const cat = classifyClimb(distKm, penteMoy, denivele)
-    if (cat) {
-      climbs.push({
-        start_km: Math.round(startKm * 10) / 10,
-        end_km: Math.round(endKm * 10) / 10,
-        distance_km: Math.round(distKm * 10) / 10,
-        denivele: Math.round(denivele),
-        pente_moyenne_pct: Math.round(penteMoy * 10) / 10,
-        pente_max_pct: Math.round(penteMax * 10) / 10,
-        altitude_max: Math.round(realPeakEle),
-        categorie: cat,
-      })
+    const dropFromHigh = highPointEle - ele
+
+    if (climbStartIdx === null) {
+      // Cherche le début d'une montée
+      if (ele < lowPointEle) {
+        lowPointEle = ele
+        lowPointIdx = i
+      }
+      // Début de montée : on a monté de plus de 50m depuis le point bas
+      if (ele - lowPointEle > 50) {
+        climbStartIdx = lowPointIdx
+        highPointEle = ele
+        highPointIdx = i
+      }
+    } else {
+      // En cours de montée — la montée se termine si on redescend de plus de dropThreshold
+      if (dropFromHigh > dropThreshold || i === sm.length - 1) {
+        const endIdx = i === sm.length - 1 ? Math.max(highPointIdx, i) : highPointIdx
+        const startDist = points[climbStartIdx].dist_km
+        const endDist = points[endIdx].dist_km
+        const distKm = endDist - startDist
+        const startEle = points[climbStartIdx].ele
+        const peakEle = points[endIdx].ele
+        const denivele = peakEle - startEle
+
+        if (distKm >= 1.0 && denivele >= 80) {
+          const penteMoy = (denivele / (distKm * 1000)) * 100
+
+          // Pente max sur fenêtres de 500m
+          let penteMax = 0
+          for (let j = climbStartIdx; j < endIdx; j++) {
+            let k = j + 1
+            while (k < endIdx && (points[k].dist_km - points[j].dist_km) < 0.5) k++
+            if (k <= endIdx && k < points.length) {
+              const d = (points[k].dist_km - points[j].dist_km) * 1000
+              if (d > 100) {
+                const p = ((points[k].ele - points[j].ele) / d) * 100
+                if (p > penteMax) penteMax = p
+              }
+            }
+          }
+
+          const cat = classifyClimb(distKm, penteMoy, denivele)
+          if (cat) {
+            climbs.push({
+              start_km: Math.round(startDist * 10) / 10,
+              end_km: Math.round(endDist * 10) / 10,
+              distance_km: Math.round(distKm * 10) / 10,
+              denivele: Math.round(denivele),
+              pente_moyenne_pct: Math.round(penteMoy * 10) / 10,
+              pente_max_pct: Math.round(penteMax * 10) / 10,
+              altitude_max: Math.round(peakEle),
+              categorie: cat,
+            })
+          }
+        }
+
+        // Reset pour chercher la prochaine montée
+        climbStartIdx = null
+        lowPointEle = ele
+        lowPointIdx = i
+        highPointEle = ele
+        highPointIdx = i
+      }
     }
   }
 

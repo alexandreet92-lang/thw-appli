@@ -12803,18 +12803,18 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
 
 type ProgressionActivity = {
   id: string
+  title: string | null
   sport_type: string
   started_at: string
   distance_m: number | null
   moving_time_s: number | null
-  avg_hr: number | null
-  max_hr: number | null
+  average_heartrate: number | null
+  max_heartrate: number | null
+  average_speed: number | null
   avg_watts: number | null
-  avg_pace_s_km: number | null
-  tss: number | null
-  intensity_factor: number | null
-  aerobic_decoupling: number | null
   avg_cadence: number | null
+  cardiac_drift_pct: number | null
+  tss: number | null
   is_race: boolean | null
 }
 
@@ -12930,7 +12930,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
         safeProgQ(sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(), null),
       ])
 
-      const activities = (activitiesRes.data ?? []) as ProgressionActivity[]
+      const activities = (activitiesRes.data ?? []) as unknown as ProgressionActivity[]
       const tssDensity = monthlyTssDensity(activities)
 
       const systemPrompt = `Tu es un expert en analyse de progression sportive. Détecte les progressions VISIBLES et INVISIBLES.

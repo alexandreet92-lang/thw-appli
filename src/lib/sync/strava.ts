@@ -206,15 +206,18 @@ export async function syncStravaActivities(userId: string): Promise<number> {
     return 0
   }
 
-  // ── Upsert des activités (sans streams) ───────────────────────
+  // ── Upsert en batches de 200 pour éviter le timeout Supabase ─────
   const rows = all.map(a => toRow(a, userId))
-
-  const { error } = await supabase
-    .from('activities')
-    .upsert(rows, { onConflict: 'user_id,provider,provider_id' })
-
-  if (error) throw new Error(`Supabase upsert error: ${error.message}`)
-  console.log(`[strava-sync] ${all.length} activités insérées/mises à jour`)
+  const BATCH = 200
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const chunk = rows.slice(i, i + BATCH)
+    const { error } = await supabase
+      .from('activities')
+      .upsert(chunk, { onConflict: 'user_id,provider,provider_id' })
+    if (error) throw new Error(`Supabase upsert error (batch ${i / BATCH + 1}): ${error.message}`)
+    console.log(`[strava-sync] Batch ${i / BATCH + 1}: ${chunk.length} activités upsertées`)
+  }
+  console.log(`[strava-sync] ${all.length} activités insérées/mises à jour au total`)
 
   // ── Récupérer les streams pour les activités récentes + courses ─
   const since90d = new Date(Date.now() - 90 * 86_400_000).toISOString()

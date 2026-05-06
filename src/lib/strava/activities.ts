@@ -111,11 +111,14 @@ export async function syncStravaActivities(userId: string): Promise<number> {
     streams:           null, // fetched on-demand
   }))
 
-  const { error } = await supabase
-    .from('activities')
-    .upsert(rows, { onConflict: 'user_id,provider,provider_id' })
-
-  if (error) throw new Error(error.message)
+  const BATCH = 200
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const chunk = rows.slice(i, i + BATCH)
+    const { error } = await supabase
+      .from('activities')
+      .upsert(chunk, { onConflict: 'user_id,provider,provider_id' })
+    if (error) throw new Error(error.message)
+  }
   return all.length
 }
 

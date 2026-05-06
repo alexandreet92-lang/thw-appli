@@ -1338,11 +1338,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             .gte('started_at', since1y)
             .order('started_at', { ascending: false })
             .limit(150),
-          sb.from('test_results')
-            .select('id,date,valeurs,notes,test_definitions(nom,sport)')
-            .eq('user_id', user.id)
-            .order('date', { ascending: false })
-            .limit(50),
+          Promise.resolve({ data: [], error: null }),
           sb.from('planned_races')
             .select('name,sport,date,level,goal_time')
             .eq('user_id', user.id)
@@ -2951,7 +2947,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         if (!user) { setError('Non connecté'); return }
 
         const [testsRes, zonesRes, profileRes] = await Promise.all([
-          sb.from('test_results').select('id,test_definition_id,test_definitions(sport)').eq('user_id', user.id),
+          Promise.resolve({ data: [], error: null }),
           sb.from('training_zones').select('sport').eq('user_id', user.id).eq('is_current', true),
           sb.from('athlete_performance_profile').select('id').eq('user_id', user.id).maybeSingle(),
         ])
@@ -2989,10 +2985,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
       if (!defs?.length) { setTests([]); setPhase('select'); return }
 
       const defIds = defs.map((d: { id: string }) => d.id)
-      const { data: results } = await sb.from('test_results')
-        .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
-        .in('test_definition_id', defIds).eq('user_id', user.id)
-        .order('date', { ascending: false }).limit(20)
+      const { data: results } = await Promise.resolve({ data: [], error: null })
 
       const rows = (results as unknown as TestRow[]) ?? []
 
@@ -5954,7 +5947,7 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
         sb.from('personal_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('sport', 'swim'),
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
         sb.from('year_data_manual').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        sb.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        Promise.resolve({ data: [], error: null, count: 0 }),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d3m),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d6m),
         sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('started_at', d12m),
@@ -11084,7 +11077,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
         const [profileRes, zonesRes, testsRes, planRes, racesRes, actsRes, metricsRes, rulesRes] = await Promise.all([
           sb.from('user_profiles').select('first_name,sports,main_goal').eq('user_id', user.id).maybeSingle(),
           sb.from('training_zones').select('id,sport').eq('user_id', user.id).eq('is_current', true),
-          sb.from('test_results').select('id').eq('user_id', user.id),
+          Promise.resolve({ data: [], error: null }),
           sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
           sb.from('planned_races').select('id').eq('user_id', user.id).gte('date', today),
           sb.from('activities').select('id').eq('user_id', user.id).gte('started_at', since30d + 'T00:00:00'),
@@ -11333,7 +11326,7 @@ async function enrichedComprendreApp(
   const [profileRes, zonesRes, testsRes, planNutritionRes, racesRes, activitiesCountRes, metricsCountRes, rulesCountRes] = await Promise.all([
     sb.from('user_profiles').select('first_name,sports,main_goal,age').eq('user_id', userId).maybeSingle(),
     sb.from('training_zones').select('id,sport').eq('user_id', userId).eq('is_current', true),
-    sb.from('test_results').select('id').eq('user_id', userId),
+    Promise.resolve({ data: [], error: null }),
     sb.from('nutrition_plans').select('id').eq('user_id', userId).eq('actif', true).maybeSingle(),
     sb.from('planned_races').select('id,name,sport,date').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]),
     sb.from('activities').select('id').eq('user_id', userId).gte('started_at', since30d.toISOString()),
@@ -13571,8 +13564,8 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       const [zones, profile, tests, activities, races] = await Promise.all([
         safeQuery(sb.from('training_zones').select('*').eq('user_id', user.id).in('sport', sportFilter).eq('is_current', true).limit(1)),
         safeQuerySingle(sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()),
-        // test_results sans join (le join test_definitions peut être absent du schema cache)
-        safeQuery(sb.from('test_results').select('id,date,valeurs,notes').eq('user_id', user.id).order('date', { ascending: false }).limit(10)),
+        // test_results table absente → []
+        Promise.resolve([] as never[]),
         safeQuery(sb.from('activities').select(safeActSel).eq('user_id', user.id).in('sport_type', sportFilter).gte('started_at', since12m).order('started_at', { ascending: false }).limit(50)),
         safeQuery(sb.from('activities').select(safeActSel).eq('user_id', user.id).in('sport_type', sportFilter).eq('is_race', true).order('started_at', { ascending: false }).limit(50)),
       ])
@@ -13643,8 +13636,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       const [zonesRes, testsRes, recentActsRes, metrics14dRes, pastRacesRes, profileRes, bestPowerRes] = await Promise.all([
         safeQ(sb.from('training_zones').select('*').eq('user_id', user.id).in('sport', zoneFilter).eq('is_current', true).limit(1)
           .then(r => ({ data: r.data?.[0] ?? null, error: r.error })), null),
-        safeQ(sb.from('test_results').select('id,date,valeurs,notes').eq('user_id', user.id)
-          .gte('date', since6months.toISOString().split('T')[0]).order('date', { ascending: false }).limit(20), [] as never[]),
+        Promise.resolve({ data: [] as never[] }),
         safeQ(sb.from('activities').select(safeActSelect).in('sport_type', actFilter)
           .gte('started_at', since12months.toISOString()).order('started_at', { ascending: false }).limit(50), [] as never[]),
         safeQ(sb.from('metrics_daily').select('*').eq('user_id', user.id)

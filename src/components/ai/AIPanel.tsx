@@ -13269,7 +13269,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   const allClimbs = useMemo((): ClimbWithFlag[] => {
     if (!courseProfile) return []
     const auto: ClimbWithFlag[] = (courseProfile.major_climbs ?? []).map(c => ({ ...c, isManual: false }))
-    const manual: ClimbWithFlag[] = manualClimbs
+    const manual = manualClimbs
       .map(mc => {
         const ep = courseProfile.elevation_profile
         if (ep.length < 2) return null

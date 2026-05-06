@@ -13507,35 +13507,52 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
             : [raceSport]
 
       const since12m = new Date(Date.now() - 365 * 86400000).toISOString()
+      const safeActivitiesSelect = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,avg_watts,avg_cadence,intensity_factor,cardiac_drift_pct,is_race,average_speed'
 
       const [zonesRes, profileRes, testsRes, bestActsRes, racesRes] = await Promise.all([
-        sb.from('training_zones').select('*').eq('user_id', user.id)
-          .in('sport', sportVariants).eq('is_current', true).limit(1),
-        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
-        sb.from('test_results')
-          .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
-          .eq('user_id', user.id).order('date', { ascending: false }).limit(10),
-        sb.from('activities')
-          .select('started_at,moving_time_s,distance_m,avg_watts,max_watts,normalized_watts,average_heartrate,tss,title,sport_type')
-          .eq('user_id', user.id).in('sport_type', sportVariants)
-          .gte('started_at', since12m)
-          .order('started_at', { ascending: false }).limit(50),
-        sb.from('activities')
-          .select('started_at,distance_m,moving_time_s,avg_watts,normalized_watts,average_heartrate,max_heartrate,average_speed,avg_pace_s_km,tss,title,sport_type,cardiac_drift_pct')
-          .eq('user_id', user.id).in('sport_type', sportVariants)
-          .eq('is_race', true)
-          .order('started_at', { ascending: false }).limit(50),
+        Promise.resolve(
+          sb.from('training_zones').select('*').eq('user_id', user.id)
+            .in('sport', sportVariants).eq('is_current', true).limit(1)
+        ).catch(() => ({ data: [] as never[] })),
+        Promise.resolve(
+          sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()
+        ).catch(() => ({ data: null })),
+        Promise.resolve(
+          sb.from('test_results')
+            .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
+            .eq('user_id', user.id).order('date', { ascending: false }).limit(10)
+        ).catch(() => ({ data: [] as never[] })),
+        Promise.resolve(
+          sb.from('activities').select(safeActivitiesSelect)
+            .eq('user_id', user.id).in('sport_type', sportVariants)
+            .gte('started_at', since12m)
+            .order('started_at', { ascending: false }).limit(50)
+        ).catch(() => ({ data: [] as never[] })),
+        Promise.resolve(
+          sb.from('activities').select(safeActivitiesSelect)
+            .eq('user_id', user.id).in('sport_type', sportVariants)
+            .eq('is_race', true)
+            .order('started_at', { ascending: false }).limit(50)
+        ).catch(() => ({ data: [] as never[] })),
       ])
 
       setAthletePreview({
-        zones: zonesRes.data?.[0] ?? null,
+        zones: (zonesRes.data as never[] | null)?.[0] ?? null,
         profile: profileRes.data,
-        tests: testsRes.data ?? [],
-        bestActivities: bestActsRes.data ?? [],
-        races: racesRes.data ?? [],
+        tests: (testsRes.data ?? []) as never[],
+        bestActivities: (bestActsRes.data ?? []) as never[],
+        races: (racesRes.data ?? []) as never[],
       })
     } catch { /* silencieux */ }
   }
+
+  // Déclenche le préchargement côté client uniquement (évite SSR 418)
+  useEffect(() => {
+    if (phase === 'questions' && !athletePreview) {
+      void preloadAthleteData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
 
   function getSportVariants(sport: string): string[] {
     const s = sport.toLowerCase()
@@ -13571,44 +13588,52 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
       const since180d = new Date(now); since180d.setDate(now.getDate() - 180)
 
+      const safeActSelect = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,avg_watts,avg_cadence,intensity_factor,cardiac_drift_pct,is_race,average_speed'
+
       const activitiesQuery = sb.from('activities')
-        .select('started_at,moving_time_s,distance_m,avg_hr,avg_watts,avg_pace_s_km,tss,is_race,sport_type')
+        .select(safeActSelect)
         .in('sport_type', sportVariants)
         .gte('started_at', since12months.toISOString())
         .order('started_at', { ascending: false }).limit(50)
 
       const pastRacesQuery = sb.from('activities')
-        .select('started_at,distance_m,moving_time_s,avg_hr,avg_watts,avg_pace_s_km,tss,sport_type,title,average_heartrate,cardiac_drift_pct')
+        .select(safeActSelect)
         .in('sport_type', sportVariants)
         .eq('is_race', true)
         .order('started_at', { ascending: false }).limit(50)
 
       const bestPowerQuery = sb.from('activities')
-        .select('started_at,moving_time_s,distance_m,avg_watts,max_watts,normalized_watts,tss,title,sport_type')
+        .select('id,title,sport_type,started_at,moving_time_s,distance_m,avg_watts,tss')
         .in('sport_type', sportVariants)
         .not('avg_watts', 'is', null)
         .gte('started_at', since180d.toISOString())
         .order('avg_watts', { ascending: false }).limit(10)
 
       const [zonesRes, testsRes, recentActsRes, metrics14dRes, pastRacesRes, profileRes, bestPowerRes] = await Promise.all([
-        sb.from('training_zones').select('*').eq('user_id', user.id)
-          .in('sport', zonesSportVariants).eq('is_current', true)
-          .limit(1).then(r => ({ data: r.data?.[0] ?? null, error: r.error })),
-        sb.from('test_results')
-          .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
-          .eq('user_id', user.id)
-          .gte('date', since6months.toISOString().split('T')[0])
-          .order('date', { ascending: false }).limit(20),
-        activitiesQuery,
+        Promise.resolve(
+          sb.from('training_zones').select('*').eq('user_id', user.id)
+            .in('sport', zonesSportVariants).eq('is_current', true).limit(1)
+        ).then(r => ({ data: r.data?.[0] ?? null, error: r.error }))
+          .catch(() => ({ data: null, error: null })),
+        Promise.resolve(
+          sb.from('test_results')
+            .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
+            .eq('user_id', user.id)
+            .gte('date', since6months.toISOString().split('T')[0])
+            .order('date', { ascending: false }).limit(20)
+        ).catch(() => ({ data: [] as never[], error: null })),
+        Promise.resolve(activitiesQuery).catch(() => ({ data: [] as never[], error: null })),
         Promise.resolve(
           sb.from('metrics_daily').select('*').eq('user_id', user.id)
             .gte('date', since14d.toISOString().split('T')[0])
             .order('date', { ascending: false })
         ).then(r => ({ data: r.data ?? [], error: r.error }))
           .catch(() => ({ data: [] as never[], error: null })),
-        pastRacesQuery,
-        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
-        bestPowerQuery,
+        Promise.resolve(pastRacesQuery).catch(() => ({ data: [] as never[], error: null })),
+        Promise.resolve(
+          sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()
+        ).catch(() => ({ data: null, error: null })),
+        Promise.resolve(bestPowerQuery).catch(() => ({ data: [] as never[], error: null })),
       ])
 
       type MetricRow = { date: string; hrv: number | null; readiness: number | null; atl: number | null; ctl: number | null; tsb: number | null; fatigue: number | null }
@@ -13721,7 +13746,7 @@ TSB PROJETÉ JOUR J : ${contextData.tsbProjecte ?? 'non disponible'} (${contextD
 COMPÉTITIONS PASSÉES (historique complet) :
 ${(contextData.pastRaces ?? []).length > 0
   ? contextData.pastRaces.map((r: Record<string, unknown>) =>
-      `- ${String(r.title ?? r.sport_type ?? '')} (${String(r.started_at ?? '').slice(0, 10)}) : ${r.distance_m != null ? (Number(r.distance_m) / 1000).toFixed(1) + 'km' : 'N/A'} · ${r.moving_time_s != null ? Math.floor(Number(r.moving_time_s) / 60) + 'min' : 'N/A'} · FC moy ${r.average_heartrate ?? r.avg_hr ?? 'N/A'}bpm${r.avg_watts != null ? ' · ' + String(r.avg_watts) + 'W' : ''}${r.avg_pace_s_km != null ? ' · ' + Math.floor(Number(r.avg_pace_s_km) / 60) + ':' + String(Math.round(Number(r.avg_pace_s_km) % 60)).padStart(2, '0') + '/km' : ''}`
+      `- ${String(r.title ?? r.sport_type ?? '')} (${String(r.started_at ?? '').slice(0, 10)}) : ${r.distance_m != null ? (Number(r.distance_m) / 1000).toFixed(1) + 'km' : 'N/A'} · ${r.moving_time_s != null ? Math.floor(Number(r.moving_time_s) / 3600) + 'h' + String(Math.floor((Number(r.moving_time_s) % 3600) / 60)).padStart(2, '0') : 'N/A'} · FC moy ${r.average_heartrate ?? 'N/A'}bpm${r.avg_watts != null ? ' · ' + String(r.avg_watts) + 'W' : ''}`
     ).join('\n')
   : 'Aucune compétition enregistrée'}
 PROFIL PHYSIOLOGIQUE : ${JSON.stringify(contextData.profile)}

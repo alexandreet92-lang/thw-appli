@@ -11813,7 +11813,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
         activitiesCount: activitiesRes.data?.length ?? 0,
         testsCount: testsRes.data?.length ?? 0,
         currentZonesDate,
-        activities: (activitiesRes.data ?? []) as ActivityRowZones[],
+        activities: (activitiesRes.data ?? []) as unknown as ActivityRowZones[],
         tests: testsRes.data ?? [],
         currentZones: currentZonesRes.data,
         zonesHistory: zonesHistoryRes.data ?? [],

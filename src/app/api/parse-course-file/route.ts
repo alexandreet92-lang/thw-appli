@@ -276,9 +276,9 @@ function identifyMajorClimbs(points: TrackPoint[]): MajorClimb[] {
     }
   }
 
-  const CLIMB_START_SLOPE = 3.0    // pente min pour déclencher une montée
+  const CLIMB_START_SLOPE = 4.0    // pente min pour déclencher une montée
   const DROP_THRESHOLD = 80        // mètres de descente pour clore une montée
-  const MIN_STEEP_DISTANCE = 0.4   // km de pente >3% pour confirmer le début
+  const MIN_STEEP_DISTANCE = 1.0   // km de pente >4% pour confirmer le début
 
   const climbs: MajorClimb[] = []
   let state: 'searching' | 'confirming' | 'climbing' = 'searching'
@@ -299,7 +299,7 @@ function identifyMajorClimbs(points: TrackPoint[]): MajorClimb[] {
 
     } else if (state === 'confirming') {
       // La pente est retombée trop vite — faux départ
-      if (slope < CLIMB_START_SLOPE * 0.5) {
+      if (slope < 2.0) {
         state = 'searching'
       } else if (points[i].dist_km - points[candidateStartIdx].dist_km >= MIN_STEEP_DISTANCE) {
         // Montée confirmée — le début est le point candidat

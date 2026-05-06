@@ -13034,7 +13034,13 @@ function robustJsonParse(raw: string): unknown {
 }
 
 // ── ElevationProfileChart — graphique altimétrique style Strava ────────
-function ElevationProfileChart({ profile, height = 140 }: { profile: CourseProfile; height?: number }) {
+type ClimbWithFlag = CourseProfile['major_climbs'][0] & { isManual?: boolean }
+
+function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }: {
+  profile: CourseProfile
+  height?: number
+  climbs?: ClimbWithFlag[]
+}) {
   const [cursorPct, setCursorPct] = useState<number | null>(null)
 
   const ep = profile.elevation_profile
@@ -13081,7 +13087,7 @@ function ElevationProfileChart({ profile, height = 140 }: { profile: CourseProfi
   const eleLabels: number[] = []
   for (let e = Math.ceil(minEle / eleStep) * eleStep; e <= maxEle; e += eleStep) eleLabels.push(e)
 
-  const majorClimbs = profile.major_climbs ?? []
+  const majorClimbs = climbsOverride ?? (profile.major_climbs ?? [])
 
   return (
     <div style={{ position: 'relative', userSelect: 'none' }}>
@@ -13252,6 +13258,54 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   const [uploadingFile, setUploadingFile] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const courseFileRef = useRef<HTMLInputElement>(null)
+
+  // Manual climbs
+  const [manualClimbs, setManualClimbs] = useState<Array<{ start_km: number; end_km: number }>>([])
+  const [showAddClimb, setShowAddClimb] = useState(false)
+  const [newClimbStart, setNewClimbStart] = useState('')
+  const [newClimbEnd, setNewClimbEnd] = useState('')
+
+  // allClimbs = auto-détectées + manuelles, triées par km de début
+  const allClimbs = useMemo((): ClimbWithFlag[] => {
+    if (!courseProfile) return []
+    const auto: ClimbWithFlag[] = (courseProfile.major_climbs ?? []).map(c => ({ ...c, isManual: false }))
+    const manual: ClimbWithFlag[] = manualClimbs
+      .map(mc => {
+        const ep = courseProfile.elevation_profile
+        if (ep.length < 2) return null
+        const startPt = ep.reduce((best, p) => Math.abs(p.dist_km - mc.start_km) < Math.abs(best.dist_km - mc.start_km) ? p : best)
+        const endPt   = ep.reduce((best, p) => Math.abs(p.dist_km - mc.end_km)   < Math.abs(best.dist_km - mc.end_km)   ? p : best)
+        const distKm  = endPt.dist_km - startPt.dist_km
+        const denivele = endPt.ele - startPt.ele
+        if (distKm <= 0 || denivele <= 0) return null
+        const penteMoy = (denivele / (distKm * 1000)) * 100
+        let penteMax = 0
+        const seg = ep.filter(p => p.dist_km >= mc.start_km && p.dist_km <= mc.end_km)
+        for (let i = 0; i < seg.length - 1; i++) {
+          const d = (seg[i + 1].dist_km - seg[i].dist_km) * 1000
+          if (d > 50) { const p = ((seg[i + 1].ele - seg[i].ele) / d) * 100; if (p > penteMax) penteMax = p }
+        }
+        const score = distKm * penteMoy * penteMoy
+        let categorie: 'HC' | '1' | '2' | '3' | '4' = '4'
+        if (score > 800 || denivele > 1000) categorie = 'HC'
+        else if (score > 400 || denivele > 600) categorie = '1'
+        else if (score > 150 || denivele > 400) categorie = '2'
+        else if (score > 50  || denivele > 200) categorie = '3'
+        return {
+          start_km: Math.round(startPt.dist_km * 10) / 10,
+          end_km: Math.round(endPt.dist_km * 10) / 10,
+          distance_km: Math.round(distKm * 10) / 10,
+          denivele: Math.round(denivele),
+          pente_moyenne_pct: Math.round(penteMoy * 10) / 10,
+          pente_max_pct: Math.round(penteMax * 10) / 10,
+          altitude_max: Math.round(endPt.ele),
+          categorie,
+          isManual: true,
+        } satisfies ClimbWithFlag
+      })
+      .filter((c): c is ClimbWithFlag => c !== null)
+    return [...auto, ...manual].sort((a, b) => a.start_km - b.start_km)
+  }, [courseProfile, manualClimbs])
 
   // Context
   const [contextData, setContextData] = useState<{
@@ -13515,7 +13569,7 @@ TRIATHLON — Sous-objectifs :
 PARCOURS IMPORTÉ (${courseProfile.total_distance_km}km · D+ ${courseProfile.total_denivele_pos}m · D- ${courseProfile.total_denivele_neg}m · Alt. ${courseProfile.altitude_min}m → ${courseProfile.altitude_max}m) :
 SEGMENTS DU PARCOURS :
 ${courseProfile.segments.map((s, i) => `  ${i + 1}. ${s.description} (${s.start_km}km → ${s.end_km}km, pente ${s.pente_moyenne_pct}%)`).join('\n')}
-
+${allClimbs.length > 0 ? `\nDIFFICULTÉS MAJEURES${allClimbs.some(c => c.isManual) ? ' (inclut montées ajoutées manuellement)' : ''} :\n${allClimbs.map(c => `  ${c.categorie} · ${c.start_km}-${c.end_km}km · ${c.distance_km}km · ${c.pente_moyenne_pct}% moy · sommet ${c.altitude_max}m`).join('\n')}` : ''}
 IMPORTANT : Ta stratégie par sections DOIT correspondre à ces segments réels. Chaque montée significative doit avoir sa cible de watts/allure spécifique. Les descentes doivent avoir des consignes de récupération.` : ''
 
       const systemPrompt = `Tu es un expert en stratégie de course et performance sportive.
@@ -13821,19 +13875,19 @@ FORMAT JSON STRICT :
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
               Profil du parcours
             </p>
-            <ElevationProfileChart profile={courseProfile} height={140} />
+            <ElevationProfileChart profile={courseProfile} height={140} climbs={allClimbs} />
             <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 8, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
               <span><strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_distance_km}</strong>km</span>
               <span>D+ <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_pos}</strong>m</span>
               <span>D- <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_neg}</strong>m</span>
               <span>Alt. <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_min}</strong>–<strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_max}</strong>m</span>
             </div>
-            {(courseProfile.major_climbs ?? []).length > 0 && (
+            {allClimbs.length > 0 && (
               <div style={{ marginTop: 2, marginBottom: 4 }}>
                 <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
                   Difficultés majeures
                 </p>
-                {(courseProfile.major_climbs ?? []).map((c, i) => (
+                {allClimbs.map((c, i) => (
                   <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{
                       fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
@@ -13845,10 +13899,45 @@ FORMAT JSON STRICT :
                     </span>
                     <span style={{ fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
                     <span>{c.distance_km}km · {c.pente_moyenne_pct}% moy · max {c.pente_max_pct}% · {c.altitude_max}m</span>
+                    {c.isManual && (
+                      <button onClick={() => setManualClimbs(prev => prev.filter(mc =>
+                        !(Math.abs(mc.start_km - c.start_km) < 0.5 && Math.abs(mc.end_km - c.end_km) < 0.5)
+                      ))} style={{ fontSize: 10, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>✕</button>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+            {/* Ajout manuel de montée */}
+            <div style={{ marginTop: 4 }}>
+              {!showAddClimb ? (
+                <button onClick={() => setShowAddClimb(true)} style={{ fontSize: 10, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'DM Sans,sans-serif', textDecoration: 'underline' }}>
+                  + Ajouter une montée manuellement
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '6px 8px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Début km</span>
+                  <input type="number" step="0.1" placeholder="ex: 115" value={newClimbStart} onChange={e => setNewClimbStart(e.target.value)}
+                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Fin km</span>
+                  <input type="number" step="0.1" placeholder="ex: 135" value={newClimbEnd} onChange={e => setNewClimbEnd(e.target.value)}
+                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  <button onClick={() => {
+                    const s = parseFloat(newClimbStart), e = parseFloat(newClimbEnd)
+                    if (!isNaN(s) && !isNaN(e) && e > s) {
+                      setManualClimbs(prev => [...prev, { start_km: s, end_km: e }])
+                      setNewClimbStart(''); setNewClimbEnd(''); setShowAddClimb(false)
+                    }
+                  }} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, border: 'none', background: 'var(--ai-accent)', color: '#000', cursor: 'pointer', fontWeight: 600 }}>
+                    Ajouter
+                  </button>
+                  <button onClick={() => { setShowAddClimb(false); setNewClimbStart(''); setNewClimbEnd('') }}
+                    style={{ padding: '4px 8px', borderRadius: 6, fontSize: 10, border: '1px solid var(--ai-border)', background: 'none', color: 'var(--ai-dim)', cursor: 'pointer' }}>
+                    Annuler
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -14152,19 +14241,19 @@ FORMAT JSON STRICT :
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
             Profil du parcours
           </p>
-          <ElevationProfileChart profile={courseProfile} height={140} />
+          <ElevationProfileChart profile={courseProfile} height={140} climbs={allClimbs} />
           <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 6, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
             <span><strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_distance_km}</strong>km</span>
             <span>D+ <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_pos}</strong>m</span>
             <span>D- <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_neg}</strong>m</span>
             <span>Alt. <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_min}</strong>–<strong style={{ color: 'var(--ai-text)' }}>{courseProfile.altitude_max}</strong>m</span>
           </div>
-          {(courseProfile.major_climbs ?? []).length > 0 && (
+          {allClimbs.length > 0 && (
             <div style={{ marginBottom: 6 }}>
               <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
                 Difficultés majeures
               </p>
-              {(courseProfile.major_climbs ?? []).map((c, i) => (
+              {allClimbs.map((c, i) => (
                 <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{
                     fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
@@ -14176,6 +14265,7 @@ FORMAT JSON STRICT :
                   </span>
                   <span style={{ fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
                   <span>{c.distance_km}km · {c.pente_moyenne_pct}% moy · max {c.pente_max_pct}% · {c.altitude_max}m</span>
+                  {c.isManual && <span style={{ fontSize: 8, color: 'var(--ai-dim)', fontStyle: 'italic' }}>manuel</span>}
                 </div>
               ))}
             </div>

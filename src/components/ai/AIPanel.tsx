@@ -12389,7 +12389,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
 
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Réponse non parseable')
-      const parsed = JSON.parse(jsonMatch[0]) as ProgressionResult
+      const parsed = JSON.parse(jsonMatch[0].replace(/'/g, '"')) as ProgressionResult
       setResult(parsed)
       if (onRecordConv) {
         const userMsg = `Analyser ma progression — ${selectedSports.join(', ')} — ${period} mois`

@@ -13510,10 +13510,11 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
           .gte('date', since6months.toISOString().split('T')[0])
           .order('date', { ascending: false }).limit(20),
         activitiesQuery,
-        sb.from('metrics_daily').select('*').eq('user_id', user.id)
-          .gte('date', since14d.toISOString().split('T')[0])
-          .order('date', { ascending: false })
-          .then(r => ({ data: r.data ?? [], error: r.error }))
+        Promise.resolve(
+          sb.from('metrics_daily').select('*').eq('user_id', user.id)
+            .gte('date', since14d.toISOString().split('T')[0])
+            .order('date', { ascending: false })
+        ).then(r => ({ data: r.data ?? [], error: r.error }))
           .catch(() => ({ data: [] as never[], error: null })),
         pastRacesQuery,
         sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),

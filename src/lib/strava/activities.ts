@@ -33,12 +33,6 @@ function mapSportType(stravaType: string): string {
   return SPORT_TYPE_MAP[stravaType] ?? 'other'
 }
 
-// Calcule l'allure en secondes/km depuis la vitesse en m/s
-function calcPaceSKm(speedMs: number | null | undefined): number | null {
-  if (!speedMs || speedMs <= 0) return null
-  return Math.round(1000 / speedMs)
-}
-
 // ── Fetch depuis l'API Strava ──────────────────────────────────────────
 export async function fetchStravaActivities(
   userId: string,
@@ -91,35 +85,30 @@ export async function syncStravaActivities(userId: string): Promise<number> {
   }
   if (!all.length) return 0
 
-  // Mapping Strava fields → colonnes de la table activities
+  // Mapping Strava fields → colonnes réelles de la table activities
   const rows = all.map((a: any) => ({
-    user_id:          userId,
-    provider:         'strava',
-    provider_id:      String(a.id),      // strava activity ID → provider_id
-    title:            a.name,
-    sport_type:       mapSportType(a.sport_type ?? a.type),
-    started_at:       a.start_date,
-    distance_m:       a.distance ?? null,
-    moving_time_s:    a.moving_time ?? null,
-    elapsed_time_s:   a.elapsed_time ?? null,
-    elevation_gain_m: a.total_elevation_gain ?? null,
-    avg_speed_ms:     a.average_speed ?? null,
-    max_speed_ms:     a.max_speed ?? null,
-    avg_pace_s_km:    calcPaceSKm(a.average_speed),
-    avg_hr:           a.average_heartrate ?? null,
-    max_hr:           a.max_heartrate ?? null,
-    avg_watts:        a.average_watts ?? null,
-    max_watts:        a.max_watts ?? null,
-    normalized_watts: a.weighted_average_watts ?? null,
-    kilojoules:       a.kilojoules ?? null,
-    avg_cadence:      a.average_cadence ?? null,
-    suffer_score:     a.suffer_score ?? null,
-    calories:         a.calories ?? null,
-    trainer:          a.trainer ?? false,
-    commute:          a.commute ?? false,
-    is_race:          false,
-    raw_data:         a,
-    streams:          null, // fetched on-demand
+    user_id:           userId,
+    provider:          'strava',
+    provider_id:       String(a.id),
+    title:             a.name,
+    sport_type:        mapSportType(a.sport_type ?? a.type),
+    started_at:        a.start_date,
+    distance_m:        a.distance               ?? null,
+    moving_time_s:     a.moving_time            ?? null,
+    elapsed_time_s:    a.elapsed_time           ?? null,
+    elevation_gain_m:  a.total_elevation_gain   ?? null,
+    average_speed:     a.average_speed          ?? null,
+    avg_watts:         a.average_watts          ?? null,
+    kilojoules:        a.kilojoules             ?? null,
+    average_heartrate: a.average_heartrate      ?? null,
+    max_heartrate:     a.max_heartrate          ?? null,
+    avg_cadence:       a.average_cadence        ?? null,
+    tss:               a.suffer_score           ?? null,
+    calories:          a.calories               ?? null,
+    trainer:           a.trainer                ?? false,
+    commute:           a.commute                ?? false,
+    is_race:           a.workout_type === 1,
+    streams:           null, // fetched on-demand
   }))
 
   const { error } = await supabase

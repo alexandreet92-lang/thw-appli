@@ -11554,7 +11554,7 @@ async function enrichedConseilsSommeil(
   type SessionSleepEntry = { endHour: number; sport: string; tss: number; sleepQualityNextNight: number | null }
   const sessionSleepCorrelations: SessionSleepEntry[] = []
   activities60d.forEach(a => {
-    const rawStartDate = (a.raw_data as { start_date?: string } | null)?.start_date
+    const rawStartDate = a.started_at
     if (!rawStartDate || !a.moving_time_s) return
     const endTime = new Date(new Date(rawStartDate).getTime() + (a.moving_time_s as number) * 1000)
     const endHour = endTime.getHours() + endTime.getMinutes() / 60

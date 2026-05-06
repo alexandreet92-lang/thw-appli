@@ -6,7 +6,7 @@
 // S'insère dans le layout root ; utilise createPortal via AIPanel.
 // ══════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
@@ -15,6 +15,12 @@ const AIPanel = dynamic(() => import('./AIPanel'), { ssr: false })
 export default function GlobalAIButton() {
   const pathname  = usePathname()
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  // Pas de rendu côté serveur (évite le React 418 hydration mismatch)
+  if (!mounted) return null
 
   // Caché sur la page profil (le bouton IA y est inutile)
   if (pathname === '/profile') return null

@@ -13447,6 +13447,55 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
     }
   }
 
+  // ── Pré-chargement des données athlète dès la phase questions ──────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [athletePreview, setAthletePreview] = useState<{
+    zones: any | null
+    profile: any | null
+    tests: any[]
+    bestActivities: any[]
+  } | null>(null)
+
+  async function preloadAthleteData() {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      const raceSport = getRaceSport()
+      const s = raceSport.toLowerCase()
+      const sportVariants: string[] = (['cycling', 'bike', 'ride', 'virtual_ride', 'virtual_bike', 'velo'].includes(s))
+        ? ['cycling', 'bike', 'Ride', 'virtual_ride', 'virtual_bike', 'velo', 'VirtualRide']
+        : (['running', 'run', 'trail', 'trail_run', 'course'].includes(s))
+          ? ['running', 'run', 'Run', 'trail', 'trail_run', 'TrailRun']
+          : (['swimming', 'swim', 'pool_swim', 'open_water'].includes(s))
+            ? ['swimming', 'swim', 'pool_swim', 'open_water', 'Swim']
+            : [raceSport]
+
+      const [zonesRes, profileRes, testsRes, bestActsRes] = await Promise.all([
+        sb.from('training_zones').select('*').eq('user_id', user.id)
+          .in('sport', sportVariants).eq('is_current', true).limit(1),
+        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
+        sb.from('test_results')
+          .select('id,date,valeurs,notes,test_definition_id,test_definitions(nom,sport,fields)')
+          .eq('user_id', user.id).order('date', { ascending: false }).limit(10),
+        sb.from('activities')
+          .select('started_at,moving_time_s,distance_m,avg_watts,max_watts,normalized_watts,average_heartrate,tss,title,sport_type')
+          .eq('user_id', user.id).in('sport_type', sportVariants)
+          .gte('started_at', new Date(Date.now() - 180 * 86400000).toISOString())
+          .order('started_at', { ascending: false }).limit(20),
+      ])
+
+      setAthletePreview({
+        zones: zonesRes.data?.[0] ?? null,
+        profile: profileRes.data,
+        tests: testsRes.data ?? [],
+        bestActivities: bestActsRes.data ?? [],
+      })
+    } catch { /* silencieux */ }
+  }
+
   function getSportVariants(sport: string): string[] {
     const s = sport.toLowerCase()
     if (['cycling', 'bike', 'ride', 'virtual_ride', 'virtual_bike', 'velo'].includes(s))
@@ -13875,7 +13924,7 @@ FORMAT JSON STRICT :
             Annuler
           </button>
           <button
-            onClick={() => setPhase('questions')}
+            onClick={() => { setPhase('questions'); void preloadAthleteData() }}
             disabled={!manualMode && !selectedRace}
             style={{
               flex: 1, padding: '9px', borderRadius: 9, border: 'none',
@@ -14043,64 +14092,82 @@ FORMAT JSON STRICT :
           </>
         )}
 
-        {/* Données athlète chargées */}
-        {contextData && (contextData.profile || contextData.tests.length > 0 || contextData.bestPowerActivities.length > 0) && (
+        {/* ── Données de l'athlète ── */}
+        {athletePreview ? (
           <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
-              Données athlète chargées
+              Tes données
             </p>
 
-            {/* Profil physiologique */}
-            {contextData.profile && (
-              <div style={{ marginBottom: 8 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Profil physiologique</p>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)' }}>
+            {/* Profil */}
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 6, fontSize: 11 }}>
+              {athletePreview.profile?.ftp_watts && (
+                <span style={{ color: 'var(--ai-mid)' }}>FTP <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.ftp_watts}W</strong></span>
+              )}
+              {athletePreview.profile?.weight_kg && (
+                <span style={{ color: 'var(--ai-mid)' }}>Poids <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.weight_kg}kg</strong></span>
+              )}
+              {athletePreview.profile?.ftp_watts && athletePreview.profile?.weight_kg && (
+                <span style={{ color: 'var(--ai-mid)' }}>W/kg <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{(athletePreview.profile.ftp_watts / athletePreview.profile.weight_kg).toFixed(2)}</strong></span>
+              )}
+              {athletePreview.profile?.vma && (
+                <span style={{ color: 'var(--ai-mid)' }}>VMA <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.vma}km/h</strong></span>
+              )}
+              {athletePreview.profile?.lthr && (
+                <span style={{ color: 'var(--ai-mid)' }}>LTHR <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.lthr}bpm</strong></span>
+              )}
+            </div>
+
+            {/* Zones */}
+            {athletePreview.zones ? (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>✓ Zones configurées</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>
+                  {athletePreview.zones.z1_value && <span>Z1: {athletePreview.zones.z1_value}</span>}
+                  {athletePreview.zones.z2_value && <span>Z2: {athletePreview.zones.z2_value}</span>}
+                  {athletePreview.zones.z3_value && <span>Z3: {athletePreview.zones.z3_value}</span>}
+                  {athletePreview.zones.z4_value && <span>Z4: {athletePreview.zones.z4_value}</span>}
+                  {athletePreview.zones.z5_value && <span>Z5: {athletePreview.zones.z5_value}</span>}
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: 10, color: '#f97316', marginBottom: 6 }}>⚠ Zones non configurées — stratégie basée sur le RPE</p>
+            )}
+
+            {/* Tests */}
+            {athletePreview.tests.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>✓ {athletePreview.tests.length} test(s)</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(contextData.profile as any).ftp != null && <span>FTP <strong>{(contextData.profile as any).ftp}W</strong></span>}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(contextData.profile as any).ftp != null && (contextData.profile as any).weight != null && (contextData.profile as any).weight > 0 &&
-                    <span><strong>{((contextData.profile as any).ftp / (contextData.profile as any).weight).toFixed(1)}</strong> W/kg</span>}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(contextData.profile as any).vma != null && <span>VMA <strong>{(contextData.profile as any).vma}km/h</strong></span>}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(contextData.profile as any).lthr != null && <span>LTHR <strong>{(contextData.profile as any).lthr}bpm</strong></span>}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(contextData.profile as any).vo2max != null && <span>VO₂max <strong>{(contextData.profile as any).vo2max}</strong></span>}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(contextData.profile as any).weight != null && <span style={{ color: 'var(--ai-mid)' }}>{(contextData.profile as any).weight}kg</span>}
+                  {athletePreview.tests.slice(0, 3).map((t: any, i: number) => (
+                    <span key={i} style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      {t.test_definitions?.nom ?? 'Test'}{t.date ? ` (${t.date})` : ''}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Tests récents */}
-            {contextData.tests.length > 0 && (
-              <div style={{ marginBottom: 8 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Tests de performance récents</p>
-                {contextData.tests.slice(0, 3).map((t: any, i: number) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
-                  <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '1px 0', fontFamily: 'DM Mono,monospace' }}>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(t as any).test_definitions?.nom ?? (t as any).test_type ?? 'Test'}{(t as any).date ? ` — ${new Date((t as any).date).toLocaleDateString('fr-FR')}` : ''}
-                  </div>
-                ))}
+            {/* Activités récentes */}
+            {athletePreview.bestActivities.length > 0 && (
+              <div>
+                <span style={{ fontSize: 10, color: 'var(--ai-mid)' }}>{athletePreview.bestActivities.length} activités récentes (6 mois)</span>
               </div>
             )}
 
-            {/* Meilleures puissances cyclisme */}
-            {contextData.bestPowerActivities.length > 0 && (
-              <div>
-                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Meilleures puissances (6 mois)</p>
-                {contextData.bestPowerActivities.slice(0, 3).map((a: any, i: number) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
-                  <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '1px 0', fontFamily: 'DM Mono,monospace' }}>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <strong style={{ color: 'var(--ai-text)' }}>{(a as any).avg_watts}W</strong> moy
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(a as any).distance != null ? ` · ${((a as any).distance / 1000).toFixed(0)}km` : ''}
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(a as any).date ? ` — ${new Date((a as any).date).toLocaleDateString('fr-FR')}` : ''}
-                  </div>
-                ))}
-              </div>
+            {/* Lien si données manquantes */}
+            {(!athletePreview.profile?.ftp_watts && !athletePreview.profile?.vma) && (
+              <p style={{ fontSize: 10, color: 'var(--ai-accent)', marginTop: 6, fontStyle: 'italic' }}>
+                → Configure tes données dans Performance pour une stratégie plus précise
+              </p>
             )}
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+            <p style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Chargement des données...</p>
           </div>
         )}
 

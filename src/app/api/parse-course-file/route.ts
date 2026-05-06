@@ -256,61 +256,75 @@ function classifyClimb(distKm: number, penteMoy: number, denivele: number): 'HC'
 function identifyMajorClimbs(points: TrackPoint[]): MajorClimb[] {
   if (points.length < 100) return []
 
-  // Lissage léger (fenêtre 20 pts) — retire le bruit GPS sans écraser les cols
+  // Lissage léger (fenêtre 10 pts) — retire le bruit GPS, garde les vraies pentes
   const sm: number[] = points.map((_, i) => {
-    const from = Math.max(0, i - 10)
-    const to = Math.min(points.length, i + 11)
+    const from = Math.max(0, i - 5)
+    const to = Math.min(points.length, i + 6)
     let s = 0
     for (let j = from; j < to; j++) s += points[j].ele
     return s / (to - from)
   })
 
-  // Seuil de descente pour considérer qu'une montée est terminée
-  const totalDPlus = (() => {
-    let d = 0
-    for (let i = 1; i < sm.length; i++) if (sm[i] > sm[i - 1]) d += sm[i] - sm[i - 1]
-    return d
-  })()
-  const dropThreshold = totalDPlus > 2000 ? 80 : totalDPlus > 1000 ? 60 : 40
+  // Pente locale calculée sur fenêtres de ~200m
+  const localSlope: number[] = new Array(points.length).fill(0)
+  for (let i = 0; i < points.length; i++) {
+    let j = i + 1
+    while (j < points.length && (points[j].dist_km - points[i].dist_km) < 0.2) j++
+    if (j < points.length) {
+      const d = (points[j].dist_km - points[i].dist_km) * 1000
+      if (d > 50) localSlope[i] = ((sm[j] - sm[i]) / d) * 100
+    }
+  }
+
+  const CLIMB_START_SLOPE = 3.0    // pente min pour déclencher une montée
+  const DROP_THRESHOLD = 80        // mètres de descente pour clore une montée
+  const MIN_STEEP_DISTANCE = 0.4   // km de pente >3% pour confirmer le début
 
   const climbs: MajorClimb[] = []
-
-  let climbStartIdx: number | null = null
+  let state: 'searching' | 'confirming' | 'climbing' = 'searching'
+  let candidateStartIdx = 0
+  let confirmedStartIdx = 0
   let highPointIdx = 0
-  let highPointEle = sm[0]
-  let lowPointEle = sm[0]
-  let lowPointIdx = 0
+  let highPointEle = 0
 
-  for (let i = 1; i < sm.length; i++) {
+  for (let i = 0; i < points.length; i++) {
+    const slope = localSlope[i]
     const ele = sm[i]
 
-    if (ele > highPointEle) {
-      highPointEle = ele
-      highPointIdx = i
-    }
-
-    const dropFromHigh = highPointEle - ele
-
-    if (climbStartIdx === null) {
-      // Cherche le début d'une montée
-      if (ele < lowPointEle) {
-        lowPointEle = ele
-        lowPointIdx = i
+    if (state === 'searching') {
+      if (slope >= CLIMB_START_SLOPE) {
+        candidateStartIdx = i
+        state = 'confirming'
       }
-      // Début de montée : on a monté de plus de 50m depuis le point bas
-      if (ele - lowPointEle > 50) {
-        climbStartIdx = lowPointIdx
+
+    } else if (state === 'confirming') {
+      // La pente est retombée trop vite — faux départ
+      if (slope < CLIMB_START_SLOPE * 0.5) {
+        state = 'searching'
+      } else if (points[i].dist_km - points[candidateStartIdx].dist_km >= MIN_STEEP_DISTANCE) {
+        // Montée confirmée — le début est le point candidat
+        confirmedStartIdx = candidateStartIdx
+        highPointIdx = i
+        highPointEle = ele
+        state = 'climbing'
+      }
+
+    } else {
+      // state === 'climbing'
+      if (ele > highPointEle) {
         highPointEle = ele
         highPointIdx = i
       }
-    } else {
-      // En cours de montée — la montée se termine si on redescend de plus de dropThreshold
-      if (dropFromHigh > dropThreshold || i === sm.length - 1) {
-        const endIdx = i === sm.length - 1 ? Math.max(highPointIdx, i) : highPointIdx
-        const startDist = points[climbStartIdx].dist_km
+
+      const dropFromHigh = highPointEle - ele
+      const isEndOfFile = i === points.length - 1
+
+      if (dropFromHigh > DROP_THRESHOLD || isEndOfFile) {
+        const endIdx = isEndOfFile ? Math.max(highPointIdx, i) : highPointIdx
+        const startDist = points[confirmedStartIdx].dist_km
         const endDist = points[endIdx].dist_km
         const distKm = endDist - startDist
-        const startEle = points[climbStartIdx].ele
+        const startEle = points[confirmedStartIdx].ele
         const peakEle = points[endIdx].ele
         const denivele = peakEle - startEle
 
@@ -319,7 +333,7 @@ function identifyMajorClimbs(points: TrackPoint[]): MajorClimb[] {
 
           // Pente max sur fenêtres de 500m
           let penteMax = 0
-          for (let j = climbStartIdx; j < endIdx; j++) {
+          for (let j = confirmedStartIdx; j < endIdx; j++) {
             let k = j + 1
             while (k < endIdx && (points[k].dist_km - points[j].dist_km) < 0.5) k++
             if (k <= endIdx && k < points.length) {
@@ -346,10 +360,8 @@ function identifyMajorClimbs(points: TrackPoint[]): MajorClimb[] {
           }
         }
 
-        // Reset pour chercher la prochaine montée
-        climbStartIdx = null
-        lowPointEle = ele
-        lowPointIdx = i
+        // Reset — cherche la prochaine montée
+        state = 'searching'
         highPointEle = ele
         highPointIdx = i
       }

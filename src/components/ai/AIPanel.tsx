@@ -4969,18 +4969,22 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       const actSel = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,cardiac_drift_pct,is_race,avg_watts'
 
       const [activitiesRes, racesRes, zonesRes, profileRes] = await Promise.all([
-        sb.from('activities').select(actSel).eq('user_id', user.id)
-          .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
-          .order('started_at', { ascending: false }).limit(500)
-          .then(r => r).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
-        sb.from('activities').select(actSel).eq('user_id', user.id).eq('is_race', true)
-          .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
-          .order('started_at', { ascending: false })
-          .then(r => r).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
-        sb.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true)
-          .then(r => r).catch(() => ({ data: [], error: null })),
-        sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()
-          .then(r => r).catch(() => ({ data: null, error: null })),
+        Promise.resolve(
+          sb.from('activities').select(actSel).eq('user_id', user.id)
+            .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
+            .order('started_at', { ascending: false }).limit(500)
+        ).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
+        Promise.resolve(
+          sb.from('activities').select(actSel).eq('user_id', user.id).eq('is_race', true)
+            .gte('started_at', start + 'T00:00:00').lte('started_at', end + 'T23:59:59')
+            .order('started_at', { ascending: false })
+        ).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
+        Promise.resolve(
+          sb.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true)
+        ).catch(() => ({ data: [] as unknown[], error: null })),
+        Promise.resolve(
+          sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()
+        ).catch(() => ({ data: null, error: null })),
       ])
 
       const activities = ((activitiesRes.error ? [] : activitiesRes.data) ?? []) as PeriodActivityRow[]

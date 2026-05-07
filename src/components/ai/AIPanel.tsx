@@ -2439,6 +2439,17 @@ interface PlannedRaceOption {
   goal_time: string | null
 }
 
+interface NutritionPlanData {
+  calories_target: number | null
+  protein_g: number | null
+  carbs_g: number | null
+  fat_g: number | null
+  meals_per_day: number | null
+  allergies: string | null
+  regime: string | null
+  notes: string | null
+}
+
 function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
   const [step, setStep] = useState<RechargeStep>('gate')
   const [loading, setLoading] = useState(false)
@@ -2446,7 +2457,9 @@ function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, 
   // Gate data
   const [gateData, setGateData] = useState<{
     weight: number | null
+    height: number | null
     planNutritionActive: boolean
+    nutritionPlan: NutritionPlanData | null
     plannedSessions: number
     plannedRaces: PlannedRaceOption[]
   } | null>(null)
@@ -2462,6 +2475,9 @@ function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, 
   // Questions step
   const [nutritionExp, setNutritionExp] = useState('')
   const [solidsTolerance, setSolidsTolerance] = useState('')
+  const [raceStartTime, setRaceStartTime] = useState('08:00')
+  const [estimatedDuration, setEstimatedDuration] = useState('')
+  const [rechargeNotes, setRechargeNotes] = useState('')
 
   // Load gate data on mount
   useEffect(() => {
@@ -2477,119 +2493,190 @@ function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, 
         const in2weeks = new Date(now); in2weeks.setDate(now.getDate() + 14)
 
         const [profileRes, planRes, sessionsRes, racesRes] = await Promise.all([
-          sb.from('user_profiles').select('weight_kg').eq('user_id', user.id).maybeSingle(),
-          sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
-          sb.from('planned_sessions').select('id').eq('user_id', user.id).gte('week_start', now.toISOString().split('T')[0]).lte('week_start', in2weeks.toISOString().split('T')[0]),
-          sb.from('planned_races').select('id,name,sport,date,level,goal_time').eq('user_id', user.id).gte('date', now.toISOString().split('T')[0]).order('date', { ascending: true }).limit(5),
+          Promise.resolve(
+            sb.from('user_profiles').select('weight_kg,height_cm').eq('user_id', user.id).maybeSingle()
+          ).catch(() => ({ data: null, error: null })),
+          Promise.resolve(
+            sb.from('nutrition_plans').select('id,calories_target,protein_g,carbs_g,fat_g,meals_per_day,allergies,regime,notes').eq('user_id', user.id).eq('actif', true).maybeSingle()
+          ).catch(() => ({ data: null, error: null })),
+          Promise.resolve(
+            sb.from('planned_sessions').select('id').eq('user_id', user.id).gte('week_start', now.toISOString().split('T')[0]).lte('week_start', in2weeks.toISOString().split('T')[0])
+          ).catch(() => ({ data: null, error: null })),
+          Promise.resolve(
+            sb.from('planned_races').select('id,name,sport,date,level,goal_time').eq('user_id', user.id).gte('date', now.toISOString().split('T')[0]).order('date', { ascending: true }).limit(5)
+          ).catch(() => ({ data: null, error: null })),
         ])
 
+        const plan = planRes.data as NutritionPlanData | null
         setGateData({
-          weight: (profileRes.data?.weight_kg as number | null) ?? null,
-          planNutritionActive: !!planRes.data,
-          plannedSessions: sessionsRes.data?.length ?? 0,
-          plannedRaces: (racesRes.data ?? []) as PlannedRaceOption[],
+          weight: (profileRes.data as { weight_kg?: number | null } | null)?.weight_kg ?? null,
+          height: (profileRes.data as { height_cm?: number | null } | null)?.height_cm ?? null,
+          planNutritionActive: !!plan,
+          nutritionPlan: plan,
+          plannedSessions: (sessionsRes.data as unknown[] | null)?.length ?? 0,
+          plannedRaces: ((racesRes.data ?? []) as PlannedRaceOption[]),
         })
       } catch {
-        setGateData({ weight: null, planNutritionActive: false, plannedSessions: 0, plannedRaces: [] })
+        setGateData({ weight: null, height: null, planNutritionActive: false, nutritionPlan: null, plannedSessions: 0, plannedRaces: [] })
       } finally {
         setLoading(false)
       }
     })()
   }, [])
 
-  // Detect if it's triathlon/ultra (needs solids question)
   function needsSolidsQuestion(): boolean {
     if (!eventType) return false
     if (eventType === 'race_planned' && selectedRace) {
-      return selectedRace.sport === 'triathlon' || selectedRace.sport === 'trail'
+      return ['triathlon', 'trail', 'ultra'].includes(selectedRace.sport)
     }
     if (eventType === 'race_manual') {
-      return manualRaceSport === 'triathlon' || manualRaceSport === 'trail'
+      return ['triathlon', 'trail', 'ultra'].includes(manualRaceSport)
     }
     return false
   }
 
   function buildPrompt(): string {
-    const weightStr = gateData?.weight ? `${gateData.weight}kg` : 'non renseigné'
-    const planStr = gateData?.planNutritionActive ? 'actif' : 'non configuré'
+    const w = gateData?.weight
+    const weightStr = w ? `${w}kg` : 'non renseigné'
+    const heightStr = gateData?.height ? `${gateData.height}cm` : 'non renseigné'
+
+    // Bloc plan nutritionnel
+    const np = gateData?.nutritionPlan
+    const nutritionBlock = np ? `
+PLAN NUTRITIONNEL ACTIF :
+- Calories cibles : ${np.calories_target ?? 'N/A'} kcal/jour
+- Glucides : ${np.carbs_g ?? 'N/A'}g · Protéines : ${np.protein_g ?? 'N/A'}g · Lipides : ${np.fat_g ?? 'N/A'}g
+- Repas/jour : ${np.meals_per_day ?? 'N/A'}${np.allergies ? `\n- ALLERGIES/INTOLÉRANCES : ${np.allergies}` : ''}${np.regime ? `\n- Régime : ${np.regime}` : ''}${np.notes ? `\n- Notes : ${np.notes}` : ''}` : 'Aucun plan nutritionnel configuré.'
 
     const nutritionExpLabel =
-      nutritionExp === 'never' ? 'Jamais testé / ne mange pas pendant l\'effort'
+      nutritionExp === 'never'      ? "Jamais testé — ne mange pas pendant l'effort"
       : nutritionExp === 'occasional' ? 'Gels ou boissons énergétiques occasionnellement'
-      : nutritionExp === 'protocol' ? 'Protocole rodé : sait ce qu\'il tolère et combien'
-      : ''
+      : nutritionExp === 'protocol'   ? 'Protocole rodé : sait ce qu\'il tolère et combien'
+      : 'Non renseignée'
 
     const solidsLabel =
-      solidsTolerance === 'yes' ? 'Oui, sans problème'
+      solidsTolerance === 'yes'           ? 'Oui, sans problème'
       : solidsTolerance === 'low_intensity' ? 'Seulement à faible intensité (marche, Z1-Z2)'
-      : solidsTolerance === 'no' ? 'Non, uniquement liquide/gel'
+      : solidsTolerance === 'no'            ? 'Non, uniquement liquide/gel'
       : ''
 
-    let contextBlock = ''
+    let eventBlock = ''
     if (eventType === 'race_planned' && selectedRace) {
-      contextBlock = `ÉVÉNEMENT CIBLE :
-Course planifiée : ${selectedRace.name}
+      eventBlock = `COMPÉTITION : ${selectedRace.name}
 Sport : ${selectedRace.sport}
 Date : ${selectedRace.date}
-Niveau : ${selectedRace.level ?? 'non renseigné'}
-Objectif temps : ${selectedRace.goal_time ?? 'non renseigné'}`
+Niveau : ${selectedRace.level ?? 'N/A'} · Objectif : ${selectedRace.goal_time ?? 'N/A'}
+Heure de départ : ${raceStartTime}
+Durée estimée : ${estimatedDuration || 'non précisée'}`
     } else if (eventType === 'race_manual') {
-      contextBlock = `ÉVÉNEMENT CIBLE :
-Course (saisie manuelle) : ${manualRaceName || 'non précisé'}
-Sport : ${manualRaceSport || 'non précisé'}
-Date : ${manualRaceDate || 'non précisée'}`
+      eventBlock = `COMPÉTITION : ${manualRaceName || 'non précisée'}
+Sport : ${manualRaceSport || 'N/A'} · Date : ${manualRaceDate || 'N/A'}
+Heure de départ : ${raceStartTime}
+Durée estimée : ${estimatedDuration || 'non précisée'}`
     } else {
-      contextBlock = `CONTEXTE : Séance d'entraînement haute intensité
-Intensité prévue : ${trainingIntensity || 'haute'}`
+      eventBlock = `SÉANCE D'ENTRAÎNEMENT
+Intensité : ${trainingIntensity || 'haute'}
+Heure prévue : ${raceStartTime}`
     }
 
-    const systemPrompt = `Tu es un expert en nutrition sportive et stratégie glucidique pour athlètes d'endurance.
+    const startHour = parseInt(raceStartTime.split(':')[0] ?? '8', 10)
+    const lastMealHour = startHour - 3
+    const snackHour = startHour - 1
 
-Crée un plan de recharge glucidique PERSONNALISÉ et PRÉCIS.
+    const carbsJ3 = w ? Math.round(w * 9) : null
+    const carbsJ2 = w ? Math.round(w * 11) : null
+    const carbsJ1 = w ? Math.round(w * 11) : null
 
-STRUCTURE OBLIGATOIRE :
-${eventType !== 'training' ? `## Phase 1 — Recharge avant (J-3 à J-1)
-Quantités précises en g/kg/jour. Aliments recommandés. Timing des repas. Aliments à éviter.
-
-## Phase 2 — Jour J (avant l'épreuve)
-Dernier repas : timing, contenu, quantités. Collation pré-départ si applicable.
-
-## Phase 3 — Pendant l'effort
-Stratégie glucidique en g/h selon la durée et l'intensité. Sources recommandées (gel, boisson, solides si toléré). Hydratation. Planning sur la durée de l'épreuve.
-
-## Phase 4 — Récupération post-effort
-Fenêtre anabolique 30-60min. Repas récupération. Durée de la phase.` : `## Avant la séance (J-1 et matin J)
-Quantités en g/kg. Timing optimal.
-
+    const duringSection = eventType !== 'training' ? `
+## Pendant l'épreuve (durée : ${estimatedDuration || 'non précisée'})
+Stratégie glucidique adaptée :
+- Si < 1h30 → 30-45g/h (gel + eau)
+- Si 1h30-3h → 45-60g/h (gel + boisson isotonique)
+- Si 3h-6h → 60-90g/h (gel + boisson + solides si tolérés)
+- Si > 6h → 90-120g/h (mix gel/boisson/aliments naturels)
+Pour cette durée estimée, précise :
+- Grammes de glucides par heure recommandés
+- Sources : gel (nom/marque type), boisson, barres, aliments naturels (dates, banane, riz sucré…)
+- Planning minuté : ex. "gel toutes les 25min à partir de 45min"
+- Hydratation : ml/h, sodium si chaleur (>20°C ou >2h)
+- Adaptation selon ravitaillements officiels disponibles
+${solidsLabel ? `Tolérance solides de l'athlète : ${solidsLabel}` : ''}` : `
 ## Pendant la séance
-Stratégie en g/h si durée > 75min. Sources adaptées.
+Si durée > 75min : glucides en g/h, sources adaptées.
+Hydratation (ml/h).`
 
-## Après la séance
-Récupération glucidique et protéique.`}
+    return `Tu es un expert en nutrition sportive spécialisé en stratégie glucidique pour athlètes d'endurance.
 
-## Points de vigilance personnalisés
-Basé sur l'expérience nutrition déclarée : ${nutritionExpLabel || 'non renseignée'}
+Crée un plan de recharge glucidique ULTRA-DÉTAILLÉ et PERSONNALISÉ. Chaque repas doit être décrit avec des aliments concrets, des quantités précises en grammes, et le timing exact.
 
-TERMINE TOUJOURS PAR :
-## Sources et niveau de confiance
-Sources utilisées : [liste des données disponibles]
-Niveau de confiance : [élevé/modéré/faible] — [justification]`
-
-    const userPrompt = `${contextBlock}
+${eventBlock}
 
 PROFIL ATHLÈTE :
-Poids : ${weightStr}
-Plan nutritionnel : ${planStr}
-Séances planifiées (2 semaines) : ${gateData?.plannedSessions ?? 0}
+Poids : ${weightStr} · Taille : ${heightStr}
+${nutritionBlock}
+Expérience nutrition effort : ${nutritionExpLabel}
+${solidsLabel ? `Tolérance solides : ${solidsLabel}` : ''}
+${rechargeNotes ? `Notes athlète : ${rechargeNotes}` : ''}
 
-EXPÉRIENCE NUTRITION EFFORT : ${nutritionExpLabel || 'non renseignée'}
-${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` : ''}`
+STRUCTURE OBLIGATOIRE DU PLAN :
 
-    return systemPrompt + '\n\n' + userPrompt
+${eventType !== 'training' ? `## J-3 (3 jours avant)
+**Objectif glucides : 8-10g/kg/jour**${carbsJ3 ? ` → soit ${carbsJ3}g pour ${w}kg` : ''}
+- **Petit-déjeuner** : aliments + grammes + glucides totaux du repas
+- **Collation matin** : aliments + grammes
+- **Déjeuner** : aliments + grammes + glucides totaux
+- **Collation après-midi** : aliments + grammes
+- **Dîner** : aliments + grammes + glucides totaux
+→ Aliments à PRIVILÉGIER (riz, pâtes, pain, flocons d'avoine…)
+→ Aliments à ÉVITER (fibres, graisses lourdes, légumineuses)
+→ Hydratation cible (litres/jour)
+
+## J-2
+**Objectif glucides : 10-12g/kg/jour**${carbsJ2 ? ` → soit ${carbsJ2}g` : ''}
+Même structure repas par repas. Augmentation progressive des glucides.
+
+## J-1 (veille)
+**Objectif glucides : 10-12g/kg/jour**${carbsJ1 ? ` → soit ${carbsJ1}g` : ''}
+Même structure. Repas du soir : CRITIQUE — détailler précisément.
+⚠ Pas de fibres, pas de graisses, pas d'aliments inconnus ou à risque digestif.
+
+## Jour J — Avant le départ
+**Dernier repas principal** (environ ${lastMealHour < 0 ? lastMealHour + 24 + 'h la veille' : lastMealHour + 'h00'}) :
+Contenu exact en grammes. Glucides totaux. Aliments testés uniquement.
+
+**Collation pré-départ** (~${snackHour < 0 ? snackHour + 24 + 'h la veille' : snackHour + 'h00'}, 30-45min avant) :
+Contenu exact (gel, barre, banane, riz soufflé…). Quantités. Hydratation.` : `## J-1 et matin J (séance d'entraînement)
+Quantités en g/kg. Timing optimal avant la séance.`}
+${duringSection}
+
+## Récupération post-effort
+**Fenêtre 0-30min** : quoi manger/boire et en quelle quantité
+**Repas récupération (1-2h après)** : repas complet détaillé (glucides + protéines + lipides + légumes)
+**Soirée** : dernier repas pour compléter la récupération musculaire
+
+## Points de vigilance personnalisés${nutritionExpLabel.includes('Jamais') ? `
+⚠ IMPORTANT : l'athlète n'a JAMAIS testé la nutrition pendant l'effort.
+Ne JAMAIS introduire quelque chose de nouveau le jour J. Commencer par des quantités minimales lors d'entraînements de simulation avant la course.` : ''}${np?.allergies ? `
+⚠ ALLERGIES/INTOLÉRANCES : ${np.allergies} — vérifier CHAQUE aliment recommandé.` : ''}${np?.regime ? `
+Régime ${np.regime} — adapter toutes les sources de glucides en conséquence.` : ''}
+
+## Prochaines étapes
+Terminer avec 2-3 recommandations concrètes :
+- Tester ce protocole lors d'un entraînement long AVANT la course
+- Liste de courses à préparer (produits spécifiques mentionnés)
+- Ajustements si inconfort digestif lors du test
+
+RÈGLES IMPÉRATIVES :
+- Quantités TOUJOURS en grammes. Jamais "une portion" ou "un peu de".
+- Chaque repas doit totaliser ses glucides.
+- Proposer une ALTERNATIVE pour chaque repas (variante si l'athlète n'apprécie pas un aliment).
+- Si le poids n'est pas renseigné, utiliser 70kg comme référence en le précisant.
+- Adapter au sport : un triathlète ≠ un coureur 10km ≠ un ultra-trailer.`
   }
 
   // ── Step: gate ──────────────────────────────────────────────
   if (step === 'gate') {
+    const np = gateData?.nutritionPlan
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
@@ -2606,27 +2693,57 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
           </div>
         ) : gateData && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            {/* Poids / taille */}
             <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Poids</span>
+              <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Morphologie</span>
               <span style={{ fontSize: 12, fontWeight: 600, color: gateData.weight ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>
-                {gateData.weight ? `${gateData.weight} kg` : 'non renseigné'}
+                {gateData.weight ? `${gateData.weight} kg` : 'poids non renseigné'}
+                {gateData.height ? ` · ${gateData.height} cm` : ''}
               </span>
             </div>
+
+            {/* Plan nutritionnel */}
             <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Plan nutritionnel</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: gateData.planNutritionActive ? '#22c55e' : '#f97316', fontFamily: 'DM Sans,sans-serif' }}>
+              <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Plan nutritionnel</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: gateData.planNutritionActive ? '#22c55e' : '#f97316' }}>
                 {gateData.planNutritionActive ? 'actif' : 'non configuré'}
               </span>
             </div>
+
+            {/* Macros détaillées si plan actif */}
+            {np && (
+              <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Macros quotidiennes</span>
+                  <span style={{ fontSize: 10, color: '#22c55e' }}>✓</span>
+                </div>
+                <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)', flexWrap: 'wrap' as const }}>
+                  {np.calories_target && <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{np.calories_target} kcal</span>}
+                  {np.carbs_g && <span>G: {np.carbs_g}g</span>}
+                  {np.protein_g && <span>P: {np.protein_g}g</span>}
+                  {np.fat_g && <span>L: {np.fat_g}g</span>}
+                </div>
+                {np.allergies && (
+                  <p style={{ fontSize: 9, color: '#f97316', margin: '6px 0 0', fontWeight: 600 }}>⚠ Allergies : {np.allergies}</p>
+                )}
+                {np.regime && (
+                  <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '3px 0 0' }}>Régime : {np.regime}</p>
+                )}
+              </div>
+            )}
+
+            {/* Séances planifiées */}
             <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Séances planifiées (2 sem.)</span>
+              <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Séances planifiées (2 sem.)</span>
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>
                 {gateData.plannedSessions}
               </span>
             </div>
+
+            {/* Courses planifiées */}
             {gateData.plannedRaces.length > 0 && (
               <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>Courses planifiées</span>
+                <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Courses planifiées</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>
                   {gateData.plannedRaces.length} course{gateData.plannedRaces.length > 1 ? 's' : ''}
                 </span>
@@ -2662,13 +2779,13 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
           {plannedRaces.length > 0 && (
             <div>
-              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'DM Sans,sans-serif' }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
                 Courses planifiées
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {plannedRaces.map(race => (
                   <button key={race.id} onClick={() => { setEventType('race_planned'); setSelectedRace(race) }} style={{
-                    padding: '10px 12px', borderRadius: 9, textAlign: 'left',
+                    padding: '10px 12px', borderRadius: 9, textAlign: 'left' as const,
                     border: `1px solid ${eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-border)'}`,
                     background: eventType === 'race_planned' && selectedRace?.id === race.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                     cursor: 'pointer', transition: 'all 0.12s',
@@ -2676,8 +2793,8 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
                     <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
                       {race.name}
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>
-                      {race.sport} · {race.date}
+                    <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>
+                      {race.sport} · {race.date}{race.goal_time ? ` · ${race.goal_time}` : ''}
                     </div>
                   </button>
                 ))}
@@ -2686,31 +2803,23 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
           )}
 
           <button onClick={() => { setEventType('race_manual'); setSelectedRace(null) }} style={{
-            padding: '10px 12px', borderRadius: 9, textAlign: 'left',
+            padding: '10px 12px', borderRadius: 9, textAlign: 'left' as const,
             border: `1px solid ${eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-border)'}`,
             background: eventType === 'race_manual' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
-              Autre compétition
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>
-              Saisir manuellement nom, sport et date
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Autre compétition</div>
+            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>Saisir manuellement nom, sport et date</div>
           </button>
 
           <button onClick={() => { setEventType('training'); setSelectedRace(null) }} style={{
-            padding: '10px 12px', borderRadius: 9, textAlign: 'left',
+            padding: '10px 12px', borderRadius: 9, textAlign: 'left' as const,
             border: `1px solid ${eventType === 'training' ? '#5b6fff' : 'var(--ai-border)'}`,
             background: eventType === 'training' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
-              Séance d'entraînement
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>
-              Session haute intensité ou longue distance
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Séance d'entraînement</div>
+            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>Session haute intensité ou longue distance</div>
           </button>
         </div>
 
@@ -2720,18 +2829,17 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
               placeholder="Nom de la compétition"
               value={manualRaceName}
               onChange={e => setManualRaceName(e.target.value)}
-              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }}
+              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
             />
             <div style={{ display: 'flex', gap: 7 }}>
-              {['running', 'cycling', 'triathlon', 'trail'].map(sp => (
+              {['running', 'cycling', 'triathlon', 'trail', 'ultra'].map(sp => (
                 <button key={sp} onClick={() => setManualRaceSport(sp)} style={{
-                  flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 10,
+                  flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 9,
                   border: `1px solid ${manualRaceSport === sp ? '#5b6fff' : 'var(--ai-border)'}`,
                   background: manualRaceSport === sp ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
-                  color: manualRaceSport === sp ? '#5b6fff' : 'var(--ai-mid)',
-                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  color: manualRaceSport === sp ? '#5b6fff' : 'var(--ai-mid)', cursor: 'pointer',
                 }}>
-                  {sp === 'running' ? 'Course' : sp === 'cycling' ? 'Vélo' : sp === 'triathlon' ? 'Tri' : 'Trail'}
+                  {sp === 'running' ? 'Course' : sp === 'cycling' ? 'Vélo' : sp === 'triathlon' ? 'Tri' : sp === 'trail' ? 'Trail' : 'Ultra'}
                 </button>
               ))}
             </div>
@@ -2739,22 +2847,21 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
               type="date"
               value={manualRaceDate}
               onChange={e => setManualRaceDate(e.target.value)}
-              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }}
+              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
             />
           </div>
         )}
 
         {eventType === 'training' && (
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Intensité prévue</p>
+            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Intensité prévue</p>
             <div style={{ display: 'flex', gap: 6 }}>
               {['Haute', 'Très haute', 'Longue distance'].map(lvl => (
                 <button key={lvl} onClick={() => setTrainingIntensity(lvl)} style={{
                   flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 10,
                   border: `1px solid ${trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-border)'}`,
                   background: trainingIntensity === lvl ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
-                  color: trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-mid)',
-                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  color: trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-mid)', cursor: 'pointer',
                 }}>
                   {lvl}
                 </button>
@@ -2764,10 +2871,10 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setStep('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setStep('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Retour
           </button>
-          <button onClick={() => setStep('questions')} disabled={!eventType} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: eventType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: eventType ? 'pointer' : 'not-allowed', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setStep('questions')} disabled={!eventType} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: eventType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: eventType ? 'pointer' : 'not-allowed' }}>
             Continuer
           </button>
         </div>
@@ -2778,31 +2885,33 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
   // ── Step: questions ───────────────────────────────────────────
   if (step === 'questions') {
     const showSolids = needsSolidsQuestion()
+    const canSubmit = !!nutritionExp && (!showSolids || !!solidsTolerance)
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-          Ton expérience nutrition
+          Personnalise ton plan
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          {showSolids ? '2 questions pour personnaliser ton plan' : '1 question pour personnaliser ton plan'}
+          Quelques questions pour un plan sur-mesure
         </p>
 
+        {/* Expérience nutrition */}
         <div style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
-            Quelle est ton expérience avec la nutrition pendant l'effort ?
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
+            Expérience nutrition pendant l'effort *
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {([
-              { id: 'never', label: 'Jamais testé / je ne mange pas pendant l\'effort' },
+              { id: 'never',      label: "Jamais testé / je ne mange pas pendant l'effort" },
               { id: 'occasional', label: 'Gels ou boissons énergétiques occasionnellement' },
-              { id: 'protocol', label: 'Protocole rodé : je sais ce que je tolère et combien' },
+              { id: 'protocol',   label: 'Protocole rodé : je sais ce que je tolère et combien' },
             ] as { id: string; label: string }[]).map(opt => (
               <button key={opt.id} onClick={() => setNutritionExp(opt.id)} style={{
-                padding: '10px 12px', borderRadius: 8, textAlign: 'left',
+                padding: '10px 12px', borderRadius: 8, textAlign: 'left' as const,
                 border: `1px solid ${nutritionExp === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
                 background: nutritionExp === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                 color: nutritionExp === opt.id ? '#5b6fff' : 'var(--ai-mid)',
-                fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s',
+                fontSize: 12, cursor: 'pointer', transition: 'all 0.12s',
               }}>
                 {opt.label}
               </button>
@@ -2810,23 +2919,24 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
           </div>
         </div>
 
+        {/* Tolérance solides (triathlon / trail / ultra) */}
         {showSolids && (
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
-              Tolères-tu les aliments solides pendant l'effort ?
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
+              Tolérance aliments solides pendant l'effort *
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {([
-                { id: 'yes', label: 'Oui, sans problème' },
+                { id: 'yes',           label: 'Oui, sans problème' },
                 { id: 'low_intensity', label: 'Seulement à faible intensité (marche, Z1-Z2)' },
-                { id: 'no', label: 'Non, uniquement du liquide/gel' },
+                { id: 'no',            label: 'Non, uniquement du liquide/gel' },
               ] as { id: string; label: string }[]).map(opt => (
                 <button key={opt.id} onClick={() => setSolidsTolerance(opt.id)} style={{
-                  padding: '10px 12px', borderRadius: 8, textAlign: 'left',
+                  padding: '10px 12px', borderRadius: 8, textAlign: 'left' as const,
                   border: `1px solid ${solidsTolerance === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
                   background: solidsTolerance === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                   color: solidsTolerance === opt.id ? '#5b6fff' : 'var(--ai-mid)',
-                  fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s',
+                  fontSize: 12, cursor: 'pointer', transition: 'all 0.12s',
                 }}>
                   {opt.label}
                 </button>
@@ -2835,21 +2945,73 @@ ${needsSolidsQuestion() && solidsLabel ? `TOLÉRANCE SOLIDES : ${solidsLabel}` :
           </div>
         )}
 
+        {/* Heure de départ */}
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
+            Heure de départ prévue
+          </p>
+          <input
+            type="time"
+            value={raceStartTime}
+            onChange={e => setRaceStartTime(e.target.value)}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
+          />
+          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '4px 0 0' }}>Pour planifier le dernier repas (J-3h) et la collation pré-départ</p>
+        </div>
+
+        {/* Durée estimée (courses uniquement) */}
+        {eventType !== 'training' && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
+              Durée estimée de l'épreuve
+            </p>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
+              {['< 1h30', '1h30–3h', '3h–6h', '6h–12h', '> 12h'].map(d => (
+                <button key={d} onClick={() => setEstimatedDuration(d)} style={{
+                  padding: '7px 8px', borderRadius: 7, fontSize: 10,
+                  border: `1px solid ${estimatedDuration === d ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+                  background: estimatedDuration === d ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+                  color: estimatedDuration === d ? 'var(--ai-accent)' : 'var(--ai-mid)', cursor: 'pointer',
+                }}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Notes libres */}
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
+            Précisions (optionnel)
+          </p>
+          <textarea
+            value={rechargeNotes}
+            onChange={e => setRechargeNotes(e.target.value)}
+            placeholder="Ex : je digère mal les gels, tendance aux crampes, je préfère les aliments naturels…"
+            rows={2}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', resize: 'vertical', boxSizing: 'border-box' as const }}
+          />
+        </div>
+
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setStep('event')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setStep('event')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Retour
           </button>
-          <button onClick={() => {
-            const prompt = buildPrompt()
-            const label = 'Recharge glucidique — ' + (eventType === 'training' ? 'Entraînement' : (selectedRace?.name ?? manualRaceName ?? 'Compétition'))
-            onPrepare(prompt, label)
-          }} disabled={!nutritionExp || (showSolids && !solidsTolerance)} style={{
-            flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
-            background: (!nutritionExp || (showSolids && !solidsTolerance)) ? 'var(--ai-border)' : 'var(--ai-gradient)',
-            color: '#fff', fontSize: 12, fontWeight: 700,
-            cursor: (!nutritionExp || (showSolids && !solidsTolerance)) ? 'not-allowed' : 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
-          }}>
+          <button
+            onClick={() => {
+              const prompt = buildPrompt()
+              const label = 'Recharge glucidique — ' + (eventType === 'training' ? 'Entraînement' : (selectedRace?.name ?? manualRaceName ?? 'Compétition'))
+              onPrepare(prompt, label)
+            }}
+            disabled={!canSubmit}
+            style={{
+              flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
+              background: canSubmit ? 'var(--ai-gradient)' : 'var(--ai-border)',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              cursor: canSubmit ? 'pointer' : 'not-allowed',
+            }}
+          >
             Créer mon plan
           </button>
         </div>

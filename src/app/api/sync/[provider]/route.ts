@@ -48,7 +48,7 @@ export async function POST(
       case 'strava': {
         const streamsOnly = req.nextUrl.searchParams.get('streams') === 'true'
         if (streamsOnly) {
-          count = await syncMissingStreams(userId, 20)
+          count = await syncMissingStreams(userId)
         } else {
           count = await syncStravaActivities(userId)
         }

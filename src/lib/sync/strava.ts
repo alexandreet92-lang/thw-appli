@@ -149,7 +149,7 @@ function toRow(a: StravaActivity, userId: string) {
  * Après l'import, les streams sont récupérés séquentiellement pour :
  *   - Les activités des 90 derniers jours sans streams
  *   - Les courses (is_race=true) sans streams
- *   Limite : 100 activités, 200ms de délai entre chaque appel.
+ *   Illimité — 200ms de délai entre chaque appel pour respecter le rate limit.
  */
 export async function syncStravaActivities(userId: string): Promise<number> {
   const token = await getValidToken(userId, 'strava')
@@ -231,7 +231,6 @@ export async function syncStravaActivities(userId: string): Promise<number> {
     .is('streams', null)
     .or(`started_at.gte.${since90d},is_race.eq.true`)
     .order('started_at', { ascending: false })
-    .limit(100)
 
   let streamsSynced = 0
   for (const act of needStreams ?? []) {
@@ -256,8 +255,9 @@ export async function syncStravaActivities(userId: string): Promise<number> {
 /**
  * Récupère les streams pour les activités Strava qui n'en ont pas encore.
  * Appelé via ?streams=true sur le endpoint de sync.
+ * Illimité — traite toutes les activités sans streams.
  */
-export async function syncMissingStreams(userId: string, limit = 30): Promise<number> {
+export async function syncMissingStreams(userId: string): Promise<number> {
   const token = await getValidToken(userId, 'strava')
   if (!token) throw new Error('No valid Strava token')
 
@@ -271,7 +271,6 @@ export async function syncMissingStreams(userId: string, limit = 30): Promise<nu
     .not('provider_id', 'is', null)
     .is('streams', null)
     .order('started_at', { ascending: false })
-    .limit(limit)
 
   if (!activities?.length) return 0
 

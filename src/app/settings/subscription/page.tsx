@@ -24,6 +24,7 @@ interface SubscriptionInfo {
 
 interface SummaryData {
   tier:         TierName
+  unlimited?:   boolean
   usage:        Record<UsageType, UsageStat>
   subscription: SubscriptionInfo | null
 }
@@ -231,10 +232,11 @@ export default function SubscriptionPage() {
   }, [])
 
   const currentTier = data?.tier ?? 'premium'
+  const isUnlimited = data?.unlimited === true
   // "Gérer mon abonnement" → uniquement si un abonnement Stripe réel existe.
   // stripe_customer_id peut exister sans abonnement (checkout abandonné) ; c'est
   // stripe_subscription_id qui confirme un vrai abonnement actif ou passé.
-  const hasBilling  = Boolean(data?.subscription?.stripe_subscription_id)
+  const hasBilling  = Boolean(data?.subscription?.stripe_subscription_id) && !isUnlimited
   const periodEnd   = data?.subscription?.current_period_end
     ? new Date(data.subscription.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
@@ -387,9 +389,22 @@ export default function SubscriptionPage() {
                     fontWeight:  700,
                     color:       'var(--text)',
                   }}>
-                    Plan {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
+                    {isUnlimited ? 'Compte créateur' : `Plan ${currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}`}
                   </span>
-                  {subStatus && (
+                  {isUnlimited && (
+                    <span style={{
+                      fontSize:     11,
+                      fontWeight:   600,
+                      padding:      '2px 8px',
+                      borderRadius: 4,
+                      fontFamily:   'DM Sans, sans-serif',
+                      background:   'rgba(0,200,224,0.12)',
+                      color:        '#00c8e0',
+                    }}>
+                      Illimité
+                    </span>
+                  )}
+                  {!isUnlimited && subStatus && (
                     <span style={{
                       fontSize:     11,
                       fontWeight:   600,
@@ -412,6 +427,10 @@ export default function SubscriptionPage() {
             </div>
             {loading ? (
               <Skeleton className="" style={{ width: 200, height: 16 }} />
+            ) : isUnlimited ? (
+              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
+                Accès illimité à toutes les fonctionnalités
+              </span>
             ) : periodEnd ? (
               <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
                 Prochaine facturation le {periodEnd}
@@ -436,6 +455,7 @@ export default function SubscriptionPage() {
         </section>
 
         {/* ── Usage du mois ─────────────────────────────────────── */}
+        {!isUnlimited && (
         <section style={{ marginBottom: 40 }}>
           <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
             Utilisation en cours
@@ -470,8 +490,10 @@ export default function SubscriptionPage() {
             }
           </div>
         </section>
+        )}
 
         {/* ── Plans pricing ─────────────────────────────────────── */}
+        {!isUnlimited && (
         <section>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
@@ -605,18 +627,21 @@ export default function SubscriptionPage() {
             })}
           </div>
         </section>
+        )}
 
         {/* ── Note légale ───────────────────────────────────────── */}
-        <p style={{
-          marginTop:  40,
-          fontSize:   12,
-          color:      'var(--text-dim)',
-          fontFamily: 'DM Sans, sans-serif',
-          textAlign:  'center',
-          lineHeight: 1.6,
-        }}>
-          Paiement sécurisé par Stripe · Annulation à tout moment · Prix TTC en euros
-        </p>
+        {!isUnlimited && (
+          <p style={{
+            marginTop:  40,
+            fontSize:   12,
+            color:      'var(--text-dim)',
+            fontFamily: 'DM Sans, sans-serif',
+            textAlign:  'center',
+            lineHeight: 1.6,
+          }}>
+            Paiement sécurisé par Stripe · Annulation à tout moment · Prix TTC en euros
+          </p>
+        )}
       </div>
     </>
   )

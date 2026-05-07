@@ -11677,14 +11677,30 @@ async function enrichedAnalyserSemaine(
   weekEnd.setHours(23, 59, 59, 999)
   const since4weeks = new Date(weekStart)
   since4weeks.setDate(since4weeks.getDate() - 28)
+  const since8weeks = new Date(now.getTime() - 56 * 86400000)
 
-  const [activitiesRes, plannedRes, metricsRes, past4wActivitiesRes, past4wPlannedRes, upcomingRacesRes] = await Promise.all([
+  const [
+    activitiesRes,
+    plannedRes,
+    metricsRes,
+    past4wActivitiesRes,
+    past4wPlannedRes,
+    upcomingRacesRes,
+    profileRes,
+    perfProfileRes,
+    nextRaceRes,
+    activities8wRes,
+  ] = await Promise.all([
     sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('id,sport,title,duration_min,tss,intensite,heure,type_seance,status,day_index').eq('user_id', userId).gte('week_start', weekStart.toISOString().split('T')[0]).lte('week_start', weekEnd.toISOString().split('T')[0]),
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).lte('date', weekEnd.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
     sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since4weeks.toISOString()).lt('started_at', weekStart.toISOString()).order('started_at', { ascending: true }),
     sb.from('planned_sessions').select('sport,duration_min,intensite,type_seance,status,day_index,week_start').eq('user_id', userId).gte('week_start', since4weeks.toISOString().split('T')[0]).lt('week_start', weekStart.toISOString().split('T')[0]).order('week_start', { ascending: true }),
     sb.from('planned_races').select('name,sport,date,level,goal_time').eq('user_id', userId).gte('date', weekStart.toISOString().split('T')[0]).order('date', { ascending: true }).limit(3),
+    Promise.resolve(sb.from('profiles').select('weight_kg,height_cm').eq('id', userId).maybeSingle()).catch(() => ({ data: null })),
+    Promise.resolve(sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle()).catch(() => ({ data: null })),
+    sb.from('planned_races').select('name,sport,date,level,goal_time').eq('user_id', userId).gte('date', now.toISOString().split('T')[0]).order('date', { ascending: true }).limit(1),
+    sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since8weeks.toISOString()).order('started_at', { ascending: true }),
   ])
 
   const activities = activitiesRes.data ?? []
@@ -11693,6 +11709,10 @@ async function enrichedAnalyserSemaine(
   const past4wActivities = past4wActivitiesRes.data ?? []
   const past4wPlanned = past4wPlannedRes.data ?? []
   const upcomingRaces = upcomingRacesRes.data ?? []
+  const profile = profileRes.data
+  const perfProfile = perfProfileRes.data as { ftp_watts?: number | null; vma?: number | null } | null
+  const nextRace = nextRaceRes.data?.[0] ?? null
+  const activities8w = activities8wRes.data ?? []
 
   // Compliance matrix
   type ComplianceRow = { dayIndex: number; sport: string; plannedDuration: number; plannedIntensity: string; realizedDuration: number | null; realizedTss: number | null; status: 'ok' | 'partial' | 'missed' }
@@ -11715,6 +11735,90 @@ async function enrichedAnalyserSemaine(
     }
   })
   const complianceScore = planned.length > 0 ? Math.round((complianceMatrix.filter(r => r.status === 'ok').length / planned.length) * 100) : null
+
+  // ── Calcul CTL / ATL / TSB simplifié (sur 8 semaines) ──
+  const tssPerDay: number[] = []
+  for (let d = 0; d < 56; d++) {
+    const dayStart = new Date(now.getTime() - (55 - d) * 86400000)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setHours(23, 59, 59, 999)
+    const dayTss = activities8w
+      .filter(a => new Date(a.started_at) >= dayStart && new Date(a.started_at) <= dayEnd)
+      .reduce((s, a) => s + (a.tss ?? 0), 0)
+    tssPerDay.push(dayTss)
+  }
+
+  // CTL (Chronic Training Load) — moyenne exponentielle 42 jours
+  let ctl = 0
+  for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
+  const ctlFinal = Math.round(ctl)
+
+  // ATL (Acute Training Load) — moyenne exponentielle 7 jours
+  let atl = 0
+  for (const t of tssPerDay) atl = atl + (t - atl) / 7
+  const atlFinal = Math.round(atl)
+
+  // TSB (Training Stress Balance) = CTL - ATL
+  const tsbFinal = ctlFinal - atlFinal
+
+  // ── Score de monotonie (4 dernières semaines) ──
+  // Monotonie = moyenne TSS quotidien / écart-type TSS quotidien
+  // Monotonie > 2.0 = risque de surmenage
+  const last28days = tssPerDay.slice(-28)
+  const avgDailyTss = last28days.reduce((a, b) => a + b, 0) / 28
+  const stdDailyTss = Math.sqrt(last28days.reduce((s, t) => s + (t - avgDailyTss) ** 2, 0) / 28)
+  const monotonie = stdDailyTss > 0 ? Math.round((avgDailyTss / stdDailyTss) * 100) / 100 : 0
+
+  // ── Score de contrainte (strain) ──
+  // Strain = TSS hebdomadaire × monotonie
+  // Strain > 4000 = risque élevé
+  const tss7d = last28days.slice(-7).reduce((a, b) => a + b, 0)
+  const strain = Math.round(tss7d * monotonie)
+
+  // ── Score de risque de surmenage (0-100) ──
+  let riskScore = 0
+  // TSB très négatif (< -20) = risque élevé
+  if (tsbFinal < -30) riskScore += 35
+  else if (tsbFinal < -20) riskScore += 25
+  else if (tsbFinal < -10) riskScore += 15
+
+  // Monotonie élevée
+  if (monotonie > 2.5) riskScore += 25
+  else if (monotonie > 2.0) riskScore += 15
+  else if (monotonie > 1.5) riskScore += 5
+
+  // Strain élevé
+  if (strain > 5000) riskScore += 25
+  else if (strain > 4000) riskScore += 15
+  else if (strain > 3000) riskScore += 5
+
+  // Pas de jour de repos dans la semaine
+  const daysWithActivity = new Set(activities.map(a => new Date(a.started_at).getDay())).size
+  if (daysWithActivity >= 7) riskScore += 15
+  else if (daysWithActivity >= 6) riskScore += 5
+
+  // Métriques récupération basses
+  const latestHrv = metrics.length > 0 ? (metrics[metrics.length - 1] as { hrv?: number | null })?.hrv : null
+  const latestSommeil = metrics.length > 0 ? (metrics[metrics.length - 1] as { sleep_score?: number | null })?.sleep_score : null
+  if (latestHrv != null && latestHrv < 30) riskScore += 10
+  if (latestSommeil != null && latestSommeil < 60) riskScore += 5
+
+  const riskLevel = riskScore > 60 ? 'élevé' : riskScore > 35 ? 'modéré' : 'faible'
+
+  // ── Jours avant la prochaine course ──
+  const daysToRace = nextRace ? Math.round((new Date(nextRace.date).getTime() - now.getTime()) / 86400000) : null
+
+  // ── Rampe de charge (progression TSS semaine/semaine) ──
+  const weeklyTss4w: number[] = [0, 0, 0, 0]
+  for (let w = 0; w < 4; w++) {
+    const wStart = new Date(now.getTime() - (4 - w) * 7 * 86400000)
+    const wEnd = new Date(wStart.getTime() + 7 * 86400000)
+    weeklyTss4w[w] = activities8w
+      .filter(a => new Date(a.started_at) >= wStart && new Date(a.started_at) < wEnd)
+      .reduce((s, a) => s + (a.tss ?? 0), 0)
+  }
+  const rampePct = weeklyTss4w[2] > 0 ? Math.round(((weeklyTss4w[3] - weeklyTss4w[2]) / weeklyTss4w[2]) * 100) : null
 
   // Type drift detection (4 past weeks)
   type TypeDriftEntry = { plannedIntensity: string; realizedTss: number; realizedDuration: number }
@@ -11749,58 +11853,107 @@ async function enrichedAnalyserSemaine(
   if (upcomingRaces.length > 0) sources.push(`${upcomingRaces.length} course(s) planifiée(s)`)
   const confidence = sources.length >= 4 ? 'élevé' : sources.length >= 2 ? 'modéré' : 'faible'
 
-  const systemPrompt = `Tu es un coach expert en analyse hebdomadaire d'entraînement. Analyse la semaine EN CROISANT ces 3 dimensions obligatoirement.
+  const systemPrompt = `Tu es un coach expert qui analyse la semaine d'entraînement de ton athlète. Tu CROISES toutes les données pour donner un diagnostic COMPLET et des ADAPTATIONS CONCRÈTES.
 
-DIMENSION 1 — COMPLIANCE PLAN/RÉALISÉ
-Analyse la matrice de compliance fournie. Calcule le score de compliance, identifie les séances ok/partielles/manquées, commente le respect des intensités. Présente sous forme de tableau markdown.
+Tu ne fais pas un simple résumé — tu es un coach qui OBSERVE, DÉTECTE, ALERTE et RECOMMANDE.
 
-DIMENSION 2 — PATTERNS SUR 4 SEMAINES
-Analyse les données des 4 semaines passées. Détecte les comportements répétés : jours sautés chroniquement, type drift (séances planifiées à haute intensité mais réalisées en Z2), séances raccourcies systématiquement. NOMME le pattern explicitement. Si peu de données : le signaler.
+STRUCTURE OBLIGATOIRE :
 
-DIMENSION 3 — ÉTAT DE RÉCUPÉRATION ET PROJECTION
-Synthèse des métriques de la semaine (HRV, sommeil, fatigue) + TSS cumulé + cohérence avec les courses à venir.
+## 📊 Bilan de la semaine
+Tableau markdown : Jour | Prévu | Réalisé | Status (✅/⚠️/❌) | Commentaire
+Score de compliance : X% — interprétation
+Volume total : Xkm · Xh · TSS X
+Répartition par sport (barre visuelle si possible)
 
-TON : Coach direct, factuel, constructif. Pas de précautions oratoires.
-STRUCTURE : ## pour chaque dimension + ## Synthèse + ## 3 recommandations actionnables
+## ⚡ État de forme et fatigue
+CTL (forme chronique) : ${ctlFinal} — interprétation
+ATL (fatigue aiguë) : ${atlFinal} — interprétation
+TSB (fraîcheur) : ${tsbFinal} — interprétation (positif = frais, négatif = fatigué)
+Monotonie : ${monotonie} — ${monotonie > 2.0 ? '⚠️ ÉLEVÉE — risque de surmenage' : 'normale'}
+Strain : ${strain} — ${strain > 4000 ? '⚠️ ÉLEVÉ' : 'acceptable'}
 
-TERMINE TOUJOURS PAR :
-## Sources et niveau de confiance
-Sources utilisées : [liste]
-Niveau de confiance : [élevé/modéré/faible] — [justification]
+## 🚨 Score de risque : ${riskScore}/100 (${riskLevel})
+Explique POURQUOI ce score. Quels facteurs contribuent au risque. Si le risque est modéré ou élevé, ALERTE l'athlète clairement.
 
-## Actions suggérées
-Propose 1-2 actions rapides pertinentes parmi : "Analyser ma récupération", "Analyser un entraînement", "Estimer mes zones", "Conseils sommeil"${rulesBlock}`
+## 📈 Tendances (4 semaines)
+Rampe de charge : ${rampePct !== null ? `${rampePct > 0 ? '+' : ''}${rampePct}% vs semaine précédente` : 'non calculable'}
+${rampePct !== null && rampePct > 15 ? '⚠️ Rampe > 15% — risque de surcharge. La règle des 10% max/semaine est recommandée.' : ''}
+Évolution TSS : semaine -4: ${weeklyTss4w[0]} → -3: ${weeklyTss4w[1]} → -2: ${weeklyTss4w[2]} → cette semaine: ${weeklyTss4w[3]}
+Patterns détectés sur 4 semaines (séances manquées chroniquement, type drift, etc.)
+
+${nextRace ? `## 🏁 Objectif : ${nextRace.name} dans ${daysToRace} jours
+La charge de cette semaine est-elle cohérente avec l'objectif ? Trop de volume ? Pas assez ? Timing de la périodisation ?
+Si < 3 semaines : recommandations de tapering.
+Si > 6 semaines : phase de construction adaptée.` : ''}
+
+## 🔧 Adaptations recommandées pour le reste de la semaine
+${remainingPlanned.length > 0 ? `Il reste ${remainingPlanned.length} séances planifiées. Pour CHAQUE séance restante :
+- La maintenir / l'adapter (comment exactement) / la reporter
+- Justification basée sur les données (TSB, compliance, récupération)` : 'Pas de séance restante cette semaine.'}
+
+Recommande aussi :
+- Faut-il ajouter un jour de repos ?
+- Faut-il baisser l'intensité sur certaines séances ?
+- Faut-il augmenter le volume si l'athlète assimile bien ?
+
+## 💡 3 recommandations clés
+Ultra-concrètes, chiffrées, liées aux données.
+
+TON : Direct, factuel, coach qui ne mâche pas ses mots. Si tout va bien, dis-le. Si c'est critique, ALERTE.
+${rulesBlock}`
 
   const userPrompt = `Analyse ma semaine du ${weekStart.toLocaleDateString('fr-FR')} au ${weekEnd.toLocaleDateString('fr-FR')}.
 
-ACTIVITÉS RÉALISÉES :
-${activities.length > 0 ? JSON.stringify(activities, null, 2) : 'Aucune activité cette semaine.'}
+PROFIL ATHLÈTE :
+Poids : ${profile?.weight_kg ?? 'N/A'}kg
+${perfProfile?.ftp_watts ? `FTP : ${perfProfile.ftp_watts}W` : ''}
+${perfProfile?.vma ? `VMA : ${perfProfile.vma}km/h` : ''}
+Sports pratiqués : ${[...new Set(activities8w.map(a => a.sport_type))].join(', ') || 'N/A'}
 
-SÉANCES PLANIFIÉES :
-${planned.length > 0 ? JSON.stringify(planned, null, 2) : 'Aucune séance planifiée.'}
+ACTIVITÉS CETTE SEMAINE (${activities.length}) :
+${activities.length > 0 ? activities.map(a => `- ${a.title ?? a.sport_type} (${new Date(a.started_at).toLocaleDateString('fr-FR')}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · ${a.distance_m ? (a.distance_m / 1000).toFixed(1) + 'km' : ''} · TSS ${a.tss ?? 'N/A'} · FC moy ${a.average_heartrate ?? 'N/A'}bpm · ${a.avg_watts ? a.avg_watts + 'W' : ''}`).join('\n') : 'Aucune activité.'}
 
-MATRICE COMPLIANCE (planned vs réalisé) :
-${complianceMatrix.length > 0 ? JSON.stringify(complianceMatrix, null, 2) : 'Pas de données de compliance disponibles.'}
-Score de compliance estimé : ${complianceScore !== null ? `${complianceScore}%` : 'N/A'}
+SÉANCES PLANIFIÉES (${planned.length}) :
+${planned.length > 0 ? planned.map(p => `- Jour ${p.day_index ?? '?'} : ${p.sport ?? '?'} · ${p.title ?? ''} · ${p.duration_min ?? '?'}min · Intensité: ${p.intensite ?? '?'} · TSS: ${p.tss ?? '?'} · Status: ${p.status ?? '?'}`).join('\n') : 'Aucune.'}
 
-MÉTRIQUES DE RÉCUPÉRATION SEMAINE :
-${metrics.length > 0 ? JSON.stringify(metrics, null, 2) : 'Pas de données de récupération.'}
+MATRICE COMPLIANCE :
+${complianceMatrix.length > 0 ? complianceMatrix.map(r => `Jour ${r.dayIndex} (${r.sport}): prévu ${r.plannedDuration}min ${r.plannedIntensity} → réalisé ${r.realizedDuration ?? '—'}min TSS ${r.realizedTss ?? '—'} = ${r.status}`).join('\n') : 'Pas de données.'}
+Score compliance : ${complianceScore !== null ? complianceScore + '%' : 'N/A'}
 
-TSS CUMULÉ SEMAINE : ${tssCumul}
-RÉPARTITION PAR SPORT (minutes) : ${JSON.stringify(sportBreakdown)}
-SÉANCES RESTANTES DE LA SEMAINE : ${remainingPlanned.length} séances
+MÉTRIQUES RÉCUPÉRATION (${metrics.length} jours) :
+${metrics.length > 0 ? JSON.stringify(metrics.slice(-7), null, 2) : 'Pas de données de récupération.'}
 
-DONNÉES PATTERNS (4 semaines passées — ${past4wActivities.length} activités, ${past4wPlanned.length} séances planifiées) :
-${typeDriftData.length > 0 ? `Type drift data : ${JSON.stringify(typeDriftData)}` : 'Données insuffisantes pour détecter un pattern.'}
+CHARGE D'ENTRAÎNEMENT :
+CTL : ${ctlFinal} · ATL : ${atlFinal} · TSB : ${tsbFinal}
+Monotonie : ${monotonie} · Strain : ${strain}
+TSS 7j : ${tss7d} · Score risque : ${riskScore}/100 (${riskLevel})
+Rampe : ${rampePct !== null ? rampePct + '%' : 'N/A'}
+TSS par semaine (4 dernières) : ${weeklyTss4w.join(' → ')}
 
-COURSES À VENIR :
-${upcomingRaces.length > 0 ? JSON.stringify(upcomingRaces, null, 2) : 'Aucune course planifiée.'}
+PATTERNS 4 SEMAINES (${typeDriftData.length} données) :
+${typeDriftData.length > 0 ? JSON.stringify(typeDriftData.slice(0, 15)) : 'Données insuffisantes.'}
+Jours d'activité cette semaine : ${daysWithActivity}/7
 
-Sources utilisées : ${sources.join(' · ')}
-Niveau de confiance : ${confidence}`
+${nextRace ? `PROCHAINE COURSE : ${nextRace.name} (${nextRace.sport}) le ${nextRace.date} — dans ${daysToRace} jours · Objectif : ${nextRace.goal_time ?? 'N/A'}` : 'Pas de course planifiée.'}
+
+SÉANCES RESTANTES CETTE SEMAINE : ${remainingPlanned.length}
+${remainingPlanned.map(p => `- ${p.sport} · ${p.title ?? ''} · ${p.duration_min}min · ${p.intensite}`).join('\n')}
+
+Sources : ${sources.join(' · ')}
+Confiance : ${confidence}`
+
+  const headerBlock = `---
+**Semaine ${weekStart.toLocaleDateString('fr-FR')} → ${weekEnd.toLocaleDateString('fr-FR')}**
+📊 ${activities.length} activités · ${Math.round(activities.reduce((s, a) => s + ((a.moving_time_s ?? 0) / 3600), 0) * 10) / 10}h · TSS ${tssCumul}
+⚡ CTL ${ctlFinal} · ATL ${atlFinal} · TSB ${tsbFinal}
+🚨 Risque : **${riskScore}/100** (${riskLevel})
+${nextRace ? `🏁 ${nextRace.name} dans **${daysToRace} jours**` : ''}
+---
+
+`
 
   // TODO: inject injuries when table exists
-  sendFn(label, systemPrompt + '\n\n' + userPrompt)
+  sendFn(label, headerBlock + systemPrompt + '\n\n' + userPrompt)
 }
 
 async function enrichedAnalyserRecuperation(

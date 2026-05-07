@@ -5,6 +5,36 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { TIER_LIMITS, type TierName } from './tier-limits'
 
+// ── Comptes créateurs : aucune limite, jamais ──────────────────────
+// Ces comptes bypassent intégralement les quotas (messages, plans, etc.)
+const CREATOR_EMAILS = new Set<string>([
+  'alexandre.et92@gmail.com',
+])
+
+// Cache mémoire pour éviter d'interroger auth.admin à chaque quota check.
+// userId → bool (creator ou pas). Le mapping email→userId ne change pas.
+const creatorCache = new Map<string, boolean>()
+
+async function isCreatorAccount(userId: string): Promise<boolean> {
+  const cached = creatorCache.get(userId)
+  if (cached !== undefined) return cached
+
+  try {
+    const supabase = createServiceClient()
+    const { data, error } = await supabase.auth.admin.getUserById(userId)
+    if (error || !data?.user?.email) {
+      creatorCache.set(userId, false)
+      return false
+    }
+    const isCreator = CREATOR_EMAILS.has(data.user.email.toLowerCase())
+    creatorCache.set(userId, isCreator)
+    return isCreator
+  } catch (err) {
+    console.error('[check-quota] isCreatorAccount error:', err)
+    return false
+  }
+}
+
 // ── Types publics ──────────────────────────────────────────────────
 
 export type UsageType =
@@ -124,9 +154,15 @@ export async function checkQuota(
   userId: string,
   type: UsageType,
 ): Promise<QuotaResult> {
+  const reset_at = getResetAt(type)
+
+  // Compte créateur → toutes les limites sautées
+  if (await isCreatorAccount(userId)) {
+    return { allowed: true, used: 0, limit: Infinity, tier: 'expert', reset_at }
+  }
+
   const tier = await getUserTier(userId)
   const limit = getLimit(tier, type)
-  const reset_at = getResetAt(type)
 
   // Illimité → pas de requête DB
   if (!isFinite(limit)) {
@@ -180,16 +216,25 @@ export async function logUsage(
 /**
  * Retourne le résumé d'usage du mois en cours pour un utilisateur.
  * Utile pour afficher les jauges dans les settings.
+ *
+ * Pour le compte créateur : `unlimited: true` est retourné, et `usage` est vide.
+ * Le client doit masquer la section "Utilisation en cours" dans ce cas.
  */
 export async function getUsageSummary(userId: string): Promise<{
   tier: TierName
+  unlimited: boolean
   usage: Record<UsageType, { used: number; limit: number; reset_at: string }>
 }> {
+  const types: UsageType[] = ['message', 'plan_generation', 'tool_use', 'briefing', 'nutrition_plan', 'micro_agent']
+
+  // Compte créateur → tout en illimité, aucune jauge à afficher
+  if (await isCreatorAccount(userId)) {
+    return { tier: 'expert', unlimited: true, usage: {} as Record<UsageType, { used: number; limit: number; reset_at: string }> }
+  }
+
   const tier = await getUserTier(userId)
   const monthStart = getPeriodStart('message')
   const weekStart  = getPeriodStart('briefing')
-
-  const types: UsageType[] = ['message', 'plan_generation', 'tool_use', 'briefing', 'nutrition_plan', 'micro_agent']
 
   // Requêtes en parallèle
   const counts = await Promise.all(
@@ -212,5 +257,5 @@ export async function getUsageSummary(userId: string): Promise<{
     }
   })
 
-  return { tier, usage }
+  return { tier, unlimited: false, usage }
 }

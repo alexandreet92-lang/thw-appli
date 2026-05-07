@@ -2458,7 +2458,7 @@ function RechargeFlow({ onPrepare, onCancel, onRecordConv }: {
   const [step, setStep] = useState<RechargeStep>('gate')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
-  const [activeRechargeDay, setActiveRechargeDay] = useState(0)
+  const [generating, setGenerating] = useState(false)
 
   // Gate data
   const [gateData, setGateData] = useState<{
@@ -2677,7 +2677,16 @@ RÈGLES IMPÉRATIVES :
 - Chaque repas doit totaliser ses glucides.
 - Proposer une ALTERNATIVE pour chaque repas (variante si l'athlète n'apprécie pas un aliment).
 - Si le poids n'est pas renseigné, utiliser 70kg comme référence en le précisant.
-- Adapter au sport : un triathlète ≠ un coureur 10km ≠ un ultra-trailer.`
+- Adapter au sport : un triathlète ≠ un coureur 10km ≠ un ultra-trailer.
+
+FORMATAGE OBLIGATOIRE :
+- Utilise des titres ## pour chaque jour (## J-3, ## J-2, ## J-1, ## Jour J, ## Pendant l'effort, ## Récupération, ## Prochaines étapes)
+- Utilise des titres ### pour chaque repas (### 🌅 Petit-déjeuner, ### ⚡ Collation matin, ### ☀️ Déjeuner, ### ⚡ Collation après-midi, ### 🌙 Dîner)
+- Pour chaque repas, liste chaque aliment avec sa quantité et ses glucides : **Riz blanc cuit** — 200g — 58g gluc.
+- À la fin de chaque jour, une ligne récapitulative : **TOTAL : XXXg glucides · XXg protéines · XXg lipides · XXXXkcal**
+- Mets en **gras** les aliments clés et les totaux
+- Utilise > pour les alertes et points de vigilance importants (ex : > ⚠ Pas de fibres la veille)
+- Utilise des emojis pour rendre le plan visuel : 🏁 Jour J, 🚴 pendant l'effort, 💪 récupération`
   }
 
   // ── Step: gate ──────────────────────────────────────────────
@@ -3006,8 +3015,8 @@ RÈGLES IMPÉRATIVES :
           </button>
           <button
             onClick={async () => {
-              setActiveRechargeDay(0)
               setResult('')
+              setGenerating(true)
               setStep('result')  // afficher immédiatement — le texte arrive progressivement
               try {
                 const prompt = buildPrompt()
@@ -3027,17 +3036,26 @@ RÈGLES IMPÉRATIVES :
 
                 const decoder = new TextDecoder()
                 let raw = ''
-                // Lire chunk par chunk → affichage progressif, pas de timeout
-                while (true) {
-                  const { done, value } = await reader.read()
-                  if (done) break
-                  raw += decoder.decode(value, { stream: true })
-                  setResult(raw)  // mise à jour live à chaque chunk
+                try {
+                  // Lire chunk par chunk → affichage progressif, pas de timeout
+                  while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) break
+                    raw += decoder.decode(value, { stream: true })
+                    setResult(raw)  // mise à jour live à chaque chunk
+                  }
+                  // Flush le dernier chunk partiel
+                  const tail = decoder.decode()
+                  if (tail) { raw += tail; setResult(raw) }
+                } finally {
+                  // TOUJOURS libérer le reader et marquer la fin du stream
+                  reader.cancel().catch(() => { /* ignore */ })
                 }
-                // Stream terminé — s'assurer que le dernier chunk est flushé
-                setResult(raw + decoder.decode())
               } catch (e) {
-                setResult('Erreur : ' + (e instanceof Error ? e.message : 'inconnue'))
+                setResult((prev) => (prev ?? '') + '\n\n[Erreur : ' + (e instanceof Error ? e.message : 'inconnue') + ']')
+              } finally {
+                // TOUJOURS exécuté — même en cas d'erreur ou d'exception
+                setGenerating(false)
               }
             }}
             disabled={!canSubmit}
@@ -3072,25 +3090,8 @@ RÈGLES IMPÉRATIVES :
 
   // ── Step: result ─────────────────────────────────────────────
   if (step === 'result' && result !== null) {
-    // Le stream est "terminé" quand on trouve les sections de fin du plan
-    const streamDone = result.length > 200 && /##\s*(Prochaines|Récup|Points\s+de)/i.test(result)
     const raceName = selectedRace?.name ?? manualRaceName ?? (eventType === 'training' ? 'Entraînement' : 'Compétition')
-    const days = ['J-3', 'J-2', 'J-1', 'Jour J', 'Pendant', 'Récup']
-    const dayColors: Record<string, string> = {
-      'J-3': '#22c55e', 'J-2': '#00c8e0', 'J-1': '#f97316', 'Jour': '#ef4444',
-    }
-
-    // Split result into day sections
-    const sections = result
-      .split(/(?=##\s+(?:J-[0-3]|Jour\s+J|Pendant|Récup|Phase|Points|Sources|Prochaines))/i)
-      .filter(s => s.trim().length > 0)
-
-    const daySections = days.map(d =>
-      sections.find(s => s.match(new RegExp('^##\\s+' + d.replace(' ', '\\s+'), 'i'))) ?? null
-    ).filter((s): s is string => s !== null)
-
-    const carbGoal = gateData?.weight ? `${Math.round(gateData.weight * 10)}g/j` : '—'
-    const sportLabel = selectedRace?.sport ?? manualRaceSport ?? (eventType === 'training' ? 'entraînement' : '—')
+    const sportLabel = selectedRace?.sport ?? manualRaceSport ?? (eventType === 'training' ? 'entraînement' : '')
 
     async function generateRechargePDF() {
       if (!result) return
@@ -3101,63 +3102,50 @@ RÈGLES IMPÉRATIVES :
       const contentW = pageW - margin * 2
       let y = margin
 
-      // Barre accent
       doc.setFillColor(0, 200, 224)
       doc.rect(0, 0, pageW, 3, 'F')
       y = 12
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8)
-      doc.setTextColor(0, 200, 224)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 200, 224)
       doc.text('THW COACHING', margin, y)
       y += 10
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(16)
-      doc.setTextColor(26, 26, 46)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(26, 26, 46)
       doc.text(`Plan de Recharge — ${raceName}`, margin, y)
       y += 6
 
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(100, 100, 120)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 120)
       const meta = [
         gateData?.weight ? `${gateData.weight} kg` : null,
         estimatedDuration || null,
-        sportLabel !== '—' ? sportLabel : null,
+        sportLabel || null,
       ].filter(Boolean).join('  ·  ')
       if (meta) { doc.text(meta, margin, y); y += 8 } else { y += 4 }
 
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.setTextColor(60, 60, 80)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 80)
 
-      const lines = result.split('\n')
-      for (const line of lines) {
+      for (const line of result.split('\n')) {
         if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = margin }
-        const trimmed = line.trim()
-        if (trimmed.startsWith('## ')) {
+        const t = line.trim()
+        if (t.startsWith('## ')) {
           y += 4
           doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 200, 224)
-          doc.text(trimmed.replace('## ', ''), margin, y)
-          y += 6
+          doc.text(t.replace('## ', ''), margin, y); y += 6
           doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 80)
-        } else if (trimmed.startsWith('### ') || (trimmed.startsWith('**') && trimmed.endsWith('**'))) {
+        } else if (t.startsWith('### ') || (t.startsWith('**') && t.endsWith('**'))) {
           y += 2
           doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 26, 46)
-          doc.text(trimmed.replace(/^###?\s*/, '').replace(/\*\*/g, ''), margin, y)
-          y += 5
+          doc.text(t.replace(/^###?\s*/, '').replace(/\*\*/g, ''), margin, y); y += 5
           doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 80)
-        } else if (trimmed.startsWith('●') || trimmed.startsWith('-') || trimmed.startsWith('•')) {
-          const text = '  • ' + trimmed.replace(/^[●\-•]\s*/, '')
-          const split = doc.splitTextToSize(text, contentW - 4)
+        } else if (/^[●\-•]/.test(t)) {
+          const split = doc.splitTextToSize('  • ' + t.replace(/^[●\-•]\s*/, ''), contentW - 4)
           doc.text(split, margin + 2, y); y += split.length * 4
-        } else if (trimmed.startsWith('⚠')) {
+        } else if (t.startsWith('⚠') || t.startsWith('>')) {
           doc.setTextColor(239, 68, 68)
-          const split = doc.splitTextToSize(trimmed, contentW)
+          const split = doc.splitTextToSize(t.replace(/^>\s*/, ''), contentW)
           doc.text(split, margin, y); y += split.length * 4
           doc.setTextColor(60, 60, 80)
-        } else if (trimmed.length > 0) {
-          const split = doc.splitTextToSize(trimmed.replace(/\*\*/g, ''), contentW)
+        } else if (t.length > 0) {
+          const split = doc.splitTextToSize(t.replace(/\*\*/g, ''), contentW)
           doc.text(split, margin, y); y += split.length * 4
         } else {
           y += 2
@@ -3176,73 +3164,58 @@ RÈGLES IMPÉRATIVES :
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 12px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
           Plan de recharge glucidique
+        </p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
+          {raceName}{sportLabel ? ` · ${sportLabel}` : ''}
         </p>
 
         {/* KPIs */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
           {([
-            { label: 'Poids', value: gateData?.weight ? `${gateData.weight} kg` : '70 kg*' },
-            { label: 'Durée', value: eventType === 'training' ? 'Entraînement' : 'J-3 à J' },
-            { label: 'Gluc. cible', value: carbGoal },
-            { label: 'Sport', value: sportLabel },
+            { label: 'Poids',      value: gateData?.weight ? `${gateData.weight}kg` : '70kg*' },
+            { label: 'Durée',      value: eventType === 'training' ? 'Séance' : 'J-3 à J' },
+            { label: 'Gluc. cible', value: gateData?.weight ? `${Math.round(gateData.weight * 10)}g/j` : '700g/j' },
+            { label: 'Départ',     value: raceStartTime || '08:00' },
           ] as { label: string; value: string }[]).map(kpi => (
-            <div key={kpi.label} style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{kpi.label}</p>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '3px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            <div key={kpi.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
             </div>
           ))}
         </div>
 
-        {/* Onglets par jour */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 10, overflowX: 'auto' as const, paddingBottom: 2 }}>
-          {days.slice(0, Math.max(daySections.length, 1)).map((d, i) => {
-            const col = dayColors[d.split(' ')[0] ?? ''] ?? 'var(--ai-accent)'
-            return (
-              <button key={d} onClick={() => setActiveRechargeDay(i)} style={{
-                padding: '5px 10px', borderRadius: 7, fontSize: 10, fontWeight: activeRechargeDay === i ? 700 : 400,
-                border: `1px solid ${activeRechargeDay === i ? col : 'var(--ai-border)'}`,
-                background: activeRechargeDay === i ? col + '20' : 'var(--ai-bg2)',
-                color: activeRechargeDay === i ? col : 'var(--ai-mid)',
-                cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0,
-              }}>
-                {d}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Contenu du jour actif */}
-        <div style={{ marginBottom: 12, padding: '12px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: 340, overflowY: 'auto' as const }}>
-          {daySections.length > 0
-            ? <MsgContent text={daySections[activeRechargeDay] ?? daySections[0] ?? result} />
-            : <MsgContent text={result} />
-          }
+        {/* Contenu complet en markdown — scrollable */}
+        <div style={{
+          padding: '14px', borderRadius: 12,
+          border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+          maxHeight: '60vh', overflowY: 'auto' as const,
+        }}>
+          <MsgContent text={result || '…'} />
         </div>
 
         {/* Loader pendant le streaming */}
-        {!streamDone && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: 'var(--ai-dim)', fontSize: 11 }}>
+        {generating && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: 'var(--ai-dim)', fontSize: 11 }}>
             <Dots />
             <span>Génération en cours…</span>
           </div>
         )}
 
-        {/* Actions — uniquement quand le stream est terminé */}
-        {streamDone && (
-          <div style={{ display: 'flex', gap: 7 }}>
+        {/* Boutons — uniquement quand generating === false */}
+        {!generating && result && result.length > 100 && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button
               onClick={() => { void generateRechargePDF() }}
               style={{
                 flex: 1, padding: '9px', borderRadius: 9,
                 border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
-                color: 'var(--ai-accent, #00c8e0)', fontSize: 11, fontWeight: 600,
+                color: 'var(--ai-accent, #00c8e0)', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
               }}
             >
-              📄 PDF
+              📄 Télécharger PDF
             </button>
             {onRecordConv && (
               <button
@@ -3251,18 +3224,16 @@ RÈGLES IMPÉRATIVES :
                   onRecordConv(label, result)
                 }}
                 style={{
-                  flex: 1, padding: '9px', borderRadius: 9,
+                  padding: '9px 12px', borderRadius: 9,
                   border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
                   color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
-                  fontFamily: 'DM Sans,sans-serif',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
                 💾 Sauvegarder
               </button>
             )}
             <button onClick={onCancel} style={{
-              padding: '9px 14px', borderRadius: 9,
+              padding: '9px 12px', borderRadius: 9,
               border: '1px solid var(--ai-border)', background: 'transparent',
               color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer',
             }}>

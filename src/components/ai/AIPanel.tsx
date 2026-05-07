@@ -3006,45 +3006,38 @@ RÈGLES IMPÉRATIVES :
           </button>
           <button
             onClick={async () => {
-              setStep('generating')
               setActiveRechargeDay(0)
+              setResult('')
+              setStep('result')  // afficher immédiatement — le texte arrive progressivement
               try {
                 const prompt = buildPrompt()
-                const { createClient } = await import('@/lib/supabase/client')
-                const sb = createClient()
 
-                const res = await fetch('/api/coach-stream', {
+                const res = await fetch('/api/recharge-stream', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    agentId: 'central',
-                    modelId: 'athena',
-                    messages: [{ role: 'user', content: prompt }],
-                  }),
+                  body: JSON.stringify({ prompt }),
                 })
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                if (!res.ok) {
+                  setResult(`Erreur HTTP ${res.status} — réessaie dans quelques instants.`)
+                  return
+                }
 
                 const reader = res.body?.getReader()
-                if (!reader) throw new Error('No body')
+                if (!reader) { setResult('Pas de body dans la réponse.'); return }
+
                 const decoder = new TextDecoder()
                 let raw = ''
+                // Lire chunk par chunk → affichage progressif, pas de timeout
                 while (true) {
                   const { done, value } = await reader.read()
                   if (done) break
-                  const chunk = decoder.decode(value, { stream: true })
-                  for (const line of chunk.split('\n')) {
-                    if (line.startsWith('data: ')) {
-                      const d = line.slice(6).trim()
-                      if (d === '[DONE]') break
-                      try { raw += JSON.parse(d) as string } catch { /* skip */ }
-                    }
-                  }
+                  raw += decoder.decode(value, { stream: true })
+                  setResult(raw)  // mise à jour live à chaque chunk
                 }
-                setResult(raw)
-                setStep('result')
+                // Stream terminé — s'assurer que le dernier chunk est flushé
+                setResult(raw + decoder.decode())
               } catch (e) {
                 setResult('Erreur : ' + (e instanceof Error ? e.message : 'inconnue'))
-                setStep('result')
               }
             }}
             disabled={!canSubmit}
@@ -3079,6 +3072,8 @@ RÈGLES IMPÉRATIVES :
 
   // ── Step: result ─────────────────────────────────────────────
   if (step === 'result' && result !== null) {
+    // Le stream est "terminé" quand on trouve les sections de fin du plan
+    const streamDone = result.length > 200 && /##\s*(Prochaines|Récup|Points\s+de)/i.test(result)
     const raceName = selectedRace?.name ?? manualRaceName ?? (eventType === 'training' ? 'Entraînement' : 'Compétition')
     const days = ['J-3', 'J-2', 'J-1', 'Jour J', 'Pendant', 'Récup']
     const dayColors: Record<string, string> = {
@@ -3226,45 +3221,55 @@ RÈGLES IMPÉRATIVES :
           }
         </div>
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 7 }}>
-          <button
-            onClick={() => { void generateRechargePDF() }}
-            style={{
-              flex: 1, padding: '9px', borderRadius: 9,
-              border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
-              color: 'var(--ai-accent, #00c8e0)', fontSize: 11, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-            }}
-          >
-            📄 PDF
-          </button>
-          {onRecordConv && (
+        {/* Loader pendant le streaming */}
+        {!streamDone && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: 'var(--ai-dim)', fontSize: 11 }}>
+            <Dots />
+            <span>Génération en cours…</span>
+          </div>
+        )}
+
+        {/* Actions — uniquement quand le stream est terminé */}
+        {streamDone && (
+          <div style={{ display: 'flex', gap: 7 }}>
             <button
-              onClick={() => {
-                const label = 'Recharge glucidique — ' + raceName
-                onRecordConv(label, result)
-              }}
+              onClick={() => { void generateRechargePDF() }}
               style={{
                 flex: 1, padding: '9px', borderRadius: 9,
-                border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-                color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
-                fontFamily: 'DM Sans,sans-serif',
+                border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
+                color: 'var(--ai-accent, #00c8e0)', fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
               }}
             >
-              💾 Sauvegarder
+              📄 PDF
             </button>
-          )}
-          <button onClick={onCancel} style={{
-            padding: '9px 14px', borderRadius: 9,
-            border: '1px solid var(--ai-border)', background: 'transparent',
-            color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer',
-          }}>
-            Fermer
-          </button>
-        </div>
+            {onRecordConv && (
+              <button
+                onClick={() => {
+                  const label = 'Recharge glucidique — ' + raceName
+                  onRecordConv(label, result)
+                }}
+                style={{
+                  flex: 1, padding: '9px', borderRadius: 9,
+                  border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
+                  fontFamily: 'DM Sans,sans-serif',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                }}
+              >
+                💾 Sauvegarder
+              </button>
+            )}
+            <button onClick={onCancel} style={{
+              padding: '9px 14px', borderRadius: 9,
+              border: '1px solid var(--ai-border)', background: 'transparent',
+              color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer',
+            }}>
+              Fermer
+            </button>
+          </div>
+        )}
       </div>
     )
   }

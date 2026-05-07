@@ -2428,7 +2428,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
 // ── RechargeFlow ───────────────────────────────────────────────
 
 type RechargeEventType = 'race_planned' | 'race_manual' | 'training'
-type RechargeStep = 'gate' | 'event' | 'questions' | 'generating'
+type RechargeStep = 'gate' | 'event' | 'questions' | 'generating' | 'result'
 
 interface PlannedRaceOption {
   id: string
@@ -2450,9 +2450,15 @@ interface NutritionPlanData {
   notes: string | null
 }
 
-function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
+function RechargeFlow({ onPrepare, onCancel, onRecordConv }: {
+  onPrepare: (apiPrompt: string, label: string) => void
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+}) {
   const [step, setStep] = useState<RechargeStep>('gate')
   const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+  const [activeRechargeDay, setActiveRechargeDay] = useState(0)
 
   // Gate data
   const [gateData, setGateData] = useState<{
@@ -2494,7 +2500,7 @@ function RechargeFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, 
 
         const [profileRes, planRes, sessionsRes, racesRes] = await Promise.all([
           Promise.resolve(
-            sb.from('user_profiles').select('weight_kg,height_cm').eq('user_id', user.id).maybeSingle()
+            sb.from('profiles').select('weight_kg,height_cm').eq('id', user.id).maybeSingle()
           ).catch(() => ({ data: null, error: null })),
           Promise.resolve(
             sb.from('nutrition_plans').select('id,calories_target,protein_g,carbs_g,fat_g,meals_per_day,allergies,regime,notes').eq('user_id', user.id).eq('actif', true).maybeSingle()
@@ -2999,10 +3005,47 @@ RÈGLES IMPÉRATIVES :
             Retour
           </button>
           <button
-            onClick={() => {
-              const prompt = buildPrompt()
-              const label = 'Recharge glucidique — ' + (eventType === 'training' ? 'Entraînement' : (selectedRace?.name ?? manualRaceName ?? 'Compétition'))
-              onPrepare(prompt, label)
+            onClick={async () => {
+              setStep('generating')
+              setActiveRechargeDay(0)
+              try {
+                const prompt = buildPrompt()
+                const { createClient } = await import('@/lib/supabase/client')
+                const sb = createClient()
+
+                const res = await fetch('/api/coach-stream', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    agentId: 'central',
+                    modelId: 'athena',
+                    messages: [{ role: 'user', content: prompt }],
+                  }),
+                })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+                const reader = res.body?.getReader()
+                if (!reader) throw new Error('No body')
+                const decoder = new TextDecoder()
+                let raw = ''
+                while (true) {
+                  const { done, value } = await reader.read()
+                  if (done) break
+                  const chunk = decoder.decode(value, { stream: true })
+                  for (const line of chunk.split('\n')) {
+                    if (line.startsWith('data: ')) {
+                      const d = line.slice(6).trim()
+                      if (d === '[DONE]') break
+                      try { raw += JSON.parse(d) as string } catch { /* skip */ }
+                    }
+                  }
+                }
+                setResult(raw)
+                setStep('result')
+              } catch (e) {
+                setResult('Erreur : ' + (e instanceof Error ? e.message : 'inconnue'))
+                setStep('result')
+              }
             }}
             disabled={!canSubmit}
             style={{
@@ -3013,6 +3056,213 @@ RÈGLES IMPÉRATIVES :
             }}
           >
             Créer mon plan
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: generating ─────────────────────────────────────────
+  if (step === 'generating') {
+    return (
+      <div style={{ padding: '20px 0', textAlign: 'center' as const }}>
+        <Dots />
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12, margin: '12px 0 4px' }}>
+          Création de ton plan de recharge…
+        </p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>
+          Plan détaillé de J-3 au jour de course
+        </p>
+      </div>
+    )
+  }
+
+  // ── Step: result ─────────────────────────────────────────────
+  if (step === 'result' && result !== null) {
+    const raceName = selectedRace?.name ?? manualRaceName ?? (eventType === 'training' ? 'Entraînement' : 'Compétition')
+    const days = ['J-3', 'J-2', 'J-1', 'Jour J', 'Pendant', 'Récup']
+    const dayColors: Record<string, string> = {
+      'J-3': '#22c55e', 'J-2': '#00c8e0', 'J-1': '#f97316', 'Jour': '#ef4444',
+    }
+
+    // Split result into day sections
+    const sections = result
+      .split(/(?=##\s+(?:J-[0-3]|Jour\s+J|Pendant|Récup|Phase|Points|Sources|Prochaines))/i)
+      .filter(s => s.trim().length > 0)
+
+    const daySections = days.map(d =>
+      sections.find(s => s.match(new RegExp('^##\\s+' + d.replace(' ', '\\s+'), 'i'))) ?? null
+    ).filter((s): s is string => s !== null)
+
+    const carbGoal = gateData?.weight ? `${Math.round(gateData.weight * 10)}g/j` : '—'
+    const sportLabel = selectedRace?.sport ?? manualRaceSport ?? (eventType === 'training' ? 'entraînement' : '—')
+
+    async function generateRechargePDF() {
+      if (!result) return
+      const { default: jsPDF } = await import('jspdf')
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageW = doc.internal.pageSize.getWidth()
+      const margin = 14
+      const contentW = pageW - margin * 2
+      let y = margin
+
+      // Barre accent
+      doc.setFillColor(0, 200, 224)
+      doc.rect(0, 0, pageW, 3, 'F')
+      y = 12
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(0, 200, 224)
+      doc.text('THW COACHING', margin, y)
+      y += 10
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(16)
+      doc.setTextColor(26, 26, 46)
+      doc.text(`Plan de Recharge — ${raceName}`, margin, y)
+      y += 6
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(100, 100, 120)
+      const meta = [
+        gateData?.weight ? `${gateData.weight} kg` : null,
+        estimatedDuration || null,
+        sportLabel !== '—' ? sportLabel : null,
+      ].filter(Boolean).join('  ·  ')
+      if (meta) { doc.text(meta, margin, y); y += 8 } else { y += 4 }
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(60, 60, 80)
+
+      const lines = result.split('\n')
+      for (const line of lines) {
+        if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = margin }
+        const trimmed = line.trim()
+        if (trimmed.startsWith('## ')) {
+          y += 4
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 200, 224)
+          doc.text(trimmed.replace('## ', ''), margin, y)
+          y += 6
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 80)
+        } else if (trimmed.startsWith('### ') || (trimmed.startsWith('**') && trimmed.endsWith('**'))) {
+          y += 2
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 26, 46)
+          doc.text(trimmed.replace(/^###?\s*/, '').replace(/\*\*/g, ''), margin, y)
+          y += 5
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 80)
+        } else if (trimmed.startsWith('●') || trimmed.startsWith('-') || trimmed.startsWith('•')) {
+          const text = '  • ' + trimmed.replace(/^[●\-•]\s*/, '')
+          const split = doc.splitTextToSize(text, contentW - 4)
+          doc.text(split, margin + 2, y); y += split.length * 4
+        } else if (trimmed.startsWith('⚠')) {
+          doc.setTextColor(239, 68, 68)
+          const split = doc.splitTextToSize(trimmed, contentW)
+          doc.text(split, margin, y); y += split.length * 4
+          doc.setTextColor(60, 60, 80)
+        } else if (trimmed.length > 0) {
+          const split = doc.splitTextToSize(trimmed.replace(/\*\*/g, ''), contentW)
+          doc.text(split, margin, y); y += split.length * 4
+        } else {
+          y += 2
+        }
+      }
+
+      const totalPages = doc.getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i)
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(120, 120, 140)
+        doc.text(`THW Coaching — Plan de recharge — ${raceName}`, margin, doc.internal.pageSize.getHeight() - 6)
+        doc.text(`${i}/${totalPages}`, pageW - margin - 8, doc.internal.pageSize.getHeight() - 6)
+      }
+      doc.save(`THW_Recharge_${raceName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`)
+    }
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 12px' }}>
+          Plan de recharge glucidique
+        </p>
+
+        {/* KPIs */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          {([
+            { label: 'Poids', value: gateData?.weight ? `${gateData.weight} kg` : '70 kg*' },
+            { label: 'Durée', value: eventType === 'training' ? 'Entraînement' : 'J-3 à J' },
+            { label: 'Gluc. cible', value: carbGoal },
+            { label: 'Sport', value: sportLabel },
+          ] as { label: string; value: string }[]).map(kpi => (
+            <div key={kpi.label} style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '3px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Onglets par jour */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 10, overflowX: 'auto' as const, paddingBottom: 2 }}>
+          {days.slice(0, Math.max(daySections.length, 1)).map((d, i) => {
+            const col = dayColors[d.split(' ')[0] ?? ''] ?? 'var(--ai-accent)'
+            return (
+              <button key={d} onClick={() => setActiveRechargeDay(i)} style={{
+                padding: '5px 10px', borderRadius: 7, fontSize: 10, fontWeight: activeRechargeDay === i ? 700 : 400,
+                border: `1px solid ${activeRechargeDay === i ? col : 'var(--ai-border)'}`,
+                background: activeRechargeDay === i ? col + '20' : 'var(--ai-bg2)',
+                color: activeRechargeDay === i ? col : 'var(--ai-mid)',
+                cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0,
+              }}>
+                {d}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Contenu du jour actif */}
+        <div style={{ marginBottom: 12, padding: '12px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: 340, overflowY: 'auto' as const }}>
+          {daySections.length > 0
+            ? <MsgContent text={daySections[activeRechargeDay] ?? daySections[0] ?? result} />
+            : <MsgContent text={result} />
+          }
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 7 }}>
+          <button
+            onClick={() => { void generateRechargePDF() }}
+            style={{
+              flex: 1, padding: '9px', borderRadius: 9,
+              border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
+              color: 'var(--ai-accent, #00c8e0)', fontSize: 11, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            }}
+          >
+            📄 PDF
+          </button>
+          {onRecordConv && (
+            <button
+              onClick={() => {
+                const label = 'Recharge glucidique — ' + raceName
+                onRecordConv(label, result)
+              }}
+              style={{
+                flex: 1, padding: '9px', borderRadius: 9,
+                border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
+                fontFamily: 'DM Sans,sans-serif',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              }}
+            >
+              💾 Sauvegarder
+            </button>
+          )}
+          <button onClick={onCancel} style={{
+            padding: '9px 14px', borderRadius: 9,
+            border: '1px solid var(--ai-border)', background: 'transparent',
+            color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer',
+          }}>
+            Fermer
           </button>
         </div>
       </div>
@@ -11701,7 +11951,7 @@ async function enrichedConseilsSommeil(
   const [metrics60dRes, activities60dRes, profileRes] = await Promise.all([
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
     sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
-    sb.from('user_profiles').select('sports,main_goal,age,weight_kg').eq('user_id', userId).maybeSingle(),
+    sb.from('profiles').select('sports,main_goal,age,weight_kg').eq('id', userId).maybeSingle(),
   ])
 
   const metrics60d = metrics60dRes.data ?? []
@@ -11856,7 +12106,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
         const since14d = new Date(now.getTime() - 14 * 86400000).toISOString().slice(0, 10)
 
         const [profileRes, zonesRes, testsRes, planRes, racesRes, actsRes, metricsRes, rulesRes] = await Promise.all([
-          sb.from('user_profiles').select('first_name,sports,main_goal').eq('user_id', user.id).maybeSingle(),
+          sb.from('profiles').select('first_name,sports,main_goal').eq('id', user.id).maybeSingle(),
           sb.from('training_zones').select('id,sport').eq('user_id', user.id).eq('is_current', true),
           Promise.resolve({ data: [], error: null }),
           sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
@@ -12105,7 +12355,7 @@ async function enrichedComprendreApp(
   const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
 
   const [profileRes, zonesRes, testsRes, planNutritionRes, racesRes, activitiesCountRes, metricsCountRes, rulesCountRes] = await Promise.all([
-    sb.from('user_profiles').select('first_name,sports,main_goal,age').eq('user_id', userId).maybeSingle(),
+    sb.from('profiles').select('first_name,sports,main_goal,age').eq('id', userId).maybeSingle(),
     sb.from('training_zones').select('id,sport').eq('user_id', userId).eq('is_current', true),
     Promise.resolve({ data: [], error: null }),
     sb.from('nutrition_plans').select('id').eq('user_id', userId).eq('actif', true).maybeSingle(),
@@ -12536,7 +12786,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { setLoadingSports(false); return }
-        const { data } = await sb.from('user_profiles').select('sports').eq('user_id', user.id).maybeSingle()
+        const { data } = await sb.from('profiles').select('sports').eq('id', user.id).maybeSingle()
         const sports = (data?.sports as string[] | null) ?? []
         setUserSports(sports.length > 0 ? sports : ['running', 'cycling', 'hyrox', 'gym'])
       } catch {
@@ -13032,7 +13282,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { setLoadingSports(false); return }
-        const { data } = await sb.from('user_profiles').select('sports').eq('user_id', user.id).maybeSingle()
+        const { data } = await sb.from('profiles').select('sports').eq('id', user.id).maybeSingle()
         const sports = (data?.sports as string[] | null) ?? []
         const list = sports.length > 0 ? sports : ['running', 'cycling', 'hyrox', 'gym']
         setUserSports(list)
@@ -17099,6 +17349,20 @@ export default function AIPanel({
                   <RechargeFlow
                     onPrepare={(apiPrompt, label) => { setActiveFlow(null); void send(label, apiPrompt) }}
                     onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
                   />
                 )}
                 {activeFlow === 'sessionbuilder' && (

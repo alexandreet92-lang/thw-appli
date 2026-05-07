@@ -75,7 +75,7 @@ export const MODEL_IDS: Record<TierModel, string> = {
 // ── Mapping modèle → max_tokens Anthropic ──────────────────────────
 // Zeus bénéficie d'un contexte étendu pour des analyses longues.
 export const MODEL_MAX_TOKENS: Record<TierModel, number> = {
-  hermes:  4096,
+  hermes:  8192,   // min 8k pour les plans détaillés (recharge, stratégie…)
   athena: 12000,   // augmenté pour la stratégie de course (3 scénarios JSON ~8k tokens)
   zeus:   16000,
 }

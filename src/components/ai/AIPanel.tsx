@@ -42,7 +42,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -11051,7 +11051,7 @@ const PLUS_CATS: PlusCat[] = [
     items: [
       { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
       { label: 'Training Analyse', flow: 'analyze_training' as FlowId },
-      { label: 'Analyser ma semaine', enrichedId: 'analyser_semaine' },
+      { label: 'Analyser ma semaine', flow: 'analyser_semaine' as FlowId },
     ],
   },
   {
@@ -13781,6 +13781,633 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
     </div>
   )
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// FLOW — WeekAnalysisFlow (Analyser ma semaine)
+// ══════════════════════════════════════════════════════════════
+
+function WeekAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onFollowUp?: (displayLabel: string, fullPrompt: string) => void
+}) {
+  type Phase = 'gate' | 'options' | 'loading' | 'result'
+  const [phase, setPhase] = useState<Phase>('gate')
+  const [error, setError] = useState<string | null>(null)
+  const [rawAnalysis, setRawAnalysis] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [weekChoice, setWeekChoice] = useState<'current' | 'last'>('current')
+
+  const [gateData, setGateData] = useState<{
+    activitiesCount: number
+    plannedCount: number
+    metricsCount: number
+    nextRace: { name: string; sport: string; date: string; goal_time: string | null } | null
+    weight: number | null
+    ftp: number | null
+    vma: number | null
+    sports: string[]
+  } | null>(null)
+
+  // Computed values shown in result KPIs
+  const [kpis, setKpis] = useState<{
+    activitiesCount: number
+    totalKm: number
+    totalHours: number
+    tssCumul: number
+    ctlFinal: number
+    atlFinal: number
+    tsbFinal: number
+    riskScore: number
+    riskLevel: string
+    nextRace: { name: string; date: string } | null
+    daysToRace: number | null
+  } | null>(null)
+
+  // ── Gate : charger les données de base ──
+  useEffect(() => {
+    if (phase !== 'gate') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user || cancelled) return
+
+        const now = new Date()
+        const weekStart = new Date(now)
+        weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))
+        weekStart.setHours(0, 0, 0, 0)
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6)
+
+        const [actsRes, plannedRes, metricsRes, racesRes, profileRes, perfRes] = await Promise.all([
+          sb.from('activities').select('id').eq('user_id', user.id)
+            .gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString()),
+          sb.from('planned_sessions').select('id').eq('user_id', user.id)
+            .gte('week_start', weekStart.toISOString().split('T')[0])
+            .lte('week_start', weekEnd.toISOString().split('T')[0]),
+          Promise.resolve(sb.from('metrics_daily').select('id').eq('user_id', user.id)
+            .gte('date', weekStart.toISOString().split('T')[0])
+            .lte('date', weekEnd.toISOString().split('T')[0])).catch(() => ({ data: [] })),
+          sb.from('planned_races').select('name,sport,date,goal_time').eq('user_id', user.id)
+            .gte('date', now.toISOString().split('T')[0])
+            .order('date', { ascending: true }).limit(1),
+          Promise.resolve(sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle()).catch(() => ({ data: null })),
+          Promise.resolve(sb.from('athlete_performance_profile').select('ftp_watts,vma').eq('user_id', user.id).maybeSingle()).catch(() => ({ data: null })),
+        ])
+
+        const since8w = new Date(now.getTime() - 56 * 86400000)
+        const { data: sportsData } = await sb.from('activities').select('sport_type').eq('user_id', user.id)
+          .gte('started_at', since8w.toISOString())
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sports = [...new Set((sportsData ?? []).map((a: any) => a.sport_type))].filter(Boolean) as string[]
+
+        if (!cancelled) {
+          setGateData({
+            activitiesCount: actsRes.data?.length ?? 0,
+            plannedCount: plannedRes.data?.length ?? 0,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            metricsCount: (metricsRes as any).data?.length ?? 0,
+            nextRace: racesRes.data?.[0] ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            weight: (profileRes as any).data?.weight_kg ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ftp: (perfRes as any).data?.ftp_watts ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            vma: (perfRes as any).data?.vma ?? null,
+            sports,
+          })
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Erreur')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [phase])
+
+  // ── Fonction principale d'analyse ──
+  async function runAnalysis() {
+    setPhase('loading')
+    setError(null)
+    setRawAnalysis('')
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+
+      const now = new Date()
+      const weekStart = new Date(now)
+      if (weekChoice === 'last') {
+        weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1) - 7)
+      } else {
+        weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))
+      }
+      weekStart.setHours(0, 0, 0, 0)
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999)
+      const since8weeks = new Date(weekStart)
+      since8weeks.setDate(since8weeks.getDate() - 56)
+
+      const [
+        activitiesRes, plannedRes, metricsRes,
+        past4wActivitiesRes, past4wPlannedRes,
+        upcomingRacesRes, activities8wRes,
+        profileRes, perfProfileRes,
+      ] = await Promise.all([
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+          .gte('started_at', weekStart.toISOString()).lte('started_at', weekEnd.toISOString())
+          .order('started_at', { ascending: true }),
+        sb.from('planned_sessions').select('id,sport,title,duration_min,tss,intensite,heure,type_seance,status,day_index')
+          .eq('user_id', user.id)
+          .gte('week_start', weekStart.toISOString().split('T')[0])
+          .lte('week_start', weekEnd.toISOString().split('T')[0]),
+        Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id)
+          .gte('date', weekStart.toISOString().split('T')[0])
+          .lte('date', weekEnd.toISOString().split('T')[0])
+          .order('date', { ascending: true })).catch(() => ({ data: [] as unknown[] })),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+          .gte('started_at', since8weeks.toISOString()).lt('started_at', weekStart.toISOString())
+          .order('started_at', { ascending: true }),
+        sb.from('planned_sessions').select('sport,duration_min,intensite,type_seance,status,day_index,week_start')
+          .eq('user_id', user.id)
+          .gte('week_start', since8weeks.toISOString().split('T')[0])
+          .lt('week_start', weekStart.toISOString().split('T')[0])
+          .order('week_start', { ascending: true }),
+        sb.from('planned_races').select('name,sport,date,level,goal_time')
+          .eq('user_id', user.id)
+          .gte('date', weekStart.toISOString().split('T')[0])
+          .order('date', { ascending: true }).limit(3),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+          .gte('started_at', since8weeks.toISOString())
+          .order('started_at', { ascending: true }),
+        Promise.resolve(sb.from('profiles').select('weight_kg,height_cm').eq('id', user.id).maybeSingle()).catch(() => ({ data: null })),
+        Promise.resolve(sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle()).catch(() => ({ data: null })),
+      ])
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const activities: any[] = activitiesRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const planned: any[] = plannedRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const metrics: any[] = (metricsRes as any).data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const past4wActivities: any[] = past4wActivitiesRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const past4wPlanned: any[] = past4wPlannedRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const upcomingRaces: any[] = upcomingRacesRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const activities8w: any[] = activities8wRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const profile = (profileRes as any).data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const perfProfile = (perfProfileRes as any).data
+
+      // ── Compliance matrix ──
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const complianceMatrix = planned.map((session: any) => {
+        const sessionDate = new Date(weekStart)
+        const dayIdx = session.day_index ?? 0
+        sessionDate.setDate(weekStart.getDate() + dayIdx)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const match = activities.find((a: any) => {
+          const aDate = new Date(a.started_at)
+          return a.sport_type === session.sport && Math.abs(aDate.getTime() - sessionDate.getTime()) < 86400000 * 1.5
+        })
+        return {
+          dayIndex: dayIdx, sport: session.sport ?? '',
+          plannedDuration: session.duration_min ?? 0,
+          plannedIntensity: session.intensite ?? '',
+          realizedDuration: match ? Math.round((match.moving_time_s ?? 0) / 60) : null,
+          realizedTss: match ? (match.tss ?? null) : null,
+          status: match ? ((match.tss ?? 0) >= (session.tss ?? 0) * 0.8 ? 'ok' : 'partial') : 'missed',
+        }
+      })
+      const complianceScore = planned.length > 0
+        ? Math.round((complianceMatrix.filter(r => r.status === 'ok').length / planned.length) * 100)
+        : null
+
+      // ── Type drift ──
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const typeDriftData: any[] = []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      past4wPlanned.forEach((ps: any) => {
+        const psDate = new Date(ps.week_start)
+        psDate.setDate(psDate.getDate() + (ps.day_index ?? 0))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const match = past4wActivities.find((a: any) =>
+          a.sport_type === ps.sport && Math.abs(new Date(a.started_at).getTime() - psDate.getTime()) < 86400000 * 1.5
+        )
+        if (match && ps.intensite) typeDriftData.push({ plannedIntensity: ps.intensite, realizedTss: match.tss ?? 0, realizedDuration: Math.round((match.moving_time_s ?? 0) / 60) })
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tssCumul = activities.reduce((s: number, a: any) => s + (a.tss ?? 0), 0)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const remainingPlanned = planned.filter((p: any) => {
+        const d = new Date(weekStart); d.setDate(weekStart.getDate() + (p.day_index ?? 0)); return d > now
+      })
+
+      // ── CTL / ATL / TSB ──
+      const tssPerDay: number[] = []
+      for (let d = 0; d < 56; d++) {
+        const dayStart = new Date(since8weeks.getTime() + d * 86400000); dayStart.setHours(0, 0, 0, 0)
+        const dayEnd = new Date(dayStart); dayEnd.setHours(23, 59, 59, 999)
+        tssPerDay.push(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          activities8w.filter((a: any) => { const t = new Date(a.started_at).getTime(); return t >= dayStart.getTime() && t <= dayEnd.getTime() })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .reduce((s: number, a: any) => s + (a.tss ?? 0), 0)
+        )
+      }
+      let ctl = 0; for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
+      let atl = 0; for (const t of tssPerDay) atl = atl + (t - atl) / 7
+      const ctlFinal = Math.round(ctl), atlFinal = Math.round(atl), tsbFinal = ctlFinal - atlFinal
+      const last28 = tssPerDay.slice(-28)
+      const avgD = last28.reduce((a, b) => a + b, 0) / 28
+      const stdD = Math.sqrt(last28.reduce((s, t) => s + (t - avgD) ** 2, 0) / 28)
+      const monotonie = stdD > 0 ? Math.round((avgD / stdD) * 100) / 100 : 0
+      const tss7d = last28.slice(-7).reduce((a, b) => a + b, 0)
+      const strain = Math.round(tss7d * monotonie)
+      const weeklyTss4w = [0, 0, 0, 0]
+      for (let w = 0; w < 4; w++) weeklyTss4w[w] = Math.round(tssPerDay.slice(28 + w * 7, 28 + (w + 1) * 7).reduce((a, b) => a + b, 0))
+      const rampePct = weeklyTss4w[2] > 0 ? Math.round(((weeklyTss4w[3] - weeklyTss4w[2]) / weeklyTss4w[2]) * 100) : null
+
+      // ── Risk score ──
+      let riskScore = 0
+      if (tsbFinal < -30) riskScore += 35; else if (tsbFinal < -20) riskScore += 25; else if (tsbFinal < -10) riskScore += 15
+      if (monotonie > 2.5) riskScore += 25; else if (monotonie > 2.0) riskScore += 15; else if (monotonie > 1.5) riskScore += 5
+      if (strain > 5000) riskScore += 25; else if (strain > 4000) riskScore += 15; else if (strain > 3000) riskScore += 5
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const daysWithActivity = new Set(activities.map((a: any) => new Date(a.started_at).getDay())).size
+      if (daysWithActivity >= 7) riskScore += 15; else if (daysWithActivity >= 6) riskScore += 5
+      const riskLevel = riskScore > 60 ? 'ÉLEVÉ' : riskScore > 35 ? 'MODÉRÉ' : 'FAIBLE'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nextRace: any = upcomingRaces[0] ?? null
+      const daysToRace = nextRace ? Math.round((new Date(nextRace.date).getTime() - now.getTime()) / 86400000) : null
+
+      // Stocker les KPIs pour l'UI result
+      setKpis({
+        activitiesCount: activities.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        totalKm: Math.round(activities.reduce((s: number, a: any) => s + ((a.distance_m ?? 0) / 1000), 0)),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        totalHours: Math.round(activities.reduce((s: number, a: any) => s + ((a.moving_time_s ?? 0) / 3600), 0) * 10) / 10,
+        tssCumul, ctlFinal, atlFinal, tsbFinal, riskScore, riskLevel,
+        nextRace: nextRace ? { name: nextRace.name, date: nextRace.date } : null,
+        daysToRace,
+      })
+
+      setGenerating(true)
+      setPhase('result')
+
+      // ── Build prompts ──
+      const sysPrompt = `Tu es un coach sportif expert qui analyse la semaine d'entraînement de son athlète. Tu CROISES toutes les données disponibles pour donner un diagnostic COMPLET avec des ADAPTATIONS CONCRÈTES.
+
+Tu ne fais pas un simple résumé — tu OBSERVES, DÉTECTES, ALERTES et RECOMMANDES comme un vrai coach.
+
+STRUCTURE OBLIGATOIRE DE TON ANALYSE :
+
+## 📊 Bilan de la semaine
+Tableau markdown : Jour | Prévu | Réalisé | Status (✅/⚠️/❌) | Commentaire
+Score de compliance : X%
+Volume total : Xkm · Xh · TSS X
+Répartition par sport
+
+## ⚡ État de forme et charge d'entraînement
+- **CTL** (forme chronique) : ${ctlFinal} — interprète ce chiffre
+- **ATL** (fatigue aiguë) : ${atlFinal} — interprète
+- **TSB** (fraîcheur) : ${tsbFinal} — ${tsbFinal > 5 ? 'positif = frais' : tsbFinal < -10 ? 'négatif = fatigué' : 'neutre'}
+- **Monotonie** : ${monotonie} — ${monotonie > 2.0 ? '⚠️ ÉLEVÉE — variation insuffisante de la charge, risque de surmenage' : 'normale'}
+- **Strain** : ${strain} — ${strain > 4000 ? '⚠️ ÉLEVÉ — charge × monotonie excessive' : 'acceptable'}
+
+## 🚨 Score de risque : ${riskScore}/100 (${riskLevel})
+Explique POURQUOI ce score. Quels facteurs contribuent. Si > 35, ALERTE l'athlète. Si > 60, recommande fortement de réduire la charge.
+
+## 📈 Tendances (4 semaines)
+TSS par semaine : S-4: ${weeklyTss4w[0]} → S-3: ${weeklyTss4w[1]} → S-2: ${weeklyTss4w[2]} → cette semaine: ${weeklyTss4w[3]}
+Rampe de charge : ${rampePct !== null ? `${rampePct > 0 ? '+' : ''}${rampePct}%` : 'non calculable'}
+${rampePct !== null && rampePct > 15 ? '⚠️ Rampe > 15% — progression trop rapide. Risque de blessure.' : ''}
+Patterns sur 4 semaines : séances sautées, type drift, raccourcissements systématiques.
+
+## 🏋️ Récupération
+${metrics.length > 0 ? 'Analyse des métriques : HRV, sommeil, fatigue subjective.' : 'Aucune donnée de récupération — recommande de configurer le suivi quotidien.'}
+L'athlète assimile-t-il bien la charge ? Signes de sur-fatigue ?
+
+${nextRace ? `## 🏁 Objectif : ${nextRace.name} dans ${daysToRace} jours
+La charge de cette semaine est-elle cohérente avec la préparation de cette course ?
+${(daysToRace ?? 0) < 21 ? 'Phase de tapering potentielle — adapter la charge.' : ''}
+${(daysToRace ?? 0) < 7 ? "⚠️ Course dans moins d'une semaine — affûtage prioritaire." : ''}` : ''}
+
+## 🔧 Adaptations recommandées
+${remainingPlanned.length > 0 ? `Il reste ${remainingPlanned.length} séances cette semaine. Pour CHAQUE séance :
+- La maintenir telle quelle / l'adapter (précise COMMENT) / la reporter
+- Justification basée sur le TSB, le score de risque, la récupération` : 'Pas de séance restante — recommandations pour la semaine prochaine.'}
+
+## 💡 3 recommandations clés
+Ultra-concrètes, chiffrées, basées sur les données de CETTE semaine.
+
+TON : Coach direct, factuel. Si tout va bien, félicite. Si c'est critique, n'hésite pas à dire STOP.`
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userPr = `Analyse ma semaine du ${weekStart.toLocaleDateString('fr-FR')} au ${weekEnd.toLocaleDateString('fr-FR')}.
+
+Profil: ${profile?.weight_kg ?? '?'}kg${perfProfile?.ftp_watts ? ` FTP ${perfProfile.ftp_watts}W` : ''}${perfProfile?.vma ? ` VMA ${perfProfile.vma}km/h` : ''}
+
+Activités (${activities.length}):
+${activities.map((a: any) => `- ${a.title ?? a.sport_type} (${new Date(a.started_at).toLocaleDateString('fr-FR')}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · TSS ${a.tss ?? '?'} · FC ${a.average_heartrate ?? '?'}bpm`).join('\n') || 'aucune'}
+
+Séances planifiées (${planned.length}):
+${planned.map((p: any) => `- Jour ${p.day_index ?? '?'}: ${p.sport ?? '?'} · ${p.title ?? ''} · ${p.duration_min ?? '?'}min · ${p.intensite ?? '?'} · ${p.status ?? '?'}`).join('\n') || 'aucune'}
+
+Compliance:
+${complianceMatrix.map(r => `J${r.dayIndex}(${r.sport}): prévu ${r.plannedDuration}min ${r.plannedIntensity} → réalisé ${r.realizedDuration ?? '—'}min TSS${r.realizedTss ?? '—'} = ${r.status}`).join('\n') || 'N/A'}
+Score: ${complianceScore ?? 'N/A'}%
+
+Récupération (${metrics.length} jours):
+${metrics.length > 0 ? JSON.stringify(metrics.slice(-5)) : 'pas de données'}
+
+Charge:
+CTL: ${ctlFinal} · ATL: ${atlFinal} · TSB: ${tsbFinal}
+Monotonie: ${monotonie} · Strain: ${strain}
+TSS 7j: ${tss7d} · Risque: ${riskScore}/100 (${riskLevel})
+Rampe: ${rampePct ?? 'N/A'}%
+TSS/semaine: ${weeklyTss4w.join(' → ')}
+Jours avec activité: ${daysWithActivity}/7
+
+${nextRace ? `Prochaine course: ${nextRace.name} (${nextRace.sport}) le ${nextRace.date} — J-${daysToRace}${nextRace.goal_time ? ` · Objectif: ${nextRace.goal_time}` : ''}` : 'Pas de course planifiée.'}
+
+Séances restantes (${remainingPlanned.length}):
+${remainingPlanned.map((p: any) => `- ${p.sport} · ${p.title ?? ''} · ${p.duration_min}min · ${p.intensite}`).join('\n') || 'aucune'}
+
+Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length > 0 ? JSON.stringify(typeDriftData.slice(0, 10)) : 'insuffisant'}`
+
+      // ── Stream la réponse ──
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'central',
+          modelId: 'athena',
+          messages: [{ role: 'user', content: sysPrompt + '\n\n' + userPr }],
+        }),
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('Pas de stream')
+
+      const decoder = new TextDecoder()
+      let raw = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) {
+              const d = line.slice(6).trim()
+              if (d === '[DONE]') break
+              try { raw += JSON.parse(d) as string } catch { /* skip non-text events */ }
+            }
+          }
+          setRawAnalysis(raw)
+        }
+      } finally {
+        reader.cancel().catch(() => { /* ignore */ })
+        setGenerating(false)
+        if (onRecordConv && raw) onRecordConv('Analyser ma semaine', raw.slice(0, 500))
+      }
+
+    } catch (e) {
+      setGenerating(false)
+      setError(e instanceof Error ? e.message : 'Erreur')
+      setPhase('options')
+    }
+  }
+
+  // ── Gate UI ──
+  if (phase === 'gate') {
+    if (!gateData && !error) return (
+      <div style={{ padding: 20, textAlign: 'center' }}>
+        <Dots />
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 8 }}>Chargement...</p>
+      </div>
+    )
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+          Analyser ma semaine
+        </p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+          Diagnostic complet : charge, risque, récupération, adaptations
+        </p>
+
+        {error && (
+          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+
+        {gateData && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+            {([
+              { label: 'Activités cette semaine', value: String(gateData.activitiesCount), ok: gateData.activitiesCount > 0 },
+              { label: 'Séances planifiées', value: String(gateData.plannedCount), ok: gateData.plannedCount > 0 },
+              { label: 'Données récupération', value: gateData.metricsCount + ' jours', ok: gateData.metricsCount > 0 },
+              { label: 'Profil athlète', value: gateData.weight ? `${gateData.weight}kg${gateData.ftp ? ` · FTP ${gateData.ftp}W` : ''}${gateData.vma ? ` · VMA ${gateData.vma}km/h` : ''}` : 'non renseigné', ok: !!gateData.weight },
+              { label: 'Prochaine course', value: gateData.nextRace ? `${gateData.nextRace.name} (${gateData.nextRace.date})` : 'aucune', ok: !!gateData.nextRace },
+            ] as { label: string; value: string; ok: boolean }[]).map(item => (
+              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+                <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>{item.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: item.ok ? '#22c55e' : '#f97316', fontFamily: 'DM Mono,monospace' }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {gateData && gateData.sports.length > 0 && (
+          <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
+            Sports : {gateData.sports.join(', ')}
+          </p>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            Annuler
+          </button>
+          <button
+            onClick={() => setPhase('options')}
+            disabled={!gateData}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
+          >
+            Continuer →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Options UI ──
+  if (phase === 'options') {
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 12px' }}>
+          Quelle semaine analyser ?
+        </p>
+
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          {([
+            { id: 'current' as const, label: 'Cette semaine', desc: 'En cours — avec adaptations pour le reste' },
+            { id: 'last' as const, label: 'Semaine dernière', desc: 'Bilan complet de la semaine passée' },
+          ]).map(opt => (
+            <button key={opt.id} onClick={() => setWeekChoice(opt.id)} style={{
+              flex: 1, padding: '10px 8px', borderRadius: 10, textAlign: 'left' as const,
+              border: `1px solid ${weekChoice === opt.id ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
+              background: weekChoice === opt.id ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              cursor: 'pointer',
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: weekChoice === opt.id ? 'var(--ai-accent)' : 'var(--ai-text)', margin: 0 }}>{opt.label}</p>
+              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '3px 0 0' }}>{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setPhase('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            Retour
+          </button>
+          <button
+            onClick={() => void runAnalysis()}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Analyser →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Loading UI ──
+  if (phase === 'loading') {
+    return (
+      <div style={{ padding: '30px 0', textAlign: 'center' }}>
+        <Dots />
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>Chargement des données...</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>CTL/ATL/TSB · Score de risque · Compliance · Adaptations</p>
+      </div>
+    )
+  }
+
+  // ── Result UI ──
+  if (phase === 'result' && kpis) {
+    const riskColor = kpis.riskScore > 60 ? '#ef4444' : kpis.riskScore > 35 ? '#f97316' : '#22c55e'
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>
+          Analyse — {weekChoice === 'last' ? 'Semaine dernière' : 'Cette semaine'}
+        </p>
+
+        {/* KPIs volume */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 8 }}>
+          {([
+            { label: 'Activités', value: String(kpis.activitiesCount) },
+            { label: 'Distance', value: `${kpis.totalKm}km` },
+            { label: 'Durée', value: `${kpis.totalHours}h` },
+            { label: 'TSS', value: String(kpis.tssCumul) },
+          ] as { label: string; value: string }[]).map(kpi => (
+            <div key={kpi.label} style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* CTL / ATL / TSB / Risque */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 8 }}>
+          <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 8, color: '#22c55e', margin: 0 }}>CTL</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.ctlFinal}</p>
+          </div>
+          <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 8, color: '#f97316', margin: 0 }}>ATL</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.atlFinal}</p>
+          </div>
+          <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 8, color: '#00c8e0', margin: 0 }}>TSB</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: kpis.tsbFinal < -10 ? '#ef4444' : kpis.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.tsbFinal}</p>
+          </div>
+          <div style={{ padding: '7px 4px', borderRadius: 8, border: `1px solid ${riskColor}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 8, color: riskColor, margin: 0 }}>RISQUE</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: riskColor, margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.riskScore}/100</p>
+          </div>
+        </div>
+
+        {/* Prochaine course */}
+        {kpis.nextRace && (
+          <div style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>🏁 {kpis.nextRace.name}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: (kpis.daysToRace ?? 99) < 14 ? '#f97316' : 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>J-{kpis.daysToRace}</span>
+          </div>
+        )}
+
+        {/* Analyse markdown */}
+        <div style={{ margin: '12px 0 8px', borderBottom: '1px solid var(--ai-border)' }} />
+        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 8px' }}>
+          Analyse du coach
+        </p>
+        <div style={{ padding: '12px', borderRadius: 12, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
+          {rawAnalysis
+            ? <MsgContent text={rawAnalysis} />
+            : <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>Analyse en cours...</p>
+          }
+        </div>
+
+        {generating && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
+            <Dots /><span>Génération en cours...</span>
+          </div>
+        )}
+
+        {/* Boutons de suivi */}
+        {!generating && rawAnalysis.length > 100 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginTop: 12 }}>
+            {([
+              { label: 'Détaille mes adaptations', prompt: `Basé sur l'analyse de ma semaine (CTL ${kpis.ctlFinal}, ATL ${kpis.atlFinal}, TSB ${kpis.tsbFinal}, risque ${kpis.riskScore}/100), détaille précisément comment adapter chaque séance restante cette semaine.` },
+              { label: 'Analyse ma récupération', prompt: `Analyse en profondeur mes données de récupération de cette semaine. HRV, sommeil, fatigue — qu'est-ce que ça dit sur ma capacité à absorber la charge ?` },
+              { label: 'Planifie la semaine prochaine', prompt: `Basé sur le bilan de cette semaine (CTL ${kpis.ctlFinal}, ATL ${kpis.atlFinal}, TSB ${kpis.tsbFinal}, risque ${kpis.riskScore}/100), propose un plan pour la semaine prochaine : volume, intensités, jours de repos.` },
+            ] as { label: string; prompt: string }[]).map((action, i) => (
+              <button key={i} onClick={() => {
+                if (onFollowUp) onFollowUp(action.label, action.prompt)
+              }} style={{
+                padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans,sans-serif',
+              }}>
+                {action.label} →
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!generating && (
+          <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer', marginTop: 10 }}>
+            Fermer
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return null
+}
+
 
 // ══════════════════════════════════════════════════════════════
 // FLOW — StrategieCourseFlow
@@ -16947,7 +17574,6 @@ export default function AIPanel({
       : ''
     const sendFn: SendFn = (displayText: string, apiPrompt: string) => { void send(displayText, apiPrompt) }
     switch (id) {
-      case 'analyser_semaine':      await enrichedAnalyserSemaine(sb, user.id, rulesBlock, label, sendFn); break
       case 'analyser_recuperation': await enrichedAnalyserRecuperation(sb, user.id, rulesBlock, label, sendFn); break
       case 'conseils_sommeil':      await enrichedConseilsSommeil(sb, user.id, rulesBlock, label, sendFn); break
       case 'comprendre_app':        await enrichedComprendreApp(sb, user.id, label, sendFn); break
@@ -17594,6 +18220,25 @@ export default function AIPanel({
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
                           { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel, raceStrategy: strategyData },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
+                    onFollowUp={(displayLabel, fullPrompt) => { void send(displayLabel, fullPrompt) }}
+                  />
+                )}
+                {activeFlow === 'analyser_semaine' && (
+                  <WeekAnalysisFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))

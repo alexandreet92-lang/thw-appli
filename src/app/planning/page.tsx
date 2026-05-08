@@ -262,6 +262,66 @@ function parseGymExercise(b:Block): {
 function calcPaceStr(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; const s=m*60/d; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` }
 function parsePace(s:string):number { const p=s.replace(',',':').split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0) }
 function getWeekStart():string { const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1; const m=new Date(now); m.setDate(now.getDate()-dow); return m.toISOString().split('T')[0] }
+
+// Mappe le sport interne → nom attendu par /api/session-builder
+const SPORT_TO_BUILDER: Record<SportType, string> = {
+  run: 'running', bike: 'cycling', swim: 'natation',
+  hyrox: 'hyrox', gym: 'gym', rowing: 'rowing',
+}
+
+// Convertit une zone string (Z1-Z5, SL1, SL2, EF, VMA, PMA…) → numéro 1-5
+function parseZoneStr(s: string): number {
+  const z = s.toUpperCase().trim()
+  if (['EF','Z1','RECOVERY'].includes(z))               return 1
+  if (['Z2'].includes(z))                               return 2
+  if (['SL1','Z3','TEMPO'].includes(z))                 return 3
+  if (['SL2','Z4','SEUIL','THRESHOLD'].includes(z))     return 4
+  if (['VMA','PMA','Z5','VO2MAX','MAX'].includes(z))    return 5
+  const n = parseInt(z.replace(/\D/g,''))
+  return isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
+}
+
+// Convertit un bloc /api/session-builder → Block utilisé dans le constructeur
+function sessionBuilderBlocToBlock(b: {
+  nom: string
+  repetitions: number
+  duree_effort: number
+  recup: number
+  zone_effort: string[]
+  zone_recup: string[]
+  watts: number | null
+  allure_cible: string | null
+  fc_cible: number | null
+  consigne: string
+}): Block {
+  const zone    = parseZoneStr(b.zone_effort[0] ?? 'Z3')
+  const recZone = parseZoneStr(b.zone_recup[0]  ?? 'Z1')
+  const value   = b.watts != null ? String(b.watts) : (b.allure_cible ?? '')
+  const nom     = b.nom.toLowerCase()
+  let type: BlockType = 'effort'
+  if (/échauffe|echauff|warm/.test(nom))   type = 'warmup'
+  else if (/retour|cool|calme/.test(nom))  type = 'cooldown'
+  else if (zone <= 1 && /récup/.test(nom)) type = 'recovery'
+  const label = b.consigne ? `${b.nom} — ${b.consigne.slice(0, 60)}` : b.nom
+  const id = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+  if (b.repetitions > 1) {
+    return {
+      id, mode: 'interval', type, zone, value,
+      hrAvg: b.fc_cible ? String(b.fc_cible) : '',
+      label: b.nom,
+      durationMin: b.repetitions * (b.duree_effort + Math.max(b.recup, 0)),
+      reps: b.repetitions,
+      effortMin: b.duree_effort,
+      recoveryMin: b.recup > 0 ? b.recup : 1,
+      recoveryZone: recZone,
+    }
+  }
+  return {
+    id, mode: 'single', type, zone, value,
+    hrAvg: b.fc_cible ? String(b.fc_cible) : '',
+    label, durationMin: b.duree_effort,
+  }
+}
 function getTodayIdx():number { const d=new Date().getDay(); return d===0?6:d-1 }
 
 const ATHLETE = { ftp:301, thresholdPace:248, css:88 }
@@ -2500,56 +2560,46 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
     if (!aiPrompt.trim() || aiLoading) return
     setAiLoading(true)
     try {
-      const res = await fetch('/api/coach-stream', {
+      console.log('[AI blocks] Starting generation — sport:', sport, 'prompt:', aiPrompt)
+      const res = await fetch('/api/session-builder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: `Génère une séance de ${SPORT_LABEL[sport]} : ${aiPrompt}. Durée cible : ${formatHM(totalMin)}. Réponds UNIQUEMENT avec un JSON array de blocs au format [{nom,duree_min,zone,repetitions?,recup_min?,watts?,allure?,consigne?}]. Rien d'autre.`,
-          }],
-          context: { sport, totalMin, rpe },
+          sport:          SPORT_TO_BUILDER[sport],
+          typesSeance:    trainingType ? [trainingType] : [],
+          descriptionLibre: `${aiPrompt} (durée cible : ${formatHM(totalMin)})`,
         }),
       })
-      if (!res.body) throw new Error('No body')
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let full = ''
-      let streamDone = false
-      try {
-        outer: while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n')
-          for (const line of lines) {
-            if (!line.startsWith('data:')) continue
-            const d = line.slice(5).trim()
-            if (d === '[DONE]') { streamDone = true; break outer }
-            try {
-              const ev = JSON.parse(d) as { choices?: { delta?: { content?: string } }[]; delta?: { text?: string } }
-              const delta = ev?.choices?.[0]?.delta?.content ?? ev?.delta?.text ?? ''
-              full += delta
-            } catch { /* ignore parse errors on SSE metadata lines */ }
-          }
+      console.log('[AI blocks] Response status:', res.status)
+      if (!res.ok) {
+        const txt = await res.text()
+        console.error('[AI blocks] Error response:', txt.slice(0, 300))
+        return
+      }
+      const data = await res.json() as {
+        session?: {
+          blocs?: {
+            nom:string; repetitions:number; duree_effort:number; recup:number
+            zone_effort:string[]; zone_recup:string[]
+            watts:number|null; allure_cible:string|null; fc_cible:number|null
+            consigne:string
+          }[]
         }
-      } finally {
-        if (!streamDone) reader.cancel().catch(() => {})
+        error?: string
       }
-      const match = full.match(/\[[\s\S]*\]/)
-      if (match) {
-        try {
-          const parsed: unknown = JSON.parse(match[0])
-          const newBlocks = normalizeBlocks(parsed)
-          if (newBlocks.length > 0) {
-            setBlocks(newBlocks)
-            setAiOpen(false)
-            setAiPrompt('')
-          }
-        } catch { /* invalid JSON — no-op */ }
+      console.log('[AI blocks] Raw response:', JSON.stringify(data).slice(0, 400))
+      const blocs = data.session?.blocs
+      if (!blocs?.length) {
+        console.error('[AI blocks] No blocs returned — data.error:', data.error)
+        return
       }
+      const newBlocks = blocs.map(b => sessionBuilderBlocToBlock(b))
+      console.log('[AI blocks] Converted blocks:', newBlocks.length)
+      setBlocks(newBlocks)
+      setAiOpen(false)
+      setAiPrompt('')
     } catch (e) {
-      console.error('[AddSessionModal] AI generate error:', e)
+      console.error('[AI blocks] Fetch error:', e)
     } finally {
       setAiLoading(false)
     }
@@ -2558,7 +2608,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   return (
     <div style={{ position:'fixed',inset:0,zIndex:300,background:'var(--bg)',overflowY:'auto',animation:'slideUp 0.25s ease-out' }}>
       {/* ── Sticky header ── */}
-      <div style={{ position:'sticky',top:0,zIndex:10,background:'var(--bg-card)',borderBottom:'1px solid var(--border-mid)',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12 }}>
+      <div style={{ position:'sticky',top:0,zIndex:10,background:'var(--bg-card)',borderBottom:'1px solid var(--border-mid)',boxShadow:'0 2px 12px rgba(0,0,0,0.08)',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12 }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
           <div style={{ width:4,height:22,borderRadius:2,background:SPORT_BORDER[sport] }}/>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:0 }}>Nouvelle séance</h3>

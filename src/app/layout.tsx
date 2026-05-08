@@ -54,14 +54,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <Sidebar />
           <main style={{
-            flex: 1,
-            minWidth: 0,
+            width: '100%',
+            height: 'calc(100vh - 56px)',
+            marginTop: '56px',
             overflowY: 'auto',
             overflowX: 'hidden',
             position: 'relative',
             zIndex: 10,
             background: 'var(--bg)',
-            marginTop: '56px',
             scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
           }}>

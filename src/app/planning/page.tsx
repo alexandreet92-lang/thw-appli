@@ -19,7 +19,7 @@ type PlanningTab   = 'training' | 'week'
 type PlanVariant   = 'A' | 'B'
 type WeekRange     = 1 | 5 | 10
 type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
-type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
+type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
 type SessionStatus = 'planned' | 'done'
 type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown'
 type BlockMode     = 'single' | 'interval'
@@ -28,22 +28,23 @@ type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
 type CalView       = 'year' | 'month'
 type TrainingView  = 'horizontal' | 'vertical'
 type RaceSport     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
-type CyclingSub    = 'velo' | 'vtt' | 'ht' | 'elliptique'
+type CyclingSub    = 'velo' | 'vtt' | 'ht'
 
 // ── Constants ─────────────────────────────────────
-const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(236,72,153,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)' }
-const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#f97316', bike:'#3b82f6', hyrox:'#ec4899', gym:'#8b5cf6', rowing:'#14b8a6' }
+const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(236,72,153,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)' }
+const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#f97316', bike:'#3b82f6', hyrox:'#ec4899', gym:'#8b5cf6', rowing:'#14b8a6', elliptique:'#a855f7' }
 
-const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron' }
-const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW' }
-const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer', elliptique:'Elliptique' }
+const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique' }
+const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP' }
+const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
-  run:   ['EF','SL1','SL2','VMA','Strides','Heat Training'],
-  bike:  ['EF','SL1','SL2','PMA','Sprints','Heat Training'],
-  swim:  ['EF','Technique','Seuil','Sprints'],
-  hyrox: ['Simulation','Ergo','Wall Ball','BBJ','Fentes','Sled Push','Sled Pull','Farmer Carry'],
-  gym:   ['Strength','Strength endurance','Explosivité'],
-  rowing:['EF','SL1','SL2','PMA','Sprints'],
+  run:       ['EF','SL1','SL2','VMA','Strides','Heat Training'],
+  bike:      ['EF','SL1','SL2','PMA','Sprints','Heat Training'],
+  swim:      ['EF','Technique','Seuil','Sprints'],
+  hyrox:     ['Simulation','Ergo','Wall Ball','BBJ','Fentes','Sled Push','Sled Pull','Farmer Carry'],
+  gym:       ['Strength','Strength endurance','Explosivité'],
+  rowing:    ['EF','SL1','SL2','PMA','Sprints'],
+  elliptique:['EF','SL1','SL2','PMA','Heat Training'],
 }
 const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
 const TASK_CONFIG: Record<TaskType,{label:string;color:string;bg:string}> = {
@@ -266,7 +267,7 @@ function getWeekStart():string { const now=new Date(); const dow=now.getDay()===
 // Mappe le sport interne → nom attendu par /api/session-builder
 const SPORT_TO_BUILDER: Record<SportType, string> = {
   run: 'running', bike: 'cycling', swim: 'natation',
-  hyrox: 'hyrox', gym: 'gym', rowing: 'rowing',
+  hyrox: 'hyrox', gym: 'gym', rowing: 'rowing', elliptique: 'cycling',
 }
 
 // Convertit une zone string (Z1-Z5, SL1, SL2, EF, VMA, PMA…) → numéro 1-5
@@ -335,7 +336,7 @@ function getZone(sport:SportType,v:string):number {
 function calcTSS(blocks:Block[], sport:SportType, totalMin?:number, rpe?:number):number {
   const IF_BY_ZONE = [0.55,0.70,0.83,0.95,1.10]
   const SPORT_FACTOR: Partial<Record<SportType,number>> = {
-    bike:1.0, run:0.9, swim:0.85, rowing:0.95, hyrox:1.05, gym:0.7
+    bike:1.0, run:0.9, swim:0.85, rowing:0.95, hyrox:1.05, gym:0.7, elliptique:0.85
   }
   const sf = SPORT_FACTOR[sport] ?? 0.9
 
@@ -384,7 +385,7 @@ function getWeekLabel(ws:string):string {
 }
 function normalizeSportType(s:string):SportType {
   const m:Record<string,SportType>={running:'run',cycling:'bike',virtual_ride:'bike',virtual_bike:'bike',swimming:'swim',trail_run:'run',trail_running:'run',triathlon:'run'}
-  return m[s]??((['run','bike','swim','hyrox','gym','rowing'] as SportType[]).includes(s as SportType)?s as SportType:'run')
+  return m[s]??((['run','bike','swim','hyrox','gym','rowing','elliptique'] as SportType[]).includes(s as SportType)?s as SportType:'run')
 }
 
 // Retourne true si la séance est une séance repos/off (durée 0 ou sport/titre repos).
@@ -696,6 +697,352 @@ function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity; o
   )
 }
 
+// ════════════════════════════════════════════════
+// EXERCISE DATABASE — Musculation & Hyrox
+// ════════════════════════════════════════════════
+type ExoCategory = 'push' | 'pull' | 'legs' | 'mixte' | 'abdos' | 'hyrox'
+interface ExoDefinition {
+  id: string; name: string; aliases: string[]; category: ExoCategory
+  hasWeight: boolean; hasDistance: boolean; hasKcal: boolean; hasTime: boolean
+  defaultReps: number; defaultSets: number; defaultRestSec: number
+}
+interface ExerciseItem {
+  id: string; exoId: string; name: string; category: ExoCategory
+  sets: number; reps: number
+  weightKg?: number; distanceM?: number; kcal?: number; targetTimeSec?: number
+  restSec: number; notes?: string
+}
+
+const EXERCISE_DATABASE: ExoDefinition[] = [
+  // PUSH
+  { id:'bench_press', name:'Bench Press', aliases:['développé couché','dc','bench'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
+  { id:'dips', name:'Dips', aliases:['dips lestés','weighted dips'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:90 },
+  { id:'push_press', name:'Push Press', aliases:['développé militaire','military press','ohp'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
+  { id:'push_up', name:'Push Up', aliases:['pompe','pompes','pushup'], category:'push', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:60 },
+  { id:'db_bench', name:'Dumbbell Bench Press', aliases:['bench press haltères','dc haltères'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:4, defaultRestSec:90 },
+  { id:'incline_bench', name:'Incline Bench Press', aliases:['bench press incliné','développé incliné','dc incliné'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:4, defaultRestSec:90 },
+  { id:'hspu', name:'Handstand Push Up', aliases:['hspu','pompe poirier'], category:'push', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:4, defaultRestSec:120 },
+  { id:'pike_push_up', name:'Pike Push Up', aliases:['pompe pike'], category:'push', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'lateral_raise', name:'Lateral Raise', aliases:['élévation latérale','élévations latérales','side lateral raise'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'ohp', name:'Overhead Press', aliases:['ohp','press barre','strict press'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
+  { id:'triceps_pushdown', name:'Triceps Pushdown', aliases:['extension triceps','triceps poulie','pushdown'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'chest_fly', name:'Chest Fly', aliases:['écarté poulie','écarté haltères','pec fly','butterfly'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  // PULL
+  { id:'pull_up', name:'Pull Up', aliases:['traction','tractions','tractions lestées','weighted pull up'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
+  { id:'barbell_row', name:'Barbell Row', aliases:['rowing','rowing barre'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
+  { id:'gorilla_row', name:'Gorilla Row', aliases:['rowing gorilla'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:90 },
+  { id:'db_row', name:'Dumbbell Row', aliases:['rowing haltère','rowing haltères','rowing 1 bras'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'australian_pullup', name:'Australian Pull Up', aliases:['traction australienne','inverted row'], category:'pull', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'rope_climb', name:'Rope Climb', aliases:['montée de corde','grimper corde'], category:'pull', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:3, defaultSets:3, defaultRestSec:120 },
+  { id:'lat_pulldown', name:'Lat Pulldown', aliases:['tirage vertical','tirage poulie haute'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'face_pull', name:'Face Pull', aliases:['face pull poulie'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:60 },
+  { id:'bicep_curl', name:'Bicep Curl', aliases:['curl biceps','curl barre','curl haltères'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'hammer_curl', name:'Hammer Curl', aliases:['curl marteau'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  // LEGS
+  { id:'squat', name:'Squat', aliases:['back squat','squat barre'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:150 },
+  { id:'front_squat', name:'Front Squat', aliases:['squat avant'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:4, defaultRestSec:150 },
+  { id:'deadlift', name:'Deadlift', aliases:['soulevé de terre','sdt'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:4, defaultRestSec:180 },
+  { id:'rdl_db', name:'Romanian Deadlift DB', aliases:['rdl haltères','soulevé de terre roumain haltères'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:90 },
+  { id:'trap_deadlift', name:'Trap Bar Deadlift', aliases:['deadlift trap','hex bar deadlift'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:4, defaultRestSec:150 },
+  { id:'bulgarian', name:'Bulgarian Split Squat', aliases:['bulgarian lunge','fente bulgare'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:3, defaultRestSec:90 },
+  { id:'lunge', name:'Lunge', aliases:['fente','fentes'], category:'legs', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'leg_press', name:'Leg Press', aliases:['presse','presse à cuisses'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:4, defaultRestSec:120 },
+  { id:'zercher', name:'Zercher Squat', aliases:['zercher'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:3, defaultRestSec:120 },
+  { id:'jump_squat', name:'Jump Squat', aliases:['squat sauté','squat jump'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'lateral_jump', name:'Lateral Jump', aliases:['jump latéral','saut latéral'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'pistol_squat', name:'Pistol Squat', aliases:['squat pistol','squat une jambe'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:3, defaultRestSec:90 },
+  { id:'box_jump', name:'Box Jump', aliases:['saut sur box'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:3, defaultRestSec:60 },
+  { id:'drop_jump', name:'Drop Jump', aliases:['saut en contrebas'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:3, defaultRestSec:90 },
+  { id:'squat_jump_box', name:'Squat Jump to Box', aliases:['squat jump box'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:3, defaultRestSec:60 },
+  { id:'sled_push_legs', name:'Sled Push', aliases:['poussée de luge','prowler push'], category:'legs', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:4, defaultRestSec:90 },
+  { id:'hip_thrust', name:'Hip Thrust', aliases:['hip thrust barre','relevé de bassin'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:90 },
+  { id:'leg_extension', name:'Leg Extension', aliases:['extension quadriceps'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'leg_curl', name:'Leg Curl', aliases:['leg curl couché','curl ischio'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'calf_raise', name:'Calf Raise', aliases:['mollets debout','mollets assis','élévation mollets'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:45 },
+  { id:'step_up', name:'Step Up', aliases:['montée sur box'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'goblet_squat', name:'Goblet Squat', aliases:['squat gobelet','squat haltère'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  // MIXTE
+  { id:'power_snatch', name:'Power Snatch', aliases:['arraché','snatch haltères','snatch barre'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:4, defaultRestSec:120 },
+  { id:'thruster', name:'Thruster', aliases:['thruster barre','thruster haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
+  { id:'clean', name:'Clean', aliases:['épaulé','power clean'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:4, defaultRestSec:120 },
+  { id:'clean_jerk', name:'Clean & Jerk', aliases:['clean and jerk','épaulé jeté'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:3, defaultSets:5, defaultRestSec:150 },
+  { id:'snatch', name:'Snatch', aliases:['arraché complet'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:3, defaultSets:5, defaultRestSec:150 },
+  { id:'tgu', name:'Turkish Get Up', aliases:['tgu','relevé turc'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:3, defaultSets:3, defaultRestSec:90 },
+  { id:'kb_swing', name:'Kettlebell Swing', aliases:['swing kettlebell','kb swing','russian swing'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:60 },
+  { id:'devil_press', name:'Devil Press', aliases:['devil press haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:3, defaultRestSec:90 },
+  { id:'man_maker', name:'Man Maker', aliases:['man maker haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:3, defaultRestSec:90 },
+  // ABDOS
+  { id:'crunch', name:'Crunch', aliases:['crunchs','abdos crunch'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:20, defaultSets:3, defaultRestSec:45 },
+  { id:'plank', name:'Plank', aliases:['gainage','gainage frontal'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
+  { id:'dynamic_plank', name:'Dynamic Plank', aliases:['gainage dynamique'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
+  { id:'side_plank', name:'Side Plank', aliases:['gainage latéral'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
+  { id:'russian_twist', name:'Russian Twist', aliases:['twist','rotation russe'], category:'abdos', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:20, defaultSets:3, defaultRestSec:45 },
+  { id:'hanging_leg_raise', name:'Hanging Leg Raise', aliases:['relevé de jambes'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'ab_wheel', name:'Ab Wheel Rollout', aliases:['roue abdominale','ab roller'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
+  { id:'v_up', name:'V-Up', aliases:['v up'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:45 },
+  { id:'hollow_hold', name:'Hollow Hold', aliases:['hollow body','gainage creux'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
+  { id:'dead_bug', name:'Dead Bug', aliases:['dead bug abdos'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:45 },
+  // HYROX
+  { id:'hyrox_run', name:'Run', aliases:['course','running'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:0 },
+  { id:'hyrox_skierg', name:'SkiErg', aliases:['ski erg','ski'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_sled_push', name:'Sled Push', aliases:['poussée de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_sled_pull', name:'Sled Pull', aliases:['traction de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_bbj', name:'Burpee Broad Jump', aliases:['bbj','burpee saut'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:80, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_rowing', name:'Rowing', aliases:['rameur','row','ergomètre'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_farmer', name:'Farmer Carry', aliases:['farmer walk','portée de charges'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_lunges', name:'Sandbag Lunges', aliases:['fentes sandbag'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_wall_balls', name:'Wall Balls', aliases:['wall ball'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:100, defaultSets:1, defaultRestSec:0 },
+  { id:'hyrox_echo_bike', name:'Echo Bike', aliases:['echo bike','assault bike','air bike','vélo air'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_assault_bike', name:'Assault Bike', aliases:['assault air bike'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+]
+
+function searchExercises(query: string, category?: ExoCategory): ExoDefinition[] {
+  const q = query.toLowerCase().trim()
+  if (!q && !category) return EXERCISE_DATABASE
+  return EXERCISE_DATABASE.filter(exo => {
+    if (category && exo.category !== category) return false
+    if (!q) return true
+    return exo.name.toLowerCase().includes(q) || exo.aliases.some(a => a.toLowerCase().includes(q))
+  })
+}
+
+// ════════════════════════════════════════════════
+// EXERCISE LIST BUILDER — Gym & Hyrox
+// ════════════════════════════════════════════════
+function ExerciseListBuilder({ sport, exercises, onChange }: {
+  sport: SportType
+  exercises: ExerciseItem[]
+  onChange: (e: ExerciseItem[]) => void
+}) {
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [catFilter, setCatFilter] = useState<ExoCategory | undefined>(
+    sport === 'hyrox' ? 'hyrox' : undefined
+  )
+
+  const catOptions: { id: ExoCategory; label: string }[] = sport === 'hyrox'
+    ? [{ id: 'hyrox', label: 'Hyrox' }]
+    : [
+        { id: 'push',  label: 'Push'  },
+        { id: 'pull',  label: 'Pull'  },
+        { id: 'legs',  label: 'Legs'  },
+        { id: 'mixte', label: 'Mixte' },
+        { id: 'abdos', label: 'Abdos' },
+      ]
+
+  const results = searchExercises(query, catFilter)
+  const accentColor = SPORT_BORDER[sport]
+
+  function addExo(exo: ExoDefinition) {
+    const item: ExerciseItem = {
+      id: `exo_${Date.now()}`,
+      exoId: exo.id,
+      name: exo.name,
+      category: exo.category,
+      sets: exo.defaultSets,
+      reps: exo.defaultReps,
+      weightKg: exo.hasWeight ? 0 : undefined,
+      distanceM: exo.hasDistance ? 0 : undefined,
+      kcal: exo.hasKcal ? 0 : undefined,
+      targetTimeSec: exo.hasTime ? 0 : undefined,
+      restSec: exo.defaultRestSec,
+    }
+    onChange([...exercises, item])
+    setSearchOpen(false)
+    setQuery('')
+  }
+
+  function addCustom() {
+    const q = query.trim()
+    if (!q) return
+    const item: ExerciseItem = {
+      id: `exo_${Date.now()}`,
+      exoId: 'custom',
+      name: q,
+      category: sport === 'hyrox' ? 'hyrox' : 'mixte',
+      sets: 3, reps: 10, restSec: 60,
+    }
+    onChange([...exercises, item])
+    setSearchOpen(false)
+    setQuery('')
+  }
+
+  function updExo(id: string, field: keyof ExerciseItem, val: string | number | undefined) {
+    onChange(exercises.map(e => e.id === id ? { ...e, [field]: val } : e))
+  }
+
+  function fmtTime(sec: number): string {
+    if (!sec) return ''
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+  }
+
+  return (
+    <div>
+      {/* Liste des exercices */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+        {exercises.map((e, idx) => {
+          const exoDef = EXERCISE_DATABASE.find(x => x.id === e.exoId)
+          const c = accentColor
+          return (
+            <div key={e.id} style={{
+              borderRadius: 12, background: 'var(--bg-card2)',
+              border: `1px solid ${c}22`, borderLeft: `4px solid ${c}`,
+              padding: '10px 14px',
+            }}>
+              {/* En-tête */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>#{idx + 1}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{e.name}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: c, background: `${c}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const }}>
+                    {e.category}
+                  </span>
+                </div>
+                <button onClick={() => onChange(exercises.filter(x => x.id !== e.id))}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+              </div>
+              {/* Champs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
+                <div>
+                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
+                  <input type="number" min={1} value={e.sets}
+                    onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
+                  <input type="number" min={1} value={e.reps}
+                    onChange={ev => updExo(e.id, 'reps', parseInt(ev.target.value) || 1)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                </div>
+                {(exoDef?.hasWeight ?? e.weightKg !== undefined) && (
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Charge (kg)</p>
+                    <input type="number" min={0} step={2.5} value={e.weightKg ?? 0}
+                      onChange={ev => updExo(e.id, 'weightKg', parseFloat(ev.target.value) || 0)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  </div>
+                )}
+                {(exoDef?.hasDistance ?? e.distanceM !== undefined) && (
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Distance (m)</p>
+                    <input type="number" min={0} step={5} value={e.distanceM ?? 0}
+                      onChange={ev => updExo(e.id, 'distanceM', parseInt(ev.target.value) || 0)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  </div>
+                )}
+                {(exoDef?.hasKcal ?? e.kcal !== undefined) && (
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Kcal cible</p>
+                    <input type="number" min={0} value={e.kcal ?? 0}
+                      onChange={ev => updExo(e.id, 'kcal', parseInt(ev.target.value) || 0)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  </div>
+                )}
+                {(exoDef?.hasTime ?? e.targetTimeSec !== undefined) && (
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Temps cible (sec)</p>
+                    <input type="number" min={0} step={5} value={e.targetTimeSec ?? 0}
+                      onChange={ev => updExo(e.id, 'targetTimeSec', parseInt(ev.target.value) || 0)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                    {(e.targetTimeSec ?? 0) > 0 && (
+                      <p style={{ fontSize: 10, color: c, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{fmtTime(e.targetTimeSec ?? 0)}</p>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Repos (sec)</p>
+                  <input type="number" min={0} step={15} value={e.restSec}
+                    onChange={ev => updExo(e.id, 'restSec', parseInt(ev.target.value) || 0)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                </div>
+              </div>
+              {/* Notes */}
+              <div style={{ marginTop: 8 }}>
+                <input value={e.notes ?? ''} onChange={ev => updExo(e.id, 'notes', ev.target.value)}
+                  placeholder="Notes / consignes (optionnel)"
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Bouton ajouter */}
+      <button onClick={() => setSearchOpen(true)} style={{
+        width: '100%', padding: '11px', borderRadius: 10,
+        background: 'transparent', border: `1px dashed ${accentColor}66`,
+        color: accentColor, fontSize: 12, cursor: 'pointer', marginBottom: 8,
+      }}>+ Ajouter un exercice</button>
+
+      {/* Panneau de recherche */}
+      {searchOpen && (
+        <div style={{
+          background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
+          borderRadius: 14, padding: '14px 16px', marginBottom: 12,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Rechercher un exercice</p>
+            <button onClick={() => { setSearchOpen(false); setQuery('') }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          </div>
+          {/* Barre de recherche */}
+          <input value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="ex: squat, développé couché, traction..."
+            autoFocus
+            style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 10 }} />
+          {/* Filtres catégorie */}
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginBottom: 10 }}>
+            {catOptions.map(cat => (
+              <button key={cat.id} onClick={() => setCatFilter(catFilter === cat.id ? undefined : cat.id)}
+                style={{
+                  padding: '4px 10px', borderRadius: 7, border: '1px solid', fontSize: 11, cursor: 'pointer',
+                  borderColor: catFilter === cat.id ? accentColor : 'var(--border)',
+                  background: catFilter === cat.id ? `${accentColor}22` : 'transparent',
+                  color: catFilter === cat.id ? accentColor : 'var(--text-dim)',
+                  fontWeight: catFilter === cat.id ? 700 : 400,
+                }}>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          {/* Résultats */}
+          <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {results.slice(0, 20).map(exo => (
+              <button key={exo.id} onClick={() => addExo(exo)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)',
+                  background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
+                  textAlign: 'left' as const, width: '100%',
+                }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{exo.name}</span>
+                  {exo.aliases[0] && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>({exo.aliases[0]})</span>}
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, background: `${accentColor}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                  {exo.category}
+                </span>
+              </button>
+            ))}
+            {results.length === 0 && (
+              <div style={{ padding: '12px', textAlign: 'center' as const }}>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Aucun exercice trouvé pour &ldquo;{query}&rdquo;</p>
+                <button onClick={addCustom} style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  background: `${accentColor}22`, border: `1px solid ${accentColor}`,
+                  color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}>+ Créer &ldquo;{query}&rdquo;</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void }) {
   const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
   const vPlh = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
@@ -754,7 +1101,7 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
   return (
     <div>
       {/* ── Profil d'intensité ── */}
-      {blocks.length > 0 && (
+      {sport !== 'gym' && sport !== 'hyrox' && blocks.length > 0 && (
         <div style={{
           background: 'var(--bg-card2)', border: '1px solid var(--border)',
           borderRadius: 12, padding: '14px 16px', marginBottom: 14,
@@ -2277,14 +2624,14 @@ function TrainingTab() {
   const plannedN = allSess.length
   const doneN    = allSess.filter(s=>s.status==='done').length + allActs.length
 
-  const sportCounts = (['run','bike','swim','hyrox','rowing','gym'] as SportType[]).map(sp=>({
+  const sportCounts = (['run','bike','swim','hyrox','rowing','gym','elliptique'] as SportType[]).map(sp=>({
     sport:sp,
     planned: allSess.filter(s=>s.sport===sp).length,
     done: allSess.filter(s=>s.sport===sp&&s.status==='done').length
         + allActs.filter(a=>normalizeSportType(a.sport)===sp).length
   })).filter(s=>s.planned>0||s.done>0)
 
-  const sportStats = (['run','bike','swim','hyrox','rowing','gym'] as SportType[]).map(sp=>({
+  const sportStats = (['run','bike','swim','hyrox','rowing','gym','elliptique'] as SportType[]).map(sp=>({
     sport:sp,
     plannedH: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+x.durationMin/60,0),
     doneH: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0)
@@ -2794,6 +3141,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   const [notes,        setNotes]        = useState('')
   const [selPlan,      setSelPlan]      = useState<PlanVariant>(plan)
   const [blocks,       setBlocks]       = useState<Block[]>([])
+  const [exercises,    setExercises]    = useState<ExerciseItem[]>([])
   const [aiOpen,       setAiOpen]       = useState(false)
   const [aiPrompt,     setAiPrompt]     = useState('')
   const [aiLoading,    setAiLoading]    = useState(false)
@@ -2805,7 +3153,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   const trainTypes = TRAINING_TYPES[sport] ?? []
 
   function handleSportChange(sp: SportType) {
-    setSport(sp); setTrainingType(null); setBlocks([])
+    setSport(sp); setTrainingType(null); setBlocks([]); setExercises([])
   }
   function handleTrainingTypeClick(t: string) {
     if (trainingType === t) { setTrainingType(null) }
@@ -2820,6 +3168,102 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
     setAiLoading(true)
     try {
       console.log('[AI blocks] Starting — sport:', sport, 'prompt:', aiPrompt)
+
+      // Branche gym/hyrox : générer des exercices
+      if (sport === 'gym' || sport === 'hyrox') {
+        const availableExos = EXERCISE_DATABASE
+          .filter(e => sport === 'hyrox' ? e.category === 'hyrox' : e.category !== 'hyrox')
+          .map(e => `${e.name} (${e.aliases[0] ?? e.id})`)
+          .join(', ')
+
+        const gymPrompt = `Tu es un coach ${sport === 'hyrox' ? 'Hyrox' : 'musculation'} expert.
+
+RÈGLE ABSOLUE : Réponds UNIQUEMENT avec un tableau JSON []. Pas un seul mot avant ou après.
+
+Génère une liste d'exercices pour une séance de ${SPORT_LABEL[sport]}.
+
+EXERCICES DISPONIBLES : ${availableExos}
+
+FORMAT JSON — chaque exercice :
+{
+  "name": "Nom exact de l'exercice (utilise les noms de la liste)",
+  "sets": nombre de séries,
+  "reps": nombre de reps (ou durée en secondes si hasTime),
+  "weightKg": charge en kg (0 si pas de charge),
+  "distanceM": distance en mètres (0 si pas de distance),
+  "kcal": calories cibles (0 si non applicable),
+  "targetTimeSec": temps cible en secondes (0 si pas de temps),
+  "restSec": repos en secondes entre les séries,
+  "notes": "consigne ou technique" (optionnel)
+}
+
+Durée cible : ${formatHM(totalMin)}
+Séance demandée : ${aiPrompt}`
+
+        try {
+          const res = await fetch('/api/coach-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              agentId: 'blocks',
+              messages: [
+                { role: 'user', content: gymPrompt },
+                { role: 'assistant', content: '[' },
+              ],
+            }),
+          })
+          if (!res.ok || !res.body) throw new Error('HTTP error')
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let raw = '['
+          let currentEvent = ''
+          let gymDone = false
+          try {
+            while (true) {
+              const { done: d, value } = await reader.read()
+              if (d) break
+              for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+                if (line.startsWith('event:')) currentEvent = line.slice(6).trim()
+                else if (line.startsWith('data:') && currentEvent === 'text') {
+                  try { raw += JSON.parse(line.slice(5).trim()) as string } catch { /* skip */ }
+                }
+              }
+            }
+            gymDone = true
+          } finally { if (!gymDone) reader.cancel().catch(() => {}) }
+
+          const jsonStr = raw.match(/\[[\s\S]*\]/)?.[0] ?? ''
+          if (!jsonStr) return
+          const parsed: unknown = JSON.parse(jsonStr)
+          if (!Array.isArray(parsed)) return
+
+          const newExercises: ExerciseItem[] = parsed.map((item: unknown, i: number) => {
+            const b = (item ?? {}) as Record<string, unknown>
+            const name = String(b.name ?? 'Exercice')
+            const found = EXERCISE_DATABASE.find(e =>
+              e.name.toLowerCase() === name.toLowerCase() ||
+              e.aliases.some(a => a.toLowerCase() === name.toLowerCase())
+            )
+            return {
+              id: `ai_exo_${Date.now()}_${i}`,
+              exoId: found?.id ?? 'custom',
+              name: found?.name ?? name,
+              category: found?.category ?? (sport === 'hyrox' ? 'hyrox' : 'mixte'),
+              sets: typeof b.sets === 'number' ? b.sets : (found?.defaultSets ?? 3),
+              reps: typeof b.reps === 'number' ? b.reps : (found?.defaultReps ?? 10),
+              weightKg: found?.hasWeight && typeof b.weightKg === 'number' ? b.weightKg : undefined,
+              distanceM: found?.hasDistance && typeof b.distanceM === 'number' ? b.distanceM : undefined,
+              kcal: found?.hasKcal && typeof b.kcal === 'number' ? b.kcal : undefined,
+              targetTimeSec: found?.hasTime && typeof b.targetTimeSec === 'number' ? b.targetTimeSec : undefined,
+              restSec: typeof b.restSec === 'number' ? b.restSec : (found?.defaultRestSec ?? 60),
+              notes: typeof b.notes === 'string' && b.notes ? b.notes : undefined,
+            }
+          })
+          if (newExercises.length > 0) { setExercises(newExercises); setAiOpen(false); setAiPrompt('') }
+        } catch (e) { console.error('[AI gym]', e) }
+        finally { setAiLoading(false) }
+        return
+      }
 
       const fullContent = `Tu es un coach sportif expert. L'athlète te décrit une séance de ${SPORT_LABEL[sport]}.
 
@@ -3124,14 +3568,19 @@ Séance demandée : ${aiPrompt}`
             style={{ width:'100%',accentColor:'#00c8e0',cursor:'pointer',height:6 }}/>
         </div>
 
-        {/* BlockBuilder intégré */}
+        {/* BlockBuilder ou ExerciseListBuilder selon le sport */}
         <div style={{ marginBottom:20 }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
             <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>
-              Blocs d'intensité {blocks.length>0&&<span style={{ color:SPORT_BORDER[sport],marginLeft:4 }}>· {blocks.length} bloc{blocks.length>1?'s':''}</span>}
+              {sport==='gym'||sport==='hyrox' ? 'Exercices' : 'Blocs d\'intensité'}
+              {(sport==='gym'||sport==='hyrox') && exercises.length>0 && <span style={{ color:SPORT_BORDER[sport],marginLeft:4 }}>· {exercises.length} exercice{exercises.length>1?'s':''}</span>}
+              {sport!=='gym'&&sport!=='hyrox'&&blocks.length>0&&<span style={{ color:SPORT_BORDER[sport],marginLeft:4 }}>· {blocks.length} bloc{blocks.length>1?'s':''}</span>}
             </p>
           </div>
-          <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>
+          {sport==='gym'||sport==='hyrox'
+            ? <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises}/>
+            : <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>
+          }
         </div>
 
         {/* Construire avec l'IA */}
@@ -3190,7 +3639,27 @@ Séance demandée : ${aiPrompt}`
             const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
             const subLabel = sport==='bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
             const finalTss = tss || undefined
-            onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:finalTss,status:'planned',notes:notes||undefined,blocks,rpe,planVariant:selPlan})
+            // Pour gym/hyrox, convertir exercises en blocks pour le stockage
+            const finalBlocks: Block[] = (sport === 'gym' || sport === 'hyrox')
+              ? exercises.map((e): Block => ({
+                  id: e.id,
+                  mode: 'single',
+                  type: 'effort',
+                  durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
+                  zone: 3,
+                  value: e.weightKg ? String(e.weightKg) : '',
+                  hrAvg: '',
+                  label: [
+                    e.name,
+                    `${e.sets}×${e.reps}`,
+                    e.weightKg ? `@${e.weightKg}kg` : '',
+                    e.distanceM ? `${e.distanceM}m` : '',
+                    e.notes ? `— ${e.notes}` : '',
+                  ].filter(Boolean).join(' ').trim(),
+                  reps: e.sets,
+                }))
+              : blocks
+            onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:finalTss,status:'planned',notes:notes||undefined,blocks:finalBlocks,rpe,planVariant:selPlan})
             onClose()
           }} style={{ flex:2,padding:12,borderRadius:12,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>+ Ajouter la séance</button>
         </div>

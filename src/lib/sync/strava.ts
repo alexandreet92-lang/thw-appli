@@ -115,7 +115,6 @@ function toRow(a: StravaActivity, userId: string) {
     user_id:           userId,
     provider:          'strava',
     provider_id:       String(a.id),
-    external_url:      `https://www.strava.com/activities/${a.id}`,
     sport_type:        mapStravaSportType(a.sport_type ?? a.type),
     title:             a.name,
     started_at:        a.start_date,

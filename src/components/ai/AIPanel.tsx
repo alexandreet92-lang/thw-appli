@@ -5381,7 +5381,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         Promise.resolve(
           sb.from('activities').select(actSel).eq('user_id', user.id)
             .gte('started_at', startISO).lte('started_at', endISO)
-            .order('started_at', { ascending: false }).limit(500)
+            .order('started_at', { ascending: false })
         ).catch(() => ({ data: [] as PeriodActivityRow[], error: null })),
         Promise.resolve(
           sb.from('activities').select(actSel).eq('user_id', user.id).eq('is_race', true)
@@ -16128,7 +16128,7 @@ function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }
       {cursorPct !== null && cursorData && (
         <div style={{
           position: 'absolute',
-          left: `${Math.min(Math.max(cursorPct * 100, 5), 80)}%`,
+          left: `${Math.min(Math.max((padL + cursorPct * chartW) / W * 100, 5), 80)}%`,
           top: 0,
           transform: cursorPct > 0.7 ? 'translateX(-110%)' : 'translateX(10px)',
           background: 'var(--ai-bg, rgba(10,10,10,0.95))',
@@ -16700,17 +16700,22 @@ FORMAT JSON STRICT :
       if (!reader) throw new Error('No body')
       const decoder = new TextDecoder()
       let raw = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const d = line.slice(6).trim()
-            if (d === '[DONE]') break
-            try { raw += JSON.parse(d) as string } catch { /* skip */ }
+      let streamDone = false
+      try {
+        outer: while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value)
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) {
+              const d = line.slice(6).trim()
+              if (d === '[DONE]') { streamDone = true; break outer }
+              try { raw += JSON.parse(d) as string } catch { /* skip */ }
+            }
           }
         }
+      } finally {
+        if (!streamDone) reader.cancel().catch(() => {})
       }
 
       // Le prefill '{' est ajouté avant la réponse car Claude continue après lui

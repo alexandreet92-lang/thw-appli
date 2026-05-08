@@ -3290,7 +3290,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   const [trainingType, setTrainingType] = useState<string|null>(null)
   const [title,        setTitle]        = useState('')
   const [time,         setTime]         = useState('09:00')
-  const [totalMin,     setTotalMin]     = useState(60)
+  const [dur,          setDur]          = useState(60)
   const [rpe,          setRpe]          = useState(5)
   const [notes,        setNotes]        = useState('')
   const [selPlan,      setSelPlan]      = useState<PlanVariant>(plan)
@@ -3299,12 +3299,41 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
   const [aiOpen,       setAiOpen]       = useState(false)
   const [aiPrompt,     setAiPrompt]     = useState('')
   const [aiLoading,    setAiLoading]    = useState(false)
-  const [tooltip,      setTooltip]      = useState<string|null>(null)
+  // keep totalMin as alias for backward compat with handleAIGenerate
+  const totalMin = dur
 
   const tss = blocks.length > 0
     ? calcTSS(blocks, sport)
     : calcTSS([], sport, totalMin, rpe)
   const trainTypes = TRAINING_TYPES[sport] ?? []
+  const accent = SPORT_BORDER[sport]
+  const glow = `${accent}22`
+  const isStrength = sport === 'gym' || sport === 'hyrox'
+  const rpeCol = rpe <= 3 ? '#4ade80' : rpe <= 6 ? '#facc15' : rpe <= 8 ? '#fb923c' : '#f87171'
+
+  // Format duration helper (inline, no external dep)
+  const fmtDur = (m: number) => {
+    if (m < 60) return `${m}min`
+    const h = Math.floor(m / 60), rm = m % 60
+    return rm === 0 ? `${h}h` : `${h}h${String(rm).padStart(2, '0')}`
+  }
+
+  // Zone colors
+  const zoneColorsLocal = ['#60a5fa', '#4ade80', '#facc15', '#fb923c', '#f87171']
+
+  // Intensity profile bars (decomposed intervals)
+  const profileBars: { min: number; zone: number; isRecovery: boolean }[] = []
+  for (const b of blocks) {
+    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
+      for (let r = 0; r < b.reps; r++) {
+        profileBars.push({ min: b.effortMin, zone: b.zone, isRecovery: false })
+        if (b.recoveryMin > 0) profileBars.push({ min: b.recoveryMin, zone: b.recoveryZone ?? 1, isRecovery: true })
+      }
+    } else {
+      profileBars.push({ min: b.durationMin, zone: b.zone, isRecovery: false })
+    }
+  }
+  const totalBarMin = profileBars.reduce((s, bar) => s + bar.min, 0) || 1
 
   function handleSportChange(sp: SportType) {
     setSport(sp); setTrainingType(null); setBlocks([]); setExercises([])
@@ -3602,224 +3631,328 @@ Séance demandée : ${aiPrompt}`
     }
   }
 
-  return (
-    <div style={{ position:'fixed',inset:0,zIndex:999,background:'var(--bg)',overflowY:'auto',animation:'slideUp 0.25s ease-out' }}>
-      {/* ── Sticky header ── */}
-      <div style={{ position:'sticky',top:0,zIndex:10,background:'var(--bg-card)',borderBottom:'1px solid var(--border-mid)',boxShadow:'0 2px 12px rgba(0,0,0,0.08)',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12 }}>
-        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-          <div style={{ width:4,height:22,borderRadius:2,background:SPORT_BORDER[sport] }}/>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:0 }}>Nouvelle séance</h3>
-          <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>{formatHM(totalMin)} · {tss} TSS</span>
-        </div>
-        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'6px 12px',cursor:'pointer',color:'var(--text-mid)',fontSize:13,fontWeight:600 }}>✕ Fermer</button>
+  // Helper sub-components (defined inline as const to avoid hoisting issues)
+  const Section = ({ label, right, children }: { label: string; right?: React.ReactNode; children: React.ReactNode }) => (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontSize: 10, fontWeight: 600, color: '#555', textTransform: 'uppercase' as const, letterSpacing: '0.12em' }}>{label}</span>
+        {right}
       </div>
-
-      {/* ── Body ── */}
-      <div style={{ width:'100%',padding:'24px 20px 48px' }}>
-
-        {/* Sport dropdown */}
-        <div style={{ marginBottom:16 }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Sport</p>
-          <div style={{ position:'relative' }}>
-            <select
-              value={sport}
-              onChange={e=>handleSportChange(e.target.value as SportType)}
-              style={{ width:'100%',padding:'10px 36px 10px 14px',borderRadius:10,border:`2px solid ${SPORT_BORDER[sport]}`,background:SPORT_BG[sport],color:SPORT_BORDER[sport],fontSize:13,fontWeight:700,fontFamily:'Syne,sans-serif',cursor:'pointer',appearance:'none',outline:'none' }}>
-              {(Object.keys(SPORT_LABEL) as SportType[]).map(sp=>(
-                <option key={sp} value={sp}>{SPORT_ABBR[sp]} — {SPORT_LABEL[sp]}</option>
-              ))}
-            </select>
-            <span style={{ position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none',color:SPORT_BORDER[sport],fontSize:11 }}>▾</span>
-          </div>
-        </div>
-
-        {/* Cycling sub-type */}
-        {sport==='bike' && (
-          <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:14 }}>
-            {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub=>(
-              <button key={sub} onClick={()=>setCyclingSub(sub)}
-                style={{ padding:'5px 11px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',
-                  borderColor:cyclingSub===sub?SPORT_BORDER.bike:'var(--border)',
-                  background:cyclingSub===sub?`${SPORT_BORDER.bike}22`:'var(--bg-card2)',
-                  color:cyclingSub===sub?SPORT_BORDER.bike:'var(--text-mid)',fontWeight:cyclingSub===sub?700:400 }}>
-                {CYCLING_SUB_LABEL[sub]}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Training types with ? tooltip */}
-        {trainTypes.length>0 && (
-          <div style={{ marginBottom:16 }}>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Type de séance</p>
-            <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const }}>
-              {trainTypes.map(t=>(
-                <div key={t} style={{ position:'relative',display:'flex',alignItems:'center' }}>
-                  <button onClick={()=>handleTrainingTypeClick(t)}
-                    style={{ padding:'6px 10px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',
-                      borderColor:trainingType===t?SPORT_BORDER[sport]:'var(--border)',
-                      background:trainingType===t?SPORT_BG[sport]:'transparent',
-                      color:trainingType===t?SPORT_BORDER[sport]:'var(--text-dim)',fontWeight:trainingType===t?700:400 }}>
-                    {t}
-                  </button>
-                  <button
-                    onMouseEnter={()=>setTooltip(`${sport}:${t}`)}
-                    onMouseLeave={()=>setTooltip(null)}
-                    style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'help',fontSize:9,padding:'0 2px',lineHeight:1,opacity:0.6 }}>?</button>
-                  {tooltip===`${sport}:${t}` && (
-                    <div style={{ position:'absolute',bottom:'calc(100% + 6px)',left:0,zIndex:20,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:8,padding:'8px 10px',width:220,boxShadow:'var(--shadow)',fontSize:11,color:'var(--text-mid)',lineHeight:1.5,whiteSpace:'normal' as const }}>
-                      <strong style={{ color:SPORT_BORDER[sport],fontSize:10,fontWeight:700 }}>{t}</strong>
-                      <p style={{ margin:'4px 0 0' }}>{getTrainingTypeDescription(sport,t)}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Title + time */}
-        <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:10,marginBottom:16 }}>
-          <div>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Titre</p>
-            <input value={title} onChange={e=>setTitle(e.target.value)}
-              placeholder={trainingType?`${SPORT_LABEL[sport]} ${trainingType}`:`${SPORT_LABEL[sport]} Z2`}
-              style={{ width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none' }}/>
-          </div>
-          <div>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Heure</p>
-            <input value={time} onChange={e=>setTime(e.target.value)}
-              style={{ width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:14,fontWeight:600,outline:'none' }}/>
-          </div>
-        </div>
-
-        {/* Duration slider */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6 }}>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Durée</p>
-            <span style={{ fontFamily:'DM Mono,monospace',fontSize:14,fontWeight:700,color:SPORT_BORDER[sport] }}>{formatHM(totalMin)}</span>
-          </div>
-          <input type="range" min={5} max={360} step={5} value={totalMin}
-            onChange={e=>setTotalMin(parseInt(e.target.value))}
-            style={{ width:'100%',accentColor:SPORT_BORDER[sport],cursor:'pointer',height:6 }}/>
-          <div style={{ display:'flex',justifyContent:'space-between',marginTop:3 }}>
-            <span style={{ fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>5min</span>
-            <span style={{ fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>6h</span>
-          </div>
-        </div>
-
-        {/* RPE slider */}
-        <div style={{ marginBottom:20 }}>
-          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6 }}>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>RPE (effort perçu)</p>
-            <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-              <span style={{ fontFamily:'DM Mono,monospace',fontSize:14,fontWeight:700,color:rpe<=3?'#22c55e':rpe<=6?'#ffb340':'#ef4444' }}>{rpe.toFixed(1)}/10</span>
-              <span style={{ fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-dim)' }}>· <strong style={{ color:SPORT_BORDER[sport] }}>{tss} TSS</strong></span>
-            </div>
-          </div>
-          <input type="range" min={0} max={10} step={0.5} value={rpe}
-            onChange={e=>setRpe(parseFloat(e.target.value))}
-            style={{ width:'100%',accentColor:'#00c8e0',cursor:'pointer',height:6 }}/>
-        </div>
-
-        {/* BlockBuilder ou ExerciseListBuilder selon le sport */}
-        <div style={{ marginBottom:20 }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>
-              {sport==='gym'||sport==='hyrox' ? 'Exercices' : 'Blocs d\'intensité'}
-              {(sport==='gym'||sport==='hyrox') && exercises.length>0 && <span style={{ color:SPORT_BORDER[sport],marginLeft:4 }}>· {exercises.length} exercice{exercises.length>1?'s':''}</span>}
-              {sport!=='gym'&&sport!=='hyrox'&&blocks.length>0&&<span style={{ color:SPORT_BORDER[sport],marginLeft:4 }}>· {blocks.length} bloc{blocks.length>1?'s':''}</span>}
-            </p>
-          </div>
-          {sport==='gym'||sport==='hyrox'
-            ? <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises}/>
-            : <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>
-          }
-        </div>
-
-        {/* Construire avec l'IA */}
-        <div style={{ marginBottom:20,borderRadius:12,border:`1px solid var(--ai-accent)44`,background:'var(--ai-accent-dim)',overflow:'hidden' }}>
-          <button
-            onClick={()=>setAiOpen(o=>!o)}
-            style={{ width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:8,textAlign:'left' as const }}>
-            <span style={{ fontSize:14 }}>✦</span>
-            <span style={{ fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:700,color:'var(--ai-accent)' }}>Construire avec l'IA</span>
-            <span style={{ marginLeft:'auto',color:'var(--ai-accent)',fontSize:11 }}>{aiOpen?'▲':'▼'}</span>
-          </button>
-          {aiOpen && (
-            <div style={{ padding:'0 16px 14px' }}>
-              <textarea
-                value={aiPrompt}
-                onChange={e=>setAiPrompt(e.target.value)}
-                placeholder={`Ex : 10×400m Z4 avec 90s récup, échauffement 15min...`}
-                rows={3}
-                style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,marginBottom:8 }}/>
-              <button
-                onClick={handleAIGenerate}
-                disabled={aiLoading||!aiPrompt.trim()}
-                style={{ padding:'8px 16px',borderRadius:8,background:aiLoading?'var(--bg-card2)':`linear-gradient(135deg,var(--ai-accent),#5b6fff)`,border:'none',color:aiLoading?'var(--text-dim)':'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:aiLoading?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:6 }}>
-                {aiLoading?<><span style={{ animation:'spin 1s linear infinite',display:'inline-block' }}>⟳</span> Génération...</>:<>✦ Générer les blocs</>}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Notes */}
-        <div style={{ marginBottom:16 }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Notes</p>
-          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}
-            style={{ width:'100%',padding:'8px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',resize:'none' as const }}/>
-        </div>
-
-        {/* Plan selector */}
-        <div style={{ marginBottom:20 }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Plan</p>
-          <div style={{ display:'flex',gap:6 }}>
-            {(['A','B'] as PlanVariant[]).map(p=>(
-              <button key={p} onClick={()=>setSelPlan(p)} style={{ flex:1,padding:'9px',borderRadius:10,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-                borderColor:selPlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
-                background:selPlan===p?(p==='A'?'rgba(0,200,224,0.10)':'rgba(167,139,250,0.10)'):'var(--bg-card2)',
-                color:selPlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
-                Plan {p} — {p==='A'?'Optimal':'Minimal'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div style={{ display:'flex',gap:10 }}>
-          <button onClick={onClose} style={{ flex:1,padding:12,borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:13,cursor:'pointer',fontWeight:600 }}>Annuler</button>
-          <button onClick={()=>{
-            const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
-            const subLabel = sport==='bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
-            const finalTss = tss || undefined
-            // Pour gym/hyrox, convertir exercises en blocks pour le stockage
-            const finalBlocks: Block[] = (sport === 'gym' || sport === 'hyrox')
-              ? exercises.map((e): Block => ({
-                  id: e.id,
-                  mode: 'single',
-                  type: 'effort',
-                  durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
-                  zone: 3,
-                  value: e.weightKg ? String(e.weightKg) : '',
-                  hrAvg: '',
-                  label: [
-                    e.name,
-                    `${e.sets}×${e.reps}`,
-                    e.weightKg ? `@${e.weightKg}kg` : '',
-                    e.distanceM ? `${e.distanceM}m` : '',
-                    e.notes ? `— ${e.notes}` : '',
-                  ].filter(Boolean).join(' ').trim(),
-                  reps: e.sets,
-                }))
-              : blocks
-            onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:finalTss,status:'planned',notes:notes||undefined,blocks:finalBlocks,rpe,planVariant:selPlan})
-            onClose()
-          }} style={{ flex:2,padding:12,borderRadius:12,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>+ Ajouter la séance</button>
-        </div>
-
-      </div>
+      {children}
     </div>
+  )
+  const Card = ({ children, style: s, hasGlow }: { children: React.ReactNode; style?: React.CSSProperties; hasGlow?: boolean }) => (
+    <div style={{
+      background: '#161619', borderRadius: 14, padding: '16px 18px',
+      boxShadow: hasGlow ? `0 0 0 1px rgba(255,255,255,0.04), 0 4px 24px ${glow}` : '0 0 0 1px rgba(255,255,255,0.04)',
+      ...s,
+    }}>{children}</div>
+  )
+
+  return (
+    <>
+      <style>{`@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'fixed', inset: 0, zIndex: 999,
+        background: '#0e0e12', overflowY: 'auto' as const,
+        animation: 'slideUp 0.2s ease-out',
+      }}>
+        {/* Sticky header */}
+        <div style={{
+          padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'linear-gradient(180deg, #131317, #0e0e12)',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          position: 'sticky' as const, top: 0, zIndex: 10,
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Nouvelle séance</span>
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)', color: '#555', fontSize: 18,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        <div style={{ padding: '24px 20px 48px', maxWidth: 640, margin: '0 auto' }}>
+
+          {/* SPORT */}
+          <Section label="Sport">
+            <Card hasGlow>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: accent, boxShadow: `0 0 8px ${accent}66` }} />
+                </div>
+                <select value={sport} onChange={e => handleSportChange(e.target.value as SportType)}
+                  style={{
+                    flex: 1, appearance: 'none' as const, WebkitAppearance: 'none' as const, background: 'none', border: 'none',
+                    color: '#e8e8ec', fontSize: 16, fontWeight: 700, cursor: 'pointer', outline: 'none',
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}>
+                  {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => (
+                    <option key={sp} value={sp} style={{ background: '#1a1a1f' }}>{SPORT_ABBR[sp]} — {SPORT_LABEL[sp]}</option>
+                  ))}
+                </select>
+                <span style={{ color: '#444', fontSize: 12 }}>▾</span>
+              </div>
+            </Card>
+            {sport === 'bike' && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub => (
+                  <button key={sub} onClick={() => setCyclingSub(sub)} style={{
+                    padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    border: cyclingSub === sub ? `1px solid ${accent}` : '1px solid rgba(255,255,255,0.06)',
+                    background: cyclingSub === sub ? `${accent}15` : 'transparent',
+                    color: cyclingSub === sub ? accent : 'rgba(255,255,255,0.35)',
+                  }}>{CYCLING_SUB_LABEL[sub]}</button>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {/* TYPE */}
+          {trainTypes.length > 0 && (
+            <Section label="Type de séance">
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                {trainTypes.map(t => {
+                  const active = trainingType === t
+                  return (
+                    <button key={t} onClick={() => handleTrainingTypeClick(t)} style={{
+                      padding: '8px 18px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      background: active ? accent : 'rgba(255,255,255,0.03)',
+                      color: active ? '#fff' : '#666',
+                      border: active ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: active ? `0 2px 12px ${glow}` : 'none',
+                      transition: 'all 0.15s',
+                    }}>{t}</button>
+                  )
+                })}
+              </div>
+            </Section>
+          )}
+
+          {/* TITLE + TIME */}
+          <Section label="Séance">
+            <Card>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <input value={title} onChange={e => setTitle(e.target.value)}
+                  placeholder={`${SPORT_LABEL[sport]} ${trainingType || 'Z2'}`}
+                  style={{
+                    flex: 1, background: 'none', border: 'none', color: '#e8e8ec',
+                    fontSize: 18, fontWeight: 700, outline: 'none', padding: 0,
+                    fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em',
+                  }} />
+                <div style={{ height: 24, width: 1, background: 'rgba(255,255,255,0.06)' }} />
+                <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                  style={{
+                    background: 'none', border: 'none', color: '#777',
+                    fontSize: 15, fontWeight: 600, fontFamily: 'DM Mono, monospace',
+                    width: 72, textAlign: 'center' as const, outline: 'none',
+                  }} />
+              </div>
+            </Card>
+          </Section>
+
+          {/* DURATION */}
+          <Section label="Durée" right={
+            <span style={{ fontSize: 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{fmtDur(dur)}</span>
+          }>
+            <Card>
+              <div style={{ position: 'relative', height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                  position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 99,
+                  width: `${((dur - 5) / 355) * 100}%`,
+                  background: `linear-gradient(90deg, ${accent}88, ${accent})`,
+                  boxShadow: `0 0 12px ${glow}`,
+                  transition: 'width 0.05s',
+                }} />
+              </div>
+              <input type="range" min={5} max={360} step={5} value={dur} onChange={e => setDur(parseInt(e.target.value))}
+                style={{ width: '100%', height: 24, marginTop: -16, opacity: 0, cursor: 'pointer', position: 'relative' as const, zIndex: 2 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -4 }}>
+                <span style={{ fontSize: 10, color: '#333' }}>5min</span>
+                <span style={{ fontSize: 10, color: '#333' }}>6h</span>
+              </div>
+            </Card>
+          </Section>
+
+          {/* RPE + TSS */}
+          <Section label="Effort perçu" right={
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <span style={{ fontSize: 24, fontWeight: 800, color: rpeCol, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{rpe}</span>
+              <span style={{ fontSize: 11, color: '#333' }}>/10</span>
+              <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.06)' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#555', fontFamily: 'DM Mono, monospace' }}>{tss}</span>
+              <span style={{ fontSize: 9, color: '#333' }}>TSS</span>
+            </div>
+          }>
+            <Card>
+              <div style={{ position: 'relative', height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                  position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 99,
+                  width: `${(rpe / 10) * 100}%`,
+                  background: `linear-gradient(90deg, #4ade8088, ${rpeCol})`,
+                  boxShadow: `0 0 12px ${rpeCol}33`,
+                  transition: 'width 0.05s, background 0.15s',
+                }} />
+              </div>
+              <input type="range" min={0} max={10} step={1} value={rpe} onChange={e => setRpe(parseInt(e.target.value))}
+                style={{ width: '100%', height: 24, marginTop: -16, opacity: 0, cursor: 'pointer', position: 'relative' as const, zIndex: 2 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -4 }}>
+                <span style={{ fontSize: 10, color: '#333' }}>Récup</span>
+                <span style={{ fontSize: 10, color: '#333' }}>Max</span>
+              </div>
+            </Card>
+          </Section>
+
+          {/* SEPARATOR */}
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', marginBottom: 28 }} />
+
+          {/* BLOCS or EXERCISES */}
+          {!isStrength ? (
+            <Section label="Blocs d'intensité" right={
+              blocks.length > 0 ? <span style={{ fontSize: 11, color: '#444', fontFamily: 'DM Mono, monospace' }}>{blocks.length} blocs</span> : undefined
+            }>
+              {profileBars.length > 0 && (
+                <Card style={{ marginBottom: 12, padding: '18px 18px 14px' }} hasGlow>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 56 }}>
+                    {profileBars.map((bar, i) => {
+                      const hp = bar.isRecovery ? 8 : ((bar.zone / 5) * 0.85 + 0.05) * 100
+                      const wp = (bar.min / totalBarMin) * 100
+                      const c = zoneColorsLocal[bar.zone - 1]
+                      return <div key={i} style={{
+                        width: `${wp}%`, height: `${hp}%`, minWidth: 2,
+                        background: bar.isRecovery ? 'rgba(255,255,255,0.06)' : `linear-gradient(180deg, ${c}, ${c}44)`,
+                        borderRadius: '3px 3px 0 0', opacity: bar.isRecovery ? 0.4 : 0.75,
+                      }} />
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                    {['Z1','Z2','Z3','Z4','Z5'].map((z, i) => (
+                      <span key={z} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: '#444' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: 2, background: zoneColorsLocal[i], display: 'inline-block', opacity: 0.7 }} />{z}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} />
+            </Section>
+          ) : (
+            <Section label="Exercices" right={
+              exercises.length > 0 ? <span style={{ fontSize: 11, color: '#444', fontFamily: 'DM Mono, monospace' }}>{exercises.length} exos</span> : undefined
+            }>
+              <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises} />
+            </Section>
+          )}
+
+          {/* IA */}
+          <Card style={{ marginBottom: 24, cursor: 'pointer' }} hasGlow={aiOpen}>
+            <button onClick={() => setAiOpen(!aiOpen)} style={{
+              width: '100%', background: 'none', border: 'none', color: '#667',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{
+                width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                background: 'linear-gradient(135deg, rgba(91,111,255,0.15), rgba(0,200,224,0.15))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
+              }}>✦</span>
+              Construire avec l&apos;IA
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#333', transform: aiOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block' }}>▾</span>
+            </button>
+            {aiOpen && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} rows={3}
+                  placeholder="Ex: 10×400m @3:30/km avec 1min récup, échauffement 15min..."
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 10, color: '#aaa', padding: 12, fontSize: 12, outline: 'none',
+                    resize: 'vertical' as const, fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, boxSizing: 'border-box' as const,
+                  }} />
+                <button onClick={handleAIGenerate} disabled={aiLoading || !aiPrompt.trim()} style={{
+                  marginTop: 8, width: '100%', padding: 10, borderRadius: 8, border: 'none',
+                  background: aiLoading ? '#333' : 'linear-gradient(135deg, #5b6fff, #00c8e0)',
+                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
+                  fontFamily: 'Syne, sans-serif',
+                }}>{aiLoading ? 'Génération...' : 'Générer les blocs'}</button>
+              </div>
+            )}
+          </Card>
+
+          {/* NOTES */}
+          <Section label="Notes">
+            <Card>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+                placeholder="Consignes, sensations attendues..."
+                style={{
+                  width: '100%', background: 'none', border: 'none', color: '#777',
+                  fontSize: 12, outline: 'none', resize: 'none' as const, padding: 0,
+                  fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6, boxSizing: 'border-box' as const,
+                }} />
+            </Card>
+          </Section>
+
+          {/* PLAN A/B */}
+          <Section label="Plan">
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['A', 'B'] as PlanVariant[]).map(p => (
+                <button key={p} onClick={() => setSelPlan(p)} style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  background: selPlan === p ? (p === 'A' ? 'rgba(0,200,224,0.10)' : 'rgba(167,139,250,0.10)') : 'rgba(255,255,255,0.02)',
+                  border: selPlan === p ? `1px solid ${p === 'A' ? '#00c8e0' : '#a78bfa'}` : '1px solid rgba(255,255,255,0.06)',
+                  color: selPlan === p ? (p === 'A' ? '#00c8e0' : '#a78bfa') : '#555',
+                }}>Plan {p} — {p === 'A' ? 'Optimal' : 'Minimal'}</button>
+              ))}
+            </div>
+          </Section>
+
+          {/* ACTIONS */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{
+              flex: 1, padding: 14, borderRadius: 12,
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+              color: '#555', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            }}>Annuler</button>
+            <button onClick={() => {
+              const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
+              const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
+              const finalTss = tss || undefined
+              const finalBlocks: Block[] = isStrength
+                ? exercises.map((e): Block => ({
+                    id: e.id,
+                    mode: 'single',
+                    type: 'effort',
+                    durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
+                    zone: 3,
+                    value: e.weightKg ? String(e.weightKg) : '',
+                    hrAvg: '',
+                    label: [
+                      e.name,
+                      `${e.sets}×${e.reps}`,
+                      e.weightKg ? `@${e.weightKg}kg` : '',
+                      e.distanceM ? `${e.distanceM}m` : '',
+                      e.notes ? `— ${e.notes}` : '',
+                    ].filter(Boolean).join(' ').trim(),
+                    reps: e.sets,
+                  }))
+                : blocks
+              onAdd(dayIndex, { id: '', dayIndex, sport, title: finalTitle + subLabel, time, durationMin: dur || 60, tss: finalTss, status: 'planned', notes: notes || undefined, blocks: finalBlocks, rpe, planVariant: selPlan })
+              onClose()
+            }} style={{
+              flex: 2, padding: 14, borderRadius: 12, border: 'none',
+              background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
+              boxShadow: `0 4px 20px ${glow}`,
+              color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'Syne, sans-serif', letterSpacing: '-0.01em',
+            }}>Ajouter la séance</button>
+          </div>
+
+        </div>
+      </div>
+    </>
   )
 }
 

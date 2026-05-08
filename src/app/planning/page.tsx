@@ -837,7 +837,8 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                       </div>
                       {(()=>{
                         const distMatch = (b.label ?? '').match(/(\d+)\s*m\b/i) ?? (b.label ?? '').match(/(\d+)\s*m\s*[—–-]/)
-                        const isDistBased = !!distMatch
+                        // Vélo : jamais de mode distance — toujours durée + watts
+                        const isDistBased = !!distMatch && sport !== 'bike'
                         const fmtS = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
                         if (isDistBased) {
                           const distM = parseInt(distMatch![1])
@@ -868,7 +869,10 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                                         u.zone = getZone(sport, e.target.value)
                                         if (pm && distMatch) {
                                           const ps = parseInt(pm[1]) * 60 + parseInt(pm[2])
-                                          u.effortMin = Math.round((distM / 1000) * ps / 60 * 100) / 100
+                                          // Natation : /100m — autres : /km
+                                          u.effortMin = sport === 'swim'
+                                            ? Math.round((distM / 100) * ps / 60 * 100) / 100
+                                            : Math.round((distM / 1000) * ps / 60 * 100) / 100
                                         }
                                         if (u.mode === 'interval' && u.reps && u.effortMin && u.recoveryMin)
                                           u.durationMin = u.reps * (u.effortMin + u.recoveryMin)
@@ -905,7 +909,8 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                                   style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
                               </div>
                             )}
-                            {effortRange && (
+                            {/* Fourchette de temps : jamais pour vélo/gym */}
+                            {effortRange && sport !== 'bike' && sport !== 'gym' && (
                               <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
                                 Temps cible : {effortRange}
                               </p>
@@ -989,7 +994,12 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
                   </div>
                 </div>
-                {b.value && sport !== 'bike' && sport !== 'gym' && (
+                {b.value && sport === 'swim' && (
+                  <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                    Allure : {b.value}/100m
+                  </p>
+                )}
+                {b.value && sport !== 'bike' && sport !== 'gym' && sport !== 'swim' && (
                   <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
                     Allure : {b.value}/km
                   </p>
@@ -2821,27 +2831,24 @@ L'athlète peut écrire dans n'importe quel format :
 - Liste : "- Echauffement 15min\\n- 3x8min SL2\\n- Cool down 10min"
 - Description vague : "séance de seuil 1h"
 
-CALCUL DISTANCES → DURÉES (OBLIGATOIRE si l'athlète donne des distances) :
-- Formule : durée_secondes = (distance_m / 1000) × allure_secondes_par_km
-- Exemple : 400m @3:40/km → (400/1000) × 220s = 88s = 1.47 min → effortMin: 1.47
-- Exemple : 1000m @4:00/km → (1000/1000) × 240s = 240s = 4 min → effortMin: 4
-- Exemple : 200m @3:30/km → (200/1000) × 210s = 42s = 0.7 min → effortMin: 0.7
-- Si pas d'allure spécifiée, estime selon la zone : Z2 run ≈ 5:00-5:30/km, Z3 ≈ 4:20-4:40/km, Z4 ≈ 3:50-4:10/km, Z5 ≈ 3:20-3:50/km
+RÈGLES PAR SPORT :
+- Running : value = allure en min:sec/km (ex: "3:30"). Intervals en mètres : effortMin = (distance/1000) × allure_sec / 60. Label : "400m — 1:22 à 1:26"
+- Natation : value = allure en min:sec/100m (ex: "1:40"). Intervals en mètres : effortMin = (distance/100) × allure_sec / 60. Label : "100m — 1:37 à 1:43"
+- Vélo : value = watts (ex: "280"). PAS de fourchette de temps. Intervals TOUJOURS en durée (minutes). Label : "Effort Z4 — 5min"
+- Aviron : value = allure en min:sec/500m (ex: "1:50"). Intervals en mètres possibles : effortMin = (distance/500) × allure_sec / 60.
+- Hyrox : value = allure running en min:sec/km pour les runs. Pas de value pour les stations (SKI ERG, SLED PUSH, etc.).
+- Musculation : pas de value. Pas de blocs endurance. Labels = nom de l'exercice + reps/séries.
 
-AFFICHAGE DES TEMPS (IMPORTANT) :
-- Pour chaque effort, le label DOIT contenir la fourchette de temps
-- Format : "400m — 1:25 à 1:30" ou "Effort Z4 — 4:00 à 4:10"
-- La fourchette = temps calculé ± 3 secondes (efforts courts < 2min) ou ± 5 secondes (efforts longs)
-- Pour la récupération : si zone 1 = préciser "(marche ou footing très lent)"
-- Pour la récup en zone 2 = "(footing lent)"
+CALCUL DISTANCES → DURÉES :
+- Running 400m @3:30/km → (400/1000) × 210s = 84s = 1.4 min → effortMin: 1.4
+- Natation 100m @1:40/100m → (100/100) × 100s = 100s = 1.67 min → effortMin: 1.67
+- Si pas d'allure spécifiée, estime selon la zone : Z2 run ≈ 5:15/km, Z3 ≈ 4:30/km, Z4 ≈ 4:00/km, Z5 ≈ 3:35/km
 
-TYPES D'INTERVALLES RUNNING :
-- Intervalles en MÈTRES : l'athlète donne "10x400m" → afficher la distance ET le temps cible
-  - label : "400m — 1:25 à 1:30"
-  - effortMin : temps calculé (distance/1000 × allure en secondes / 60)
-- Intervalles en TEMPS : l'athlète donne "5x4min" → afficher juste le temps
-  - label : "Effort Z4 — 4:00"
-  - effortMin : 4
+AFFICHAGE DES LABELS :
+- Intervals en mètres (run/swim) : label DOIT être "Nm — T:TT à T:TT"
+- Intervals en temps : label = "Effort Zn — durée" ou description libre
+- Récupération Z1 → ajouter "(marche ou footing très lent)" dans le label récup
+- Récupération Z2 → ajouter "(footing lent)"
 
 FORMAT JSON — chaque bloc :
 {
@@ -2946,12 +2953,16 @@ Séance demandée : ${aiPrompt}`
         const value = String(b.value ?? '')
 
         // ── Recalcul client distance → durée (l'IA n'est pas fiable pour les maths) ──
+        // Vélo : jamais de calcul distance-based
         const distMatch = label.match(/(\d+)\s*m\b/i) ?? label.match(/(\d+)\s*m\s*[—–-]/)
         const paceMatch = value.match(/(\d+):(\d+)/)
-        if (distMatch && paceMatch && mode === 'interval') {
+        if (distMatch && paceMatch && mode === 'interval' && sport !== 'bike') {
           const distM = parseInt(distMatch[1])
           const paceSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2])
-          const effortSec = (distM / 1000) * paceSec
+          // Natation : allure en /100m ; running/hyrox/rowing : allure en /km
+          const effortSec = sport === 'swim'
+            ? (distM / 100) * paceSec
+            : (distM / 1000) * paceSec
           effortMin = Math.round(effortSec / 60 * 100) / 100
           const loSec = Math.round(effortSec * 0.97)
           const hiSec = Math.round(effortSec * 1.03)

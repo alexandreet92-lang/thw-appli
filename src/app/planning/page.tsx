@@ -813,13 +813,14 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                 background: 'var(--bg-card2)',
               }}>
                 <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', background: 'rgba(167,139,250,0.15)', padding: '3px 8px', borderRadius: 6 }}>INTERVAL</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                      {b.reps} × {b.value ? (b.label || 'effort') : `${Math.round((b.effortMin ?? 0) * 10) / 10}min`}
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                      {b.reps} × {b.label || `${Math.round((b.effortMin ?? 0) * 10) / 10}min`}
                     </span>
-                    <span style={{ fontSize: 11, color: c, fontWeight: 700 }}>Z{b.zone}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>= {formatHM(Math.round(totalBlockMin))}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: c }}>Z{b.zone}</span>
+                    {b.value && <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>@ {b.value}{sport === 'bike' ? 'W' : '/km'}</span>}
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>= {formatHM(Math.round((b.reps ?? 1) * ((b.effortMin ?? 0) + (b.recoveryMin ?? 0))))}</span>
                   </div>
                   <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
                 </div>
@@ -834,29 +835,85 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                         <input type="number" min={1} value={b.reps ?? 5} onChange={e => upd(b.id, 'reps', parseInt(e.target.value) || 1)}
                           style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
                       </div>
-                      <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Durée effort (min)</p>
-                        <input type="number" min={0.1} step={0.1} value={b.effortMin ?? 4} onChange={e => upd(b.id, 'effortMin', parseFloat(e.target.value) || 0.5)}
-                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Zone effort</p>
-                        <input type="number" min={1} max={5} value={b.zone} onChange={e => upd(b.id, 'zone', parseInt(e.target.value) || 3)}
-                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
-                      </div>
-                      {sport !== 'gym' && (
-                        <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{vLabel}</p>
-                          <input value={b.value} onChange={e => upd(b.id, 'value', e.target.value)} placeholder={vPlh}
-                            style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
-                        </div>
-                      )}
+                      {(()=>{
+                        const distMatch = (b.label ?? '').match(/(\d+)\s*m\b/i) ?? (b.label ?? '').match(/(\d+)\s*m\s*[—–-]/)
+                        const isDistBased = !!distMatch
+                        const fmtS = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+                        if (isDistBased) {
+                          const distM = parseInt(distMatch![1])
+                          const effortSec = Math.round((b.effortMin ?? 0) * 60)
+                          const loSec = Math.round(effortSec * 0.97)
+                          const hiSec = Math.round(effortSec * 1.03)
+                          return (
+                            <>
+                              <div>
+                                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Distance</p>
+                                <p style={{ fontSize: 16, fontWeight: 700, color: c, fontFamily: 'DM Mono,monospace', margin: 0 }}>{distM}m</p>
+                              </div>
+                              <div>
+                                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Temps cible</p>
+                                <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono,monospace', margin: 0 }}>
+                                  {fmtS(loSec)} à {fmtS(hiSec)}
+                                </p>
+                              </div>
+                              {sport !== 'gym' && (
+                                <div>
+                                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{vLabel}</p>
+                                  <input value={b.value} placeholder={vPlh}
+                                    onChange={e => {
+                                      const pm = e.target.value.match(/(\d+):(\d+)/)
+                                      onChange(blocks.map(bl => {
+                                        if (bl.id !== b.id) return bl
+                                        const u: Block = { ...bl, value: e.target.value }
+                                        u.zone = getZone(sport, e.target.value)
+                                        if (pm && distMatch) {
+                                          const ps = parseInt(pm[1]) * 60 + parseInt(pm[2])
+                                          u.effortMin = Math.round((distM / 1000) * ps / 60 * 100) / 100
+                                        }
+                                        if (u.mode === 'interval' && u.reps && u.effortMin && u.recoveryMin)
+                                          u.durationMin = u.reps * (u.effortMin + u.recoveryMin)
+                                        return u
+                                      }))
+                                    }}
+                                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                                </div>
+                              )}
+                              <div>
+                                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Zone effort</p>
+                                <input type="number" min={1} max={5} value={b.zone} onChange={e => upd(b.id, 'zone', parseInt(e.target.value) || 3)}
+                                  style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                              </div>
+                            </>
+                          )
+                        }
+                        return (
+                          <>
+                            <div>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Durée effort (min)</p>
+                              <input type="number" min={0.1} step={0.1} value={b.effortMin ?? 4} onChange={e => upd(b.id, 'effortMin', parseFloat(e.target.value) || 0.5)}
+                                style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Zone effort</p>
+                              <input type="number" min={1} max={5} value={b.zone} onChange={e => upd(b.id, 'zone', parseInt(e.target.value) || 3)}
+                                style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                            </div>
+                            {sport !== 'gym' && (
+                              <div>
+                                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{vLabel}</p>
+                                <input value={b.value} onChange={e => upd(b.id, 'value', e.target.value)} placeholder={vPlh}
+                                  style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                              </div>
+                            )}
+                            {effortRange && (
+                              <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                                Temps cible : {effortRange}
+                              </p>
+                            )}
+                          </>
+                        )
+                      })()}
                     </div>
-                    {effortRange && (
-                      <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
-                        Temps cible : {effortRange}
-                      </p>
-                    )}
                   </div>
 
                   {/* Récupération */}
@@ -2875,29 +2932,51 @@ Séance demandée : ${aiPrompt}`
       const rawParsed: unknown = JSON.parse(jsonStr)
       if (!Array.isArray(rawParsed)) { console.error('[AI blocks] Not an array'); return }
 
+      const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
       const newBlocks: Block[] = rawParsed.map((item: unknown, i: number) => {
         const b = (item ?? {}) as Record<string, unknown>
         const mode: BlockMode = String(b.mode ?? '') === 'interval' ? 'interval' : 'single'
         const tStr = String(b.type ?? '')
         const bType: BlockType = (['warmup','effort','recovery','cooldown'] as const).includes(tStr as BlockType)
           ? (tStr as BlockType) : 'effort'
-        const reps        = typeof b.reps        === 'number' ? b.reps        : undefined
-        const effortMin   = typeof b.effortMin   === 'number' ? b.effortMin   : undefined
-        const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : undefined
-        let durMin = typeof b.durationMin === 'number' ? b.durationMin : 0
-        if (mode === 'interval' && reps && effortMin && recoveryMin) {
-          durMin = Math.round(reps * (effortMin + recoveryMin) * 100) / 100
+
+        let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
+        let label = String(b.label ?? 'Bloc')
+        const value = String(b.value ?? '')
+
+        // ── Recalcul client distance → durée (l'IA n'est pas fiable pour les maths) ──
+        const distMatch = label.match(/(\d+)\s*m\b/i) ?? label.match(/(\d+)\s*m\s*[—–-]/)
+        const paceMatch = value.match(/(\d+):(\d+)/)
+        if (distMatch && paceMatch && mode === 'interval') {
+          const distM = parseInt(distMatch[1])
+          const paceSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2])
+          const effortSec = (distM / 1000) * paceSec
+          effortMin = Math.round(effortSec / 60 * 100) / 100
+          const loSec = Math.round(effortSec * 0.97)
+          const hiSec = Math.round(effortSec * 1.03)
+          label = `${distM}m — ${fmtSec(loSec)} à ${fmtSec(hiSec)}`
         }
+
+        const reps = typeof b.reps === 'number' ? b.reps : 1
+        const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
+        const recoveryZone = typeof b.recoveryZone === 'number' ? b.recoveryZone : 1
+        const durationMin = mode === 'interval'
+          ? Math.round(reps * (effortMin + recoveryMin) * 100) / 100
+          : (typeof b.durationMin === 'number' ? b.durationMin : effortMin || 10)
+
         return {
           id: `ai_${Date.now()}_${i}`,
           mode, type: bType,
-          durationMin: durMin,
+          durationMin,
           zone: Math.max(1, Math.min(5, typeof b.zone === 'number' ? Math.round(b.zone) : 3)),
-          value:        String(b.value   ?? ''),
-          hrAvg:        String(b.hrAvg   ?? ''),
-          label:        String(b.label   ?? 'Bloc'),
-          reps, effortMin, recoveryMin,
-          recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
+          value,
+          hrAvg: String(b.hrAvg ?? ''),
+          label,
+          reps: mode === 'interval' ? reps : undefined,
+          effortMin: mode === 'interval' ? effortMin : undefined,
+          recoveryMin: mode === 'interval' ? recoveryMin : undefined,
+          recoveryZone,
         }
       })
 

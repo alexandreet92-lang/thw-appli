@@ -58,7 +58,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -11087,7 +11087,7 @@ const PLUS_CATS: PlusCat[] = [
     label: 'Récupération',
     items: [
       { label: 'Analyser ma récupération', flow: 'analyser_recuperation' as FlowId },
-      { label: 'Conseils sommeil', enrichedId: 'conseils_sommeil' },
+      { label: 'Conseils sommeil', flow: 'conseils_sommeil' as FlowId },
     ],
   },
   {
@@ -13798,6 +13798,467 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
   )
 }
 
+
+
+
+// ══════════════════════════════════════════════════════════════
+// FLOW — SleepAdviceFlow (Conseils sommeil)
+// ══════════════════════════════════════════════════════════════
+
+function SleepAdviceFlow({ onCancel, onRecordConv, onFollowUp }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onFollowUp?: (displayLabel: string, fullPrompt: string) => void
+}) {
+  type Phase = 'gate' | 'loading' | 'result'
+  const [phase, setPhase] = useState<Phase>('gate')
+  const [error, setError] = useState<string | null>(null)
+  const [rawAnalysis, setRawAnalysis] = useState('')
+  const [generating, setGenerating] = useState(false)
+
+  const [gateData, setGateData] = useState<{
+    nightsCount: number
+    avgDuration: number | null
+    avgQuality: number | null
+    nightsUnder7h: number
+    latestSleep: number | null
+    latestQuality: number | null
+    latestHrv: number | null
+    eveningSessionsCount: number
+    activitiesCount60d: number
+  } | null>(null)
+
+  const [fullData, setFullData] = useState<{
+    avgDuration: number | null
+    avgQuality: number | null
+    nightsUnder7h: number
+    nightsCount: number
+    cutoffAnalysis: Array<{ bucket: string; avgQuality: number; count: number }>
+  } | null>(null)
+
+  // ── Gate : charger les données de base ──
+  useEffect(() => {
+    if (phase !== 'gate') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user || cancelled) return
+
+        const since60d = new Date(Date.now() - 60 * 86400000)
+
+        const [metricsRes, actsRes] = await Promise.all([
+          Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id)
+            .gte('date', since60d.toISOString().split('T')[0])
+            .order('date', { ascending: true })).catch(() => ({ data: [] as unknown[] })),
+          sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+            .gte('started_at', since60d.toISOString())
+            .order('started_at', { ascending: true }),
+        ])
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const metrics = (metricsRes as any).data ?? []
+        const acts = actsRes.data ?? []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nightsWithSleep = metrics.filter((m: any) => m.sleep_duration != null && m.sleep_duration > 0)
+        const avgDuration = nightsWithSleep.length > 0
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? Math.round(nightsWithSleep.reduce((s: number, m: any) => s + m.sleep_duration, 0) / nightsWithSleep.length * 10) / 10
+          : null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nightsWithQuality = nightsWithSleep.filter((m: any) => m.sleep_quality != null)
+        const avgQuality = nightsWithQuality.length > 0
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? Math.round(nightsWithQuality.reduce((s: number, m: any) => s + m.sleep_quality, 0) / nightsWithQuality.length)
+          : null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nightsUnder7h = nightsWithSleep.filter((m: any) => m.sleep_duration < 7).length
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const latest = metrics.length > 0 ? metrics[metrics.length - 1] as any : null
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const eveningSessions = acts.filter((a: any) => {
+          if (!a.started_at || !a.moving_time_s) return false
+          const endTime = new Date(new Date(a.started_at).getTime() + (a.moving_time_s as number) * 1000)
+          return endTime.getHours() >= 17
+        })
+
+        if (!cancelled) {
+          setGateData({
+            nightsCount: nightsWithSleep.length,
+            avgDuration,
+            avgQuality,
+            nightsUnder7h,
+            latestSleep: latest?.sleep_duration ?? null,
+            latestQuality: latest?.sleep_quality ?? null,
+            latestHrv: latest?.hrv ?? null,
+            eveningSessionsCount: eveningSessions.length,
+            activitiesCount60d: acts.length,
+          })
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Erreur')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [phase])
+
+  // ── Fonction d'analyse ──
+  async function runAnalysis() {
+    setPhase('loading')
+    setError(null)
+    setRawAnalysis('')
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+
+      const now = new Date()
+      const since60d = new Date(now.getTime() - 60 * 86400000)
+
+      const [metricsRes, actsRes, profileRes] = await Promise.all([
+        Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id)
+          .gte('date', since60d.toISOString().split('T')[0])
+          .order('date', { ascending: true })).catch(() => ({ data: [] as unknown[] })),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+          .gte('started_at', since60d.toISOString())
+          .order('started_at', { ascending: true }),
+        Promise.resolve(sb.from('profiles').select('weight_kg,height_cm').eq('id', user.id).maybeSingle()).catch(() => ({ data: null })),
+      ])
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const metrics60d = (metricsRes as any).data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const activities60d: any[] = actsRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const profile = (profileRes as any).data
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nightsWithSleep = metrics60d.filter((m: any) => m.sleep_duration != null && m.sleep_duration > 0)
+      const avgDuration = nightsWithSleep.length > 0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? Math.round(nightsWithSleep.reduce((s: number, m: any) => s + m.sleep_duration, 0) / nightsWithSleep.length * 10) / 10
+        : null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nightsWithQuality = nightsWithSleep.filter((m: any) => m.sleep_quality != null)
+      const avgQuality = nightsWithQuality.length > 0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? Math.round(nightsWithQuality.reduce((s: number, m: any) => s + m.sleep_quality, 0) / nightsWithQuality.length)
+        : null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nightsUnder7h = nightsWithSleep.filter((m: any) => m.sleep_duration < 7).length
+
+      // ── Corrélation séances soirée / qualité sommeil suivante ──
+      type SleepCorr = { endHour: number; sport: string; tss: number; sleepQualityNextNight: number | null }
+      const sessionSleepCorrelations: SleepCorr[] = []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      activities60d.forEach((a: any) => {
+        if (!a.started_at || !a.moving_time_s) return
+        const endTime = new Date(new Date(a.started_at).getTime() + (a.moving_time_s as number) * 1000)
+        const endHour = endTime.getHours() + endTime.getMinutes() / 60
+        const nextDay = new Date(endTime); nextDay.setDate(nextDay.getDate() + 1)
+        const nextDayStr = nextDay.toISOString().split('T')[0]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nextMetrics = metrics60d.find((m: any) => m.date === nextDayStr)
+        sessionSleepCorrelations.push({
+          endHour: Math.round(endHour * 10) / 10,
+          sport: a.sport_type,
+          tss: a.tss ?? 0,
+          sleepQualityNextNight: nextMetrics?.sleep_quality ?? null,
+        })
+      })
+
+      const eveningSessions = sessionSleepCorrelations.filter(s => s.endHour >= 17 && s.sleepQualityNextNight != null)
+      const hourBuckets: Record<string, { totalQuality: number; count: number }> = {}
+      eveningSessions.forEach(s => {
+        const bucket = s.endHour < 18 ? 'avant 18h' : s.endHour < 19 ? '18h-19h' : s.endHour < 20 ? '19h-20h' : 'après 20h'
+        if (!hourBuckets[bucket]) hourBuckets[bucket] = { totalQuality: 0, count: 0 }
+        hourBuckets[bucket].totalQuality += s.sleepQualityNextNight ?? 0
+        hourBuckets[bucket].count++
+      })
+      const cutoffAnalysis = Object.entries(hourBuckets).map(([bucket, data]) => ({
+        bucket,
+        avgQuality: data.count > 0 ? Math.round(data.totalQuality / data.count) : 0,
+        count: data.count,
+      }))
+
+      setFullData({ avgDuration, avgQuality, nightsUnder7h, nightsCount: nightsWithSleep.length, cutoffAnalysis })
+      setGenerating(true)
+      setPhase('result')
+
+      // ── Build prompts ──
+      const sysPrompt = `Tu es un expert en optimisation du sommeil pour athlètes d'endurance.
+
+Structure :
+## 🛏️ Diagnostic (bon/perfectible/problématique + chiffres)
+## 🔍 Tes 3 saboteurs identifiés (avec preuves dans les données)
+## ⏰ Ton heure limite d'entraînement (calcul depuis les données)
+## 💡 5 recommandations PERSONNALISÉES (pas de généralités — basées sur SES données)
+## 🎯 Priorité #1 (le changement avec le plus fort impact)
+Utilise **gras** pour les chiffres. Tableaux markdown si pertinent.`
+
+      const userPr = `Analyse mon sommeil.
+Durée moy: ${avgDuration ?? '?'}h · Qualité moy: ${avgQuality ?? '?'}/100
+Nuits <7h: ${nightsUnder7h}/${nightsWithSleep.length}
+Profil: ${profile?.weight_kg ?? '?'}kg
+
+Métriques 60j (dernières 14 nuits):
+${JSON.stringify(metrics60d.slice(-14))}
+
+Corrélation séances soirée / sommeil:
+${eveningSessions.length > 0 ? JSON.stringify(sessionSleepCorrelations.filter(s => s.endHour >= 17)) : 'Pas assez de données'}
+
+Analyse par tranche horaire:
+${cutoffAnalysis.length > 0 ? JSON.stringify(cutoffAnalysis) : 'Insuffisant'}
+
+Activités 60j: ${activities60d.length} · Séances soirée avec données sommeil: ${eveningSessions.length}`
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'central',
+          modelId: 'athena',
+          messages: [{ role: 'user', content: sysPrompt + '\n\n' + userPr }],
+        }),
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('Pas de stream')
+
+      const decoder = new TextDecoder()
+      let raw = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) {
+              const d = line.slice(6).trim()
+              if (d === '[DONE]') break
+              try { raw += JSON.parse(d) as string } catch { /* skip non-text events */ }
+            }
+          }
+          setRawAnalysis(raw)
+        }
+      } finally {
+        reader.cancel().catch(() => { /* ignore */ })
+        setGenerating(false)
+        if (onRecordConv && raw.length > 100) onRecordConv('Conseils sommeil', raw)
+      }
+
+    } catch (e) {
+      setGenerating(false)
+      setError(e instanceof Error ? e.message : 'Erreur')
+      setPhase('gate')
+    }
+  }
+
+  // ── Gate UI ──
+  if (phase === 'gate') {
+    if (!gateData && !error) return (
+      <div style={{ padding: 20, textAlign: 'center' }}>
+        <Dots />
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 8 }}>Chargement...</p>
+      </div>
+    )
+
+    const sleepStatus = !gateData || gateData.avgDuration === null ? 'var(--ai-dim)' : gateData.avgDuration >= 7.5 ? '#22c55e' : gateData.avgDuration >= 6.5 ? '#f97316' : '#ef4444'
+    const sleepLabel = !gateData || gateData.avgDuration === null ? 'Données insuffisantes' : gateData.avgDuration >= 7.5 ? '🟢 Bon sommeil' : gateData.avgDuration >= 6.5 ? '🟠 Sommeil perfectible' : '🔴 Déficit de sommeil'
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+          Conseils sommeil
+        </p>
+
+        {error && (
+          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+
+        {/* Verdict rapide */}
+        {gateData && (
+          <div style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${sleepStatus}40`, background: `${sleepStatus}08`, marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: sleepStatus, margin: 0 }}>{sleepLabel}</p>
+            {gateData.avgDuration != null && (
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
+                Moyenne {gateData.avgDuration}h/nuit · {gateData.nightsUnder7h} nuit(s) &lt; 7h sur {gateData.nightsCount}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Données */}
+        {gateData && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 12 }}>
+            {([
+              { label: 'Durée moy.', value: gateData.avgDuration != null ? `${gateData.avgDuration}h` : '—', ok: gateData.avgDuration != null && gateData.avgDuration >= 7 },
+              { label: 'Qualité moy.', value: gateData.avgQuality != null ? `${gateData.avgQuality}/100` : '—', ok: gateData.avgQuality != null && gateData.avgQuality >= 70 },
+              { label: 'Dernière nuit', value: gateData.latestSleep != null ? `${gateData.latestSleep}h` : '—', ok: gateData.latestSleep != null && gateData.latestSleep >= 7 },
+              { label: 'HRV ce matin', value: gateData.latestHrv != null ? `${gateData.latestHrv}ms` : '—', ok: gateData.latestHrv != null },
+              { label: 'Nuits trackées', value: String(gateData.nightsCount), ok: gateData.nightsCount >= 10 },
+              { label: 'Séances soirée', value: String(gateData.eveningSessionsCount), ok: true },
+            ] as { label: string; value: string; ok: boolean }[]).map(item => (
+              <div key={item.label} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{item.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: item.ok ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {gateData && gateData.nightsCount < 5 && (
+          <p style={{ fontSize: 10, color: '#f97316', margin: '0 0 10px' }}>
+            ⚠ Moins de 5 nuits enregistrées — les conseils seront généraux. Connecte un wearable (Garmin, Whoop, Oura) pour des analyses personnalisées.
+          </p>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            Annuler
+          </button>
+          <button
+            onClick={() => void runAnalysis()}
+            disabled={!gateData}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
+          >
+            Analyser mon sommeil →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Loading UI ──
+  if (phase === 'loading') {
+    return (
+      <div style={{ padding: '30px 0', textAlign: 'center' }}>
+        <Dots />
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>Analyse de ton sommeil...</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>Durée · Qualité · Corrélations entraînement · Recommandations</p>
+      </div>
+    )
+  }
+
+  // ── Result UI ──
+  if (phase === 'result') {
+    const d = fullData
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>
+          Analyse du sommeil
+        </p>
+
+        {/* KPIs */}
+        {d && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 10 }}>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>DURÉE MOY</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.avgDuration == null ? 'var(--ai-dim)' : d.avgDuration >= 7.5 ? '#22c55e' : d.avgDuration >= 6.5 ? '#f97316' : '#ef4444', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                {d.avgDuration != null ? `${d.avgDuration}h` : '—'}
+              </p>
+            </div>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>QUALITÉ</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.avgQuality == null ? 'var(--ai-dim)' : d.avgQuality >= 70 ? '#22c55e' : '#f97316', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                {d.avgQuality ?? '—'}
+              </p>
+            </div>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>NUITS &lt;7H</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.nightsUnder7h > d.nightsCount * 0.3 ? '#ef4444' : '#22c55e', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                {d.nightsUnder7h}/{d.nightsCount}
+              </p>
+            </div>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>HEURE LIMITE</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                {d.cutoffAnalysis.length > 0
+                  ? d.cutoffAnalysis.reduce((a, b) => a.avgQuality > b.avgQuality ? a : b).bucket
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Corrélation séances soirée / sommeil */}
+        {d && d.cutoffAnalysis.length > 0 && (
+          <div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+            <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>
+              Impact heure d'entraînement sur le sommeil
+            </p>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {d.cutoffAnalysis.map(b => (
+                <div key={b.bucket} style={{ flex: 1, textAlign: 'center' as const }}>
+                  <div style={{
+                    height: 30, borderRadius: 4, marginBottom: 3,
+                    background: b.avgQuality >= 70 ? '#22c55e' : b.avgQuality >= 50 ? '#f97316' : '#ef4444',
+                    opacity: 0.2 + (b.avgQuality / 100) * 0.8,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-text)' }}>{b.avgQuality}</span>
+                  </div>
+                  <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>{b.bucket}</p>
+                  <p style={{ fontSize: 7, color: 'var(--ai-dim)', margin: 0 }}>{b.count} séances</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ margin: '10px 0', borderBottom: '1px solid var(--ai-border)' }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 8px' }}>Analyse du coach</p>
+
+        <div style={{ padding: '12px', borderRadius: 12, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
+          {rawAnalysis
+            ? <MsgContent text={rawAnalysis} />
+            : <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>Analyse en cours...</p>
+          }
+        </div>
+
+        {generating && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
+            <Dots /><span>Analyse en cours...</span>
+          </div>
+        )}
+
+        {!generating && rawAnalysis.length > 100 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+              {([
+                { label: 'Analyser ma récupération', prompt: 'Analyse ma récupération complète — HRV, charge, fatigue.' },
+                { label: 'Routine du soir idéale', prompt: "Crée-moi une routine du soir optimisée pour le sommeil, adaptée à mon profil d'athlète d'endurance et à mes données de sommeil." },
+                { label: 'Impact sur ma performance', prompt: "Quel est l'impact concret de mon sommeil actuel sur ma performance sportive ? Quantifie la perte de performance liée à mon déficit de sommeil." },
+              ] as { label: string; prompt: string }[]).map((action, i) => (
+                <button key={i} onClick={() => {
+                  if (onFollowUp) onFollowUp(action.label, action.prompt)
+                }} style={{
+                  padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans,sans-serif',
+                }}>
+                  {action.label} →
+                </button>
+              ))}
+            </div>
+            <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
+              Fermer
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return null
+}
 
 
 // ══════════════════════════════════════════════════════════════
@@ -18175,7 +18636,6 @@ export default function AIPanel({
       : ''
     const sendFn: SendFn = (displayText: string, apiPrompt: string) => { void send(displayText, apiPrompt) }
     switch (id) {
-      case 'conseils_sommeil':      await enrichedConseilsSommeil(sb, user.id, rulesBlock, label, sendFn); break
       case 'comprendre_app':        await enrichedComprendreApp(sb, user.id, label, sendFn); break
     }
   }, [send])
@@ -18849,6 +19309,25 @@ export default function AIPanel({
                 )}
                 {activeFlow === 'analyser_recuperation' && (
                   <RecoveryAnalysisFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
+                    onFollowUp={(displayLabel, fullPrompt) => { void send(displayLabel, fullPrompt) }}
+                  />
+                )}
+                {activeFlow === 'conseils_sommeil' && (
+                  <SleepAdviceFlow
                     onCancel={() => setActiveFlow(null)}
                     onRecordConv={(userMsg, aiMsg) => {
                       const conv: AIConv = {

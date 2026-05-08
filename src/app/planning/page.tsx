@@ -696,104 +696,270 @@ function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity; o
   )
 }
 
-function BlockBuilder({ sport, blocks, onChange }:{ sport:SportType; blocks:Block[]; onChange:(b:Block[])=>void }) {
-  const vLabel = sport==='bike'?'Watts':sport==='swim'?'Allure /100m':'Allure /km'
-  const vPlh   = sport==='bike'?'250':sport==='swim'?'1:35':'4:30'
-  function addSingle() { onChange([...blocks,{id:`b_${Date.now()}`,mode:'single',type:'effort',durationMin:10,zone:3,value:sport==='bike'?'220':'4:30',hrAvg:'',label:'Bloc'}]) }
-  function addInterval() { onChange([...blocks,{id:`b_${Date.now()}`,mode:'interval',type:'effort',durationMin:0,zone:4,value:'',hrAvg:'',label:'',reps:5,effortMin:4,recoveryMin:1,recoveryZone:1}]) }
-  function upd(id:string,field:keyof Block,val:string|number) { onChange(blocks.map(b=>{ if(b.id!==id)return b; const u:Block={...b,[field]:val}; if(field==='value')u.zone=getZone(sport,String(val)); if(u.mode==='interval'&&u.reps&&u.effortMin&&u.recoveryMin)u.durationMin=u.reps*(u.effortMin+u.recoveryMin); return u })) }
-  const totalMin = blocks.reduce((s,b)=>{
-    if(b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin) return s+b.reps*(b.effortMin+b.recoveryMin)
-    return s+b.durationMin
-  },0)
+function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void }) {
+  const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
+  const vPlh = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
+
+  function addSingle() {
+    onChange([...blocks, {
+      id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 10, zone: 3,
+      value: sport === 'bike' ? '220' : '4:30', hrAvg: '', label: 'Bloc',
+    }])
+  }
+  function addInterval() {
+    onChange([...blocks, {
+      id: `b_${Date.now()}`, mode: 'interval', type: 'effort', durationMin: 0, zone: 4,
+      value: '', hrAvg: '', label: '', reps: 5, effortMin: 4, recoveryMin: 1, recoveryZone: 1,
+    }])
+  }
+  function upd(id: string, field: keyof Block, val: string | number) {
+    onChange(blocks.map(b => {
+      if (b.id !== id) return b
+      const u: Block = { ...b, [field]: val }
+      if (field === 'value') u.zone = getZone(sport, String(val))
+      if (u.mode === 'interval' && u.reps && u.effortMin && u.recoveryMin)
+        u.durationMin = u.reps * (u.effortMin + u.recoveryMin)
+      return u
+    }))
+  }
+
+  function getTimeRange(min: number): string {
+    if (min <= 0) return ''
+    const sec = Math.round(min * 60)
+    const lo = sec - Math.round(sec * 0.03)
+    const hi = sec + Math.round(sec * 0.03)
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+    return `${fmt(lo)} à ${fmt(hi)}`
+  }
+
+  type Bar = { id: string; min: number; zone: number; isRecovery: boolean }
+  const bars: Bar[] = []
+  for (const b of blocks) {
+    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
+      for (let r = 0; r < b.reps; r++) {
+        bars.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, isRecovery: false })
+        if (b.recoveryMin > 0) bars.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, isRecovery: true })
+      }
+    } else {
+      bars.push({ id: b.id, min: b.durationMin, zone: b.zone, isRecovery: false })
+    }
+  }
+  const totalMin = bars.reduce((s, bar) => s + bar.min, 0) || 1
+  const totalBlocks = blocks.reduce((s, b) => {
+    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin)
+      return s + b.reps * (b.effortMin + b.recoveryMin)
+    return s + b.durationMin
+  }, 0)
+
   return (
     <div>
-      {blocks.length>0 && (
-        <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:7 }}>
-            TSS estimé : <span style={{ color:SPORT_BORDER[sport] }}>{calcTSS(blocks,sport)} pts</span>
-            <span style={{ marginLeft:10,fontWeight:400 }}>· {formatHM(totalMin)}</span>
-          </p>
-          <div style={{ display:'flex',alignItems:'flex-end',gap:1,height:48,marginBottom:4 }}>
-            {(()=>{
-              type Bar={id:string;min:number;zone:number;isRecovery:boolean}
-              const bars:Bar[]=[]
-              for(const b of blocks){
-                if(b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin){
-                  for(let r=0;r<b.reps;r++){
-                    bars.push({id:`${b.id}_e${r}`,min:b.effortMin,zone:b.zone,isRecovery:false})
-                    if(b.recoveryMin>0) bars.push({id:`${b.id}_r${r}`,min:b.recoveryMin,zone:b.recoveryZone??1,isRecovery:true})
-                  }
-                } else {
-                  bars.push({id:b.id,min:b.durationMin,zone:b.zone,isRecovery:false})
-                }
-              }
-              const total=bars.reduce((s,bar)=>s+bar.min,0)||1
-              return bars.map(bar=>{
-                const hp=bar.isRecovery?15:((bar.zone/5)*0.85+0.05)*100
-                const wp=(bar.min/total)*100
-                const c=ZONE_COLORS[bar.zone-1]
-                return <div key={bar.id} style={{
-                  width:`${wp}%`,height:`${hp}%`,
-                  background:bar.isRecovery?'linear-gradient(180deg,#6b728022,#6b728011)':`linear-gradient(180deg,${c}ee,${c}55)`,
-                  borderRadius:'2px 2px 0 0',
-                  border:bar.isRecovery?'none':`1px solid ${c}88`,
-                  minWidth:2,opacity:bar.isRecovery?0.4:1,
-                }}/>
-              })
-            })()}
+      {/* ── Profil d'intensité ── */}
+      {blocks.length > 0 && (
+        <div style={{
+          background: 'var(--bg-card2)', border: '1px solid var(--border)',
+          borderRadius: 12, padding: '14px 16px', marginBottom: 14,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: 0 }}>
+              TSS estimé : <span style={{ color: SPORT_BORDER[sport] }}>{calcTSS(blocks, sport)} pts</span>
+              <span style={{ marginLeft: 10, fontWeight: 400 }}>· {formatHM(Math.round(totalBlocks))}</span>
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 80, marginBottom: 6 }}>
+            {bars.map(bar => {
+              const hp = bar.isRecovery ? 15 : ((bar.zone / 5) * 0.85 + 0.05) * 100
+              const wp = (bar.min / totalMin) * 100
+              const c = ZONE_COLORS[bar.zone - 1]
+              return (
+                <div key={bar.id} style={{
+                  width: `${wp}%`, height: `${hp}%`,
+                  background: bar.isRecovery
+                    ? 'rgba(107,114,128,0.15)'
+                    : `linear-gradient(180deg, ${c}ee, ${c}55)`,
+                  borderRadius: '2px 2px 0 0',
+                  border: bar.isRecovery ? 'none' : `1px solid ${c}88`,
+                  minWidth: 2, opacity: bar.isRecovery ? 0.5 : 1,
+                }} />
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((z, i) => (
+              <span key={z} style={{ fontSize: 9, fontWeight: 700, color: ZONE_COLORS[i], display: 'flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: ZONE_COLORS[i], display: 'inline-block' }} />
+                {z}
+              </span>
+            ))}
           </div>
         </div>
       )}
-      <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:7 }}>
-        {blocks.map(b=>(
-          <div key={b.id} style={{ background:'var(--bg-card2)',border:`1px solid ${ZONE_COLORS[b.zone-1]}44`,borderLeft:`3px solid ${ZONE_COLORS[b.zone-1]}`,borderRadius:8,padding:'7px 9px' }}>
-            {b.mode==='interval' ? (
-              // ── Interval block ──
-              <div>
-                <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:6 }}>
-                  <span style={{ fontSize:9,fontWeight:800,color:'#a78bfa',background:'rgba(167,139,250,0.15)',padding:'2px 6px',borderRadius:4 }}>REPS</span>
-                  <span style={{ flex:1,fontSize:10,fontWeight:600,color:'var(--text)' }}>
-                    {b.reps} × {b.effortMin}{'\''}
-                    <span style={{ color:ZONE_COLORS[b.zone-1] }}> Z{b.zone}</span>
-                    {' / '}{b.recoveryMin}{'\''}
-                    <span style={{ color:ZONE_COLORS[(b.recoveryZone??1)-1] }}> Z{b.recoveryZone??1}</span>
-                    {b.reps&&b.effortMin&&b.recoveryMin?<span style={{ color:'var(--text-dim)',marginLeft:6 }}>= {formatHM(b.reps*(b.effortMin+b.recoveryMin))}</span>:null}
-                  </span>
-                  <button onClick={()=>onChange(blocks.filter(x=>x.id!==b.id))} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,flexShrink:0 }}>×</button>
+
+      {/* ── Liste des blocs ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+        {blocks.map(b => {
+          const c = ZONE_COLORS[b.zone - 1]
+          const isInterval = b.mode === 'interval' && !!b.reps && !!b.effortMin
+
+          if (isInterval) {
+            const recovSec = Math.round((b.recoveryMin ?? 0) * 60)
+            const totalBlockMin = (b.reps ?? 1) * ((b.effortMin ?? 0) + (b.recoveryMin ?? 0))
+            const effortRange = getTimeRange(b.effortMin ?? 0)
+            const recovFmt = `${Math.floor(recovSec / 60)}:${String(recovSec % 60).padStart(2, '0')}`
+
+            return (
+              <div key={b.id} style={{
+                borderRadius: 12, overflow: 'hidden',
+                border: `1px solid ${c}33`, borderLeft: `4px solid ${c}`,
+                background: 'var(--bg-card2)',
+              }}>
+                <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', background: 'rgba(167,139,250,0.15)', padding: '3px 8px', borderRadius: 6 }}>INTERVAL</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                      {b.reps} × {b.value ? (b.label || 'effort') : `${Math.round((b.effortMin ?? 0) * 10) / 10}min`}
+                    </span>
+                    <span style={{ fontSize: 11, color: c, fontWeight: 700 }}>Z{b.zone}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>= {formatHM(Math.round(totalBlockMin))}</span>
+                  </div>
+                  <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:5 }}>
-                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Rép.</p><input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Effort</p><input type="number" min={0.5} step={0.5} value={b.effortMin??4} onChange={e=>upd(b.id,'effortMin',parseFloat(e.target.value)||0.5)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:`1px solid ${ZONE_COLORS[b.zone-1]}66`,background:`${ZONE_COLORS[b.zone-1]}11`,color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Z effort</p><input type="number" min={1} max={5} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Récup</p><input type="number" min={0.5} step={0.5} value={b.recoveryMin??1} onChange={e=>upd(b.id,'recoveryMin',parseFloat(e.target.value)||0.5)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:`1px solid ${ZONE_COLORS[(b.recoveryZone??1)-1]}66`,background:`${ZONE_COLORS[(b.recoveryZone??1)-1]}11`,color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-                  <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Z récup</p><input type="number" min={1} max={5} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%',padding:'4px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
+
+                <div style={{ padding: '0 14px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Effort */}
+                  <div style={{ padding: '10px 12px', borderRadius: 8, background: `${c}08`, border: `1px solid ${c}22` }}>
+                    <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: c, margin: '0 0 6px' }}>Effort</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Répétitions</p>
+                        <input type="number" min={1} value={b.reps ?? 5} onChange={e => upd(b.id, 'reps', parseInt(e.target.value) || 1)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Durée effort (min)</p>
+                        <input type="number" min={0.1} step={0.1} value={b.effortMin ?? 4} onChange={e => upd(b.id, 'effortMin', parseFloat(e.target.value) || 0.5)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Zone effort</p>
+                        <input type="number" min={1} max={5} value={b.zone} onChange={e => upd(b.id, 'zone', parseInt(e.target.value) || 3)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                      </div>
+                      {sport !== 'gym' && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{vLabel}</p>
+                          <input value={b.value} onChange={e => upd(b.id, 'value', e.target.value)} placeholder={vPlh}
+                            style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                        </div>
+                      )}
+                    </div>
+                    {effortRange && (
+                      <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                        Temps cible : {effortRange}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Récupération */}
+                  <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
+                    <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#9ca3af', margin: '0 0 6px' }}>Récupération</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Durée récup (min)</p>
+                        <input type="number" min={0} step={0.5} value={b.recoveryMin ?? 1} onChange={e => upd(b.id, 'recoveryMin', parseFloat(e.target.value) || 0)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(107,114,128,0.25)', background: 'rgba(107,114,128,0.05)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Zone récup</p>
+                        <input type="number" min={1} max={5} value={b.recoveryZone ?? 1} onChange={e => upd(b.id, 'recoveryZone', parseInt(e.target.value) || 1)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                      {recovFmt} en Z{b.recoveryZone ?? 1}{(b.recoveryZone ?? 1) <= 1 ? ' (marche ou footing très lent)' : (b.recoveryZone ?? 1) === 2 ? ' (footing lent)' : ''}
+                    </p>
+                  </div>
                 </div>
               </div>
-            ) : (
-              // ── Single block ──
-              <>
-            <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:6 }}>
-              <span style={{ width:20,height:20,borderRadius:4,background:`${ZONE_COLORS[b.zone-1]}22`,border:`1px solid ${ZONE_COLORS[b.zone-1]}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:ZONE_COLORS[b.zone-1],flexShrink:0 }}>Z{b.zone}</span>
-              <select value={b.type} onChange={e=>upd(b.id,'type',e.target.value)} style={{ flex:1,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none' }}>
-                {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType,string][]).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-              </select>
-              <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder="Nom" style={{ flex:1.5,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none' }}/>
-              <button onClick={()=>onChange(blocks.filter(x=>x.id!==b.id))} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,flexShrink:0 }}>×</button>
+            )
+          }
+
+          // ── Bloc simple ──
+          return (
+            <div key={b.id} style={{
+              borderRadius: 12, overflow: 'hidden',
+              border: `1px solid ${c}33`, borderLeft: `4px solid ${c}`,
+              background: 'var(--bg-card2)',
+            }}>
+              <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    width: 24, height: 24, borderRadius: 6,
+                    background: `${c}22`, border: `1px solid ${c}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700, color: c, flexShrink: 0,
+                  }}>Z{b.zone}</span>
+                  <select value={b.type} onChange={e => upd(b.id, 'type', e.target.value)}
+                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}>
+                    {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{formatHM(b.durationMin)}</span>
+                </div>
+                <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+              </div>
+
+              <div style={{ padding: '0 14px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Label / description</p>
+                    <input value={b.label} onChange={e => upd(b.id, 'label', e.target.value)} placeholder="Nom du bloc"
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Durée (min)</p>
+                    <input type="number" value={b.durationMin} onChange={e => upd(b.id, 'durationMin', parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  </div>
+                  {sport !== 'gym' && (
+                    <div>
+                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{vLabel}</p>
+                      <input value={b.value} onChange={e => upd(b.id, 'value', e.target.value)} placeholder={vPlh}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                    </div>
+                  )}
+                  <div>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>FC moy.</p>
+                    <input value={b.hrAvg} onChange={e => upd(b.id, 'hrAvg', e.target.value)} placeholder="158"
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  </div>
+                </div>
+                {b.value && sport !== 'bike' && sport !== 'gym' && (
+                  <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                    Allure : {b.value}/km
+                  </p>
+                )}
+                {b.value && sport === 'bike' && (
+                  <p style={{ fontSize: 11, color: c, fontWeight: 600, margin: '8px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                    Puissance cible : {b.value}W
+                  </p>
+                )}
+              </div>
             </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
-              <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>Durée (min)</p><input type="number" value={b.durationMin} onChange={e=>upd(b.id,'durationMin',parseInt(e.target.value)||0)} style={{ width:'100%',padding:'4px 6px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-              <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>{vLabel}</p><input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%',padding:'4px 6px',borderRadius:5,border:`1px solid ${ZONE_COLORS[b.zone-1]}66`,background:`${ZONE_COLORS[b.zone-1]}11`,color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-              <div><p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>FC moy.</p><input value={b.hrAvg} onChange={e=>upd(b.id,'hrAvg',e.target.value)} placeholder="158" style={{ width:'100%',padding:'4px 6px',borderRadius:5,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:10,outline:'none',fontFamily:'DM Mono,monospace' }}/></div>
-            </div>
-            </>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
-      <div style={{ display:'flex',gap:6 }}>
-        <button onClick={addSingle} style={{ flex:1,padding:'7px',borderRadius:8,background:'transparent',border:'1px dashed var(--border-mid)',color:'var(--text-dim)',fontSize:11,cursor:'pointer' }}>+ Bloc simple</button>
-        <button onClick={addInterval} style={{ flex:1,padding:'7px',borderRadius:8,background:'transparent',border:'1px dashed #a78bfa66',color:'#a78bfa',fontSize:11,cursor:'pointer' }}>+ Répétitions</button>
+
+      {/* ── Boutons ajouter ── */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={addSingle} style={{
+          flex: 1, padding: '10px', borderRadius: 10,
+          background: 'transparent', border: '1px dashed var(--border-mid)',
+          color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
+        }}>+ Bloc simple</button>
+        <button onClick={addInterval} style={{
+          flex: 1, padding: '10px', borderRadius: 10,
+          background: 'transparent', border: '1px dashed #a78bfa66',
+          color: '#a78bfa', fontSize: 12, cursor: 'pointer',
+        }}>+ Répétitions</button>
       </div>
     </div>
   )
@@ -2605,9 +2771,20 @@ CALCUL DISTANCES → DURÉES (OBLIGATOIRE si l'athlète donne des distances) :
 - Exemple : 200m @3:30/km → (200/1000) × 210s = 42s = 0.7 min → effortMin: 0.7
 - Si pas d'allure spécifiée, estime selon la zone : Z2 run ≈ 5:00-5:30/km, Z3 ≈ 4:20-4:40/km, Z4 ≈ 3:50-4:10/km, Z5 ≈ 3:20-3:50/km
 
-FOURCHETTE DE TEMPS (pour les intervalles courts) :
-- Pour les efforts < 5min, inclus la fourchette dans le label
-- Exemple : 400m → label: "400m — 1:25 à 1:30"
+AFFICHAGE DES TEMPS (IMPORTANT) :
+- Pour chaque effort, le label DOIT contenir la fourchette de temps
+- Format : "400m — 1:25 à 1:30" ou "Effort Z4 — 4:00 à 4:10"
+- La fourchette = temps calculé ± 3 secondes (efforts courts < 2min) ou ± 5 secondes (efforts longs)
+- Pour la récupération : si zone 1 = préciser "(marche ou footing très lent)"
+- Pour la récup en zone 2 = "(footing lent)"
+
+TYPES D'INTERVALLES RUNNING :
+- Intervalles en MÈTRES : l'athlète donne "10x400m" → afficher la distance ET le temps cible
+  - label : "400m — 1:25 à 1:30"
+  - effortMin : temps calculé (distance/1000 × allure en secondes / 60)
+- Intervalles en TEMPS : l'athlète donne "5x4min" → afficher juste le temps
+  - label : "Effort Z4 — 4:00"
+  - effortMin : 4
 
 FORMAT JSON — chaque bloc :
 {

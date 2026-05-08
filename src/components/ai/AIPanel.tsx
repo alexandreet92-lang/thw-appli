@@ -58,7 +58,7 @@ interface AIConv {
   msgs: AIMsg[]
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -11086,7 +11086,7 @@ const PLUS_CATS: PlusCat[] = [
   {
     label: 'Récupération',
     items: [
-      { label: 'Analyser ma récupération', enrichedId: 'analyser_recuperation' },
+      { label: 'Analyser ma récupération', flow: 'analyser_recuperation' as FlowId },
       { label: 'Conseils sommeil', enrichedId: 'conseils_sommeil' },
     ],
   },
@@ -13796,6 +13796,476 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
       </button>
     </div>
   )
+}
+
+
+
+// ══════════════════════════════════════════════════════════════
+// FLOW — RecoveryAnalysisFlow (Analyser ma récupération)
+// ══════════════════════════════════════════════════════════════
+
+function RecoveryAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
+  onCancel: () => void
+  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onFollowUp?: (displayLabel: string, fullPrompt: string) => void
+}) {
+  type Phase = 'gate' | 'loading' | 'result'
+  const [phase, setPhase] = useState<Phase>('gate')
+  const [error, setError] = useState<string | null>(null)
+  const [rawAnalysis, setRawAnalysis] = useState('')
+  const [generating, setGenerating] = useState(false)
+
+  const [gateData, setGateData] = useState<{
+    metricsCount: number
+    hrvCount: number
+    sleepCount: number
+    hrvBaseline: number | null
+    latestHrv: number | null
+    hrvDelta: number | null
+    latestSleep: number | null
+    latestReadiness: number | null
+    latestFatigue: number | null
+    activitiesCount7d: number
+    tss7d: number
+    nextSession: { sport: string; title: string | null; duration_min: number; intensite: string } | null
+    weight: number | null
+  } | null>(null)
+
+  const [fullData, setFullData] = useState<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    metrics28d: any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    activities28d: any[]
+    hrvBaseline: number | null
+    latestHrv: number | null
+    tss7d: number
+    tss14d: number
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    weeklyTss: any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    next48h: any[]
+    ctlFinal: number
+    atlFinal: number
+    tsbFinal: number
+    riskScore: number
+    riskLevel: string
+  } | null>(null)
+
+  // ── Gate : charger les données de base ──
+  useEffect(() => {
+    if (phase !== 'gate') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user || cancelled) return
+
+        const now = new Date()
+        const since28d = new Date(now.getTime() - 28 * 86400000)
+        const since7d = new Date(now.getTime() - 7 * 86400000)
+
+        const [metricsRes, acts7dRes, nextSessionRes, profileRes] = await Promise.all([
+          Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id)
+            .gte('date', since28d.toISOString().split('T')[0])
+            .order('date', { ascending: true })).catch(() => ({ data: [] as unknown[] })),
+          sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+            .gte('started_at', since7d.toISOString())
+            .order('started_at', { ascending: true }),
+          sb.from('planned_sessions').select('sport,title,duration_min,intensite')
+            .eq('user_id', user.id)
+            .gte('date', now.toISOString().split('T')[0])
+            .order('date', { ascending: true }).limit(1),
+          Promise.resolve(sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle()).catch(() => ({ data: null })),
+        ])
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const metrics = (metricsRes as any).data ?? []
+        const acts7d = acts7dRes.data ?? []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const hrvValues = metrics.filter((m: any) => m.hrv != null).map((m: any) => m.hrv as number)
+        const hrvBaseline = hrvValues.length > 0 ? Math.round(hrvValues.reduce((a: number, b: number) => a + b, 0) / hrvValues.length) : null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const latest = metrics.length > 0 ? metrics[metrics.length - 1] as any : null
+        const latestHrv = latest?.hrv ?? null
+        const hrvDelta = latestHrv && hrvBaseline ? Math.round(((latestHrv - hrvBaseline) / hrvBaseline) * 100) : null
+
+        if (!cancelled) {
+          setGateData({
+            metricsCount: metrics.length,
+            hrvCount: hrvValues.length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            sleepCount: metrics.filter((m: any) => m.sleep_duration != null).length,
+            hrvBaseline,
+            latestHrv,
+            hrvDelta,
+            latestSleep: latest?.sleep_duration ?? null,
+            latestReadiness: latest?.readiness ?? null,
+            latestFatigue: latest?.fatigue ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            activitiesCount7d: acts7d.length,
+            tss7d: acts7d.reduce((s: number, a: any) => {
+              const t = a.tss && a.tss > 0 ? a.tss : Math.round(((a.moving_time_s ?? 0) / 3600) * 65)
+              return s + t
+            }, 0),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            nextSession: (nextSessionRes as any).data?.[0] ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            weight: (profileRes as any).data?.weight_kg ?? null,
+          })
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Erreur')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [phase])
+
+  // ── Fonction d'analyse ──
+  async function runAnalysis() {
+    setPhase('loading')
+    setError(null)
+    setRawAnalysis('')
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+
+      const now = new Date()
+      const since28d = new Date(now.getTime() - 28 * 86400000)
+      const since56d = new Date(now.getTime() - 56 * 86400000)
+      const in2days = new Date(now); in2days.setDate(now.getDate() + 2)
+
+      const [metricsRes, acts28dRes, acts56dRes, next48hRes] = await Promise.all([
+        Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id)
+          .gte('date', since28d.toISOString().split('T')[0])
+          .order('date', { ascending: true })).catch(() => ({ data: [] as unknown[] })),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+          .gte('started_at', since28d.toISOString())
+          .order('started_at', { ascending: true }),
+        sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', user.id)
+          .gte('started_at', since56d.toISOString())
+          .order('started_at', { ascending: true }),
+        sb.from('planned_sessions').select('date,sport,title,duration_min,intensite,tss')
+          .eq('user_id', user.id)
+          .gte('date', now.toISOString().split('T')[0])
+          .lte('date', in2days.toISOString().split('T')[0])
+          .order('date', { ascending: true }),
+      ])
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const metrics28d = (metricsRes as any).data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const acts28d: any[] = acts28dRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const acts56d: any[] = acts56dRes.data ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const next48h: any[] = next48hRes.data ?? []
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function estimateTSS(a: any): number {
+        if (a.tss && a.tss > 0) return a.tss
+        const h = (a.moving_time_s ?? 0) / 3600
+        if (h <= 0) return 0
+        const hr = a.average_heartrate
+        if (hr && hr > 0) return Math.round(h * (hr / 180) * (hr / 180) * 100)
+        return Math.round(h * 65)
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const acts56dTSS = acts56d.map((a: any) => ({ ...a, tss: estimateTSS(a) }))
+
+      // HRV
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hrvValues = metrics28d.filter((m: any) => m.hrv != null).map((m: any) => m.hrv as number)
+      const hrvBaseline = hrvValues.length > 0 ? Math.round(hrvValues.reduce((a: number, b: number) => a + b, 0) / hrvValues.length) : null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const latestHrv = metrics28d.length > 0 ? (metrics28d[metrics28d.length - 1] as any)?.hrv ?? null : null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const latestSleep = metrics28d.length > 0 ? (metrics28d[metrics28d.length - 1] as any)?.sleep_duration : null
+
+      // TSS
+      const tss7d = acts28d.filter((a: any) => new Date(a.started_at) >= new Date(now.getTime() - 7 * 86400000)).reduce((s: number, a: any) => s + estimateTSS(a), 0)
+      const tss14d = acts28d.reduce((s: number, a: any) => s + estimateTSS(a), 0)
+
+      // Weekly TSS
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const weeklyTss: any[] = []
+      for (let w = 0; w < 4; w++) {
+        const wStart = new Date(since28d.getTime() + w * 7 * 86400000)
+        const wEnd = new Date(wStart.getTime() + 7 * 86400000)
+        const wTss = acts28d.filter((a: any) => new Date(a.started_at) >= wStart && new Date(a.started_at) < wEnd).reduce((s: number, a: any) => s + estimateTSS(a), 0)
+        weeklyTss.push({ week: w + 1, tss: Math.round(wTss) })
+      }
+
+      // CTL/ATL/TSB
+      const tssPerDay: number[] = []
+      for (let d = 0; d < 56; d++) {
+        const dayStart = new Date(since56d.getTime() + d * 86400000); dayStart.setHours(0, 0, 0, 0)
+        const dayEnd = new Date(dayStart); dayEnd.setHours(23, 59, 59, 999)
+        tssPerDay.push(
+          acts56dTSS.filter((a: any) => { const t = new Date(a.started_at).getTime(); return t >= dayStart.getTime() && t <= dayEnd.getTime() })
+            .reduce((s: number, a: any) => s + (a.tss ?? 0), 0)
+        )
+      }
+      let ctl = 0; for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
+      let atl = 0; for (const t of tssPerDay) atl = atl + (t - atl) / 7
+      const ctlFinal = Math.round(ctl), atlFinal = Math.round(atl), tsbFinal = ctlFinal - atlFinal
+
+      // Risk score
+      const last28 = tssPerDay.slice(-28)
+      const avgD = last28.reduce((a, b) => a + b, 0) / 28
+      const stdD = Math.sqrt(last28.reduce((s, t) => s + (t - avgD) ** 2, 0) / 28)
+      const monotonie = stdD > 0 ? Math.round((avgD / stdD) * 100) / 100 : 0
+      const strain = Math.round(last28.slice(-7).reduce((a, b) => a + b, 0) * monotonie)
+      let riskScore = 0
+      if (tsbFinal < -30) riskScore += 35; else if (tsbFinal < -20) riskScore += 25; else if (tsbFinal < -10) riskScore += 15
+      if (monotonie > 2.5) riskScore += 25; else if (monotonie > 2.0) riskScore += 15
+      if (strain > 5000) riskScore += 20; else if (strain > 4000) riskScore += 10
+      if (latestHrv && hrvBaseline && latestHrv < hrvBaseline * 0.85) riskScore += 15
+      if (latestSleep && latestSleep < 6) riskScore += 10
+      const riskLevel = riskScore > 60 ? 'ÉLEVÉ' : riskScore > 35 ? 'MODÉRÉ' : 'FAIBLE'
+
+      setFullData({ metrics28d, activities28d: acts28d, hrvBaseline, latestHrv, tss7d, tss14d, weeklyTss, next48h, ctlFinal, atlFinal, tsbFinal, riskScore, riskLevel })
+      setGenerating(true)
+      setPhase('result')
+
+      // ── Build prompts ──
+      const sysPrompt = `Tu es un expert en récupération sportive. Diagnostic complet en 3 niveaux.
+
+NIVEAU 1 — VERDICT : 🟢/🟠/🔴 avec HRV vs baseline et TSB.
+NIVEAU 2 — PATTERNS 28 JOURS : délai de récupération, seuil TSS qui déclenche dépression HRV, signaux précoces de surcharge. Chiffres précis.
+NIVEAU 3 — RECOMMANDATION IMMÉDIATE : pour chaque séance des 48h, verdict (faire/adapter/reporter). CTL ${ctlFinal}, ATL ${atlFinal}, TSB ${tsbFinal}, Risque ${riskScore}/100.
+Utilise des tableaux markdown. **Gras** pour les chiffres clés.`
+
+      const userPr = `Analyse ma récupération.
+HRV: ${latestHrv ?? '?'}ms (baseline ${hrvBaseline ?? '?'}ms)
+TSS 7j: ${tss7d} · TSS 14j: ${tss14d}
+CTL: ${ctlFinal} ATL: ${atlFinal} TSB: ${tsbFinal}
+Risque: ${riskScore}/100 (${riskLevel})
+Métriques 28j (5 derniers): ${JSON.stringify(metrics28d.slice(-5))}
+Activités 7j: ${acts28d.filter((a: any) => new Date(a.started_at) >= new Date(now.getTime() - 7 * 86400000)).map((a: any) => `${a.title ?? a.sport_type} ${Math.round((a.moving_time_s ?? 0) / 60)}min TSS${estimateTSS(a)} FC${a.average_heartrate ?? '?'}`).join(' | ') || 'aucune'}
+TSS/sem: ${weeklyTss.map((w: any) => w.tss).join(' → ')}
+Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duration_min}min ${p.intensite}`).join(' | ') || 'aucune'}`
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'central',
+          modelId: 'athena',
+          messages: [{ role: 'user', content: sysPrompt + '\n\n' + userPr }],
+        }),
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('Pas de stream')
+
+      const decoder = new TextDecoder()
+      let raw = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) {
+              const d = line.slice(6).trim()
+              if (d === '[DONE]') break
+              try { raw += JSON.parse(d) as string } catch { /* skip non-text events */ }
+            }
+          }
+          setRawAnalysis(raw)
+        }
+      } finally {
+        reader.cancel().catch(() => { /* ignore */ })
+        setGenerating(false)
+        if (onRecordConv && raw.length > 100) {
+          onRecordConv('Analyser ma récupération', raw)
+        }
+      }
+
+    } catch (e) {
+      setGenerating(false)
+      setError(e instanceof Error ? e.message : 'Erreur')
+      setPhase('gate')
+    }
+  }
+
+  // ── Gate UI ──
+  if (phase === 'gate') {
+    if (!gateData && !error) return (
+      <div style={{ padding: 20, textAlign: 'center' }}>
+        <Dots />
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 8 }}>Chargement...</p>
+      </div>
+    )
+
+    const verdictColor = !gateData || gateData.hrvDelta === null ? 'var(--ai-dim)' : gateData.hrvDelta >= 5 ? '#22c55e' : gateData.hrvDelta >= -10 ? '#f97316' : '#ef4444'
+    const verdictLabel = !gateData || gateData.hrvDelta === null ? 'Données insuffisantes' : gateData.hrvDelta >= 5 ? '🟢 Bien récupéré' : gateData.hrvDelta >= -10 ? '🟠 Récupération partielle' : '🔴 Fatigue significative'
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+          Analyser ma récupération
+        </p>
+
+        {error && (
+          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+
+        {/* Verdict rapide */}
+        {gateData && (
+          <div style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${verdictColor}40`, background: `${verdictColor}08`, marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: verdictColor, margin: 0 }}>{verdictLabel}</p>
+            {gateData.latestHrv && gateData.hrvBaseline && (
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
+                HRV {gateData.latestHrv}ms (baseline {gateData.hrvBaseline}ms · {(gateData.hrvDelta ?? 0) > 0 ? '+' : ''}{gateData.hrvDelta}%)
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Données disponibles */}
+        {gateData && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 12 }}>
+            {([
+              { label: 'HRV', value: gateData.latestHrv ? `${gateData.latestHrv}ms` : '—', ok: gateData.latestHrv != null },
+              { label: 'Sommeil', value: gateData.latestSleep ? `${gateData.latestSleep}h` : '—', ok: gateData.latestSleep != null },
+              { label: 'Readiness', value: gateData.latestReadiness ? `${gateData.latestReadiness}/10` : '—', ok: gateData.latestReadiness != null },
+              { label: 'TSS 7j', value: String(gateData.tss7d), ok: gateData.tss7d > 0 },
+              { label: 'Activités 7j', value: String(gateData.activitiesCount7d), ok: gateData.activitiesCount7d > 0 },
+              { label: 'Métriques 28j', value: `${gateData.metricsCount}j`, ok: gateData.metricsCount >= 7 },
+            ] as { label: string; value: string; ok: boolean }[]).map(item => (
+              <div key={item.label} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{item.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: item.ok ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Prochaine séance */}
+        {gateData?.nextSession && (
+          <div style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 12 }}>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Prochaine séance : </span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-text)' }}>
+              {gateData.nextSession.sport} · {gateData.nextSession.title ?? ''} · {gateData.nextSession.duration_min}min · {gateData.nextSession.intensite}
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            Annuler
+          </button>
+          <button
+            onClick={() => void runAnalysis()}
+            disabled={!gateData}
+            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
+          >
+            Analyser en détail →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Loading UI ──
+  if (phase === 'loading') {
+    return (
+      <div style={{ padding: '30px 0', textAlign: 'center' }}>
+        <Dots />
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>Analyse de ta récupération...</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>HRV · Sommeil · Charge · Recommandations</p>
+      </div>
+    )
+  }
+
+  // ── Result UI ──
+  if (phase === 'result') {
+    const d = fullData
+    const rC = (d?.riskScore ?? 0) > 60 ? '#ef4444' : (d?.riskScore ?? 0) > 35 ? '#f97316' : '#22c55e'
+
+    return (
+      <div style={{ padding: '8px 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>
+          Analyse de la récupération
+        </p>
+
+        {/* KPIs */}
+        {d && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 10 }}>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>HRV</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.latestHrv ? (d.hrvBaseline && d.latestHrv >= d.hrvBaseline ? '#22c55e' : '#f97316') : 'var(--ai-dim)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                {d.latestHrv ?? '—'}
+              </p>
+            </div>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: '#00c8e0', margin: 0 }}>TSB</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tsbFinal}</p>
+            </div>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>TSS 7J</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tss7d}</p>
+            </div>
+            <div style={{ padding: '7px 4px', borderRadius: 8, border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 8, color: rC, margin: 0 }}>RISQUE</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: rC, margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.riskScore}/100</p>
+            </div>
+          </div>
+        )}
+
+        <div style={{ margin: '10px 0', borderBottom: '1px solid var(--ai-border)' }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 8px' }}>Diagnostic du coach</p>
+
+        <div style={{ padding: '12px', borderRadius: 12, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
+          {rawAnalysis
+            ? <MsgContent text={rawAnalysis} />
+            : <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>Analyse en cours...</p>
+          }
+        </div>
+
+        {generating && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
+            <Dots /><span>Analyse en cours...</span>
+          </div>
+        )}
+
+        {!generating && rawAnalysis.length > 100 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+              {([
+                { label: 'Conseils sommeil', prompt: 'Donne-moi des conseils personnalisés pour améliorer mon sommeil basé sur mes données de récupération.' },
+                { label: 'Adapter mes séances', prompt: `Basé sur mon état de récupération (HRV ${d?.latestHrv ?? '?'}, TSB ${d?.tsbFinal ?? '?'}, risque ${d?.riskScore ?? '?'}/100), comment adapter mes prochaines séances ? Quelles séances maintenir, lesquelles reporter ?` },
+                { label: 'Analyser ma semaine', prompt: "Analyse ma semaine d'entraînement complète avec le contexte de ma récupération." },
+              ] as { label: string; prompt: string }[]).map((action, i) => (
+                <button key={i} onClick={() => {
+                  if (onFollowUp) onFollowUp(action.label, action.prompt)
+                }} style={{
+                  padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans,sans-serif',
+                }}>
+                  {action.label} →
+                </button>
+              ))}
+            </div>
+            <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
+              Fermer
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return null
 }
 
 
@@ -17705,7 +18175,6 @@ export default function AIPanel({
       : ''
     const sendFn: SendFn = (displayText: string, apiPrompt: string) => { void send(displayText, apiPrompt) }
     switch (id) {
-      case 'analyser_recuperation': await enrichedAnalyserRecuperation(sb, user.id, rulesBlock, label, sendFn); break
       case 'conseils_sommeil':      await enrichedConseilsSommeil(sb, user.id, rulesBlock, label, sendFn); break
       case 'comprendre_app':        await enrichedComprendreApp(sb, user.id, label, sendFn); break
     }
@@ -18370,6 +18839,25 @@ export default function AIPanel({
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
                           { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel, weekAnalysis: weekData },
+                        ],
+                      }
+                      setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
+                      setActiveId(conv.id)
+                    }}
+                    onFollowUp={(displayLabel, fullPrompt) => { void send(displayLabel, fullPrompt) }}
+                  />
+                )}
+                {activeFlow === 'analyser_recuperation' && (
+                  <RecoveryAnalysisFlow
+                    onCancel={() => setActiveFlow(null)}
+                    onRecordConv={(userMsg, aiMsg) => {
+                      const conv: AIConv = {
+                        id: genId(),
+                        title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
+                        createdAt: Date.now(), updatedAt: Date.now(),
+                        msgs: [
+                          { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))

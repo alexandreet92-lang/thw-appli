@@ -712,6 +712,30 @@ interface ExerciseItem {
   weightKg?: number; distanceM?: number; kcal?: number; targetTimeSec?: number
   restSec: number; notes?: string
 }
+interface ExoCircuit {
+  id: string
+  name: string
+  rounds: number
+  restBetweenRoundsSec: number
+  targetTimeSec?: number
+}
+
+const EXO_CATEGORY_COLOR: Record<ExoCategory, string> = {
+  push:  '#f97316',
+  pull:  '#3b82f6',
+  legs:  '#22c55e',
+  mixte: '#a855f7',
+  abdos: '#06b6d4',
+  hyrox: '#ec4899',
+}
+const EXO_CATEGORY_LABEL: Record<ExoCategory, string> = {
+  push:  'Push',
+  pull:  'Pull',
+  legs:  'Legs',
+  mixte: 'Mixte',
+  abdos: 'Abdos',
+  hyrox: 'Hyrox',
+}
 
 const EXERCISE_DATABASE: ExoDefinition[] = [
   // PUSH
@@ -807,18 +831,23 @@ function searchExercises(query: string, category?: ExoCategory): ExoDefinition[]
 }
 
 // ════════════════════════════════════════════════
-// EXERCISE LIST BUILDER — Gym & Hyrox
+// EXERCISE LIST BUILDER — Gym & Hyrox (circuit-based)
 // ════════════════════════════════════════════════
 function ExerciseListBuilder({ sport, exercises, onChange }: {
   sport: SportType
   exercises: ExerciseItem[]
   onChange: (e: ExerciseItem[]) => void
 }) {
-  const [searchOpen, setSearchOpen] = useState(false)
+  const defaultCircuit: ExoCircuit = { id: 'default', name: 'Circuit 1', rounds: 3, restBetweenRoundsSec: 90 }
+  const [circuits, setCircuits] = useState<ExoCircuit[]>([defaultCircuit])
+  const [blockCircuitMap, setBlockCircuitMap] = useState<Record<string, string>>({})
+  const [addingToCircuit, setAddingToCircuit] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [catFilter, setCatFilter] = useState<ExoCategory | undefined>(
     sport === 'hyrox' ? 'hyrox' : undefined
   )
+
+  const accentColor = SPORT_BORDER[sport]
 
   const catOptions: { id: ExoCategory; label: string }[] = sport === 'hyrox'
     ? [{ id: 'hyrox', label: 'Hyrox' }]
@@ -831,11 +860,41 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
       ]
 
   const results = searchExercises(query, catFilter)
-  const accentColor = SPORT_BORDER[sport]
 
-  function addExo(exo: ExoDefinition) {
+  function getBlocksForCircuit(circuitId: string): ExerciseItem[] {
+    return exercises.filter(e => (blockCircuitMap[e.id] ?? 'default') === circuitId)
+  }
+
+  function addCircuit() {
+    const num = circuits.length + 1
+    const newCircuit: ExoCircuit = {
+      id: `circuit_${Date.now()}`,
+      name: `Circuit ${num}`,
+      rounds: 3,
+      restBetweenRoundsSec: 90,
+    }
+    setCircuits(prev => [...prev, newCircuit])
+  }
+
+  function removeCircuit(circuitId: string) {
+    const toRemoveIds = exercises.filter(e => (blockCircuitMap[e.id] ?? 'default') === circuitId).map(e => e.id)
+    onChange(exercises.filter(e => !toRemoveIds.includes(e.id)))
+    setBlockCircuitMap(prev => {
+      const next = { ...prev }
+      toRemoveIds.forEach(id => delete next[id])
+      return next
+    })
+    setCircuits(prev => prev.filter(c => c.id !== circuitId))
+    if (addingToCircuit === circuitId) setAddingToCircuit(null)
+  }
+
+  function updateCircuit(circuitId: string, patch: Partial<ExoCircuit>) {
+    setCircuits(prev => prev.map(c => c.id === circuitId ? { ...c, ...patch } : c))
+  }
+
+  function addExerciseToCircuit(exo: ExoDefinition, circuitId: string) {
     const item: ExerciseItem = {
-      id: `exo_${Date.now()}`,
+      id: `exo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       exoId: exo.id,
       name: exo.name,
       category: exo.category,
@@ -848,22 +907,24 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
       restSec: exo.defaultRestSec,
     }
     onChange([...exercises, item])
-    setSearchOpen(false)
+    setBlockCircuitMap(prev => ({ ...prev, [item.id]: circuitId }))
+    setAddingToCircuit(null)
     setQuery('')
   }
 
-  function addCustom() {
+  function addCustomToCircuit(circuitId: string) {
     const q = query.trim()
     if (!q) return
     const item: ExerciseItem = {
-      id: `exo_${Date.now()}`,
+      id: `exo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       exoId: 'custom',
       name: q,
       category: sport === 'hyrox' ? 'hyrox' : 'mixte',
       sets: 3, reps: 10, restSec: 60,
     }
     onChange([...exercises, item])
-    setSearchOpen(false)
+    setBlockCircuitMap(prev => ({ ...prev, [item.id]: circuitId }))
+    setAddingToCircuit(null)
     setQuery('')
   }
 
@@ -871,174 +932,267 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
     onChange(exercises.map(e => e.id === id ? { ...e, [field]: val } : e))
   }
 
+  function removeExo(id: string) {
+    onChange(exercises.filter(e => e.id !== id))
+    setBlockCircuitMap(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  function moveExercise(blockId: string, dir: 'up' | 'down') {
+    const idx = exercises.findIndex(e => e.id === blockId)
+    if (idx < 0) return
+    const circuitId = blockCircuitMap[blockId] ?? 'default'
+    const circuitBlocks = exercises.filter(e => (blockCircuitMap[e.id] ?? 'default') === circuitId)
+    const posInCircuit = circuitBlocks.findIndex(e => e.id === blockId)
+    if (dir === 'up' && posInCircuit === 0) return
+    if (dir === 'down' && posInCircuit === circuitBlocks.length - 1) return
+    const swapWith = dir === 'up' ? circuitBlocks[posInCircuit - 1] : circuitBlocks[posInCircuit + 1]
+    const swapIdx = exercises.findIndex(e => e.id === swapWith.id)
+    const next = [...exercises]
+    ;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
+    onChange(next)
+  }
+
   function fmtTime(sec: number): string {
     if (!sec) return ''
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '6px 8px', borderRadius: 7,
+    border: '1px solid var(--border)', background: 'var(--input-bg)',
+    color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none',
+  }
+  const accentInputStyle: React.CSSProperties = {
+    ...inputStyle, border: `1px solid ${accentColor}44`, background: `${accentColor}08`,
+  }
+
   return (
     <div>
-      {/* Liste des exercices */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-        {exercises.map((e, idx) => {
-          const exoDef = EXERCISE_DATABASE.find(x => x.id === e.exoId)
-          const c = accentColor
-          return (
-            <div key={e.id} style={{
-              borderRadius: 12, background: 'var(--bg-card2)',
-              border: `1px solid ${c}22`, borderLeft: `4px solid ${c}`,
-              padding: '10px 14px',
+      {circuits.map(circuit => {
+        const circuitExercises = getBlocksForCircuit(circuit.id)
+        return (
+          <div key={circuit.id} style={{
+            marginBottom: 16, borderRadius: 14,
+            border: `1px solid ${accentColor}33`,
+            background: 'var(--bg-card2)',
+            overflow: 'hidden',
+          }}>
+            {/* En-tête circuit */}
+            <div style={{
+              padding: '10px 14px', background: `${accentColor}12`,
+              borderBottom: `1px solid ${accentColor}22`,
+              display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 8,
             }}>
-              {/* En-tête */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>#{idx + 1}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{e.name}</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: c, background: `${c}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const }}>
-                    {e.category}
-                  </span>
-                </div>
-                <button onClick={() => onChange(exercises.filter(x => x.id !== e.id))}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+              <input
+                value={circuit.name}
+                onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
+                style={{ flex: '1 1 100px', minWidth: 80, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Rounds</span>
+                <input type="number" min={1} max={20} value={circuit.rounds}
+                  onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
+                  style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
               </div>
-              {/* Champs */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
-                <div>
-                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
-                  <input type="number" min={1} value={e.sets}
-                    onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/round (s)</span>
+                <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
+                  onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
+                  style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+              </div>
+              {sport === 'hyrox' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
+                  <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
+                    onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
+                    style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
                 </div>
-                <div>
-                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
-                  <input type="number" min={1} value={e.reps}
-                    onChange={ev => updExo(e.id, 'reps', parseInt(ev.target.value) || 1)}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
-                </div>
-                {(exoDef?.hasWeight ?? e.weightKg !== undefined) && (
-                  <div>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Charge (kg)</p>
-                    <input type="number" min={0} step={2.5} value={e.weightKg ?? 0}
-                      onChange={ev => updExo(e.id, 'weightKg', parseFloat(ev.target.value) || 0)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+              )}
+              {circuits.length > 1 && (
+                <button onClick={() => removeCircuit(circuit.id)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+              )}
+            </div>
+
+            {/* Exercices du circuit */}
+            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {circuitExercises.map((e, idx) => {
+                const exoDef = EXERCISE_DATABASE.find(x => x.id === e.exoId)
+                const catColor = EXO_CATEGORY_COLOR[e.category] ?? accentColor
+                return (
+                  <div key={e.id} style={{
+                    borderRadius: 10, background: 'var(--bg-card)',
+                    border: `1px solid ${accentColor}22`, borderLeft: `3px solid ${accentColor}`,
+                    padding: '9px 12px',
+                  }}>
+                    {/* En-tête exercice */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      {/* Flèches réordonnancement */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+                        <button onClick={() => moveExercise(e.id, 'up')}
+                          disabled={idx === 0}
+                          style={{ background: 'none', border: 'none', color: idx === 0 ? 'var(--border)' : 'var(--text-dim)', cursor: idx === 0 ? 'default' : 'pointer', fontSize: 10, padding: '0 2px', lineHeight: 1 }}>▲</button>
+                        <button onClick={() => moveExercise(e.id, 'down')}
+                          disabled={idx === circuitExercises.length - 1}
+                          style={{ background: 'none', border: 'none', color: idx === circuitExercises.length - 1 ? 'var(--border)' : 'var(--text-dim)', cursor: idx === circuitExercises.length - 1 ? 'default' : 'pointer', fontSize: 10, padding: '0 2px', lineHeight: 1 }}>▼</button>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>#{idx + 1}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{e.name}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: catColor, background: `${catColor}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                        {EXO_CATEGORY_LABEL[e.category]}
+                      </span>
+                      <button onClick={() => removeExo(e.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>×</button>
+                    </div>
+                    {/* Champs */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
+                        <input type="number" min={1} value={e.sets}
+                          onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
+                          style={inputStyle} />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
+                        <input type="number" min={1} value={e.reps}
+                          onChange={ev => updExo(e.id, 'reps', parseInt(ev.target.value) || 1)}
+                          style={inputStyle} />
+                      </div>
+                      {(exoDef?.hasWeight ?? e.weightKg !== undefined) && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Charge (kg)</p>
+                          <input type="number" min={0} step={2.5} value={e.weightKg ?? 0}
+                            onChange={ev => updExo(e.id, 'weightKg', parseFloat(ev.target.value) || 0)}
+                            style={accentInputStyle} />
+                        </div>
+                      )}
+                      {(exoDef?.hasDistance ?? e.distanceM !== undefined) && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Distance (m)</p>
+                          <input type="number" min={0} step={5} value={e.distanceM ?? 0}
+                            onChange={ev => updExo(e.id, 'distanceM', parseInt(ev.target.value) || 0)}
+                            style={accentInputStyle} />
+                        </div>
+                      )}
+                      {(exoDef?.hasKcal ?? e.kcal !== undefined) && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Kcal cible</p>
+                          <input type="number" min={0} value={e.kcal ?? 0}
+                            onChange={ev => updExo(e.id, 'kcal', parseInt(ev.target.value) || 0)}
+                            style={accentInputStyle} />
+                        </div>
+                      )}
+                      {(exoDef?.hasTime ?? e.targetTimeSec !== undefined) && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Temps cible (sec)</p>
+                          <input type="number" min={0} step={5} value={e.targetTimeSec ?? 0}
+                            onChange={ev => updExo(e.id, 'targetTimeSec', parseInt(ev.target.value) || 0)}
+                            style={accentInputStyle} />
+                          {(e.targetTimeSec ?? 0) > 0 && (
+                            <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{fmtTime(e.targetTimeSec ?? 0)}</p>
+                          )}
+                        </div>
+                      )}
+                      <div>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Repos (sec)</p>
+                        <input type="number" min={0} step={15} value={e.restSec}
+                          onChange={ev => updExo(e.id, 'restSec', parseInt(ev.target.value) || 0)}
+                          style={inputStyle} />
+                      </div>
+                    </div>
+                    {/* Notes */}
+                    <div style={{ marginTop: 6 }}>
+                      <input value={e.notes ?? ''} onChange={ev => updExo(e.id, 'notes', ev.target.value)}
+                        placeholder="Notes / consignes (optionnel)"
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                    </div>
                   </div>
-                )}
-                {(exoDef?.hasDistance ?? e.distanceM !== undefined) && (
-                  <div>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Distance (m)</p>
-                    <input type="number" min={0} step={5} value={e.distanceM ?? 0}
-                      onChange={ev => updExo(e.id, 'distanceM', parseInt(ev.target.value) || 0)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                )
+              })}
+
+              {/* Bouton ajouter ou panneau de recherche */}
+              {addingToCircuit === circuit.id ? (
+                <div style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
+                  borderRadius: 12, padding: '12px 14px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Ajouter un exercice</p>
+                    <button onClick={() => { setAddingToCircuit(null); setQuery('') }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
                   </div>
-                )}
-                {(exoDef?.hasKcal ?? e.kcal !== undefined) && (
-                  <div>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Kcal cible</p>
-                    <input type="number" min={0} value={e.kcal ?? 0}
-                      onChange={ev => updExo(e.id, 'kcal', parseInt(ev.target.value) || 0)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                  <input value={query} onChange={ev => setQuery(ev.target.value)}
+                    placeholder="ex: squat, développé couché, traction..."
+                    autoFocus
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8 }} />
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+                    {catOptions.map(cat => (
+                      <button key={cat.id} onClick={() => setCatFilter(catFilter === cat.id ? undefined : cat.id)}
+                        style={{
+                          padding: '3px 8px', borderRadius: 6, border: '1px solid', fontSize: 10, cursor: 'pointer',
+                          borderColor: catFilter === cat.id ? accentColor : 'var(--border)',
+                          background: catFilter === cat.id ? `${accentColor}22` : 'transparent',
+                          color: catFilter === cat.id ? accentColor : 'var(--text-dim)',
+                          fontWeight: catFilter === cat.id ? 700 : 400,
+                        }}>
+                        {cat.label}
+                      </button>
+                    ))}
                   </div>
-                )}
-                {(exoDef?.hasTime ?? e.targetTimeSec !== undefined) && (
-                  <div>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Temps cible (sec)</p>
-                    <input type="number" min={0} step={5} value={e.targetTimeSec ?? 0}
-                      onChange={ev => updExo(e.id, 'targetTimeSec', parseInt(ev.target.value) || 0)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: `1px solid ${c}44`, background: `${c}08`, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
-                    {(e.targetTimeSec ?? 0) > 0 && (
-                      <p style={{ fontSize: 10, color: c, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{fmtTime(e.targetTimeSec ?? 0)}</p>
+                  <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {results.slice(0, 20).map(exo => (
+                      <button key={exo.id} onClick={() => addExerciseToCircuit(exo, circuit.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '7px 10px', borderRadius: 7, border: '1px solid var(--border)',
+                          background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
+                          textAlign: 'left' as const, width: '100%',
+                        }}>
+                        <div>
+                          <span style={{ fontSize: 12, fontWeight: 600 }}>{exo.name}</span>
+                          {exo.aliases[0] && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 5 }}>({exo.aliases[0]})</span>}
+                        </div>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: EXO_CATEGORY_COLOR[exo.category], background: `${EXO_CATEGORY_COLOR[exo.category]}18`, padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                          {EXO_CATEGORY_LABEL[exo.category]}
+                        </span>
+                      </button>
+                    ))}
+                    {results.length === 0 && (
+                      <div style={{ padding: '10px', textAlign: 'center' as const }}>
+                        <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Aucun exercice trouvé pour &ldquo;{query}&rdquo;</p>
+                        <button onClick={() => addCustomToCircuit(circuit.id)} style={{
+                          padding: '7px 14px', borderRadius: 7,
+                          background: `${accentColor}22`, border: `1px solid ${accentColor}`,
+                          color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        }}>+ Créer &ldquo;{query}&rdquo;</button>
+                      </div>
                     )}
                   </div>
-                )}
-                <div>
-                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Repos (sec)</p>
-                  <input type="number" min={0} step={15} value={e.restSec}
-                    onChange={ev => updExo(e.id, 'restSec', parseInt(ev.target.value) || 0)}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
                 </div>
-              </div>
-              {/* Notes */}
-              <div style={{ marginTop: 8 }}>
-                <input value={e.notes ?? ''} onChange={ev => updExo(e.id, 'notes', ev.target.value)}
-                  placeholder="Notes / consignes (optionnel)"
-                  style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-              </div>
+              ) : (
+                <button onClick={() => { setAddingToCircuit(circuit.id); setQuery('') }} style={{
+                  width: '100%', padding: '9px', borderRadius: 9,
+                  background: 'transparent', border: `1px dashed ${accentColor}55`,
+                  color: accentColor, fontSize: 12, cursor: 'pointer',
+                }}>+ Ajouter un exercice</button>
+              )}
             </div>
-          )
-        })}
-      </div>
+          </div>
+        )
+      })}
 
-      {/* Bouton ajouter */}
-      <button onClick={() => setSearchOpen(true)} style={{
-        width: '100%', padding: '11px', borderRadius: 10,
-        background: 'transparent', border: `1px dashed ${accentColor}66`,
-        color: accentColor, fontSize: 12, cursor: 'pointer', marginBottom: 8,
-      }}>+ Ajouter un exercice</button>
-
-      {/* Panneau de recherche */}
-      {searchOpen && (
-        <div style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
-          borderRadius: 14, padding: '14px 16px', marginBottom: 12,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Rechercher un exercice</p>
-            <button onClick={() => { setSearchOpen(false); setQuery('') }}
-              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
-          </div>
-          {/* Barre de recherche */}
-          <input value={query} onChange={e => setQuery(e.target.value)}
-            placeholder="ex: squat, développé couché, traction..."
-            autoFocus
-            style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 10 }} />
-          {/* Filtres catégorie */}
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginBottom: 10 }}>
-            {catOptions.map(cat => (
-              <button key={cat.id} onClick={() => setCatFilter(catFilter === cat.id ? undefined : cat.id)}
-                style={{
-                  padding: '4px 10px', borderRadius: 7, border: '1px solid', fontSize: 11, cursor: 'pointer',
-                  borderColor: catFilter === cat.id ? accentColor : 'var(--border)',
-                  background: catFilter === cat.id ? `${accentColor}22` : 'transparent',
-                  color: catFilter === cat.id ? accentColor : 'var(--text-dim)',
-                  fontWeight: catFilter === cat.id ? 700 : 400,
-                }}>
-                {cat.label}
-              </button>
-            ))}
-          </div>
-          {/* Résultats */}
-          <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {results.slice(0, 20).map(exo => (
-              <button key={exo.id} onClick={() => addExo(exo)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)',
-                  background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
-                  textAlign: 'left' as const, width: '100%',
-                }}>
-                <div>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{exo.name}</span>
-                  {exo.aliases[0] && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>({exo.aliases[0]})</span>}
-                </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, background: `${accentColor}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0 }}>
-                  {exo.category}
-                </span>
-              </button>
-            ))}
-            {results.length === 0 && (
-              <div style={{ padding: '12px', textAlign: 'center' as const }}>
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Aucun exercice trouvé pour &ldquo;{query}&rdquo;</p>
-                <button onClick={addCustom} style={{
-                  padding: '8px 16px', borderRadius: 8,
-                  background: `${accentColor}22`, border: `1px solid ${accentColor}`,
-                  color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}>+ Créer &ldquo;{query}&rdquo;</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Bouton ajouter un circuit */}
+      <button onClick={addCircuit} style={{
+        width: '100%', padding: '10px', borderRadius: 10,
+        background: 'transparent', border: `2px dashed ${accentColor}44`,
+        color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+        marginTop: 4,
+      }}>+ Ajouter un circuit</button>
     </div>
   )
 }

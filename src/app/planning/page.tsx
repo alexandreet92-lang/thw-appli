@@ -2138,7 +2138,7 @@ function TrainingTab() {
       )}
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
-      {addModal!==null && <div onClick={()=>setAddModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/></div>}
+      {addModal!==null && <AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/>}
       {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onAutoSave={handleAutoSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
@@ -2413,142 +2413,339 @@ function TrainingTab() {
 }
 
 // ── Add Session Modal ─────────────────────────────
+
+function getTrainingTypeDescription(sport: SportType, type: string): string {
+  const desc: Partial<Record<SportType, Record<string, string>>> = {
+    run: {
+      'EF':           'Endurance fondamentale — Zone 1-2, conversation possible, socle aérobie.',
+      'SL1':          'Seuil 1 — Tempo confortable, Zone 3, lactate stable.',
+      'SL2':          'Seuil 2 — Effort dur soutenu, Zone 4, lactate au seuil.',
+      'VMA':          'Vitesse Maximale Aérobie — Intervalles courts à haute intensité, Zone 5.',
+      'Strides':      'Accélérations progressives 20-30s, récup marche. Travail neuromusculaire.',
+      'Heat Training':'Entraînement à la chaleur pour adaptation thermique et physiologique.',
+    },
+    bike: {
+      'EF':           'Endurance fondamentale — Zone 1-2, socle aérobie, récupération active.',
+      'SL1':          'Sweet Spot — 88-93% FTP, Zone 3-4, développement du seuil.',
+      'SL2':          'Seuil — 95-105% FTP, Zone 4, haute puissance soutenue.',
+      'PMA':          'Puissance Maximale Aérobie — Intervalles 3-8min à 110-130% FTP.',
+      'Sprints':      'Sprints neuromusculaires — 10-30s à 150%+ FTP, récup complète.',
+      'Heat Training':'Entraînement à la chaleur pour adaptation thermique.',
+    },
+    swim: {
+      'EF':        'Endurance fondamentale — volumes longs, technique prioritaire.',
+      'Technique': 'Drills technique — travail gestuel spécifique, coordination.',
+      'Seuil':     'Effort au seuil — 400m-1km répétés à allure compétition.',
+      'Sprints':   'Sprints courts — 25-50m à 100% d\'effort, récupération longue.',
+    },
+    hyrox: {
+      'Simulation':   'Simulation course complète — enchaînement stations + runs 1km.',
+      'Ergo':         'SkiErg ou Rowing seul — intervalles ou volume.',
+      'Wall Ball':    'Travail spécifique Wall Ball — volume ou technique.',
+      'BBJ':          'Burpee Broad Jump — technique et volume.',
+      'Fentes':       'Fentes Sandbag — endurance musculaire spécifique.',
+      'Sled Push':    'Sled Push — charge et vitesse de déplacement.',
+      'Sled Pull':    'Sled Pull — force et endurance spécifique.',
+      'Farmer Carry': 'Farmer Carry — grip, stabilité et endurance musculaire.',
+    },
+    gym: {
+      'Strength':           'Force pure — charges lourdes, 3-5 reps, repos 3-5min.',
+      'Strength endurance': 'Force-endurance — charges modérées, 8-15 reps, haute densité.',
+      'Explosivité':        'Plyométrie — sauts, puissance neuromusculaire.',
+    },
+    rowing: {
+      'EF':      'Endurance fondamentale — Zone 2, technique, volume.',
+      'SL1':     'Seuil 1 — Tempo aérobie, Zone 3, lactate stable.',
+      'SL2':     'Seuil 2 — Haute intensité soutenue, Zone 4.',
+      'PMA':     'VO2max — Intervalles 2-4min à pleine puissance.',
+      'Sprints': 'Sprints neuromusculaires, 15-30s, récup complète.',
+    },
+  }
+  return desc[sport]?.[type] ?? type
+}
+
 function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; plan:PlanVariant; onClose:()=>void; onAdd:(i:number,s:Session)=>void }) {
-  const router = useRouter()
-  const [sport,      setSport]      = useState<SportType>('run')
-  const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
-  const [trainingType,setTrainingType]= useState<string|null>(null)
-  const [title,      setTitle]      = useState('')
-  const [time,       setTime]       = useState('09:00')
-  const [durH,       setDurH]       = useState(1)
-  const [durM,       setDurM]       = useState(0)
-  const [rpe,        setRpe]        = useState(5)
-  const [notes,      setNotes]      = useState('')
-  const [selPlan,    setSelPlan]    = useState<PlanVariant>(plan)
-  const totalMin = hMinToMin(durH,durM)
-  const tss = calcTSS([], sport, totalMin, rpe)
+  const [sport,        setSport]        = useState<SportType>('run')
+  const [cyclingSub,   setCyclingSub]   = useState<CyclingSub>('velo')
+  const [trainingType, setTrainingType] = useState<string|null>(null)
+  const [title,        setTitle]        = useState('')
+  const [time,         setTime]         = useState('09:00')
+  const [totalMin,     setTotalMin]     = useState(60)
+  const [rpe,          setRpe]          = useState(5)
+  const [notes,        setNotes]        = useState('')
+  const [selPlan,      setSelPlan]      = useState<PlanVariant>(plan)
+  const [blocks,       setBlocks]       = useState<Block[]>([])
+  const [aiOpen,       setAiOpen]       = useState(false)
+  const [aiPrompt,     setAiPrompt]     = useState('')
+  const [aiLoading,    setAiLoading]    = useState(false)
+  const [tooltip,      setTooltip]      = useState<string|null>(null)
+
+  const tss = blocks.length > 0
+    ? calcTSS(blocks, sport)
+    : calcTSS([], sport, totalMin, rpe)
   const trainTypes = TRAINING_TYPES[sport] ?? []
 
-  function handleSportChange(s:SportType) {
-    setSport(s); setTrainingType(null)
+  function handleSportChange(sp: SportType) {
+    setSport(sp); setTrainingType(null); setBlocks([])
   }
-  function handleTrainingTypeClick(t:string) {
-    if(trainingType===t) { setTrainingType(null) }
+  function handleTrainingTypeClick(t: string) {
+    if (trainingType === t) { setTrainingType(null) }
     else {
       setTrainingType(t)
-      if(!title) setTitle(`${SPORT_LABEL[s]} ${t}`.trim().replace(/^(\w)/, m => m))
+      if (!title) setTitle(`${SPORT_LABEL[sport]} ${t}`)
     }
   }
-  // Fix: close over sport correctly
-  const s = sport
+
+  async function handleAIGenerate() {
+    if (!aiPrompt.trim() || aiLoading) return
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: `Génère une séance de ${SPORT_LABEL[sport]} : ${aiPrompt}. Durée cible : ${formatHM(totalMin)}. Réponds UNIQUEMENT avec un JSON array de blocs au format [{nom,duree_min,zone,repetitions?,recup_min?,watts?,allure?,consigne?}]. Rien d'autre.`,
+          }],
+          context: { sport, totalMin, rpe },
+        }),
+      })
+      if (!res.body) throw new Error('No body')
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let full = ''
+      let streamDone = false
+      try {
+        outer: while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          const lines = chunk.split('\n')
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue
+            const d = line.slice(5).trim()
+            if (d === '[DONE]') { streamDone = true; break outer }
+            try {
+              const ev = JSON.parse(d) as { choices?: { delta?: { content?: string } }[]; delta?: { text?: string } }
+              const delta = ev?.choices?.[0]?.delta?.content ?? ev?.delta?.text ?? ''
+              full += delta
+            } catch { /* ignore parse errors on SSE metadata lines */ }
+          }
+        }
+      } finally {
+        if (!streamDone) reader.cancel().catch(() => {})
+      }
+      const match = full.match(/\[[\s\S]*\]/)
+      if (match) {
+        try {
+          const parsed: unknown = JSON.parse(match[0])
+          const newBlocks = normalizeBlocks(parsed)
+          if (newBlocks.length > 0) {
+            setBlocks(newBlocks)
+            setAiOpen(false)
+            setAiPrompt('')
+          }
+        } catch { /* invalid JSON — no-op */ }
+      }
+    } catch (e) {
+      console.error('[AddSessionModal] AI generate error:', e)
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   return (
-    <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:520,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
-        <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Nouvelle séance</h3>
-        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+    <div style={{ position:'fixed',inset:0,zIndex:300,background:'var(--bg)',overflowY:'auto',animation:'slideUp 0.25s ease-out' }}>
+      {/* ── Sticky header ── */}
+      <div style={{ position:'sticky',top:0,zIndex:10,background:'var(--bg-card)',borderBottom:'1px solid var(--border-mid)',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+          <div style={{ width:4,height:22,borderRadius:2,background:SPORT_BORDER[sport] }}/>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:0 }}>Nouvelle séance</h3>
+          <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>{formatHM(totalMin)} · {tss} TSS</span>
+        </div>
+        <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'6px 12px',cursor:'pointer',color:'var(--text-mid)',fontSize:13,fontWeight:600 }}>✕ Fermer</button>
       </div>
-      {/* Sport selector — horizontal scrollable */}
-      <div style={{ display:'flex',gap:5,overflowX:'auto',marginBottom:10,paddingBottom:2 }}>
-        {(Object.keys(SPORT_LABEL) as SportType[]).map(sp=>(
-          <button key={sp} onClick={()=>handleSportChange(sp)}
-            style={{ padding:'5px 10px',borderRadius:8,border:'1px solid',borderColor:sport===sp?SPORT_BORDER[sp]:'var(--border)',
-              background:sport===sp?SPORT_BG[sp]:'var(--bg-card2)',color:sport===sp?SPORT_BORDER[sp]:'var(--text-mid)',
-              fontSize:11,cursor:'pointer',fontWeight:sport===sp?600:400,whiteSpace:'nowrap' as const,
-              borderLeft:sport===sp?`3px solid ${SPORT_BORDER[sp]}`:undefined }}>
-            {SPORT_ABBR[sp]} {SPORT_LABEL[sp]}
+
+      {/* ── Body ── */}
+      <div style={{ maxWidth:720,margin:'0 auto',padding:'24px 20px 48px' }}>
+
+        {/* Sport dropdown */}
+        <div style={{ marginBottom:16 }}>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Sport</p>
+          <div style={{ position:'relative' }}>
+            <select
+              value={sport}
+              onChange={e=>handleSportChange(e.target.value as SportType)}
+              style={{ width:'100%',padding:'10px 36px 10px 14px',borderRadius:10,border:`2px solid ${SPORT_BORDER[sport]}`,background:SPORT_BG[sport],color:SPORT_BORDER[sport],fontSize:13,fontWeight:700,fontFamily:'Syne,sans-serif',cursor:'pointer',appearance:'none',outline:'none' }}>
+              {(Object.keys(SPORT_LABEL) as SportType[]).map(sp=>(
+                <option key={sp} value={sp}>{SPORT_ABBR[sp]} — {SPORT_LABEL[sp]}</option>
+              ))}
+            </select>
+            <span style={{ position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none',color:SPORT_BORDER[sport],fontSize:11 }}>▾</span>
+          </div>
+        </div>
+
+        {/* Cycling sub-type */}
+        {sport==='bike' && (
+          <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:14 }}>
+            {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub=>(
+              <button key={sub} onClick={()=>setCyclingSub(sub)}
+                style={{ padding:'5px 11px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',
+                  borderColor:cyclingSub===sub?SPORT_BORDER.bike:'var(--border)',
+                  background:cyclingSub===sub?`${SPORT_BORDER.bike}22`:'var(--bg-card2)',
+                  color:cyclingSub===sub?SPORT_BORDER.bike:'var(--text-mid)',fontWeight:cyclingSub===sub?700:400 }}>
+                {CYCLING_SUB_LABEL[sub]}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Training types with ? tooltip */}
+        {trainTypes.length>0 && (
+          <div style={{ marginBottom:16 }}>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Type de séance</p>
+            <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const }}>
+              {trainTypes.map(t=>(
+                <div key={t} style={{ position:'relative',display:'flex',alignItems:'center' }}>
+                  <button onClick={()=>handleTrainingTypeClick(t)}
+                    style={{ padding:'6px 10px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',
+                      borderColor:trainingType===t?SPORT_BORDER[sport]:'var(--border)',
+                      background:trainingType===t?SPORT_BG[sport]:'transparent',
+                      color:trainingType===t?SPORT_BORDER[sport]:'var(--text-dim)',fontWeight:trainingType===t?700:400 }}>
+                    {t}
+                  </button>
+                  <button
+                    onMouseEnter={()=>setTooltip(`${sport}:${t}`)}
+                    onMouseLeave={()=>setTooltip(null)}
+                    style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'help',fontSize:9,padding:'0 2px',lineHeight:1,opacity:0.6 }}>?</button>
+                  {tooltip===`${sport}:${t}` && (
+                    <div style={{ position:'absolute',bottom:'calc(100% + 6px)',left:0,zIndex:20,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:8,padding:'8px 10px',width:220,boxShadow:'var(--shadow)',fontSize:11,color:'var(--text-mid)',lineHeight:1.5,whiteSpace:'normal' as const }}>
+                      <strong style={{ color:SPORT_BORDER[sport],fontSize:10,fontWeight:700 }}>{t}</strong>
+                      <p style={{ margin:'4px 0 0' }}>{getTrainingTypeDescription(sport,t)}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Title + time */}
+        <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:10,marginBottom:16 }}>
+          <div>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Titre</p>
+            <input value={title} onChange={e=>setTitle(e.target.value)}
+              placeholder={trainingType?`${SPORT_LABEL[sport]} ${trainingType}`:`${SPORT_LABEL[sport]} Z2`}
+              style={{ width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none' }}/>
+          </div>
+          <div>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Heure</p>
+            <input value={time} onChange={e=>setTime(e.target.value)}
+              style={{ width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:14,fontWeight:600,outline:'none' }}/>
+          </div>
+        </div>
+
+        {/* Duration slider */}
+        <div style={{ marginBottom:16 }}>
+          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6 }}>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Durée</p>
+            <span style={{ fontFamily:'DM Mono,monospace',fontSize:14,fontWeight:700,color:SPORT_BORDER[sport] }}>{formatHM(totalMin)}</span>
+          </div>
+          <input type="range" min={5} max={360} step={5} value={totalMin}
+            onChange={e=>setTotalMin(parseInt(e.target.value))}
+            style={{ width:'100%',accentColor:SPORT_BORDER[sport],cursor:'pointer',height:6 }}/>
+          <div style={{ display:'flex',justifyContent:'space-between',marginTop:3 }}>
+            <span style={{ fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>5min</span>
+            <span style={{ fontSize:9,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>6h</span>
+          </div>
+        </div>
+
+        {/* RPE slider */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6 }}>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>RPE (effort perçu)</p>
+            <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+              <span style={{ fontFamily:'DM Mono,monospace',fontSize:14,fontWeight:700,color:rpe<=3?'#22c55e':rpe<=6?'#ffb340':'#ef4444' }}>{rpe.toFixed(1)}/10</span>
+              <span style={{ fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-dim)' }}>· <strong style={{ color:SPORT_BORDER[sport] }}>{tss} TSS</strong></span>
+            </div>
+          </div>
+          <input type="range" min={0} max={10} step={0.5} value={rpe}
+            onChange={e=>setRpe(parseFloat(e.target.value))}
+            style={{ width:'100%',accentColor:'#00c8e0',cursor:'pointer',height:6 }}/>
+        </div>
+
+        {/* BlockBuilder intégré */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>
+              Blocs d'intensité {blocks.length>0&&<span style={{ color:SPORT_BORDER[sport],marginLeft:4 }}>· {blocks.length} bloc{blocks.length>1?'s':''}</span>}
+            </p>
+          </div>
+          <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks}/>
+        </div>
+
+        {/* Construire avec l'IA */}
+        <div style={{ marginBottom:20,borderRadius:12,border:`1px solid var(--ai-accent)44`,background:'var(--ai-accent-dim)',overflow:'hidden' }}>
+          <button
+            onClick={()=>setAiOpen(o=>!o)}
+            style={{ width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:8,textAlign:'left' as const }}>
+            <span style={{ fontSize:14 }}>✦</span>
+            <span style={{ fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:700,color:'var(--ai-accent)' }}>Construire avec l'IA</span>
+            <span style={{ marginLeft:'auto',color:'var(--ai-accent)',fontSize:11 }}>{aiOpen?'▲':'▼'}</span>
           </button>
-        ))}
-      </div>
-      {/* Cycling sub-type */}
-      {sport==='bike' && (
-        <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:10 }}>
-          {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub=>(
-            <button key={sub} onClick={()=>setCyclingSub(sub)}
-              style={{ padding:'4px 8px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',
-                borderColor:cyclingSub===sub?SPORT_BORDER.bike:'var(--border)',
-                background:cyclingSub===sub?`${SPORT_BORDER.bike}22`:'var(--bg-card2)',
-                color:cyclingSub===sub?SPORT_BORDER.bike:'var(--text-mid)',fontWeight:cyclingSub===sub?600:400 }}>
-              {CYCLING_SUB_LABEL[sub]}
-            </button>
-          ))}
+          {aiOpen && (
+            <div style={{ padding:'0 16px 14px' }}>
+              <textarea
+                value={aiPrompt}
+                onChange={e=>setAiPrompt(e.target.value)}
+                placeholder={`Ex : 10×400m Z4 avec 90s récup, échauffement 15min...`}
+                rows={3}
+                style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const,marginBottom:8 }}/>
+              <button
+                onClick={handleAIGenerate}
+                disabled={aiLoading||!aiPrompt.trim()}
+                style={{ padding:'8px 16px',borderRadius:8,background:aiLoading?'var(--bg-card2)':`linear-gradient(135deg,var(--ai-accent),#5b6fff)`,border:'none',color:aiLoading?'var(--text-dim)':'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:aiLoading?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:6 }}>
+                {aiLoading?<><span style={{ animation:'spin 1s linear infinite',display:'inline-block' }}>⟳</span> Génération...</>:<>✦ Générer les blocs</>}
+              </button>
+            </div>
+          )}
         </div>
-      )}
-      {/* Training types */}
-      {trainTypes.length>0 && (
-        <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:12 }}>
-          {trainTypes.map(t=>(
-            <button key={t} onClick={()=>handleTrainingTypeClick(t)}
-              style={{ padding:'4px 8px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',
-                borderColor:trainingType===t?SPORT_BORDER[sport]:'var(--border)',
-                background:trainingType===t?SPORT_BG[sport]:'transparent',
-                color:trainingType===t?SPORT_BORDER[sport]:'var(--text-dim)',fontWeight:trainingType===t?700:400 }}>
-              {t}
-            </button>
-          ))}
+
+        {/* Notes */}
+        <div style={{ marginBottom:16 }}>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Notes</p>
+          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}
+            style={{ width:'100%',padding:'8px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',resize:'none' as const }}/>
         </div>
-      )}
-      <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:11 }}>
-        <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p><input value={title} onChange={e=>setTitle(e.target.value)} placeholder={trainingType?`${SPORT_LABEL[sport]} ${trainingType}`:`${SPORT_LABEL[sport]} Z2`} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-        <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heure</p><input value={time} onChange={e=>setTime(e.target.value)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-      </div>
-      {/* Duration h + m */}
-      <div style={{ display:'flex',gap:8,marginBottom:11 }}>
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heures</p>
-          <input type="number" min={0} max={12} value={durH} onChange={e=>setDurH(parseInt(e.target.value)||0)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+
+        {/* Plan selector */}
+        <div style={{ marginBottom:20 }}>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',marginBottom:6 }}>Plan</p>
+          <div style={{ display:'flex',gap:6 }}>
+            {(['A','B'] as PlanVariant[]).map(p=>(
+              <button key={p} onClick={()=>setSelPlan(p)} style={{ flex:1,padding:'9px',borderRadius:10,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
+                borderColor:selPlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
+                background:selPlan===p?(p==='A'?'rgba(0,200,224,0.10)':'rgba(167,139,250,0.10)'):'var(--bg-card2)',
+                color:selPlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
+                Plan {p} — {p==='A'?'Optimal':'Minimal'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Minutes</p>
-          <input type="number" min={0} max={59} value={durM} onChange={e=>setDurM(parseInt(e.target.value)||0)} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+
+        {/* Actions */}
+        <div style={{ display:'flex',gap:10 }}>
+          <button onClick={onClose} style={{ flex:1,padding:12,borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:13,cursor:'pointer',fontWeight:600 }}>Annuler</button>
+          <button onClick={()=>{
+            const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
+            const subLabel = sport==='bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
+            const finalTss = tss || undefined
+            onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:finalTss,status:'planned',notes:notes||undefined,blocks,rpe,planVariant:selPlan})
+            onClose()
+          }} style={{ flex:2,padding:12,borderRadius:12,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>+ Ajouter la séance</button>
         </div>
-        <div style={{ flex:1,display:'flex',alignItems:'flex-end',paddingBottom:4 }}>
-          <span style={{ fontSize:12,fontWeight:700,color:'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>{formatHM(hMinToMin(durH,durM))}</span>
-        </div>
-      </div>
-      <div style={{ marginBottom:11 }}>
-        <div style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>
-          <span style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)' }}>RPE</span>
-          <span style={{ fontFamily:'DM Mono,monospace',fontSize:12,fontWeight:700,color:rpe<=3?'#22c55e':rpe<=6?'#ffb340':'#ef4444' }}>{rpe.toFixed(1)}/10</span>
-        </div>
-        <input type="range" min={0} max={10} step={0.5} value={rpe} onChange={e=>setRpe(parseFloat(e.target.value))} style={{ width:'100%',accentColor:'#00c8e0',cursor:'pointer' }}/>
-        <p style={{ fontSize:10,color:'var(--text-dim)',margin:'4px 0 0',fontFamily:'DM Mono,monospace' }}>TSS estimé (RPE) : <strong style={{ color:SPORT_BORDER[sport] }}>{tss} pts</strong></p>
-      </div>
-      {/* Construire la séance → redirige vers le builder détaillé */}
-      <div style={{ marginBottom:11, padding:'12px 14px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-        <div>
-          <p style={{ margin:0, fontSize:11, fontWeight:600, color:'var(--text)' }}>Blocs d'intensité</p>
-          <p style={{ margin:'2px 0 0', fontSize:10, color:'var(--text-dim)' }}>Construit dans la page Séances</p>
-        </div>
-        <button
-          onClick={()=>{ onClose(); router.push('/session') }}
-          style={{ padding:'7px 12px', borderRadius:8, background:`linear-gradient(135deg,${SPORT_BORDER[sport]}22,#5b6fff22)`, border:`1px solid ${SPORT_BORDER[sport]}55`, color:SPORT_BORDER[sport], fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const, display:'flex', alignItems:'center', gap:5 }}>
-          Construire la séance →
-        </button>
-      </div>
-      <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Notes</p><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
-      {/* Plan selector */}
-      <div style={{ marginBottom:11 }}>
-        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>Plan</p>
-        <div style={{ display:'flex',gap:5 }}>
-          {(['A','B'] as PlanVariant[]).map(p=>(
-            <button key={p} onClick={()=>setSelPlan(p)} style={{ flex:1,padding:'7px',borderRadius:8,border:'1px solid',fontSize:12,cursor:'pointer',fontWeight:700,
-              borderColor:selPlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--border)',
-              background:selPlan===p?(p==='A'?'rgba(0,200,224,0.10)':'rgba(167,139,250,0.10)'):'var(--bg-card2)',
-              color:selPlan===p?(p==='A'?'#00c8e0':'#a78bfa'):'var(--text-mid)' }}>
-              Plan {p} — {p==='A'?'Optimal':'Minimal'}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display:'flex',gap:8 }}>
-        <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
-        <button onClick={()=>{
-          const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
-          const subLabel = sport==='bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
-          onAdd(dayIndex,{id:'',dayIndex,sport,title:finalTitle+subLabel,time,durationMin:totalMin||60,tss:tss||undefined,status:'planned',notes:notes||undefined,blocks:[],rpe,planVariant:selPlan})
-          onClose()
-        }} style={{ flex:2,padding:10,borderRadius:10,background:`linear-gradient(135deg,${SPORT_BORDER[sport]},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>+ Ajouter</button>
+
       </div>
     </div>
   )

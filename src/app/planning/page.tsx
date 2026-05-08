@@ -714,8 +714,34 @@ function BlockBuilder({ sport, blocks, onChange }:{ sport:SportType; blocks:Bloc
             TSS estimé : <span style={{ color:SPORT_BORDER[sport] }}>{calcTSS(blocks,sport)} pts</span>
             <span style={{ marginLeft:10,fontWeight:400 }}>· {formatHM(totalMin)}</span>
           </p>
-          <div style={{ display:'flex',alignItems:'flex-end',gap:2,height:48,marginBottom:4 }}>
-            {blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; const hp=((b.zone/5)*0.85+0.05)*100,wp=totalMin?(bMin/totalMin)*100:0,c=ZONE_COLORS[b.zone-1]; return <div key={b.id} style={{ width:`${wp}%`,height:`${hp}%`,background:`linear-gradient(180deg,${c}ee,${c}55)`,borderRadius:'3px 3px 0 0',border:`1px solid ${c}88`,minWidth:4 }}/> })}
+          <div style={{ display:'flex',alignItems:'flex-end',gap:1,height:48,marginBottom:4 }}>
+            {(()=>{
+              type Bar={id:string;min:number;zone:number;isRecovery:boolean}
+              const bars:Bar[]=[]
+              for(const b of blocks){
+                if(b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin){
+                  for(let r=0;r<b.reps;r++){
+                    bars.push({id:`${b.id}_e${r}`,min:b.effortMin,zone:b.zone,isRecovery:false})
+                    if(b.recoveryMin>0) bars.push({id:`${b.id}_r${r}`,min:b.recoveryMin,zone:b.recoveryZone??1,isRecovery:true})
+                  }
+                } else {
+                  bars.push({id:b.id,min:b.durationMin,zone:b.zone,isRecovery:false})
+                }
+              }
+              const total=bars.reduce((s,bar)=>s+bar.min,0)||1
+              return bars.map(bar=>{
+                const hp=bar.isRecovery?15:((bar.zone/5)*0.85+0.05)*100
+                const wp=(bar.min/total)*100
+                const c=ZONE_COLORS[bar.zone-1]
+                return <div key={bar.id} style={{
+                  width:`${wp}%`,height:`${hp}%`,
+                  background:bar.isRecovery?'linear-gradient(180deg,#6b728022,#6b728011)':`linear-gradient(180deg,${c}ee,${c}55)`,
+                  borderRadius:'2px 2px 0 0',
+                  border:bar.isRecovery?'none':`1px solid ${c}88`,
+                  minWidth:2,opacity:bar.isRecovery?0.4:1,
+                }}/>
+              })
+            })()}
           </div>
         </div>
       )}
@@ -2560,46 +2586,152 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }:{ dayIndex:number; p
     if (!aiPrompt.trim() || aiLoading) return
     setAiLoading(true)
     try {
-      console.log('[AI blocks] Starting generation — sport:', sport, 'prompt:', aiPrompt)
-      const res = await fetch('/api/session-builder', {
+      console.log('[AI blocks] Starting — sport:', sport, 'prompt:', aiPrompt)
+
+      const fullContent = `Tu es un coach sportif expert. L'athlète te décrit une séance de ${SPORT_LABEL[sport]}.
+
+RÈGLE ABSOLUE : Réponds UNIQUEMENT avec un tableau JSON []. Pas un seul mot avant ou après. Pas de markdown. Pas de commentaires.
+
+L'athlète peut écrire dans n'importe quel format :
+- Notation raccourcie : "10x400 @3:40 - 1' récup" ou "5x(4' Z4 / 2' Z1)"
+- Texte libre : "Je veux un fractionné de 5x5min au seuil avec 3min de récup"
+- Liste : "- Echauffement 15min\\n- 3x8min SL2\\n- Cool down 10min"
+- Description vague : "séance de seuil 1h"
+
+CALCUL DISTANCES → DURÉES (OBLIGATOIRE si l'athlète donne des distances) :
+- Formule : durée_secondes = (distance_m / 1000) × allure_secondes_par_km
+- Exemple : 400m @3:40/km → (400/1000) × 220s = 88s = 1.47 min → effortMin: 1.47
+- Exemple : 1000m @4:00/km → (1000/1000) × 240s = 240s = 4 min → effortMin: 4
+- Exemple : 200m @3:30/km → (200/1000) × 210s = 42s = 0.7 min → effortMin: 0.7
+- Si pas d'allure spécifiée, estime selon la zone : Z2 run ≈ 5:00-5:30/km, Z3 ≈ 4:20-4:40/km, Z4 ≈ 3:50-4:10/km, Z5 ≈ 3:20-3:50/km
+
+FOURCHETTE DE TEMPS (pour les intervalles courts) :
+- Pour les efforts < 5min, inclus la fourchette dans le label
+- Exemple : 400m → label: "400m — 1:25 à 1:30"
+
+FORMAT JSON — chaque bloc :
+{
+  "mode": "single" ou "interval",
+  "type": "warmup" | "effort" | "recovery" | "cooldown",
+  "durationMin": nombre (interval = reps × (effortMin + recoveryMin)),
+  "zone": 1 à 5,
+  "value": "3:40" (allure /km run) ou "280" (watts vélo) ou "",
+  "label": "Nom du bloc — fourchette si applicable",
+  "hrAvg": "",
+  "reps": nombre (interval seulement),
+  "effortMin": nombre décimal en minutes,
+  "recoveryMin": nombre décimal en minutes,
+  "recoveryZone": 1 à 5 (défaut 1)
+}
+
+VOCABULAIRE :
+- × x * = répétitions, @ = cible, ' min = minutes, " s = secondes
+- Z1-Z5 = zones, EF = Z2, SL1 = Z3, SL2 = Z4, VMA/PMA = Z5
+
+RÈGLES :
+- Ajoute TOUJOURS un échauffement (Z1-Z2, 10-20min) si absent
+- Ajoute TOUJOURS un retour au calme (Z1, 5-10min) si absent
+- effortMin peut être décimal (ex: 1.47 pour 1min28s)
+- durationMin d'un interval = reps × (effortMin + recoveryMin)
+
+---
+Sport : ${SPORT_LABEL[sport]}
+Durée cible : ${formatHM(totalMin)}
+Séance demandée : ${aiPrompt}`
+
+      const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sport:          SPORT_TO_BUILDER[sport],
-          typesSeance:    trainingType ? [trainingType] : [],
-          descriptionLibre: `${aiPrompt} (durée cible : ${formatHM(totalMin)})`,
+          agentId: 'blocks',
+          messages: [
+            { role: 'user',      content: fullContent },
+            { role: 'assistant', content: '[' },
+          ],
         }),
       })
       console.log('[AI blocks] Response status:', res.status)
-      if (!res.ok) {
-        const txt = await res.text()
-        console.error('[AI blocks] Error response:', txt.slice(0, 300))
-        return
-      }
-      const data = await res.json() as {
-        session?: {
-          blocs?: {
-            nom:string; repetitions:number; duree_effort:number; recup:number
-            zone_effort:string[]; zone_recup:string[]
-            watts:number|null; allure_cible:string|null; fc_cible:number|null
-            consigne:string
-          }[]
+      if (!res.ok) { console.error('[AI blocks] HTTP error:', res.status); return }
+      if (!res.body) throw new Error('No body')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let raw = '['   // prefill '[' already provided to the model
+      let currentEvent = ''
+      let streamDone = false
+      try {
+        outer: while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+            if (line.startsWith('event:')) {
+              currentEvent = line.slice(6).trim()
+            } else if (line.startsWith('data:') && currentEvent === 'text') {
+              try {
+                const chunk = JSON.parse(line.slice(5).trim()) as string
+                raw += chunk
+              } catch { /* non-JSON line, skip */ }
+            }
+          }
         }
-        error?: string
+        streamDone = true
+      } finally {
+        if (!streamDone) reader.cancel().catch(() => {})
       }
-      console.log('[AI blocks] Raw response:', JSON.stringify(data).slice(0, 400))
-      const blocs = data.session?.blocs
-      if (!blocs?.length) {
-        console.error('[AI blocks] No blocs returned — data.error:', data.error)
-        return
+      console.log('[AI blocks] Raw:', raw.slice(0, 400))
+
+      // Extract JSON array — prefer direct match, fallback to object with blocks key
+      let jsonStr = raw.match(/\[[\s\S]*\]/)?.[0] ?? ''
+      if (!jsonStr) {
+        const objMatch = raw.match(/\{[\s\S]*\}/)
+        if (objMatch) {
+          try {
+            const obj = JSON.parse(objMatch[0]) as Record<string, unknown>
+            const arr = obj.blocks ?? obj.blocs
+            if (Array.isArray(arr)) jsonStr = JSON.stringify(arr)
+          } catch { /* skip */ }
+        }
       }
-      const newBlocks = blocs.map(b => sessionBuilderBlocToBlock(b))
-      console.log('[AI blocks] Converted blocks:', newBlocks.length)
-      setBlocks(newBlocks)
-      setAiOpen(false)
-      setAiPrompt('')
+      console.log('[AI blocks] jsonStr:', jsonStr.slice(0, 200))
+      if (!jsonStr) { console.error('[AI blocks] No JSON array found'); return }
+
+      const rawParsed: unknown = JSON.parse(jsonStr)
+      if (!Array.isArray(rawParsed)) { console.error('[AI blocks] Not an array'); return }
+
+      const newBlocks: Block[] = rawParsed.map((item: unknown, i: number) => {
+        const b = (item ?? {}) as Record<string, unknown>
+        const mode: BlockMode = String(b.mode ?? '') === 'interval' ? 'interval' : 'single'
+        const tStr = String(b.type ?? '')
+        const bType: BlockType = (['warmup','effort','recovery','cooldown'] as const).includes(tStr as BlockType)
+          ? (tStr as BlockType) : 'effort'
+        const reps        = typeof b.reps        === 'number' ? b.reps        : undefined
+        const effortMin   = typeof b.effortMin   === 'number' ? b.effortMin   : undefined
+        const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : undefined
+        let durMin = typeof b.durationMin === 'number' ? b.durationMin : 0
+        if (mode === 'interval' && reps && effortMin && recoveryMin) {
+          durMin = Math.round(reps * (effortMin + recoveryMin) * 100) / 100
+        }
+        return {
+          id: `ai_${Date.now()}_${i}`,
+          mode, type: bType,
+          durationMin: durMin,
+          zone: Math.max(1, Math.min(5, typeof b.zone === 'number' ? Math.round(b.zone) : 3)),
+          value:        String(b.value   ?? ''),
+          hrAvg:        String(b.hrAvg   ?? ''),
+          label:        String(b.label   ?? 'Bloc'),
+          reps, effortMin, recoveryMin,
+          recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
+        }
+      })
+
+      console.log('[AI blocks] Converted', newBlocks.length, 'blocks')
+      if (newBlocks.length > 0) {
+        setBlocks(newBlocks)
+        setAiOpen(false)
+        setAiPrompt('')
+      }
     } catch (e) {
-      console.error('[AI blocks] Fetch error:', e)
+      console.error('[AI blocks] Error:', e)
     } finally {
       setAiLoading(false)
     }

@@ -33,6 +33,22 @@ interface AIMsg {
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
   raceStrategy?: RaceStrategyData      // données structurées StrategieCourseFlow (persiste en localStorage)
+  weekAnalysis?: {                     // données structurées WeekAnalysisFlow (persiste en localStorage)
+    rawAnalysis: string
+    data: {
+      ctlFinal: number; atlFinal: number; tsbFinal: number
+      riskScore: number; riskLevel: string
+      monotonie: number; strain: number
+      tssCumul: number
+      totalActivities: number
+      totalKm: number
+      totalHours: number
+      complianceScore: number | null
+      nextRace: { name: string; date: string; days_left: number } | null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sportBreakdown: Record<string, number>
+    }
+  }
 }
 interface AIConv {
   id: string
@@ -13789,7 +13805,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
 
 function WeekAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
   onCancel: () => void
-  onRecordConv?: (userMsg: string, aiMsg: string) => void
+  onRecordConv?: (userMsg: string, aiMsg: string, weekData?: AIMsg['weekAnalysis']) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
   type Phase = 'gate' | 'options' | 'loading' | 'result'
@@ -13950,23 +13966,49 @@ function WeekAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
       ])
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const activities: any[] = activitiesRes.data ?? []
+      const activitiesRaw: any[] = activitiesRes.data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const planned: any[] = plannedRes.data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const metrics: any[] = (metricsRes as any).data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const past4wActivities: any[] = past4wActivitiesRes.data ?? []
+      const past4wActivitiesRaw: any[] = past4wActivitiesRes.data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const past4wPlanned: any[] = past4wPlannedRes.data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const upcomingRaces: any[] = upcomingRacesRes.data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const activities8w: any[] = activities8wRes.data ?? []
+      const activities8wRaw: any[] = activities8wRes.data ?? []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const profile = (profileRes as any).data
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const perfProfile = (perfProfileRes as any).data
+
+      // ── Estimation TSS quand manquant (activités Strava sans suffer_score) ──
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function estimateTSS(act: any): number {
+        if (act.tss && act.tss > 0) return act.tss
+        const durationHours = (act.moving_time_s ?? 0) / 3600
+        if (durationHours <= 0) return 0
+        const avgHr = act.average_heartrate
+        if (avgHr && avgHr > 0) {
+          const hrRatio = avgHr / 180
+          return Math.round(durationHours * hrRatio * hrRatio * 100)
+        }
+        return Math.round(durationHours * 65)
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const activities = activitiesRaw.map((a: any) => ({ ...a, tss: estimateTSS(a) }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const past4wActivities = past4wActivitiesRaw.map((a: any) => ({ ...a, tss: estimateTSS(a) }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const activities8w = activities8wRaw.map((a: any) => ({ ...a, tss: estimateTSS(a) }))
+
+      // ── Sport breakdown ──
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sportBreakdown: Record<string, number> = activities.reduce((acc: Record<string, number>, a: any) => {
+        const s = a.sport_type ?? 'other'; acc[s] = (acc[s] ?? 0) + 1; return acc
+      }, {})
 
       // ── Compliance matrix ──
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14181,7 +14223,28 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
       } finally {
         reader.cancel().catch(() => { /* ignore */ })
         setGenerating(false)
-        if (onRecordConv && raw) onRecordConv('Analyser ma semaine', raw.slice(0, 500))
+        if (onRecordConv && raw.length > 100) {
+          const weekLabel = `Analyse semaine ${weekStart.toLocaleDateString('fr-FR')} → ${weekEnd.toLocaleDateString('fr-FR')}`
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const totalKmLocal = Math.round(activities.reduce((s: number, a: any) => s + ((a.distance_m ?? 0) / 1000), 0))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const totalHoursLocal = Math.round(activities.reduce((s: number, a: any) => s + ((a.moving_time_s ?? 0) / 3600), 0) * 10) / 10
+          onRecordConv(weekLabel, raw, {
+            rawAnalysis: raw,
+            data: {
+              ctlFinal, atlFinal, tsbFinal,
+              riskScore, riskLevel,
+              monotonie, strain,
+              tssCumul,
+              totalActivities: activities.length,
+              totalKm: totalKmLocal,
+              totalHours: totalHoursLocal,
+              complianceScore,
+              nextRace: nextRace ? { name: nextRace.name, date: nextRace.date, days_left: daysToRace! } : null,
+              sportBreakdown,
+            },
+          })
+        }
       }
 
     } catch (e) {
@@ -14396,7 +14459,75 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
           </div>
         )}
 
-        {!generating && (
+        {!generating && rawAnalysis.length > 100 && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button
+              onClick={async () => {
+                const { default: jsPDF } = await import('jspdf')
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+                const margin = 14
+                const contentW = doc.internal.pageSize.getWidth() - margin * 2
+                let y = margin
+
+                doc.setFillColor(0, 200, 224)
+                doc.rect(0, 0, doc.internal.pageSize.getWidth(), 3, 'F')
+                y = 12
+                doc.setFont('helvetica', 'bold')
+                doc.setFontSize(8)
+                doc.setTextColor(0, 200, 224)
+                doc.text('THW COACHING', margin, y)
+                y += 10
+                doc.setFontSize(14)
+                doc.setTextColor(26, 26, 46)
+                doc.text('Analyse de la semaine', margin, y)
+                y += 8
+
+                doc.setFontSize(9)
+                doc.setTextColor(60, 60, 80)
+                doc.text(`Activités: ${kpis.activitiesCount} · Distance: ${kpis.totalKm}km · Durée: ${kpis.totalHours}h · TSS: ${kpis.tssCumul}`, margin, y)
+                y += 5
+                doc.text(`CTL: ${kpis.ctlFinal} · ATL: ${kpis.atlFinal} · TSB: ${kpis.tsbFinal} · Risque: ${kpis.riskScore}/100 (${kpis.riskLevel})`, margin, y)
+                y += 8
+
+                for (const line of rawAnalysis.split('\n')) {
+                  if (y > doc.internal.pageSize.getHeight() - 15) { doc.addPage(); y = margin }
+                  const trimmed = line.trim()
+                  if (trimmed.startsWith('## ')) {
+                    y += 3
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0, 200, 224)
+                    doc.text(trimmed.replace(/^## /, ''), margin, y); y += 5
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 80)
+                  } else if (trimmed.length > 0) {
+                    const split = doc.splitTextToSize(trimmed.replace(/\*\*/g, ''), contentW)
+                    doc.text(split, margin, y); y += (split as string[]).length * 3.8
+                  } else { y += 2 }
+                }
+
+                const pages = doc.getNumberOfPages()
+                for (let i = 1; i <= pages; i++) {
+                  doc.setPage(i)
+                  doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(120, 120, 140)
+                  doc.text('THW Coaching — Analyse hebdomadaire', margin, doc.internal.pageSize.getHeight() - 6)
+                  doc.text(`${i}/${pages}`, doc.internal.pageSize.getWidth() - margin - 8, doc.internal.pageSize.getHeight() - 6)
+                }
+
+                doc.save('THW_Analyse_Semaine.pdf')
+              }}
+              style={{
+                flex: 1, padding: '9px', borderRadius: 9,
+                border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
+                color: 'var(--ai-accent, #00c8e0)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Télécharger PDF
+            </button>
+            <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
+              Fermer
+            </button>
+          </div>
+        )}
+
+        {!generating && rawAnalysis.length <= 100 && (
           <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer', marginTop: 10 }}>
             Fermer
           </button>
@@ -18231,14 +18362,14 @@ export default function AIPanel({
                 {activeFlow === 'analyser_semaine' && (
                   <WeekAnalysisFlow
                     onCancel={() => setActiveFlow(null)}
-                    onRecordConv={(userMsg, aiMsg) => {
+                    onRecordConv={(userMsg, aiMsg, weekData) => {
                       const conv: AIConv = {
                         id: genId(),
                         title: userMsg.slice(0, 46) + (userMsg.length > 46 ? '…' : ''),
                         createdAt: Date.now(), updatedAt: Date.now(),
                         msgs: [
                           { id: genId(), role: 'user',      content: userMsg, ts: Date.now() },
-                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel },
+                          { id: genId(), role: 'assistant', content: aiMsg,   ts: Date.now() + 1, modelId: 'athena' as THWModel, weekAnalysis: weekData },
                         ],
                       }
                       setConvs(prev => [conv, ...prev].slice(0, MAX_CONVS))
@@ -18329,7 +18460,48 @@ export default function AIPanel({
                         <RaceStrategyView data={msg.raceStrategy} />
                       </div>
                     )}
-                    {msg.role === 'assistant' && !msg.sessionData && !msg.trainingReport && !msg.raceStrategy && (
+                    {msg.role === 'assistant' && msg.weekAnalysis && (() => {
+                      const wa = msg.weekAnalysis!
+                      const d = wa.data
+                      const rC = d.riskScore > 60 ? '#ef4444' : d.riskScore > 35 ? '#f97316' : '#22c55e'
+                      return (
+                        <div style={{ marginLeft: 34 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
+                            {([
+                              { label: 'Activités', value: String(d.totalActivities) },
+                              { label: 'Distance', value: `${d.totalKm}km` },
+                              { label: 'Durée', value: `${d.totalHours}h` },
+                              { label: 'TSS', value: String(d.tssCumul) },
+                            ] as { label: string; value: string }[]).map(kpi => (
+                              <div key={kpi.label} style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                                <p style={{ fontSize: 7, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const }}>{kpi.label}</p>
+                                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 8 }}>
+                            <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 7, color: '#22c55e', margin: 0 }}>CTL</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.ctlFinal}</p>
+                            </div>
+                            <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 7, color: '#f97316', margin: 0 }}>ATL</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.atlFinal}</p>
+                            </div>
+                            <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 7, color: '#00c8e0', margin: 0 }}>TSB</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tsbFinal}</p>
+                            </div>
+                            <div style={{ padding: '5px 3px', borderRadius: 6, border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 7, color: rC, margin: 0 }}>RISQUE</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: rC, margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.riskScore}/100</p>
+                            </div>
+                          </div>
+                          <MsgContent text={wa.rawAnalysis} />
+                        </div>
+                      )
+                    })()}
+                    {msg.role === 'assistant' && !msg.sessionData && !msg.trainingReport && !msg.raceStrategy && !msg.weekAnalysis && (
                       <SessionCard
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}

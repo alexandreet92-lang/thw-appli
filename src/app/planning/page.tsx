@@ -3005,7 +3005,7 @@ Séance demandée : ${aiPrompt}`
   }
 
   return (
-    <div style={{ position:'fixed',inset:0,zIndex:300,background:'var(--bg)',overflowY:'auto',animation:'slideUp 0.25s ease-out' }}>
+    <div style={{ position:'fixed',inset:0,zIndex:999,background:'var(--bg)',overflowY:'auto',animation:'slideUp 0.25s ease-out' }}>
       {/* ── Sticky header ── */}
       <div style={{ position:'sticky',top:0,zIndex:10,background:'var(--bg-card)',borderBottom:'1px solid var(--border-mid)',boxShadow:'0 2px 12px rgba(0,0,0,0.08)',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12 }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
@@ -3017,7 +3017,7 @@ Séance demandée : ${aiPrompt}`
       </div>
 
       {/* ── Body ── */}
-      <div style={{ maxWidth:720,margin:'0 auto',padding:'24px 20px 48px' }}>
+      <div style={{ width:'100%',padding:'24px 20px 48px' }}>
 
         {/* Sport dropdown */}
         <div style={{ marginBottom:16 }}>

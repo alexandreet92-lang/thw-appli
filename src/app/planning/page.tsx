@@ -3410,6 +3410,25 @@ function computeHRDistribution(blocks: Block[]): { label: string; pct: number; c
   return buckets.map((bk, i) => ({ label: bk.label, pct: Math.round((mins[i] / total) * 100), color: bk.color })).filter(e => e.pct > 0)
 }
 
+interface NutritionItem {
+  id: string
+  timeMin: number
+  type: 'gel' | 'barre' | 'boisson' | 'solide' | 'autre'
+  name: string
+  quantity: string
+  glucidesG: number
+  proteinesG: number
+  notes: string
+}
+
+const NUTRITION_TYPES: { id: NutritionItem['type']; label: string; defaultQty: string; defaultGlu: number }[] = [
+  { id: 'gel', label: 'Gel', defaultQty: '1 gel', defaultGlu: 25 },
+  { id: 'barre', label: 'Barre', defaultQty: '1 barre', defaultGlu: 30 },
+  { id: 'boisson', label: 'Boisson', defaultQty: '500ml', defaultGlu: 30 },
+  { id: 'solide', label: 'Solide', defaultQty: '1 portion', defaultGlu: 20 },
+  { id: 'autre', label: 'Autre', defaultQty: '', defaultGlu: 0 },
+]
+
 function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
   dayIndex: number; plan: PlanVariant; onClose: () => void
   onAdd: (i: number, s: Session) => void
@@ -3433,9 +3452,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
   const [mobile, setMobile] = useState(false)
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
-  const [nutritionMarkers, setNutritionMarkers] = useState<Array<{
-    timeMin: number; label: string; glucides: string; proteines: string; detail: string
-  }>>([])
+  const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>([])
   const [athleteData, setAthleteData] = useState<{
     ftp: number | null
     runThresholdPaceSec: number | null
@@ -3782,8 +3799,8 @@ Ajoute toujours échauffement et retour au calme.`,
                   : `${b.durationMin}min`
                 return `<tr><td>Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
               }).join('')
-              const nutritionHtml = nutritionMarkers.length > 0
-                ? `<h3>Stratégie nutritionnelle</h3><table border="1" style="border-collapse:collapse;width:100%"><tr><th>Temps</th><th>Ravitaillement</th><th>Glucides</th></tr>${nutritionMarkers.map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.detail}</td><td>${m.glucides}</td></tr>`).join('')}</table>`
+              const nutritionHtml = nutritionItems.length > 0
+                ? `<h3>Stratégie nutritionnelle</h3><table border="1" style="border-collapse:collapse;width:100%"><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th></tr>${nutritionItems.sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td></tr>`).join('')}</table>`
                 : ''
               const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>body{font-family:sans-serif;padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;margin-bottom:4px}h3{font-size:14px;margin-top:24px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{padding:6px 10px;border:1px solid #ddd;font-size:12px;text-align:left}th{background:#f5f5f5;font-weight:600}.meta{color:#666;font-size:13px;margin-bottom:20px}</style></head><body><h1>${finalTitle}</h1><p class="meta">${SPORT_LABEL[sport]} · ${fmtDurLocal(dur)} · TSS ${tssDisplay}</p><h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>${nutritionHtml}<p style="margin-top:32px;font-size:10px;color:#999">THW Coaching</p></body></html>`
               const w = window.open('', '_blank')
@@ -4077,8 +4094,11 @@ Ajoute toujours échauffement et retour au calme.`,
           </div>
         )}
 
+        {/* SÉPARATEUR 1 — entre deux-colonnes et Description */}
+        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '12px 16px' : '16px 24px', opacity: 0.5 }} />
+
         {/* DESCRIPTION */}
-        <div style={{ padding: mobile ? '0 16px 24px' : '0 24px 24px' }}>
+        <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
           <span style={lbl}>Description et objectifs</span>
           <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={mobile ? 3 : 4}
             placeholder="Décris la séance, les objectifs, les sensations recherchées..."
@@ -4090,11 +4110,11 @@ Ajoute toujours échauffement et retour au calme.`,
             }} />
         </div>
 
-        {/* SÉPARATEUR */}
-        <div style={{ margin: '12px 24px', height: 1, background: `linear-gradient(90deg, transparent, ${accent}20, transparent)` }} />
+        {/* SÉPARATEUR 2 — entre Description et Construction */}
+        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '12px 16px' : '16px 24px', opacity: 0.5 }} />
 
         {/* CONSTRUCTEUR */}
-        <div style={{ padding: mobile ? '28px 16px 20px' : '28px 24px 20px' }}>
+        <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <span style={lbl}>Construction de la séance</span>
             <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -4140,107 +4160,188 @@ Ajoute toujours échauffement et retour au calme.`,
           )}
         </div>
 
+        {/* SÉPARATEUR 3 — entre Construction et Nutrition */}
+        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '12px 16px' : '16px 24px', opacity: 0.5 }} />
+
         {/* STRATÉGIE NUTRITIONNELLE */}
-        <div style={{ padding: mobile ? '0 16px 14px' : '0 24px 18px' }}>
+        <div style={{ padding: mobile ? '20px 16px 14px' : '20px 24px 18px' }}>
           <button onClick={() => setNutritionOpen(!nutritionOpen)} style={{
-            width: '100%', padding: mobile ? '12px' : '14px', borderRadius: 10,
-            border: '1px solid var(--border)', background: nutritionMarkers.length > 0 ? `${accent}08` : 'var(--bg-card)',
-            color: nutritionMarkers.length > 0 ? accent : 'var(--text-dim)',
+            width: '100%', padding: mobile ? '12px' : '13px', borderRadius: 10,
+            border: '1px solid var(--border)', background: nutritionItems.length > 0 ? `${accent}08` : 'var(--bg-card)',
+            color: nutritionItems.length > 0 ? accent : 'var(--text-dim)',
             fontSize: 12, fontWeight: 600, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
             <span style={{ fontSize: 12, color: accent }}>★</span>
             Stratégie nutritionnelle
-            {nutritionMarkers.length > 0 && (
+            {nutritionItems.length > 0 && (
               <span style={{ fontSize: 10, color: accent, fontFamily: 'DM Mono, monospace' }}>
-                · {nutritionMarkers.length} ravitaillements
+                · {nutritionItems.length} ravitaillement{nutritionItems.length > 1 ? 's' : ''}
               </span>
             )}
             <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', transform: nutritionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block' }}>▾</span>
           </button>
 
           {nutritionOpen && (
-            <div style={{ marginTop: 10, padding: '16px', borderRadius: 12, border: `1px solid ${accent}20`, background: `${accent}05` }}>
-              {nutritionMarkers.length === 0 ? (
-                <div>
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 10px' }}>
-                    Génère une stratégie nutritionnelle adaptée à cette séance.
-                  </p>
-                  <button onClick={async () => {
-                    if (blocks.length === 0) return
-                    setNutritionLoading(true)
-                    try {
-                      const blocksDesc = blocks.map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
-                      const res = await fetch('/api/coach-stream', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          agentId: 'planning',
-                          messages: [{
-                            role: 'user',
-                            content: `Tu es un nutritionniste sportif. Génère une stratégie de ravitaillement pour cette séance de ${SPORT_LABEL[sport]} de ${dur}min.
-Blocs : ${blocksDesc}
-Réponds UNIQUEMENT en JSON (un tableau []). Format :
-[{"timeMin":0,"label":"Avant départ","glucides":"30g","proteines":"0g","detail":"Gel + 200ml boisson isotonique"}]
-Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts > 1h30, pas de solide < 1h.`,
-                          }],
-                          modelId: 'athena',
-                        }),
-                      })
-                      if (!res.ok) throw new Error('Erreur')
-                      const reader = res.body?.getReader()
-                      const decoder = new TextDecoder()
-                      let raw = ''
-                      if (reader) {
-                        while (true) {
-                          const { done, value } = await reader.read()
-                          if (done) break
-                          const chunk = decoder.decode(value, { stream: true })
-                          for (const line of chunk.split('\n')) {
-                            if (line.startsWith('data: ')) {
-                              const p = line.slice(6).trim()
-                              if (p === '[DONE]') continue
-                              try { const d = JSON.parse(p); if (typeof d === 'string') raw += d; else if (d !== null && typeof d === 'object' && typeof (d as Record<string,unknown>).text === 'string') raw += (d as Record<string,unknown>).text } catch { raw += p }
-                            }
-                          }
-                        }
-                      }
-                      const match = raw.match(/\[[\s\S]*\]/)
-                      if (match) setNutritionMarkers(JSON.parse(match[0]) as Array<{ timeMin: number; label: string; glucides: string; proteines: string; detail: string }>)
-                    } catch (e) { console.error('[Nutrition]', e) }
-                    finally { setNutritionLoading(false) }
-                  }} disabled={nutritionLoading || blocks.length === 0} style={{
-                    width: '100%', padding: 11, borderRadius: 9, border: 'none',
-                    background: blocks.length === 0 ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-                    color: '#fff', fontSize: 12, fontWeight: 700,
-                    cursor: blocks.length === 0 ? 'not-allowed' : nutritionLoading ? 'wait' : 'pointer',
-                    opacity: blocks.length === 0 ? 0.5 : 1, fontFamily: 'Syne, sans-serif',
-                  }}>
-                    {nutritionLoading ? 'Génération...' : blocks.length === 0 ? 'Crée d\'abord les blocs' : 'Générer la stratégie'}
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                    {nutritionMarkers.map((m, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace', minWidth: 40 }}>
-                          {m.timeMin === 0 ? 'Dép.' : `${m.timeMin}'`}
+            <div style={{
+              marginTop: 10, padding: '16px', borderRadius: 12,
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
+            }}>
+              {/* Liste des ravitaillements */}
+              {nutritionItems.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 14 }}>
+                  {[...nutritionItems].sort((a, b) => a.timeMin - b.timeMin).map((item) => (
+                    <div key={item.id} style={{
+                      padding: '10px 14px', borderRadius: 10,
+                      border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                    }}>
+                      {/* Ligne 1 : type selector + supprimer */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace', minWidth: 36 }}>
+                          {item.timeMin === 0 ? 'Départ' : `${item.timeMin}'`}
                         </span>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{m.detail}</p>
-                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                            Glucides {m.glucides}{m.proteines !== '0g' ? ` · Protéines ${m.proteines}` : ''}
-                          </p>
+                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
+                          {NUTRITION_TYPES.map(nt => (
+                            <button key={nt.id} onClick={() => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: nt.id } : x))} style={{
+                              padding: '3px 8px', borderRadius: 5, fontSize: 9, fontWeight: 600, cursor: 'pointer',
+                              background: item.type === nt.id ? `${accent}15` : 'transparent',
+                              border: item.type === nt.id ? `1px solid ${accent}44` : '1px solid var(--border)',
+                              color: item.type === nt.id ? accent : 'var(--text-dim)',
+                            }}>{nt.label}</button>
+                          ))}
+                        </div>
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
+                          background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0,
+                        }}>×</button>
+                      </div>
+                      {/* Ligne 2 : champs */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Min</p>
+                          <input type="number" min={0} max={600} value={item.timeMin}
+                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, timeMin: parseInt(e.target.value) || 0 } : x))}
+                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Aliment</p>
+                          <input value={item.name} placeholder="Gel Maurten, Barre Clif..."
+                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
+                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' as const }} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Quantité</p>
+                          <input value={item.quantity} placeholder="500ml, 1 gel..."
+                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
+                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Glucides (g)</p>
+                          <input type="number" min={0} max={200} value={item.glucidesG}
+                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
+                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Protéines (g)</p>
+                          <input type="number" min={0} max={100} value={item.proteinesG}
+                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, proteinesG: parseInt(e.target.value) || 0 } : x))}
+                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                  {/* Summary */}
+                  <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
+                    <span>Total glucides : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong></span>
+                    <span>Glucides/h : <strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
+                      {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
+                    </strong></span>
                   </div>
-                  <button onClick={() => setNutritionMarkers([])} style={{ marginTop: 8, width: '100%', padding: 8, borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>
-                    Régénérer
-                  </button>
                 </div>
               )}
+
+              {/* Add button */}
+              <button onClick={() => {
+                const lastTime = nutritionItems.length > 0 ? Math.max(...nutritionItems.map(x => x.timeMin)) : 0
+                const nextTime = nutritionItems.length === 0 ? 0 : lastTime + 30
+                setNutritionItems(prev => [...prev, {
+                  id: `nut_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  timeMin: nextTime, type: 'gel', name: '', quantity: '1 gel',
+                  glucidesG: 25, proteinesG: 0, notes: '',
+                }])
+              }} style={{
+                width: '100%', padding: '9px', borderRadius: 8,
+                border: '1px dashed var(--border)', background: 'transparent',
+                color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', marginBottom: 8,
+              }}>+ Ajouter un ravitaillement</button>
+
+              {/* AI generate button */}
+              <button onClick={async () => {
+                if (blocks.length === 0) return
+                setNutritionLoading(true)
+                try {
+                  const blocksDesc = blocks.map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
+                  const res = await fetch('/api/coach-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      agentId: 'planning',
+                      messages: [{
+                        role: 'user',
+                        content: `Tu es un nutritionniste sportif. Génère une stratégie de ravitaillement pour cette séance de ${SPORT_LABEL[sport]} de ${dur}min.
+Blocs : ${blocksDesc}
+Réponds UNIQUEMENT en JSON (un tableau []). Format exact :
+[{"timeMin":0,"type":"boisson","name":"Boisson isotonique","quantity":"300ml","glucidesG":20,"proteinesG":0},{"timeMin":45,"type":"gel","name":"Gel énergie","quantity":"1 gel","glucidesG":25,"proteinesG":0}]
+Types possibles : gel | barre | boisson | solide | autre
+Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts > 1h30, eau seulement si < 1h.`,
+                      }],
+                      modelId: 'athena',
+                    }),
+                  })
+                  if (!res.ok) throw new Error('Erreur')
+                  const reader = res.body?.getReader()
+                  const decoder = new TextDecoder()
+                  let raw = ''
+                  if (reader) {
+                    while (true) {
+                      const { done, value } = await reader.read()
+                      if (done) break
+                      const chunk = decoder.decode(value, { stream: true })
+                      for (const line of chunk.split('\n')) {
+                        if (line.startsWith('data: ')) {
+                          const p = line.slice(6).trim()
+                          if (p === '[DONE]') continue
+                          try { const d = JSON.parse(p); if (typeof d === 'string') raw += d; else if (d.text) raw += d.text } catch { raw += p }
+                        }
+                      }
+                    }
+                  }
+                  const match = raw.match(/\[[\s\S]*\]/)
+                  if (match) {
+                    const parsed = JSON.parse(match[0]) as Record<string, unknown>[]
+                    const items: NutritionItem[] = parsed.map((p, i) => ({
+                      id: `ai_nut_${Date.now()}_${i}`,
+                      timeMin: typeof p.timeMin === 'number' ? p.timeMin : 0,
+                      type: (['gel','barre','boisson','solide','autre'].includes(p.type as string) ? p.type : 'gel') as NutritionItem['type'],
+                      name: typeof p.name === 'string' ? p.name : '',
+                      quantity: typeof p.quantity === 'string' ? p.quantity : '',
+                      glucidesG: typeof p.glucidesG === 'number' ? p.glucidesG : 0,
+                      proteinesG: typeof p.proteinesG === 'number' ? p.proteinesG : 0,
+                      notes: '',
+                    }))
+                    setNutritionItems(items)
+                  }
+                } catch (e) { console.error('[Nutrition IA]', e) }
+                finally { setNutritionLoading(false) }
+              }} disabled={nutritionLoading || blocks.length === 0} style={{
+                width: '100%', padding: '9px', borderRadius: 8, border: 'none',
+                background: blocks.length === 0 ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                color: '#fff', fontSize: 11, fontWeight: 700,
+                cursor: blocks.length === 0 ? 'not-allowed' : nutritionLoading ? 'wait' : 'pointer',
+                fontFamily: 'Syne, sans-serif', opacity: blocks.length === 0 ? 0.4 : 1,
+              }}>
+                {nutritionLoading ? 'Génération...' : blocks.length === 0 ? 'Crée les blocs d\'abord' : '✦ Générer avec l\'IA'}
+              </button>
             </div>
           )}
         </div>
@@ -4263,23 +4364,19 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
         {/* ACTIONS */}
         <div style={{
           padding: mobile ? '0 16px 28px' : '0 24px 32px',
-          marginTop: 8,
-          display: 'flex', gap: 8,
-          flexDirection: mobile ? 'column' as const : 'row' as const,
+          display: 'flex', gap: 8, alignItems: 'center',
         }}>
           <button onClick={onClose} style={{
-            flex: mobile ? undefined : 1, padding: 13, borderRadius: 10,
+            padding: '10px 20px', borderRadius: 8,
             background: 'var(--bg-card)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer',
-            width: mobile ? '100%' : undefined,
+            color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
           }}>Annuler</button>
+          <div style={{ flex: 1 }} />
           <button onClick={handleSubmit} style={{
-            flex: mobile ? undefined : 2, padding: 13, borderRadius: 10, border: 'none',
-            background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-            boxShadow: `0 4px 16px ${accent}33`,
-            color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            padding: '10px 28px', borderRadius: 8, border: 'none',
+            background: accent,
+            color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'Syne, sans-serif',
-            width: mobile ? '100%' : undefined,
           }}>Ajouter la séance</button>
         </div>
 

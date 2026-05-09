@@ -3783,6 +3783,458 @@ function computeSessionAverages(blocks: Block[], sport: SportType): {
   return { avgWatts: null, avgPace: null }
 }
 
+// ══════════════════════════════════════════════════════════════
+// SESSION EXECUTE — Mode exécution muscu en direct
+// ══════════════════════════════════════════════════════════════
+
+interface ExecExercise {
+  id: string
+  label: string
+  targetSets: number
+  targetReps: number
+  targetWeight: string
+  restSec: number
+  effortMin: number
+  notes: string
+  logSets: Array<{
+    reps: number
+    weight: string
+    note: 'easy' | 'ok' | 'hard' | 'fail' | ''
+    completedAt: number
+  }>
+}
+
+interface SessionLog {
+  startedAt: number
+  endedAt: number | null
+  totalSets: number
+  totalReps: number
+  totalTonnage: number
+  totalRestSec: number
+  exercises: ExecExercise[]
+}
+
+function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
+  blocks: Block[]
+  sport: SportType
+  sessionTitle: string
+  onExit: () => void
+  onSaveLog?: (log: SessionLog) => void
+}) {
+  const accent = SPORT_BORDER[sport]
+  const fmtTimer = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`
+
+  const initialExercises: ExecExercise[] = blocks.map(b => ({
+    id: b.id,
+    label: b.label,
+    targetSets: b.zone ?? 3,
+    targetReps: b.reps ?? 10,
+    targetWeight: b.value || '',
+    restSec: b.recoveryMin ? Math.round(b.recoveryMin * 60) : 90,
+    effortMin: b.effortMin ?? 0,
+    notes: '',
+    logSets: [],
+  }))
+
+  const [exercises, setExercises] = useState<ExecExercise[]>(initialExercises)
+  const [currentIdx, setCurrentIdx] = useState(0)
+  const [phase, setPhase] = useState<'ready' | 'work' | 'rest' | 'done'>('ready')
+  const [restRemaining, setRestRemaining] = useState(0)
+  const [restTotal, setRestTotal] = useState(0)
+  const [sessionStart, setSessionStart] = useState(0)
+  const [sessionElapsed, setSessionElapsed] = useState(0)
+  const [totalRestAccum, setTotalRestAccum] = useState(0)
+  const [replaceSearch, setReplaceSearch] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const currentExo = exercises[currentIdx] ?? null
+  const currentSetNum = currentExo ? currentExo.logSets.length + 1 : 0
+  const totalExos = exercises.length
+  const totalSetsAll = exercises.reduce((s, e) => s + e.logSets.length, 0)
+
+  // ── Timer repos ──
+  useEffect(() => {
+    if (phase !== 'rest' || restRemaining <= 0) return
+    restTimerRef.current = setInterval(() => {
+      setRestRemaining(r => {
+        if (r <= 1) {
+          clearInterval(restTimerRef.current!)
+          setPhase('work')
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+          return 0
+        }
+        return r - 1
+      })
+    }, 1000)
+    return () => { if (restTimerRef.current) clearInterval(restTimerRef.current) }
+  }, [phase, restRemaining])
+
+  // ── Timer séance + repos accumulé ──
+  useEffect(() => {
+    if (phase === 'ready' || phase === 'done') return
+    elapsedTimerRef.current = setInterval(() => {
+      setSessionElapsed(e => e + 1)
+      if (phase === 'rest') setTotalRestAccum(r => r + 1)
+    }, 1000)
+    return () => { if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current) }
+  }, [phase])
+
+  function startSession() {
+    setSessionStart(Date.now())
+    setPhase('work')
+  }
+
+  function startRest(sec: number) {
+    setRestTotal(sec)
+    setRestRemaining(sec)
+    setPhase('rest')
+  }
+
+  function validateSet(note: ExecExercise['logSets'][0]['note'] = '') {
+    if (!currentExo) return
+    const updatedExercises = exercises.map(e => {
+      if (e.id !== currentExo.id) return e
+      return {
+        ...e,
+        logSets: [...e.logSets, {
+          reps: currentExo.targetReps,
+          weight: currentExo.targetWeight,
+          note,
+          completedAt: Date.now(),
+        }],
+      }
+    })
+    setExercises(updatedExercises)
+    const updatedExo = updatedExercises[currentIdx]
+    if (updatedExo.logSets.length >= updatedExo.targetSets) {
+      if (currentIdx + 1 >= exercises.length) {
+        setPhase('done')
+      } else {
+        setCurrentIdx(i => i + 1)
+        startRest(updatedExo.restSec)
+      }
+    } else {
+      startRest(updatedExo.restSec)
+    }
+  }
+
+  function adjustRest(delta: number) {
+    if (restTimerRef.current) clearInterval(restTimerRef.current)
+    setRestRemaining(r => Math.max(0, r + delta))
+    setRestTotal(t => Math.max(0, t + delta))
+  }
+
+  function skipRest() {
+    if (restTimerRef.current) clearInterval(restTimerRef.current)
+    setRestRemaining(0)
+    setPhase('work')
+  }
+
+  function skipExercise() {
+    if (currentIdx + 1 >= exercises.length) setPhase('done')
+    else setCurrentIdx(i => i + 1)
+  }
+
+  function moveExercise(idx: number, dir: -1 | 1) {
+    const newIdx = idx + dir
+    if (newIdx < 0 || newIdx >= exercises.length) return
+    const list = [...exercises]
+    ;[list[idx], list[newIdx]] = [list[newIdx], list[idx]]
+    setExercises(list)
+    if (currentIdx === idx) setCurrentIdx(newIdx)
+    else if (currentIdx === newIdx) setCurrentIdx(idx)
+  }
+
+  function removeExercise(idx: number) {
+    const list = exercises.filter((_, i) => i !== idx)
+    setExercises(list)
+    if (list.length === 0) { setPhase('done'); return }
+    if (currentIdx >= list.length) setCurrentIdx(list.length - 1)
+    else if (idx < currentIdx) setCurrentIdx(i => i - 1)
+  }
+
+  function replaceExercise(idx: number, newLabel: string) {
+    setExercises(exercises.map((e, i) => i === idx ? { ...e, label: newLabel, logSets: [] } : e))
+    setReplaceSearch(null); setSearchQuery('')
+  }
+
+  function updateExerciseField(idx: number, field: keyof ExecExercise, value: number | string) {
+    setExercises(exercises.map((e, i) => i === idx ? { ...e, [field]: value } : e))
+  }
+
+  const totalTonnage = exercises.reduce((s, e) =>
+    s + e.logSets.reduce((ss, set) => ss + (parseFloat(set.weight) || 0) * set.reps, 0), 0)
+  const totalReps = exercises.reduce((s, e) => s + e.logSets.reduce((ss, set) => ss + set.reps, 0), 0)
+
+  const NOTE_CONFIG = [
+    { id: 'easy' as const, label: 'Facile', color: '#22c55e' },
+    { id: 'ok'   as const, label: 'OK',     color: 'var(--text-mid)' },
+    { id: 'hard' as const, label: 'Dur',    color: '#f97316' },
+    { id: 'fail' as const, label: 'Échec',  color: '#ef4444' },
+  ]
+
+  // ── PHASE : READY ──
+  if (phase === 'ready') {
+    return (
+      <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
+        <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto' }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 6px' }}>Prêt à lancer</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 24px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, marginBottom: 24 }}>
+            {exercises.map((exo, i) => (
+              <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 1, flexShrink: 0 }}>
+                  <button onClick={() => moveExercise(i, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: i === 0 ? 'var(--border)' : 'var(--text-dim)', cursor: i === 0 ? 'default' : 'pointer', fontSize: 10, padding: 0, lineHeight: 1 }}>▲</button>
+                  <button onClick={() => moveExercise(i, 1)} disabled={i === exercises.length - 1} style={{ background: 'none', border: 'none', color: i === exercises.length - 1 ? 'var(--border)' : 'var(--text-dim)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', fontSize: 10, padding: 0, lineHeight: 1 }}>▼</button>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18 }}>{i + 1}</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                    {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
+                  </span>
+                </div>
+                <button onClick={() => removeExercise(i)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+              </div>
+            ))}
+          </div>
+          <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>Lancer</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── PHASE : DONE ──
+  if (phase === 'done') {
+    return (
+      <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
+        <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
+          <div style={{ fontSize: 56, marginBottom: 12, color: accent }}>✓</div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 6px', color: 'var(--text)' }}>Séance terminée</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 28px' }}>{sessionTitle}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+            {([
+              { label: 'Durée',       value: fmtTimer(sessionElapsed) },
+              { label: 'Séries',      value: String(totalSetsAll) },
+              { label: 'Reps totales', value: String(totalReps) },
+              { label: 'Tonnage',     value: `${Math.round(totalTonnage)}kg` },
+              { label: 'Repos total', value: fmtTimer(totalRestAccum) },
+              { label: 'Exercices',   value: String(totalExos) },
+            ] as { label: string; value: string }[]).map(kpi => (
+              <div key={kpi.label} style={{ padding: '12px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 4px' }}>{kpi.label}</p>
+                <p style={{ fontSize: 18, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'left' as const, marginBottom: 24 }}>
+            {exercises.filter(e => e.logSets.length > 0).map(e => (
+              <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length}/{e.targetSets} séries</span>
+                </div>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
+                  {e.logSets.map((set, si) => (
+                    <span key={si} style={{
+                      fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 5,
+                      background: set.note === 'fail' ? 'rgba(239,68,68,0.10)' : set.note === 'hard' ? 'rgba(249,115,22,0.10)' : 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
+                    }}>
+                      {set.weight ? `${set.weight}×` : ''}{set.reps}{(set.note === 'easy' || set.note === 'hard' || set.note === 'fail') ? ` · ${set.note}` : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => {
+            onSaveLog?.({ startedAt: sessionStart, endedAt: Date.now(), totalSets: totalSetsAll, totalReps, totalTonnage: Math.round(totalTonnage), totalRestSec: totalRestAccum, exercises })
+            onExit()
+          }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>Terminer</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── PHASE : WORK / REST ──
+  return (
+    <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
+      <div style={{ padding: '16px 20px', maxWidth: 500, margin: '0 auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Exercice {currentIdx + 1}/{totalExos}</span>
+          <span style={{ fontSize: 12, fontFamily: '"DM Mono",monospace', color: 'var(--text-dim)' }}>{fmtTimer(sessionElapsed)}</span>
+          <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}>Quitter</button>
+        </div>
+
+        {/* Barre de progression */}
+        <div style={{ height: 3, borderRadius: 99, background: 'var(--border)', marginBottom: 22, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${((currentIdx + (currentExo ? currentExo.logSets.length / Math.max(1, currentExo.targetSets) : 0)) / totalExos) * 100}%`, background: accent, borderRadius: 99, transition: 'width 0.3s' }} />
+        </div>
+
+        {currentExo && (
+          <>
+            {/* Nom + charge */}
+            <div style={{ textAlign: 'center' as const, marginBottom: 18 }}>
+              <p style={{ fontSize: 9, fontWeight: 600, color: phase === 'rest' ? '#f97316' : accent, textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 6px' }}>
+                {phase === 'rest' ? '⏱ Repos' : `Série ${currentSetNum} / ${currentExo.targetSets}`}
+              </p>
+              <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 8px', color: 'var(--text)' }}>{currentExo.label}</h2>
+              {currentExo.targetWeight && (
+                <p style={{ fontSize: 30, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: '0 0 2px', lineHeight: 1 }}>
+                  {currentExo.targetWeight}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 4 }}>kg</span>
+                </p>
+              )}
+              <p style={{ fontSize: 15, color: 'var(--text-mid)', fontFamily: '"DM Mono",monospace', margin: 0 }}>{currentExo.targetReps} reps</p>
+            </div>
+
+            {/* Compteur de séries */}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
+              {Array.from({ length: currentExo.targetSets }).map((_, i) => {
+                const done = i < currentExo.logSets.length
+                const current = i === currentExo.logSets.length && phase === 'work'
+                const set = currentExo.logSets[i]
+                const noteColor = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
+                return (
+                  <div key={i} style={{
+                    width: 46, height: 46, borderRadius: 10,
+                    display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
+                    background: done ? (noteColor ?? accent) : current ? `${accent}18` : 'var(--bg-card)',
+                    border: `1.5px solid ${done ? (noteColor ?? accent) : current ? accent : 'var(--border)'}`,
+                    color: done ? '#fff' : current ? accent : 'var(--text-dim)',
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, fontFamily: '"DM Mono",monospace' }}>{i + 1}</span>
+                    {done && set && <span style={{ fontSize: 7, opacity: 0.85 }}>{set.weight || '—'}×{set.reps}</span>}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Timer repos */}
+            {phase === 'rest' && (
+              <div style={{ textAlign: 'center' as const, marginBottom: 20 }}>
+                <div style={{ position: 'relative' as const, width: 150, height: 150, margin: '0 auto 16px' }}>
+                  <svg width={150} height={150} viewBox="0 0 150 150" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx={75} cy={75} r={60} fill="none" stroke="var(--border)" strokeWidth={7} />
+                    <circle cx={75} cy={75} r={60} fill="none" stroke={accent} strokeWidth={7}
+                      strokeLinecap="round"
+                      strokeDasharray={`${restTotal > 0 ? (1 - restRemaining / restTotal) : 0} ${2 * Math.PI * 60}`}
+                      style={{ strokeDasharray: `${restTotal > 0 ? ((1 - restRemaining / restTotal) * 2 * Math.PI * 60) : 0} ${2 * Math.PI * 60}`, transition: 'stroke-dasharray 0.9s linear' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 36, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>restant</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 10, flexWrap: 'wrap' as const }}>
+                  {[-30, -10, +10, +30].map(d => (
+                    <button key={d} onClick={() => adjustRest(d)} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontFamily: '"DM Mono",monospace' }}>{d > 0 ? '+' : ''}{d}s</button>
+                  ))}
+                </div>
+                <button onClick={skipRest} style={{ padding: '10px 24px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer' }}>Passer le repos →</button>
+              </div>
+            )}
+
+            {/* Valider série */}
+            {phase === 'work' && (
+              <div style={{ marginBottom: 16 }}>
+                {/* Reps / Charge éditables */}
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 14 }}>
+                  <div style={{ textAlign: 'center' as const }}>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 5px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Reps</p>
+                    <input type="number" min={0} max={999} value={currentExo.targetReps}
+                      onChange={e => updateExerciseField(currentIdx, 'targetReps', parseInt(e.target.value) || 0)}
+                      style={{ width: 68, padding: '10px 8px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 18, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                  </div>
+                  <div style={{ textAlign: 'center' as const }}>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 5px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Charge (kg)</p>
+                    <input value={currentExo.targetWeight} placeholder="—"
+                      onChange={e => updateExerciseField(currentIdx, 'targetWeight', e.target.value)}
+                      style={{ width: 88, padding: '10px 8px', borderRadius: 9, border: `1px solid ${accent}44`, background: 'var(--bg-card)', color: accent, fontSize: 18, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
+                  </div>
+                </div>
+
+                {/* Notes rapides + valider */}
+                <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 10, flexWrap: 'wrap' as const }}>
+                  {NOTE_CONFIG.map(note => (
+                    <button key={note.id} onClick={() => validateSet(note.id)} style={{
+                      padding: '9px 14px', borderRadius: 8,
+                      border: `1px solid ${note.color}33`,
+                      background: 'transparent',
+                      color: note.color, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}>{note.label}</button>
+                  ))}
+                </div>
+                <button onClick={() => validateSet('ok')} style={{
+                  width: '100%', padding: '16px', borderRadius: 11, border: 'none',
+                  background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff',
+                  fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                }}>
+                  ✓ Série {currentSetNum}/{currentExo.targetSets}
+                  <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.8, marginLeft: 8 }}>→ {fmtTimer(currentExo.restSec)} repos</span>
+                </button>
+              </div>
+            )}
+
+            {/* Actions exercice */}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
+              <button onClick={skipExercise} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Passer</button>
+              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Remplacer</button>
+              <button onClick={() => removeExercise(currentIdx)} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.20)', background: 'rgba(239,68,68,0.05)', color: '#ef4444', fontSize: 10, cursor: 'pointer' }}>Supprimer</button>
+            </div>
+
+            {/* Remplacement */}
+            {replaceSearch === currentExo.id && (
+              <div style={{ padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 16 }}>
+                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Chercher un exercice..." autoFocus
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
+                <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                  {EXERCISE_DATABASE.filter(e => {
+                    const q = searchQuery.toLowerCase()
+                    return !q || e.name.toLowerCase().includes(q) || e.aliases.some(a => a.toLowerCase().includes(q))
+                  }).slice(0, 8).map(e => (
+                    <button key={e.id} onClick={() => replaceExercise(currentIdx, e.name)} style={{
+                      width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                      background: 'var(--bg)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const,
+                    }}>
+                      {e.name} <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>{e.aliases[0] ?? ''}</span>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '7px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Annuler</button>
+              </div>
+            )}
+
+            {/* Exercice suivant */}
+            {currentIdx + 1 < exercises.length && (
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>Suivant</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
+                  {exercises[currentIdx + 1].label}
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                    {exercises[currentIdx + 1].targetSets}×{exercises[currentIdx + 1].targetReps}
+                    {exercises[currentIdx + 1].targetWeight ? ` @${exercises[currentIdx + 1].targetWeight}kg` : ''}
+                  </span>
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+
 function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave }: {
   mode: 'create' | 'edit'
   session?: Session
@@ -3811,6 +4263,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [nutritionOpen, setNutritionOpen] = useState(false)
@@ -3999,11 +4452,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       mode: 'single' as const,
       type: 'effort' as const,
       durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
-      zone: 3,
+      zone: e.sets,          // zone = nb de séries (pour SessionExecute)
       value: e.weightKg ? String(e.weightKg) : '',
-      hrAvg: '',
+      hrAvg: e.kcal ? String(e.kcal) : '',
       label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
-      reps: e.sets,
+      reps: e.reps,          // reps = nb reps par série
+      recoveryMin: e.restSec / 60,
+      effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
     })) : blocks
     const savedSession: Session = {
       ...(session ?? {}),
@@ -4290,6 +4745,16 @@ Ajoute toujours échauffement et retour au calme.`
   return (
     <>
       <style>{`@keyframes slideUpModal{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+
+      {/* MODE EXÉCUTION — overlay par-dessus tout */}
+      {executeMode && (
+        <SessionExecute
+          blocks={blocks}
+          sport={sport}
+          sessionTitle={title || SPORT_LABEL[sport]}
+          onExit={() => setExecuteMode(false)}
+        />
+      )}
 
       <div onClick={e => e.stopPropagation()} style={{
         position: 'fixed' as const, inset: 0, zIndex: 999,
@@ -5063,6 +5528,20 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
               background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.20)',
               color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
             }}>Réinitialiser IA</button>
+          )}
+
+          {/* Lancer la séance — edit + gym uniquement */}
+          {isEdit && isStrength && blocks.length > 0 && (
+            <button onClick={() => setExecuteMode(true)} style={{
+              padding: '10px 18px', borderRadius: 8, border: 'none',
+              background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+              color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'Syne, sans-serif',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 2L10 6L3 10V2Z" fill="currentColor"/></svg>
+              Lancer
+            </button>
           )}
 
           <div style={{ flex: 1 }} />

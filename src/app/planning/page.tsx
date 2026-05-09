@@ -3494,19 +3494,50 @@ const NUTRITION_TYPES: { id: NutritionItem['type']; label: string; defaultQty: s
 // ── Parcours helpers ──────────────────────────────
 interface ParcoursData {
   name: string
-  distanceKm: number
-  elevationM: number
-  points: Array<{ lat: number; lon: number; ele: number }>
+  distance: number | null
+  elevation: number | null
+  points: number
+  elevationProfile: Array<{ distKm: number; ele: number }>
 }
 
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLon = (lon2 - lon1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
-    * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function buildElevationProfile(
+  pts: Array<{ lat: number; lon: number; ele: number }>,
+): { distKm: number; elevM: number; profile: Array<{ distKm: number; ele: number }> } {
+  const profile: Array<{ distKm: number; ele: number }> = []
+  let cumDist = 0
+  let elevM = 0
+
+  for (let i = 0; i < pts.length; i++) {
+    if (i > 0) {
+      const d = haversineM(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon)
+      cumDist += d
+      const diff = pts[i].ele - pts[i - 1].ele
+      if (diff > 0) elevM += diff
+    }
+    const distKm = Math.round(cumDist / 100) / 10
+    const lastKm = profile.length > 0 ? profile[profile.length - 1].distKm : -1
+    if (distKm - lastKm >= 0.2 || i === 0) {
+      profile.push({ distKm, ele: Math.round(pts[i].ele) })
+    }
+  }
+  // Ensure last point is included
+  if (pts.length > 0) {
+    const finalKm = Math.round(cumDist / 100) / 10
+    const lastKm = profile.length > 0 ? profile[profile.length - 1].distKm : 0
+    if (finalKm > lastKm) {
+      profile.push({ distKm: finalKm, ele: Math.round(pts[pts.length - 1].ele) })
+    }
+  }
+  return { distKm: Math.round(cumDist / 100) / 10, elevM: Math.round(elevM), profile }
 }
 
 function parseRouteFile(file: File): Promise<ParcoursData> {
@@ -3525,32 +3556,21 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
           const nameEl = doc.querySelector('name')
           if (nameEl?.textContent) name = nameEl.textContent.trim()
           const trkpts = Array.from(doc.querySelectorAll('trkpt'))
-          if (trkpts.length === 0) {
-            // Try wpt / rtept
-            const wpts = Array.from(doc.querySelectorAll('wpt, rtept'))
-            pts = wpts.map(pt => ({
-              lat: parseFloat(pt.getAttribute('lat') ?? '0'),
-              lon: parseFloat(pt.getAttribute('lon') ?? '0'),
-              ele: parseFloat(pt.querySelector('ele')?.textContent ?? '0'),
-            }))
-          } else {
-            pts = trkpts.map(pt => ({
-              lat: parseFloat(pt.getAttribute('lat') ?? '0'),
-              lon: parseFloat(pt.getAttribute('lon') ?? '0'),
-              ele: parseFloat(pt.querySelector('ele')?.textContent ?? '0'),
-            }))
-          }
+          const src = trkpts.length > 0 ? trkpts : Array.from(doc.querySelectorAll('wpt, rtept'))
+          pts = src.map(pt => ({
+            lat: parseFloat(pt.getAttribute('lat') ?? '0'),
+            lon: parseFloat(pt.getAttribute('lon') ?? '0'),
+            ele: parseFloat(pt.querySelector('ele')?.textContent ?? '0'),
+          }))
         } else if (ext === 'tcx') {
           const doc = parser.parseFromString(text, 'application/xml')
           const actName = doc.querySelector('Id')
           if (actName?.textContent) name = actName.textContent.trim()
-          const tps = Array.from(doc.querySelectorAll('Trackpoint'))
-          pts = tps.map(tp => {
-            const lat = parseFloat(tp.querySelector('LatitudeDegrees')?.textContent ?? '0')
-            const lon = parseFloat(tp.querySelector('LongitudeDegrees')?.textContent ?? '0')
-            const ele = parseFloat(tp.querySelector('AltitudeMeters')?.textContent ?? '0')
-            return { lat, lon, ele }
-          }).filter(p => p.lat !== 0 || p.lon !== 0)
+          pts = Array.from(doc.querySelectorAll('Trackpoint')).map(tp => ({
+            lat: parseFloat(tp.querySelector('LatitudeDegrees')?.textContent ?? '0'),
+            lon: parseFloat(tp.querySelector('LongitudeDegrees')?.textContent ?? '0'),
+            ele: parseFloat(tp.querySelector('AltitudeMeters')?.textContent ?? '0'),
+          })).filter(p => p.lat !== 0 || p.lon !== 0)
         } else if (ext === 'kml') {
           const doc = parser.parseFromString(text, 'application/xml')
           const nameEl = doc.querySelector('name')
@@ -3561,33 +3581,160 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
             return { lat: lat ?? 0, lon: lon ?? 0, ele: ele ?? 0 }
           })
         } else {
-          reject(new Error('Format non supporté'))
-          return
+          reject(new Error('Format non supporté')); return
         }
 
         if (pts.length === 0) { reject(new Error('Aucun point GPS trouvé')); return }
 
-        // Compute distance (Haversine)
-        let distKm = 0
-        for (let i = 1; i < pts.length; i++) {
-          distKm += haversineKm(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon)
-        }
-
-        // Compute elevation gain (only positive increments)
-        let elevM = 0
-        for (let i = 1; i < pts.length; i++) {
-          const diff = pts[i].ele - pts[i - 1].ele
-          if (diff > 0) elevM += diff
-        }
-
-        resolve({ name, distanceKm: Math.round(distKm * 100) / 100, elevationM: Math.round(elevM), points: pts })
-      } catch (err) {
-        reject(err)
-      }
+        const { distKm, elevM, profile } = buildElevationProfile(pts)
+        resolve({
+          name,
+          distance: distKm > 0 ? distKm : null,
+          elevation: elevM > 0 ? elevM : null,
+          points: pts.length,
+          elevationProfile: profile,
+        })
+      } catch (err) { reject(err) }
     }
     reader.onerror = () => reject(new Error('Lecture fichier échouée'))
     reader.readAsText(file)
   })
+}
+
+// ── ElevationChart ────────────────────────────────
+function ElevationChart({ profile, totalKm, accent }: {
+  profile: Array<{ distKm: number; ele: number }>
+  totalKm: number
+  accent: string
+}) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
+
+  if (profile.length < 2) return null
+
+  const minEle = Math.min(...profile.map(p => p.ele))
+  const maxEle = Math.max(...profile.map(p => p.ele))
+  const eleRange = maxEle - minEle || 1
+
+  const W = 800, H = 200
+  const PL = 44, PR = 12, PT = 14, PB = 28
+  const pW = W - PL - PR, pH = H - PT - PB
+
+  const svgPoints = profile.map(p => ({
+    x: PL + (p.distKm / totalKm) * pW,
+    y: PT + pH - ((p.ele - minEle) / eleRange) * pH,
+    distKm: p.distKm,
+    ele: p.ele,
+  }))
+  const pathD = svgPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+  const fillD = `${pathD} L${svgPoints[svgPoints.length - 1].x.toFixed(1)},${PT + pH} L${PL},${PT + pH} Z`
+
+  const yStep = eleRange > 500 ? 200 : eleRange > 200 ? 100 : 50
+  const yTicks: number[] = []
+  for (let e = Math.ceil(minEle / yStep) * yStep; e <= maxEle; e += yStep) yTicks.push(e)
+
+  const xStep = totalKm > 150 ? 20 : totalKm > 80 ? 10 : totalKm > 30 ? 5 : totalKm > 10 ? 2 : 1
+  const xTicks: number[] = []
+  for (let km = 0; km <= totalKm; km += xStep) xTicks.push(Math.round(km * 10) / 10)
+
+  function getSlopeAt(distKm: number): number {
+    const idx = profile.findIndex(p => p.distKm >= distKm)
+    if (idx <= 0) return 0
+    const p1 = profile[idx - 1], p2 = profile[idx]
+    const dDist = (p2.distKm - p1.distKm) * 1000
+    if (dDist === 0) return 0
+    return Math.round(((p2.ele - p1.ele) / dDist) * 1000) / 10
+  }
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const svgX = ((e.clientX - rect.left) / rect.width) * W
+    const distKm = Math.max(0, Math.min(totalKm, ((svgX - PL) / pW) * totalKm))
+    let closest = profile[0]
+    let closestD = Infinity
+    for (const p of profile) {
+      const d = Math.abs(p.distKm - distKm)
+      if (d < closestD) { closestD = d; closest = p }
+    }
+    const x = PL + (closest.distKm / totalKm) * pW
+    setCursor({ x, distKm: closest.distKm, ele: closest.ele, slope: getSlopeAt(closest.distKm) })
+  }
+
+  const cursorCy = cursor ? PT + pH - ((cursor.ele - minEle) / eleRange) * pH : 0
+  const slopeColor = cursor
+    ? cursor.slope > 5 ? '#ef4444' : cursor.slope > 2 ? '#f97316' : cursor.slope < -2 ? '#3b82f6' : 'var(--text)'
+    : 'var(--text)'
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <svg
+        ref={svgRef}
+        width="100%"
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ display: 'block', cursor: 'crosshair' }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setCursor(null)}
+      >
+        {/* Y grid */}
+        {yTicks.map(ele => {
+          const y = PT + pH - ((ele - minEle) / eleRange) * pH
+          return (
+            <g key={`y${ele}`}>
+              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--border)" strokeWidth={0.5} opacity={0.3} />
+              <text x={PL - 5} y={y + 3} textAnchor="end" fontSize={7} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{ele}m</text>
+            </g>
+          )
+        })}
+        {/* X grid */}
+        {xTicks.map(km => {
+          const x = PL + (km / totalKm) * pW
+          return (
+            <g key={`x${km}`}>
+              <line x1={x} y1={PT} x2={x} y2={PT + pH} stroke="var(--border)" strokeWidth={0.5} opacity={0.2} />
+              <text x={x} y={H - 6} textAnchor="middle" fontSize={7} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{km}km</text>
+            </g>
+          )
+        })}
+        {/* Axes */}
+        <line x1={PL} y1={PT} x2={PL} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
+        <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
+        {/* Fill */}
+        <path d={fillD} fill={accent} opacity={0.05} />
+        {/* Profile line — fine */}
+        <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
+        {/* min/max labels */}
+        <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{Math.round(minEle)}m</text>
+        <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='"DM Mono",monospace'>{Math.round(maxEle)}m</text>
+        {/* Cursor */}
+        {cursor && (
+          <g>
+            <line x1={cursor.x} y1={PT} x2={cursor.x} y2={PT + pH} stroke={accent} strokeWidth={0.6} strokeDasharray="3 2" opacity={0.5} />
+            <circle cx={cursor.x} cy={cursorCy} r={3} fill={accent} stroke="#fff" strokeWidth={1.5} />
+          </g>
+        )}
+      </svg>
+      {/* Tooltip sous le SVG */}
+      {cursor && (
+        <div style={{
+          display: 'flex', gap: 16, padding: '7px 12px',
+          borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)',
+          marginTop: 5, fontSize: 11, justifyContent: 'center', flexWrap: 'wrap' as const,
+        }}>
+          <span style={{ color: 'var(--text-dim)' }}>
+            km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong>
+          </span>
+          <span style={{ color: 'var(--text-dim)' }}>
+            altitude <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong>
+          </span>
+          <span style={{ color: 'var(--text-dim)' }}>
+            pente <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong>
+          </span>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave }: {
@@ -3753,10 +3900,41 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     const nutritionHtml = nutritionItems.length > 0
       ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">Stratégie nutritionnelle</h3><table><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th><th>Protéines</th></tr>${[...nutritionItems].sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td><td>${m.proteinesG}g</td></tr>`).join('')}<tr style="background:#f9f9f9;font-weight:600"><td colspan="3">Total</td><td>${nutritionItems.reduce((s,x)=>s+x.glucidesG,0)}g glucides</td><td>${nutritionItems.reduce((s,x)=>s+x.proteinesG,0)}g prot.</td></tr></table>`
       : ''
-    const parcoursHtml = parcoursData
-      ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">Parcours — ${parcoursData.name}</h3><p style="font-size:12px;color:#555">${parcoursData.distanceKm} km · ${parcoursData.elevationM} m D+ · ${parcoursData.points.length} points GPS</p>`
-      : ''
-    const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">Durée</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData ? `<div class="metric"><div class="metric-val">${parcoursData.distanceKm} km</div><div class="metric-lbl">Distance</div></div><div class="metric"><div class="metric-val">${parcoursData.elevationM} m</div><div class="metric-lbl">Dénivelé +</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursHtml}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · Généré le ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
+    const parcoursSection = (() => {
+      if (!parcoursData) return ''
+      const profile = parcoursData.elevationProfile
+      const totalKm = parcoursData.distance ?? (profile.length > 0 ? profile[profile.length - 1].distKm : 0)
+      if (profile.length < 2 || totalKm === 0) {
+        return `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">Parcours — ${parcoursData.name}</h3><p style="font-size:12px;color:#555">${parcoursData.distance ?? '?'} km${parcoursData.elevation ? ' · ' + parcoursData.elevation + ' m D+' : ''}</p>`
+      }
+      const minEle = Math.min(...profile.map(p => p.ele))
+      const maxEle = Math.max(...profile.map(p => p.ele))
+      const eleRange = maxEle - minEle || 1
+      const W = 600, H = 120, PL = 36, PR = 10, PT = 10, PB = 20
+      const pW = W - PL - PR, pH = H - PT - PB
+      const pts = profile.map(p => ({ x: PL + (p.distKm / totalKm) * pW, y: PT + pH - ((p.ele - minEle) / eleRange) * pH }))
+      const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+      const fillD = `${pathD} L${pts[pts.length-1].x.toFixed(1)},${PT+pH} L${PL},${PT+pH} Z`
+      const yStep = eleRange > 500 ? 200 : eleRange > 200 ? 100 : 50
+      const yTicks: number[] = []
+      for (let e = Math.ceil(minEle / yStep) * yStep; e <= maxEle; e += yStep) yTicks.push(e)
+      const xStep = totalKm > 150 ? 20 : totalKm > 80 ? 10 : totalKm > 30 ? 5 : 2
+      const xTicks: number[] = []
+      for (let km = 0; km <= totalKm; km += xStep) xTicks.push(km)
+      return `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">Parcours — ${parcoursData.name}</h3>
+<div style="display:flex;gap:16px;font-size:11px;color:#666;margin-bottom:8px">${parcoursData.distance != null ? `<span><strong style="color:#333">${parcoursData.distance}</strong> km</span>` : ''}${parcoursData.elevation != null ? `<span><strong style="color:#333">${parcoursData.elevation}</strong> m D+</span>` : ''}</div>
+<svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;margin:4px 0 8px">
+${yTicks.map(ele => { const y = PT+pH-((ele-minEle)/eleRange)*pH; return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="0.5"/><text x="${PL-4}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#999" font-family="monospace">${ele}m</text>` }).join('\n')}
+${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed(1)}" y1="${PT}" x2="${x.toFixed(1)}" y2="${PT+pH}" stroke="#e5e7eb" stroke-width="0.5" opacity="0.4"/><text x="${x.toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="7" fill="#999" font-family="monospace">${km}km</text>` }).join('\n')}
+<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+pH}" stroke="#d1d5db" stroke-width="0.6"/>
+<line x1="${PL}" y1="${PT+pH}" x2="${W-PR}" y2="${PT+pH}" stroke="#d1d5db" stroke-width="0.6"/>
+<path d="${fillD}" fill="${accent}" opacity="0.06"/>
+<path d="${pathD}" fill="none" stroke="${accent}" stroke-width="1" opacity="0.7" stroke-linejoin="round"/>
+<text x="${PL+4}" y="${PT+pH-4}" font-size="7" fill="#999" font-family="monospace">${Math.round(minEle)}m</text>
+<text x="${W-PR-4}" y="${PT+8}" text-anchor="end" font-size="7" fill="${accent}" font-weight="600" font-family="monospace">${Math.round(maxEle)}m</text>
+</svg>`
+    })()
+    const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">Durée</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData?.distance != null ? `<div class="metric"><div class="metric-val">${parcoursData.distance} km</div><div class="metric-lbl">Distance</div></div>` : ''}${parcoursData?.elevation != null ? `<div class="metric"><div class="metric-val">${parcoursData.elevation} m</div><div class="metric-lbl">Dénivelé +</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursSection}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · Généré le ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
     const w = window.open('', '_blank')
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
   }
@@ -4063,7 +4241,7 @@ Ajoute toujours échauffement et retour au calme.`,
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
-            {parcoursLoading ? '…' : parcoursData ? `${parcoursData.distanceKm} km` : 'Parcours'}
+            {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
           </button>
         </div>
 
@@ -4354,91 +4532,59 @@ Ajoute toujours échauffement et retour au calme.`,
             }} />
         </div>
 
-        {/* PARCOURS GPX/TCX/KML */}
-        {(parcoursData || parcoursError || parcoursLoading) && (
-          <div style={{ padding: mobile ? '0 16px 16px' : '0 24px 20px' }}>
-            <div style={{
-              borderRadius: 12, border: parcoursError ? '1px solid rgba(239,68,68,0.3)' : `1px solid ${accent}20`,
-              background: parcoursError ? 'rgba(239,68,68,0.05)' : `${accent}06`,
-              padding: '14px 16px',
-            }}>
-              {parcoursLoading && (
-                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Lecture du parcours…</p>
-              )}
-              {parcoursError && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: '#ef4444' }}>⚠ {parcoursError}</span>
-                  <button onClick={() => { setParcoursFile(null); setParcoursData(null); setParcoursError(null) }}
-                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14 }}>×</button>
-                </div>
-              )}
-              {parcoursData && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: accent }}>🗺</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', flex: 1 }}>{parcoursData.name}</span>
-                    <button onClick={() => { setParcoursFile(null); setParcoursData(null) }}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' as const }}>
-                    <div style={{ textAlign: 'center' as const }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{parcoursData.distanceKm}</span>
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>km</span>
-                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Distance</p>
-                    </div>
-                    <div style={{ textAlign: 'center' as const }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{parcoursData.elevationM}</span>
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>m</span>
-                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Dénivelé +</p>
-                    </div>
-                    <div style={{ textAlign: 'center' as const }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{parcoursData.points.length}</span>
-                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Points GPS</p>
-                    </div>
-                    {parcoursData.distanceKm > 0 && dur > 0 && (
-                      <div style={{ textAlign: 'center' as const }}>
-                        <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>
-                          {Math.round((parcoursData.distanceKm / (dur / 60)) * 10) / 10}
-                        </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>km/h</span>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Vitesse moy.</p>
-                      </div>
+        {/* PARCOURS */}
+        {(parcoursLoading || parcoursError || parcoursData) && (
+          <div style={{ padding: mobile ? '0 16px 16px' : '0 24px 18px' }}>
+            {parcoursLoading && (
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Lecture du parcours…</p>
+            )}
+            {parcoursError && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                <span style={{ fontSize: 11, color: '#ef4444', flex: 1 }}>⚠ {parcoursError}</span>
+                <button onClick={() => { setParcoursFile(null); setParcoursData(null); setParcoursError(null) }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14 }}>×</button>
+              </div>
+            )}
+            {parcoursData && (
+              <div style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                {/* En-tête : nom + métriques + supprimer */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' as const }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{parcoursData.name}</span>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
+                    {parcoursData.distance != null && (
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        <strong style={{ color: accent, fontFamily: '"DM Mono",monospace', fontSize: 13 }}>{parcoursData.distance}</strong> km
+                      </span>
+                    )}
+                    {parcoursData.elevation != null && (
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace', fontSize: 13 }}>{parcoursData.elevation}</strong> m D+
+                      </span>
+                    )}
+                    {parcoursData.distance != null && dur > 0 && (
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace', fontSize: 13 }}>
+                          {Math.round((parcoursData.distance / (dur / 60)) * 10) / 10}
+                        </strong> km/h
+                      </span>
                     )}
                   </div>
+                  <button onClick={() => { setParcoursFile(null); setParcoursData(null) }}
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-dim)', cursor: 'pointer', fontSize: 10, padding: '3px 10px', flexShrink: 0 }}>
+                    Supprimer
+                  </button>
+                </div>
 
-                  {/* Elevation mini-profile SVG */}
-                  {parcoursData.points.length > 1 && (() => {
-                    const eles = parcoursData.points.map(p => p.ele).filter(e => e !== 0 && !isNaN(e))
-                    if (eles.length < 2) return null
-                    const minE = Math.min(...eles), maxE = Math.max(...eles)
-                    const range = maxE - minE || 1
-                    const W = 300, H = 48, PAD = 4
-                    const step = W / (eles.length - 1)
-                    const pts = eles.map((e, i) => `${(i * step).toFixed(1)},${(H - PAD - ((e - minE) / range) * (H - PAD * 2)).toFixed(1)}`).join(' ')
-                    return (
-                      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ marginTop: 12, display: 'block', opacity: 0.85 }} preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="elev_grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={accent} stopOpacity={0.4} />
-                            <stop offset="100%" stopColor={accent} stopOpacity={0.05} />
-                          </linearGradient>
-                        </defs>
-                        <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#elev_grad)" />
-                        <polyline points={pts} fill="none" stroke={accent} strokeWidth={1.5} strokeLinejoin="round" />
-                        <text x={2} y={H - 2} fontSize={7} fill="var(--text-dim)" fontFamily="DM Mono, monospace">{Math.round(minE)}m</text>
-                        <text x={W - 2} y={10} fontSize={7} fill="var(--text-dim)" fontFamily="DM Mono, monospace" textAnchor="end">{Math.round(maxE)}m</text>
-                      </svg>
-                    )
-                  })()}
-
-                  {parcoursFile && (
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 8, margin: '8px 0 0' }}>
-                      Fichier : {parcoursFile.name}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
+                {/* Graphique altimétrique interactif */}
+                {parcoursData.elevationProfile.length > 1 && (
+                  <ElevationChart
+                    profile={parcoursData.elevationProfile}
+                    totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
+                    accent={accent}
+                  />
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -4737,7 +4883,7 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
-            {parcoursLoading ? '…' : parcoursData ? `${parcoursData.distanceKm} km` : 'Parcours'}
+            {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
           </button>
 
           {/* Reset to AI original — edit mode only, when originalContent exists */}

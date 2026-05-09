@@ -4023,35 +4023,57 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     setAiLoading(true)
     try {
       const isStrengthSport = sport === 'gym' || sport === 'hyrox'
+      console.log('[AI-MUSCU] 1. Sport:', sport, 'isStrength:', isStrengthSport)
 
-      const prompt = isStrengthSport
-        ? `Tu es un coach sportif expert en ${SPORT_LABEL[sport]}. L'athlète veut cette séance : ${aiPrompt}
+      const strengthPrompt = `Tu es un préparateur physique expert. L'athlète te décrit sa séance de ${SPORT_LABEL[sport]}.
 
-Génère une liste d'exercices en JSON. Réponds UNIQUEMENT avec un tableau []. Pas de texte avant ou après.
+SÉANCE DEMANDÉE :
+${aiPrompt}
 
-Format par exercice :
-{"mode":"single","type":"effort","label":"Nom exercice","zone":3,"reps":10,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
+⚠️ RÈGLE ABSOLUE : Réponds UNIQUEMENT avec un tableau JSON brut []. N'utilise AUCUN outil ou fonction. Ne génère que du texte brut. Aucun texte avant ou après le JSON.
 
-Exercices disponibles :
-PUSH: Bench Press, Dips, Push Press, Push Up, Incline Bench Press, Lateral Raise, Overhead Press, Triceps Pushdown, Chest Fly
-PULL: Pull Up, Barbell Row, Dumbbell Row, Lat Pulldown, Face Pull, Bicep Curl, Hammer Curl
-LEGS: Squat, Front Squat, Deadlift, Romanian Deadlift, Bulgarian Split Squat, Lunge, Leg Press, Hip Thrust, Box Jump, Sled Push, Calf Raise
-MIXTE: Thruster, Clean, Snatch, Kettlebell Swing, Turkish Get Up, Devil Press
-ABDOS: Crunch, Plank, Russian Twist, Hanging Leg Raise, Ab Wheel Rollout, V-Up
-HYROX: Run, SkiErg, Sled Push, Sled Pull, Burpee Broad Jump, Rowing, Farmer Carry, Sandbag Lunges, Wall Balls, Echo Bike
+COMPRENDRE LE FORMAT DE L'ATHLÈTE :
+- "Bench press @52.5 kg" → Bench Press, charge 52.5kg, reps par défaut (8-10)
+- "Pull up australien 20 reps" → Australian Pull Up, 20 reps, poids de corps
+- "x3" ou "×3" → les exercices AU-DESSUS se font en 3 rounds/séries
+- Une ligne vide sépare les circuits
+- "Squat 5x5 @100kg" → 5 séries de 5 reps à 100kg
+- "Gainage 45s" → Plank, 45 secondes (effortMin=0.75)
+- "Sled Push 50m @150kg" → distance 50m (durationMin=50), charge 150kg
 
-Règles :
-- Utilise les noms EXACTS de la liste ci-dessus
-- "zone" = nombre de SÉRIES (1-10), pas la zone d'intensité
-- "reps" = nombre de reps (0 si exercice au temps ou à la distance)
-- "value" = charge en kg sous forme de chaîne ("80") ou "" si poids de corps
-- "recoveryMin" = repos entre séries en minutes décimales (90s = 1.5)
-- "effortMin" = durée de l'exercice en minutes si chronométré (gainage : reps=1, effortMin=1.0)
-- "durationMin" = distance en mètres pour Sled Push, Farmer Carry, Run (ex: 50 pour 50m) ou 0
-- Pour Hyrox : alterne Run + stations dans l'ordre standard`
+EXEMPLE :
+"Bench press @52.5 kg
+Pull up australien 20 reps
+x3"
+→ Bench Press : zone=3, reps=8, value="52.5"
+→ Australian Pull Up : zone=3, reps=20, value=""
 
-        : `Tu es un coach sportif expert. Génère des blocs d'entraînement JSON pour une séance de ${SPORT_LABEL[sport]}.
+FORMAT PAR EXERCICE (JSON strict, guillemets doubles) :
+{"mode":"single","type":"effort","label":"Bench Press","zone":3,"reps":8,"value":"52.5","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
+
+CHAMPS :
+- label : nom EN ANGLAIS. Correspondances :
+  Développé couché/Bench press→"Bench Press", Traction/Pull up→"Pull Up",
+  Traction australienne/Pull up australien→"Australian Pull Up",
+  Rowing banc→"Barbell Row", Développé militaire/Push press→"Push Press",
+  Pompe/Push up→"Push Up", Squat→"Squat", Soulevé de terre→"Deadlift",
+  Fente→"Lunge", Gainage/Plank→"Plank", Dips→"Dips",
+  Curl biceps→"Bicep Curl", Élévation latérale→"Lateral Raise",
+  Sled Push→"Sled Push", SkiErg→"SkiErg", Wall Balls→"Wall Balls",
+  Burpee Broad Jump→"Burpee Broad Jump", Farmer Carry→"Farmer Carry",
+  Echo Bike/Assault Bike→"Echo Bike", Rowing→"Rowing"
+- zone : nombre de SÉRIES (1-10). "x3" → zone=3
+- reps : nombre de reps. Si non précisé : 8-10 pour force, 12-15 pour endurance musculaire
+- value : charge en kg SANS unité ("52.5"). Vide "" si poids de corps
+- durationMin : distance en mètres pour Sled Push/Farmer Carry/Run. 0 sinon
+- hrAvg : kcal pour SkiErg/Rowing/Echo Bike. Vide sinon
+- effortMin : durée en minutes si exercice au temps (45s=0.75). 0 sinon
+- recoveryMin : repos entre séries (90s=1.5). Défaut 1.5 force, 1.0 endurance musculaire`
+
+      const endurancePrompt = `Tu es un coach sportif expert. Génère des blocs d'entraînement JSON pour une séance de ${SPORT_LABEL[sport]}.
 Description : ${aiPrompt}
+
+⚠️ RÈGLE ABSOLUE : Réponds UNIQUEMENT avec du texte brut JSON. N'utilise AUCUN outil ou fonction.
 
 Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]). Format exact de chaque bloc :
 {"mode":"single","type":"warmup","durationMin":15,"zone":2,"value":"","label":"Échauffement"}
@@ -4062,15 +4084,21 @@ Champs obligatoires : mode, type, durationMin, zone (1-5), value, label
 Champs interval : reps, effortMin, recoveryMin, recoveryZone
 Ajoute toujours échauffement et retour au calme.`
 
+      const prompt = isStrengthSport ? strengthPrompt : endurancePrompt
+      console.log('[AI-MUSCU] 2. Prompt sent:', prompt.slice(0, 300))
+      console.log('[AI-MUSCU] 3. Fetch starting...')
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId: 'planning',
+          agentId: isStrengthSport ? 'sessionBuilder' : 'planning',
           messages: [{ role: 'user', content: prompt }],
           modelId: 'athena',
         }),
       })
+
+      console.log('[AI-MUSCU] 4. Response:', res.status, res.ok)
 
       if (!res.ok) {
         const errText = await res.text()
@@ -4082,14 +4110,22 @@ Ajoute toujours échauffement et retour au calme.`
       let raw = ''
 
       if (reader) {
+        let currentEvent = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           for (const line of chunk.split('\n')) {
-            if (line.startsWith('data: ')) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim()
+            } else if (line.startsWith('data: ')) {
               const payload = line.slice(6).trim()
               if (payload === '[DONE]') continue
+              // Ignorer les tool_use — on ne veut que du texte brut JSON
+              if (currentEvent === 'tool_use') {
+                console.log('[AI-MUSCU] SSE tool_use ignoré:', payload.slice(0, 150))
+                continue
+              }
               try {
                 const d: unknown = JSON.parse(payload)
                 if (typeof d === 'string') raw += d
@@ -4104,6 +4140,8 @@ Ajoute toujours échauffement et retour au calme.`
           }
         }
       }
+
+      console.log('[AI-MUSCU] 5. Raw response:', raw.slice(0, 500))
 
       // Extract JSON array
       let jsonStr = ''
@@ -4122,7 +4160,9 @@ Ajoute toujours échauffement et retour au calme.`
         }
       }
 
-      if (!jsonStr) { console.error('[AI] No JSON found:', raw.slice(0, 400)); return }
+      console.log('[AI-MUSCU] 6. JSON match:', !!jsonStr, jsonStr.slice(0, 100))
+
+      if (!jsonStr) { console.error('[AI] No JSON found in raw:', raw.slice(0, 400)); return }
 
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
 
@@ -4174,6 +4214,8 @@ Ajoute toujours échauffement et retour au calme.`
           recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
         }
       })
+
+      console.log('[AI-MUSCU] 7. Parsed blocks:', newBlocks.length, newBlocks.slice(0, 2))
 
       setBlocks(newBlocks)
       setBuilderTab('manual')

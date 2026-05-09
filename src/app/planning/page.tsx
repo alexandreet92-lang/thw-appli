@@ -3593,20 +3593,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     if (totalBlocksMin > 0) setDur(totalBlocksMin)
   }, [blocks])
 
-  // Auto-save in edit mode (debounced 500ms)
-  useEffect(() => {
-    if (!isEdit || !session) return
-    const timeout = setTimeout(() => {
-      if (onAutoSave) {
-        onAutoSave({
-          ...session,
-          sport, title, time, durationMin: dur, rpe, blocks, notes: desc,
-          tss: computeTSSRange(blocks, sport, dur, rpe, athleteData).high || session.tss,
-        })
-      }
-    }, 500)
-    return () => clearTimeout(timeout)
-  }, [sport, title, time, dur, rpe, blocks, desc]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-save intentionally removed — save on close instead to avoid infinite re-render loop
 
   function handleSportChange(s: SportType) {
     setSport(s); setTrainingType(null); setBlocks([]); setExercises([])
@@ -4450,8 +4437,13 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
             }}>Valider</button>
           )}
 
-          {/* Close / Cancel */}
-          <button onClick={onClose} style={{
+          {/* Close / Cancel — save before closing in edit mode */}
+          <button onClick={() => {
+            if (isEdit && session) {
+              onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss })
+            }
+            onClose()
+          }} style={{
             padding: '10px 16px', borderRadius: 8,
             background: 'var(--bg-card)', border: '1px solid var(--border)',
             color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',

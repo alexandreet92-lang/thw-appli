@@ -3810,6 +3810,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>('manual')
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [nutritionOpen, setNutritionOpen] = useState(false)
@@ -4021,6 +4022,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   async function handleAIGenerate() {
     if (!aiPrompt.trim() || aiLoading) return
     setAiLoading(true)
+    setAiError(null)
     try {
       const isStrengthSport = sport === 'gym' || sport === 'hyrox'
       console.log('[AI-MUSCU] 1. Sport:', sport, 'isStrength:', isStrengthSport)
@@ -4121,7 +4123,6 @@ Ajoute toujours échauffement et retour au calme.`
             } else if (line.startsWith('data: ')) {
               const payload = line.slice(6).trim()
               if (payload === '[DONE]') continue
-              // Ignorer les tool_use — on ne veut que du texte brut JSON
               if (currentEvent === 'tool_use') {
                 console.log('[AI-MUSCU] SSE tool_use ignoré:', payload.slice(0, 150))
                 continue
@@ -4162,21 +4163,61 @@ Ajoute toujours échauffement et retour au calme.`
 
       console.log('[AI-MUSCU] 6. JSON match:', !!jsonStr, jsonStr.slice(0, 100))
 
-      if (!jsonStr) { console.error('[AI] No JSON found in raw:', raw.slice(0, 400)); return }
+      if (!jsonStr) {
+        setAiError(`L'IA n'a pas retourné de JSON valide. Réponse : ${raw.slice(0, 200) || '(vide — probablement un appel outil ignoré)'}`)
+        return
+      }
 
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
 
-      const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
-        let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
-        let label = typeof b.label === 'string' ? b.label : 'Bloc'
-        const value = String(b.value ?? '')
-        const mode = typeof b.mode === 'string' ? b.mode : 'single'
-        const repsN = typeof b.reps === 'number' ? b.reps : 1
-        const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
-        const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 0
-
-        // Pour les sports d'endurance : recalcul distance→temps si applicable
-        if (!isStrengthSport) {
+      if (isStrengthSport) {
+        // ── GYM / HYROX : convertir en ExerciseItem[] pour ExerciseListBuilder ──
+        const newExercises: ExerciseItem[] = parsed.map((b: Record<string, unknown>, i: number) => {
+          const labelStr = typeof b.label === 'string' ? b.label : 'Exercice'
+          const exoDef = EXERCISE_DATABASE.find(x =>
+            x.name.toLowerCase() === labelStr.toLowerCase() ||
+            x.aliases.some(a => a.toLowerCase() === labelStr.toLowerCase())
+          )
+          const weightRaw = parseFloat(String(b.value ?? ''))
+          const weightKg = isNaN(weightRaw) || weightRaw <= 0 ? undefined : weightRaw
+          const distanceM = typeof b.durationMin === 'number' && b.durationMin > 0 ? b.durationMin : undefined
+          const kcalRaw = typeof b.hrAvg === 'string' && b.hrAvg ? parseFloat(b.hrAvg) : NaN
+          const kcal = isNaN(kcalRaw) || kcalRaw <= 0 ? undefined : kcalRaw
+          const effortMinVal = typeof b.effortMin === 'number' ? b.effortMin : 0
+          const targetTimeSec = effortMinVal > 0 ? Math.round(effortMinVal * 60) : undefined
+          const recoveryMinVal = typeof b.recoveryMin === 'number' ? b.recoveryMin : 1.5
+          const restSec = Math.round(recoveryMinVal * 60)
+          const setsVal = typeof b.zone === 'number' ? Math.max(1, Math.min(10, b.zone)) : 3
+          const repsVal = typeof b.reps === 'number' ? b.reps : (exoDef?.defaultReps ?? 8)
+          return {
+            id: `ai_${Date.now()}_${i}`,
+            exoId: exoDef?.id ?? 'custom',
+            name: exoDef?.name ?? labelStr,
+            category: exoDef?.category ?? (sport === 'hyrox' ? 'hyrox' as ExoCategory : 'mixte' as ExoCategory),
+            sets: setsVal,
+            reps: repsVal,
+            weightKg,
+            distanceM,
+            kcal,
+            targetTimeSec,
+            restSec,
+          }
+        })
+        console.log('[AI-MUSCU] 7. Parsed exercises:', newExercises.length, newExercises.slice(0, 2))
+        if (newExercises.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+        setExercises(newExercises)
+        setBuilderTab('manual')
+        setAiPrompt('')
+      } else {
+        // ── ENDURANCE : convertir en Block[] pour BlockBuilder ──
+        const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
+          let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
+          let label = typeof b.label === 'string' ? b.label : 'Bloc'
+          const value = String(b.value ?? '')
+          const mode = typeof b.mode === 'string' ? b.mode : 'single'
+          const repsN = typeof b.reps === 'number' ? b.reps : 1
+          const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
+          const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 0
           const distMatch = label.match(/(\d+)\s*m/i)
           const paceMatch = value.match(/(\d+):(\d+)/)
           if (distMatch && paceMatch && mode === 'interval') {
@@ -4188,41 +4229,31 @@ Ajoute toujours échauffement et retour au calme.`
             const f = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
             label = `${distM}m — ${f(lo)} à ${f(hi)}`
           }
-        }
-
-        const rawZone = typeof b.zone === 'number' ? b.zone : 3
-        // Pour muscu/hyrox : zone = nb de séries (peut dépasser 5), on plafonne à 10
-        const zone = isStrengthSport ? Math.max(1, Math.min(10, rawZone)) : Math.max(1, Math.min(5, rawZone))
-        const blockType = typeof b.type === 'string' ? b.type : 'effort'
-        const hrAvg = typeof b.hrAvg === 'string' ? b.hrAvg : ''
-
-        const computedDuration = mode === 'interval'
-          ? Math.round(repsN * (effortMin + recoveryMin) * 100) / 100
-          : isStrengthSport
-            ? Math.ceil((repsN * (effortMin > 0 ? effortMin : (recoveryMin + (repsN > 0 ? 1 : 0)))) || durationMin || 5)
-            : durationMin
-
-        return {
-          id: `ai_${Date.now()}_${i}`,
-          mode: mode as 'single' | 'interval',
-          type: blockType as Block['type'],
-          durationMin: computedDuration,
-          zone, value, hrAvg, label,
-          reps: repsN || undefined,
-          effortMin: effortMin || undefined,
-          recoveryMin: recoveryMin || undefined,
-          recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
-        }
-      })
-
-      console.log('[AI-MUSCU] 7. Parsed blocks:', newBlocks.length, newBlocks.slice(0, 2))
-
-      setBlocks(newBlocks)
-      setBuilderTab('manual')
-      setAiPrompt('')
+          const rawZone = typeof b.zone === 'number' ? b.zone : 3
+          const zone = Math.max(1, Math.min(5, rawZone))
+          return {
+            id: `ai_${Date.now()}_${i}`,
+            mode: (typeof b.mode === 'string' ? b.mode : 'single') as 'single' | 'interval',
+            type: (typeof b.type === 'string' ? b.type : 'effort') as Block['type'],
+            durationMin: mode === 'interval' ? Math.round(repsN * (effortMin + recoveryMin) * 100) / 100 : durationMin,
+            zone, value, hrAvg: typeof b.hrAvg === 'string' ? b.hrAvg : '', label,
+            reps: repsN || undefined,
+            effortMin: effortMin || undefined,
+            recoveryMin: recoveryMin || undefined,
+            recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
+          }
+        })
+        console.log('[AI-MUSCU] 7. Parsed blocks:', newBlocks.length, newBlocks.slice(0, 2))
+        if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+        setBlocks(newBlocks)
+        setBuilderTab('manual')
+        setAiPrompt('')
+      }
 
     } catch (e) {
-      console.error('[AI blocks] Error:', e instanceof Error ? e.message : String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[AI blocks] Error:', msg)
+      setAiError(`Erreur : ${msg}`)
     } finally {
       setAiLoading(false)
     }
@@ -4742,8 +4773,10 @@ Ajoute toujours échauffement et retour au calme.`
             )
           ) : (
             <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
-              <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} rows={3}
-                placeholder="Ex: 10x400m @3:30/km avec 1min récup, échauffement 15min..."
+              <textarea value={aiPrompt} onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }} rows={4}
+                placeholder={isStrength
+                  ? 'Ex:\nBench press @52.5 kg\nPull up australien 20 reps\nx3\n\nSquat @80 kg\nx4'
+                  : 'Ex: 10x400m @3:30/km avec 1min récup, échauffement 15min...'}
                 style={{
                   width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
                   borderRadius: 9, color: 'var(--text-dim)', padding: 12, fontSize: 12, outline: 'none',
@@ -4756,6 +4789,15 @@ Ajoute toujours échauffement et retour au calme.`
                 color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
                 fontFamily: 'Syne, sans-serif',
               }}>{aiLoading ? 'Génération...' : 'Générer les blocs'}</button>
+              {aiError && (
+                <div style={{
+                  marginTop: 8, padding: '10px 12px', borderRadius: 8,
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)',
+                  color: '#ef4444', fontSize: 11, lineHeight: 1.5, wordBreak: 'break-all' as const,
+                }}>
+                  {aiError}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -367,6 +367,52 @@ function calcTSS(blocks:Block[], sport:SportType, totalMin?:number, rpe?:number)
   return 0
 }
 
+function computeTSSRange(
+  blocks: Block[],
+  sport: SportType,
+  durationMin: number,
+  rpe: number,
+  athlete: { ftp: number | null; runThresholdPaceSec: number | null; cssSecPer100m: number | null; rowThresholdSecPer500m: number | null; ctl: number | null } | null,
+): { low: number; high: number } {
+  const isEndurance = ['run', 'bike', 'swim', 'rowing', 'elliptique'].includes(sport)
+
+  if (!isEndurance) {
+    const sportFactor = sport === 'hyrox' ? 1.05 : 0.65
+    const ifFromRpe = 0.45 + (rpe / 10) * 0.7
+    const base = Math.round((durationMin / 60) * ifFromRpe * ifFromRpe * 100 * sportFactor)
+    return { low: Math.round(base * 0.85), high: Math.round(base * 1.15) }
+  }
+
+  if (blocks.length === 0) return { low: 0, high: 0 }
+
+  const SF: Record<string, number> = { bike: 1.0, run: 0.9, swim: 0.85, rowing: 0.95, elliptique: 0.9 }
+  const sf = SF[sport] ?? 0.9
+  const IF_BY_ZONE = [0.55, 0.70, 0.83, 0.95, 1.10, 1.20, 1.35]
+
+  let baseTSS = 0
+  for (const b of blocks) {
+    const zoneIdx = Math.max(0, Math.min(6, b.zone - 1))
+    const ifVal = IF_BY_ZONE[zoneIdx] ?? 0.70
+    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
+      const recZoneIdx = Math.max(0, Math.min(6, (b.recoveryZone ?? 1) - 1))
+      const ifRec = IF_BY_ZONE[recZoneIdx] ?? 0.55
+      baseTSS += b.reps * (b.effortMin / 60) * ifVal * ifVal * 100 * sf
+      baseTSS += b.reps * (b.recoveryMin / 60) * ifRec * ifRec * 100 * sf
+    } else {
+      baseTSS += (b.durationMin / 60) * ifVal * ifVal * 100 * sf
+    }
+  }
+
+  let fitnessFactor = 1.0
+  if (athlete?.ctl != null && athlete.ctl > 0) {
+    fitnessFactor = 1.0 + (40 - Math.min(80, athlete.ctl)) / 100
+    fitnessFactor = Math.max(0.80, Math.min(1.25, fitnessFactor))
+  }
+
+  const adjusted = Math.round(baseTSS * fitnessFactor)
+  return { low: Math.round(adjusted * 0.90), high: Math.round(adjusted * 1.10) }
+}
+
 function getWeekDates():string[] {
   const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1
   return DAY_NAMES.map((_,i)=>{ const d=new Date(now); d.setDate(now.getDate()-dow+i); return String(d.getDate()) })
@@ -1200,6 +1246,7 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
 function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void }) {
   const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
   const vPlh = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
+  const [hoveredBar, setHoveredBar] = useState<{ x: number; y: number; block: Block; isRecovery: boolean } | null>(null)
 
   function addSingle() {
     onChange([...blocks, {
@@ -1233,16 +1280,16 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
     return `${fmt(lo)} à ${fmt(hi)}`
   }
 
-  type Bar = { id: string; min: number; zone: number; isRecovery: boolean }
+  type Bar = { id: string; min: number; zone: number; isRecovery: boolean; block: Block }
   const bars: Bar[] = []
   for (const b of blocks) {
     if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
       for (let r = 0; r < b.reps; r++) {
-        bars.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, isRecovery: false })
-        if (b.recoveryMin > 0) bars.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, isRecovery: true })
+        bars.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, isRecovery: false, block: b })
+        if (b.recoveryMin > 0) bars.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, isRecovery: true, block: b })
       }
     } else {
-      bars.push({ id: b.id, min: b.durationMin, zone: b.zone, isRecovery: false })
+      bars.push({ id: b.id, min: b.durationMin, zone: b.zone, isRecovery: false, block: b })
     }
   }
   const totalMin = bars.reduce((s, bar) => s + bar.min, 0) || 1
@@ -1272,15 +1319,22 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
               const wp = (bar.min / totalMin) * 100
               const c = ZONE_COLORS[bar.zone - 1]
               return (
-                <div key={bar.id} style={{
-                  width: `${wp}%`, height: `${hp}%`,
-                  background: bar.isRecovery
-                    ? 'rgba(107,114,128,0.15)'
-                    : `linear-gradient(180deg, ${c}ee, ${c}55)`,
-                  borderRadius: '2px 2px 0 0',
-                  border: bar.isRecovery ? 'none' : `1px solid ${c}88`,
-                  minWidth: 2, opacity: bar.isRecovery ? 0.5 : 1,
-                }} />
+                <div key={bar.id}
+                  onMouseEnter={e => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    setHoveredBar({ x: rect.left + rect.width / 2, y: rect.top, block: bar.block, isRecovery: bar.isRecovery })
+                  }}
+                  onMouseLeave={() => setHoveredBar(null)}
+                  style={{
+                    width: `${wp}%`, height: `${hp}%`,
+                    background: bar.isRecovery
+                      ? 'rgba(107,114,128,0.15)'
+                      : `linear-gradient(180deg, ${c}ee, ${c}55)`,
+                    borderRadius: '2px 2px 0 0',
+                    border: bar.isRecovery ? 'none' : `1px solid ${c}88`,
+                    minWidth: 2, opacity: bar.isRecovery ? 0.5 : 1,
+                    cursor: 'pointer',
+                  }} />
               )
             })}
           </div>
@@ -1291,6 +1345,37 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
                 {z}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Hover tooltip for intensity profile bars */}
+      {hoveredBar && !hoveredBar.isRecovery && (
+        <div style={{
+          position: 'fixed' as const, zIndex: 1100,
+          left: hoveredBar.x, top: hoveredBar.y - 8,
+          transform: 'translate(-50%, -100%)',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '8px 12px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          pointerEvents: 'none' as const,
+          whiteSpace: 'nowrap' as const,
+          fontSize: 11,
+        }}>
+          <p style={{ fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>{hoveredBar.block.label}</p>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, color: 'var(--text-dim)' }}>
+            <span>Durée : <strong style={{ fontFamily: 'DM Mono, monospace' }}>
+              {hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin
+                ? `${Math.round(hoveredBar.block.effortMin * 10) / 10}min`
+                : `${hoveredBar.block.durationMin}min`}
+            </strong></span>
+            <span>Zone : <strong style={{ color: ZONE_COLORS[Math.min(4, hoveredBar.block.zone - 1)] }}>Z{hoveredBar.block.zone}</strong></span>
+            {hoveredBar.block.value && (
+              <span>{sport === 'bike' ? 'Puissance' : 'Allure'} : <strong style={{ fontFamily: 'DM Mono, monospace' }}>{hoveredBar.block.value}{sport === 'bike' ? 'W' : '/km'}</strong></span>
+            )}
+            {hoveredBar.block.hrAvg && parseInt(hoveredBar.block.hrAvg) > 0 && (
+              <span>FC moy : <strong style={{ fontFamily: 'DM Mono, monospace' }}>{hoveredBar.block.hrAvg} bpm</strong></span>
+            )}
           </div>
         </div>
       )}
@@ -3284,6 +3369,47 @@ function getTrainingTypeDescription(sport: SportType, type: string): string {
   return desc[sport]?.[type] ?? type
 }
 
+function computeZoneDistribution(blocks: Block[], zoneCount: number): number[] {
+  const dist = new Array(zoneCount).fill(0)
+  for (const b of blocks) {
+    const effMin = b.mode === 'interval' && b.reps && b.effortMin
+      ? b.reps * b.effortMin : b.durationMin
+    const recMin = b.mode === 'interval' && b.reps && b.recoveryMin
+      ? b.reps * b.recoveryMin : 0
+    const effZone = Math.max(0, Math.min(zoneCount - 1, b.zone - 1))
+    const recZone = Math.max(0, Math.min(zoneCount - 1, (b.recoveryZone ?? 1) - 1))
+    dist[effZone] += effMin
+    if (recMin > 0) dist[recZone] += recMin
+  }
+  const total = dist.reduce((a, b) => a + b, 0)
+  if (total === 0) return dist
+  return dist.map(v => Math.round((v / total) * 100))
+}
+
+function computeHRDistribution(blocks: Block[]): { label: string; pct: number; color: string }[] {
+  const buckets = [
+    { label: '<120', color: '#6b7280', min: 0, max: 120 },
+    { label: '120-140', color: '#4ade80', min: 120, max: 140 },
+    { label: '140-155', color: '#facc15', min: 140, max: 155 },
+    { label: '155-170', color: '#fb923c', min: 155, max: 170 },
+    { label: '170+', color: '#f87171', min: 170, max: 999 },
+  ]
+  const mins = new Array(buckets.length).fill(0)
+  let hasData = false
+  for (const b of blocks) {
+    const hr = parseInt(b.hrAvg)
+    if (!hr || hr <= 0) continue
+    hasData = true
+    const effMin = b.mode === 'interval' && b.reps && b.effortMin ? b.reps * b.effortMin : b.durationMin
+    const idx = buckets.findIndex(bk => hr >= bk.min && hr < bk.max)
+    if (idx >= 0) mins[idx] += effMin
+  }
+  if (!hasData) return []
+  const total = mins.reduce((a, b) => a + b, 0)
+  if (total === 0) return []
+  return buckets.map((bk, i) => ({ label: bk.label, pct: Math.round((mins[i] / total) * 100), color: bk.color })).filter(e => e.pct > 0)
+}
+
 function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
   dayIndex: number; plan: PlanVariant; onClose: () => void
   onAdd: (i: number, s: Session) => void
@@ -3305,6 +3431,18 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
   const [aiLoading, setAiLoading] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
+  const [nutritionOpen, setNutritionOpen] = useState(false)
+  const [nutritionLoading, setNutritionLoading] = useState(false)
+  const [nutritionMarkers, setNutritionMarkers] = useState<Array<{
+    timeMin: number; label: string; glucides: string; proteines: string; detail: string
+  }>>([])
+  const [athleteData, setAthleteData] = useState<{
+    ftp: number | null
+    runThresholdPaceSec: number | null
+    cssSecPer100m: number | null
+    rowThresholdSecPer500m: number | null
+    ctl: number | null
+  } | null>(null)
 
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
@@ -3313,27 +3451,102 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user || cancelled) return
+
+        const [profileRes, actsRes] = await Promise.all([
+          sb.from('profiles').select('ftp_watts,run_threshold_pace,css_pace').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
+          sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
+        ])
+
+        const profile = (profileRes as { data: Record<string, unknown> | null }).data
+        const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
+
+        const ftp = (profile?.ftp_watts as number) ?? null
+
+        const runPaceStr = profile?.run_threshold_pace as string | null
+        let runThresholdPaceSec: number | null = null
+        if (runPaceStr) {
+          const m = String(runPaceStr).match(/(\d+):(\d+)/)
+          if (m) runThresholdPaceSec = parseInt(m[1]) * 60 + parseInt(m[2])
+        }
+
+        const cssStr = profile?.css_pace as string | null
+        let cssSecPer100m: number | null = null
+        if (cssStr) {
+          const m = String(cssStr).match(/(\d+):(\d+)/)
+          if (m) cssSecPer100m = parseInt(m[1]) * 60 + parseInt(m[2])
+        }
+
+        // CTL: EWMA over 56 days
+        const since56d = new Date(Date.now() - 56 * 86400000)
+        const tssPerDay: number[] = []
+        for (let d = 0; d < 56; d++) {
+          const dayStart = new Date(since56d.getTime() + d * 86400000); dayStart.setHours(0,0,0,0)
+          const dayEnd = new Date(dayStart); dayEnd.setHours(23,59,59,999)
+          tssPerDay.push(acts.filter(a => {
+            const t = new Date(a.started_at as string).getTime()
+            return t >= dayStart.getTime() && t <= dayEnd.getTime()
+          }).reduce((s, a) => {
+            if (a.tss && (a.tss as number) > 0) return s + (a.tss as number)
+            const h = ((a.moving_time_s as number) ?? 0) / 3600
+            if (h <= 0) return s
+            const hr = a.average_heartrate as number | null
+            if (hr && hr > 0) return s + Math.round(h * (hr / 180) * (hr / 180) * 100)
+            return s + Math.round(h * 65)
+          }, 0))
+        }
+        let ctl = 0
+        for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
+
+        if (!cancelled) setAthleteData({ ftp, runThresholdPaceSec, cssSecPer100m, rowThresholdSecPer500m: null, ctl: Math.round(ctl) })
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   const accent = SPORT_BORDER[sport]
   const isStrength = sport === 'gym' || sport === 'hyrox'
   const trainTypes = TRAINING_TYPES[sport] ?? []
 
-  // TSS — with fallback if calcTSS signature doesn't match
-  const tss = (() => {
-    try {
-      if (blocks.length > 0) return calcTSS(blocks, sport)
-      return calcTSS([], sport, dur, rpe)
-    } catch {
-      return Math.round((dur / 60) * rpe * rpe * 1.2)
-    }
-  })()
+  // TSS range — block-based with athlete fitness factor
+  const tssRange = computeTSSRange(blocks, sport, dur, rpe, athleteData)
+  const tssDisplay = tssRange.low === 0 && tssRange.high === 0
+    ? '—'
+    : tssRange.low === tssRange.high
+      ? String(tssRange.low)
+      : `${tssRange.low}–${tssRange.high}`
+  const tssLabel = tssRange.high < 50 ? 'Très facile' : tssRange.high < 100 ? 'Modérée' : tssRange.high < 150 ? 'Difficile' : tssRange.high < 200 ? 'Très difficile' : 'Extrême'
 
   // RPE color
   const rpeCol = rpe <= 3 ? '#4ade80' : rpe <= 6 ? '#facc15' : rpe <= 8 ? '#fb923c' : '#f87171'
-  const tssLabel = tss < 50 ? 'Très facile' : tss < 100 ? 'Modérée' : tss < 150 ? 'Difficile' : tss < 200 ? 'Très difficile' : 'Extrême'
 
-  // Zones mock (based on RPE) — will be replaced by real block-based calc later
-  const zones = rpe <= 2 ? [50,40,10,0,0] : rpe <= 4 ? [20,45,25,10,0] : rpe <= 6 ? [10,25,35,25,5] : rpe <= 8 ? [5,15,20,40,20] : [0,5,15,30,50]
-  const zoneTotal = zones.reduce((a, b) => a + b, 0)
+  // Donut derived values (Change 5)
+  const showDonuts = ['run', 'bike', 'swim', 'rowing'].includes(sport) && blocks.length > 0
+  const ZONE_COUNT = sport === 'bike' ? 7 : 5
+  const ZONE_COLORS_7 = ['#6b7280', '#4ade80', '#facc15', '#fb923c', '#f87171', '#c084fc', '#f472b6']
+  const activeZoneColors = sport === 'bike' ? ZONE_COLORS_7 : ZONE_COLORS.slice(0, 5)
+  const activeZoneLabels = sport === 'bike'
+    ? ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7']
+    : ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
+  const zoneDist = computeZoneDistribution(blocks, ZONE_COUNT)
+  const hrDist = computeHRDistribution(blocks)
+
+  useEffect(() => {
+    if (blocks.length === 0) return
+    const totalBlocksMin = Math.round(blocks.reduce((s, b) => {
+      if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin)
+        return s + b.reps * (b.effortMin + b.recoveryMin)
+      return s + b.durationMin
+    }, 0))
+    if (totalBlocksMin > 0) setDur(totalBlocksMin)
+  }, [blocks])
 
   function handleSportChange(s: SportType) {
     setSport(s); setTrainingType(null); setBlocks([]); setExercises([])
@@ -3355,7 +3568,7 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
     })) : blocks
     onAdd(dayIndex, {
       id: '', dayIndex, sport, title: finalTitle + subLabel, time,
-      durationMin: dur || 60, tss: tss || undefined,
+      durationMin: dur || 60, tss: tssRange.high || undefined,
       status: 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
     })
@@ -3516,28 +3729,6 @@ Ajoute toujours échauffement et retour au calme.`,
     display: 'block', marginBottom: 7,
   }
 
-  // Donut SVG arcs
-  const donutArcs = (() => {
-    const cx = 44, cy = 44, rOut = 38, rIn = 25
-    let angle = -Math.PI / 2
-    return zones.map((v, i) => {
-      if (v === 0) return null
-      const pct = v / zoneTotal
-      const sweep = pct * 2 * Math.PI
-      const startA = angle
-      const endA = angle + sweep - 0.04
-      angle += sweep
-      const lg = sweep > Math.PI ? 1 : 0
-      const p = (r: number, a: number) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
-      const os = p(rOut, startA), oe = p(rOut, endA), is = p(rIn, startA), ie = p(rIn, endA)
-      return (
-        <path key={i}
-          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
-          fill={ZONE_COLORS[i]} opacity={0.8}
-        />
-      )
-    })
-  })()
 
   const TSS_SESSION = [
     { range: '0 – 50', label: 'Très facile', desc: 'Footing léger, sortie douce' },
@@ -3583,14 +3774,28 @@ Ajoute toujours échauffement et retour au calme.`,
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>Nouvelle séance</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>PDF</button>
+            <button onClick={() => {
+              const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingType || ''}`
+              const blocksHtml = blocks.map(b => {
+                const durStr = b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin
+                  ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min récup`
+                  : `${b.durationMin}min`
+                return `<tr><td>Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
+              }).join('')
+              const nutritionHtml = nutritionMarkers.length > 0
+                ? `<h3>Stratégie nutritionnelle</h3><table border="1" style="border-collapse:collapse;width:100%"><tr><th>Temps</th><th>Ravitaillement</th><th>Glucides</th></tr>${nutritionMarkers.map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.detail}</td><td>${m.glucides}</td></tr>`).join('')}</table>`
+                : ''
+              const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>body{font-family:sans-serif;padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;margin-bottom:4px}h3{font-size:14px;margin-top:24px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{padding:6px 10px;border:1px solid #ddd;font-size:12px;text-align:left}th{background:#f5f5f5;font-weight:600}.meta{color:#666;font-size:13px;margin-bottom:20px}</style></head><body><h1>${finalTitle}</h1><p class="meta">${SPORT_LABEL[sport]} · ${fmtDurLocal(dur)} · TSS ${tssDisplay}</p><h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>${nutritionHtml}<p style="margin-top:32px;font-size:10px;color:#999">THW Coaching</p></body></html>`
+              const w = window.open('', '_blank')
+              if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
+            }} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>PDF</button>
             <button style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Parcours</button>
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
         </div>
 
         {/* TITRE */}
-        <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0' }}>
+        <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8 }}>
           <input value={title} onChange={e => setTitle(e.target.value)}
             placeholder={`${SPORT_LABEL[sport]} ${trainingType || ''}`}
             style={{
@@ -3607,10 +3812,10 @@ Ajoute toujours échauffement et retour au calme.`,
           display: mobile ? 'flex' : 'grid',
           flexDirection: mobile ? 'column' as const : undefined,
           gridTemplateColumns: mobile ? undefined : '1fr 1fr',
-          gap: mobile ? 14 : 28,
+          gap: mobile ? 14 : 36,
         }}>
           {/* GAUCHE */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* Sport */}
             <div>
               <span style={lbl}>Sport</span>
@@ -3695,7 +3900,7 @@ Ajoute toujours échauffement et retour au calme.`,
           </div>
 
           {/* DROITE */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* RPE */}
             <div>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -3738,37 +3943,105 @@ Ajoute toujours échauffement et retour au calme.`,
               </div>
             </div>
 
-            {/* Donut + TSS */}
-            <div style={{ display: 'flex', gap: mobile ? 12 : 16, alignItems: 'center' }}>
-              <div style={{ flexShrink: 0 }}>
-                <svg width={88} height={88} viewBox="0 0 88 88">
-                  {donutArcs}
-                  <text x={44} y={41} textAnchor="middle" fontSize={8} fill="var(--text-dim)" fontWeight={600}>ZONES</text>
-                  <text x={44} y={53} textAnchor="middle" fontSize={10} fill="var(--text)" fontWeight={700} fontFamily="DM Mono, monospace">{fmtDurLocal(dur)}</text>
-                </svg>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, flex: 1 }}>
-                {zones.map((v, i) => v > 0 && (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: 1, background: ZONE_COLORS[i], flexShrink: 0, display: 'inline-block' }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', flex: 1 }}>Z{i + 1}</span>
-                    <span style={{ fontSize: 9, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{v}%</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ textAlign: 'center' as const, flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', marginBottom: 3 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>TSS</span>
-                  <button onClick={() => setTssInfo(true)} style={{
-                    width: 13, height: 13, borderRadius: '50%', border: '1px solid var(--border)',
-                    background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 7, fontWeight: 700,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                  }}>?</button>
+            {/* Donut + TSS — only for endurance with blocks */}
+            {showDonuts ? (
+              <div style={{ display: 'flex', gap: mobile ? 10 : 16, alignItems: 'center', flexWrap: 'wrap' as const }}>
+                {/* Donut Zones */}
+                <div style={{ flexShrink: 0 }}>
+                  {(() => {
+                    const cx = 44, cy = 44, rOut = 38, rIn = 25
+                    let angle = -Math.PI / 2
+                    const total = zoneDist.reduce((a, b) => a + b, 0) || 1
+                    const arcs = zoneDist.map((v, i) => {
+                      if (v === 0) return null
+                      const pct = v / total
+                      const sweep = pct * 2 * Math.PI
+                      const startA = angle
+                      const endA = angle + sweep - 0.02
+                      angle += sweep
+                      const lg = sweep > Math.PI ? 1 : 0
+                      const p = (r: number, a: number) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
+                      const os = p(rOut, startA), oe = p(rOut, endA), is = p(rIn, startA), ie = p(rIn, endA)
+                      return <path key={i} d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`} fill={activeZoneColors[i]} opacity={0.85} />
+                    })
+                    return (
+                      <svg width={80} height={80} viewBox="0 0 88 88">
+                        {arcs}
+                        <text x={44} y={48} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono, monospace">{fmtDurLocal(dur)}</text>
+                      </svg>
+                    )
+                  })()}
+                  <p style={{ fontSize: 8, color: 'var(--text-dim)', textAlign: 'center' as const, margin: '2px 0 0' }}>Zones</p>
                 </div>
-                <span style={{ fontSize: 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{tss}</span>
-                <p style={{ fontSize: 8, color: 'var(--text-dim)', margin: '3px 0 0' }}>{tssLabel}</p>
+
+                {/* Donut FC */}
+                {hrDist.length > 0 && (
+                  <div style={{ flexShrink: 0 }}>
+                    {(() => {
+                      const cx = 44, cy = 44, rOut = 38, rIn = 25
+                      let angle = -Math.PI / 2
+                      const total = hrDist.reduce((a, b) => a + b.pct, 0) || 1
+                      const arcs = hrDist.map((h, i) => {
+                        const pct = h.pct / total
+                        const sweep = pct * 2 * Math.PI
+                        const startA = angle
+                        const endA = angle + sweep - 0.02
+                        angle += sweep
+                        const lg = sweep > Math.PI ? 1 : 0
+                        const p = (r: number, a: number) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
+                        const os = p(rOut, startA), oe = p(rOut, endA), is = p(rIn, startA), ie = p(rIn, endA)
+                        return <path key={i} d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`} fill={h.color} opacity={0.85} />
+                      })
+                      return (
+                        <svg width={80} height={80} viewBox="0 0 88 88">
+                          {arcs}
+                          <text x={44} y={48} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono, monospace">FC</text>
+                        </svg>
+                      )
+                    })()}
+                    <p style={{ fontSize: 8, color: 'var(--text-dim)', textAlign: 'center' as const, margin: '2px 0 0' }}>Fréq. Card.</p>
+                  </div>
+                )}
+
+                {/* Legend */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, flex: 1, minWidth: 60 }}>
+                  {zoneDist.map((v, i) => v > 0 && (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: 1, background: activeZoneColors[i], flexShrink: 0, display: 'inline-block' }} />
+                      <span style={{ fontSize: 9, color: 'var(--text-dim)', flex: 1 }}>{activeZoneLabels[i]}</span>
+                      <span style={{ fontSize: 9, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{v}%</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* TSS */}
+                <div style={{ textAlign: 'center' as const, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', marginBottom: 3 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>TSS</span>
+                    <button onClick={() => setTssInfo(true)} style={{ width: 13, height: 13, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 7, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
+                  </div>
+                  <span style={{ fontSize: tssDisplay.length > 6 ? 18 : 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{tssDisplay}</span>
+                  <p style={{ fontSize: 8, color: 'var(--text-dim)', margin: '3px 0 0' }}>{tssLabel}</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Fallback: always show TSS */
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ textAlign: 'center' as const }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', marginBottom: 3 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>TSS</span>
+                    <button onClick={() => setTssInfo(true)} style={{ width: 13, height: 13, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 7, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
+                  </div>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{tssDisplay}</span>
+                  <p style={{ fontSize: 8, color: 'var(--text-dim)', margin: '3px 0 0' }}>{tssLabel}</p>
+                </div>
+                {blocks.length === 0 && (
+                  <p style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', flex: 1 }}>
+                    Ajoute des blocs pour voir les zones
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -3805,7 +4078,7 @@ Ajoute toujours échauffement et retour au calme.`,
         )}
 
         {/* DESCRIPTION */}
-        <div style={{ padding: mobile ? '0 16px 14px' : '0 24px 18px' }}>
+        <div style={{ padding: mobile ? '0 16px 24px' : '0 24px 24px' }}>
           <span style={lbl}>Description et objectifs</span>
           <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={mobile ? 3 : 4}
             placeholder="Décris la séance, les objectifs, les sensations recherchées..."
@@ -3818,10 +4091,10 @@ Ajoute toujours échauffement et retour au calme.`,
         </div>
 
         {/* SÉPARATEUR */}
-        <div style={{ margin: mobile ? '0 16px' : '0 24px', height: 1, background: `linear-gradient(90deg, transparent, ${accent}20, transparent)` }} />
+        <div style={{ margin: '12px 24px', height: 1, background: `linear-gradient(90deg, transparent, ${accent}20, transparent)` }} />
 
         {/* CONSTRUCTEUR */}
-        <div style={{ padding: mobile ? '16px' : '20px 24px' }}>
+        <div style={{ padding: mobile ? '28px 16px 20px' : '28px 24px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <span style={lbl}>Construction de la séance</span>
             <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -3869,28 +4142,120 @@ Ajoute toujours échauffement et retour au calme.`,
 
         {/* STRATÉGIE NUTRITIONNELLE */}
         <div style={{ padding: mobile ? '0 16px 14px' : '0 24px 18px' }}>
-          <button style={{
+          <button onClick={() => setNutritionOpen(!nutritionOpen)} style={{
             width: '100%', padding: mobile ? '12px' : '14px', borderRadius: 10,
-            border: '1px solid var(--border)', background: 'var(--bg-card)',
-            color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            border: '1px solid var(--border)', background: nutritionMarkers.length > 0 ? `${accent}08` : 'var(--bg-card)',
+            color: nutritionMarkers.length > 0 ? accent : 'var(--text-dim)',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
             <span style={{ fontSize: 12, color: accent }}>★</span>
             Stratégie nutritionnelle
+            {nutritionMarkers.length > 0 && (
+              <span style={{ fontSize: 10, color: accent, fontFamily: 'DM Mono, monospace' }}>
+                · {nutritionMarkers.length} ravitaillements
+              </span>
+            )}
+            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', transform: nutritionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block' }}>▾</span>
           </button>
+
+          {nutritionOpen && (
+            <div style={{ marginTop: 10, padding: '16px', borderRadius: 12, border: `1px solid ${accent}20`, background: `${accent}05` }}>
+              {nutritionMarkers.length === 0 ? (
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 10px' }}>
+                    Génère une stratégie nutritionnelle adaptée à cette séance.
+                  </p>
+                  <button onClick={async () => {
+                    if (blocks.length === 0) return
+                    setNutritionLoading(true)
+                    try {
+                      const blocksDesc = blocks.map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
+                      const res = await fetch('/api/coach-stream', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          agentId: 'planning',
+                          messages: [{
+                            role: 'user',
+                            content: `Tu es un nutritionniste sportif. Génère une stratégie de ravitaillement pour cette séance de ${SPORT_LABEL[sport]} de ${dur}min.
+Blocs : ${blocksDesc}
+Réponds UNIQUEMENT en JSON (un tableau []). Format :
+[{"timeMin":0,"label":"Avant départ","glucides":"30g","proteines":"0g","detail":"Gel + 200ml boisson isotonique"}]
+Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts > 1h30, pas de solide < 1h.`,
+                          }],
+                          modelId: 'athena',
+                        }),
+                      })
+                      if (!res.ok) throw new Error('Erreur')
+                      const reader = res.body?.getReader()
+                      const decoder = new TextDecoder()
+                      let raw = ''
+                      if (reader) {
+                        while (true) {
+                          const { done, value } = await reader.read()
+                          if (done) break
+                          const chunk = decoder.decode(value, { stream: true })
+                          for (const line of chunk.split('\n')) {
+                            if (line.startsWith('data: ')) {
+                              const p = line.slice(6).trim()
+                              if (p === '[DONE]') continue
+                              try { const d = JSON.parse(p); if (typeof d === 'string') raw += d; else if (d !== null && typeof d === 'object' && typeof (d as Record<string,unknown>).text === 'string') raw += (d as Record<string,unknown>).text } catch { raw += p }
+                            }
+                          }
+                        }
+                      }
+                      const match = raw.match(/\[[\s\S]*\]/)
+                      if (match) setNutritionMarkers(JSON.parse(match[0]) as Array<{ timeMin: number; label: string; glucides: string; proteines: string; detail: string }>)
+                    } catch (e) { console.error('[Nutrition]', e) }
+                    finally { setNutritionLoading(false) }
+                  }} disabled={nutritionLoading || blocks.length === 0} style={{
+                    width: '100%', padding: 11, borderRadius: 9, border: 'none',
+                    background: blocks.length === 0 ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                    color: '#fff', fontSize: 12, fontWeight: 700,
+                    cursor: blocks.length === 0 ? 'not-allowed' : nutritionLoading ? 'wait' : 'pointer',
+                    opacity: blocks.length === 0 ? 0.5 : 1, fontFamily: 'Syne, sans-serif',
+                  }}>
+                    {nutritionLoading ? 'Génération...' : blocks.length === 0 ? 'Crée d\'abord les blocs' : 'Générer la stratégie'}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                    {nutritionMarkers.map((m, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace', minWidth: 40 }}>
+                          {m.timeMin === 0 ? 'Dép.' : `${m.timeMin}'`}
+                        </span>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{m.detail}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>
+                            Glucides {m.glucides}{m.proteines !== '0g' ? ` · Protéines ${m.proteines}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setNutritionMarkers([])} style={{ marginTop: 8, width: '100%', padding: 8, borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>
+                    Régénérer
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* PLAN A/B */}
-        <div style={{ padding: mobile ? '0 16px 14px' : '0 24px 18px' }}>
+        <div style={{ padding: mobile ? '0 16px 12px' : '0 24px 14px' }}>
           <span style={lbl}>Plan</span>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 5 }}>
             {(['A', 'B'] as PlanVariant[]).map(p => (
               <button key={p} onClick={() => setSelPlan(p)} style={{
-                flex: 1, padding: '10px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                padding: '6px 14px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 background: selPlan === p ? (p === 'A' ? 'rgba(0,200,224,0.10)' : 'rgba(167,139,250,0.10)') : 'var(--bg-card)',
                 border: selPlan === p ? `1px solid ${p === 'A' ? '#00c8e0' : '#a78bfa'}` : '1px solid var(--border)',
                 color: selPlan === p ? (p === 'A' ? '#00c8e0' : '#a78bfa') : 'var(--text-dim)',
-              }}>Plan {p} — {p === 'A' ? 'Optimal' : 'Minimal'}</button>
+              }}>Plan {p}</button>
             ))}
           </div>
         </div>
@@ -3898,6 +4263,7 @@ Ajoute toujours échauffement et retour au calme.`,
         {/* ACTIONS */}
         <div style={{
           padding: mobile ? '0 16px 28px' : '0 24px 32px',
+          marginTop: 8,
           display: 'flex', gap: 8,
           flexDirection: mobile ? 'column' as const : 'row' as const,
         }}>

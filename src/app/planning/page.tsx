@@ -3366,80 +3366,148 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
     if (!aiPrompt.trim() || aiLoading) return
     setAiLoading(true)
     try {
+      console.log('[AI] 1. Starting generation, prompt:', aiPrompt, 'sport:', sport)
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          agentId: 'planning',
           messages: [{
             role: 'user',
-            content: `Tu es un coach sportif expert. Génère des blocs d'entraînement pour une séance de ${SPORT_LABEL[sport]}.
+            content: `Tu es un coach sportif expert. Génère des blocs d'entraînement JSON pour une séance de ${SPORT_LABEL[sport]}.
 Description : ${aiPrompt}
-Réponds UNIQUEMENT en JSON (un tableau []). Format par bloc :
-{"mode":"single"|"interval","type":"warmup"|"effort"|"recovery"|"cooldown","durationMin":nombre,"zone":1-5,"value":"watts ou allure","label":"nom","reps":nombre,"effortMin":nombre,"recoveryMin":nombre,"recoveryZone":1-5}
-Ajoute toujours un échauffement et un retour au calme.`
+
+Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]). Format exact de chaque bloc :
+{"mode":"single","type":"warmup","durationMin":15,"zone":2,"value":"","label":"Échauffement"}
+{"mode":"interval","type":"effort","durationMin":40,"zone":4,"value":"260w","label":"20min @260w","reps":3,"effortMin":20,"recoveryMin":10,"recoveryZone":1}
+{"mode":"single","type":"cooldown","durationMin":15,"zone":1,"value":"","label":"Retour au calme"}
+
+Champs obligatoires : mode, type, durationMin, zone (1-5), value, label
+Champs interval : reps, effortMin, recoveryMin, recoveryZone
+Ajoute toujours échauffement et retour au calme.`,
           }],
           modelId: 'athena',
         }),
       })
-      if (!res.ok) throw new Error('Erreur')
+
+      console.log('[AI] 2. Response status:', res.status, res.ok)
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('[AI] Error response:', errText)
+        throw new Error(`HTTP ${res.status}: ${errText}`)
+      }
+
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
       let raw = ''
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
-          for (const line of chunk.split('\n')) {
+          const lines = chunk.split('\n')
+          for (const line of lines) {
+            // SSE format: "event: text\ndata: <JSON-encoded string>\n\n"
+            // The API JSON-stringifies the text value, so data line contains a quoted string.
+            // We only parse data lines and skip event/comment lines entirely.
             if (line.startsWith('data: ')) {
-              const p = line.slice(6)
-              if (p === '[DONE]') continue
-              try { const d = JSON.parse(p); if (d.text) raw += d.text; else if (typeof d === 'string') raw += d } catch { raw += p }
-            } else if (line.trim() && !line.startsWith(':')) raw += line
+              const payload = line.slice(6).trim()
+              if (payload === '[DONE]') continue
+              try {
+                const d: unknown = JSON.parse(payload)
+                if (typeof d === 'string') {
+                  // text event: data is JSON.stringify(block.text) → a plain string
+                  raw += d
+                } else if (d !== null && typeof d === 'object') {
+                  const obj = d as Record<string, unknown>
+                  if (typeof obj.text === 'string') raw += obj.text
+                  else if (obj.delta && typeof (obj.delta as Record<string, unknown>).text === 'string') raw += (obj.delta as Record<string, unknown>).text
+                  // tool_use events are ignored — we only want text output
+                }
+              } catch {
+                // Non-JSON data line: append as-is
+                if (payload !== '[DONE]') raw += payload
+              }
+            }
+            // Intentionally skip event:, comment (:), and empty lines
           }
         }
       }
-      const match = raw.match(/\[[\s\S]*\]/)
-      if (match) {
-        const parsed = JSON.parse(match[0].replace(/'/g, '"'))
-        const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
-          let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
-          let label = typeof b.label === 'string' ? b.label : 'Bloc'
-          const value = String(b.value ?? '')
-          const mode = typeof b.mode === 'string' ? b.mode : 'single'
-          const distMatch = label.match(/(\d+)\s*m/i)
-          const paceMatch = value.match(/(\d+):(\d+)/)
-          if (distMatch && paceMatch && mode === 'interval') {
-            const distM = parseInt(distMatch[1])
-            const paceSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2])
-            const eSec = sport === 'swim' ? (distM / 100) * paceSec : (distM / 1000) * paceSec
-            effortMin = Math.round(eSec / 60 * 100) / 100
-            const lo = Math.round(eSec * 0.97), hi = Math.round(eSec * 1.03)
-            const f = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-            label = `${distM}m — ${f(lo)} à ${f(hi)}`
-          }
-          const repsN = typeof b.reps === 'number' ? b.reps : 1
-          const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
-          const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 10
-          const zone = typeof b.zone === 'number' ? Math.max(1, Math.min(5, b.zone)) : 3
-          return {
-            id: `ai_${Date.now()}_${i}`,
-            mode: mode as 'single' | 'interval',
-            type: (typeof b.type === 'string' ? b.type : 'effort') as Block['type'],
-            durationMin: mode === 'interval' ? Math.round(repsN * (effortMin + recoveryMin) * 100) / 100 : durationMin,
-            zone, value, hrAvg: '', label,
-            reps: mode === 'interval' ? repsN : undefined,
-            effortMin: mode === 'interval' ? effortMin : undefined,
-            recoveryMin: mode === 'interval' ? recoveryMin : undefined,
-            recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
-          }
-        })
-        setBlocks(newBlocks)
-        setBuilderTab('manual')
-        setAiPrompt('')
+
+      console.log('[AI] 3. Raw response length:', raw.length, 'first 300:', raw.slice(0, 300))
+
+      // Find JSON array in the response
+      let jsonStr = ''
+      const arrayMatch = raw.match(/\[[\s\S]*\]/)
+      if (arrayMatch) {
+        jsonStr = arrayMatch[0]
+      } else {
+        const objMatch = raw.match(/\{[\s\S]*\}/)
+        if (objMatch) {
+          try {
+            const obj = JSON.parse(objMatch[0]) as Record<string, unknown>
+            if (Array.isArray(obj.blocks)) jsonStr = JSON.stringify(obj.blocks)
+            else if (Array.isArray(obj.blocs)) jsonStr = JSON.stringify(obj.blocs)
+          } catch { /* continue */ }
+        }
       }
-    } catch (e) { console.error('[AI blocks]', e) }
-    finally { setAiLoading(false) }
+
+      console.log('[AI] 4. JSON match found:', !!jsonStr, jsonStr ? jsonStr.slice(0, 200) : 'none')
+
+      if (!jsonStr) {
+        console.error('[AI] No JSON array found in response, raw:', raw.slice(0, 500))
+        return
+      }
+
+      const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
+      console.log('[AI] 5. Parsed blocks count:', parsed.length)
+
+      const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
+        let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
+        let label = typeof b.label === 'string' ? b.label : 'Bloc'
+        const value = String(b.value ?? '')
+        const mode = typeof b.mode === 'string' ? b.mode : 'single'
+        const distMatch = label.match(/(\d+)\s*m/i)
+        const paceMatch = value.match(/(\d+):(\d+)/)
+        if (distMatch && paceMatch && mode === 'interval') {
+          const distM = parseInt(distMatch[1])
+          const paceSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2])
+          const eSec = sport === 'swim' ? (distM / 100) * paceSec : (distM / 1000) * paceSec
+          effortMin = Math.round(eSec / 60 * 100) / 100
+          const lo = Math.round(eSec * 0.97), hi = Math.round(eSec * 1.03)
+          const f = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+          label = `${distM}m — ${f(lo)} à ${f(hi)}`
+        }
+        const repsN = typeof b.reps === 'number' ? b.reps : 1
+        const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
+        const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 10
+        const zone = typeof b.zone === 'number' ? Math.max(1, Math.min(5, b.zone)) : 3
+        const blockType = typeof b.type === 'string' ? b.type : 'effort'
+        return {
+          id: `ai_${Date.now()}_${i}`,
+          mode: mode as 'single' | 'interval',
+          type: blockType as Block['type'],
+          durationMin: mode === 'interval' ? Math.round(repsN * (effortMin + recoveryMin) * 100) / 100 : durationMin,
+          zone, value, hrAvg: '', label,
+          reps: mode === 'interval' ? repsN : undefined,
+          effortMin: mode === 'interval' ? effortMin : undefined,
+          recoveryMin: mode === 'interval' ? recoveryMin : undefined,
+          recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
+        }
+      })
+
+      console.log('[AI] 6. Blocks set, switching to manual tab, count:', newBlocks.length)
+      setBlocks(newBlocks)
+      setBuilderTab('manual')
+      setAiPrompt('')
+
+    } catch (e) {
+      console.error('[AI blocks] Error:', e instanceof Error ? e.message : String(e))
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const lbl: React.CSSProperties = {

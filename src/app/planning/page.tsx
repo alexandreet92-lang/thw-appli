@@ -3043,8 +3043,28 @@ function TrainingTab() {
       )}
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
-      {addModal!==null && <AddSessionModal dayIndex={addModal.dayIndex} plan={addModal.plan} onClose={()=>setAddModal(null)} onAdd={handleAddSession}/>}
-      {detailModal && <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}><SessionDetailModal session={detailModal} onClose={()=>setDetailModal(null)} onSave={handleSaveSession} onAutoSave={handleAutoSaveSession} onValidate={handleValidate} onDelete={handleDelete}/></div>}
+      {addModal!==null && (
+        <SessionEditor
+          mode="create"
+          dayIndex={addModal.dayIndex}
+          plan={addModal.plan}
+          onClose={()=>setAddModal(null)}
+          onSave={(s)=>{ handleAddSession(addModal.dayIndex, s); setAddModal(null) }}
+        />
+      )}
+      {detailModal && (
+        <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
+          <SessionEditor
+            mode="edit"
+            session={detailModal}
+            onClose={()=>setDetailModal(null)}
+            onSave={handleSaveSession}
+            onDelete={handleDelete}
+            onValidate={handleValidate}
+            onAutoSave={handleAutoSaveSession}
+          />
+        </div>
+      )}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
       {/* ── Controls — desktop (ancienne interface) ── */}
@@ -3429,21 +3449,29 @@ const NUTRITION_TYPES: { id: NutritionItem['type']; label: string; defaultQty: s
   { id: 'autre', label: 'Autre', defaultQty: '', defaultGlu: 0 },
 ]
 
-function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
-  dayIndex: number; plan: PlanVariant; onClose: () => void
-  onAdd: (i: number, s: Session) => void
+function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave }: {
+  mode: 'create' | 'edit'
+  session?: Session
+  dayIndex?: number
+  plan?: PlanVariant
+  onClose: () => void
+  onSave: (s: Session) => void
+  onDelete?: (id: string) => void
+  onValidate?: (s: Session) => void
+  onAutoSave?: (s: Session) => void
 }) {
-  const [sport, setSport] = useState<SportType>('run')
+  const isEdit = mode === 'edit'
+  const [sport, setSport] = useState<SportType>(session?.sport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
   const [trainingType, setTrainingType] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(session?.title ?? '')
   const [date, setDate] = useState('')
-  const [time, setTime] = useState('09:00')
-  const [dur, setDur] = useState(60)
-  const [rpe, setRpe] = useState(5)
-  const [desc, setDesc] = useState('')
-  const [selPlan, setSelPlan] = useState<PlanVariant>(plan)
-  const [blocks, setBlocks] = useState<Block[]>([])
+  const [time, setTime] = useState(session?.time ?? '09:00')
+  const [dur, setDur] = useState(session?.durationMin ?? 60)
+  const [rpe, setRpe] = useState(session?.rpe ?? 5)
+  const [desc, setDesc] = useState(session?.notes ?? '')
+  const [selPlan, setSelPlan] = useState<PlanVariant>(session?.planVariant ?? plan ?? 'A')
+  const [blocks, setBlocks] = useState<Block[]>(session?.blocks ?? [])
   const [exercises, setExercises] = useState<ExerciseItem[]>([])
   const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>('manual')
   const [aiPrompt, setAiPrompt] = useState('')
@@ -3565,6 +3593,21 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
     if (totalBlocksMin > 0) setDur(totalBlocksMin)
   }, [blocks])
 
+  // Auto-save in edit mode (debounced 500ms)
+  useEffect(() => {
+    if (!isEdit || !session) return
+    const timeout = setTimeout(() => {
+      if (onAutoSave) {
+        onAutoSave({
+          ...session,
+          sport, title, time, durationMin: dur, rpe, blocks, notes: desc,
+          tss: computeTSSRange(blocks, sport, dur, rpe, athleteData).high || session.tss,
+        })
+      }
+    }, 500)
+    return () => clearTimeout(timeout)
+  }, [sport, title, time, dur, rpe, blocks, desc]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleSportChange(s: SportType) {
     setSport(s); setTrainingType(null); setBlocks([]); setExercises([])
   }
@@ -3583,12 +3626,16 @@ function AddSessionModal({ dayIndex, plan, onClose, onAdd }: {
       label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
       reps: e.sets,
     })) : blocks
-    onAdd(dayIndex, {
-      id: '', dayIndex, sport, title: finalTitle + subLabel, time,
+    const savedSession: Session = {
+      ...(session ?? {}),
+      id: session?.id ?? '',
+      dayIndex: dayIndex ?? session?.dayIndex ?? 0,
+      sport, title: finalTitle + subLabel, time,
       durationMin: dur || 60, tss: tssRange.high || undefined,
-      status: 'planned', notes: desc || undefined,
+      status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
-    })
+    }
+    onSave(savedSession)
     onClose()
   }
 
@@ -3788,7 +3835,7 @@ Ajoute toujours échauffement et retour au calme.`,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>Nouvelle séance</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => {
@@ -4364,20 +4411,61 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
         {/* ACTIONS */}
         <div style={{
           padding: mobile ? '0 16px 28px' : '0 24px 32px',
-          display: 'flex', gap: 8, alignItems: 'center',
+          display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const,
         }}>
+          {/* Delete button — edit mode only */}
+          {isEdit && onDelete && session && (
+            <button onClick={() => { onDelete(session.id); onClose() }} style={{
+              padding: '10px 16px', borderRadius: 8,
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)',
+              color: '#ef4444', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+            }}>Supprimer</button>
+          )}
+
+          {/* Reset to AI original — edit mode only, when originalContent exists */}
+          {isEdit && session?.originalContent && (
+            <button onClick={() => {
+              const o = session.originalContent as Record<string, unknown>
+              if (typeof o.titre === 'string') setTitle(o.titre)
+              if (typeof o.duration_min === 'number') setDur(o.duration_min)
+              if (typeof o.notes === 'string') setDesc(o.notes)
+              if (typeof o.rpe === 'number') setRpe(o.rpe)
+            }} style={{
+              padding: '10px 14px', borderRadius: 8,
+              background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.20)',
+              color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+            }}>Réinitialiser IA</button>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          {/* Validate as done — edit mode, session not done */}
+          {isEdit && session?.status !== 'done' && onValidate && session && (
+            <button onClick={() => {
+              onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })
+            }} style={{
+              padding: '10px 16px', borderRadius: 8,
+              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.20)',
+              color: '#22c55e', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+            }}>Valider</button>
+          )}
+
+          {/* Close / Cancel */}
           <button onClick={onClose} style={{
-            padding: '10px 20px', borderRadius: 8,
+            padding: '10px 16px', borderRadius: 8,
             background: 'var(--bg-card)', border: '1px solid var(--border)',
             color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-          }}>Annuler</button>
-          <div style={{ flex: 1 }} />
-          <button onClick={handleSubmit} style={{
-            padding: '10px 28px', borderRadius: 8, border: 'none',
-            background: accent,
-            color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'Syne, sans-serif',
-          }}>Ajouter la séance</button>
+          }}>{isEdit ? 'Fermer' : 'Annuler'}</button>
+
+          {/* Add — create mode only */}
+          {!isEdit && (
+            <button onClick={handleSubmit} style={{
+              padding: '10px 28px', borderRadius: 8, border: 'none',
+              background: accent,
+              color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'Syne, sans-serif',
+            }}>Ajouter la séance</button>
+          )}
         </div>
 
       </div>
@@ -4385,15 +4473,6 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
   )
 }
 
-
-// ── Session Detail — page unique fullscreen ──────────────────────
-// Remplace l'ancien modal à 3 onglets (Graphique / Modifier / Valider)
-// par une page unique scrollable avec :
-//   Header : titre + métadonnées + jauge RPE éditable
-//   Chart  : profil d'intensité visuel (clic bloc → expand inline)
-//   Blocs  : liste inline-editable, ajout/suppression
-//   Validation : 2 boutons (manuel / via Strava-Training)
-//   Footer : Supprimer + Fermer + Enregistrer
 
 function rpeColor(level: number): string {
   if (level <= 3) return '#22c55e'
@@ -4566,765 +4645,6 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function SessionDetailModal({ session, onClose, onSave, onAutoSave, onValidate, onDelete }:{ session:Session; onClose:()=>void; onSave:(s:Session)=>void; onAutoSave:(s:Session)=>void; onValidate:(s:Session)=>void; onDelete:(id:string)=>void }) {
-  const router = useRouter()
-  const [form, setForm] = useState<Session>({...session, blocks:[...session.blocks]})
-  const [expandedBlockId, setExpandedBlockId] = useState<string|null>(null)
-  const [validPanel, setValidPanel] = useState<'form'|'compare'|null>(
-    session.status === 'done' && session.vDuration ? 'compare' : null
-  )
-  const [vDraft, setVDraft] = useState<{
-    vDurationMin:number; vRpe:number|null; vHrAvg:string; vDistance:string
-    vElevation:string; vTempMax:string; vHumidity:string; vAltMax:string
-    vSplits:string; vNotes:string
-    vWattsAvg:string; vWattsWeighted:string; vCadenceAvg:string; vCadenceMax:string
-  }>({
-    vDurationMin: session.vDuration ? (parseInt(session.vDuration)||0) : 0,
-    vRpe: session.vRpe ?? null,
-    vHrAvg: session.vHrAvg ?? '',
-    vDistance: session.vDistance ?? '',
-    vElevation: session.vElevation ?? '',
-    vTempMax: session.vTempMax ?? '',
-    vHumidity: session.vHumidity ?? '',
-    vAltMax: session.vAltMax ?? '',
-    vSplits: (session.vSplits ?? []).join('\n'),
-    vNotes: session.vNotes ?? '',
-    vWattsAvg: session.vWattsAvg ?? '',
-    vWattsWeighted: session.vWattsWeighted ?? '',
-    vCadenceAvg: session.vCadenceAvg ?? '',
-    vCadenceMax: session.vCadenceMax ?? '',
-  })
-
-  function patchForm<K extends keyof Session>(key:K, value:Session[K]) {
-    setForm(f => ({ ...f, [key]:value }))
-  }
-  function patchBlock(id:string, patch:Partial<Block>) {
-    setForm(f => {
-      const blocks = f.blocks.map(b => b.id === id ? { ...b, ...patch } : b)
-      return { ...f, blocks }
-    })
-    // auto-save with merged patch; use latest form snapshot
-    const blocks = form.blocks.map(b => b.id === id ? { ...b, ...patch } : b)
-    autoSaveWith({ blocks })
-  }
-  function deleteBlock(id:string) {
-    const blocks = form.blocks.filter(b => b.id !== id)
-    setForm(f => ({ ...f, blocks }))
-    if (expandedBlockId === id) setExpandedBlockId(null)
-    autoSaveWith({ blocks })
-  }
-  function addBlock() {
-    const newBlock: Block = {
-      id: 'b_' + Math.random().toString(36).slice(2, 10),
-      mode: 'single', type: 'effort',
-      durationMin: 10, zone: 2, value: '', hrAvg: '', label: 'Nouveau bloc',
-    }
-    const blocks = [...form.blocks, newBlock]
-    setForm(f => ({ ...f, blocks }))
-    setExpandedBlockId(newBlock.id)
-    autoSaveWith({ blocks })
-  }
-  // Auto-save a patch of fields immediately, without closing the modal.
-  // Accepts a partial Session so callers don't rely on stale closure state.
-  // If patch includes tss, that value is used as-is (manual override).
-  // Otherwise TSS is re-derived from blocks/duration/rpe.
-  function autoSaveWith(patch: Partial<Session>) {
-    const updated = { ...form, ...patch }
-    const tss = ('tss' in patch && patch.tss !== undefined)
-      ? patch.tss
-      : calcTSS(updated.blocks, updated.sport ?? session.sport, updated.durationMin, updated.rpe)
-    onAutoSave({ ...updated, tss })
-  }
-  function handleValidateStrava() {
-    onClose()
-    router.push('/activities')
-  }
-  function handleValidateManual() { setValidPanel('form') }
-  function submitValidation() {
-    const d = vDraft
-    const dist = parseFloat(d.vDistance), dur = d.vDurationMin
-    const vSpeed = dist && dur ? `${(dist/(dur/60)).toFixed(1)} km/h` : undefined
-    const vPace = dist && dur && ['run','hyrox'].includes(session.sport)
-      ? (()=>{ const p=dur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
-      : undefined
-    const validated: Session = {
-      ...form, status:'done',
-      vDuration: dur ? String(dur) : undefined,
-      vRpe: d.vRpe ?? undefined,
-      vHrAvg: d.vHrAvg||undefined,
-      vDistance: d.vDistance||undefined,
-      vElevation: d.vElevation||undefined,
-      vSpeed, vPace,
-      vTempMax: d.vTempMax||undefined,
-      vHumidity: d.vHumidity||undefined,
-      vAltMax: d.vAltMax||undefined,
-      vSplits: d.vSplits.trim() ? d.vSplits.trim().split('\n').filter(Boolean) : undefined,
-      vNotes: d.vNotes||undefined,
-      vWattsAvg: d.vWattsAvg||undefined,
-      vWattsWeighted: d.vWattsWeighted||undefined,
-      vCadenceAvg: d.vCadenceAvg||undefined,
-      vCadenceMax: d.vCadenceMax||undefined,
-    }
-    onValidate(validated)
-    setValidPanel('compare')
-  }
-  return (
-    <div onClick={e=>e.stopPropagation()} style={{
-      background:'var(--bg-card)',
-      borderRadius:18,
-      border:'1px solid var(--border)',
-      maxWidth:880, width:'100%', maxHeight:'94vh',
-      display:'flex', flexDirection:'column' as const,
-      boxShadow:'0 24px 60px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.08)',
-      overflow:'hidden' as const,
-    }}>
-      {/* ── HEADER (sticky top) ─────────────────────────────── */}
-      <header style={{ padding:'22px 28px 18px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-        <div style={{ display:'flex',alignItems:'flex-start',gap:14 }}>
-          <div style={{
-            width:48,height:48,borderRadius:12,
-            background:SPORT_BG[session.sport],
-            border:`1px solid ${SPORT_BORDER[session.sport]}55`,
-            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
-          }}>
-            <SportBadge sport={form.sport} size="sm"/>
-          </div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <input
-              value={form.title}
-              onChange={e=>patchForm('title', e.target.value)}
-              onBlur={e=>autoSaveWith({ title: e.target.value })}
-              placeholder="Titre de la séance"
-              style={{
-                fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:800,
-                color:'var(--text)',background:'transparent',border:'none',outline:'none' as const,
-                width:'100%',padding:0,letterSpacing:'-0.01em',lineHeight:1.2,
-              }}
-            />
-            <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:8,alignItems:'center' }}>
-              {/* Sport select */}
-              <select
-                value={form.sport}
-                onChange={e => {
-                  const s = e.target.value as SportType
-                  patchForm('sport', s)
-                  autoSaveWith({ sport: s })
-                }}
-                style={{
-                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
-                  color: SPORT_BORDER[form.sport] ?? SPORT_BORDER[session.sport],
-                  padding:'2px 8px',borderRadius:99,
-                  background: SPORT_BG[form.sport] ?? SPORT_BG[session.sport],
-                  border:`1px solid ${(SPORT_BORDER[form.sport] ?? SPORT_BORDER[session.sport])}33`,
-                  outline:'none' as const, cursor:'pointer',
-                }}
-              >
-                {(Object.keys(SPORT_LABEL) as SportType[]).map(s => (
-                  <option key={s} value={s}>{SPORT_LABEL[s]}</option>
-                ))}
-              </select>
-              {/* Time input */}
-              <input
-                value={form.time}
-                onChange={e=>patchForm('time', e.target.value)}
-                onBlur={e=>autoSaveWith({ time: e.target.value })}
-                placeholder="07:00"
-                style={{
-                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
-                  color:'var(--text-mid)',
-                  padding:'2px 8px',borderRadius:99,
-                  background:'var(--bg-card2)',
-                  border:'1px solid var(--border)',
-                  width:60, textAlign:'center' as const, outline:'none' as const,
-                }}
-              />
-              {/* Duration input (minutes) */}
-              <input
-                type="number"
-                min={1}
-                value={form.durationMin}
-                onChange={e=>patchForm('durationMin', Math.max(1,parseInt(e.target.value)||1))}
-                onBlur={e=>autoSaveWith({ durationMin: Math.max(1,parseInt(e.target.value)||1) })}
-                style={{
-                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,
-                  color:'var(--text-mid)',
-                  padding:'2px 8px',borderRadius:99,
-                  background:'var(--bg-card2)',border:'1px solid var(--border)',
-                  width:58, textAlign:'center' as const, outline:'none' as const,
-                }}
-                title="Durée en minutes"
-              />
-              <span style={{ fontSize:10,color:'var(--text-dim)',marginLeft:-4 }}>min</span>
-              {/* TSS input */}
-              <input
-                type="number"
-                min={0}
-                value={form.tss ?? 0}
-                onChange={e=>patchForm('tss', Math.max(0,parseInt(e.target.value)||0))}
-                onBlur={e=>autoSaveWith({ tss: Math.max(0,parseInt(e.target.value)||0) })}
-                style={{
-                  fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:600,
-                  color:'#8b5cf6',
-                  padding:'2px 8px',borderRadius:99,
-                  background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.22)',
-                  width:62, textAlign:'center' as const, outline:'none' as const,
-                }}
-                title="TSS"
-              />
-              <span style={{ fontSize:10,color:'var(--text-dim)',marginLeft:-4 }}>TSS</span>
-              {form.status === 'done' && (
-                <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase' as const,color:'#22c55e',padding:'2px 8px',borderRadius:99,background:'rgba(34,197,94,0.10)',border:'1px solid rgba(34,197,94,0.25)' }}>
-                  ✓ Validée
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              background:'transparent',border:'1px solid var(--border)',borderRadius:9,
-              width:32,height:32,padding:0,cursor:'pointer',
-              color:'var(--text-mid)',fontSize:18,lineHeight:1,flexShrink:0,
-              display:'flex',alignItems:'center',justifyContent:'center',
-            }}
-          >×</button>
-        </div>
-
-        {/* RPE GAUGE */}
-        <div style={{ marginTop:14, background:'var(--bg-card2)',borderRadius:11,padding:'10px 14px',border:'1px solid var(--border)' }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>
-              RPE — Perception de l'effort
-            </span>
-            <span style={{ fontSize:13,fontWeight:700,color: form.rpe != null ? rpeColor(form.rpe) : 'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>
-              {form.rpe != null ? `${form.rpe}/10` : '—'}
-            </span>
-          </div>
-          <div style={{ display:'flex',gap:3,alignItems:'flex-end' }}>
-            {Array.from({length:11},(_,i)=>i).map(i => {
-              const active = form.rpe === i
-              const inRange = form.rpe != null && i <= form.rpe
-              return (
-                <button
-                  key={i}
-                  onClick={()=>{ patchForm('rpe', i); autoSaveWith({ rpe: i }) }}
-                  style={{
-                    flex:1, height: active ? 30 : 20, minWidth:18,
-                    borderRadius:5, border:'none', cursor:'pointer',
-                    background: inRange ? rpeColor(i) : 'var(--border)',
-                    color: inRange ? '#fff' : 'var(--text-dim)',
-                    fontSize: active ? 11 : 9, fontWeight:700,fontFamily:'DM Mono,monospace',
-                    transition:'height 0.14s, background 0.14s',
-                  }}
-                >
-                  {i}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </header>
-
-      {/* ── CONTENT (scroll) ───────────────────────────────── */}
-      <main style={{ flex:1, overflowY:'auto' as const, padding:'22px 28px' }}>
-
-        {/* Profil d'intensité (endurance only) */}
-        {session.sport !== 'gym' && form.blocks.length > 0 && (
-          <section style={{ marginBottom:24 }}>
-            <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 10px' }}>
-              Profil d'intensité
-            </p>
-            <div style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:12,padding:'16px 14px 12px' }}>
-              <svg width="100%" height={120} viewBox="0 0 100 105" preserveAspectRatio="none" style={{ overflow:'visible' as const, display:'block' }}>
-                {(() => {
-                  // Parse la valeur d'un bloc en "intensité normalisable" :
-                  // - vélo/rowing : watts (plus haut = plus fort)
-                  // - run/hyrox/swim : 10000/secondes-par-km (plus vite = plus fort)
-                  const parseRaw = (val:string): number|null => {
-                    if (!val?.trim()) return null
-                    const sp = session.sport
-                    if (sp==='bike'||sp==='rowing') { const w=parseFloat(val); return isNaN(w)?null:w }
-                    const m = val.match(/(\d+):(\d+)/); if (!m) return null
-                    const secs = parseInt(m[1])*60+parseInt(m[2]); return secs>0 ? 10000/secs : null
-                  }
-                  type SBar = { blockId:string; isRecovery:boolean; min:number; zone:number; rawVal:number|null }
-                  const bars:SBar[] = []
-                  for (const b of form.blocks) {
-                    const rv = parseRaw(b.value)
-                    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
-                      for (let i=0; i<b.reps; i++) {
-                        bars.push({ blockId:b.id, isRecovery:false, min:b.effortMin,   zone:b.zone, rawVal:rv })
-                        bars.push({ blockId:b.id, isRecovery:true,  min:b.recoveryMin, zone:b.recoveryZone??1, rawVal:null })
-                      }
-                    } else {
-                      bars.push({ blockId:b.id, isRecovery:false, min:b.durationMin, zone:b.zone, rawVal:rv })
-                    }
-                  }
-                  // Normalisation : min→14 max→88 sur les blocs d'effort avec valeur
-                  const effortVals = bars.filter(b=>!b.isRecovery&&b.rawVal!=null).map(b=>b.rawVal!)
-                  const maxRaw = effortVals.length ? Math.max(...effortVals) : 0
-                  const minRaw = effortVals.length ? Math.min(...effortVals) : 0
-                  const rawRange = maxRaw>minRaw ? maxRaw-minRaw : null
-                  const total = bars.reduce((a,bar)=>a+bar.min, 0) || 1
-                  let xCursor = 0
-                  return bars.map((bar, i) => {
-                    const w = (bar.min / total) * 100
-                    const h = bar.isRecovery ? 10
-                      : bar.rawVal!=null && rawRange!=null
-                        ? Math.round(14 + ((bar.rawVal-minRaw)/rawRange)*74)
-                        : bar.rawVal!=null ? 52  // valeur unique → hauteur médiane
-                        : (ZONE_HEIGHTS_PCT[bar.zone] ?? 32)
-                    const y = 100 - h
-                    const fill = bar.isRecovery ? '#6b7280' : (ZONE_COLORS[bar.zone - 1] ?? '#9ca3af')
-                    const opacity = bar.isRecovery ? 0.35 : 0.88
-                    const x = xCursor
-                    xCursor += w
-                    const gap = w > 1 ? 0.5 : 0
-                    const valLabel = bar.rawVal!=null
-                      ? (session.sport==='bike'||session.sport==='rowing') ? `${Math.round(bar.rawVal)}w` : (()=>{ const secs=Math.round(10000/bar.rawVal!); return `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}/km` })()
-                      : ''
-                    return (
-                      <rect key={i}
-                        x={x} y={y} width={Math.max(w - gap, 0.3)} height={h} rx={1.5}
-                        fill={fill} opacity={opacity}
-                        onClick={()=>setExpandedBlockId(bar.blockId)}
-                        style={{ cursor:'pointer' }}
-                      >
-                        <title>{`Z${bar.zone} · ${formatHM(bar.min)}${valLabel?' · '+valLabel:''}${bar.isRecovery?' (récup)':''}`}</title>
-                      </rect>
-                    )
-                  })
-                })()}
-                <line x1={0} y1={100} x2={100} y2={100} stroke="var(--border)" strokeWidth={0.4}/>
-              </svg>
-              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8 }}>
-                <div style={{ display:'flex',gap:6 }}>
-                  {['Z1','Z2','Z3','Z4','Z5'].map((z,i)=>(
-                    <span key={z} style={{ fontSize:9,fontWeight:700,color:ZONE_COLORS[i],display:'flex',alignItems:'center',gap:3 }}>
-                      <span style={{ width:7,height:7,borderRadius:2,background:ZONE_COLORS[i],display:'inline-block' }}/>
-                      {z}
-                    </span>
-                  ))}
-                </div>
-                <span style={{ fontSize:9,color:'var(--text-dim)' }}>Clic pour modifier</span>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Blocs (liste éditable inline) */}
-        <section style={{ marginBottom:24 }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
-            <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:0 }}>
-              {session.sport === 'gym' ? 'Exercices' : 'Blocs d\'effort'}
-            </p>
-            <button onClick={addBlock} style={{
-              padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',
-              background:'var(--bg-card2)',color:'var(--text-mid)',
-              fontSize:11,cursor:'pointer',fontWeight:600,
-            }}>+ Ajouter</button>
-          </div>
-          {form.blocks.length === 0 ? (
-            <p style={{ fontSize:12,color:'var(--text-dim)',padding:'14px 0',textAlign:'center' as const }}>
-              Aucun bloc — clique "+ Ajouter" pour en créer un.
-            </p>
-          ) : (
-            <div style={{ display:'flex',flexDirection:'column' as const,gap:6 }}>
-              {form.blocks.map(b => (
-                <BlockRow key={b.id}
-                  block={b} sport={session.sport}
-                  isExpanded={expandedBlockId === b.id}
-                  onToggle={()=>setExpandedBlockId(expandedBlockId === b.id ? null : b.id)}
-                  onPatch={p=>patchBlock(b.id, p)}
-                  onDelete={()=>deleteBlock(b.id)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Notes */}
-        <section style={{ marginBottom:24 }}>
-          <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 8px' }}>
-            Notes du coach
-          </p>
-          <textarea
-            value={form.notes ?? ''}
-            onChange={e=>patchForm('notes', e.target.value)}
-            onBlur={e=>autoSaveWith({ notes: e.target.value })}
-            placeholder="Conseils, sensations attendues, points d'attention…"
-            rows={3}
-            style={{
-              width:'100%',padding:'10px 12px',borderRadius:9,
-              border:'1px solid var(--border)',background:'var(--bg-card2)',
-              color:'var(--text)',fontSize:12,outline:'none' as const,resize:'vertical' as const,
-              fontFamily:'DM Sans, sans-serif', lineHeight:1.5,
-            }}
-          />
-        </section>
-
-        {/* Validation */}
-        <section style={{ marginBottom:8 }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
-            <p style={{ fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:0 }}>
-              {validPanel === 'form' ? 'Saisir les réels' : validPanel === 'compare' ? 'Prévu vs Réel' : 'Validation'}
-            </p>
-            {validPanel && (
-              <button onClick={()=>setValidPanel(null)} style={{ background:'none',border:'none',cursor:'pointer',fontSize:11,color:'var(--text-dim)',padding:'2px 8px',borderRadius:6 }}>
-                ← Retour
-              </button>
-            )}
-          </div>
-
-          {validPanel === null && (
-            <div style={{ display:'flex',gap:10,flexWrap:'wrap' as const }}>
-              <button onClick={handleValidateManual} style={{
-                flex:'1 1 200px',padding:'12px 14px',borderRadius:10,
-                border:'1px solid var(--border)',background:'var(--bg-card2)',
-                color:'var(--text)',fontSize:12,fontWeight:600,cursor:'pointer',
-                fontFamily:'DM Sans,sans-serif',textAlign:'left' as const,
-              }}>
-                <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
-                  <span style={{ fontSize:14 }}>✏</span>
-                  <span>Valider manuellement</span>
-                </div>
-                <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontWeight:400,lineHeight:1.4 }}>
-                  Saisir durée réelle, RPE, FC, notes
-                </p>
-              </button>
-              <button onClick={handleValidateStrava} style={{
-                flex:'1 1 200px',padding:'12px 14px',borderRadius:10,
-                border:'1px solid #fc4c02',background:'rgba(252,76,2,0.06)',
-                color:'#fc4c02',fontSize:12,fontWeight:600,cursor:'pointer',
-                fontFamily:'DM Sans,sans-serif',textAlign:'left' as const,
-              }}>
-                <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
-                  <span style={{ fontSize:14 }}>↗</span>
-                  <span>Valider via Strava / Training</span>
-                </div>
-                <p style={{ fontSize:10,color:'#fc4c02aa',margin:0,fontWeight:400,lineHeight:1.4 }}>
-                  Importer l'activité depuis la page Training
-                </p>
-              </button>
-            </div>
-          )}
-
-          {validPanel === 'form' && (()=>{
-            const inp = { width:'100%',padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const }
-            const ls  = { fontSize:10,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase' as const,color:'var(--text-dim)',display:'block',marginBottom:4 }
-            const calc= { padding:'6px 10px',borderRadius:8,border:'1px solid rgba(0,200,224,0.25)',background:'rgba(0,200,224,0.06)',fontSize:11,fontFamily:'DM Mono,monospace',color:'#00c8e0',minHeight:32,display:'flex',alignItems:'center' as const }
-            const grp = { border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',background:'rgba(0,0,0,0.08)' }
-            const gl  = { fontSize:9,fontWeight:800,letterSpacing:'0.1em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 10px' }
-            const gr  = { display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(116px,1fr))',gap:8 }
-            const dist= parseFloat(vDraft.vDistance), dur = vDraft.vDurationMin
-            const sp  = session.sport
-            return (
-              <div style={{ display:'flex',flexDirection:'column' as const,gap:10 }}>
-
-                {/* ① Effort de base */}
-                <div style={grp}>
-                  <p style={gl}>① Effort de base</p>
-                  <div style={gr}>
-                    <div>
-                      <label style={ls}>Durée (min)</label>
-                      <input type="number" min={0} max={600} value={vDraft.vDurationMin||''} onChange={e=>setVDraft(d=>({...d,vDurationMin:parseInt(e.target.value)||0}))} placeholder={String(session.durationMin)} style={inp}/>
-                      {vDraft.vDurationMin>0 && <span style={{ fontSize:10,color:'var(--text-dim)',marginTop:2,display:'block' }}>{formatHM(vDraft.vDurationMin)}</span>}
-                    </div>
-                    <div>
-                      <label style={ls}>FC moy (bpm)</label>
-                      <input type="number" min={40} max={220} value={vDraft.vHrAvg} onChange={e=>setVDraft(d=>({...d,vHrAvg:e.target.value}))} placeholder="155" style={inp}/>
-                    </div>
-                    <div>
-                      <label style={ls}>Distance (km)</label>
-                      <input type="number" min={0} step={0.01} value={vDraft.vDistance} onChange={e=>setVDraft(d=>({...d,vDistance:e.target.value}))} placeholder="12.5" style={inp}/>
-                    </div>
-                    <div>
-                      <label style={ls}>Dénivelé (m)</label>
-                      <input type="number" min={0} value={vDraft.vElevation} onChange={e=>setVDraft(d=>({...d,vElevation:e.target.value}))} placeholder="450" style={inp}/>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ② Allure / Vitesse */}
-                {sp !== 'gym' && (
-                  <div style={grp}>
-                    <p style={gl}>② Allure / Vitesse</p>
-                    {/* Course / Hyrox → allure /km calculée auto */}
-                    {(sp==='run'||sp==='hyrox') && (
-                      <div>
-                        <label style={ls}>Allure moy — auto (min/km)</label>
-                        <div style={calc}>
-                          {dist>0&&dur>0
-                            ? (()=>{ const p=dur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
-                            : <span style={{ color:'var(--text-dim)',fontSize:10 }}>Saisir durée + distance</span>}
-                        </div>
-                      </div>
-                    )}
-                    {/* Vélo / Rowing → vitesse auto + watts manuels */}
-                    {(sp==='bike'||sp==='rowing') && (
-                      <div style={gr}>
-                        <div>
-                          <label style={ls}>Vitesse — auto (km/h)</label>
-                          <div style={calc}>
-                            {dist>0&&dur>0
-                              ? `${(dist/(dur/60)).toFixed(1)} km/h`
-                              : <span style={{ color:'var(--text-dim)',fontSize:10 }}>...</span>}
-                          </div>
-                        </div>
-                        <div>
-                          <label style={ls}>Watts moyens</label>
-                          <input type="number" min={0} max={2000} value={vDraft.vWattsAvg} onChange={e=>setVDraft(d=>({...d,vWattsAvg:e.target.value}))} placeholder="230" style={inp}/>
-                        </div>
-                        <div>
-                          <label style={ls}>Watts pondérés</label>
-                          <input type="number" min={0} max={2000} value={vDraft.vWattsWeighted} onChange={e=>setVDraft(d=>({...d,vWattsWeighted:e.target.value}))} placeholder="240" style={inp}/>
-                        </div>
-                      </div>
-                    )}
-                    {/* Natation → allure /100m calculée auto */}
-                    {sp==='swim' && (
-                      <div>
-                        <label style={ls}>Allure — auto (min/100m)</label>
-                        <div style={calc}>
-                          {dist>0&&dur>0
-                            ? (()=>{ const p=dur/(dist*10); const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /100m` })()
-                            : <span style={{ color:'var(--text-dim)',fontSize:10 }}>Saisir durée + distance</span>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ③ Métriques avancées */}
-                <div style={grp}>
-                  <p style={gl}>③ Métriques avancées</p>
-                  <div style={gr}>
-                    <div>
-                      <label style={ls}>Cadence moy (rpm)</label>
-                      <input type="number" min={0} max={300} value={vDraft.vCadenceAvg} onChange={e=>setVDraft(d=>({...d,vCadenceAvg:e.target.value}))} placeholder="85" style={inp}/>
-                    </div>
-                    <div>
-                      <label style={ls}>Cadence max (rpm)</label>
-                      <input type="number" min={0} max={300} value={vDraft.vCadenceMax} onChange={e=>setVDraft(d=>({...d,vCadenceMax:e.target.value}))} placeholder="95" style={inp}/>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ④ Conditions */}
-                <div style={grp}>
-                  <p style={gl}>④ Conditions</p>
-                  <div style={gr}>
-                    <div>
-                      <label style={ls}>Temp. max (°C)</label>
-                      <input type="number" min={-20} max={55} value={vDraft.vTempMax} onChange={e=>setVDraft(d=>({...d,vTempMax:e.target.value}))} placeholder="24" style={inp}/>
-                    </div>
-                    <div>
-                      <label style={ls}>Humidité (%)</label>
-                      <input type="number" min={0} max={100} value={vDraft.vHumidity} onChange={e=>setVDraft(d=>({...d,vHumidity:e.target.value}))} placeholder="65" style={inp}/>
-                    </div>
-                    <div>
-                      <label style={ls}>Altitude max (m)</label>
-                      <input type="number" min={0} value={vDraft.vAltMax} onChange={e=>setVDraft(d=>({...d,vAltMax:e.target.value}))} placeholder="1250" style={inp}/>
-                    </div>
-                  </div>
-                </div>
-
-                {/* RPE réel */}
-                <div style={{ background:'rgba(0,0,0,0.08)',borderRadius:10,padding:'10px 12px',border:'1px solid var(--border)' }}>
-                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-                    <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>RPE réel</span>
-                    <span style={{ fontSize:13,fontWeight:700,color:vDraft.vRpe!=null?rpeColor(vDraft.vRpe):'var(--text-dim)',fontFamily:'DM Mono,monospace' }}>
-                      {vDraft.vRpe!=null?`${vDraft.vRpe}/10`:'—'}
-                    </span>
-                  </div>
-                  <div style={{ display:'flex',gap:3,alignItems:'flex-end' }}>
-                    {Array.from({length:11},(_,i)=>i).map(i=>{
-                      const active=vDraft.vRpe===i, inRange=vDraft.vRpe!=null&&i<=vDraft.vRpe
-                      return (
-                        <button key={i} onClick={()=>setVDraft(d=>({...d,vRpe:i}))} style={{
-                          flex:1,height:active?28:18,minWidth:16,borderRadius:4,border:'none',cursor:'pointer',
-                          background:inRange?rpeColor(i):'var(--border)',color:inRange?'#fff':'var(--text-dim)',
-                          fontSize:active?10:8,fontWeight:700,fontFamily:'DM Mono,monospace',
-                          transition:'height 0.12s,background 0.12s',
-                        }}>{i}</button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Splits par km */}
-                <div>
-                  <label style={ls}>Splits par km (1 par ligne)</label>
-                  <textarea value={vDraft.vSplits} onChange={e=>setVDraft(d=>({...d,vSplits:e.target.value}))} placeholder={'4:52\n4:48\n5:01'} rows={4}
-                    style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Mono,monospace',boxSizing:'border-box' as const,lineHeight:1.7 }}
-                  />
-                </div>
-
-                {/* Notes de séance */}
-                <div>
-                  <label style={ls}>Notes de séance</label>
-                  <textarea value={vDraft.vNotes} onChange={e=>setVDraft(d=>({...d,vNotes:e.target.value}))} placeholder="Sensations, conditions, remarques…" rows={3}
-                    style={{ width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:12,outline:'none' as const,resize:'vertical' as const,fontFamily:'DM Sans,sans-serif',boxSizing:'border-box' as const,lineHeight:1.5 }}
-                  />
-                </div>
-
-                <button onClick={submitValidation} style={{
-                  width:'100%',padding:'12px',borderRadius:10,border:'none',
-                  background:'linear-gradient(135deg,#22c55e,#16a34a)',
-                  color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,
-                  cursor:'pointer',boxShadow:'0 4px 12px rgba(34,197,94,0.28)',
-                }}>✓ Valider la séance</button>
-              </div>
-            )
-          })()}
-
-          {validPanel === 'compare' && (()=>{
-            const planDur = session.durationMin
-            const realDur = vDraft.vDurationMin
-            const durDelta = realDur > 0 ? realDur - planDur : null
-            const planRpe = session.rpe
-            const realRpe = vDraft.vRpe
-            const rpeDelta = planRpe!=null && realRpe!=null ? realRpe-planRpe : null
-            const dist = parseFloat(vDraft.vDistance)
-            const computedSpeed = dist && realDur ? `${(dist/(realDur/60)).toFixed(1)} km/h` : ''
-            const computedPace = dist && realDur
-              ? session.sport==='swim'
-                ? (()=>{ const p=realDur/(dist*10); const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /100m` })()
-                : ['run','hyrox'].includes(session.sport)
-                ? (()=>{ const p=realDur/dist; const pm=Math.floor(p); return `${pm}:${String(Math.round((p-pm)*60)).padStart(2,'0')} /km` })()
-                : ''
-              : ''
-            const fmtDelta = (d:number|null, fmtFn:(v:number)=>string) => {
-              if(d==null) return null
-              if(d===0) return '='
-              return d>0 ? `+${fmtFn(d)}` : `-${fmtFn(Math.abs(d))}`
-            }
-            const rows: {label:string;plan:string;real:string;delta:string|null}[] = [
-              { label:'Durée',    plan:formatHM(planDur),                     real:realDur>0?formatHM(realDur):'—',        delta:fmtDelta(durDelta, formatHM) },
-              { label:'RPE',      plan:planRpe!=null?`${planRpe}/10`:'—',     real:realRpe!=null?`${realRpe}/10`:'—',      delta:fmtDelta(rpeDelta, v=>`${v}`) },
-              { label:'FC moy',   plan:'—',                                   real:vDraft.vHrAvg?`${vDraft.vHrAvg} bpm`:'—', delta:null },
-              { label:'Distance', plan:'—',                                   real:vDraft.vDistance?`${vDraft.vDistance} km`:'—', delta:null },
-              { label:'Dénivelé', plan:'—',                                   real:vDraft.vElevation?`${vDraft.vElevation} m`:'—', delta:null },
-              ...(computedSpeed ? [{ label:'Vitesse', plan:'—', real:computedSpeed, delta:null }] : []),
-              ...(computedPace  ? [{ label:'Allure',  plan:'—', real:computedPace,  delta:null }] : []),
-              ...(vDraft.vWattsAvg      ? [{ label:'Watts moy',      plan:'—', real:`${vDraft.vWattsAvg} W`,      delta:null }] : []),
-              ...(vDraft.vWattsWeighted ? [{ label:'Watts pondérés', plan:'—', real:`${vDraft.vWattsWeighted} W`, delta:null }] : []),
-              ...(vDraft.vCadenceAvg    ? [{ label:'Cadence moy',    plan:'—', real:`${vDraft.vCadenceAvg} rpm`,  delta:null }] : []),
-              ...(vDraft.vCadenceMax    ? [{ label:'Cadence max',    plan:'—', real:`${vDraft.vCadenceMax} rpm`,  delta:null }] : []),
-              ...(vDraft.vAltMax        ? [{ label:'Altitude max',   plan:'—', real:`${vDraft.vAltMax} m`,        delta:null }] : []),
-              ...(vDraft.vTempMax       ? [{ label:'Température',    plan:'—', real:`${vDraft.vTempMax}°C`,       delta:null }] : []),
-              ...(vDraft.vHumidity      ? [{ label:'Humidité',       plan:'—', real:`${vDraft.vHumidity}%`,       delta:null }] : []),
-            ]
-            const splitLines = vDraft.vSplits.trim().split('\n').filter(Boolean)
-            return (
-              <div>
-                {/* Header colonnes */}
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr 64px',gap:4,marginBottom:6,padding:'0 8px' }}>
-                  {['Métrique','Prévu','Réel','Δ'].map(h=>(
-                    <span key={h} style={{ fontSize:9,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:'var(--text-dim)' }}>{h}</span>
-                  ))}
-                </div>
-                <div style={{ display:'flex',flexDirection:'column' as const,gap:3 }}>
-                  {rows.map(r=>(
-                    <div key={r.label} style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr 64px',gap:4,padding:'7px 8px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                      <span style={{ fontSize:11,fontWeight:600,color:'var(--text-mid)' }}>{r.label}</span>
-                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{r.plan}</span>
-                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text)',fontWeight:600 }}>{r.real}</span>
-                      <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,
-                        color:r.delta==null||r.delta==='='?'var(--text-dim)':r.delta.startsWith('+')?'#f97316':'#22c55e',
-                      }}>{r.delta??'—'}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Splits */}
-                {splitLines.length > 0 && (
-                  <div style={{ marginTop:14 }}>
-                    <p style={{ fontSize:10,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 8px' }}>Splits</p>
-                    <div style={{ background:'var(--bg-card2)',borderRadius:10,padding:'8px 12px',border:'1px solid var(--border)' }}>
-                      {splitLines.map((s,i)=>(
-                        <div key={i} style={{ display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:i<splitLines.length-1?'1px solid var(--border)':'none' }}>
-                          <span style={{ fontSize:10,color:'var(--text-dim)' }}>km {i+1}</span>
-                          <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text)',fontWeight:600 }}>{s.trim()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Notes */}
-                {vDraft.vNotes && (
-                  <div style={{ marginTop:14 }}>
-                    <p style={{ fontSize:10,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:'var(--text-dim)',margin:'0 0 6px' }}>Notes de séance</p>
-                    <p style={{ fontSize:12,color:'var(--text)',lineHeight:1.5,margin:0,padding:'10px 12px',background:'var(--bg-card2)',borderRadius:9,border:'1px solid var(--border)' }}>{vDraft.vNotes}</p>
-                  </div>
-                )}
-
-                <button onClick={()=>setValidPanel('form')} style={{ marginTop:14,width:'100%',padding:'9px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:600 }}>
-                  Modifier les réels
-                </button>
-              </div>
-            )
-          })()}
-        </section>
-      </main>
-
-      {/* ── FOOTER (sticky bottom) ─────────────────────────── */}
-      <footer style={{
-        padding:'14px 28px',borderTop:'1px solid var(--border)',
-        background:'var(--bg-card2)', flexShrink:0,
-        display:'flex',gap:10,alignItems:'center',
-      }}>
-        <button onClick={()=>onDelete(session.id)} style={{
-          padding:'9px 14px', borderRadius:9,
-          background:'rgba(255,95,95,0.10)', border:'1px solid rgba(255,95,95,0.25)',
-          color:'#ff5f5f', fontSize:12, cursor:'pointer', fontWeight:600,
-        }}>Supprimer la séance</button>
-        {/* Phase 5 — Reset vers version IA originale (visible dès qu'il y a un original) */}
-        {session.originalContent && (() => {
-          const modified = isSessionModified(form)
-          return (
-            <button
-              onClick={() => {
-                if (!modified) return
-                const o = session.originalContent!
-                const restored: Session = {
-                  ...session,
-                  title:       typeof o.titre       === 'string' ? o.titre       : session.title,
-                  durationMin: typeof o.duration_min === 'number' ? o.duration_min : session.durationMin,
-                  notes:       typeof o.notes       === 'string' ? o.notes       : session.notes,
-                  rpe:         typeof o.rpe         === 'number' ? o.rpe         : session.rpe,
-                  blocks:      normalizeBlocks((o.blocs as unknown[] | undefined) ?? []),
-                }
-                onSave(restored)
-                onClose()
-              }}
-              title={modified ? 'Revenir à la version générée par le Coach IA' : 'Séance non modifiée — identique à la version IA'}
-              style={{
-                padding:'9px 12px', borderRadius:9,
-                background: modified ? 'rgba(249,115,22,0.10)' : 'transparent',
-                border: modified ? '1px solid rgba(249,115,22,0.30)' : '1px solid var(--border)',
-                color: modified ? '#f97316' : 'var(--text-dim)',
-                fontSize:11, cursor: modified ? 'pointer' : 'default', fontWeight:600,
-                display:'flex', alignItems:'center', gap:4, opacity: modified ? 1 : 0.5,
-              }}
-            >
-              <span style={{ fontSize:10 }}>↩</span> {modified ? 'Réinitialiser' : 'Original IA'}
-            </button>
-          )
-        })()}
-        <div style={{ flex:1 }} />
-        <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>Sauvegarde auto</span>
-        <button onClick={onClose} style={{
-          padding:'9px 16px', borderRadius:9,
-          background:'transparent', border:'1px solid var(--border)',
-          color:'var(--text-mid)', fontSize:12, cursor:'pointer',
-        }}>Fermer</button>
-      </footer>
     </div>
   )
 }

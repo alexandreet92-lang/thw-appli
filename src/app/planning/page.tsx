@@ -3741,6 +3741,26 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
 
   // Auto-save intentionally removed — save on close instead to avoid infinite re-render loop
 
+  function handleExportPDF() {
+    const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingType || ''}`
+    const blocksHtml = blocks.map(b => {
+      const durStr = b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin
+        ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min récup`
+        : `${b.durationMin}min`
+      const zoneCol = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444'][b.zone - 1] ?? '#9ca3af'
+      return `<tr><td style="color:${zoneCol};font-weight:700">Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
+    }).join('')
+    const nutritionHtml = nutritionItems.length > 0
+      ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">Stratégie nutritionnelle</h3><table><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th><th>Protéines</th></tr>${[...nutritionItems].sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td><td>${m.proteinesG}g</td></tr>`).join('')}<tr style="background:#f9f9f9;font-weight:600"><td colspan="3">Total</td><td>${nutritionItems.reduce((s,x)=>s+x.glucidesG,0)}g glucides</td><td>${nutritionItems.reduce((s,x)=>s+x.proteinesG,0)}g prot.</td></tr></table>`
+      : ''
+    const parcoursHtml = parcoursData
+      ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">Parcours — ${parcoursData.name}</h3><p style="font-size:12px;color:#555">${parcoursData.distanceKm} km · ${parcoursData.elevationM} m D+ · ${parcoursData.points.length} points GPS</p>`
+      : ''
+    const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">Durée</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData ? `<div class="metric"><div class="metric-val">${parcoursData.distanceKm} km</div><div class="metric-lbl">Distance</div></div><div class="metric"><div class="metric-val">${parcoursData.elevationM} m</div><div class="metric-lbl">Dénivelé +</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursHtml}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · Généré le ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
+  }
+
   function handleSportChange(s: SportType) {
     setSport(s); setTrainingType(null); setBlocks([]); setExercises([])
   }
@@ -3971,26 +3991,6 @@ Ajoute toujours échauffement et retour au calme.`,
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => {
-              const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingType || ''}`
-              const blocksHtml = blocks.map(b => {
-                const durStr = b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin
-                  ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min récup`
-                  : `${b.durationMin}min`
-                const zoneCol = ['#9ca3af','#22c55e','#eab308','f97316','#ef4444'][b.zone - 1] ?? '#9ca3af'
-                return `<tr><td style="color:${zoneCol};font-weight:700">Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
-              }).join('')
-              const nutritionHtml = nutritionItems.length > 0
-                ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">🍎 Stratégie nutritionnelle</h3><table><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th><th>Protéines</th></tr>${[...nutritionItems].sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td><td>${m.proteinesG}g</td></tr>`).join('')}<tr style="background:#f9f9f9;font-weight:600"><td colspan="3">Total</td><td>${nutritionItems.reduce((s,x)=>s+x.glucidesG,0)}g glucides</td><td>${nutritionItems.reduce((s,x)=>s+x.proteinesG,0)}g prot.</td></tr></table>`
-                : ''
-              const parcoursHtml = parcoursData
-                ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">🗺 Parcours — ${parcoursData.name}</h3><p style="font-size:12px;color:#555">${parcoursData.distanceKm} km · ${parcoursData.elevationM} m D+ · ${parcoursData.points.length} points GPS</p>`
-                : ''
-              const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">Durée</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData ? `<div class="metric"><div class="metric-val">${parcoursData.distanceKm} km</div><div class="metric-lbl">Distance</div></div><div class="metric"><div class="metric-val">${parcoursData.elevationM} m</div><div class="metric-lbl">Dénivelé +</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>📊 Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursHtml}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · Généré le ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
-              const w = window.open('', '_blank')
-              if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
-            }} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>↓ PDF</button>
-
             {/* Parcours file picker */}
             <input
               ref={parcoursInputRef}
@@ -4033,15 +4033,33 @@ Ajoute toujours échauffement et retour au calme.`,
         </div>
 
         {/* TITRE */}
-        <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8 }}>
+        <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
           <input value={title} onChange={e => setTitle(e.target.value)}
             placeholder={`${SPORT_LABEL[sport]} ${trainingType || ''}`}
             style={{
-              width: '100%', background: 'none', border: 'none', color: 'var(--text)',
+              flex: 1, background: 'none', border: 'none', color: 'var(--text)',
               fontSize: mobile ? 20 : 24, fontWeight: 800, outline: 'none', padding: 0,
-              boxSizing: 'border-box' as const,
+              minWidth: 0,
               fontFamily: 'Syne, sans-serif', letterSpacing: '-0.03em',
             }} />
+          <button
+            onClick={handleExportPDF}
+            title="Exporter en PDF"
+            style={{
+              flexShrink: 0,
+              padding: '5px 11px', borderRadius: 7, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
+              color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 4,
+              letterSpacing: '0.04em',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
+              <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
+            </svg>
+            PDF
+          </button>
         </div>
 
         {/* DEUX COLONNES */}
@@ -4683,6 +4701,24 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
               color: '#ef4444', fontSize: 11, cursor: 'pointer', fontWeight: 600,
             }}>Supprimer</button>
           )}
+
+          {/* PDF button — always visible */}
+          <button
+            onClick={handleExportPDF}
+            title="Exporter en PDF"
+            style={{
+              padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
+              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
+              <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
+            </svg>
+            PDF
+          </button>
 
           {/* Reset to AI original — edit mode only, when originalContent exists */}
           {isEdit && session?.originalContent && (

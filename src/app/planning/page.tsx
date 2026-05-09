@@ -3491,6 +3491,105 @@ const NUTRITION_TYPES: { id: NutritionItem['type']; label: string; defaultQty: s
   { id: 'autre', label: 'Autre', defaultQty: '', defaultGlu: 0 },
 ]
 
+// ── Parcours helpers ──────────────────────────────
+interface ParcoursData {
+  name: string
+  distanceKm: number
+  elevationM: number
+  points: Array<{ lat: number; lon: number; ele: number }>
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+    * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function parseRouteFile(file: File): Promise<ParcoursData> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string
+        const parser = new DOMParser()
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+        let pts: Array<{ lat: number; lon: number; ele: number }> = []
+        let name = file.name.replace(/\.[^.]+$/, '')
+
+        if (ext === 'gpx') {
+          const doc = parser.parseFromString(text, 'application/xml')
+          const nameEl = doc.querySelector('name')
+          if (nameEl?.textContent) name = nameEl.textContent.trim()
+          const trkpts = Array.from(doc.querySelectorAll('trkpt'))
+          if (trkpts.length === 0) {
+            // Try wpt / rtept
+            const wpts = Array.from(doc.querySelectorAll('wpt, rtept'))
+            pts = wpts.map(pt => ({
+              lat: parseFloat(pt.getAttribute('lat') ?? '0'),
+              lon: parseFloat(pt.getAttribute('lon') ?? '0'),
+              ele: parseFloat(pt.querySelector('ele')?.textContent ?? '0'),
+            }))
+          } else {
+            pts = trkpts.map(pt => ({
+              lat: parseFloat(pt.getAttribute('lat') ?? '0'),
+              lon: parseFloat(pt.getAttribute('lon') ?? '0'),
+              ele: parseFloat(pt.querySelector('ele')?.textContent ?? '0'),
+            }))
+          }
+        } else if (ext === 'tcx') {
+          const doc = parser.parseFromString(text, 'application/xml')
+          const actName = doc.querySelector('Id')
+          if (actName?.textContent) name = actName.textContent.trim()
+          const tps = Array.from(doc.querySelectorAll('Trackpoint'))
+          pts = tps.map(tp => {
+            const lat = parseFloat(tp.querySelector('LatitudeDegrees')?.textContent ?? '0')
+            const lon = parseFloat(tp.querySelector('LongitudeDegrees')?.textContent ?? '0')
+            const ele = parseFloat(tp.querySelector('AltitudeMeters')?.textContent ?? '0')
+            return { lat, lon, ele }
+          }).filter(p => p.lat !== 0 || p.lon !== 0)
+        } else if (ext === 'kml') {
+          const doc = parser.parseFromString(text, 'application/xml')
+          const nameEl = doc.querySelector('name')
+          if (nameEl?.textContent) name = nameEl.textContent.trim()
+          const coords = doc.querySelector('coordinates')?.textContent?.trim() ?? ''
+          pts = coords.split(/\s+/).filter(Boolean).map(c => {
+            const [lon, lat, ele] = c.split(',').map(Number)
+            return { lat: lat ?? 0, lon: lon ?? 0, ele: ele ?? 0 }
+          })
+        } else {
+          reject(new Error('Format non supporté'))
+          return
+        }
+
+        if (pts.length === 0) { reject(new Error('Aucun point GPS trouvé')); return }
+
+        // Compute distance (Haversine)
+        let distKm = 0
+        for (let i = 1; i < pts.length; i++) {
+          distKm += haversineKm(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon)
+        }
+
+        // Compute elevation gain (only positive increments)
+        let elevM = 0
+        for (let i = 1; i < pts.length; i++) {
+          const diff = pts[i].ele - pts[i - 1].ele
+          if (diff > 0) elevM += diff
+        }
+
+        resolve({ name, distanceKm: Math.round(distKm * 100) / 100, elevationM: Math.round(elevM), points: pts })
+      } catch (err) {
+        reject(err)
+      }
+    }
+    reader.onerror = () => reject(new Error('Lecture fichier échouée'))
+    reader.readAsText(file)
+  })
+}
+
 function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave }: {
   mode: 'create' | 'edit'
   session?: Session
@@ -3523,6 +3622,11 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>([])
+  const [parcoursFile, setParcoursFile] = useState<File | null>(null)
+  const [parcoursData, setParcoursData] = useState<ParcoursData | null>(null)
+  const [parcoursLoading, setParcoursLoading] = useState(false)
+  const [parcoursError, setParcoursError] = useState<string | null>(null)
+  const parcoursInputRef = useRef<HTMLInputElement>(null)
   const [athleteData, setAthleteData] = useState<{
     ftp: number | null
     runThresholdPaceSec: number | null
@@ -3873,16 +3977,57 @@ Ajoute toujours échauffement et retour au calme.`,
                 const durStr = b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin
                   ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min récup`
                   : `${b.durationMin}min`
-                return `<tr><td>Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
+                const zoneCol = ['#9ca3af','#22c55e','#eab308','f97316','#ef4444'][b.zone - 1] ?? '#9ca3af'
+                return `<tr><td style="color:${zoneCol};font-weight:700">Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
               }).join('')
               const nutritionHtml = nutritionItems.length > 0
-                ? `<h3>Stratégie nutritionnelle</h3><table border="1" style="border-collapse:collapse;width:100%"><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th></tr>${nutritionItems.sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td></tr>`).join('')}</table>`
+                ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">🍎 Stratégie nutritionnelle</h3><table><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th><th>Protéines</th></tr>${[...nutritionItems].sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td><td>${m.proteinesG}g</td></tr>`).join('')}<tr style="background:#f9f9f9;font-weight:600"><td colspan="3">Total</td><td>${nutritionItems.reduce((s,x)=>s+x.glucidesG,0)}g glucides</td><td>${nutritionItems.reduce((s,x)=>s+x.proteinesG,0)}g prot.</td></tr></table>`
                 : ''
-              const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>body{font-family:sans-serif;padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;margin-bottom:4px}h3{font-size:14px;margin-top:24px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{padding:6px 10px;border:1px solid #ddd;font-size:12px;text-align:left}th{background:#f5f5f5;font-weight:600}.meta{color:#666;font-size:13px;margin-bottom:20px}</style></head><body><h1>${finalTitle}</h1><p class="meta">${SPORT_LABEL[sport]} · ${fmtDurLocal(dur)} · TSS ${tssDisplay}</p><h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>${nutritionHtml}<p style="margin-top:32px;font-size:10px;color:#999">THW Coaching</p></body></html>`
+              const parcoursHtml = parcoursData
+                ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">🗺 Parcours — ${parcoursData.name}</h3><p style="font-size:12px;color:#555">${parcoursData.distanceKm} km · ${parcoursData.elevationM} m D+ · ${parcoursData.points.length} points GPS</p>`
+                : ''
+              const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">Durée</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData ? `<div class="metric"><div class="metric-val">${parcoursData.distanceKm} km</div><div class="metric-lbl">Distance</div></div><div class="metric"><div class="metric-val">${parcoursData.elevationM} m</div><div class="metric-lbl">Dénivelé +</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>📊 Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursHtml}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · Généré le ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
               const w = window.open('', '_blank')
               if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
-            }} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>PDF</button>
-            <button style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Parcours</button>
+            }} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>↓ PDF</button>
+
+            {/* Parcours file picker */}
+            <input
+              ref={parcoursInputRef}
+              type="file"
+              accept=".gpx,.tcx,.kml"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                setParcoursFile(f)
+                setParcoursLoading(true)
+                setParcoursError(null)
+                try {
+                  const data = await parseRouteFile(f)
+                  setParcoursData(data)
+                } catch (err) {
+                  setParcoursError(err instanceof Error ? err.message : 'Erreur de lecture')
+                  setParcoursData(null)
+                } finally {
+                  setParcoursLoading(false)
+                  // Reset input so same file can be re-selected
+                  if (parcoursInputRef.current) parcoursInputRef.current.value = ''
+                }
+              }}
+            />
+            <button
+              onClick={() => parcoursInputRef.current?.click()}
+              style={{
+                padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                border: parcoursData ? `1px solid ${accent}44` : '1px solid var(--border)',
+                background: parcoursData ? `${accent}10` : 'var(--bg-card)',
+                color: parcoursData ? accent : 'var(--text-dim)',
+              }}
+            >
+              {parcoursLoading ? '…' : parcoursData ? `🗺 ${parcoursData.distanceKm}km` : '🗺 Parcours'}
+            </button>
+
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
         </div>
@@ -4185,6 +4330,94 @@ Ajoute toujours échauffement et retour au calme.`,
               fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6,
             }} />
         </div>
+
+        {/* PARCOURS GPX/TCX/KML */}
+        {(parcoursData || parcoursError || parcoursLoading) && (
+          <div style={{ padding: mobile ? '0 16px 16px' : '0 24px 20px' }}>
+            <div style={{
+              borderRadius: 12, border: parcoursError ? '1px solid rgba(239,68,68,0.3)' : `1px solid ${accent}20`,
+              background: parcoursError ? 'rgba(239,68,68,0.05)' : `${accent}06`,
+              padding: '14px 16px',
+            }}>
+              {parcoursLoading && (
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Lecture du parcours…</p>
+              )}
+              {parcoursError && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: '#ef4444' }}>⚠ {parcoursError}</span>
+                  <button onClick={() => { setParcoursFile(null); setParcoursData(null); setParcoursError(null) }}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14 }}>×</button>
+                </div>
+              )}
+              {parcoursData && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: accent }}>🗺</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', flex: 1 }}>{parcoursData.name}</span>
+                    <button onClick={() => { setParcoursFile(null); setParcoursData(null) }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' as const }}>
+                    <div style={{ textAlign: 'center' as const }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{parcoursData.distanceKm}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>km</span>
+                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Distance</p>
+                    </div>
+                    <div style={{ textAlign: 'center' as const }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{parcoursData.elevationM}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>m</span>
+                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Dénivelé +</p>
+                    </div>
+                    <div style={{ textAlign: 'center' as const }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{parcoursData.points.length}</span>
+                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Points GPS</p>
+                    </div>
+                    {parcoursData.distanceKm > 0 && dur > 0 && (
+                      <div style={{ textAlign: 'center' as const }}>
+                        <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>
+                          {Math.round((parcoursData.distanceKm / (dur / 60)) * 10) / 10}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 3 }}>km/h</span>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '2px 0 0', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Vitesse moy.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Elevation mini-profile SVG */}
+                  {parcoursData.points.length > 1 && (() => {
+                    const eles = parcoursData.points.map(p => p.ele).filter(e => e !== 0 && !isNaN(e))
+                    if (eles.length < 2) return null
+                    const minE = Math.min(...eles), maxE = Math.max(...eles)
+                    const range = maxE - minE || 1
+                    const W = 300, H = 48, PAD = 4
+                    const step = W / (eles.length - 1)
+                    const pts = eles.map((e, i) => `${(i * step).toFixed(1)},${(H - PAD - ((e - minE) / range) * (H - PAD * 2)).toFixed(1)}`).join(' ')
+                    return (
+                      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ marginTop: 12, display: 'block', opacity: 0.85 }} preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="elev_grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={accent} stopOpacity={0.4} />
+                            <stop offset="100%" stopColor={accent} stopOpacity={0.05} />
+                          </linearGradient>
+                        </defs>
+                        <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#elev_grad)" />
+                        <polyline points={pts} fill="none" stroke={accent} strokeWidth={1.5} strokeLinejoin="round" />
+                        <text x={2} y={H - 2} fontSize={7} fill="var(--text-dim)" fontFamily="DM Mono, monospace">{Math.round(minE)}m</text>
+                        <text x={W - 2} y={10} fontSize={7} fill="var(--text-dim)" fontFamily="DM Mono, monospace" textAnchor="end">{Math.round(maxE)}m</text>
+                      </svg>
+                    )
+                  })()}
+
+                  {parcoursFile && (
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 8, margin: '8px 0 0' }}>
+                      Fichier : {parcoursFile.name}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* SÉPARATEUR 2 — entre Description et Construction */}
         <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '12px 16px' : '16px 24px', opacity: 0.5 }} />

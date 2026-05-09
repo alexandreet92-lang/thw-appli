@@ -1243,7 +1243,10 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
   )
 }
 
-function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void }) {
+function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
+  sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void
+  nutritionItems?: Array<{ timeMin: number; name: string; type: string; glucidesG: number }>
+}) {
   const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
   const vPlh = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
   const [hoveredBar, setHoveredBar] = useState<{ x: number; y: number; block: Block; isRecovery: boolean } | null>(null)
@@ -1313,28 +1316,67 @@ function BlockBuilder({ sport, blocks, onChange }: { sport: SportType; blocks: B
               <span style={{ marginLeft: 10, fontWeight: 400 }}>· {formatHM(Math.round(totalBlocks))}</span>
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 80, marginBottom: 6 }}>
-            {bars.map(bar => {
-              const hp = bar.isRecovery ? 15 : ((bar.zone / 5) * 0.85 + 0.05) * 100
-              const wp = (bar.min / totalMin) * 100
-              const c = ZONE_COLORS[bar.zone - 1]
+          {/* Profile chart — position:relative for nutrition overlays */}
+          <div style={{ position: 'relative', marginTop: 22, marginBottom: 6 }}>
+            {/* Bars */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 80 }}>
+              {bars.map(bar => {
+                const hp = bar.isRecovery ? 15 : ((bar.zone / 5) * 0.85 + 0.05) * 100
+                const wp = (bar.min / totalMin) * 100
+                const c = ZONE_COLORS[bar.zone - 1]
+                return (
+                  <div key={bar.id}
+                    onMouseEnter={e => {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      setHoveredBar({ x: rect.left + rect.width / 2, y: rect.top, block: bar.block, isRecovery: bar.isRecovery })
+                    }}
+                    onMouseLeave={() => setHoveredBar(null)}
+                    style={{
+                      width: `${wp}%`, height: `${hp}%`,
+                      background: bar.isRecovery
+                        ? 'rgba(107,114,128,0.15)'
+                        : `linear-gradient(180deg, ${c}ee, ${c}55)`,
+                      borderRadius: '2px 2px 0 0',
+                      border: bar.isRecovery ? 'none' : `1px solid ${c}88`,
+                      minWidth: 2, opacity: bar.isRecovery ? 0.5 : 1,
+                      cursor: 'pointer',
+                    }} />
+                )
+              })}
+            </div>
+            {/* Nutrition vertical lines overlay */}
+            {(nutritionItems ?? []).filter(m => m.timeMin > 0).map((m, i) => {
+              const leftPct = (m.timeMin / totalMin) * 100
+              if (leftPct > 100 || leftPct < 0) return null
+              const accentCol = SPORT_BORDER[sport]
               return (
-                <div key={bar.id}
-                  onMouseEnter={e => {
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    setHoveredBar({ x: rect.left + rect.width / 2, y: rect.top, block: bar.block, isRecovery: bar.isRecovery })
-                  }}
-                  onMouseLeave={() => setHoveredBar(null)}
-                  style={{
-                    width: `${wp}%`, height: `${hp}%`,
-                    background: bar.isRecovery
-                      ? 'rgba(107,114,128,0.15)'
-                      : `linear-gradient(180deg, ${c}ee, ${c}55)`,
-                    borderRadius: '2px 2px 0 0',
-                    border: bar.isRecovery ? 'none' : `1px solid ${c}88`,
-                    minWidth: 2, opacity: bar.isRecovery ? 0.5 : 1,
-                    cursor: 'pointer',
+                <div key={`nut_${i}`} style={{
+                  position: 'absolute' as const,
+                  left: `${leftPct}%`,
+                  top: 0, bottom: 0,
+                  display: 'flex', flexDirection: 'column' as const, alignItems: 'center',
+                  pointerEvents: 'none' as const, zIndex: 5,
+                }}>
+                  {/* Labels above the chart */}
+                  <div style={{
+                    position: 'absolute' as const, bottom: '100%', marginBottom: 2,
+                    whiteSpace: 'nowrap' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: 7, fontWeight: 700, color: accentCol, opacity: 0.85, lineHeight: 1.2 }}>
+                      {m.name || m.type}
+                    </span>
+                    <span style={{ fontSize: 6.5, color: 'var(--text-dim)', opacity: 0.65, fontFamily: 'DM Mono, monospace' }}>
+                      {m.glucidesG}g
+                    </span>
+                  </div>
+                  {/* Dashed vertical line */}
+                  <div style={{
+                    width: 1, height: '100%',
+                    background: `repeating-linear-gradient(to bottom, ${accentCol}99 0px, ${accentCol}99 3px, transparent 3px, transparent 6px)`,
                   }} />
+                  {/* Small dot at bottom */}
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: accentCol, opacity: 0.7, flexShrink: 0 }} />
+                </div>
               )
             })}
           </div>
@@ -4172,7 +4214,7 @@ Ajoute toujours échauffement et retour au calme.`,
             isStrength ? (
               <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises} />
             ) : (
-              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} />
+              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} />
             )
           ) : (
             <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>

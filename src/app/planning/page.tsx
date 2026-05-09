@@ -21,7 +21,7 @@ type WeekRange     = 1 | 5 | 10
 type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
 type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
 type SessionStatus = 'planned' | 'done'
-type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown'
+type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'circuit_header'
 type BlockMode     = 'single' | 'interval'
 type TaskType      = 'sport' | 'work' | 'personal' | 'recovery'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
@@ -74,7 +74,7 @@ const INTENSITY_CONFIG: Record<DayIntensity,{label:string;color:string;bg:string
   hard:     { label:'Hard',  color:'#ff5f5f', bg:'rgba(255,95,95,0.10)',   border:'rgba(255,95,95,0.25)'   },
 }
 const INTENSITY_ORDER: DayIntensity[] = ['recovery','low','mid','hard']
-const BLOCK_TYPE_LABEL: Record<BlockType,string> = { warmup:'Échauffement', effort:'Effort', recovery:'Récupération', cooldown:'Retour calme' }
+const BLOCK_TYPE_LABEL: Record<BlockType,string> = { warmup:'Échauffement', effort:'Effort', recovery:'Récupération', cooldown:'Retour calme', circuit_header:'Circuit' }
 const RUN_DISTANCES = ['5 km','10 km','Semi-marathon','Marathon']
 const RUN_KM: Record<string,number> = { '5 km':5, '10 km':10, 'Semi-marathon':21.1, 'Marathon':42.195 }
 const TRI_DISTANCES = ['XS (Super Sprint)','S (Sprint)','M (Standard)','L / 70.3','XL / Ironman']
@@ -1431,9 +1431,44 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
 
       {/* ── Liste des blocs ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-        {blocks.map(b => {
-          const c = ZONE_COLORS[b.zone - 1]
+        {blocks.map((b, bi) => {
+          const c = ZONE_COLORS[Math.max(0, (b.zone ?? 1) - 1)]
           const isInterval = b.mode === 'interval' && !!b.reps && !!b.effortMin
+
+          // ── Circuit header ──
+          if (b.type === 'circuit_header') {
+            const accentCol = SPORT_BORDER[sport]
+            return (
+              <div key={b.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 14px', marginTop: bi > 0 ? 6 : 0,
+                borderRadius: 10, background: `${accentCol}08`,
+                border: `1px solid ${accentCol}22`, borderLeft: `4px solid ${accentCol}`,
+              }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <circle cx="5" cy="5" r="4" stroke={accentCol} strokeWidth="1.5"/>
+                  <path d="M3.5 5L4.5 6L6.5 4" stroke={accentCol} strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <input value={b.label} onChange={e => onChange(blocks.map((x, j) => j === bi ? { ...x, label: e.target.value } : x))}
+                  style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif', minWidth: 0 }} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input type="number" min={1} max={20} value={b.zone ?? 3}
+                      onChange={e => onChange(blocks.map((x, j) => j === bi ? { ...x, zone: parseInt(e.target.value) || 3 } : x))}
+                      style={{ width: 36, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: accentCol, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>rounds</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input type="number" min={0} max={10} step={0.5} value={b.recoveryMin ?? 2}
+                      onChange={e => onChange(blocks.map((x, j) => j === bi ? { ...x, recoveryMin: parseFloat(e.target.value) || 0 } : x))}
+                      style={{ width: 42, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>min repos</span>
+                  </div>
+                </div>
+                <button onClick={() => onChange(blocks.filter((_, j) => j !== bi))} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+              </div>
+            )
+          }
 
           if (isInterval) {
             const recovSec = Math.round((b.recoveryMin ?? 0) * 60)
@@ -3824,7 +3859,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   const accent = SPORT_BORDER[sport]
   const fmtTimer = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`
 
-  const initialExercises: ExecExercise[] = blocks.map(b => ({
+  const initialExercises: ExecExercise[] = blocks.filter(b => b.type !== 'circuit_header').map(b => ({
     id: b.id,
     label: b.label,
     targetSets: b.zone ?? 3,
@@ -4482,7 +4517,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       const isStrengthSport = sport === 'gym' || sport === 'hyrox'
       console.log('[AI-MUSCU] 1. Sport:', sport, 'isStrength:', isStrengthSport)
 
-      const strengthPrompt = `Tu es un préparateur physique expert. L'athlète te décrit sa séance de ${SPORT_LABEL[sport]}.
+      const strengthPrompt = `Tu es un préparateur physique expert en ${SPORT_LABEL[sport]}.
 
 SÉANCE DEMANDÉE :
 ${aiPrompt}
@@ -4498,12 +4533,42 @@ COMPRENDRE LE FORMAT DE L'ATHLÈTE :
 - "Gainage 45s" → Plank, 45 secondes (effortMin=0.75)
 - "Sled Push 50m @150kg" → distance 50m (durationMin=50), charge 150kg
 
-EXEMPLE :
-"Bench press @52.5 kg
+RÈGLE CRITIQUE — CIRCUITS :
+Si l'athlète mentionne plusieurs circuits/blocs (séparés par une ligne vide, un numéro, ou un label), tu DOIS les séparer avec un bloc marqueur de type "circuit_header".
+Insère un bloc {"type":"circuit_header","mode":"single","label":"Circuit A","zone":3,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2} AVANT chaque groupe d'exercices.
+- label : nom du circuit ("Circuit A", "Circuit B", "Échauffement", "Core", etc.)
+- zone : nombre de ROUNDS pour ce circuit (ex: "x3" → zone=3). Si pas précisé : 3
+- recoveryMin : repos ENTRE LES ROUNDS du circuit (défaut 2 min)
+Si la séance n'a qu'un seul bloc d'exercices, n'ajoute PAS de circuit_header.
+
+EXEMPLE AVEC 2 CIRCUITS :
+"Circuit A x3 :
+Bench press @52.5kg
 Pull up australien 20 reps
-x3"
-→ Bench Press : zone=3, reps=8, value="52.5"
-→ Australian Pull Up : zone=3, reps=20, value=""
+
+Circuit B x2 :
+Squat @80kg
+Deadlift @100kg"
+
+→ Tableau JSON :
+[
+  {"type":"circuit_header","mode":"single","label":"Circuit A","zone":3,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2},
+  {"type":"effort","mode":"single","label":"Bench Press","zone":3,"reps":8,"value":"52.5","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"effort","mode":"single","label":"Australian Pull Up","zone":3,"reps":20,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"circuit_header","mode":"single","label":"Circuit B","zone":2,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2},
+  {"type":"effort","mode":"single","label":"Squat","zone":2,"reps":8,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"effort","mode":"single","label":"Deadlift","zone":2,"reps":5,"value":"100","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2}
+]
+
+EXEMPLE SANS CIRCUIT (séance simple) :
+"Bench press 4x8 @80kg
+Squat 3x10 @60kg"
+
+→ Tableau JSON :
+[
+  {"type":"effort","mode":"single","label":"Bench Press","zone":4,"reps":8,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"effort","mode":"single","label":"Squat","zone":3,"reps":10,"value":"60","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
+]
 
 FORMAT PAR EXERCICE (JSON strict, guillemets doubles) :
 {"mode":"single","type":"effort","label":"Bench Press","zone":3,"reps":8,"value":"52.5","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
@@ -4626,41 +4691,34 @@ Ajoute toujours échauffement et retour au calme.`
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
 
       if (isStrengthSport) {
-        // ── GYM / HYROX : convertir en ExerciseItem[] pour ExerciseListBuilder ──
-        const newExercises: ExerciseItem[] = parsed.map((b: Record<string, unknown>, i: number) => {
+        // ── GYM / HYROX : convertir en Block[] pour BlockBuilder (support circuit_header) ──
+        const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
           const labelStr = typeof b.label === 'string' ? b.label : 'Exercice'
-          const exoDef = EXERCISE_DATABASE.find(x =>
-            x.name.toLowerCase() === labelStr.toLowerCase() ||
-            x.aliases.some(a => a.toLowerCase() === labelStr.toLowerCase())
-          )
-          const weightRaw = parseFloat(String(b.value ?? ''))
-          const weightKg = isNaN(weightRaw) || weightRaw <= 0 ? undefined : weightRaw
-          const distanceM = typeof b.durationMin === 'number' && b.durationMin > 0 ? b.durationMin : undefined
-          const kcalRaw = typeof b.hrAvg === 'string' && b.hrAvg ? parseFloat(b.hrAvg) : NaN
-          const kcal = isNaN(kcalRaw) || kcalRaw <= 0 ? undefined : kcalRaw
-          const effortMinVal = typeof b.effortMin === 'number' ? b.effortMin : 0
-          const targetTimeSec = effortMinVal > 0 ? Math.round(effortMinVal * 60) : undefined
-          const recoveryMinVal = typeof b.recoveryMin === 'number' ? b.recoveryMin : 1.5
-          const restSec = Math.round(recoveryMinVal * 60)
+          const blockType: BlockType = b.type === 'circuit_header' ? 'circuit_header' : 'effort'
           const setsVal = typeof b.zone === 'number' ? Math.max(1, Math.min(10, b.zone)) : 3
-          const repsVal = typeof b.reps === 'number' ? b.reps : (exoDef?.defaultReps ?? 8)
+          const repsVal = typeof b.reps === 'number' ? b.reps : 8
+          const weightRaw = parseFloat(String(b.value ?? ''))
+          const weightStr = isNaN(weightRaw) || weightRaw <= 0 ? '' : String(weightRaw)
+          const effortMinVal = typeof b.effortMin === 'number' ? b.effortMin : 0
+          const recoveryMinVal = typeof b.recoveryMin === 'number' ? b.recoveryMin : 1.5
+          const durationMinVal = typeof b.durationMin === 'number' && b.durationMin > 0 ? b.durationMin : (effortMinVal > 0 ? Math.ceil(effortMinVal * setsVal) : 0)
           return {
             id: `ai_${Date.now()}_${i}`,
-            exoId: exoDef?.id ?? 'custom',
-            name: exoDef?.name ?? labelStr,
-            category: exoDef?.category ?? (sport === 'hyrox' ? 'hyrox' as ExoCategory : 'mixte' as ExoCategory),
-            sets: setsVal,
-            reps: repsVal,
-            weightKg,
-            distanceM,
-            kcal,
-            targetTimeSec,
-            restSec,
+            mode: 'single' as const,
+            type: blockType,
+            durationMin: durationMinVal,
+            zone: setsVal,
+            value: weightStr,
+            hrAvg: typeof b.hrAvg === 'string' ? b.hrAvg : '',
+            label: labelStr,
+            reps: repsVal > 0 ? repsVal : undefined,
+            effortMin: effortMinVal > 0 ? effortMinVal : undefined,
+            recoveryMin: recoveryMinVal,
           }
         })
-        console.log('[AI-MUSCU] 7. Parsed exercises:', newExercises.length, newExercises.slice(0, 2))
-        if (newExercises.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
-        setExercises(newExercises)
+        console.log('[AI-MUSCU] 7. Parsed blocks:', newBlocks.length, newBlocks.slice(0, 2))
+        if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+        setBlocks(newBlocks)
         setBuilderTab('manual')
         setAiPrompt('')
       } else {
@@ -4774,7 +4832,18 @@ Ajoute toujours échauffement et retour au calme.`
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {isEdit && isStrength && blocks.length > 0 && (
+              <button onClick={() => setExecuteMode(true)} style={{
+                padding: '6px 14px', borderRadius: 8, border: 'none',
+                background: accent, color: '#fff',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'Syne, sans-serif', display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 1.5L9 5L2 8.5V1.5Z" fill="currentColor"/></svg>
+                Lancer
+              </button>
+            )}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
         </div>
@@ -5231,9 +5300,11 @@ Ajoute toujours échauffement et retour au calme.`
           </div>
 
           {builderTab === 'manual' ? (
-            isStrength ? (
+            isStrength && blocks.length === 0 ? (
+              /* Mode manuel : constructeur par exercices (circuits) */
               <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises} />
             ) : (
+              /* Mode IA ou edit : blocs générés (avec circuit_headers) */
               <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} />
             )
           ) : (
@@ -5528,20 +5599,6 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
               background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.20)',
               color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
             }}>Réinitialiser IA</button>
-          )}
-
-          {/* Lancer la séance — edit + gym uniquement */}
-          {isEdit && isStrength && blocks.length > 0 && (
-            <button onClick={() => setExecuteMode(true)} style={{
-              padding: '10px 18px', borderRadius: 8, border: 'none',
-              background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-              color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'Syne, sans-serif',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 2L10 6L3 10V2Z" fill="currentColor"/></svg>
-              Lancer
-            </button>
           )}
 
           <div style={{ flex: 1 }} />

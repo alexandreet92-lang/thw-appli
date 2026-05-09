@@ -111,6 +111,10 @@ interface Session {
   vSwimTime?:string; vBikeTime?:string; vRunTime?:string; vT1?:string; vT2?:string
   vRpe?:number; vSplits?:string[]; vTempMax?:string; vHumidity?:string; vAltMax?:string; vNotes?:string
   vWattsAvg?:string; vWattsWeighted?:string; vCadenceAvg?:string; vCadenceMax?:string
+  parcoursData?: {
+    name: string; distance: number | null; elevation: number | null
+    points: number; elevationProfile: Array<{ distKm: number; ele: number }>
+  }
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -524,6 +528,7 @@ function usePlanning(weekStartParam?:string) {
       status:r.status, notes:r.notes, rpe:r.rpe, blocks:normalizeBlocks(r.blocks), main:false,
       planVariant:r.plan_variant??'A',
       originalContent: r.original_content ?? undefined,
+      parcoursData: r.parcours_data ?? undefined,
       ...(r.validation_data??{}),
     })))
     setTasks((t.data??[]).map((r:any):WeekTask=>({
@@ -572,6 +577,7 @@ function usePlanning(weekStartParam?:string) {
       tss:s.tss??null, status:s.status, notes:s.notes??null,
       rpe:s.rpe??null, blocks:s.blocks??[], validation_data:{},
       plan_variant:s.planVariant??'A',
+      parcours_data: s.parcoursData ?? null,
     }).select().single()
     if(!error&&data) {
       setSessions(p=>[...p,{...s,id:data.id}])
@@ -589,6 +595,7 @@ function usePlanning(weekStartParam?:string) {
     }
     // Persiste le sport si fourni (édition inline modal)
     if (upd.sport) patch.sport = upd.sport
+    if (upd.parcoursData !== undefined) patch.parcours_data = upd.parcoursData ?? null
     await supabase.from('planned_sessions').update(patch).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     window.dispatchEvent(new Event('thw:sessions-changed'))
@@ -3737,6 +3744,45 @@ function ElevationChart({ profile, totalKm, accent }: {
   )
 }
 
+// ── Session averages estimation ───────────────────
+function computeSessionAverages(blocks: Block[], sport: SportType): {
+  avgWatts: number | null; avgPace: string | null
+} {
+  if (blocks.length === 0) return { avgWatts: null, avgPace: null }
+
+  if (sport === 'bike' || sport === 'elliptique') {
+    let totalMin = 0, totalWattMin = 0
+    for (const b of blocks) {
+      const w = parseInt(b.value) || 0
+      if (w <= 0) continue
+      const min = b.mode === 'interval' && b.reps && b.effortMin
+        ? b.reps * b.effortMin : b.durationMin
+      totalMin += min; totalWattMin += min * w
+    }
+    if (totalMin === 0 || totalWattMin === 0) return { avgWatts: null, avgPace: null }
+    return { avgWatts: Math.round(totalWattMin / totalMin), avgPace: null }
+  }
+
+  if (sport === 'run' || sport === 'swim' || sport === 'rowing') {
+    let totalMin = 0, totalPaceSecMin = 0
+    for (const b of blocks) {
+      const m = (b.value ?? '').match(/(\d+):(\d+)/)
+      if (!m) continue
+      const paceSec = parseInt(m[1]) * 60 + parseInt(m[2])
+      const min = b.mode === 'interval' && b.reps && b.effortMin
+        ? b.reps * b.effortMin : b.durationMin
+      totalMin += min; totalPaceSecMin += min * paceSec
+    }
+    if (totalMin === 0 || totalPaceSecMin === 0) return { avgWatts: null, avgPace: null }
+    const avg = Math.round(totalPaceSecMin / totalMin)
+    const str = `${Math.floor(avg / 60)}:${String(avg % 60).padStart(2, '0')}`
+    const unit = sport === 'swim' ? '/100m' : sport === 'rowing' ? '/500m' : '/km'
+    return { avgWatts: null, avgPace: str + unit }
+  }
+
+  return { avgWatts: null, avgPace: null }
+}
+
 function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave }: {
   mode: 'create' | 'edit'
   session?: Session
@@ -3770,7 +3816,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>([])
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
-  const [parcoursData, setParcoursData] = useState<ParcoursData | null>(null)
+  const [parcoursData, setParcoursData] = useState<ParcoursData | null>(session?.parcoursData ?? null)
   const [parcoursLoading, setParcoursLoading] = useState(false)
   const [parcoursError, setParcoursError] = useState<string | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
@@ -3855,6 +3901,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
 
   // TSS range — block-based with athlete fitness factor
   const tssRange = computeTSSRange(blocks, sport, dur, rpe, athleteData)
+  const sessionAvg = computeSessionAverages(blocks, sport)
   const tssDisplay = tssRange.low === 0 && tssRange.high === 0
     ? '—'
     : tssRange.low === tssRange.high
@@ -3965,6 +4012,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       durationMin: dur || 60, tss: tssRange.high || undefined,
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
+      parcoursData: parcoursData ?? undefined,
     }
     onSave(savedSession)
     onClose()
@@ -3974,16 +4022,35 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     if (!aiPrompt.trim() || aiLoading) return
     setAiLoading(true)
     try {
-      console.log('[AI] 1. Starting generation, prompt:', aiPrompt, 'sport:', sport)
+      const isStrengthSport = sport === 'gym' || sport === 'hyrox'
 
-      const res = await fetch('/api/coach-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: 'planning',
-          messages: [{
-            role: 'user',
-            content: `Tu es un coach sportif expert. Génère des blocs d'entraînement JSON pour une séance de ${SPORT_LABEL[sport]}.
+      const prompt = isStrengthSport
+        ? `Tu es un coach sportif expert en ${SPORT_LABEL[sport]}. L'athlète veut cette séance : ${aiPrompt}
+
+Génère une liste d'exercices en JSON. Réponds UNIQUEMENT avec un tableau []. Pas de texte avant ou après.
+
+Format par exercice :
+{"mode":"single","type":"effort","label":"Nom exercice","zone":3,"reps":10,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
+
+Exercices disponibles :
+PUSH: Bench Press, Dips, Push Press, Push Up, Incline Bench Press, Lateral Raise, Overhead Press, Triceps Pushdown, Chest Fly
+PULL: Pull Up, Barbell Row, Dumbbell Row, Lat Pulldown, Face Pull, Bicep Curl, Hammer Curl
+LEGS: Squat, Front Squat, Deadlift, Romanian Deadlift, Bulgarian Split Squat, Lunge, Leg Press, Hip Thrust, Box Jump, Sled Push, Calf Raise
+MIXTE: Thruster, Clean, Snatch, Kettlebell Swing, Turkish Get Up, Devil Press
+ABDOS: Crunch, Plank, Russian Twist, Hanging Leg Raise, Ab Wheel Rollout, V-Up
+HYROX: Run, SkiErg, Sled Push, Sled Pull, Burpee Broad Jump, Rowing, Farmer Carry, Sandbag Lunges, Wall Balls, Echo Bike
+
+Règles :
+- Utilise les noms EXACTS de la liste ci-dessus
+- "zone" = nombre de SÉRIES (1-10), pas la zone d'intensité
+- "reps" = nombre de reps (0 si exercice au temps ou à la distance)
+- "value" = charge en kg sous forme de chaîne ("80") ou "" si poids de corps
+- "recoveryMin" = repos entre séries en minutes décimales (90s = 1.5)
+- "effortMin" = durée de l'exercice en minutes si chronométré (gainage : reps=1, effortMin=1.0)
+- "durationMin" = distance en mètres pour Sled Push, Farmer Carry, Run (ex: 50 pour 50m) ou 0
+- Pour Hyrox : alterne Run + stations dans l'ordre standard`
+
+        : `Tu es un coach sportif expert. Génère des blocs d'entraînement JSON pour une séance de ${SPORT_LABEL[sport]}.
 Description : ${aiPrompt}
 
 Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]). Format exact de chaque bloc :
@@ -3993,16 +4060,20 @@ Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]
 
 Champs obligatoires : mode, type, durationMin, zone (1-5), value, label
 Champs interval : reps, effortMin, recoveryMin, recoveryZone
-Ajoute toujours échauffement et retour au calme.`,
-          }],
+Ajoute toujours échauffement et retour au calme.`
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'planning',
+          messages: [{ role: 'user', content: prompt }],
           modelId: 'athena',
         }),
       })
 
-      console.log('[AI] 2. Response status:', res.status, res.ok)
       if (!res.ok) {
         const errText = await res.text()
-        console.error('[AI] Error response:', errText)
         throw new Error(`HTTP ${res.status}: ${errText}`)
       }
 
@@ -4015,38 +4086,26 @@ Ajoute toujours échauffement et retour au calme.`,
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n')
-          for (const line of lines) {
-            // SSE format: "event: text\ndata: <JSON-encoded string>\n\n"
-            // The API JSON-stringifies the text value, so data line contains a quoted string.
-            // We only parse data lines and skip event/comment lines entirely.
+          for (const line of chunk.split('\n')) {
             if (line.startsWith('data: ')) {
               const payload = line.slice(6).trim()
               if (payload === '[DONE]') continue
               try {
                 const d: unknown = JSON.parse(payload)
-                if (typeof d === 'string') {
-                  // text event: data is JSON.stringify(block.text) → a plain string
-                  raw += d
-                } else if (d !== null && typeof d === 'object') {
+                if (typeof d === 'string') raw += d
+                else if (d !== null && typeof d === 'object') {
                   const obj = d as Record<string, unknown>
                   if (typeof obj.text === 'string') raw += obj.text
-                  else if (obj.delta && typeof (obj.delta as Record<string, unknown>).text === 'string') raw += (obj.delta as Record<string, unknown>).text
-                  // tool_use events are ignored — we only want text output
+                  else if (obj.delta && typeof (obj.delta as Record<string, unknown>).text === 'string')
+                    raw += (obj.delta as Record<string, unknown>).text
                 }
-              } catch {
-                // Non-JSON data line: append as-is
-                if (payload !== '[DONE]') raw += payload
-              }
+              } catch { if (payload !== '[DONE]') raw += payload }
             }
-            // Intentionally skip event:, comment (:), and empty lines
           }
         }
       }
 
-      console.log('[AI] 3. Raw response length:', raw.length, 'first 300:', raw.slice(0, 300))
-
-      // Find JSON array in the response
+      // Extract JSON array
       let jsonStr = ''
       const arrayMatch = raw.match(/\[[\s\S]*\]/)
       if (arrayMatch) {
@@ -4058,55 +4117,64 @@ Ajoute toujours échauffement et retour au calme.`,
             const obj = JSON.parse(objMatch[0]) as Record<string, unknown>
             if (Array.isArray(obj.blocks)) jsonStr = JSON.stringify(obj.blocks)
             else if (Array.isArray(obj.blocs)) jsonStr = JSON.stringify(obj.blocs)
+            else if (Array.isArray(obj.exercises)) jsonStr = JSON.stringify(obj.exercises)
           } catch { /* continue */ }
         }
       }
 
-      console.log('[AI] 4. JSON match found:', !!jsonStr, jsonStr ? jsonStr.slice(0, 200) : 'none')
-
-      if (!jsonStr) {
-        console.error('[AI] No JSON array found in response, raw:', raw.slice(0, 500))
-        return
-      }
+      if (!jsonStr) { console.error('[AI] No JSON found:', raw.slice(0, 400)); return }
 
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
-      console.log('[AI] 5. Parsed blocks count:', parsed.length)
 
       const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
         let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
         let label = typeof b.label === 'string' ? b.label : 'Bloc'
         const value = String(b.value ?? '')
         const mode = typeof b.mode === 'string' ? b.mode : 'single'
-        const distMatch = label.match(/(\d+)\s*m/i)
-        const paceMatch = value.match(/(\d+):(\d+)/)
-        if (distMatch && paceMatch && mode === 'interval') {
-          const distM = parseInt(distMatch[1])
-          const paceSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2])
-          const eSec = sport === 'swim' ? (distM / 100) * paceSec : (distM / 1000) * paceSec
-          effortMin = Math.round(eSec / 60 * 100) / 100
-          const lo = Math.round(eSec * 0.97), hi = Math.round(eSec * 1.03)
-          const f = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-          label = `${distM}m — ${f(lo)} à ${f(hi)}`
-        }
         const repsN = typeof b.reps === 'number' ? b.reps : 1
         const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
-        const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 10
-        const zone = typeof b.zone === 'number' ? Math.max(1, Math.min(5, b.zone)) : 3
+        const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 0
+
+        // Pour les sports d'endurance : recalcul distance→temps si applicable
+        if (!isStrengthSport) {
+          const distMatch = label.match(/(\d+)\s*m/i)
+          const paceMatch = value.match(/(\d+):(\d+)/)
+          if (distMatch && paceMatch && mode === 'interval') {
+            const distM = parseInt(distMatch[1])
+            const paceSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2])
+            const eSec = sport === 'swim' ? (distM / 100) * paceSec : (distM / 1000) * paceSec
+            effortMin = Math.round(eSec / 60 * 100) / 100
+            const lo = Math.round(eSec * 0.97), hi = Math.round(eSec * 1.03)
+            const f = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+            label = `${distM}m — ${f(lo)} à ${f(hi)}`
+          }
+        }
+
+        const rawZone = typeof b.zone === 'number' ? b.zone : 3
+        // Pour muscu/hyrox : zone = nb de séries (peut dépasser 5), on plafonne à 10
+        const zone = isStrengthSport ? Math.max(1, Math.min(10, rawZone)) : Math.max(1, Math.min(5, rawZone))
         const blockType = typeof b.type === 'string' ? b.type : 'effort'
+        const hrAvg = typeof b.hrAvg === 'string' ? b.hrAvg : ''
+
+        const computedDuration = mode === 'interval'
+          ? Math.round(repsN * (effortMin + recoveryMin) * 100) / 100
+          : isStrengthSport
+            ? Math.ceil((repsN * (effortMin > 0 ? effortMin : (recoveryMin + (repsN > 0 ? 1 : 0)))) || durationMin || 5)
+            : durationMin
+
         return {
           id: `ai_${Date.now()}_${i}`,
           mode: mode as 'single' | 'interval',
           type: blockType as Block['type'],
-          durationMin: mode === 'interval' ? Math.round(repsN * (effortMin + recoveryMin) * 100) / 100 : durationMin,
-          zone, value, hrAvg: '', label,
-          reps: mode === 'interval' ? repsN : undefined,
-          effortMin: mode === 'interval' ? effortMin : undefined,
-          recoveryMin: mode === 'interval' ? recoveryMin : undefined,
+          durationMin: computedDuration,
+          zone, value, hrAvg, label,
+          reps: repsN || undefined,
+          effortMin: effortMin || undefined,
+          recoveryMin: recoveryMin || undefined,
           recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
         }
       })
 
-      console.log('[AI] 6. Blocks set, switching to manual tab, count:', newBlocks.length)
       setBlocks(newBlocks)
       setBuilderTab('manual')
       setAiPrompt('')
@@ -4482,6 +4550,18 @@ Ajoute toujours échauffement et retour au calme.`,
               </div>
             )}
           </div>
+
+          {/* Estimation watts / allure moyenne */}
+          {(sessionAvg.avgWatts || sessionAvg.avgPace) && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: mobile ? 10 : 14, paddingTop: mobile ? 10 : 12, borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
+                {sport === 'bike' || sport === 'elliptique' ? 'Watts moy. estimés' : 'Allure moy. estimée'}
+              </span>
+              <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono", monospace', letterSpacing: '-0.02em' }}>
+                {sessionAvg.avgWatts ? `${sessionAvg.avgWatts}W` : sessionAvg.avgPace}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* TSS INFO MODAL */}
@@ -4917,7 +4997,7 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
           {/* Close / Cancel — save before closing in edit mode */}
           <button onClick={() => {
             if (isEdit && session) {
-              onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss })
+              onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined })
             }
             onClose()
           }} style={{

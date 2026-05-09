@@ -3991,46 +3991,34 @@ Ajoute toujours échauffement et retour au calme.`,
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            {/* Parcours file picker */}
-            <input
-              ref={parcoursInputRef}
-              type="file"
-              accept=".gpx,.tcx,.kml"
-              style={{ display: 'none' }}
-              onChange={async (e) => {
-                const f = e.target.files?.[0]
-                if (!f) return
-                setParcoursFile(f)
-                setParcoursLoading(true)
-                setParcoursError(null)
-                try {
-                  const data = await parseRouteFile(f)
-                  setParcoursData(data)
-                } catch (err) {
-                  setParcoursError(err instanceof Error ? err.message : 'Erreur de lecture')
-                  setParcoursData(null)
-                } finally {
-                  setParcoursLoading(false)
-                  // Reset input so same file can be re-selected
-                  if (parcoursInputRef.current) parcoursInputRef.current.value = ''
-                }
-              }}
-            />
-            <button
-              onClick={() => parcoursInputRef.current?.click()}
-              style={{
-                padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 10, fontWeight: 600,
-                border: parcoursData ? `1px solid ${accent}44` : '1px solid var(--border)',
-                background: parcoursData ? `${accent}10` : 'var(--bg-card)',
-                color: parcoursData ? accent : 'var(--text-dim)',
-              }}
-            >
-              {parcoursLoading ? '…' : parcoursData ? `🗺 ${parcoursData.distanceKm}km` : '🗺 Parcours'}
-            </button>
-
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
         </div>
+
+        {/* Hidden file input — shared by all Parcours buttons */}
+        <input
+          ref={parcoursInputRef}
+          type="file"
+          accept=".gpx,.tcx,.kml"
+          style={{ display: 'none' }}
+          onChange={async (e) => {
+            const f = e.target.files?.[0]
+            if (!f) return
+            setParcoursFile(f)
+            setParcoursLoading(true)
+            setParcoursError(null)
+            try {
+              const data = await parseRouteFile(f)
+              setParcoursData(data)
+            } catch (err) {
+              setParcoursError(err instanceof Error ? err.message : 'Erreur de lecture')
+              setParcoursData(null)
+            } finally {
+              setParcoursLoading(false)
+              if (parcoursInputRef.current) parcoursInputRef.current.value = ''
+            }
+          }}
+        />
 
         {/* TITRE */}
         <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -4059,6 +4047,23 @@ Ajoute toujours échauffement et retour au calme.`,
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
             PDF
+          </button>
+          <button
+            onClick={() => parcoursInputRef.current?.click()}
+            title="Importer un parcours GPX/TCX/KML"
+            style={{
+              flexShrink: 0,
+              padding: '5px 11px', borderRadius: 7, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
+              color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 4,
+              letterSpacing: '0.04em',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
+            </svg>
+            {parcoursLoading ? '…' : parcoursData ? `${parcoursData.distanceKm} km` : 'Parcours'}
           </button>
         </div>
 
@@ -4702,7 +4707,7 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
             }}>Supprimer</button>
           )}
 
-          {/* PDF button — always visible */}
+          {/* PDF + Parcours buttons — always visible */}
           <button
             onClick={handleExportPDF}
             title="Exporter en PDF"
@@ -4718,6 +4723,21 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
             PDF
+          </button>
+          <button
+            onClick={() => parcoursInputRef.current?.click()}
+            title="Importer un parcours GPX/TCX/KML"
+            style={{
+              padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-card)',
+              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
+            </svg>
+            {parcoursLoading ? '…' : parcoursData ? `${parcoursData.distanceKm} km` : 'Parcours'}
           </button>
 
           {/* Reset to AI original — edit mode only, when originalContent exists */}

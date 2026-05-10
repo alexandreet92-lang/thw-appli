@@ -22,6 +22,9 @@
 - Mapping streams obligatoire : r.streams ?? r.raw_data?.streams
 - Toujours vérifier la null-safety sur la colonne streams (backfill partiel)
 
+## RÈGLE GIT
+TOUJOURS travailler sur la branche main. Ne JAMAIS créer de nouvelle branche. Avant chaque commit, exécuter git checkout main.
+
 ## Features actives (ne pas casser)
 - SyncCharts : SVG raw, cursor partagé, zone coloring, drag-to-select, zone time distribution
 - Activities page : filtres dropdown, tabs, KPIs sport-spécifique (running, cycling, gym, Hyrox)

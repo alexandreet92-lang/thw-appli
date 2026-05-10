@@ -5098,9 +5098,10 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     cssSecPer100m: number | null
     rowThresholdSecPer500m: number | null
     ctl: number | null
-    maxHR: number | null
-    restHR: number | null
-    fcZones: number[]
+    hrMax: number | null
+    hrRest: number | null
+    lthrRun: number | null
+    lthrBike: number | null
     runThresholdPaceStr: string | null
     swimCSSStr: string | null
   } | null>(null)
@@ -5124,46 +5125,37 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         const { data: { user } } = await sb.auth.getUser()
         if (!user || cancelled) return
 
-        const [profileRes, perfRes, actsRes] = await Promise.all([
-          sb.from('profiles').select('ftp_watts,run_threshold_pace,css_pace,max_hr,rest_hr').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
-          sb.from('athlete_performance_profile').select('ftp,threshold_pace_run,css,max_hr,rest_hr').eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
+        const [perfRes, actsRes] = await Promise.all([
+          // athlete_performance_profile — vraies colonnes vérifiées
+          sb.from('athlete_performance_profile')
+            .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m')
+            .eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
         ])
 
-        const profile = (profileRes as { data: Record<string, unknown> | null }).data
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
         const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
 
-        const ftp = (perf?.ftp as number) ?? (profile?.ftp_watts as number) ?? null
-        const maxHR = (perf?.max_hr as number) ?? (profile?.max_hr as number) ?? null
-        const restHR = (perf?.rest_hr as number) ?? (profile?.rest_hr as number) ?? null
+        const ftp = (perf?.ftp_watts as number) ?? null
+        const hrMax = (perf?.hr_max as number) ?? null
+        const hrRest = (perf?.hr_rest as number) ?? null
+        const lthrRun = (perf?.lthr_run as number) ?? null
+        const lthrBike = (perf?.lthr_bike as number) ?? null
 
-        // FC zones via Karvonen si max + rest disponibles
-        let fcZones: number[] = []
-        if (maxHR && restHR) {
-          const reserve = maxHR - restHR
-          fcZones = [
-            Math.round(restHR + reserve * 0.5),
-            Math.round(restHR + reserve * 0.6),
-            Math.round(restHR + reserve * 0.7),
-            Math.round(restHR + reserve * 0.8),
-            Math.round(restHR + reserve * 0.9),
-          ]
-        }
+        // threshold_pace_s_km : entier (secondes/km)
+        const thresholdPaceSecKm = (perf?.threshold_pace_s_km as number) ?? null
+        const runThresholdPaceSec = thresholdPaceSecKm
+        const runThresholdPaceStr = thresholdPaceSecKm != null
+          ? `${Math.floor(thresholdPaceSecKm / 60)}:${String(thresholdPaceSecKm % 60).padStart(2, '0')}`
+          : null
 
-        const runPaceStr = (perf?.threshold_pace_run as string) ?? (profile?.run_threshold_pace as string) ?? null
-        let runThresholdPaceSec: number | null = null
-        if (runPaceStr) {
-          const m = String(runPaceStr).match(/(\d+):(\d+)/)
-          if (m) runThresholdPaceSec = parseInt(m[1]) * 60 + parseInt(m[2])
-        }
+        // css_s_100m : entier (secondes/100m)
+        const cssSecPer100m = (perf?.css_s_100m as number) ?? null
+        const swimCSSStr = cssSecPer100m != null
+          ? `${Math.floor(cssSecPer100m / 60)}:${String(cssSecPer100m % 60).padStart(2, '0')}`
+          : null
 
-        const cssStr = (perf?.css as string) ?? (profile?.css_pace as string) ?? null
-        let cssSecPer100m: number | null = null
-        if (cssStr) {
-          const m = String(cssStr).match(/(\d+):(\d+)/)
-          if (m) cssSecPer100m = parseInt(m[1]) * 60 + parseInt(m[2])
-        }
+        const rowSecPer500m = (perf?.rowing_threshold_pace_s_500m as number) ?? null
 
         // CTL: EWMA over 56 days
         const since56d = new Date(Date.now() - 56 * 86400000)
@@ -5187,10 +5179,11 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
 
         if (!cancelled) setAthleteData({
-          ftp, runThresholdPaceSec, cssSecPer100m, rowThresholdSecPer500m: null, ctl: Math.round(ctl),
-          maxHR, restHR, fcZones,
-          runThresholdPaceStr: runPaceStr ?? null,
-          swimCSSStr: cssStr ?? null,
+          ftp, runThresholdPaceSec, cssSecPer100m,
+          rowThresholdSecPer500m: rowSecPer500m,
+          ctl: Math.round(ctl),
+          hrMax, hrRest, lthrRun, lthrBike,
+          runThresholdPaceStr, swimCSSStr,
         })
       } catch { /* ignore */ }
     })()
@@ -5262,6 +5255,24 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const isStrength = sport === 'gym' || sport === 'hyrox'
   const trainTypes = TRAINING_TYPES[sport] ?? []
 
+  // ── Zones FC : modèle LTHR identique à la page Zones ─────────────
+  // Priorité : lthr_run/lthr_bike → hrMax*0.85 (estimation LTHR) → fallback hardcodé
+  const lthrForSport = (() => {
+    if (!athleteData) return null
+    const lthr = sport === 'bike' ? athleteData.lthrBike : athleteData.lthrRun
+    if (lthr) return lthr
+    if (athleteData.hrMax) return Math.round(athleteData.hrMax * 0.85)
+    return null
+  })()
+  const fcZones: number[] = lthrForSport
+    ? [
+        Math.round(lthrForSport * 0.80),   // Z1/Z2
+        Math.round(lthrForSport * 0.89),   // Z2/Z3
+        Math.round(lthrForSport * 0.95),   // Z3/Z4
+        Math.round(lthrForSport * 1.02),   // Z4/Z5
+      ]
+    : []
+
   // TSS range — block-based with athlete fitness factor
   const tssRange = computeTSSRange(blocks, sport, dur, rpe, athleteData)
   const sessionAvg = computeSessionAverages(blocks, sport)
@@ -5284,7 +5295,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     ? ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7']
     : ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
   const zoneDist = computeZoneDistribution(blocks, ZONE_COUNT)
-  const hrDist = computeHRDistribution(blocks, athleteData?.fcZones)
+  const hrDist = computeHRDistribution(blocks, fcZones.length > 0 ? fcZones : undefined)
 
   useEffect(() => {
     if (blocks.length === 0) return
@@ -6122,7 +6133,7 @@ Ajoute toujours échauffement et retour au calme.`
           )}
 
           {/* Données athlète (FTP / allure seuil / CSS / FC max) */}
-          {athleteData && (athleteData.ftp || athleteData.runThresholdPaceStr || athleteData.swimCSSStr || athleteData.maxHR) && (
+          {athleteData && (athleteData.ftp || athleteData.runThresholdPaceStr || athleteData.swimCSSStr || athleteData.hrMax || lthrForSport) && (
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
               {sport === 'bike' && athleteData.ftp && (
                 <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FTP <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.ftp}W</strong></span>
@@ -6133,11 +6144,11 @@ Ajoute toujours échauffement et retour au calme.`
               {sport === 'swim' && athleteData.swimCSSStr && (
                 <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>CSS <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.swimCSSStr}/100m</strong></span>
               )}
-              {athleteData.maxHR && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FC max <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.maxHR}</strong></span>
+              {lthrForSport && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>LTHR <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{lthrForSport}</strong></span>
               )}
-              {athleteData.restHR && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FC repos <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.restHR}</strong></span>
+              {athleteData.hrMax && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FC max <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.hrMax}</strong></span>
               )}
             </div>
           )}

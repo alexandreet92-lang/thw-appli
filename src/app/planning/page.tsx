@@ -4294,7 +4294,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   // ── PHASE : READY ──
   if (phase === 'ready') {
     return (
-      <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
         <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto' }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
@@ -4337,7 +4337,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   // ── PHASE : COUNTDOWN ──
   if (phase === 'countdown') {
     return (
-      <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
         <div style={{ fontSize: 100, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
         <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
@@ -4355,7 +4355,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     const confettiColors = [accent, '#22c55e', '#f97316', '#a855f7', '#06b6d4', '#eab308']
     const allExos = circuits.flatMap(c => c.exos)
     return (
-      <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
         <style>{`
           @keyframes confetti-fall{
             0%{transform:translateY(-20px) rotate(0deg);opacity:1}
@@ -5979,7 +5979,7 @@ Règles :
         {isEdit && isStrength && blocks.filter(b => b.type !== 'circuit_header').length > 0 && (
           <div style={{ padding: mobile ? '4px 16px 20px' : '4px 24px 24px', display: 'flex', justifyContent: 'center' }}>
             <button
-              onClick={() => setExecuteMode(true)}
+              onClick={e => { e.stopPropagation(); setExecuteMode(true) }}
               style={{
                 width: 72, height: 72, borderRadius: '50%', border: 'none',
                 background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,

@@ -48,6 +48,8 @@ const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
   elliptique:['EF','SL1','SL2','PMA','Heat Training'],
 }
 const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
+const ZONE_COLORS_7 = ['#6b7280', '#4ade80', '#facc15', '#fb923c', '#f87171', '#c084fc', '#ec4899']
+const ZONE_LABELS_7 = ['Z1 Récup', 'Z2 End.', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2', 'Z6 Anaé.', 'Z7 Sprint']
 const TASK_CONFIG: Record<TaskType,{label:string;color:string;bg:string}> = {
   sport:    { label:'Sport',     color:'#22c55e', bg:'rgba(34,197,94,0.15)'   },
   work:     { label:'Travail',   color:'#3b82f6', bg:'rgba(59,130,246,0.15)'  },
@@ -123,6 +125,7 @@ interface Session {
     name: string; distance: number | null; elevation: number | null
     points: number; elevationProfile: Array<{ distKm: number; ele: number }>
   }
+  nutritionItems?: NutritionItem[]
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -537,6 +540,7 @@ function usePlanning(weekStartParam?:string) {
       planVariant:r.plan_variant??'A',
       originalContent: r.original_content ?? undefined,
       parcoursData: r.parcours_data ?? undefined,
+      nutritionItems: r.nutrition_data ?? undefined,
       ...(r.validation_data??{}),
     })))
     setTasks((t.data??[]).map((r:any):WeekTask=>({
@@ -586,6 +590,7 @@ function usePlanning(weekStartParam?:string) {
       rpe:s.rpe??null, blocks:s.blocks??[], validation_data:{},
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
+      nutrition_data: (s as unknown as Session & { nutritionItems?: NutritionItem[] }).nutritionItems ?? null,
     }).select().single()
     if(!error&&data) {
       setSessions(p=>[...p,{...s,id:data.id}])
@@ -604,6 +609,7 @@ function usePlanning(weekStartParam?:string) {
     // Persiste le sport si fourni (édition inline modal)
     if (upd.sport) patch.sport = upd.sport
     if (upd.parcoursData !== undefined) patch.parcours_data = upd.parcoursData ?? null
+    if (upd.nutritionItems !== undefined) patch.nutrition_data = upd.nutritionItems ?? null
     await supabase.from('planned_sessions').update(patch).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     window.dispatchEvent(new Event('thw:sessions-changed'))
@@ -1262,8 +1268,9 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
 // STRENGTH BLOCK RENDERER — muscu / hyrox
 // Format : nom | séries × reps | charge | repos
 // ════════════════════════════════════════════════
-function StrengthBlockRenderer({ blocks, onChange, accent }: {
+function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
   blocks: Block[]; onChange: (b: Block[]) => void; accent: string
+  exoHistory?: Record<string, { weight: string; reps: number; date: string }>
 }) {
   const exoCount = (upToIdx: number) =>
     blocks.filter((x, j) => j <= upToIdx && x.type !== 'circuit_header').length
@@ -1362,7 +1369,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent }: {
               border: '1px solid var(--border)', background: 'var(--bg-card2)',
             }}>
               {/* Ligne 1 : numéro + nom + supprimer */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono", monospace', width: 18, flexShrink: 0 }}>{exoCount(i)}</span>
                 <input value={b.label} onChange={e => {
                   const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
@@ -1374,6 +1381,19 @@ function StrengthBlockRenderer({ blocks, onChange, accent }: {
                   background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0,
                 }}>×</button>
               </div>
+              {/* Historique exo */}
+              {(() => {
+                if (!exoHistory) return null
+                const key = (b.label ?? '').toLowerCase().trim()
+                const hist = exoHistory[key]
+                if (!hist) return null
+                const dateStr = hist.date ? new Date(hist.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''
+                return (
+                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 6px 18px', fontStyle: 'italic' as const }}>
+                    Dernière : {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
+                  </p>
+                )
+              })()}
 
               {/* Ligne 2 : séries × reps | charge | repos */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, alignItems: 'center' }}>
@@ -1432,9 +1452,10 @@ function StrengthBlockRenderer({ blocks, onChange, accent }: {
   )
 }
 
-function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
+function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory }: {
   sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void
   nutritionItems?: Array<{ timeMin: number; name: string; type: string; glucidesG: number }>
+  exoHistory?: Record<string, { weight: string; reps: number; date: string }>
 }) {
   const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
   const vPlh = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
@@ -1572,14 +1593,86 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
               )
             })}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((z, i) => (
-              <span key={z} style={{ fontSize: 9, fontWeight: 700, color: ZONE_COLORS[i], display: 'flex', alignItems: 'center', gap: 3 }}>
-                <span style={{ width: 7, height: 7, borderRadius: 2, background: ZONE_COLORS[i], display: 'inline-block' }} />
-                {z}
-              </span>
-            ))}
-          </div>
+          {(() => {
+            const isBike = sport === 'bike'
+            const zColors = isBike ? ZONE_COLORS_7 : ZONE_COLORS.slice(0, 5)
+            const zLabels = isBike ? ['Z1','Z2','Z3','Z4','Z5','Z6','Z7'] : ['Z1','Z2','Z3','Z4','Z5']
+
+            // Donut FC depuis les blocs
+            type HRBucket = { label: string; color: string; min: number; max: number }
+            const hrBuckets: HRBucket[] = [
+              { label: '<120',    color: '#6b7280', min: 0,   max: 120 },
+              { label: '120-140', color: '#4ade80', min: 120, max: 140 },
+              { label: '140-155', color: '#facc15', min: 140, max: 155 },
+              { label: '155-170', color: '#fb923c', min: 155, max: 170 },
+              { label: '170+',    color: '#f87171', min: 170, max: 999 },
+            ]
+            const hrMins = hrBuckets.map(() => 0)
+            let hasHR = false
+            for (const b of blocks) {
+              const hr = parseInt(b.hrAvg ?? '')
+              if (!hr || hr <= 0) continue
+              hasHR = true
+              const m = b.mode === 'interval' && b.reps && b.effortMin ? b.reps * b.effortMin : b.durationMin
+              const idx = hrBuckets.findIndex(bk => hr >= bk.min && hr < bk.max)
+              if (idx >= 0) hrMins[idx] += m
+            }
+            const totalHR = hrMins.reduce((a, b) => a + b, 0)
+
+            // Mini donut SVG helper
+            function miniDonutArcs(values: number[], colors: string[], cx: number, cy: number, r: number, w: number) {
+              const total = values.reduce((a, b) => a + b, 0)
+              if (total === 0) return null
+              let angle = -Math.PI / 2
+              return values.map((v, i) => {
+                if (v === 0) return null
+                const sweep = (v / total) * 2 * Math.PI * 0.98
+                const x1 = cx + r * Math.cos(angle)
+                const y1 = cy + r * Math.sin(angle)
+                const x2 = cx + r * Math.cos(angle + sweep)
+                const y2 = cy + r * Math.sin(angle + sweep)
+                const ri = r - w
+                const x3 = cx + ri * Math.cos(angle + sweep)
+                const y3 = cy + ri * Math.sin(angle + sweep)
+                const x4 = cx + ri * Math.cos(angle)
+                const y4 = cy + ri * Math.sin(angle)
+                const large = sweep > Math.PI ? 1 : 0
+                const d = `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L${x3.toFixed(2)} ${y3.toFixed(2)} A${ri} ${ri} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`
+                angle += (v / total) * 2 * Math.PI
+                return <path key={i} d={d} fill={colors[i]} opacity={0.85} />
+              })
+            }
+
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+                {/* Zones legend */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                  {zLabels.map((z, i) => (
+                    <span key={z} style={{ fontSize: 9, fontWeight: 700, color: zColors[i], display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 2, background: zColors[i], display: 'inline-block' }} />
+                      {z}
+                    </span>
+                  ))}
+                </div>
+                {/* Donut FC */}
+                {hasHR && totalHR > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                    <svg width={44} height={44} viewBox="0 0 44 44">
+                      {miniDonutArcs(hrMins, hrBuckets.map(b => b.color), 22, 22, 18, 8) ?? <circle cx={22} cy={22} r={18} fill="var(--border)" opacity={0.3} />}
+                    </svg>
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+                      <span style={{ fontSize: 8, color: 'var(--text-dim)', fontWeight: 600 }}>FC</span>
+                      {hrBuckets.map((bk, i) => hrMins[i] > 0 ? (
+                        <span key={bk.label} style={{ fontSize: 7.5, color: bk.color, fontWeight: 600 }}>
+                          {bk.label}: {Math.round(hrMins[i] / totalHR * 100)}%
+                        </span>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1636,7 +1729,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
 
       {(sport === 'gym' || sport === 'hyrox') ? (
         <div style={{ marginBottom: 10 }}>
-          <StrengthBlockRenderer blocks={blocks} onChange={onChange} accent={SPORT_BORDER[sport]} />
+          <StrengthBlockRenderer blocks={blocks} onChange={onChange} accent={SPORT_BORDER[sport]} exoHistory={exoHistory} />
         </div>
       ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
@@ -3412,6 +3505,7 @@ function TrainingTab() {
             onDelete={handleDelete}
             onValidate={handleValidate}
             onAutoSave={handleAutoSaveSession}
+            onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
           />
         </div>
       )}
@@ -4222,12 +4316,13 @@ const MOTIVATIONAL_MSGS = [
   'Mental fort !', 'Champion. 🏆', 'C\'est parti !', 'Bien joué !',
 ]
 
-function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
+function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHistory }: {
   blocks: Block[]
   sport: SportType
   sessionTitle: string
   onExit: () => void
   onSaveLog?: (log: SessionLog) => void
+  exoHistory?: Record<string, { weight: string; reps: number; date: string }>
 }) {
   const accent = SPORT_BORDER[sport]
   const fmtTimer = (sec: number) => `${Math.floor(Math.max(0,sec) / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`
@@ -4710,6 +4805,17 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
               {motivMsg && phase === 'work' && (
                 <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '-8px 0 10px', opacity: 0.75 }}>{motivMsg}</p>
               )}
+              {phase === 'work' && exoHistory && (() => {
+                const key = (currentExo.label ?? '').toLowerCase().trim()
+                const hist = exoHistory[key]
+                if (!hist) return null
+                const dateStr = hist.date ? new Date(hist.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''
+                return (
+                  <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '-6px 0 10px', fontStyle: 'italic' as const }}>
+                    Dernière : {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
+                  </p>
+                )
+              })()}
             </div>
 
             {/* ── Pastilles séries ── */}
@@ -4904,7 +5010,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
 
 // ──────────────────────────────────────────────────────────────
 
-function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave }: {
+function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -4914,6 +5020,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   onDelete?: (id: string) => void
   onValidate?: (s: Session) => void
   onAutoSave?: (s: Session) => void
+  onDuplicate?: (dayIndex: number, session: Session) => void
 }) {
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? 'run')
@@ -4939,7 +5046,11 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [mobile, setMobile] = useState(false)
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
-  const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>([])
+  const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)
+  const [favorites, setFavorites] = useState<Array<{id:string;name:string;sport:string;training_type?:string;blocks_data:Block[];nutrition_data:NutritionItem[];duration_min:number;rpe:number;notes:string}>>([])
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [exoHistory, setExoHistory] = useState<Record<string, { weight: string; reps: number; date: string }>>({})
+  const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>((session as unknown as Session & { nutritionItems?: NutritionItem[] })?.nutritionItems ?? [])
   const [nutritionTab, setNutritionTab] = useState<'manual' | 'ai'>('manual')
   const [nutritionAiPrompt, setNutritionAiPrompt] = useState('')
   const [nutritionAiLoading, setNutritionAiLoading] = useState(false)
@@ -5022,6 +5133,53 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     })()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (mode !== 'create') return
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('session_favorites').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+        setFavorites(data ?? [])
+      } catch {}
+    })()
+  }, [mode])
+
+  useEffect(() => {
+    const isStrengthSport = sport === 'gym' || sport === 'hyrox'
+    if (!isStrengthSport) return
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('planned_sessions')
+          .select('blocks,started_at')
+          .eq('user_id', user.id)
+          .in('sport', ['gym', 'hyrox'])
+          .not('blocks', 'is', null)
+          .order('started_at', { ascending: false })
+          .limit(20)
+        if (!data) return
+        const history: Record<string, { weight: string; reps: number; date: string }> = {}
+        for (const sess of data) {
+          const blks = (sess.blocks ?? []) as Block[]
+          for (const b of blks) {
+            if (b.type === 'circuit_header') continue
+            const key = (b.label ?? '').toLowerCase().trim()
+            if (key && !history[key] && b.value) {
+              history[key] = { weight: b.value, reps: b.reps ?? 0, date: (sess as Record<string,unknown>).started_at as string ?? '' }
+            }
+          }
+        }
+        setExoHistory(history)
+      } catch {}
+    })()
+  }, [sport])
 
   const accent = SPORT_BORDER[sport]
   const isStrength = sport === 'gym' || sport === 'hyrox'
@@ -5143,6 +5301,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
       parcoursData: parcoursData ?? undefined,
+      nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
     }
     onSave(savedSession)
     onClose()
@@ -5493,6 +5652,7 @@ Ajoute toujours échauffement et retour au calme.`
         sport={sport}
         sessionTitle={title || SPORT_LABEL[sport]}
         onExit={() => setExecuteMode(false)}
+        exoHistory={exoHistory}
       />
     )
   }
@@ -5595,6 +5755,44 @@ Ajoute toujours échauffement et retour au calme.`
             {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
           </button>
         </div>
+
+        {/* Favoris (mode create seulement) */}
+        {mode === 'create' && favorites.length > 0 && (
+          <div style={{ padding: mobile ? '0 16px 10px' : '0 24px 12px' }}>
+            <button onClick={() => setShowFavorites(!showFavorites)} style={{
+              width: '100%', padding: '9px', borderRadius: 8,
+              border: '1px solid var(--border)', background: showFavorites ? `${accent}10` : 'var(--bg-card2)',
+              color: showFavorites ? accent : 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600,
+            }}>
+              ★ Charger un favori ({favorites.length})
+            </button>
+            {showFavorites && (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                {favorites.map(fav => (
+                  <button key={fav.id} onClick={() => {
+                    setSport(fav.sport as SportType)
+                    setTrainingType(fav.training_type ?? null)
+                    setTitle(fav.name)
+                    setBlocks(fav.blocks_data ?? [])
+                    setNutritionItems(fav.nutrition_data ?? [])
+                    setDur(fav.duration_min ?? 60)
+                    setRpe(fav.rpe ?? 5)
+                    setDesc(fav.notes ?? '')
+                    setShowFavorites(false)
+                  }} style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 8, textAlign: 'left' as const,
+                    border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                    color: 'var(--text)', fontSize: 12, cursor: 'pointer',
+                  }}>
+                    <span style={{ fontWeight: 600 }}>{fav.name}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{SPORT_LABEL[fav.sport as SportType] ?? fav.sport} · {formatHM(fav.duration_min ?? 60)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* DEUX COLONNES */}
         <div style={{
@@ -5981,7 +6179,7 @@ Ajoute toujours échauffement et retour au calme.`
               <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises} />
             ) : (
               /* Mode IA ou edit : blocs générés (avec circuit_headers) */
-              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} />
+              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} exoHistory={exoHistory} />
             )
           ) : (
             <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
@@ -6110,78 +6308,95 @@ Ajoute toujours échauffement et retour au calme.`
 
               {nutritionTab === 'manual' ? (
                 <>
-                  {/* Liste des ravitaillements */}
-                  {nutritionItems.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 14 }}>
-                      {[...nutritionItems].sort((a, b) => a.timeMin - b.timeMin).map((item) => (
-                        <div key={item.id} style={{
-                          padding: '10px 14px', borderRadius: 10,
-                          border: '1px solid var(--border)', background: 'var(--bg-card)',
-                        }}>
-                          {/* Ligne 1 : type selector + supprimer */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace', minWidth: 36 }}>
-                              {item.timeMin === 0 ? 'Départ' : `${item.timeMin}'`}
-                            </span>
-                            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
-                              {NUTRITION_TYPES.map(nt => (
-                                <button key={nt.id} onClick={() => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: nt.id } : x))} style={{
-                                  padding: '3px 8px', borderRadius: 5, fontSize: 9, fontWeight: 600, cursor: 'pointer',
-                                  background: item.type === nt.id ? `${accent}15` : 'transparent',
-                                  border: item.type === nt.id ? `1px solid ${accent}44` : '1px solid var(--border)',
-                                  color: item.type === nt.id ? accent : 'var(--text-dim)',
-                                }}>{nt.label}</button>
+                  {/* Liste des ravitaillements — groupés par timeMin */}
+                  {nutritionItems.length > 0 && (() => {
+                    const grouped: Record<number, NutritionItem[]> = {}
+                    for (const item of nutritionItems) {
+                      if (!grouped[item.timeMin]) grouped[item.timeMin] = []
+                      grouped[item.timeMin].push(item)
+                    }
+                    const sortedTimes = Object.keys(grouped).map(Number).sort((a, b) => a - b)
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, marginBottom: 14 }}>
+                        {sortedTimes.map(timeMin => {
+                          const items = grouped[timeMin]
+                          return (
+                            <div key={timeMin} style={{
+                              padding: '10px 14px', borderRadius: 10,
+                              border: '1px solid var(--border)', background: 'var(--bg-card)',
+                            }}>
+                              {/* En-tête du moment */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: items.length > 0 ? 8 : 0 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: accent, fontFamily: '"DM Mono", monospace', minWidth: 44 }}>
+                                  {timeMin === 0 ? 'Départ' : `${timeMin}'`}
+                                </span>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                                  {items.reduce((s, x) => s + x.glucidesG, 0)}g glu
+                                </span>
+                              </div>
+                              {/* Aliments */}
+                              {items.map((item, ii) => (
+                                <div key={item.id} style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'auto 1fr auto auto auto',
+                                  gap: 8, alignItems: 'center',
+                                  paddingBottom: ii < items.length - 1 ? 6 : 0,
+                                  marginBottom: ii < items.length - 1 ? 6 : 0,
+                                  borderBottom: ii < items.length - 1 ? '1px solid var(--border)' : 'none',
+                                }}>
+                                  {/* Type */}
+                                  <select value={item.type}
+                                    onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: e.target.value as NutritionItem['type'] } : x))}
+                                    style={{ fontSize: 9, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}0a`, color: accent, outline: 'none', cursor: 'pointer' }}>
+                                    {NUTRITION_TYPES.map(nt => <option key={nt.id} value={nt.id}>{nt.label}</option>)}
+                                  </select>
+                                  {/* Nom */}
+                                  <input value={item.name} placeholder="Aliment..."
+                                    onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 12, outline: 'none', minWidth: 0 }} />
+                                  {/* Glucides */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <input type="number" min={0} value={item.glucidesG}
+                                      onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
+                                      style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: accent, fontSize: 11, fontFamily: '"DM Mono",monospace', fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+                                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>g</span>
+                                  </div>
+                                  {/* Quantité */}
+                                  <input value={item.quantity} placeholder="Qté"
+                                    onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
+                                    style={{ width: 56, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 11, fontFamily: '"DM Mono",monospace', outline: 'none' }} />
+                                  {/* Supprimer */}
+                                  <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
+                                    background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1,
+                                  }}>×</button>
+                                </div>
                               ))}
+                              {/* Ajouter au même moment */}
+                              <button onClick={() => {
+                                setNutritionItems(prev => [...prev, {
+                                  id: `nut_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                                  timeMin, type: 'gel' as const, name: '', quantity: '1 gel',
+                                  glucidesG: 25, proteinesG: 0, notes: '',
+                                }])
+                              }} style={{
+                                marginTop: 6, background: 'none', border: 'none',
+                                color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', opacity: 0.65,
+                                padding: 0,
+                              }}>+ ajouter à ce moment</button>
                             </div>
-                            <div style={{ flex: 1 }} />
-                            <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
-                              background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0,
-                            }}>×</button>
-                          </div>
-                          {/* Ligne 2 : champs */}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
-                            <div>
-                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Min</p>
-                              <input type="number" min={0} max={600} value={item.timeMin}
-                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, timeMin: parseInt(e.target.value) || 0 } : x))}
-                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Aliment</p>
-                              <input value={item.name} placeholder="Gel Maurten, Barre Clif..."
-                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
-                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' as const }} />
-                            </div>
-                            <div>
-                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Quantité</p>
-                              <input value={item.quantity} placeholder="500ml, 1 gel..."
-                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
-                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                            </div>
-                            <div>
-                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Glucides (g)</p>
-                              <input type="number" min={0} max={200} value={item.glucidesG}
-                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
-                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                            </div>
-                            <div>
-                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Protéines (g)</p>
-                              <input type="number" min={0} max={100} value={item.proteinesG}
-                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, proteinesG: parseInt(e.target.value) || 0 } : x))}
-                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                            </div>
-                          </div>
+                          )
+                        })}
+                        {/* Summary */}
+                        <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
+                          <span>Total : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong> glucides</span>
+                          <span><strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
+                            {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
+                          </strong></span>
                         </div>
-                      ))}
-                      {/* Summary */}
-                      <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
-                        <span>Total : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong> glucides</span>
-                        <span><strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
-                          {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
-                        </strong></span>
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
 
                   <button onClick={() => {
                     const lastTime = nutritionItems.length > 0 ? Math.max(...nutritionItems.map(x => x.timeMin)) : 0
@@ -6389,9 +6604,16 @@ Règles :
                     color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
                   }}>Réinitialiser IA</button>
                 )}
+                {onDuplicate && session && (
+                  <button onClick={() => setShowDuplicateMenu(true)} style={{
+                    padding: '8px 14px', borderRadius: 8,
+                    border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                    color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  }}>Dupliquer</button>
+                )}
               </div>
-              {/* Ligne 2 : PDF + Parcours + Fermer */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {/* Ligne 2 : PDF + Parcours + Favori + Fermer */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
                 <button onClick={handleExportPDF} title="Exporter en PDF" style={{
                   padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
@@ -6410,10 +6632,30 @@ Règles :
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/></svg>
                   {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
                 </button>
+                <button onClick={async () => {
+                  const name = prompt('Nom du favori :', title || `${SPORT_LABEL[sport]}`)
+                  if (!name) return
+                  try {
+                    const { createClient } = await import('@/lib/supabase/client')
+                    const sb = createClient()
+                    const { data: { user } } = await sb.auth.getUser()
+                    if (!user) return
+                    await sb.from('session_favorites').insert({
+                      user_id: user.id, name, sport,
+                      training_type: trainingType, blocks_data: blocks,
+                      nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
+                    })
+                    alert('✓ Favori sauvegardé')
+                  } catch (e) { console.error('[Fav]', e) }
+                }} style={{
+                  padding: '8px 14px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                }}>★ Favori</button>
                 <div style={{ flex: 1 }} />
                 <button onClick={() => {
                   if (session) {
-                    onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined })
+                    onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined, nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined })
                   }
                   onClose()
                 }} style={{
@@ -6431,6 +6673,26 @@ Règles :
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
               }}>Annuler</button>
+              <button onClick={async () => {
+                const name = prompt('Nom du favori :', title || `${SPORT_LABEL[sport]}`)
+                if (!name) return
+                try {
+                  const { createClient } = await import('@/lib/supabase/client')
+                  const sb = createClient()
+                  const { data: { user } } = await sb.auth.getUser()
+                  if (!user) return
+                  await sb.from('session_favorites').insert({
+                    user_id: user.id, name, sport,
+                    training_type: trainingType, blocks_data: blocks,
+                    nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
+                  })
+                  alert('✓ Favori sauvegardé')
+                } catch (e) { console.error('[Fav]', e) }
+              }} style={{
+                padding: '10px 20px', borderRadius: 8,
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
+              }}>★ Favori</button>
               <div style={{ flex: 1 }} />
               <button onClick={handleSubmit} style={{
                 padding: '10px 28px', borderRadius: 8, border: 'none',
@@ -6440,6 +6702,40 @@ Règles :
             </div>
           )}
         </div>
+
+        {/* Duplicate day menu */}
+        {showDuplicateMenu && onDuplicate && session && (
+          <div style={{
+            position: 'fixed' as const, inset: 0, zIndex: 1100,
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }} onClick={() => setShowDuplicateMenu(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: 'var(--bg-card)', borderRadius: 14, padding: 20,
+              maxWidth: 320, width: '100%', border: '1px solid var(--border)',
+            }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>Dupliquer sur quel jour ?</h3>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((day, i) => (
+                  <button key={i} onClick={() => {
+                    onDuplicate(i, { ...session, id: '', title: session.title + ' (copie)', dayIndex: i })
+                    setShowDuplicateMenu(false)
+                    onClose()
+                  }} style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 8, textAlign: 'left' as const,
+                    border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                    color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontWeight: 500,
+                  }}>{day}</button>
+                ))}
+              </div>
+              <button onClick={() => setShowDuplicateMenu(false)} style={{
+                marginTop: 10, width: '100%', padding: 8, borderRadius: 7,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
+              }}>Annuler</button>
+            </div>
+          </div>
+        )}
 
       </div>
     </>

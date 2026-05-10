@@ -2150,14 +2150,14 @@ interface AiPlanSessionAgg {
 }
 
 const TP_BLOC_COLORS: Record<string, string> = {
-  'Base':        '#3B82F6',
-  'Build':       '#F97316',
-  'Peak':        '#EF4444',
-  'Taper':       '#22C55E',
-  'Intensité':   '#F97316',
-  'Spécifique':  '#EF4444',
-  'Deload':      '#22C55E',
-  'Compétition': '#A855F7',
+  'Base':        'rgba(59,130,246,0.55)',
+  'Build':       'rgba(249,115,22,0.55)',
+  'Peak':        'rgba(239,68,68,0.55)',
+  'Taper':       'rgba(34,197,94,0.55)',
+  'Intensité':   'rgba(249,115,22,0.55)',
+  'Spécifique':  'rgba(239,68,68,0.55)',
+  'Deload':      'rgba(34,197,94,0.55)',
+  'Compétition': 'rgba(168,85,247,0.55)',
 }
 const TP_BLOC_TEXT: Record<string, string> = {
   'Base':        '#fff',
@@ -2562,7 +2562,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
 
   // Dimensions SVG
-  const PERIOD_W = 400, PERIOD_H = 36
+  const PERIOD_W = 400, PERIOD_H = 26
 
   return (
     <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
@@ -2793,24 +2793,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
             const curWeekNum = Math.round((curWsMs - planStartMs) / WEEK_MS) + 1
 
             return (
-              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaine${n > 1 ? 's' : ''} · live`} action={
-                onReload && (
-                  <button
-                    onClick={onReload}
-                    title="Actualiser les données du planning"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      fontSize: 11, padding: '5px 12px', borderRadius: 8,
-                      border: '1.5px solid #8b5cf6',
-                      background: 'rgba(139,92,246,0.12)',
-                      color: '#8b5cf6', cursor: 'pointer', fontWeight: 700,
-                    }}
-                  >
-                    <span style={{ fontSize: 14, lineHeight: 1 }}>↺</span>
-                    Actualiser
-                  </button>
-                )
-              }>
+              <ChartSection title="Volume hebdomadaire" subtitle={`${n} semaine${n > 1 ? 's' : ''} · live`}>
                 <svg width="100%" viewBox={`0 0 ${VOL_W} ${VOL_H + Y_PAD}`} style={{ display: 'block', overflow: 'visible', cursor: 'pointer', maxWidth: VOL_W }}>
                   {weekBars.map((w, i) => {
                     const barH  = Math.max(w.volume_h > 0 ? (w.volume_h / maxVol) * VOL_H : 0, w.volume_h > 0 ? 2 : 0)
@@ -2991,7 +2974,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
         // At least one donut must have data
         if (totalZoneMins === 0 && totalSportMins === 0 && totalSessions === 0) return null
 
-        const CX = 40, CY = 40, R_OUT = 34, R_IN = 20
+        const CX = 50, CY = 50, R_OUT = 42, R_IN = 26
 
         function MiniDonut({ arcs, cx, cy, label, sub }: {
           arcs: { startAng: number; endAng: number; col?: string; zi?: number }[]
@@ -3032,31 +3015,31 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                 label="Charge du plan" sub={totalSessions > 0 ? `${totalSessions} séances` : '—'} />
             </div>
             {/* compact legend under each donut */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' as const }}>
               {/* Zones legend */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 80 }}>
                 {zoneArcs.slice(0, 3).map((a, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ width: 6, height: 6, borderRadius: 1, background: ZONE_COLORS[a.zi], flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{ZONE_LABELS[a.zi]} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{ZONE_LABELS[a.zi]} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
                   </div>
                 ))}
               </div>
               {/* Sports legend */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 80 }}>
                 {sportArcs.slice(0, 3).map((a, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ width: 6, height: 6, borderRadius: 1, background: a.col, flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'capitalize' as const }}>{a.sport} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'capitalize' as const }}>{a.sport} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
                   </div>
                 ))}
               </div>
               {/* Intensité legend */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 80 }}>
                 {intensArcs.slice(0, 3).map((a, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ width: 6, height: 6, borderRadius: 1, background: a.col, flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{a.label} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{a.label} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(a.pct * 100)}%</strong></span>
                   </div>
                 ))}
               </div>
@@ -3111,7 +3094,7 @@ function TrainingTab() {
   const { sessions, races, intensities, activities, loading, addSession, updateSession, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
   const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0] ?? null
   const [view, setView] = useState<TrainingView>('vertical')
-  const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant}|null>(null)
+  const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string}|null>(null)
   const [addModalFavorites, setAddModalFavorites] = useState(false)
   const [detailModal, setDetailModal] = useState<Session|null>(null)
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
@@ -3144,8 +3127,9 @@ function TrainingTab() {
       } catch {}
     })()
   }, [])
-  const dragRef  = useRef<{id:string;from:number}|null>(null)
-  const touchRef = useRef<{id:string;from:number}|null>(null)
+  const dragRef      = useRef<{id:string;from:number}|null>(null)
+  const touchRef     = useRef<{id:string;from:number}|null>(null)
+  const dragTouchRef = useRef<{id:string;from:number;el:HTMLElement;clone:HTMLElement|null}|null>(null)
   const todayIdx = getTodayIdx()
 
   // ── AI training plan détecté pour la semaine courante ──
@@ -3277,7 +3261,26 @@ function TrainingTab() {
   }
   const week = buildWeek(currentWeekStart, compareMode ? undefined : activePlan)
 
-  async function handleAddSession(dayIdx:number, s:Session) {
+  async function handleAddSession(dayIdx:number, s:Session, targetWeekStart?:string) {
+    if (targetWeekStart && targetWeekStart !== currentWeekStart) {
+      // Ajout sur une autre semaine — appel Supabase direct
+      const { createClient: sbCreate } = await import('@/lib/supabase/client')
+      const sb = sbCreate()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const typedS = s as Session & { nutritionItems?: NutritionItem[] }
+      await sb.from('planned_sessions').insert({
+        user_id: user.id, week_start: targetWeekStart, day_index: dayIdx,
+        sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
+        tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
+        rpe: s.rpe ?? null, blocks: s.blocks ?? [], validation_data: {},
+        plan_variant: s.planVariant ?? activePlan,
+        parcours_data: s.parcoursData ?? null,
+        nutrition_data: typedS.nutritionItems ?? null,
+      })
+      window.dispatchEvent(new Event('thw:sessions-changed'))
+      return
+    }
     await addSession({ ...s, dayIndex:dayIdx, planVariant:addModal?.plan??activePlan })
   }
   async function handleSaveSession(s:Session) {
@@ -3303,8 +3306,56 @@ function TrainingTab() {
   }
   function onDragStart(id:string,from:number) { dragRef.current={id,from} }
   function onDrop(to:number) { if(!dragRef.current)return; if(dragRef.current.from!==to)moveSession(dragRef.current.id,to); dragRef.current=null; setDragOver(null) }
-  function onTouchStart(id:string,from:number) { touchRef.current={id,from} }
-  function onTouchEnd(to:number) { if(!touchRef.current)return; if(touchRef.current.from!==to)moveSession(touchRef.current.id,to); touchRef.current=null }
+  function onTouchStart(id:string,from:number,e?:React.TouchEvent) {
+    touchRef.current={id,from}
+    if (e) {
+      const el = e.currentTarget as HTMLElement
+      const clone = el.cloneNode(true) as HTMLElement
+      const rect = el.getBoundingClientRect()
+      clone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:0.7;pointerEvents:none;zIndex:9999;transform:scale(1.04);boxShadow:0 8px 24px rgba(0,0,0,0.3);borderRadius:6px;`
+      document.body.appendChild(clone)
+      el.style.opacity = '0.3'
+      dragTouchRef.current = { id, from, el, clone }
+    }
+  }
+  function onTouchMove(e:React.TouchEvent) {
+    if (!dragTouchRef.current?.clone) return
+    const t = e.touches[0]
+    const rect = dragTouchRef.current.el.getBoundingClientRect()
+    dragTouchRef.current.clone.style.left = `${t.clientX - rect.width / 2}px`
+    dragTouchRef.current.clone.style.top  = `${t.clientY - rect.height / 2}px`
+  }
+  function onTouchEnd(to?:number) {
+    if (!touchRef.current) return
+    // If using elementFromPoint approach
+    if (dragTouchRef.current) {
+      const { el, clone } = dragTouchRef.current
+      if (clone) { clone.remove() }
+      el.style.opacity = ''
+      dragTouchRef.current = null
+    }
+    if (to !== undefined && to !== null && touchRef.current.from !== to) {
+      moveSession(touchRef.current.id, to)
+    }
+    touchRef.current = null
+  }
+  function onTouchEndPoint(e:React.TouchEvent) {
+    if (!touchRef.current) return
+    if (dragTouchRef.current) {
+      const { el, clone } = dragTouchRef.current
+      if (clone) { clone.remove() }
+      el.style.opacity = ''
+      dragTouchRef.current = null
+    }
+    const t = e.changedTouches[0]
+    const target = document.elementFromPoint(t.clientX, t.clientY)
+    const dayEl = target?.closest('[data-day-index]') as HTMLElement | null
+    const dayIdx = dayEl ? parseInt(dayEl.dataset.dayIndex ?? '-1') : -1
+    if (dayIdx >= 0 && dayIdx !== touchRef.current.from) {
+      moveSession(touchRef.current.id, dayIdx)
+    }
+    touchRef.current = null
+  }
 
   const allSess = week.flatMap(d=>d.sessions)
   const allActs = week.flatMap(d=>d.activities)   // activités réellement effectuées
@@ -3358,8 +3409,12 @@ function TrainingTab() {
               <div data-intensity-picker style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative' as const }}>
                 <button
                   onClick={()=>{ if (isCurrent) setIntensityPickerDay(isPickerOpen?null:i); else setIntensityModal(d.intensity) }}
-                  title={isCurrent?'Changer l\'intensité du jour':cfg.label}
-                  style={{ padding:'2px 9px 2px 7px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:9,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
+                  title={isCurrent ? 'Changer l\'intensité du jour' :
+                    d.intensity === 'recovery' ? 'Récupération — journée légère ou repos actif' :
+                    d.intensity === 'low' ? 'Charge légère — séance facile, endurance de base' :
+                    d.intensity === 'mid' ? 'Charge modérée — séance standard' :
+                    'Charge élevée — séance intense, récupération nécessaire'}
+                  style={{ padding:'2px 9px 2px 7px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:9,fontWeight:700,cursor:!isCurrent?'help':'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
                   {cfg.label}
                   {isCurrent && (
                     <svg width={7} height={7} viewBox="0 0 10 10" style={{ opacity:0.7,transform:isPickerOpen?'rotate(180deg)':'none',transition:'transform 0.12s' }}>
@@ -3411,6 +3466,7 @@ function TrainingTab() {
           </div>
           {w.map((d,i)=>(
             <div key={d.day}
+              data-day-index={i}
               onDragOver={e=>{e.preventDefault();setDragOver(i)}}
               onDragLeave={()=>setDragOver(null)}
               onDrop={()=>onDrop(i)}
@@ -3443,7 +3499,7 @@ function TrainingTab() {
                 })}
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
-                  <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={()=>onTouchStart(s.id,i)} onClick={()=>setDetailModal(s)}
+                  <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
                     style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[s.sport],borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative' }}>
                     {s.status==='done' && <span style={{ position:'absolute',top:2,right:2,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700 }}>FAIT</span>}
                     {s.status!=='done' && isSessionModified(s) && <span title="Modifié par toi" style={{ position:'absolute',top:3,right:3,width:5,height:5,borderRadius:'50%',background:'#f97316',flexShrink:0 }} />}
@@ -3456,12 +3512,10 @@ function TrainingTab() {
                     {s.blocks.length>0 && <div style={{ display:'flex',gap:1,marginTop:2,height:6,borderRadius:1,overflow:'hidden' }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.8 }}/> })}</div>}
                   </div>
                 ))}
-                {ws===currentWeekStart&&(
-                  <div style={{ display:'flex',gap:3,marginTop:2 }}>
-                    <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan})}} style={{ flex:1,padding:'3px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }}>+</button>
-                    {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:plan??activePlan})}} style={{ padding:'3px 5px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }} title="Charger un favori">★</button>}
-                  </div>
-                )}
+                <div style={{ display:'flex',gap:3,marginTop:2 }}>
+                  <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}} style={{ flex:1,padding:'3px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }}>+</button>
+                  {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}} style={{ padding:'3px 5px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }} title="Charger un favori">★</button>}
+                </div>
               </div>
             </div>
           ))}
@@ -3512,7 +3566,7 @@ function TrainingTab() {
           dayIndex={addModal.dayIndex}
           plan={addModal.plan}
           onClose={()=>{setAddModal(null);setAddModalFavorites(false)}}
-          onSave={(s)=>{ handleAddSession(addModal.dayIndex, s); setAddModal(null); setAddModalFavorites(false) }}
+          onSave={(s)=>{ handleAddSession(addModal.dayIndex, s, addModal.weekStart); setAddModal(null); setAddModalFavorites(false) }}
           openWithFavorites={addModalFavorites}
         />
       )}
@@ -3719,7 +3773,7 @@ function TrainingTab() {
 
 
       {/* View switch */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',position:'relative',zIndex:5 }}>
         <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{compareMode?'Comparaison Plan A / Plan B':`Plan ${activePlan} · ${getWeekLabel(currentWeekStart)}`}</p>
         {!compareMode&&<div style={{ display:'flex',gap:6 }}>
           {([['vertical','⊟ Vertical'],['horizontal','⊞ Horizontal']] as [TrainingView,string][]).map(([v,l])=>(
@@ -3749,9 +3803,9 @@ function TrainingTab() {
 
       {/* HORIZONTAL VIEW (only in single-week, single-plan mode) */}
       {!compareMode && weekRange===1 && view==='horizontal' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:-16 }}>
+        <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:8 }}>
           {week.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; return (
-            <div key={d.day} onTouchEnd={()=>onTouchEnd(i)} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:13,padding:13,boxShadow:'var(--shadow-card)' }}>
+            <div key={d.day} data-day-index={i} onTouchEnd={()=>onTouchEnd(i)} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:13,padding:13,boxShadow:'var(--shadow-card)' }}>
               <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:(d.sessions.length+d.activities.length)?8:0 }}>
                 <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                   <div style={{ textAlign:'center' as const,minWidth:32 }}>
@@ -3781,7 +3835,7 @@ function TrainingTab() {
                 </div>
               )})}
               {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
-                <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={()=>onTouchStart(s.id,i)} onClick={()=>setDetailModal(s)}
+                <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
                   style={{ display:'flex',flexDirection:'column',padding:'8px 10px',borderRadius:9,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',opacity:s.status==='done'?0.75:1,marginBottom:5 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:7 }}>
                     <SportBadge sport={s.sport} size="sm"/>

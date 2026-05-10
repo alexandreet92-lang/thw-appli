@@ -445,8 +445,18 @@ function getWeekLabel(ws:string):string {
   return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} – ${e.getDate()} ${MONTH_SHORT[e.getMonth()]}`
 }
 function normalizeSportType(s:string):SportType {
-  const m:Record<string,SportType>={running:'run',cycling:'bike',virtual_ride:'bike',virtual_bike:'bike',swimming:'swim',trail_run:'run',trail_running:'run',triathlon:'run'}
-  return m[s]??((['run','bike','swim','hyrox','gym','rowing','elliptique'] as SportType[]).includes(s as SportType)?s as SportType:'run')
+  const lower = (s??'').toLowerCase()
+  const m:Record<string,SportType>={
+    running:'run', run:'run', trail_run:'run', trail_running:'run', hike:'run', walk:'run', trailrun:'run',
+    cycling:'bike', ride:'bike', bike:'bike', virtual_ride:'bike', virtual_bike:'bike', virtualride:'bike',
+    swimming:'swim', swim:'swim',
+    weighttraining:'gym', weight_training:'gym', gym:'gym', workout:'gym', strengthtraining:'gym', strength_training:'gym',
+    rowing:'rowing', row:'rowing',
+    elliptical:'elliptique', elliptique:'elliptique',
+    hyrox:'hyrox',
+    triathlon:'run',
+  }
+  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
 }
 
 // Retourne true si la séance est une séance repos/off (durée 0 ou sport/titre repos).
@@ -7167,12 +7177,15 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const sessionMouseDragRef = useRef<{realId:string;fromDay:number}|null>(null)
   const sessionTouchDragRef = useRef<{realId:string;fromDay:number;el:HTMLElement;startX:number;startY:number}|null>(null)
 
-  const trainingTasks: WeekTask[] = trainingWeek.map(s=>({
-    id:`tr_${s.id}`, title:s.title, type:'sport' as TaskType,
-    dayIndex:s.dayIndex, startHour:parseInt(s.time.split(':')[0])||6, startMin:parseInt(s.time.split(':')[1])||0,
-    durationMin:s.durationMin, fromTraining:true, color:SPORT_BORDER[s.sport as SportType],
-    sport:s.sport as SportType,
-  }))
+  const trainingTasks: WeekTask[] = trainingWeek.map(s=>{
+    const sp = normalizeSportType(s.sport as string)
+    return {
+      id:`tr_${s.id}`, title:s.title, type:'sport' as TaskType,
+      dayIndex:s.dayIndex, startHour:parseInt(s.time.split(':')[0])||6, startMin:parseInt(s.time.split(':')[1])||0,
+      durationMin:s.durationMin, fromTraining:true, color:SPORT_BORDER[sp]||'#6b7280',
+      sport:sp,
+    }
+  })
 
   const allTasks = [...trainingTasks, ...tasks]
   function getTasksForDay(d:number) { return allTasks.filter(t=>t.dayIndex===d) }
@@ -7397,10 +7410,18 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 })}
                 {/* Training sessions — sport color, proportional height, draggable */}
                 {getVisibleTrainingSessions(d).map(t=>{
-                  const col=t.color||'#6b7280'
+                  // Derive color directly from sport at render-time (source of truth)
+                  const sport = t.sport as string
+                  const col = (SPORT_BORDER as Record<string,string>)[sport]
+                           || (SPORT_BORDER as Record<string,string>)[normalizeSportType(sport)]
+                           || '#6b7280'
+                  const bg  = (SPORT_BG as Record<string,string>)[sport]
+                           || (SPORT_BG as Record<string,string>)[normalizeSportType(sport)]
+                           || 'rgba(107,114,128,0.10)'
                   const topPx=Math.max(0,(t.startHour-5+t.startMin/60)*CELL_H)
                   const heightPx=Math.max(t.durationMin/60*CELL_H,28)
                   const realId=t.id.slice(3)
+                  const sportAbbr = t.sport ? (SPORT_ABBR as Record<string,string>)[sport] || sport.toUpperCase().slice(0,4) : ''
                   return (
                     <div key={t.id}
                       onMouseDown={e=>startSessionMouseDrag(e,realId,t.dayIndex)}
@@ -7409,10 +7430,10 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       onTouchEnd={onSessionTouchEnd}
                       onClick={e=>e.stopPropagation()}
                       style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
-                        padding:'4px 6px',background:`${col}18`,borderLeft:`3px solid ${col}`,
+                        padding:'4px 6px',background:bg,borderLeft:`3px solid ${col}`,
                         cursor:'grab',zIndex:3,overflow:'hidden' as const,userSelect:'none' as const }}>
-                      <p style={{ fontSize:9,fontWeight:700,margin:0,color:col,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{t.sport?`[${SPORT_ABBR[t.sport]}] `:''}{t.title}</p>
-                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',fontFamily:'DM Mono,monospace' }}>{String(t.startHour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')} · {formatHM(t.durationMin)}{t.sport?` · ${SPORT_ABBR[t.sport]}`:''}</p>}
+                      <p style={{ fontSize:9,fontWeight:700,margin:0,color:col,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{sportAbbr?`[${sportAbbr}] `:''}{t.title}</p>
+                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',fontFamily:'DM Mono,monospace' }}>{String(t.startHour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')} · {formatHM(t.durationMin)}{sportAbbr?` · ${sportAbbr}`:''}</p>}
                     </div>
                   )
                 })}

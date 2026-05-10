@@ -131,7 +131,7 @@ interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
   startHour:number; startMin:number; durationMin:number
   description?:string; priority?:boolean; fromTraining?:boolean; color?:string
-  isMain?:boolean
+  isMain?:boolean; sport?:SportType
 }
 interface Race {
   id:string; name:string; sport:RaceSport; date:string; level:RaceLevel
@@ -7160,19 +7160,98 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const [desktopView,    setDesktopView]    = useState<'week'|'today'>('week')
   const todayIdx = getTodayIdx()
   const dates    = getWeekDates()
-  // Drag tracking for touch
+  // Drag tracking for touch (week tasks)
   const touchDragRef = useRef<{id:string;fromDay:number}|null>(null)
   const touchTargetRef = useRef<number|null>(null)
+  // Drag tracking for training sessions
+  const sessionMouseDragRef = useRef<{realId:string;fromDay:number}|null>(null)
+  const sessionTouchDragRef = useRef<{realId:string;fromDay:number;el:HTMLElement;startX:number;startY:number}|null>(null)
 
   const trainingTasks: WeekTask[] = trainingWeek.map(s=>({
-    id:`tr_${s.id}`, title:`[${SPORT_ABBR[s.sport as SportType]}] ${s.title}`, type:'sport' as TaskType,
+    id:`tr_${s.id}`, title:s.title, type:'sport' as TaskType,
     dayIndex:s.dayIndex, startHour:parseInt(s.time.split(':')[0])||6, startMin:parseInt(s.time.split(':')[1])||0,
     durationMin:s.durationMin, fromTraining:true, color:SPORT_BORDER[s.sport as SportType],
+    sport:s.sport as SportType,
   }))
 
   const allTasks = [...trainingTasks, ...tasks]
   function getTasksForDay(d:number) { return allTasks.filter(t=>t.dayIndex===d) }
+  // Training sessions visible for day d (exclude if a matching activity covers the same sport)
+  function getVisibleTrainingSessions(d:number):WeekTask[] {
+    const dayActs = activities.filter(a=>a.dayIndex===d)
+    return trainingTasks.filter(t=>{
+      if (t.dayIndex!==d) return false
+      if (!t.sport) return true
+      const covered = dayActs.some(a=>normalizeSportType(a.sport)===t.sport)
+      return !covered
+    })
+  }
   function dayLoad(d:number) { return INTENSITY_CONFIG[(intensities[d]??'low') as DayIntensity] }
+
+  // Move a training session in Supabase (day + time)
+  async function moveTrainingSession(realId:string, toDay:number, newTime:string) {
+    const sb = createClient()
+    await sb.from('planned_sessions').update({ day_index:toDay, time:newTime, updated_at:new Date().toISOString() }).eq('id',realId)
+    window.dispatchEvent(new Event('thw:sessions-changed'))
+  }
+
+  // Mouse drag for training sessions
+  function startSessionMouseDrag(e:React.MouseEvent, realId:string, fromDay:number) {
+    e.preventDefault(); e.stopPropagation()
+    sessionMouseDragRef.current = {realId, fromDay}
+    const onUp = async (ev:MouseEvent) => {
+      document.removeEventListener('mouseup', onUp)
+      if (!sessionMouseDragRef.current) return
+      const target = document.elementFromPoint(ev.clientX, ev.clientY)
+      const dayEl = target?.closest('[data-weekday]') as HTMLElement|null
+      const toDay = dayEl ? parseInt(dayEl.dataset.weekday??'-1') : -1
+      if (toDay >= 0 && dayEl) {
+        const colRect = dayEl.getBoundingClientRect()
+        const relY = Math.max(0, ev.clientY - colRect.top)
+        const hourFrac = 5 + relY / CELL_H
+        const h = Math.max(5, Math.min(23, Math.floor(hourFrac)))
+        const m = Math.round(((hourFrac - Math.floor(hourFrac)) * 60) / 15) * 15
+        const newTime = `${String(h).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`
+        await moveTrainingSession(sessionMouseDragRef.current.realId, toDay, newTime)
+      }
+      sessionMouseDragRef.current = null
+    }
+    document.addEventListener('mouseup', onUp)
+  }
+
+  // Touch drag for training sessions
+  function startSessionTouchDrag(e:React.TouchEvent, realId:string, fromDay:number) {
+    e.stopPropagation()
+    const touch = e.touches[0]
+    const el = e.currentTarget as HTMLElement
+    sessionTouchDragRef.current = {realId, fromDay, el, startX:touch.clientX, startY:touch.clientY}
+    el.style.opacity = '0.6'; el.style.zIndex = '50'; el.style.pointerEvents = 'none'
+  }
+  function onSessionTouchMove(e:React.TouchEvent) {
+    if (!sessionTouchDragRef.current) return
+    const touch = e.touches[0]
+    const { el, startX, startY } = sessionTouchDragRef.current
+    el.style.transform = `translate(${touch.clientX-startX}px,${touch.clientY-startY}px)`
+  }
+  async function onSessionTouchEnd(e:React.TouchEvent) {
+    if (!sessionTouchDragRef.current) return
+    const { el, realId } = sessionTouchDragRef.current
+    el.style.opacity = ''; el.style.zIndex = ''; el.style.transform = ''; el.style.pointerEvents = ''
+    const touch = e.changedTouches[0]
+    const target = document.elementFromPoint(touch.clientX, touch.clientY)
+    const dayEl = target?.closest('[data-weekday]') as HTMLElement|null
+    if (dayEl) {
+      const toDay = parseInt(dayEl.dataset.weekday??'-1')
+      const colRect = dayEl.getBoundingClientRect()
+      const relY = Math.max(0, touch.clientY - colRect.top)
+      const hourFrac = 5 + relY / CELL_H
+      const h = Math.max(5, Math.min(23, Math.floor(hourFrac)))
+      const m = Math.round(((hourFrac - Math.floor(hourFrac)) * 60) / 15) * 15
+      const newTime = `${String(h).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`
+      if (toDay >= 0) await moveTrainingSession(realId, toDay, newTime)
+    }
+    sessionTouchDragRef.current = null
+  }
 
   async function handleAddTask(t:Omit<WeekTask,'id'>) { await addTask(t) }
   async function handleUpdateTask(t:WeekTask) { await updateTask(t) }
@@ -7262,64 +7341,106 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           ))}
         </div>
 
-        {/* Time rows */}
-        <div style={{ overflowY:'auto',maxHeight:'60vh' }}>
-          {HOURS.map(hour=>(
-            <div key={hour} style={{ display:'grid',gridTemplateColumns:`44px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',minHeight:CELL_H }}>
-              <div style={{ padding:'3px 5px',display:'flex',alignItems:'flex-start',justifyContent:'flex-end' }}>
-                <span style={{ fontSize:9,fontFamily:'DM Mono,monospace',color:'var(--text-dim)',marginTop:2 }}>{String(hour).padStart(2,'0')}h</span>
-              </div>
-              {days.map(d=>(
-                <div key={d} data-weekday={String(d)}
-                  onClick={()=>setTaskModal({dayIndex:d,startHour:hour})}
-                  onDragOver={e=>{e.preventDefault();setDragOverDay(d)}}
-                  onDragLeave={()=>setDragOverDay(null)}
-                  onDrop={()=>{
-                    if(touchDragRef.current&&touchDragRef.current.fromDay!==d){
-                      const t=tasks.find(x=>x.id===touchDragRef.current!.id)
-                      if(t) handleUpdateTask({...t,dayIndex:d})
-                    }
-                    setDragOverDay(null)
-                  }}
-                  style={{ borderLeft:'1px solid var(--border)',padding:'2px 3px',cursor:'pointer',minHeight:CELL_H,position:'relative',background:dragOverDay===d?'rgba(0,200,224,0.04)':'transparent' }}>
-                  {/* Activités importées de Training (cliquables → modal détail) */}
-                  {activities.filter(a=>a.dayIndex===d&&a.startHour===hour).map(a=>{
-                    const sp=normalizeSportType(a.sport); const topPx=(a.startMin/60)*CELL_H
-                    return (
-                      <div key={a.id} onClick={e=>{e.stopPropagation();setActivityDetail(a)}}
-                        style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer',zIndex:1 }}>
-                        <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                          <SportBadge sport={sp} size="xs"/>
-                          <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
-                        </div>
-                        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
-                      </div>
-                    )
-                  })}
-                  {getTasksForDay(d).filter(t=>t.startHour===hour&&!t.isMain).map(t=>{
-                    // Place task with minute offset within cell
-                    const topPx = (t.startMin/60)*CELL_H
-                    const cfg = TASK_CONFIG[t.type]; const border = t.fromTraining?(t.color||cfg.color):cfg.color
-                    return (
-                      <div key={t.id}
-                        draggable={!t.fromTraining}
-                        onDragStart={e=>{e.stopPropagation();if(!t.fromTraining){touchDragRef.current={id:t.id,fromDay:t.dayIndex}}}}
-                        onTouchStart={e=>onTaskTouchStart(e,t)}
-                        onTouchMove={onTaskTouchMove}
-                        onTouchEnd={onTaskTouchEnd}
-                        onClick={e=>{e.stopPropagation();if(!t.fromTraining)setEditModal(t)}}
-                        style={{ position:'absolute',top:topPx,left:3,right:3,borderRadius:5,padding:'3px 5px',background:t.fromTraining?`${border}22`:cfg.bg,borderLeft:`2px solid ${border}`,cursor:t.fromTraining?'default':'pointer',zIndex:1 }}>
-                        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
-                        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:t.fromTraining?border:'var(--text)',paddingRight:t.priority?10:0 }}>{t.title}</p>
-                        {t.startMin>0&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(hour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')}</p>}
-                        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatDur(t.durationMin)}</p>
-                      </div>
-                    )
-                  })}
+        {/* Time body — column-based with absolute positioning for proportional height */}
+        <div style={{ overflowY:'auto', maxHeight:'60vh' }}>
+          <div style={{ display:'flex', height:HOURS.length*CELL_H, position:'relative' }}>
+            {/* Hour labels column */}
+            <div style={{ width:44, flexShrink:0, position:'relative', borderRight:'1px solid var(--border)' }}>
+              {HOURS.map((hour,i)=>(
+                <div key={hour} style={{ position:'absolute', top:i*CELL_H, left:0, right:0, height:CELL_H, display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'3px 5px 0' }}>
+                  <span style={{ fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{String(hour).padStart(2,'0')}h</span>
                 </div>
               ))}
             </div>
-          ))}
+            {/* Day columns */}
+            {days.map(d=>(
+              <div key={d} data-weekday={String(d)}
+                onClick={e=>{
+                  const rect=(e.currentTarget as HTMLElement).getBoundingClientRect()
+                  const hour=Math.max(5,Math.min(23,Math.floor(5+(e.clientY-rect.top)/CELL_H)))
+                  setTaskModal({dayIndex:d,startHour:hour})
+                }}
+                onDragOver={e=>{e.preventDefault();setDragOverDay(d)}}
+                onDragLeave={()=>setDragOverDay(null)}
+                onDrop={()=>{
+                  if(touchDragRef.current&&touchDragRef.current.fromDay!==d){
+                    const t=tasks.find(x=>x.id===touchDragRef.current!.id)
+                    if(t) handleUpdateTask({...t,dayIndex:d})
+                  }
+                  setDragOverDay(null)
+                }}
+                style={{ flex:1, position:'relative', borderLeft:'1px solid var(--border)', overflow:'hidden' as const, background:dragOverDay===d?'rgba(0,200,224,0.04)':'transparent', cursor:'pointer' }}>
+                {/* Hour grid lines */}
+                {HOURS.map((_,i)=>(
+                  <div key={i} style={{ position:'absolute' as const, top:i*CELL_H, left:0, right:0, height:1, background:'var(--border)', opacity:0.25, pointerEvents:'none' as const }} />
+                ))}
+                {/* Activities (Strava/Training imports) — full proportional height */}
+                {activities.filter(a=>a.dayIndex===d).map(a=>{
+                  const sp=normalizeSportType(a.sport)
+                  const col=SPORT_BORDER[sp]||'#6b7280'
+                  const actMin=Math.round(a.elapsedTime/60)
+                  const topPx=Math.max(0,(a.startHour-5+a.startMin/60)*CELL_H)
+                  const heightPx=Math.max(actMin/60*CELL_H,28)
+                  return (
+                    <div key={a.id} onClick={e=>{e.stopPropagation();setActivityDetail(a)}}
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
+                        padding:'3px 5px',background:`${col}18`,borderLeft:`3px solid ${col}`,
+                        cursor:'pointer',zIndex:2,overflow:'hidden' as const }}>
+                      <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                        <SportBadge sport={sp} size="xs"/>
+                        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col }}>{a.name}</p>
+                        <span style={{ fontSize:8,background:col,color:'#fff',padding:'0 3px',borderRadius:2,fontWeight:700,flexShrink:0,marginLeft:'auto' }}>✓</span>
+                      </div>
+                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(actMin)}</p>}
+                    </div>
+                  )
+                })}
+                {/* Training sessions — sport color, proportional height, draggable */}
+                {getVisibleTrainingSessions(d).map(t=>{
+                  const col=t.color||'#6b7280'
+                  const topPx=Math.max(0,(t.startHour-5+t.startMin/60)*CELL_H)
+                  const heightPx=Math.max(t.durationMin/60*CELL_H,28)
+                  const realId=t.id.slice(3)
+                  return (
+                    <div key={t.id}
+                      onMouseDown={e=>startSessionMouseDrag(e,realId,t.dayIndex)}
+                      onTouchStart={e=>{e.stopPropagation();startSessionTouchDrag(e,realId,t.dayIndex)}}
+                      onTouchMove={onSessionTouchMove}
+                      onTouchEnd={onSessionTouchEnd}
+                      onClick={e=>e.stopPropagation()}
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
+                        padding:'4px 6px',background:`${col}18`,borderLeft:`3px solid ${col}`,
+                        cursor:'grab',zIndex:3,overflow:'hidden' as const,userSelect:'none' as const }}>
+                      <p style={{ fontSize:9,fontWeight:700,margin:0,color:col,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{t.sport?`[${SPORT_ABBR[t.sport]}] `:''}{t.title}</p>
+                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',fontFamily:'DM Mono,monospace' }}>{String(t.startHour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')} · {formatHM(t.durationMin)}{t.sport?` · ${SPORT_ABBR[t.sport]}`:''}</p>}
+                    </div>
+                  )
+                })}
+                {/* Regular week tasks */}
+                {getTasksForDay(d).filter(t=>!t.fromTraining&&!t.isMain).map(t=>{
+                  const cfg=TASK_CONFIG[t.type]; const col=cfg.color
+                  const topPx=Math.max(0,(t.startHour-5+t.startMin/60)*CELL_H)
+                  const heightPx=Math.max(t.durationMin/60*CELL_H,28)
+                  return (
+                    <div key={t.id}
+                      draggable
+                      onDragStart={e=>{e.stopPropagation();touchDragRef.current={id:t.id,fromDay:t.dayIndex}}}
+                      onTouchStart={e=>onTaskTouchStart(e,t)}
+                      onTouchMove={onTaskTouchMove}
+                      onTouchEnd={onTaskTouchEnd}
+                      onClick={e=>{e.stopPropagation();setEditModal(t)}}
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
+                        padding:'3px 5px',background:cfg.bg,borderLeft:`2px solid ${col}`,
+                        cursor:'pointer',zIndex:1,overflow:'hidden' as const }}>
+                      {t.priority&&<span style={{ position:'absolute' as const,top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
+                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:'var(--text)',paddingRight:t.priority?10:0 }}>{t.title}</p>
+                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatDur(t.durationMin)}</p>}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

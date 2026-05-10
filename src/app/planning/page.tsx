@@ -4462,10 +4462,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   // ── PHASE : READY ──
   if (phase === 'ready') {
     return (
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', color: '#e8e8ec', overflowY: 'auto' as const }}>
-        <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto' }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: '#e8e8ec' }}>{sessionTitle}</h1>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', color: 'var(--text)', overflowY: 'auto' as const }}>
+        <div style={{ padding: '80px 24px 28px', maxWidth: 500, margin: '0 auto' }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
           {circuits.map((circ, ci) => (
             <div key={ci} style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
@@ -4473,22 +4473,22 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
-                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid #1e1e2e', background: '#111118' }}>
-                    <span style={{ fontSize: 11, color: '#6b7280', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
+                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
                     <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e8ec' }}>{exo.label}</span>
-                      <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
                         {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
                       </span>
                     </div>
-                    <span style={{ fontSize: 10, color: '#6b7280', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-mid)', cursor: 'pointer' }}>
               <input type="checkbox" checked={vibrateEnabled} onChange={e => setVibrateEnabled(e.target.checked)} style={{ width: 14, height: 14, accentColor: accent }} />
               Vibration fin de repos
             </label>
@@ -4496,7 +4496,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
           <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', letterSpacing: '0.02em' }}>
             ▶ Lancer la séance
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid #1e1e2e', background: 'transparent', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
         </div>
       </div>
     )
@@ -4505,11 +4505,11 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   // ── PHASE : COUNTDOWN ──
   if (phase === 'countdown') {
     return (
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
         <div style={{ fontSize: 100, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
-        <p style={{ fontSize: 14, color: '#c9c9d4', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
-        <p style={{ fontSize: 11, color: '#6b7280', margin: '6px 0 0' }}>
+        <p style={{ fontSize: 14, color: 'var(--text)', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>
           {currentCircuit?.exos[0]?.targetSets}×{currentCircuit?.exos[0]?.targetReps}
           {currentCircuit?.exos[0]?.targetWeight ? ` @${currentCircuit?.exos[0]?.targetWeight}kg` : ''}
         </p>
@@ -4523,7 +4523,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     const confettiColors = [accent, '#22c55e', '#f97316', '#a855f7', '#06b6d4', '#eab308']
     const allExos = circuits.flatMap(c => c.exos)
     return (
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', color: '#e8e8ec', overflowY: 'auto' as const }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', color: 'var(--text)', overflowY: 'auto' as const }}>
         <style>{`
           @keyframes confetti-fall{
             0%{transform:translateY(-20px) rotate(0deg);opacity:1}
@@ -4550,9 +4550,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
             ))}
           </div>
         )}
-        <div style={{ padding: '32px 20px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
+        <div style={{ padding: '80px 24px 32px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
           <div style={{ fontSize: 56, marginBottom: 8, display: 'inline-block', animation: 'trophy-bounce 1.2s ease-in-out 3' }}>🏆</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: '#e8e8ec' }}>Séance terminée !</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: 'var(--text)' }}>Séance terminée !</h2>
           {motivMsg && <p style={{ fontSize: 14, color: accent, fontWeight: 700, margin: '0 0 24px' }}>{motivMsg}</p>}
 
           {/* KPIs */}
@@ -4565,8 +4565,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
               { label: 'Repos',     value: fmtTimer(totalRestAccum) },
               { label: 'Exercices', value: String(totalExosCount) },
             ] as { label: string; value: string }[]).map(kpi => (
-              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e' }}>
-                <p style={{ fontSize: 8, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
+              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 8, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
                 <p style={{ fontSize: 15, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
               </div>
             ))}
@@ -4580,18 +4580,18 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                   <p style={{ fontSize: 9, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px' }}>{circ.label}</p>
                 )}
                 {circ.exos.filter(e => e.logSets.length > 0).map(e => (
-                  <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid #1e1e2e' }}>
+                  <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e8ec' }}>{e.label}</span>
-                      <span style={{ fontSize: 11, color: '#6b7280', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length} séries</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length} séries</span>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {e.logSets.map((set, si) => (
                         <span key={si} style={{
                           fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 5,
-                          background: set.note === 'fail' ? 'rgba(239,68,68,0.15)' : set.note === 'hard' ? 'rgba(249,115,22,0.15)' : '#111118',
-                          border: '1px solid #1e1e2e',
-                          color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : '#9ca3af',
+                          background: set.note === 'fail' ? 'rgba(239,68,68,0.12)' : set.note === 'hard' ? 'rgba(249,115,22,0.12)' : 'var(--bg-card)',
+                          border: '1px solid var(--border)',
+                          color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
                         }}>
                           {set.weight ? `${set.weight}×` : ''}{set.reps}{set.note && set.note !== 'ok' ? ` · ${set.note}` : ''}
                         </span>
@@ -4604,9 +4604,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
           </div>
 
           {/* Sync montre */}
-          <div style={{ padding: '12px 14px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e', marginBottom: 20, textAlign: 'left' as const }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#e8e8ec', margin: '0 0 4px' }}>📡 Corréler avec votre montre</p>
-            <p style={{ fontSize: 11, color: '#6b7280', margin: 0, lineHeight: 1.5 }}>
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20, textAlign: 'left' as const }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>📡 Corréler avec votre montre</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
               Vos données Strava, Garmin, Polar ou Suunto seront synchronisées automatiquement dans la page Activités après votre prochaine sync.
             </p>
           </div>
@@ -4629,7 +4629,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
           }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
             ✓ Terminer et sauvegarder
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid #1e1e2e', background: 'transparent', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Fermer sans sauvegarder</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Fermer sans sauvegarder</button>
         </div>
       </div>
     )
@@ -4647,45 +4647,45 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   const ctInfo = CIRCUIT_TYPES.find(c => c.id === ct)
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', color: '#e8e8ec', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
+    <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
 
-      {/* ── Sticky header ── */}
-      <div style={{ flexShrink: 0, padding: '14px 18px 0', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' as const }}>
+      {/* ── Sticky header — paddingTop 64px pour dégager la navbar mobile ── */}
+      <div style={{ flexShrink: 0, padding: '64px 24px 0', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' as const }}>
         {/* Row 1 : circuit info + chrono + controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 10, color: '#6b7280', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
               {ctInfo?.icon} {ctInfo?.label ?? 'Séries'}
               {currentCircuit ? ` · ${currentCircuit.label}` : ''}
             </p>
           </div>
-          <span style={{ fontSize: 14, fontFamily: '"DM Mono",monospace', color: '#9ca3af', fontWeight: 700, margin: '0 10px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
-          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? 'Vibration ON' : 'Vibration OFF'} style={{ background: 'none', border: '1px solid #2a2a3a', color: vibrateEnabled ? accent : '#4b5563', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, lineHeight: 1 }}>
+          <span style={{ fontSize: 16, fontFamily: '"DM Mono",monospace', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? 'Vibration ON' : 'Vibration OFF'} style={{ background: 'none', border: '1px solid var(--border)', color: vibrateEnabled ? accent : 'var(--text-dim)', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 8, lineHeight: 1 }}>
               {vibrateEnabled ? '📳' : '🔕'}
             </button>
-            <button onClick={togglePause} style={{ background: 'none', border: '1px solid #2a2a3a', color: '#9ca3af', fontSize: 13, cursor: 'pointer', padding: '5px 10px', borderRadius: 7 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
-            <button onClick={onExit} style={{ background: 'none', border: '1px solid #2a2a3a', color: '#6b7280', fontSize: 13, cursor: 'pointer', padding: '5px 9px', borderRadius: 7 }}>✕</button>
+            <button onClick={togglePause} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', padding: '5px 11px', borderRadius: 8 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
+            <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', padding: '5px 9px', borderRadius: 8 }}>✕</button>
           </div>
         </div>
         {/* Progress bar */}
-        <div style={{ height: 2, borderRadius: 99, background: '#1e1e2e', marginBottom: 14, overflow: 'hidden' }}>
+        <div style={{ height: 3, borderRadius: 99, background: 'var(--border)', marginBottom: 16, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${progressPct * 100}%`, background: `linear-gradient(90deg, ${accent}, ${accent}cc)`, borderRadius: 99, transition: 'width 0.4s' }} />
         </div>
       </div>
 
       {/* ── Scrollable body ── */}
-      <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 18px 28px', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' as const }}>
+      <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 24px 36px', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' as const }}>
 
         {/* ── PAUSE ── */}
         {phase === 'paused' && (
           <div style={{ textAlign: 'center' as const, padding: '60px 0 40px' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>⏸</div>
-            <p style={{ fontSize: 22, fontWeight: 800, color: '#e8e8ec', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>En pause</p>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 32px' }}>{fmtTimer(elapsed)} écoulées</p>
+            <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>En pause</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 32px' }}>{fmtTimer(elapsed)} écoulées</p>
             <button onClick={togglePause} style={{ padding: '15px 48px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>▶ Reprendre</button>
             <br />
-            <button onClick={() => { setPhase('done'); setShowConfetti(true); pickMotiv() }} style={{ padding: '11px 28px', borderRadius: 10, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
+            <button onClick={() => { setPhase('done'); setShowConfetti(true); pickMotiv() }} style={{ padding: '11px 28px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
               Terminer la séance
             </button>
           </div>
@@ -4694,27 +4694,27 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
         {currentExo && phase !== 'paused' && (
           <>
             {/* ── Phase badge + Nom exo ── */}
-            <div style={{ textAlign: 'center' as const, marginBottom: 18, paddingTop: 6 }}>
+            <div style={{ textAlign: 'center' as const, marginBottom: 20, paddingTop: 8 }}>
               <p style={{
                 display: 'inline-block', fontSize: 9, fontWeight: 700,
                 color: phase === 'rest' ? '#f97316' : accent,
                 textTransform: 'uppercase' as const, letterSpacing: '0.14em',
-                margin: '0 0 10px',
-                padding: '4px 10px', borderRadius: 99,
-                background: phase === 'rest' ? 'rgba(249,115,22,0.12)' : `${accent}18`,
-                border: `1px solid ${phase === 'rest' ? 'rgba(249,115,22,0.25)' : `${accent}30`}`,
+                margin: '0 0 12px',
+                padding: '4px 12px', borderRadius: 99,
+                background: phase === 'rest' ? 'rgba(249,115,22,0.10)' : `${accent}15`,
+                border: `1px solid ${phase === 'rest' ? 'rgba(249,115,22,0.22)' : `${accent}28`}`,
               }}>
                 {phase === 'rest' ? '⏱ Repos' : ct === 'emom' ? `⏱ MIN ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` : ct === 'tabata' ? `⚡ ROUND ${currentSetNum}/8` : `SÉRIE ${currentSetNum}/${currentExo.targetSets}`}
               </p>
-              <h2 style={{ fontSize: 28, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 6px', color: '#e8e8ec', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{currentExo.label}</h2>
+              <h2 style={{ fontSize: 28, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 16px', color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{currentExo.label}</h2>
               {motivMsg && phase === 'work' && (
-                <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '0 0 4px', opacity: 0.75 }}>{motivMsg}</p>
+                <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '-8px 0 10px', opacity: 0.75 }}>{motivMsg}</p>
               )}
             </div>
 
             {/* ── Pastilles séries ── */}
             {phase === 'work' && (
-              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
                 {Array.from({ length: currentExo.targetSets }).map((_, i) => {
                   const done   = i < currentSetNum - 1
                   const active = i === currentSetNum - 1
@@ -4722,11 +4722,11 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                   const nc     = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
                   return (
                     <div key={i} style={{
-                      minWidth: 44, height: 48, borderRadius: 10, padding: '0 6px',
+                      minWidth: 46, height: 50, borderRadius: 11, padding: '0 7px',
                       display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
-                      background: done ? (nc ?? accent) : active ? `${accent}22` : '#111118',
-                      border: `1.5px solid ${done ? (nc ?? accent) : active ? accent : '#2a2a3a'}`,
-                      color: done ? '#fff' : active ? accent : '#4b5563',
+                      background: done ? (nc ?? accent) : active ? `${accent}20` : 'var(--bg-card)',
+                      border: `1.5px solid ${done ? (nc ?? accent) : active ? accent : 'var(--border)'}`,
+                      color: done ? '#fff' : active ? accent : 'var(--text-dim)',
                       transition: 'all 0.25s',
                     }}>
                       <span style={{ fontSize: 14, fontWeight: 800, fontFamily: '"DM Mono",monospace', lineHeight: 1 }}>{i + 1}</span>
@@ -4739,10 +4739,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
 
             {/* ── REST — grand timer circulaire ── */}
             {phase === 'rest' && (
-              <div style={{ textAlign: 'center' as const, marginBottom: 20 }}>
-                <div style={{ position: 'relative' as const, width: 180, height: 180, margin: '0 auto 16px' }}>
+              <div style={{ textAlign: 'center' as const, marginBottom: 24 }}>
+                <div style={{ position: 'relative' as const, width: 180, height: 180, margin: '0 auto 18px' }}>
                   <svg width={180} height={180} viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx={90} cy={90} r={72} fill="none" stroke="#1e1e2e" strokeWidth={10} />
+                    <circle cx={90} cy={90} r={72} fill="none" stroke="var(--border)" strokeWidth={10} />
                     <circle cx={90} cy={90} r={72} fill="none" stroke={accent} strokeWidth={10}
                       strokeLinecap="round"
                       strokeDasharray={`${progressArc} ${circumference}`}
@@ -4751,32 +4751,32 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                   </svg>
                   <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 44, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
-                    <span style={{ fontSize: 10, color: '#6b7280', marginTop: 4, letterSpacing: '0.08em' }}>restant</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, letterSpacing: '0.08em' }}>restant</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' as const }}>
                   {[-30, -10, +10, +30].map(d => (
                     <button key={d} onClick={() => adjustRest(d)} style={{
-                      padding: '8px 14px', borderRadius: 8, border: '1px solid #2a2a3a',
-                      background: '#111118', color: '#9ca3af', fontSize: 12, cursor: 'pointer', fontFamily: '"DM Mono",monospace', fontWeight: 600,
+                      padding: '9px 16px', borderRadius: 9, border: '1px solid var(--border)',
+                      background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontFamily: '"DM Mono",monospace', fontWeight: 600,
                     }}>{d > 0 ? '+' : ''}{d}s</button>
                   ))}
                 </div>
                 {/* Aperçu prochain exo */}
                 {nextExo && (
-                  <div style={{ padding: '10px 14px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e', textAlign: 'left' as const, marginBottom: 12 }}>
-                    <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 3px' }}>
+                  <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'left' as const, marginBottom: 14 }}>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 4px' }}>
                       Prochain{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                     </p>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#c9c9d4', margin: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
                       {nextExo.label}
-                      <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
                         {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
                       </span>
                     </p>
                   </div>
                 )}
-                <button onClick={skipRest} style={{ padding: '10px 24px', borderRadius: 9, border: '1px solid #2a2a3a', background: 'transparent', color: '#9ca3af', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                <button onClick={skipRest} style={{ padding: '10px 26px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
                   Passer le repos →
                 </button>
               </div>
@@ -4786,10 +4786,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
             {phase === 'work' && (
               <div style={{ marginBottom: 16 }}>
                 {/* Charge en grand + Reps */}
-                <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 18 }}>
+                <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 12 }}>
                   {/* Charge */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: '#6b7280', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Charge kg</p>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Charge kg</p>
                     <input
                       value={editWeight}
                       placeholder="—"
@@ -4797,24 +4797,24 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                       style={{
                         width: 100, padding: '12px 10px', borderRadius: 12,
                         border: `2px solid ${accent}55`,
-                        background: '#111118', color: accent,
+                        background: 'var(--bg-card)', color: accent,
                         fontSize: 36, fontFamily: '"DM Mono",monospace',
                         textAlign: 'center' as const, fontWeight: 900, outline: 'none',
                       }}
                     />
                   </div>
-                  <span style={{ fontSize: 28, color: '#2a2a3a', fontWeight: 300, marginBottom: 10, lineHeight: 1 }}>×</span>
+                  <span style={{ fontSize: 28, color: 'var(--border)', fontWeight: 300, marginBottom: 10, lineHeight: 1 }}>×</span>
                   {/* Reps */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: '#6b7280', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Reps</p>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Reps</p>
                     <input
                       type="number" min={0} max={999}
                       value={editReps}
                       onChange={e => setEditingSet({ reps: parseInt(e.target.value) || 0, weight: editWeight })}
                       style={{
                         width: 80, padding: '12px 8px', borderRadius: 12,
-                        border: '1px solid #2a2a3a',
-                        background: '#111118', color: '#e8e8ec',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-card)', color: 'var(--text)',
                         fontSize: 32, fontFamily: '"DM Mono",monospace',
                         textAlign: 'center' as const, fontWeight: 800, outline: 'none',
                       }}
@@ -4823,12 +4823,12 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                 </div>
 
                 {/* Notes rapides */}
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', gap: 7, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
                   {NOTE_CONFIG.map(note => (
                     <button key={note.id} onClick={() => validateSet(note.id)} style={{
-                      padding: '9px 16px', borderRadius: 9,
+                      padding: '10px 18px', borderRadius: 10,
                       border: `1px solid ${note.color}33`,
-                      background: `${note.color}10`,
+                      background: `${note.color}0e`,
                       color: note.color, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                       letterSpacing: '0.01em',
                     }}>{note.label}</button>
@@ -4840,7 +4840,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                   width: '100%', padding: '19px', borderRadius: 14, border: 'none',
                   background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff',
                   fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
-                  letterSpacing: '0.01em', boxShadow: `0 4px 24px ${accent}40`,
+                  letterSpacing: '0.01em', boxShadow: `0 4px 24px ${accent}30`,
                 }}>
                   {ct === 'emom' ? `⏱ Valider min ${currentSetNum}` :
                    ct === 'tabata' ? `⚡ Valider round ${currentSetNum}/8` :
@@ -4853,43 +4853,43 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
             )}
 
             {/* ── Actions secondaires ── */}
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' as const }}>
-              <button onClick={skipExo} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>Passer →</button>
-              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ Remplacer</button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20, marginTop: 16, flexWrap: 'wrap' as const }}>
+              <button onClick={skipExo} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>Passer →</button>
+              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ Remplacer</button>
             </div>
 
             {/* ── Remplacement ── */}
             {replaceSearch === currentExo.id && (
-              <div style={{ padding: '14px', borderRadius: 12, border: '1px solid #2a2a3a', background: '#111118', marginBottom: 14 }}>
+              <div style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 16 }}>
                 <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Chercher un exercice..." autoFocus
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #2a2a3a', background: '#0a0a0f', color: '#e8e8ec', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
-                <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
+                <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                   {EXERCISE_DATABASE.filter(e => {
                     const q = searchQuery.toLowerCase()
                     return !q || e.name.toLowerCase().includes(q) || e.aliases.some(a => a.toLowerCase().includes(q))
                   }).slice(0, 8).map(e => (
                     <button key={e.id} onClick={() => replaceExo(e.name)} style={{
-                      width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid #2a2a3a',
-                      background: '#0a0a0f', color: '#e8e8ec', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const, fontWeight: 500,
+                      width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--border)',
+                      background: 'var(--bg)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const, fontWeight: 500,
                     }}>
-                      {e.name} <span style={{ color: '#4b5563', fontSize: 10 }}>{e.aliases[0] ?? ''}</span>
+                      {e.name} <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>{e.aliases[0] ?? ''}</span>
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}>Annuler</button>
+                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Annuler</button>
               </div>
             )}
 
             {/* ── Exercice suivant (work phase) ── */}
             {nextExo && phase === 'work' && (
-              <div style={{ padding: '10px 14px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e' }}>
-                <p style={{ fontSize: 9, color: '#4b5563', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>
+              <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>
                   Suivant{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                 </p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af', margin: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
                   {nextExo.label}
-                  <span style={{ fontSize: 11, color: '#4b5563', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
                     {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
                   </span>
                 </p>

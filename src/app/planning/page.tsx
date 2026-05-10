@@ -4004,6 +4004,54 @@ interface SessionLog {
   exercises: ExecExercise[]
 }
 
+// ── V2 SessionExecute — Types internes ────────────────────────
+interface ExecExo {
+  id: string
+  label: string
+  targetSets: number
+  targetReps: number
+  targetWeight: string
+  restSec: number
+  logSets: Array<{ reps: number; weight: string; note: string; ts: number }>
+}
+interface ExecCircuit {
+  label: string
+  rounds: number
+  exos: ExecExo[]
+}
+
+function buildExecCircuits(blocks: Block[]): ExecCircuit[] {
+  const result: ExecCircuit[] = []
+  let current: ExecCircuit | null = null
+  for (const b of blocks) {
+    if (b.type === 'circuit_header') {
+      current = { label: b.label || 'Circuit', rounds: b.zone || 1, exos: [] }
+      result.push(current)
+    } else {
+      if (!current) {
+        current = { label: 'Séance', rounds: 1, exos: [] }
+        result.push(current)
+      }
+      current.exos.push({
+        id: b.id,
+        label: b.label,
+        targetSets: b.zone ?? 3,
+        targetReps: b.reps ?? 10,
+        targetWeight: b.value || '',
+        restSec: b.recoveryMin ? Math.round(b.recoveryMin * 60) : 90,
+        logSets: [],
+      })
+    }
+  }
+  return result.filter(c => c.exos.length > 0)
+}
+
+const MOTIVATIONAL_MSGS = [
+  'Allez, tu gères ! 💪', 'En feu 🔥', 'Continue comme ça !',
+  'Tu es au sommet !', 'Reste focus.', 'Chaque série compte.',
+  'Mental fort !', 'Champion. 🏆', 'C\'est parti !', 'Bien joué !',
+]
+
 function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   blocks: Block[]
   sport: SportType
@@ -4012,39 +4060,71 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   onSaveLog?: (log: SessionLog) => void
 }) {
   const accent = SPORT_BORDER[sport]
-  const fmtTimer = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`
+  const fmtTimer = (sec: number) => `${Math.floor(Math.max(0,sec) / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`
 
-  const initialExercises: ExecExercise[] = blocks.filter(b => b.type !== 'circuit_header').map(b => ({
-    id: b.id,
-    label: b.label,
-    targetSets: b.zone ?? 3,
-    targetReps: b.reps ?? 10,
-    targetWeight: b.value || '',
-    restSec: b.recoveryMin ? Math.round(b.recoveryMin * 60) : 90,
-    effortMin: b.effortMin ?? 0,
-    notes: '',
-    logSets: [],
-  }))
+  const initialCircuits = buildExecCircuits(blocks)
 
-  const [exercises, setExercises] = useState<ExecExercise[]>(initialExercises)
-  const [currentIdx, setCurrentIdx] = useState(0)
-  const [phase, setPhase] = useState<'ready' | 'work' | 'rest' | 'done'>('ready')
+  const [circuits, setCircuits] = useState<ExecCircuit[]>(initialCircuits)
+  const [phase, setPhase] = useState<'ready' | 'countdown' | 'work' | 'rest' | 'paused' | 'done'>('ready')
+  const [countdownSec, setCountdownSec] = useState(5)
+  const [circuitIdx, setCircuitIdx] = useState(0)
+  const [exoIdx, setExoIdx] = useState(0)
+  const [roundIdx, setRoundIdx] = useState(0)
   const [restRemaining, setRestRemaining] = useState(0)
   const [restTotal, setRestTotal] = useState(0)
-  const [sessionStart, setSessionStart] = useState(0)
-  const [sessionElapsed, setSessionElapsed] = useState(0)
+  const [sessionStartTs, setSessionStartTs] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+  const [pausedAt, setPausedAt] = useState(0)
+  const [totalPausedSec, setTotalPausedSec] = useState(0)
   const [totalRestAccum, setTotalRestAccum] = useState(0)
+  const [vibrateEnabled, setVibrateEnabled] = useState(true)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [motivMsg, setMotivMsg] = useState('')
   const [replaceSearch, setReplaceSearch] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [prevPhase, setPrevPhase] = useState<'work' | 'rest'>('work')
+
+  const restTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const cdTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const currentExo = exercises[currentIdx] ?? null
-  const currentSetNum = currentExo ? currentExo.logSets.length + 1 : 0
-  const totalExos = exercises.length
-  const totalSetsAll = exercises.reduce((s, e) => s + e.logSets.length, 0)
+  const currentCircuit = circuits[circuitIdx] ?? null
+  const currentExo     = currentCircuit?.exos[exoIdx] ?? null
+  const currentSetNum  = currentExo ? currentExo.logSets.length + 1 : 0
 
-  // ── Timer repos ──
+  // Totaux
+  const totalSetsAll  = circuits.reduce((s,c) => s + c.exos.reduce((ss,e) => ss + e.logSets.length, 0), 0)
+  const totalReps     = circuits.reduce((s,c) => s + c.exos.reduce((ss,e) => ss + e.logSets.reduce((sss,set) => sss + set.reps, 0), 0), 0)
+  const totalTonnage  = circuits.reduce((s,c) => s + c.exos.reduce((ss,e) => ss + e.logSets.reduce((sss,set) => sss + (parseFloat(set.weight)||0)*set.reps, 0), 0), 0)
+  const totalExosCount = circuits.reduce((s,c) => s + c.exos.length, 0)
+
+  // Progression globale
+  const totalSetsTarget = circuits.reduce((s,c) => s + c.exos.reduce((ss,e) => ss + e.targetSets, 0), 0)
+  const progressPct = totalSetsTarget > 0 ? Math.min(1, totalSetsAll / totalSetsTarget) : 0
+
+  // ── Countdown ──
+  useEffect(() => {
+    if (phase !== 'countdown') return
+    cdTimerRef.current = setInterval(() => {
+      setCountdownSec(s => {
+        if (s <= 1) { clearInterval(cdTimerRef.current!); setPhase('work'); return 0 }
+        return s - 1
+      })
+    }, 1000)
+    return () => { if (cdTimerRef.current) clearInterval(cdTimerRef.current) }
+  }, [phase])
+
+  // ── Elapsed (hors pause) ──
+  useEffect(() => {
+    if (phase === 'ready' || phase === 'countdown' || phase === 'done' || phase === 'paused') return
+    elapsedTimerRef.current = setInterval(() => {
+      setElapsed(e => e + 1)
+      if (phase === 'rest') setTotalRestAccum(r => r + 1)
+    }, 1000)
+    return () => { if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current) }
+  }, [phase])
+
+  // ── Rest timer ──
   useEffect(() => {
     if (phase !== 'rest' || restRemaining <= 0) return
     restTimerRef.current = setInterval(() => {
@@ -4052,28 +4132,19 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
         if (r <= 1) {
           clearInterval(restTimerRef.current!)
           setPhase('work')
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+          if (vibrateEnabled && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200, 100, 200])
           return 0
         }
         return r - 1
       })
     }, 1000)
     return () => { if (restTimerRef.current) clearInterval(restTimerRef.current) }
-  }, [phase, restRemaining])
-
-  // ── Timer séance + repos accumulé ──
-  useEffect(() => {
-    if (phase === 'ready' || phase === 'done') return
-    elapsedTimerRef.current = setInterval(() => {
-      setSessionElapsed(e => e + 1)
-      if (phase === 'rest') setTotalRestAccum(r => r + 1)
-    }, 1000)
-    return () => { if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current) }
-  }, [phase])
+  }, [phase, restRemaining, vibrateEnabled])
 
   function startSession() {
-    setSessionStart(Date.now())
-    setPhase('work')
+    setSessionStartTs(Date.now())
+    setCountdownSec(5)
+    setPhase('countdown')
   }
 
   function startRest(sec: number) {
@@ -4082,32 +4153,81 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     setPhase('rest')
   }
 
-  function validateSet(note: ExecExercise['logSets'][0]['note'] = '') {
-    if (!currentExo) return
-    const updatedExercises = exercises.map(e => {
-      if (e.id !== currentExo.id) return e
-      return {
-        ...e,
-        logSets: [...e.logSets, {
-          reps: currentExo.targetReps,
-          weight: currentExo.targetWeight,
-          note,
-          completedAt: Date.now(),
-        }],
-      }
-    })
-    setExercises(updatedExercises)
-    const updatedExo = updatedExercises[currentIdx]
-    if (updatedExo.logSets.length >= updatedExo.targetSets) {
-      if (currentIdx + 1 >= exercises.length) {
-        setPhase('done')
-      } else {
-        setCurrentIdx(i => i + 1)
-        startRest(updatedExo.restSec)
-      }
-    } else {
-      startRest(updatedExo.restSec)
+  function pickMotiv() {
+    setMotivMsg(MOTIVATIONAL_MSGS[Math.floor(Math.random() * MOTIVATIONAL_MSGS.length)])
+  }
+
+  function advanceToNext(updatedCircuits: ExecCircuit[], ciIdx: number, eIdx: number, rIdx: number) {
+    const circ = updatedCircuits[ciIdx]
+    if (!circ) { setPhase('done'); setShowConfetti(true); pickMotiv(); return }
+    const exo = circ.exos[eIdx]
+    const restSec = exo?.restSec ?? 90
+
+    // Plus de séries dans cet exercice?
+    if (exo && exo.logSets.length < exo.targetSets) {
+      startRest(restSec); return
     }
+    // Prochain exercice dans le round?
+    if (eIdx + 1 < circ.exos.length) {
+      setExoIdx(eIdx + 1)
+      startRest(restSec); return
+    }
+    // Prochain round?
+    if (rIdx + 1 < circ.rounds) {
+      // Reset les logSets du circuit pour le nouveau round
+      const resetCircuits = updatedCircuits.map((c, ci) =>
+        ci !== ciIdx ? c : { ...c, exos: c.exos.map(e => ({ ...e, logSets: [] })) }
+      )
+      setCircuits(resetCircuits)
+      setExoIdx(0)
+      setRoundIdx(rIdx + 1)
+      startRest(restSec); return
+    }
+    // Prochain circuit?
+    if (ciIdx + 1 < updatedCircuits.length) {
+      setCircuitIdx(ciIdx + 1)
+      setExoIdx(0)
+      setRoundIdx(0)
+      startRest(updatedCircuits[ciIdx + 1]?.exos[0]?.restSec ?? 60); return
+    }
+    // Terminé!
+    setPhase('done')
+    setShowConfetti(true)
+    pickMotiv()
+  }
+
+  function validateSet(note: string = 'ok') {
+    if (!currentCircuit || !currentExo) return
+    const updatedCircuits = circuits.map((c, ci) =>
+      ci !== circuitIdx ? c : {
+        ...c,
+        exos: c.exos.map((e, ei) =>
+          ei !== exoIdx ? e : {
+            ...e,
+            logSets: [...e.logSets, {
+              reps: currentExo.targetReps,
+              weight: currentExo.targetWeight,
+              note,
+              ts: Date.now(),
+            }]
+          }
+        )
+      }
+    )
+    setCircuits(updatedCircuits)
+    pickMotiv()
+    advanceToNext(updatedCircuits, circuitIdx, exoIdx, roundIdx)
+  }
+
+  function updateExoField(field: 'targetReps' | 'targetWeight', value: number | string) {
+    setCircuits(prev => prev.map((c, ci) =>
+      ci !== circuitIdx ? c : {
+        ...c,
+        exos: c.exos.map((e, ei) =>
+          ei !== exoIdx ? e : { ...e, [field]: value }
+        )
+      }
+    ))
   }
 
   function adjustRest(delta: number) {
@@ -4122,47 +4242,53 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     setPhase('work')
   }
 
-  function skipExercise() {
-    if (currentIdx + 1 >= exercises.length) setPhase('done')
-    else setCurrentIdx(i => i + 1)
+  function skipExo() {
+    advanceToNext(circuits, circuitIdx, exoIdx + 1 > (currentCircuit?.exos.length ?? 1) - 1 ? exoIdx : exoIdx + 1, roundIdx)
+    if (exoIdx + 1 >= (currentCircuit?.exos.length ?? 1)) {
+      if (roundIdx + 1 < (currentCircuit?.rounds ?? 1)) {
+        setExoIdx(0); setRoundIdx(r => r + 1)
+      } else if (circuitIdx + 1 < circuits.length) {
+        setCircuitIdx(i => i + 1); setExoIdx(0); setRoundIdx(0)
+      } else {
+        setPhase('done'); setShowConfetti(true); pickMotiv()
+      }
+    } else {
+      setExoIdx(i => i + 1)
+    }
+    if (phase !== 'done') setPhase('work')
   }
 
-  function moveExercise(idx: number, dir: -1 | 1) {
-    const newIdx = idx + dir
-    if (newIdx < 0 || newIdx >= exercises.length) return
-    const list = [...exercises]
-    ;[list[idx], list[newIdx]] = [list[newIdx], list[idx]]
-    setExercises(list)
-    if (currentIdx === idx) setCurrentIdx(newIdx)
-    else if (currentIdx === newIdx) setCurrentIdx(idx)
+  function togglePause() {
+    if (phase === 'paused') {
+      const dur = Math.round((Date.now() - pausedAt) / 1000)
+      setTotalPausedSec(s => s + dur)
+      setPhase(prevPhase)
+    } else if (phase === 'work' || phase === 'rest') {
+      setPrevPhase(phase)
+      setPausedAt(Date.now())
+      if (restTimerRef.current) clearInterval(restTimerRef.current)
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current)
+      setPhase('paused')
+    }
   }
 
-  function removeExercise(idx: number) {
-    const list = exercises.filter((_, i) => i !== idx)
-    setExercises(list)
-    if (list.length === 0) { setPhase('done'); return }
-    if (currentIdx >= list.length) setCurrentIdx(list.length - 1)
-    else if (idx < currentIdx) setCurrentIdx(i => i - 1)
-  }
-
-  function replaceExercise(idx: number, newLabel: string) {
-    setExercises(exercises.map((e, i) => i === idx ? { ...e, label: newLabel, logSets: [] } : e))
+  function replaceExo(newLabel: string) {
+    setCircuits(prev => prev.map((c, ci) =>
+      ci !== circuitIdx ? c : {
+        ...c,
+        exos: c.exos.map((e, ei) =>
+          ei !== exoIdx ? e : { ...e, label: newLabel, logSets: [] }
+        )
+      }
+    ))
     setReplaceSearch(null); setSearchQuery('')
   }
 
-  function updateExerciseField(idx: number, field: keyof ExecExercise, value: number | string) {
-    setExercises(exercises.map((e, i) => i === idx ? { ...e, [field]: value } : e))
-  }
-
-  const totalTonnage = exercises.reduce((s, e) =>
-    s + e.logSets.reduce((ss, set) => ss + (parseFloat(set.weight) || 0) * set.reps, 0), 0)
-  const totalReps = exercises.reduce((s, e) => s + e.logSets.reduce((ss, set) => ss + set.reps, 0), 0)
-
   const NOTE_CONFIG = [
-    { id: 'easy' as const, label: 'Facile', color: '#22c55e' },
-    { id: 'ok'   as const, label: 'OK',     color: 'var(--text-mid)' },
-    { id: 'hard' as const, label: 'Dur',    color: '#f97316' },
-    { id: 'fail' as const, label: 'Échec',  color: '#ef4444' },
+    { id: 'easy', label: 'Facile', color: '#22c55e' },
+    { id: 'ok',   label: 'OK',    color: 'var(--text-mid)' },
+    { id: 'hard', label: 'Dur',   color: '#f97316' },
+    { id: 'fail', label: 'Échec', color: '#ef4444' },
   ]
 
   // ── PHASE : READY ──
@@ -4170,156 +4296,266 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     return (
       <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
         <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto' }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 6px' }}>Prêt à lancer</p>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 24px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, marginBottom: 24 }}>
-            {exercises.map((exo, i) => (
-              <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 1, flexShrink: 0 }}>
-                  <button onClick={() => moveExercise(i, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: i === 0 ? 'var(--border)' : 'var(--text-dim)', cursor: i === 0 ? 'default' : 'pointer', fontSize: 10, padding: 0, lineHeight: 1 }}>▲</button>
-                  <button onClick={() => moveExercise(i, 1)} disabled={i === exercises.length - 1} style={{ background: 'none', border: 'none', color: i === exercises.length - 1 ? 'var(--border)' : 'var(--text-dim)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', fontSize: 10, padding: 0, lineHeight: 1 }}>▼</button>
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18 }}>{i + 1}</span>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
-                    {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
-                  </span>
-                </div>
-                <button onClick={() => removeExercise(i)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
+          {circuits.map((circ, ci) => (
+            <div key={ci} style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
+                {circ.label}{circ.rounds > 1 ? ` · ${circ.rounds} rounds` : ''}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+                {circ.exos.map((exo, ei) => (
+                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                        {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-dim)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={vibrateEnabled} onChange={e => setVibrateEnabled(e.target.checked)} style={{ width: 14, height: 14, accentColor: accent }} />
+              Vibration fin de repos
+            </label>
           </div>
-          <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>Lancer</button>
+          <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', letterSpacing: '0.02em' }}>
+            ▶ Lancer la séance
+          </button>
           <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
         </div>
       </div>
     )
   }
 
+  // ── PHASE : COUNTDOWN ──
+  if (phase === 'countdown') {
+    return (
+      <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
+        <div style={{ fontSize: 100, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
+        <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>
+          {currentCircuit?.exos[0]?.targetSets}×{currentCircuit?.exos[0]?.targetReps}
+          {currentCircuit?.exos[0]?.targetWeight ? ` @${currentCircuit?.exos[0]?.targetWeight}kg` : ''}
+        </p>
+        <style>{`@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.92)}}`}</style>
+      </div>
+    )
+  }
+
   // ── PHASE : DONE ──
   if (phase === 'done') {
+    const confettiColors = [accent, '#22c55e', '#f97316', '#a855f7', '#06b6d4', '#eab308']
+    const allExos = circuits.flatMap(c => c.exos)
     return (
       <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
-        <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
-          <div style={{ fontSize: 56, marginBottom: 12, color: accent }}>✓</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 6px', color: 'var(--text)' }}>Séance terminée</h2>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 28px' }}>{sessionTitle}</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+        <style>{`
+          @keyframes confetti-fall{
+            0%{transform:translateY(-20px) rotate(0deg);opacity:1}
+            100%{transform:translateY(110vh) rotate(720deg);opacity:0}
+          }
+          @keyframes trophy-bounce{
+            0%,100%{transform:scale(1)}
+            50%{transform:scale(1.15)}
+          }
+        `}</style>
+        {showConfetti && (
+          <div style={{ position: 'fixed' as const, inset: 0, pointerEvents: 'none' as const, overflow: 'hidden', zIndex: 1200 }}>
+            {Array.from({ length: 32 }).map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute' as const,
+                left: `${(i * 3.1) % 100}%`,
+                top: '-12px',
+                width: 7 + (i % 4), height: 7 + (i % 4),
+                borderRadius: i % 3 === 0 ? '50%' : i % 3 === 1 ? 2 : 0,
+                background: confettiColors[i % confettiColors.length],
+                animation: `confetti-fall ${1.4 + (i % 5) * 0.4}s ease-in ${(i % 6) * 0.15}s forwards`,
+                opacity: 0,
+              }} />
+            ))}
+          </div>
+        )}
+        <div style={{ padding: '32px 20px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
+          <div style={{ fontSize: 56, marginBottom: 8, display: 'inline-block', animation: 'trophy-bounce 1.2s ease-in-out 3' }}>🏆</div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: 'var(--text)' }}>Séance terminée !</h2>
+          {motivMsg && <p style={{ fontSize: 14, color: accent, fontWeight: 700, margin: '0 0 24px' }}>{motivMsg}</p>}
+
+          {/* KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 20 }}>
             {([
-              { label: 'Durée',       value: fmtTimer(sessionElapsed) },
-              { label: 'Séries',      value: String(totalSetsAll) },
-              { label: 'Reps totales', value: String(totalReps) },
-              { label: 'Tonnage',     value: `${Math.round(totalTonnage)}kg` },
-              { label: 'Repos total', value: fmtTimer(totalRestAccum) },
-              { label: 'Exercices',   value: String(totalExos) },
+              { label: 'Durée',     value: fmtTimer(elapsed) },
+              { label: 'Séries',    value: String(totalSetsAll) },
+              { label: 'Reps',      value: String(totalReps) },
+              { label: 'Tonnage',   value: `${Math.round(totalTonnage)}kg` },
+              { label: 'Repos',     value: fmtTimer(totalRestAccum) },
+              { label: 'Exercices', value: String(totalExosCount) },
             ] as { label: string; value: string }[]).map(kpi => (
-              <div key={kpi.label} style={{ padding: '12px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 4px' }}>{kpi.label}</p>
-                <p style={{ fontSize: 18, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
+              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 8, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
+                <p style={{ fontSize: 15, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
               </div>
             ))}
           </div>
-          <div style={{ textAlign: 'left' as const, marginBottom: 24 }}>
-            {exercises.filter(e => e.logSets.length > 0).map(e => (
-              <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length}/{e.targetSets} séries</span>
-                </div>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
-                  {e.logSets.map((set, si) => (
-                    <span key={si} style={{
-                      fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 5,
-                      background: set.note === 'fail' ? 'rgba(239,68,68,0.10)' : set.note === 'hard' ? 'rgba(249,115,22,0.10)' : 'var(--bg-card)',
-                      border: '1px solid var(--border)',
-                      color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
-                    }}>
-                      {set.weight ? `${set.weight}×` : ''}{set.reps}{(set.note === 'easy' || set.note === 'hard' || set.note === 'fail') ? ` · ${set.note}` : ''}
-                    </span>
-                  ))}
-                </div>
+
+          {/* Détail exercices */}
+          <div style={{ textAlign: 'left' as const, marginBottom: 20 }}>
+            {circuits.map((circ, ci) => (
+              <div key={ci} style={{ marginBottom: 14 }}>
+                {circuits.length > 1 && (
+                  <p style={{ fontSize: 9, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px' }}>{circ.label}</p>
+                )}
+                {circ.exos.filter(e => e.logSets.length > 0).map(e => (
+                  <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length} séries</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
+                      {e.logSets.map((set, si) => (
+                        <span key={si} style={{
+                          fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 5,
+                          background: set.note === 'fail' ? 'rgba(239,68,68,0.10)' : set.note === 'hard' ? 'rgba(249,115,22,0.10)' : 'var(--bg-card)',
+                          border: '1px solid var(--border)',
+                          color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
+                        }}>
+                          {set.weight ? `${set.weight}×` : ''}{set.reps}{set.note && set.note !== 'ok' ? ` · ${set.note}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
+
+          {/* Sync montre */}
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20, textAlign: 'left' as const }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>📡 Corréler avec votre montre</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
+              Vos données Strava, Garmin, Polar ou Suunto seront synchronisées automatiquement dans la page Activités après votre prochaine sync.
+            </p>
+          </div>
+
           <button onClick={() => {
-            onSaveLog?.({ startedAt: sessionStart, endedAt: Date.now(), totalSets: totalSetsAll, totalReps, totalTonnage: Math.round(totalTonnage), totalRestSec: totalRestAccum, exercises })
+            onSaveLog?.({
+              startedAt: sessionStartTs, endedAt: Date.now(),
+              totalSets: totalSetsAll, totalReps,
+              totalTonnage: Math.round(totalTonnage), totalRestSec: totalRestAccum,
+              exercises: allExos.map(e => ({
+                ...e, effortMin: 0, notes: '',
+                logSets: e.logSets.map(s => ({
+                  reps: s.reps, weight: s.weight,
+                  note: (['easy','ok','hard','fail',''].includes(s.note) ? s.note : 'ok') as ExecExercise['logSets'][0]['note'],
+                  completedAt: s.ts,
+                })),
+              })),
+            })
             onExit()
-          }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>Terminer</button>
+          }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
+            ✓ Terminer et sauvegarder
+          </button>
+          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Fermer sans sauvegarder</button>
         </div>
       </div>
     )
   }
 
-  // ── PHASE : WORK / REST ──
+  // ── PHASE : WORK / REST / PAUSED ──
+  const circumference = 2 * Math.PI * 58
+  const progressArc = restTotal > 0 ? ((1 - restRemaining / restTotal) * circumference) : 0
+
   return (
     <div style={{ position: 'fixed' as const, inset: 0, zIndex: 1100, background: 'var(--bg)', overflowY: 'auto' as const }}>
-      <div style={{ padding: '16px 20px', maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ padding: '14px 18px', maxWidth: 480, margin: '0 auto' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Exercice {currentIdx + 1}/{totalExos}</span>
-          <span style={{ fontSize: 12, fontFamily: '"DM Mono",monospace', color: 'var(--text-dim)' }}>{fmtTimer(sessionElapsed)}</span>
-          <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}>Quitter</button>
+        {/* ── Header ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, lineHeight: 1 }}>
+              {circuits.length > 1 && currentCircuit ? `${currentCircuit.label} · ` : ''}
+              Exo {exoIdx + 1}/{currentCircuit?.exos.length ?? 0}
+              {currentCircuit && currentCircuit.rounds > 1 ? ` · Round ${roundIdx + 1}/${currentCircuit.rounds}` : ''}
+            </p>
+          </div>
+          <span style={{ fontSize: 13, fontFamily: '"DM Mono",monospace', color: 'var(--text-dim)', fontWeight: 600 }}>{fmtTimer(elapsed)}</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button onClick={togglePause} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', padding: '4px 10px', borderRadius: 6 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
+            <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', padding: '4px 10px', borderRadius: 6 }}>✕</button>
+          </div>
         </div>
 
-        {/* Barre de progression */}
-        <div style={{ height: 3, borderRadius: 99, background: 'var(--border)', marginBottom: 22, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${((currentIdx + (currentExo ? currentExo.logSets.length / Math.max(1, currentExo.targetSets) : 0)) / totalExos) * 100}%`, background: accent, borderRadius: 99, transition: 'width 0.3s' }} />
+        {/* ── Barre progression globale ── */}
+        <div style={{ height: 3, borderRadius: 99, background: 'var(--border)', marginBottom: 16, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progressPct * 100}%`, background: accent, borderRadius: 99, transition: 'width 0.4s' }} />
         </div>
 
-        {currentExo && (
+        {/* ── PAUSE ── */}
+        {phase === 'paused' && (
+          <div style={{ textAlign: 'center' as const, padding: '50px 0' }}>
+            <div style={{ fontSize: 44, marginBottom: 14 }}>⏸</div>
+            <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>Pause</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 28px' }}>{fmtTimer(elapsed)} écoulées</p>
+            <button onClick={togglePause} style={{ padding: '14px 40px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>▶ Reprendre</button>
+          </div>
+        )}
+
+        {currentExo && phase !== 'paused' && (
           <>
-            {/* Nom + charge */}
-            <div style={{ textAlign: 'center' as const, marginBottom: 18 }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: phase === 'rest' ? '#f97316' : accent, textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 6px' }}>
+            {/* ── Nom + état ── */}
+            <div style={{ textAlign: 'center' as const, marginBottom: 16 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: phase === 'rest' ? '#f97316' : accent, textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 6px' }}>
                 {phase === 'rest' ? '⏱ Repos' : `Série ${currentSetNum} / ${currentExo.targetSets}`}
               </p>
-              <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 8px', color: 'var(--text)' }}>{currentExo.label}</h2>
-              {currentExo.targetWeight && (
-                <p style={{ fontSize: 30, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: '0 0 2px', lineHeight: 1 }}>
-                  {currentExo.targetWeight}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 4 }}>kg</span>
-                </p>
+              <h2 style={{ fontSize: 26, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 8px', color: 'var(--text)', lineHeight: 1.1 }}>{currentExo.label}</h2>
+              {motivMsg && phase === 'work' && (
+                <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '0 0 6px', opacity: 0.8 }}>{motivMsg}</p>
               )}
-              <p style={{ fontSize: 15, color: 'var(--text-mid)', fontFamily: '"DM Mono",monospace', margin: 0 }}>{currentExo.targetReps} reps</p>
             </div>
 
-            {/* Compteur de séries */}
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
+            {/* ── Compteur de séries ── */}
+            <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 18, flexWrap: 'wrap' as const }}>
               {Array.from({ length: currentExo.targetSets }).map((_, i) => {
-                const done = i < currentExo.logSets.length
-                const current = i === currentExo.logSets.length && phase === 'work'
-                const set = currentExo.logSets[i]
-                const noteColor = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
+                const done   = i < currentExo.logSets.length
+                const active = i === currentExo.logSets.length && phase === 'work'
+                const set    = currentExo.logSets[i]
+                const nc     = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
                 return (
                   <div key={i} style={{
-                    width: 46, height: 46, borderRadius: 10,
+                    width: 44, height: 44, borderRadius: 10,
                     display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
-                    background: done ? (noteColor ?? accent) : current ? `${accent}18` : 'var(--bg-card)',
-                    border: `1.5px solid ${done ? (noteColor ?? accent) : current ? accent : 'var(--border)'}`,
-                    color: done ? '#fff' : current ? accent : 'var(--text-dim)',
+                    background: done ? (nc ?? accent) : active ? `${accent}1a` : 'var(--bg-card)',
+                    border: `1.5px solid ${done ? (nc ?? accent) : active ? accent : 'var(--border)'}`,
+                    color: done ? '#fff' : active ? accent : 'var(--text-dim)',
+                    transition: 'all 0.2s',
                   }}>
                     <span style={{ fontSize: 13, fontWeight: 700, fontFamily: '"DM Mono",monospace' }}>{i + 1}</span>
-                    {done && set && <span style={{ fontSize: 7, opacity: 0.85 }}>{set.weight || '—'}×{set.reps}</span>}
+                    {done && set && <span style={{ fontSize: 7, opacity: 0.9 }}>{set.weight || '—'}×{set.reps}</span>}
                   </div>
                 )
               })}
             </div>
 
-            {/* Timer repos */}
+            {/* ── REPOS — timer circulaire ── */}
             {phase === 'rest' && (
-              <div style={{ textAlign: 'center' as const, marginBottom: 20 }}>
-                <div style={{ position: 'relative' as const, width: 150, height: 150, margin: '0 auto 16px' }}>
-                  <svg width={150} height={150} viewBox="0 0 150 150" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx={75} cy={75} r={60} fill="none" stroke="var(--border)" strokeWidth={7} />
-                    <circle cx={75} cy={75} r={60} fill="none" stroke={accent} strokeWidth={7}
+              <div style={{ textAlign: 'center' as const, marginBottom: 18 }}>
+                <div style={{ position: 'relative' as const, width: 148, height: 148, margin: '0 auto 14px' }}>
+                  <svg width={148} height={148} viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx={74} cy={74} r={58} fill="none" stroke="var(--border)" strokeWidth={8} />
+                    <circle cx={74} cy={74} r={58} fill="none" stroke={accent} strokeWidth={8}
                       strokeLinecap="round"
-                      strokeDasharray={`${restTotal > 0 ? (1 - restRemaining / restTotal) : 0} ${2 * Math.PI * 60}`}
-                      style={{ strokeDasharray: `${restTotal > 0 ? ((1 - restRemaining / restTotal) * 2 * Math.PI * 60) : 0} ${2 * Math.PI * 60}`, transition: 'stroke-dasharray 0.9s linear' }}
+                      strokeDasharray={`${progressArc} ${circumference}`}
+                      style={{ transition: 'stroke-dasharray 0.9s linear' }}
                     />
                   </svg>
                   <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 36, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
+                    <span style={{ fontSize: 34, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
                     <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>restant</span>
                   </div>
                 </div>
@@ -4328,70 +4564,69 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                     <button key={d} onClick={() => adjustRest(d)} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontFamily: '"DM Mono",monospace' }}>{d > 0 ? '+' : ''}{d}s</button>
                   ))}
                 </div>
-                <button onClick={skipRest} style={{ padding: '10px 24px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer' }}>Passer le repos →</button>
+                <button onClick={skipRest} style={{ padding: '9px 22px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer' }}>Passer le repos →</button>
               </div>
             )}
 
-            {/* Valider série */}
+            {/* ── WORK — valider série ── */}
             {phase === 'work' && (
-              <div style={{ marginBottom: 16 }}>
-                {/* Reps / Charge éditables */}
+              <div style={{ marginBottom: 14 }}>
+                {/* Reps + charge */}
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 14 }}>
                   <div style={{ textAlign: 'center' as const }}>
                     <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 5px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Reps</p>
                     <input type="number" min={0} max={999} value={currentExo.targetReps}
-                      onChange={e => updateExerciseField(currentIdx, 'targetReps', parseInt(e.target.value) || 0)}
+                      onChange={e => updateExoField('targetReps', parseInt(e.target.value) || 0)}
                       style={{ width: 68, padding: '10px 8px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 18, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
                   </div>
                   <div style={{ textAlign: 'center' as const }}>
                     <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 5px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Charge (kg)</p>
                     <input value={currentExo.targetWeight} placeholder="—"
-                      onChange={e => updateExerciseField(currentIdx, 'targetWeight', e.target.value)}
+                      onChange={e => updateExoField('targetWeight', e.target.value)}
                       style={{ width: 88, padding: '10px 8px', borderRadius: 9, border: `1px solid ${accent}44`, background: 'var(--bg-card)', color: accent, fontSize: 18, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
                   </div>
                 </div>
-
-                {/* Notes rapides + valider */}
+                {/* Notes rapides */}
                 <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 10, flexWrap: 'wrap' as const }}>
                   {NOTE_CONFIG.map(note => (
                     <button key={note.id} onClick={() => validateSet(note.id)} style={{
-                      padding: '9px 14px', borderRadius: 8,
-                      border: `1px solid ${note.color}33`,
+                      padding: '8px 14px', borderRadius: 8,
+                      border: `1px solid ${note.color}44`,
                       background: 'transparent',
                       color: note.color, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                     }}>{note.label}</button>
                   ))}
                 </div>
+                {/* Bouton principal */}
                 <button onClick={() => validateSet('ok')} style={{
-                  width: '100%', padding: '16px', borderRadius: 11, border: 'none',
+                  width: '100%', padding: '17px', borderRadius: 12, border: 'none',
                   background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff',
                   fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
                 }}>
                   ✓ Série {currentSetNum}/{currentExo.targetSets}
-                  <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.8, marginLeft: 8 }}>→ {fmtTimer(currentExo.restSec)} repos</span>
+                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8, marginLeft: 8 }}>→ {fmtTimer(currentExo.restSec)} repos</span>
                 </button>
               </div>
             )}
 
-            {/* Actions exercice */}
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
-              <button onClick={skipExercise} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Passer</button>
+            {/* ── Actions ── */}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' as const }}>
+              <button onClick={skipExo} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Passer</button>
               <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Remplacer</button>
-              <button onClick={() => removeExercise(currentIdx)} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.20)', background: 'rgba(239,68,68,0.05)', color: '#ef4444', fontSize: 10, cursor: 'pointer' }}>Supprimer</button>
             </div>
 
-            {/* Remplacement */}
+            {/* ── Remplacement ── */}
             {replaceSearch === currentExo.id && (
-              <div style={{ padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 16 }}>
+              <div style={{ padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 14 }}>
                 <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Chercher un exercice..." autoFocus
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
-                <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                <div style={{ maxHeight: 150, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
                   {EXERCISE_DATABASE.filter(e => {
                     const q = searchQuery.toLowerCase()
                     return !q || e.name.toLowerCase().includes(q) || e.aliases.some(a => a.toLowerCase().includes(q))
                   }).slice(0, 8).map(e => (
-                    <button key={e.id} onClick={() => replaceExercise(currentIdx, e.name)} style={{
+                    <button key={e.id} onClick={() => replaceExo(e.name)} style={{
                       width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)',
                       background: 'var(--bg)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const,
                     }}>
@@ -4403,19 +4638,22 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
               </div>
             )}
 
-            {/* Exercice suivant */}
-            {currentIdx + 1 < exercises.length && (
-              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>Suivant</p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
-                  {exercises[currentIdx + 1].label}
-                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
-                    {exercises[currentIdx + 1].targetSets}×{exercises[currentIdx + 1].targetReps}
-                    {exercises[currentIdx + 1].targetWeight ? ` @${exercises[currentIdx + 1].targetWeight}kg` : ''}
-                  </span>
-                </p>
-              </div>
-            )}
+            {/* ── Exercice suivant ── */}
+            {(() => {
+              const nextExo = currentCircuit?.exos[exoIdx + 1]
+              if (!nextExo) return null
+              return (
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>Suivant</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
+                    {nextExo.label}
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                      {nextExo.targetSets}×{nextExo.targetReps}{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
+                    </span>
+                  </p>
+                </div>
+              )
+            })()}
           </>
         )}
       </div>
@@ -4958,19 +5196,21 @@ Ajoute toujours échauffement et retour au calme.`
     return rm === 0 ? `${h}h` : `${h}h${String(rm).padStart(2,'0')}`
   }
 
+  // ── Early return : MODE EXÉCUTION ──
+  if (executeMode) {
+    return (
+      <SessionExecute
+        blocks={blocks}
+        sport={sport}
+        sessionTitle={title || SPORT_LABEL[sport]}
+        onExit={() => setExecuteMode(false)}
+      />
+    )
+  }
+
   return (
     <>
       <style>{`@keyframes slideUpModal{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
-
-      {/* MODE EXÉCUTION — overlay par-dessus tout */}
-      {executeMode && (
-        <SessionExecute
-          blocks={blocks}
-          sport={sport}
-          sessionTitle={title || SPORT_LABEL[sport]}
-          onExit={() => setExecuteMode(false)}
-        />
-      )}
 
       <div onClick={e => e.stopPropagation()} style={{
         position: 'fixed' as const, inset: 0, zIndex: 999,

@@ -76,12 +76,12 @@ const INTENSITY_CONFIG: Record<DayIntensity,{label:string;color:string;bg:string
 }
 const INTENSITY_ORDER: DayIntensity[] = ['recovery','low','mid','hard']
 const BLOCK_TYPE_LABEL: Record<BlockType,string> = { warmup:'Échauffement', effort:'Effort', recovery:'Récupération', cooldown:'Retour calme', circuit_header:'Circuit' }
-const CIRCUIT_TYPES: Array<{ id: CircuitType; label: string; desc: string; icon: string }> = [
-  { id: 'series',   label: 'Séries',   desc: 'Toutes les séries d\'un exo avant de passer au suivant', icon: '▤' },
-  { id: 'circuit',  label: 'Circuit',  desc: 'Enchaîner tous les exos, recommencer X rounds',          icon: '↻' },
-  { id: 'superset', label: 'Superset', desc: 'Alterner 2 exos sans repos entre eux',                   icon: '⇅' },
-  { id: 'emom',     label: 'EMOM',     desc: '1 exo par minute, repos = temps restant',                 icon: '⏱' },
-  { id: 'tabata',   label: 'Tabata',   desc: '20s effort / 10s repos × 8 rounds',                      icon: '⚡' },
+const CIRCUIT_TYPES: Array<{ id: CircuitType; label: string; desc: string; icon: string; slash: string }> = [
+  { id: 'series',   label: 'Séries',   desc: 'Toutes les séries d\'un exo avant de passer au suivant', icon: '▤', slash: 'series'   },
+  { id: 'circuit',  label: 'Lap',      desc: 'Enchaîner les exos, recommencer X rounds',               icon: '↻', slash: 'lap'      },
+  { id: 'superset', label: 'Superset', desc: 'Alterner 2 exos sans repos entre eux',                   icon: '⇅', slash: 'superset' },
+  { id: 'emom',     label: 'EMOM',     desc: '1 exo par minute, repos = temps restant',                icon: '⏱', slash: 'emom'     },
+  { id: 'tabata',   label: 'Tabata',   desc: '20s effort / 10s repos × 8 rounds',                     icon: '⚡', slash: 'tabata'   },
 ]
 const RUN_DISTANCES = ['5 km','10 km','Semi-marathon','Marathon']
 const RUN_KM: Record<string,number> = { '5 km':5, '10 km':10, 'Semi-marathon':21.1, 'Marathon':42.195 }
@@ -4258,6 +4258,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   const [replaceSearch, setReplaceSearch] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [prevPhase, setPrevPhase] = useState<'work' | 'rest'>('work')
+  const [editingSet, setEditingSet] = useState<{ reps: number; weight: string } | null>(null)
 
   const restTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -4367,26 +4368,24 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     }
   }
 
-  function validateSet(note: string = 'ok') {
+  function validateSet(note: string = 'ok', overrideReps?: number, overrideWeight?: string) {
     if (!currentCircuit || !currentExo || !currentStep) return
     const { circuitIdx: ci, exoIdx: ei } = currentStep
+    const reps   = overrideReps   ?? editingSet?.reps   ?? currentExo.targetReps
+    const weight = overrideWeight ?? editingSet?.weight ?? currentExo.targetWeight
     const updatedCircuits = circuits.map((c, cii) =>
       cii !== ci ? c : {
         ...c,
         exos: c.exos.map((e, eii) =>
           eii !== ei ? e : {
             ...e,
-            logSets: [...e.logSets, {
-              reps: currentExo.targetReps,
-              weight: currentExo.targetWeight,
-              note,
-              ts: Date.now(),
-            }]
+            logSets: [...e.logSets, { reps, weight, note, ts: Date.now() }]
           }
         )
       }
     )
     setCircuits(updatedCircuits)
+    setEditingSet(null)
     pickMotiv()
     advanceToNextStep(execPos)
   }
@@ -4455,7 +4454,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
 
   const NOTE_CONFIG = [
     { id: 'easy', label: 'Facile', color: '#22c55e' },
-    { id: 'ok',   label: 'OK',    color: 'var(--text-mid)' },
+    { id: 'ok',   label: 'OK',    color: '#9ca3af' },
     { id: 'hard', label: 'Dur',   color: '#f97316' },
     { id: 'fail', label: 'Échec', color: '#ef4444' },
   ]
@@ -4463,10 +4462,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   // ── PHASE : READY ──
   if (phase === 'ready') {
     return (
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', overflowY: 'auto' as const }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', color: '#e8e8ec', overflowY: 'auto' as const }}>
         <div style={{ padding: '28px 20px', maxWidth: 500, margin: '0 auto' }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
+          <p style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: '#e8e8ec' }}>{sessionTitle}</h1>
           {circuits.map((circ, ci) => (
             <div key={ci} style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
@@ -4474,22 +4473,22 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
-                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
+                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid #1e1e2e', background: '#111118' }}>
+                    <span style={{ fontSize: 11, color: '#6b7280', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
                     <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e8ec' }}>{exo.label}</span>
+                      <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
                         {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
                       </span>
                     </div>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
+                    <span style={{ fontSize: 10, color: '#6b7280', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-dim)', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af', cursor: 'pointer' }}>
               <input type="checkbox" checked={vibrateEnabled} onChange={e => setVibrateEnabled(e.target.checked)} style={{ width: 14, height: 14, accentColor: accent }} />
               Vibration fin de repos
             </label>
@@ -4497,7 +4496,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
           <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', letterSpacing: '0.02em' }}>
             ▶ Lancer la séance
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid #1e1e2e', background: 'transparent', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
         </div>
       </div>
     )
@@ -4506,11 +4505,11 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   // ── PHASE : COUNTDOWN ──
   if (phase === 'countdown') {
     return (
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
         <div style={{ fontSize: 100, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
-        <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>
+        <p style={{ fontSize: 14, color: '#c9c9d4', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
+        <p style={{ fontSize: 11, color: '#6b7280', margin: '6px 0 0' }}>
           {currentCircuit?.exos[0]?.targetSets}×{currentCircuit?.exos[0]?.targetReps}
           {currentCircuit?.exos[0]?.targetWeight ? ` @${currentCircuit?.exos[0]?.targetWeight}kg` : ''}
         </p>
@@ -4524,7 +4523,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     const confettiColors = [accent, '#22c55e', '#f97316', '#a855f7', '#06b6d4', '#eab308']
     const allExos = circuits.flatMap(c => c.exos)
     return (
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', overflowY: 'auto' as const }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', color: '#e8e8ec', overflowY: 'auto' as const }}>
         <style>{`
           @keyframes confetti-fall{
             0%{transform:translateY(-20px) rotate(0deg);opacity:1}
@@ -4553,7 +4552,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
         )}
         <div style={{ padding: '32px 20px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
           <div style={{ fontSize: 56, marginBottom: 8, display: 'inline-block', animation: 'trophy-bounce 1.2s ease-in-out 3' }}>🏆</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: 'var(--text)' }}>Séance terminée !</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: '#e8e8ec' }}>Séance terminée !</h2>
           {motivMsg && <p style={{ fontSize: 14, color: accent, fontWeight: 700, margin: '0 0 24px' }}>{motivMsg}</p>}
 
           {/* KPIs */}
@@ -4566,8 +4565,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
               { label: 'Repos',     value: fmtTimer(totalRestAccum) },
               { label: 'Exercices', value: String(totalExosCount) },
             ] as { label: string; value: string }[]).map(kpi => (
-              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 8, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
+              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e' }}>
+                <p style={{ fontSize: 8, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
                 <p style={{ fontSize: 15, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
               </div>
             ))}
@@ -4581,18 +4580,18 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                   <p style={{ fontSize: 9, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px' }}>{circ.label}</p>
                 )}
                 {circ.exos.filter(e => e.logSets.length > 0).map(e => (
-                  <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid #1e1e2e' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length} séries</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e8ec' }}>{e.label}</span>
+                      <span style={{ fontSize: 11, color: '#6b7280', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length} séries</span>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {e.logSets.map((set, si) => (
                         <span key={si} style={{
                           fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 5,
-                          background: set.note === 'fail' ? 'rgba(239,68,68,0.10)' : set.note === 'hard' ? 'rgba(249,115,22,0.10)' : 'var(--bg-card)',
-                          border: '1px solid var(--border)',
-                          color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
+                          background: set.note === 'fail' ? 'rgba(239,68,68,0.15)' : set.note === 'hard' ? 'rgba(249,115,22,0.15)' : '#111118',
+                          border: '1px solid #1e1e2e',
+                          color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : '#9ca3af',
                         }}>
                           {set.weight ? `${set.weight}×` : ''}{set.reps}{set.note && set.note !== 'ok' ? ` · ${set.note}` : ''}
                         </span>
@@ -4605,9 +4604,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
           </div>
 
           {/* Sync montre */}
-          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20, textAlign: 'left' as const }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>📡 Corréler avec votre montre</p>
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e', marginBottom: 20, textAlign: 'left' as const }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#e8e8ec', margin: '0 0 4px' }}>📡 Corréler avec votre montre</p>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: 0, lineHeight: 1.5 }}>
               Vos données Strava, Garmin, Polar ou Suunto seront synchronisées automatiquement dans la page Activités après votre prochaine sync.
             </p>
           </div>
@@ -4630,205 +4629,267 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
           }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
             ✓ Terminer et sauvegarder
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Fermer sans sauvegarder</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid #1e1e2e', background: 'transparent', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Fermer sans sauvegarder</button>
         </div>
       </div>
     )
   }
 
   // ── PHASE : WORK / REST / PAUSED ──
-  const circumference = 2 * Math.PI * 58
+  const circumference = 2 * Math.PI * 72
   const progressArc = restTotal > 0 ? ((1 - restRemaining / restTotal) * circumference) : 0
 
-  return (
-    <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', overflowY: 'auto' as const }}>
-      <div style={{ padding: '14px 18px', maxWidth: 480, margin: '0 auto' }}>
+  // Editing values (fallback to target)
+  const editReps   = editingSet?.reps   ?? currentExo?.targetReps   ?? 0
+  const editWeight = editingSet?.weight ?? currentExo?.targetWeight ?? ''
 
-        {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div>
-            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, lineHeight: 1 }}>
-              {currentCircuit ? `${currentCircuit.label} · ` : ''}
-              {(() => {
-                const ct = currentCircuit?.type ?? 'series'
-                const ctInfo = CIRCUIT_TYPES.find(c => c.id === ct)
-                const roundLbl = ct === 'emom' ? `min ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` :
-                                 ct === 'tabata' ? `round ${currentSetNum}/8` :
-                                 ct === 'series' ? `série ${currentSetNum}` :
-                                 `round ${(currentStep?.setIdx ?? 0) + 1}/${currentCircuit?.rounds ?? 1}`
-                return <>{ctInfo?.icon} {ctInfo?.label ?? 'Séries'} · {roundLbl}</>
-              })()}
+  const ct     = currentCircuit?.type ?? 'series'
+  const ctInfo = CIRCUIT_TYPES.find(c => c.id === ct)
+
+  return (
+    <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: '#0a0a0f', color: '#e8e8ec', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
+
+      {/* ── Sticky header ── */}
+      <div style={{ flexShrink: 0, padding: '14px 18px 0', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' as const }}>
+        {/* Row 1 : circuit info + chrono + controls */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 10, color: '#6b7280', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {ctInfo?.icon} {ctInfo?.label ?? 'Séries'}
+              {currentCircuit ? ` · ${currentCircuit.label}` : ''}
             </p>
           </div>
-          <span style={{ fontSize: 13, fontFamily: '"DM Mono",monospace', color: 'var(--text-dim)', fontWeight: 600 }}>{fmtTimer(elapsed)}</span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button onClick={togglePause} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', padding: '4px 10px', borderRadius: 6 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
-            <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', padding: '4px 10px', borderRadius: 6 }}>✕</button>
+          <span style={{ fontSize: 14, fontFamily: '"DM Mono",monospace', color: '#9ca3af', fontWeight: 700, margin: '0 10px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? 'Vibration ON' : 'Vibration OFF'} style={{ background: 'none', border: '1px solid #2a2a3a', color: vibrateEnabled ? accent : '#4b5563', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, lineHeight: 1 }}>
+              {vibrateEnabled ? '📳' : '🔕'}
+            </button>
+            <button onClick={togglePause} style={{ background: 'none', border: '1px solid #2a2a3a', color: '#9ca3af', fontSize: 13, cursor: 'pointer', padding: '5px 10px', borderRadius: 7 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
+            <button onClick={onExit} style={{ background: 'none', border: '1px solid #2a2a3a', color: '#6b7280', fontSize: 13, cursor: 'pointer', padding: '5px 9px', borderRadius: 7 }}>✕</button>
           </div>
         </div>
-
-        {/* ── Barre progression globale ── */}
-        <div style={{ height: 3, borderRadius: 99, background: 'var(--border)', marginBottom: 16, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progressPct * 100}%`, background: accent, borderRadius: 99, transition: 'width 0.4s' }} />
+        {/* Progress bar */}
+        <div style={{ height: 2, borderRadius: 99, background: '#1e1e2e', marginBottom: 14, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progressPct * 100}%`, background: `linear-gradient(90deg, ${accent}, ${accent}cc)`, borderRadius: 99, transition: 'width 0.4s' }} />
         </div>
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 18px 28px', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' as const }}>
 
         {/* ── PAUSE ── */}
         {phase === 'paused' && (
-          <div style={{ textAlign: 'center' as const, padding: '50px 0' }}>
-            <div style={{ fontSize: 44, marginBottom: 14 }}>⏸</div>
-            <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>Pause</p>
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 28px' }}>{fmtTimer(elapsed)} écoulées</p>
-            <button onClick={togglePause} style={{ padding: '14px 40px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>▶ Reprendre</button>
+          <div style={{ textAlign: 'center' as const, padding: '60px 0 40px' }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>⏸</div>
+            <p style={{ fontSize: 22, fontWeight: 800, color: '#e8e8ec', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>En pause</p>
+            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 32px' }}>{fmtTimer(elapsed)} écoulées</p>
+            <button onClick={togglePause} style={{ padding: '15px 48px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>▶ Reprendre</button>
+            <br />
+            <button onClick={() => { setPhase('done'); setShowConfetti(true); pickMotiv() }} style={{ padding: '11px 28px', borderRadius: 10, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
+              Terminer la séance
+            </button>
           </div>
         )}
 
         {currentExo && phase !== 'paused' && (
           <>
-            {/* ── Nom + état ── */}
-            <div style={{ textAlign: 'center' as const, marginBottom: 16 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: phase === 'rest' ? '#f97316' : accent, textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 6px' }}>
-                {phase === 'rest' ? '⏱ Repos' : `Série ${currentSetNum} / ${currentExo.targetSets}`}
+            {/* ── Phase badge + Nom exo ── */}
+            <div style={{ textAlign: 'center' as const, marginBottom: 18, paddingTop: 6 }}>
+              <p style={{
+                display: 'inline-block', fontSize: 9, fontWeight: 700,
+                color: phase === 'rest' ? '#f97316' : accent,
+                textTransform: 'uppercase' as const, letterSpacing: '0.14em',
+                margin: '0 0 10px',
+                padding: '4px 10px', borderRadius: 99,
+                background: phase === 'rest' ? 'rgba(249,115,22,0.12)' : `${accent}18`,
+                border: `1px solid ${phase === 'rest' ? 'rgba(249,115,22,0.25)' : `${accent}30`}`,
+              }}>
+                {phase === 'rest' ? '⏱ Repos' : ct === 'emom' ? `⏱ MIN ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` : ct === 'tabata' ? `⚡ ROUND ${currentSetNum}/8` : `SÉRIE ${currentSetNum}/${currentExo.targetSets}`}
               </p>
-              <h2 style={{ fontSize: 26, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 8px', color: 'var(--text)', lineHeight: 1.1 }}>{currentExo.label}</h2>
+              <h2 style={{ fontSize: 28, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 6px', color: '#e8e8ec', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{currentExo.label}</h2>
               {motivMsg && phase === 'work' && (
-                <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '0 0 6px', opacity: 0.8 }}>{motivMsg}</p>
+                <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '0 0 4px', opacity: 0.75 }}>{motivMsg}</p>
               )}
             </div>
 
-            {/* ── Compteur de séries ── */}
-            <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 18, flexWrap: 'wrap' as const }}>
-              {Array.from({ length: currentExo.targetSets }).map((_, i) => {
-                const done   = i < currentSetNum - 1
-                const active = i === currentSetNum - 1 && phase === 'work'
-                const set    = currentExo.logSets[i]
-                const nc     = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
-                return (
-                  <div key={i} style={{
-                    width: 44, height: 44, borderRadius: 10,
-                    display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
-                    background: done ? (nc ?? accent) : active ? `${accent}1a` : 'var(--bg-card)',
-                    border: `1.5px solid ${done ? (nc ?? accent) : active ? accent : 'var(--border)'}`,
-                    color: done ? '#fff' : active ? accent : 'var(--text-dim)',
-                    transition: 'all 0.2s',
-                  }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, fontFamily: '"DM Mono",monospace' }}>{i + 1}</span>
-                    {done && set && <span style={{ fontSize: 7, opacity: 0.9 }}>{set.weight || '—'}×{set.reps}</span>}
-                  </div>
-                )
-              })}
-            </div>
+            {/* ── Pastilles séries ── */}
+            {phase === 'work' && (
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
+                {Array.from({ length: currentExo.targetSets }).map((_, i) => {
+                  const done   = i < currentSetNum - 1
+                  const active = i === currentSetNum - 1
+                  const set    = currentExo.logSets[i]
+                  const nc     = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
+                  return (
+                    <div key={i} style={{
+                      minWidth: 44, height: 48, borderRadius: 10, padding: '0 6px',
+                      display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
+                      background: done ? (nc ?? accent) : active ? `${accent}22` : '#111118',
+                      border: `1.5px solid ${done ? (nc ?? accent) : active ? accent : '#2a2a3a'}`,
+                      color: done ? '#fff' : active ? accent : '#4b5563',
+                      transition: 'all 0.25s',
+                    }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, fontFamily: '"DM Mono",monospace', lineHeight: 1 }}>{i + 1}</span>
+                      {done && set && <span style={{ fontSize: 8, opacity: 0.85, marginTop: 2, fontFamily: '"DM Mono",monospace' }}>{set.weight || '—'}×{set.reps}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
-            {/* ── REPOS — timer circulaire ── */}
+            {/* ── REST — grand timer circulaire ── */}
             {phase === 'rest' && (
-              <div style={{ textAlign: 'center' as const, marginBottom: 18 }}>
-                <div style={{ position: 'relative' as const, width: 148, height: 148, margin: '0 auto 14px' }}>
-                  <svg width={148} height={148} viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx={74} cy={74} r={58} fill="none" stroke="var(--border)" strokeWidth={8} />
-                    <circle cx={74} cy={74} r={58} fill="none" stroke={accent} strokeWidth={8}
+              <div style={{ textAlign: 'center' as const, marginBottom: 20 }}>
+                <div style={{ position: 'relative' as const, width: 180, height: 180, margin: '0 auto 16px' }}>
+                  <svg width={180} height={180} viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx={90} cy={90} r={72} fill="none" stroke="#1e1e2e" strokeWidth={10} />
+                    <circle cx={90} cy={90} r={72} fill="none" stroke={accent} strokeWidth={10}
                       strokeLinecap="round"
                       strokeDasharray={`${progressArc} ${circumference}`}
                       style={{ transition: 'stroke-dasharray 0.9s linear' }}
                     />
                   </svg>
                   <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 34, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>restant</span>
+                    <span style={{ fontSize: 44, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
+                    <span style={{ fontSize: 10, color: '#6b7280', marginTop: 4, letterSpacing: '0.08em' }}>restant</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 10, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' as const }}>
                   {[-30, -10, +10, +30].map(d => (
-                    <button key={d} onClick={() => adjustRest(d)} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontFamily: '"DM Mono",monospace' }}>{d > 0 ? '+' : ''}{d}s</button>
+                    <button key={d} onClick={() => adjustRest(d)} style={{
+                      padding: '8px 14px', borderRadius: 8, border: '1px solid #2a2a3a',
+                      background: '#111118', color: '#9ca3af', fontSize: 12, cursor: 'pointer', fontFamily: '"DM Mono",monospace', fontWeight: 600,
+                    }}>{d > 0 ? '+' : ''}{d}s</button>
                   ))}
                 </div>
-                <button onClick={skipRest} style={{ padding: '9px 22px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer' }}>Passer le repos →</button>
+                {/* Aperçu prochain exo */}
+                {nextExo && (
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e', textAlign: 'left' as const, marginBottom: 12 }}>
+                    <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 3px' }}>
+                      Prochain{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
+                    </p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#c9c9d4', margin: 0 }}>
+                      {nextExo.label}
+                      <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                        {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
+                      </span>
+                    </p>
+                  </div>
+                )}
+                <button onClick={skipRest} style={{ padding: '10px 24px', borderRadius: 9, border: '1px solid #2a2a3a', background: 'transparent', color: '#9ca3af', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                  Passer le repos →
+                </button>
               </div>
             )}
 
-            {/* ── WORK — valider série ── */}
+            {/* ── WORK — saisie + validation ── */}
             {phase === 'work' && (
-              <div style={{ marginBottom: 14 }}>
-                {/* Reps + charge */}
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 14 }}>
+              <div style={{ marginBottom: 16 }}>
+                {/* Charge en grand + Reps */}
+                <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 18 }}>
+                  {/* Charge */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 5px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Reps</p>
-                    <input type="number" min={0} max={999} value={currentExo.targetReps}
-                      onChange={e => updateExoField('targetReps', parseInt(e.target.value) || 0)}
-                      style={{ width: 68, padding: '10px 8px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 18, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <p style={{ fontSize: 9, color: '#6b7280', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Charge kg</p>
+                    <input
+                      value={editWeight}
+                      placeholder="—"
+                      onChange={e => setEditingSet({ reps: editReps, weight: e.target.value })}
+                      style={{
+                        width: 100, padding: '12px 10px', borderRadius: 12,
+                        border: `2px solid ${accent}55`,
+                        background: '#111118', color: accent,
+                        fontSize: 36, fontFamily: '"DM Mono",monospace',
+                        textAlign: 'center' as const, fontWeight: 900, outline: 'none',
+                      }}
+                    />
                   </div>
+                  <span style={{ fontSize: 28, color: '#2a2a3a', fontWeight: 300, marginBottom: 10, lineHeight: 1 }}>×</span>
+                  {/* Reps */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 5px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Charge (kg)</p>
-                    <input value={currentExo.targetWeight} placeholder="—"
-                      onChange={e => updateExoField('targetWeight', e.target.value)}
-                      style={{ width: 88, padding: '10px 8px', borderRadius: 9, border: `1px solid ${accent}44`, background: 'var(--bg-card)', color: accent, fontSize: 18, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
+                    <p style={{ fontSize: 9, color: '#6b7280', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Reps</p>
+                    <input
+                      type="number" min={0} max={999}
+                      value={editReps}
+                      onChange={e => setEditingSet({ reps: parseInt(e.target.value) || 0, weight: editWeight })}
+                      style={{
+                        width: 80, padding: '12px 8px', borderRadius: 12,
+                        border: '1px solid #2a2a3a',
+                        background: '#111118', color: '#e8e8ec',
+                        fontSize: 32, fontFamily: '"DM Mono",monospace',
+                        textAlign: 'center' as const, fontWeight: 800, outline: 'none',
+                      }}
+                    />
                   </div>
                 </div>
+
                 {/* Notes rapides */}
-                <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 10, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' as const }}>
                   {NOTE_CONFIG.map(note => (
                     <button key={note.id} onClick={() => validateSet(note.id)} style={{
-                      padding: '8px 14px', borderRadius: 8,
-                      border: `1px solid ${note.color}44`,
-                      background: 'transparent',
-                      color: note.color, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      padding: '9px 16px', borderRadius: 9,
+                      border: `1px solid ${note.color}33`,
+                      background: `${note.color}10`,
+                      color: note.color, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      letterSpacing: '0.01em',
                     }}>{note.label}</button>
                   ))}
                 </div>
+
                 {/* Bouton principal */}
                 <button onClick={() => validateSet('ok')} style={{
-                  width: '100%', padding: '17px', borderRadius: 12, border: 'none',
+                  width: '100%', padding: '19px', borderRadius: 14, border: 'none',
                   background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff',
-                  fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                  fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                  letterSpacing: '0.01em', boxShadow: `0 4px 24px ${accent}40`,
                 }}>
-                  {currentCircuit?.type === 'emom' ? `⏱ Minute ${currentSetNum}` :
-                   currentCircuit?.type === 'tabata' ? `⚡ Round ${currentSetNum}/8` :
-                   `✓ Série ${currentSetNum}/${currentExo.targetSets}`}
-                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8, marginLeft: 8 }}>
-                    {currentCircuit?.type === 'tabata' ? '→ 10s repos' :
-                     currentCircuit?.type === 'emom' ? '→ 15s repos' :
-                     `→ ${fmtTimer(currentExo.restSec)} repos`}
+                  {ct === 'emom' ? `⏱ Valider min ${currentSetNum}` :
+                   ct === 'tabata' ? `⚡ Valider round ${currentSetNum}/8` :
+                   `✓ Valider série ${currentSetNum}/${currentExo.targetSets}`}
+                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.75, marginLeft: 10 }}>
+                    {ct === 'tabata' ? '→ 10s repos' : ct === 'emom' ? '→ 15s repos' : `→ ${fmtTimer(currentExo.restSec)} repos`}
                   </span>
                 </button>
               </div>
             )}
 
-            {/* ── Actions ── */}
+            {/* ── Actions secondaires ── */}
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' as const }}>
-              <button onClick={skipExo} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Passer</button>
-              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '7px 13px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>Remplacer</button>
+              <button onClick={skipExo} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>Passer →</button>
+              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ Remplacer</button>
             </div>
 
             {/* ── Remplacement ── */}
             {replaceSearch === currentExo.id && (
-              <div style={{ padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 14 }}>
+              <div style={{ padding: '14px', borderRadius: 12, border: '1px solid #2a2a3a', background: '#111118', marginBottom: 14 }}>
                 <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Chercher un exercice..." autoFocus
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
-                <div style={{ maxHeight: 150, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #2a2a3a', background: '#0a0a0f', color: '#e8e8ec', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
+                <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
                   {EXERCISE_DATABASE.filter(e => {
                     const q = searchQuery.toLowerCase()
                     return !q || e.name.toLowerCase().includes(q) || e.aliases.some(a => a.toLowerCase().includes(q))
                   }).slice(0, 8).map(e => (
                     <button key={e.id} onClick={() => replaceExo(e.name)} style={{
-                      width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)',
-                      background: 'var(--bg)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const,
+                      width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid #2a2a3a',
+                      background: '#0a0a0f', color: '#e8e8ec', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const, fontWeight: 500,
                     }}>
-                      {e.name} <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>{e.aliases[0] ?? ''}</span>
+                      {e.name} <span style={{ color: '#4b5563', fontSize: 10 }}>{e.aliases[0] ?? ''}</span>
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '7px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Annuler</button>
+                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #2a2a3a', background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}>Annuler</button>
               </div>
             )}
 
-            {/* ── Exercice suivant ── */}
-            {nextExo && (
-              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>
+            {/* ── Exercice suivant (work phase) ── */}
+            {nextExo && phase === 'work' && (
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: '#111118', border: '1px solid #1e1e2e' }}>
+                <p style={{ fontSize: 9, color: '#4b5563', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>
                   Suivant{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                 </p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af', margin: 0 }}>
                   {nextExo.label}
-                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                  <span style={{ fontSize: 11, color: '#4b5563', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
                     {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
                   </span>
                 </p>
@@ -4871,6 +4932,8 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [showSlashMenu, setShowSlashMenu] = useState(false)
+  const [slashFilter, setSlashFilter] = useState('')
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
@@ -5110,16 +5173,18 @@ COMPRENDRE LE FORMAT DE L'ATHLÈTE :
 - "Sled Push 50m @150kg" → distance 50m (durationMin=50), charge 150kg
 
 TYPES DE CIRCUITS :
-L'athlète peut écrire /séries, /circuit, /superset, /emom, /tabata devant un groupe d'exercices.
-- /séries (ou rien) : mode par défaut — toutes les séries d'un exo, puis le suivant. mode="series"
-- /circuit : enchaîner tous les exos, recommencer X rounds. mode="circuit"
+L'athlète peut écrire ces slash commands devant un groupe d'exercices :
+- /series (ou rien) : mode par défaut — toutes les séries d'un exo, puis le suivant. mode="series"
+- /lap : enchaîner tous les exos, recommencer X rounds. mode="circuit"
 - /superset : alterner 2 exos sans repos entre eux. mode="superset"
 - /emom : 1 exo par minute pendant X minutes. mode="emom", durationMin=X
 - /tabata : 20s effort / 10s repos × 8 rounds. mode="tabata", zone=8
 
+IMPORTANT : /lap dans le texte → mode="circuit" dans le JSON (alias).
+
 Pour le circuit_header, le champ "mode" correspond au type :
 {"mode":"series","type":"circuit_header","label":"Bloc force","zone":4,...}
-{"mode":"circuit","type":"circuit_header","label":"Circuit cardio","zone":3,...}
+{"mode":"circuit","type":"circuit_header","label":"Lap cardio","zone":3,...}
 {"mode":"superset","type":"circuit_header","label":"Superset bras","zone":4,...}
 {"mode":"emom","type":"circuit_header","label":"EMOM 12min","durationMin":12,"zone":1,...}
 {"mode":"tabata","type":"circuit_header","label":"Tabata finish","zone":8,...}
@@ -5150,12 +5215,23 @@ EXEMPLE — EMOM :
   {"type":"effort","mode":"single","label":"Kettlebell Swing","zone":6,"reps":12,"value":"20","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
 ]
 
+EXEMPLE — LAP (circuit) :
+"/lap
+Squat @80kg 10 reps
+Push up 15 reps
+x4"
+→ [
+  {"type":"circuit_header","mode":"circuit","label":"Lap 1","zone":4,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"effort","mode":"single","label":"Squat","zone":4,"reps":10,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
+  {"type":"effort","mode":"single","label":"Push Up","zone":4,"reps":15,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
+]
+
 EXEMPLE — 2 CIRCUITS :
 "Circuit A x3 :
 Bench press @52.5kg
 Pull up australien 20 reps
 
-/circuit x2 :
+/lap x2 :
 Squat @80kg
 Deadlift @100kg"
 
@@ -5909,16 +5985,66 @@ Ajoute toujours échauffement et retour au calme.`
             )
           ) : (
             <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
-              <textarea value={aiPrompt} onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }} rows={6}
-                placeholder={isStrength
-                  ? 'Ex :\nCircuit 1 :\nBench press @52.5 kg\nPull up australien 20 reps\nx3\n\nCircuit 2 :\nRowing banc @37.5 kg\nPush press @15 kg\nx3'
-                  : 'Ex : 10×400m @3:30/km avec 1min récup, échauffement 15min...'}
-                style={{
-                  width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                  borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
-                  resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.6,
-                  boxSizing: 'border-box' as const, minHeight: 120,
-                }} />
+              <div style={{ position: 'relative' as const }}>
+                <textarea value={aiPrompt}
+                  onChange={e => {
+                    const val = e.target.value
+                    setAiPrompt(val)
+                    if (aiError) setAiError(null)
+                    // Détecter slash command sur la dernière ligne
+                    const lastLine = val.split('\n').pop() ?? ''
+                    const m = lastLine.match(/\/([\w]*)$/)
+                    if (m) { setShowSlashMenu(true); setSlashFilter(m[1].toLowerCase()) }
+                    else { setShowSlashMenu(false) }
+                  }}
+                  onKeyDown={e => { if (e.key === 'Escape') setShowSlashMenu(false) }}
+                  rows={6}
+                  placeholder={isStrength
+                    ? 'Tape / pour les types de circuits\n\nEx :\n/lap\nSquat @100kg\nBench @80kg\nx4\n\n/superset\nCurl @14kg + Triceps @20kg\nx3'
+                    : 'Ex : 10×400m @3:30/km avec 1min récup, échauffement 15min...'}
+                  style={{
+                    width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                    borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
+                    resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.6,
+                    boxSizing: 'border-box' as const, minHeight: 140,
+                  }} />
+
+                {/* ── Autocomplete slash commands ── */}
+                {showSlashMenu && isStrength && (() => {
+                  const filtered = CIRCUIT_TYPES.filter(ct =>
+                    !slashFilter || ct.slash.startsWith(slashFilter) || ct.label.toLowerCase().startsWith(slashFilter)
+                  )
+                  if (filtered.length === 0) return null
+                  return (
+                    <div style={{
+                      position: 'absolute' as const, bottom: '100%', left: 0, right: 0,
+                      marginBottom: 4, borderRadius: 10, overflow: 'hidden',
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      boxShadow: '0 -6px 24px rgba(0,0,0,0.18)', zIndex: 20,
+                    }}>
+                      {filtered.map((ct, idx) => (
+                        <button key={ct.id} onClick={() => {
+                          const lines = aiPrompt.split('\n')
+                          lines[lines.length - 1] = (lines[lines.length - 1] ?? '').replace(/\/[\w]*$/, `/${ct.slash}`)
+                          setAiPrompt(lines.join('\n') + '\n')
+                          setShowSlashMenu(false)
+                        }} style={{
+                          width: '100%', padding: '10px 14px',
+                          border: 'none', borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+                          background: 'transparent', cursor: 'pointer', textAlign: 'left' as const,
+                          display: 'flex', alignItems: 'center', gap: 10,
+                        }}>
+                          <span style={{ fontSize: 14, width: 22, textAlign: 'center' as const, flexShrink: 0 }}>{ct.icon}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>/{ct.slash}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{ct.desc}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
               <button onClick={handleAIGenerate} disabled={aiLoading || !aiPrompt.trim()} style={{
                 marginTop: 8, width: '100%', padding: 11, borderRadius: 9, border: 'none',
                 background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,

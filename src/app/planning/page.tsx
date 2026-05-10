@@ -22,7 +22,8 @@ type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
 type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
 type SessionStatus = 'planned' | 'done'
 type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'circuit_header'
-type BlockMode     = 'single' | 'interval'
+type CircuitType   = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
+type BlockMode     = 'single' | 'interval' | CircuitType
 type TaskType      = 'sport' | 'work' | 'personal' | 'recovery'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
 type CalView       = 'year' | 'month'
@@ -75,6 +76,13 @@ const INTENSITY_CONFIG: Record<DayIntensity,{label:string;color:string;bg:string
 }
 const INTENSITY_ORDER: DayIntensity[] = ['recovery','low','mid','hard']
 const BLOCK_TYPE_LABEL: Record<BlockType,string> = { warmup:'Échauffement', effort:'Effort', recovery:'Récupération', cooldown:'Retour calme', circuit_header:'Circuit' }
+const CIRCUIT_TYPES: Array<{ id: CircuitType; label: string; desc: string; icon: string }> = [
+  { id: 'series',   label: 'Séries',   desc: 'Toutes les séries d\'un exo avant de passer au suivant', icon: '▤' },
+  { id: 'circuit',  label: 'Circuit',  desc: 'Enchaîner tous les exos, recommencer X rounds',          icon: '↻' },
+  { id: 'superset', label: 'Superset', desc: 'Alterner 2 exos sans repos entre eux',                   icon: '⇅' },
+  { id: 'emom',     label: 'EMOM',     desc: '1 exo par minute, repos = temps restant',                 icon: '⏱' },
+  { id: 'tabata',   label: 'Tabata',   desc: '20s effort / 10s repos × 8 rounds',                      icon: '⚡' },
+]
 const RUN_DISTANCES = ['5 km','10 km','Semi-marathon','Marathon']
 const RUN_KM: Record<string,number> = { '5 km':5, '10 km':10, 'Semi-marathon':21.1, 'Marathon':42.195 }
 const TRI_DISTANCES = ['XS (Super Sprint)','S (Sprint)','M (Standard)','L / 70.3','XL / Ironman']
@@ -1265,28 +1273,71 @@ function StrengthBlockRenderer({ blocks, onChange, accent }: {
       {blocks.map((b, i) => {
         // ── Circuit header ──
         if (b.type === 'circuit_header') {
+          const circuitType: CircuitType = (['series','circuit','superset','emom','tabata'].includes(b.mode) ? b.mode : 'series') as CircuitType
+          const isEmom    = circuitType === 'emom'
+          const isTabata  = circuitType === 'tabata'
+          const noRest    = isEmom || isTabata
           return (
-            <div key={b.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '14px 0 10px', marginTop: i > 0 ? 16 : 0,
-              borderBottom: '1px solid var(--border)',
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
-              <input value={b.label} onChange={e => {
-                const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
-              }} style={{
-                flex: 1, background: 'none', border: 'none', outline: 'none',
-                fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif', minWidth: 0,
-              }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                <input type="number" min={1} max={20} value={b.zone ?? 3}
-                  onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
-                  style={{ width: 36, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                <span style={{ fontSize: 10, fontFamily: '"DM Mono", monospace', color: 'var(--text-dim)' }}>rounds</span>
+            <div key={b.id} style={{ marginTop: i > 0 ? 20 : 0, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+              {/* Ligne 1 : point + nom + quantité + repos + ×  */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+                <input value={b.label} onChange={e => {
+                  const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
+                }} style={{
+                  flex: 1, background: 'none', border: 'none', outline: 'none',
+                  fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif', minWidth: 0,
+                }} />
+                {/* Quantité : rounds (ou minutes pour EMOM) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  <input type="number" min={1} max={60}
+                    value={isEmom ? (b.durationMin || 12) : (b.zone ?? (isTabata ? 8 : 3))}
+                    onChange={e => {
+                      const upd = [...blocks]
+                      if (isEmom) upd[i] = { ...b, durationMin: parseInt(e.target.value) || 12 }
+                      else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
+                      onChange(upd)
+                    }}
+                    style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : 'rounds'}</span>
+                </div>
+                {/* Repos (sauf EMOM/tabata) */}
+                {!noRest && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <input type="number" min={0} max={600} step={15}
+                      value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
+                      onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
+                      style={{ width: 42, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>s repos</span>
+                  </div>
+                )}
+                <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} style={{
+                  background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0,
+                }}>×</button>
               </div>
-              <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} style={{
-                background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0,
-              }}>×</button>
+              {/* Ligne 2 : chips de type */}
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, paddingLeft: 14 }}>
+                {CIRCUIT_TYPES.map(ct => (
+                  <button key={ct.id} onClick={() => {
+                    const upd = [...blocks]
+                    upd[i] = {
+                      ...b, mode: ct.id,
+                      zone: ct.id === 'tabata' ? 8 : ct.id === 'emom' ? 1 : (b.zone ?? 3),
+                      durationMin: ct.id === 'emom' ? (b.durationMin || 12) : 0,
+                      recoveryMin: ct.id === 'tabata' || ct.id === 'emom' ? 0 : (b.recoveryMin ?? 1.5),
+                    }
+                    onChange(upd)
+                  }} style={{
+                    padding: '4px 10px', borderRadius: 6, fontSize: 9, fontWeight: 600, cursor: 'pointer',
+                    background: circuitType === ct.id ? `${accent}15` : 'transparent',
+                    border: circuitType === ct.id ? `1px solid ${accent}55` : '1px solid var(--border)',
+                    color: circuitType === ct.id ? accent : 'var(--text-dim)',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <span style={{ fontSize: 10 }}>{ct.icon}</span>{ct.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )
         }
@@ -1387,7 +1438,10 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
 }) {
   const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
   const vPlh = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
+  const isStrengthSportBB = sport === 'gym' || sport === 'hyrox'
+  const accentBB = SPORT_BORDER[sport]
   const [hoveredBar, setHoveredBar] = useState<{ x: number; y: number; block: Block; isRecovery: boolean } | null>(null)
+  const [showCircuitMenu, setShowCircuitMenu] = useState(false)
 
   function addSingle() {
     onChange([...blocks, {
@@ -1561,6 +1615,25 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
       )}
 
       {/* ── Liste des blocs ── */}
+      {/* ── Guide types de circuits (muscu/hyrox uniquement) ── */}
+      {isStrengthSportBB && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 10, marginBottom: 12,
+          background: `${accentBB}07`, border: `1px solid ${accentBB}18`,
+        }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', margin: '0 0 7px' }}>Types de circuits</p>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+            {CIRCUIT_TYPES.map(ct => (
+              <div key={ct.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                <span style={{ fontSize: 11, fontFamily: '"DM Mono", monospace', color: accentBB, fontWeight: 700, minWidth: 18, flexShrink: 0 }}>{ct.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', minWidth: 58, flexShrink: 0 }}>{ct.label}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{ct.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {(sport === 'gym' || sport === 'hyrox') ? (
         <div style={{ marginBottom: 10 }}>
           <StrengthBlockRenderer blocks={blocks} onChange={onChange} accent={SPORT_BORDER[sport]} />
@@ -1819,25 +1892,63 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems }: {
 
       {/* ── Boutons ajouter ── */}
       {sport === 'gym' || sport === 'hyrox' ? (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
           <button onClick={() => onChange([...blocks, {
             id: `b_${Date.now()}`, mode: 'single', type: 'effort',
             durationMin: 0, zone: 3, value: '', hrAvg: '', label: 'Exercice',
             reps: 10, recoveryMin: 1.5,
           }])} style={{
-            flex: 1, padding: '10px', borderRadius: 10,
+            width: '100%', padding: '10px', borderRadius: 10,
             background: 'transparent', border: '1px dashed var(--border-mid)',
             color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
           }}>+ Exercice</button>
-          <button onClick={() => onChange([...blocks, {
-            id: `b_${Date.now()}`, mode: 'single', type: 'circuit_header',
-            durationMin: 0, zone: 3, value: '', hrAvg: '', label: 'Circuit',
-            recoveryMin: 2,
-          }])} style={{
-            flex: 1, padding: '10px', borderRadius: 10,
-            background: 'transparent', border: `1px dashed ${SPORT_BORDER[sport]}66`,
-            color: SPORT_BORDER[sport], fontSize: 12, cursor: 'pointer',
-          }}>+ Circuit</button>
+
+          {!showCircuitMenu ? (
+            <button onClick={() => setShowCircuitMenu(true)} style={{
+              width: '100%', padding: '10px', borderRadius: 10,
+              background: 'transparent', border: `1px dashed ${SPORT_BORDER[sport]}66`,
+              color: SPORT_BORDER[sport], fontSize: 12, cursor: 'pointer',
+            }}>+ Ajouter un circuit</button>
+          ) : (
+            <div style={{
+              padding: '12px 14px', borderRadius: 12,
+              border: '1px solid var(--border)', background: 'var(--bg-card2)',
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>Quel type de circuit ?</p>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                {CIRCUIT_TYPES.map(ct => (
+                  <button key={ct.id} onClick={() => {
+                    const nExos = blocks.filter(x => x.type === 'circuit_header').length
+                    const newHeader: Block = {
+                      id: `circuit_${Date.now()}`, mode: ct.id, type: 'circuit_header',
+                      label: `${ct.label} ${nExos + 1}`,
+                      zone: ct.id === 'tabata' ? 8 : 3,
+                      durationMin: ct.id === 'emom' ? 12 : 0,
+                      recoveryMin: ct.id === 'tabata' || ct.id === 'emom' ? 0 : 1.5,
+                      reps: 0, value: '', hrAvg: '',
+                    }
+                    onChange([...blocks, newHeader])
+                    setShowCircuitMenu(false)
+                  }} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                    border: '1px solid var(--border)', background: 'var(--bg-card)',
+                    cursor: 'pointer', textAlign: 'left' as const, width: '100%',
+                  }}>
+                    <span style={{ fontSize: 14, width: 20, textAlign: 'center' as const, flexShrink: 0 }}>{ct.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{ct.label}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{ct.desc}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setShowCircuitMenu(false)} style={{
+                marginTop: 8, width: '100%', padding: '7px', borderRadius: 6,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
+              }}>Annuler</button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8 }}>
@@ -4017,6 +4128,8 @@ interface ExecExo {
 interface ExecCircuit {
   label: string
   rounds: number
+  type: CircuitType
+  durationMin: number
   exos: ExecExo[]
 }
 
@@ -4025,11 +4138,18 @@ function buildExecCircuits(blocks: Block[]): ExecCircuit[] {
   let current: ExecCircuit | null = null
   for (const b of blocks) {
     if (b.type === 'circuit_header') {
-      current = { label: b.label || 'Circuit', rounds: b.zone || 1, exos: [] }
+      const ct: CircuitType = (['series','circuit','superset','emom','tabata'].includes(b.mode) ? b.mode : 'series') as CircuitType
+      current = {
+        label: b.label || 'Circuit',
+        rounds: ct === 'tabata' ? 8 : (b.zone || 1),
+        type: ct,
+        durationMin: b.durationMin || 0,
+        exos: [],
+      }
       result.push(current)
     } else {
       if (!current) {
-        current = { label: 'Séance', rounds: 1, exos: [] }
+        current = { label: 'Séance', rounds: 1, type: 'series', durationMin: 0, exos: [] }
         result.push(current)
       }
       current.exos.push({
@@ -4045,6 +4165,56 @@ function buildExecCircuits(blocks: Block[]): ExecCircuit[] {
   }
   return result.filter(c => c.exos.length > 0)
 }
+
+// ── Ordre d'exécution selon le type de circuit ──
+function getExecutionOrder(circ: ExecCircuit): Array<{ exoIdx: number; setIdx: number }> {
+  const order: Array<{ exoIdx: number; setIdx: number }> = []
+  const n = circ.exos.length
+  if (n === 0) return order
+
+  switch (circ.type) {
+    case 'series':
+      // Toutes les séries d'un exo, puis le suivant
+      for (let e = 0; e < n; e++) {
+        const sets = circ.exos[e].targetSets
+        for (let s = 0; s < sets; s++) order.push({ exoIdx: e, setIdx: s })
+      }
+      break
+
+    case 'circuit':
+    case 'superset':
+      // Enchaîner tous les exos, recommencer X rounds
+      for (let r = 0; r < circ.rounds; r++) {
+        for (let e = 0; e < n; e++) order.push({ exoIdx: e, setIdx: r })
+      }
+      break
+
+    case 'emom': {
+      // Alterner les exos chaque minute pendant durationMin minutes
+      const totalMin = circ.durationMin > 0 ? circ.durationMin : 12
+      for (let m = 0; m < totalMin; m++) {
+        order.push({ exoIdx: m % n, setIdx: Math.floor(m / n) })
+      }
+      break
+    }
+
+    case 'tabata':
+      // 8 rounds × alternance des exos
+      for (let r = 0; r < 8; r++) {
+        order.push({ exoIdx: r % n, setIdx: r })
+      }
+      break
+
+    default:
+      for (let e = 0; e < n; e++) {
+        const sets = circ.exos[e].targetSets
+        for (let s = 0; s < sets; s++) order.push({ exoIdx: e, setIdx: s })
+      }
+  }
+  return order
+}
+
+type ExecStep = { circuitIdx: number; exoIdx: number; setIdx: number }
 
 const MOTIVATIONAL_MSGS = [
   'Allez, tu gères ! 💪', 'En feu 🔥', 'Continue comme ça !',
@@ -4064,12 +4234,17 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
 
   const initialCircuits = buildExecCircuits(blocks)
 
+  // Construire la séquence complète d'exécution
+  const initialSequence: ExecStep[] = []
+  initialCircuits.forEach((c, ci) => {
+    getExecutionOrder(c).forEach(o => initialSequence.push({ circuitIdx: ci, ...o }))
+  })
+
   const [circuits, setCircuits] = useState<ExecCircuit[]>(initialCircuits)
-  const [phase, setPhase] = useState<'ready' | 'countdown' | 'work' | 'rest' | 'paused' | 'done'>('ready')
+  const [execSequence]          = useState<ExecStep[]>(initialSequence)
+  const [execPos, setExecPos]   = useState(0)
+  const [phase, setPhase]       = useState<'ready' | 'countdown' | 'work' | 'rest' | 'paused' | 'done'>('ready')
   const [countdownSec, setCountdownSec] = useState(5)
-  const [circuitIdx, setCircuitIdx] = useState(0)
-  const [exoIdx, setExoIdx] = useState(0)
-  const [roundIdx, setRoundIdx] = useState(0)
   const [restRemaining, setRestRemaining] = useState(0)
   const [restTotal, setRestTotal] = useState(0)
   const [sessionStartTs, setSessionStartTs] = useState(0)
@@ -4088,9 +4263,14 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const cdTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const currentCircuit = circuits[circuitIdx] ?? null
-  const currentExo     = currentCircuit?.exos[exoIdx] ?? null
-  const currentSetNum  = currentExo ? currentExo.logSets.length + 1 : 0
+  // Dériver l'exo courant depuis execPos
+  const currentStep    = execSequence[execPos] ?? null
+  const currentCircuit = currentStep ? (circuits[currentStep.circuitIdx] ?? null) : null
+  const currentExo     = currentStep && currentCircuit ? (currentCircuit.exos[currentStep.exoIdx] ?? null) : null
+  const nextStep       = execSequence[execPos + 1] ?? null
+  const nextCircuit    = nextStep ? (circuits[nextStep.circuitIdx] ?? null) : null
+  const nextExo        = nextStep && nextCircuit ? (nextCircuit.exos[nextStep.exoIdx] ?? null) : null
+  const currentSetNum  = (currentStep?.setIdx ?? 0) + 1
 
   // Totaux
   const totalSetsAll  = circuits.reduce((s,c) => s + c.exos.reduce((ss,e) => ss + e.logSets.length, 0), 0)
@@ -4099,8 +4279,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   const totalExosCount = circuits.reduce((s,c) => s + c.exos.length, 0)
 
   // Progression globale
-  const totalSetsTarget = circuits.reduce((s,c) => s + c.exos.reduce((ss,e) => ss + e.targetSets, 0), 0)
-  const progressPct = totalSetsTarget > 0 ? Math.min(1, totalSetsAll / totalSetsTarget) : 0
+  const progressPct = execSequence.length > 0 ? Math.min(1, execPos / execSequence.length) : 0
 
   // ── Countdown ──
   useEffect(() => {
@@ -4157,52 +4336,45 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     setMotivMsg(MOTIVATIONAL_MSGS[Math.floor(Math.random() * MOTIVATIONAL_MSGS.length)])
   }
 
-  function advanceToNext(updatedCircuits: ExecCircuit[], ciIdx: number, eIdx: number, rIdx: number) {
-    const circ = updatedCircuits[ciIdx]
-    if (!circ) { setPhase('done'); setShowConfetti(true); pickMotiv(); return }
-    const exo = circ.exos[eIdx]
-    const restSec = exo?.restSec ?? 90
+  function advanceToNextStep(pos: number) {
+    if (pos + 1 >= execSequence.length) {
+      setPhase('done'); setShowConfetti(true); pickMotiv(); return
+    }
+    const nextS = execSequence[pos + 1]
+    const nextC = circuits[nextS.circuitIdx]
+    const nextE = nextC?.exos[nextS.exoIdx]
+    setExecPos(pos + 1)
 
-    // Plus de séries dans cet exercice?
-    if (exo && exo.logSets.length < exo.targetSets) {
-      startRest(restSec); return
+    // Repos selon le type de circuit
+    const cType = currentCircuit?.type ?? 'series'
+    if (cType === 'tabata') {
+      // Tabata : toujours 10s de repos
+      startRest(10)
+    } else if (cType === 'emom') {
+      // EMOM : repos = temps restant dans la minute (simplifié : 15s)
+      startRest(15)
+    } else if (cType === 'circuit' || cType === 'superset') {
+      // Circuit/superset : repos seulement quand on revient au premier exo (fin de round)
+      const isEndOfRound = nextS.exoIdx === 0 && nextS.setIdx !== currentStep?.setIdx
+      if (isEndOfRound) {
+        startRest(nextE?.restSec ?? currentExo?.restSec ?? 90)
+      } else {
+        setPhase('work') // pas de repos entre exos du circuit
+      }
+    } else {
+      // Séries : repos entre chaque série/exercice
+      startRest(currentExo?.restSec ?? 90)
     }
-    // Prochain exercice dans le round?
-    if (eIdx + 1 < circ.exos.length) {
-      setExoIdx(eIdx + 1)
-      startRest(restSec); return
-    }
-    // Prochain round?
-    if (rIdx + 1 < circ.rounds) {
-      // Reset les logSets du circuit pour le nouveau round
-      const resetCircuits = updatedCircuits.map((c, ci) =>
-        ci !== ciIdx ? c : { ...c, exos: c.exos.map(e => ({ ...e, logSets: [] })) }
-      )
-      setCircuits(resetCircuits)
-      setExoIdx(0)
-      setRoundIdx(rIdx + 1)
-      startRest(restSec); return
-    }
-    // Prochain circuit?
-    if (ciIdx + 1 < updatedCircuits.length) {
-      setCircuitIdx(ciIdx + 1)
-      setExoIdx(0)
-      setRoundIdx(0)
-      startRest(updatedCircuits[ciIdx + 1]?.exos[0]?.restSec ?? 60); return
-    }
-    // Terminé!
-    setPhase('done')
-    setShowConfetti(true)
-    pickMotiv()
   }
 
   function validateSet(note: string = 'ok') {
-    if (!currentCircuit || !currentExo) return
-    const updatedCircuits = circuits.map((c, ci) =>
-      ci !== circuitIdx ? c : {
+    if (!currentCircuit || !currentExo || !currentStep) return
+    const { circuitIdx: ci, exoIdx: ei } = currentStep
+    const updatedCircuits = circuits.map((c, cii) =>
+      cii !== ci ? c : {
         ...c,
-        exos: c.exos.map((e, ei) =>
-          ei !== exoIdx ? e : {
+        exos: c.exos.map((e, eii) =>
+          eii !== ei ? e : {
             ...e,
             logSets: [...e.logSets, {
               reps: currentExo.targetReps,
@@ -4216,15 +4388,17 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
     )
     setCircuits(updatedCircuits)
     pickMotiv()
-    advanceToNext(updatedCircuits, circuitIdx, exoIdx, roundIdx)
+    advanceToNextStep(execPos)
   }
 
   function updateExoField(field: 'targetReps' | 'targetWeight', value: number | string) {
-    setCircuits(prev => prev.map((c, ci) =>
-      ci !== circuitIdx ? c : {
+    if (!currentStep) return
+    const { circuitIdx: ci, exoIdx: ei } = currentStep
+    setCircuits(prev => prev.map((c, cii) =>
+      cii !== ci ? c : {
         ...c,
-        exos: c.exos.map((e, ei) =>
-          ei !== exoIdx ? e : { ...e, [field]: value }
+        exos: c.exos.map((e, eii) =>
+          eii !== ei ? e : { ...e, [field]: value }
         )
       }
     ))
@@ -4243,19 +4417,12 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   }
 
   function skipExo() {
-    advanceToNext(circuits, circuitIdx, exoIdx + 1 > (currentCircuit?.exos.length ?? 1) - 1 ? exoIdx : exoIdx + 1, roundIdx)
-    if (exoIdx + 1 >= (currentCircuit?.exos.length ?? 1)) {
-      if (roundIdx + 1 < (currentCircuit?.rounds ?? 1)) {
-        setExoIdx(0); setRoundIdx(r => r + 1)
-      } else if (circuitIdx + 1 < circuits.length) {
-        setCircuitIdx(i => i + 1); setExoIdx(0); setRoundIdx(0)
-      } else {
-        setPhase('done'); setShowConfetti(true); pickMotiv()
-      }
+    if (execPos + 1 >= execSequence.length) {
+      setPhase('done'); setShowConfetti(true); pickMotiv()
     } else {
-      setExoIdx(i => i + 1)
+      setExecPos(p => p + 1)
+      setPhase('work')
     }
-    if (phase !== 'done') setPhase('work')
   }
 
   function togglePause() {
@@ -4273,11 +4440,13 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
   }
 
   function replaceExo(newLabel: string) {
-    setCircuits(prev => prev.map((c, ci) =>
-      ci !== circuitIdx ? c : {
+    if (!currentStep) return
+    const { circuitIdx: ci, exoIdx: ei } = currentStep
+    setCircuits(prev => prev.map((c, cii) =>
+      cii !== ci ? c : {
         ...c,
-        exos: c.exos.map((e, ei) =>
-          ei !== exoIdx ? e : { ...e, label: newLabel, logSets: [] }
+        exos: c.exos.map((e, eii) =>
+          eii !== ei ? e : { ...e, label: newLabel, logSets: [] }
         )
       }
     ))
@@ -4479,9 +4648,16 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div>
             <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, lineHeight: 1 }}>
-              {circuits.length > 1 && currentCircuit ? `${currentCircuit.label} · ` : ''}
-              Exo {exoIdx + 1}/{currentCircuit?.exos.length ?? 0}
-              {currentCircuit && currentCircuit.rounds > 1 ? ` · Round ${roundIdx + 1}/${currentCircuit.rounds}` : ''}
+              {currentCircuit ? `${currentCircuit.label} · ` : ''}
+              {(() => {
+                const ct = currentCircuit?.type ?? 'series'
+                const ctInfo = CIRCUIT_TYPES.find(c => c.id === ct)
+                const roundLbl = ct === 'emom' ? `min ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` :
+                                 ct === 'tabata' ? `round ${currentSetNum}/8` :
+                                 ct === 'series' ? `série ${currentSetNum}` :
+                                 `round ${(currentStep?.setIdx ?? 0) + 1}/${currentCircuit?.rounds ?? 1}`
+                return <>{ctInfo?.icon} {ctInfo?.label ?? 'Séries'} · {roundLbl}</>
+              })()}
             </p>
           </div>
           <span style={{ fontSize: 13, fontFamily: '"DM Mono",monospace', color: 'var(--text-dim)', fontWeight: 600 }}>{fmtTimer(elapsed)}</span>
@@ -4522,8 +4698,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
             {/* ── Compteur de séries ── */}
             <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 18, flexWrap: 'wrap' as const }}>
               {Array.from({ length: currentExo.targetSets }).map((_, i) => {
-                const done   = i < currentExo.logSets.length
-                const active = i === currentExo.logSets.length && phase === 'work'
+                const done   = i < currentSetNum - 1
+                const active = i === currentSetNum - 1 && phase === 'work'
                 const set    = currentExo.logSets[i]
                 const nc     = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
                 return (
@@ -4603,8 +4779,14 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
                   background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff',
                   fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
                 }}>
-                  ✓ Série {currentSetNum}/{currentExo.targetSets}
-                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8, marginLeft: 8 }}>→ {fmtTimer(currentExo.restSec)} repos</span>
+                  {currentCircuit?.type === 'emom' ? `⏱ Minute ${currentSetNum}` :
+                   currentCircuit?.type === 'tabata' ? `⚡ Round ${currentSetNum}/8` :
+                   `✓ Série ${currentSetNum}/${currentExo.targetSets}`}
+                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8, marginLeft: 8 }}>
+                    {currentCircuit?.type === 'tabata' ? '→ 10s repos' :
+                     currentCircuit?.type === 'emom' ? '→ 15s repos' :
+                     `→ ${fmtTimer(currentExo.restSec)} repos`}
+                  </span>
                 </button>
               </div>
             )}
@@ -4639,21 +4821,19 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog }: {
             )}
 
             {/* ── Exercice suivant ── */}
-            {(() => {
-              const nextExo = currentCircuit?.exos[exoIdx + 1]
-              if (!nextExo) return null
-              return (
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                  <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>Suivant</p>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
-                    {nextExo.label}
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
-                      {nextExo.targetSets}×{nextExo.targetReps}{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
-                    </span>
-                  </p>
-                </div>
-              )
-            })()}
+            {nextExo && (
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 3px' }}>
+                  Suivant{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
+                </p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
+                  {nextExo.label}
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                    {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
+                  </span>
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -4929,31 +5109,64 @@ COMPRENDRE LE FORMAT DE L'ATHLÈTE :
 - "Gainage 45s" → Plank, 45 secondes (effortMin=0.75)
 - "Sled Push 50m @150kg" → distance 50m (durationMin=50), charge 150kg
 
+TYPES DE CIRCUITS :
+L'athlète peut écrire /séries, /circuit, /superset, /emom, /tabata devant un groupe d'exercices.
+- /séries (ou rien) : mode par défaut — toutes les séries d'un exo, puis le suivant. mode="series"
+- /circuit : enchaîner tous les exos, recommencer X rounds. mode="circuit"
+- /superset : alterner 2 exos sans repos entre eux. mode="superset"
+- /emom : 1 exo par minute pendant X minutes. mode="emom", durationMin=X
+- /tabata : 20s effort / 10s repos × 8 rounds. mode="tabata", zone=8
+
+Pour le circuit_header, le champ "mode" correspond au type :
+{"mode":"series","type":"circuit_header","label":"Bloc force","zone":4,...}
+{"mode":"circuit","type":"circuit_header","label":"Circuit cardio","zone":3,...}
+{"mode":"superset","type":"circuit_header","label":"Superset bras","zone":4,...}
+{"mode":"emom","type":"circuit_header","label":"EMOM 12min","durationMin":12,"zone":1,...}
+{"mode":"tabata","type":"circuit_header","label":"Tabata finish","zone":8,...}
+
 RÈGLE CRITIQUE — CIRCUITS :
 Si l'athlète mentionne plusieurs circuits/blocs (séparés par une ligne vide, un numéro, ou un label), tu DOIS les séparer avec un bloc marqueur de type "circuit_header".
-Insère un bloc {"type":"circuit_header","mode":"single","label":"Circuit A","zone":3,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2} AVANT chaque groupe d'exercices.
+Insère un circuit_header AVANT chaque groupe d'exercices.
 - label : nom du circuit ("Circuit A", "Circuit B", "Échauffement", "Core", etc.)
 - zone : nombre de ROUNDS pour ce circuit (ex: "x3" → zone=3). Si pas précisé : 3
-- recoveryMin : repos ENTRE LES ROUNDS du circuit (défaut 2 min)
+- mode : type de circuit ("series", "circuit", "superset", "emom", "tabata"). Par défaut "series"
+- recoveryMin : repos ENTRE LES ROUNDS (défaut 1.5 min). 0 pour EMOM/tabata
+- durationMin : durée en minutes pour EMOM uniquement
 Si la séance n'a qu'un seul bloc d'exercices, n'ajoute PAS de circuit_header.
 
-EXEMPLE AVEC 2 CIRCUITS :
+EXEMPLE — SUPERSET :
+"Bench @60kg + Pull up 12 reps /superset x4"
+→ [
+  {"type":"circuit_header","mode":"superset","label":"Superset poitrine-dos","zone":4,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"effort","mode":"single","label":"Bench Press","zone":4,"reps":10,"value":"60","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
+  {"type":"effort","mode":"single","label":"Pull Up","zone":4,"reps":12,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
+]
+
+EXEMPLE — EMOM :
+"/emom 12min : pair=8 Pull Up, impair=12 KB Swing @20kg"
+→ [
+  {"type":"circuit_header","mode":"emom","label":"EMOM 12min","zone":1,"durationMin":12,"reps":0,"value":"","hrAvg":"","effortMin":0,"recoveryMin":0},
+  {"type":"effort","mode":"single","label":"Pull Up","zone":6,"reps":8,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
+  {"type":"effort","mode":"single","label":"Kettlebell Swing","zone":6,"reps":12,"value":"20","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
+]
+
+EXEMPLE — 2 CIRCUITS :
 "Circuit A x3 :
 Bench press @52.5kg
 Pull up australien 20 reps
 
-Circuit B x2 :
+/circuit x2 :
 Squat @80kg
 Deadlift @100kg"
 
 → Tableau JSON :
 [
-  {"type":"circuit_header","mode":"single","label":"Circuit A","zone":3,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2},
+  {"type":"circuit_header","mode":"series","label":"Circuit A","zone":3,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
   {"type":"effort","mode":"single","label":"Bench Press","zone":3,"reps":8,"value":"52.5","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
   {"type":"effort","mode":"single","label":"Australian Pull Up","zone":3,"reps":20,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"circuit_header","mode":"single","label":"Circuit B","zone":2,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2},
-  {"type":"effort","mode":"single","label":"Squat","zone":2,"reps":8,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Deadlift","zone":2,"reps":5,"value":"100","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":2}
+  {"type":"circuit_header","mode":"circuit","label":"Circuit 2","zone":2,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+  {"type":"effort","mode":"single","label":"Squat","zone":2,"reps":8,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
+  {"type":"effort","mode":"single","label":"Deadlift","zone":2,"reps":5,"value":"100","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
 ]
 
 EXEMPLE SANS CIRCUIT (séance simple) :

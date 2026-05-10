@@ -6120,38 +6120,68 @@ Ajoute toujours échauffement et retour au calme.`
             )}
           </div>
 
-          {/* Estimation watts / allure moyenne */}
-          {(sessionAvg.avgWatts || sessionAvg.avgPace) && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: mobile ? 10 : 14, paddingTop: mobile ? 10 : 12, borderTop: '1px solid var(--border)' }}>
-              <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
-                {sport === 'bike' || sport === 'elliptique' ? 'Watts moy. estimés' : 'Allure moy. estimée'}
-              </span>
-              <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono", monospace', letterSpacing: '-0.02em' }}>
-                {sessionAvg.avgWatts ? `${sessionAvg.avgWatts}W` : sessionAvg.avgPace}
-              </span>
-            </div>
-          )}
+          {/* Watts / allure estimés + références athlète en dessous */}
+          {(() => {
+            const hasEstimate = !!(sessionAvg.avgWatts || sessionAvg.avgPace)
+            // Référence de l'athlète selon le sport
+            const ref = (() => {
+              if (!athleteData) return null
+              if ((sport === 'bike' || sport === 'elliptique') && athleteData.ftp)
+                return { label: 'FTP', value: `${athleteData.ftp}W` }
+              if (sport === 'run' && athleteData.runThresholdPaceStr)
+                return { label: 'Seuil', value: `${athleteData.runThresholdPaceStr}/km` }
+              if (sport === 'swim' && athleteData.swimCSSStr)
+                return { label: 'CSS', value: `${athleteData.swimCSSStr}/100m` }
+              if (sport === 'rowing' && athleteData.rowThresholdSecPer500m) {
+                const s = athleteData.rowThresholdSecPer500m
+                return { label: 'Seuil', value: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}/500m` }
+              }
+              return null
+            })()
+            // FC données athlète (tous sports)
+            const hrRef = lthrForSport
+              ? { label: athleteData?.lthrRun || athleteData?.lthrBike ? 'LTHR' : 'LTHR est.', value: String(lthrForSport) }
+              : athleteData?.hrMax
+                ? { label: 'FC max', value: String(athleteData.hrMax) }
+                : null
 
-          {/* Données athlète (FTP / allure seuil / CSS / FC max) */}
-          {athleteData && (athleteData.ftp || athleteData.runThresholdPaceStr || athleteData.swimCSSStr || athleteData.hrMax || lthrForSport) && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-              {sport === 'bike' && athleteData.ftp && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FTP <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.ftp}W</strong></span>
-              )}
-              {sport === 'run' && athleteData.runThresholdPaceStr && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Seuil <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.runThresholdPaceStr}/km</strong></span>
-              )}
-              {sport === 'swim' && athleteData.swimCSSStr && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>CSS <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.swimCSSStr}/100m</strong></span>
-              )}
-              {lthrForSport && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>LTHR <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{lthrForSport}</strong></span>
-              )}
-              {athleteData.hrMax && (
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FC max <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.hrMax}</strong></span>
-              )}
-            </div>
-          )}
+            if (!hasEstimate && !ref && !hrRef) return null
+            return (
+              <div style={{ marginTop: mobile ? 10 : 14, paddingTop: mobile ? 10 : 12, borderTop: '1px solid var(--border)' }}>
+                {/* Ligne principale : estimation */}
+                {hasEstimate && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
+                      {sport === 'bike' || sport === 'elliptique' ? 'Watts moy. estimés' : 'Allure moy. estimée'}
+                    </span>
+                    <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono", monospace', letterSpacing: '-0.02em' }}>
+                      {sessionAvg.avgWatts ? `${sessionAvg.avgWatts}W` : sessionAvg.avgPace}
+                    </span>
+                  </div>
+                )}
+                {/* Sous-ligne : seuil / FTP / CSS / LTHR de l'athlète */}
+                {(ref || hrRef) && (
+                  <div style={{ display: 'flex', gap: 12, marginTop: hasEstimate ? 5 : 0, flexWrap: 'wrap' as const }}>
+                    {ref && (
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                        {ref.label}{' '}
+                        <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)', fontWeight: 700 }}>{ref.value}</strong>
+                      </span>
+                    )}
+                    {hrRef && (
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                        {hrRef.label}{' '}
+                        <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)', fontWeight: 700 }}>{hrRef.value}</strong>
+                        {athleteData?.hrMax && (
+                          <span style={{ fontSize: 8, color: 'var(--text-dim)', marginLeft: 4 }}>/ FC max {athleteData.hrMax}</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* TSS INFO MODAL */}

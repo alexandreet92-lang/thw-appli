@@ -3112,11 +3112,13 @@ function TrainingTab() {
   const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0] ?? null
   const [view, setView] = useState<TrainingView>('vertical')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant}|null>(null)
+  const [addModalFavorites, setAddModalFavorites] = useState(false)
   const [detailModal, setDetailModal] = useState<Session|null>(null)
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
+  const [planningFavorites, setPlanningFavorites] = useState<Array<{id:string;name:string}>>([])
   // Day index dont le picker d'intensité est ouvert (null = fermé)
   const [intensityPickerDay, setIntensityPickerDay] = useState<number|null>(null)
   // Fermeture au clic hors du picker
@@ -3129,6 +3131,19 @@ function TrainingTab() {
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [intensityPickerDay])
+  // Charger les favoris pour le bouton ★ dans la vue semaine
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('session_favorites').select('id,name').eq('user_id', user.id).limit(20)
+        if (data) setPlanningFavorites(data)
+      } catch {}
+    })()
+  }, [])
   const dragRef  = useRef<{id:string;from:number}|null>(null)
   const touchRef = useRef<{id:string;from:number}|null>(null)
   const todayIdx = getTodayIdx()
@@ -3441,7 +3456,12 @@ function TrainingTab() {
                     {s.blocks.length>0 && <div style={{ display:'flex',gap:1,marginTop:2,height:6,borderRadius:1,overflow:'hidden' }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.8 }}/> })}</div>}
                   </div>
                 ))}
-                {ws===currentWeekStart&&<button onClick={()=>setAddModal({dayIndex:i,plan:plan??activePlan})} style={{ marginTop:2,padding:'3px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer',width:'100%' }}>+</button>}
+                {ws===currentWeekStart&&(
+                  <div style={{ display:'flex',gap:3,marginTop:2 }}>
+                    <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan})}} style={{ flex:1,padding:'3px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }}>+</button>
+                    {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:plan??activePlan})}} style={{ padding:'3px 5px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }} title="Charger un favori">★</button>}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -3491,8 +3511,9 @@ function TrainingTab() {
           mode="create"
           dayIndex={addModal.dayIndex}
           plan={addModal.plan}
-          onClose={()=>setAddModal(null)}
-          onSave={(s)=>{ handleAddSession(addModal.dayIndex, s); setAddModal(null) }}
+          onClose={()=>{setAddModal(null);setAddModalFavorites(false)}}
+          onSave={(s)=>{ handleAddSession(addModal.dayIndex, s); setAddModal(null); setAddModalFavorites(false) }}
+          openWithFavorites={addModalFavorites}
         />
       )}
       {detailModal && (
@@ -3740,7 +3761,10 @@ function TrainingTab() {
                   <button onClick={()=>setIntensityModal(d.intensity)} style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:10,fontWeight:700,cursor:'pointer' }}>{cfg.label}</button>
                   <button onClick={()=>handleChangeIntensity(i)} style={{ width:20,height:20,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                 </div>
-                <button onClick={()=>setAddModal({dayIndex:i,plan:activePlan})} style={{ padding:'4px 9px',borderRadius:7,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)',color:'#00c8e0',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
+                <div style={{ display:'flex',gap:4 }}>
+                  <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:activePlan})}} style={{ padding:'4px 9px',borderRadius:7,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)',color:'#00c8e0',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
+                  {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:activePlan})}} style={{ padding:'4px 8px',borderRadius:7,background:'rgba(0,200,224,0.08)',border:'1px solid rgba(0,200,224,0.2)',color:'#00c8e0',fontSize:12,cursor:'pointer' }} title="Charger un favori">★</button>}
+                </div>
               </div>
               {/* Activities from Training */}
               {d.activities.map(a=>{ const sp=normalizeSportType(a.sport); const matchedSession=matchActivity(a,d.sessions); return (
@@ -3850,14 +3874,22 @@ function computeZoneDistribution(blocks: Block[], zoneCount: number): number[] {
   return dist.map(v => Math.round((v / total) * 100))
 }
 
-function computeHRDistribution(blocks: Block[]): { label: string; pct: number; color: string }[] {
-  const buckets = [
-    { label: '<120', color: '#6b7280', min: 0, max: 120 },
-    { label: '120-140', color: '#4ade80', min: 120, max: 140 },
-    { label: '140-155', color: '#facc15', min: 140, max: 155 },
-    { label: '155-170', color: '#fb923c', min: 155, max: 170 },
-    { label: '170+', color: '#f87171', min: 170, max: 999 },
-  ]
+function computeHRDistribution(blocks: Block[], fcZones?: number[]): { label: string; pct: number; color: string }[] {
+  const buckets = fcZones && fcZones.length >= 4
+    ? [
+        { label: `<${fcZones[0]}`, color: '#6b7280', min: 0, max: fcZones[0] },
+        { label: `${fcZones[0]}-${fcZones[1]}`, color: '#4ade80', min: fcZones[0], max: fcZones[1] },
+        { label: `${fcZones[1]}-${fcZones[2]}`, color: '#facc15', min: fcZones[1], max: fcZones[2] },
+        { label: `${fcZones[2]}-${fcZones[3]}`, color: '#fb923c', min: fcZones[2], max: fcZones[3] },
+        { label: `${fcZones[3]}+`, color: '#f87171', min: fcZones[3], max: 999 },
+      ]
+    : [
+        { label: '<120', color: '#6b7280', min: 0, max: 120 },
+        { label: '120-140', color: '#4ade80', min: 120, max: 140 },
+        { label: '140-155', color: '#facc15', min: 140, max: 155 },
+        { label: '155-170', color: '#fb923c', min: 155, max: 170 },
+        { label: '170+', color: '#f87171', min: 170, max: 999 },
+      ]
   const mins = new Array(buckets.length).fill(0)
   let hasData = false
   for (const b of blocks) {
@@ -5010,7 +5042,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
 
 // ──────────────────────────────────────────────────────────────
 
-function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate }: {
+function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, openWithFavorites }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -5021,6 +5053,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   onValidate?: (s: Session) => void
   onAutoSave?: (s: Session) => void
   onDuplicate?: (dayIndex: number, session: Session) => void
+  openWithFavorites?: boolean
 }) {
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? 'run')
@@ -5048,7 +5081,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)
   const [favorites, setFavorites] = useState<Array<{id:string;name:string;sport:string;training_type?:string;blocks_data:Block[];nutrition_data:NutritionItem[];duration_min:number;rpe:number;notes:string}>>([])
-  const [showFavorites, setShowFavorites] = useState(false)
+  const [showFavorites, setShowFavorites] = useState(openWithFavorites ?? false)
   const [exoHistory, setExoHistory] = useState<Record<string, { weight: string; reps: number; date: string }>>({})
   const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>((session as unknown as Session & { nutritionItems?: NutritionItem[] })?.nutritionItems ?? [])
   const [nutritionTab, setNutritionTab] = useState<'manual' | 'ai'>('manual')
@@ -5065,7 +5098,15 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     cssSecPer100m: number | null
     rowThresholdSecPer500m: number | null
     ctl: number | null
+    maxHR: number | null
+    restHR: number | null
+    fcZones: number[]
+    runThresholdPaceStr: string | null
+    swimCSSStr: string | null
   } | null>(null)
+  const [athleteProducts, setAthleteProducts] = useState<Array<{
+    name: string; type: string; glucidesG: number; proteinesG: number; quantity: string
+  }>>([])
 
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
@@ -5083,24 +5124,41 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         const { data: { user } } = await sb.auth.getUser()
         if (!user || cancelled) return
 
-        const [profileRes, actsRes] = await Promise.all([
-          sb.from('profiles').select('ftp_watts,run_threshold_pace,css_pace').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
+        const [profileRes, perfRes, actsRes] = await Promise.all([
+          sb.from('profiles').select('ftp_watts,run_threshold_pace,css_pace,max_hr,rest_hr').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
+          sb.from('athlete_performance_profile').select('ftp,threshold_pace_run,css,max_hr,rest_hr').eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
         ])
 
         const profile = (profileRes as { data: Record<string, unknown> | null }).data
+        const perf = (perfRes as { data: Record<string, unknown> | null }).data
         const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
 
-        const ftp = (profile?.ftp_watts as number) ?? null
+        const ftp = (perf?.ftp as number) ?? (profile?.ftp_watts as number) ?? null
+        const maxHR = (perf?.max_hr as number) ?? (profile?.max_hr as number) ?? null
+        const restHR = (perf?.rest_hr as number) ?? (profile?.rest_hr as number) ?? null
 
-        const runPaceStr = profile?.run_threshold_pace as string | null
+        // FC zones via Karvonen si max + rest disponibles
+        let fcZones: number[] = []
+        if (maxHR && restHR) {
+          const reserve = maxHR - restHR
+          fcZones = [
+            Math.round(restHR + reserve * 0.5),
+            Math.round(restHR + reserve * 0.6),
+            Math.round(restHR + reserve * 0.7),
+            Math.round(restHR + reserve * 0.8),
+            Math.round(restHR + reserve * 0.9),
+          ]
+        }
+
+        const runPaceStr = (perf?.threshold_pace_run as string) ?? (profile?.run_threshold_pace as string) ?? null
         let runThresholdPaceSec: number | null = null
         if (runPaceStr) {
           const m = String(runPaceStr).match(/(\d+):(\d+)/)
           if (m) runThresholdPaceSec = parseInt(m[1]) * 60 + parseInt(m[2])
         }
 
-        const cssStr = profile?.css_pace as string | null
+        const cssStr = (perf?.css as string) ?? (profile?.css_pace as string) ?? null
         let cssSecPer100m: number | null = null
         if (cssStr) {
           const m = String(cssStr).match(/(\d+):(\d+)/)
@@ -5128,7 +5186,12 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         let ctl = 0
         for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
 
-        if (!cancelled) setAthleteData({ ftp, runThresholdPaceSec, cssSecPer100m, rowThresholdSecPer500m: null, ctl: Math.round(ctl) })
+        if (!cancelled) setAthleteData({
+          ftp, runThresholdPaceSec, cssSecPer100m, rowThresholdSecPer500m: null, ctl: Math.round(ctl),
+          maxHR, restHR, fcZones,
+          runThresholdPaceStr: runPaceStr ?? null,
+          swimCSSStr: cssStr ?? null,
+        })
       } catch { /* ignore */ }
     })()
     return () => { cancelled = true }
@@ -5181,6 +5244,20 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     })()
   }, [sport])
 
+  // Charger les produits nutrition de l'athlète
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('nutrition_products').select('name,type,glucidesG:glucides_g,proteinesG:proteines_g,quantity').eq('user_id', user.id).then(r => r, () => ({ data: null }))
+        if (data && Array.isArray(data)) setAthleteProducts(data as typeof athleteProducts)
+      } catch {}
+    })()
+  }, [])
+
   const accent = SPORT_BORDER[sport]
   const isStrength = sport === 'gym' || sport === 'hyrox'
   const trainTypes = TRAINING_TYPES[sport] ?? []
@@ -5207,7 +5284,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     ? ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7']
     : ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
   const zoneDist = computeZoneDistribution(blocks, ZONE_COUNT)
-  const hrDist = computeHRDistribution(blocks)
+  const hrDist = computeHRDistribution(blocks, athleteData?.fcZones)
 
   useEffect(() => {
     if (blocks.length === 0) return
@@ -6043,6 +6120,27 @@ Ajoute toujours échauffement et retour au calme.`
               </span>
             </div>
           )}
+
+          {/* Données athlète (FTP / allure seuil / CSS / FC max) */}
+          {athleteData && (athleteData.ftp || athleteData.runThresholdPaceStr || athleteData.swimCSSStr || athleteData.maxHR) && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+              {sport === 'bike' && athleteData.ftp && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FTP <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.ftp}W</strong></span>
+              )}
+              {sport === 'run' && athleteData.runThresholdPaceStr && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Seuil <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.runThresholdPaceStr}/km</strong></span>
+              )}
+              {sport === 'swim' && athleteData.swimCSSStr && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>CSS <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.swimCSSStr}/100m</strong></span>
+              )}
+              {athleteData.maxHR && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FC max <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.maxHR}</strong></span>
+              )}
+              {athleteData.restHR && (
+                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>FC repos <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)' }}>{athleteData.restHR}</strong></span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* TSS INFO MODAL */}
@@ -6351,10 +6449,26 @@ Ajoute toujours échauffement et retour au calme.`
                                     style={{ fontSize: 9, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}0a`, color: accent, outline: 'none', cursor: 'pointer' }}>
                                     {NUTRITION_TYPES.map(nt => <option key={nt.id} value={nt.id}>{nt.label}</option>)}
                                   </select>
-                                  {/* Nom */}
-                                  <input value={item.name} placeholder="Aliment..."
-                                    onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
-                                    style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 12, outline: 'none', minWidth: 0 }} />
+                                  {/* Nom + sélecteur produits athlète */}
+                                  <div style={{ display: 'flex', flexDirection: 'column' as const, minWidth: 0, gap: 2 }}>
+                                    <input value={item.name} placeholder="Aliment..."
+                                      onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
+                                      style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 12, outline: 'none', minWidth: 0 }} />
+                                    {athleteProducts.filter(p => p.type === item.type).length > 0 && (
+                                      <select
+                                        value=""
+                                        onChange={e => {
+                                          const prod = athleteProducts.find(p => p.name === e.target.value)
+                                          if (prod) setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: prod.name, glucidesG: prod.glucidesG, proteinesG: prod.proteinesG, quantity: prod.quantity } : x))
+                                        }}
+                                        style={{ appearance: 'none' as const, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', outline: 'none' }}>
+                                        <option value="">Mes produits ▾</option>
+                                        {athleteProducts.filter(p => p.type === item.type).map(p => (
+                                          <option key={p.name} value={p.name}>{p.name} ({p.glucidesG}g glu)</option>
+                                        ))}
+                                      </select>
+                                    )}
+                                  </div>
                                   {/* Glucides */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                     <input type="number" min={0} value={item.glucidesG}
@@ -6431,6 +6545,15 @@ Ajoute toujours échauffement et retour au calme.`
                         ? blocks.filter(b => b.type !== 'circuit_header').map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
                         : `${SPORT_LABEL[sport]} ${formatHM(dur)}`
 
+                      const athleteNutritionContext = athleteProducts.length > 0
+                        ? `\nPRODUITS DE L'ATHLÈTE (utilise ces noms et valeurs EXACTES) :\n${athleteProducts.map(p => `- ${p.name} (${p.type}) : ${p.glucidesG}g glucides, ${p.proteinesG}g protéines, quantité standard : ${p.quantity}`).join('\n')}\n`
+                        : ''
+                      const athleteGelName = athleteProducts.find(p => p.type === 'gel')?.name ?? 'Gel énergie'
+                      const athleteGelCarbs = athleteProducts.find(p => p.type === 'gel')?.glucidesG ?? 25
+                      const athleteBarName = athleteProducts.find(p => p.type === 'barre')?.name ?? 'Barre énergétique'
+                      const athleteBarCarbs = athleteProducts.find(p => p.type === 'barre')?.glucidesG ?? 30
+                      const athleteBarProtein = athleteProducts.find(p => p.type === 'barre')?.proteinesG ?? 3
+
                       const res = await fetch('/api/coach-stream', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -6439,28 +6562,40 @@ Ajoute toujours échauffement et retour au calme.`
                             role: 'user',
                             content: `Tu es un nutritionniste sportif expert. L'athlète prévoit cette séance :
 Sport : ${SPORT_LABEL[sport]}
-Durée : ${formatHM(dur)}
+Durée : ${formatHM(dur)} (${dur} minutes)
 Blocs : ${blocksDesc}
 
 DEMANDE DE L'ATHLÈTE :
 ${nutritionAiPrompt}
+${athleteNutritionContext}
+RÈGLE CRITIQUE — FRÉQUENCES :
+Quand l'athlète donne des fréquences DIFFÉRENTES pour des aliments DIFFÉRENTS, tu dois les respecter EXACTEMENT.
 
-Génère une stratégie de ravitaillement en JSON.
-Réponds UNIQUEMENT avec un tableau []. Pas de texte.
+EXEMPLE :
+"1 gel toutes les 30min, 1 barre toutes les heures" sur une séance de 3h signifie :
+- 30' : 1 gel
+- 60' : 1 gel + 1 barre (c'est à la fois un multiple de 30 ET de 60)
+- 90' : 1 gel
+- 120' : 1 gel + 1 barre
+- 150' : 1 gel
+- 180' : 1 gel + 1 barre
+
+Chaque aliment a SA PROPRE fréquence. Ne les mélange PAS.
+Si deux aliments tombent au même moment, ils ont chacun leur entrée avec le MÊME timeMin.
+
+Réponds UNIQUEMENT avec un tableau JSON []. Pas de texte.
+Chaque élément = UN aliment à UN moment précis.
 
 Format :
 [
-  {"timeMin":0,"type":"boisson","name":"Boisson isotonique","quantity":"500ml","glucidesG":30,"proteinesG":0},
-  {"timeMin":30,"type":"gel","name":"Gel énergie","quantity":"1 gel","glucidesG":25,"proteinesG":0},
-  {"timeMin":60,"type":"barre","name":"Barre énergétique","quantity":"1/2 barre","glucidesG":20,"proteinesG":3}
+  {"timeMin":30,"type":"gel","name":"${athleteGelName}","quantity":"1 gel","glucidesG":${athleteGelCarbs},"proteinesG":0},
+  {"timeMin":60,"type":"gel","name":"${athleteGelName}","quantity":"1 gel","glucidesG":${athleteGelCarbs},"proteinesG":0},
+  {"timeMin":60,"type":"barre","name":"${athleteBarName}","quantity":"1 barre","glucidesG":${athleteBarCarbs},"proteinesG":${athleteBarProtein}}
 ]
 
 Types : "gel" | "barre" | "boisson" | "solide" | "autre"
 
-Règles :
-- Adapte à la demande de l'athlète
-- Si l'athlète donne un plan précis, suis-le
-- Si l'athlète donne juste le contexte, génère un plan optimal
+Règles générales :
 - 60-90g glucides/h si > 1h30
 - Séances < 1h : juste hydratation
 - Dernier ravitaillement solide 15-20min avant la fin max`,

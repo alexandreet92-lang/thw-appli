@@ -4304,6 +4304,9 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [nutritionItems, setNutritionItems] = useState<NutritionItem[]>([])
+  const [nutritionTab, setNutritionTab] = useState<'manual' | 'ai'>('manual')
+  const [nutritionAiPrompt, setNutritionAiPrompt] = useState('')
+  const [nutritionAiLoading, setNutritionAiLoading] = useState(false)
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
   const [parcoursData, setParcoursData] = useState<ParcoursData | null>(session?.parcoursData ?? null)
   const [parcoursLoading, setParcoursLoading] = useState(false)
@@ -4833,17 +4836,6 @@ Ajoute toujours échauffement et retour au calme.`
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {isEdit && isStrength && blocks.length > 0 && (
-              <button onClick={() => setExecuteMode(true)} style={{
-                padding: '6px 14px', borderRadius: 8, border: 'none',
-                background: accent, color: '#fff',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'Syne, sans-serif', display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 1.5L9 5L2 8.5V1.5Z" fill="currentColor"/></svg>
-                Lancer
-              </button>
-            )}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
         </div>
@@ -5363,166 +5355,257 @@ Ajoute toujours échauffement et retour au calme.`
           {nutritionOpen && (
             <div style={{
               marginTop: 10, padding: '16px', borderRadius: 12,
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
+              border: '1px solid var(--border)', background: 'var(--bg-card2)',
             }}>
-              {/* Liste des ravitaillements */}
-              {nutritionItems.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 14 }}>
-                  {[...nutritionItems].sort((a, b) => a.timeMin - b.timeMin).map((item) => (
-                    <div key={item.id} style={{
-                      padding: '10px 14px', borderRadius: 10,
-                      border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    }}>
-                      {/* Ligne 1 : type selector + supprimer */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace', minWidth: 36 }}>
-                          {item.timeMin === 0 ? 'Départ' : `${item.timeMin}'`}
-                        </span>
-                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
-                          {NUTRITION_TYPES.map(nt => (
-                            <button key={nt.id} onClick={() => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: nt.id } : x))} style={{
-                              padding: '3px 8px', borderRadius: 5, fontSize: 9, fontWeight: 600, cursor: 'pointer',
-                              background: item.type === nt.id ? `${accent}15` : 'transparent',
-                              border: item.type === nt.id ? `1px solid ${accent}44` : '1px solid var(--border)',
-                              color: item.type === nt.id ? accent : 'var(--text-dim)',
-                            }}>{nt.label}</button>
-                          ))}
+              {/* Toggle Manuel / IA */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <button onClick={() => setNutritionTab('manual')} style={{
+                    padding: '5px 12px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                    background: nutritionTab === 'manual' ? `${accent}18` : 'transparent',
+                    color: nutritionTab === 'manual' ? accent : 'var(--text-dim)',
+                  }}>Manuel</button>
+                  <button onClick={() => setNutritionTab('ai')} style={{
+                    padding: '5px 12px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                    background: nutritionTab === 'ai' ? `${accent}18` : 'transparent',
+                    color: nutritionTab === 'ai' ? accent : 'var(--text-dim)',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}><span style={{ fontSize: 11 }}>✦</span> IA</button>
+                </div>
+              </div>
+
+              {nutritionTab === 'manual' ? (
+                <>
+                  {/* Liste des ravitaillements */}
+                  {nutritionItems.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 14 }}>
+                      {[...nutritionItems].sort((a, b) => a.timeMin - b.timeMin).map((item) => (
+                        <div key={item.id} style={{
+                          padding: '10px 14px', borderRadius: 10,
+                          border: '1px solid var(--border)', background: 'var(--bg-card)',
+                        }}>
+                          {/* Ligne 1 : type selector + supprimer */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace', minWidth: 36 }}>
+                              {item.timeMin === 0 ? 'Départ' : `${item.timeMin}'`}
+                            </span>
+                            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
+                              {NUTRITION_TYPES.map(nt => (
+                                <button key={nt.id} onClick={() => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: nt.id } : x))} style={{
+                                  padding: '3px 8px', borderRadius: 5, fontSize: 9, fontWeight: 600, cursor: 'pointer',
+                                  background: item.type === nt.id ? `${accent}15` : 'transparent',
+                                  border: item.type === nt.id ? `1px solid ${accent}44` : '1px solid var(--border)',
+                                  color: item.type === nt.id ? accent : 'var(--text-dim)',
+                                }}>{nt.label}</button>
+                              ))}
+                            </div>
+                            <div style={{ flex: 1 }} />
+                            <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
+                              background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0,
+                            }}>×</button>
+                          </div>
+                          {/* Ligne 2 : champs */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
+                            <div>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Min</p>
+                              <input type="number" min={0} max={600} value={item.timeMin}
+                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, timeMin: parseInt(e.target.value) || 0 } : x))}
+                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                            </div>
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Aliment</p>
+                              <input value={item.name} placeholder="Gel Maurten, Barre Clif..."
+                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
+                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' as const }} />
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Quantité</p>
+                              <input value={item.quantity} placeholder="500ml, 1 gel..."
+                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
+                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Glucides (g)</p>
+                              <input type="number" min={0} max={200} value={item.glucidesG}
+                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
+                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Protéines (g)</p>
+                              <input type="number" min={0} max={100} value={item.proteinesG}
+                                onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, proteinesG: parseInt(e.target.value) || 0 } : x))}
+                                style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ flex: 1 }} />
-                        <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
-                          background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0,
-                        }}>×</button>
-                      </div>
-                      {/* Ligne 2 : champs */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
-                        <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Min</p>
-                          <input type="number" min={0} max={600} value={item.timeMin}
-                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, timeMin: parseInt(e.target.value) || 0 } : x))}
-                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                        </div>
-                        <div style={{ gridColumn: 'span 2' }}>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Aliment</p>
-                          <input value={item.name} placeholder="Gel Maurten, Barre Clif..."
-                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
-                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' as const }} />
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Quantité</p>
-                          <input value={item.quantity} placeholder="500ml, 1 gel..."
-                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
-                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Glucides (g)</p>
-                          <input type="number" min={0} max={200} value={item.glucidesG}
-                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
-                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Protéines (g)</p>
-                          <input type="number" min={0} max={100} value={item.proteinesG}
-                            onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, proteinesG: parseInt(e.target.value) || 0 } : x))}
-                            style={{ width: '100%', padding: '5px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box' as const }} />
-                        </div>
+                      ))}
+                      {/* Summary */}
+                      <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
+                        <span>Total : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong> glucides</span>
+                        <span><strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
+                          {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
+                        </strong></span>
                       </div>
                     </div>
-                  ))}
-                  {/* Summary */}
-                  <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
-                    <span>Total glucides : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong></span>
-                    <span>Glucides/h : <strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
-                      {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
-                    </strong></span>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {/* Add button */}
-              <button onClick={() => {
-                const lastTime = nutritionItems.length > 0 ? Math.max(...nutritionItems.map(x => x.timeMin)) : 0
-                const nextTime = nutritionItems.length === 0 ? 0 : lastTime + 30
-                setNutritionItems(prev => [...prev, {
-                  id: `nut_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                  timeMin: nextTime, type: 'gel', name: '', quantity: '1 gel',
-                  glucidesG: 25, proteinesG: 0, notes: '',
-                }])
-              }} style={{
-                width: '100%', padding: '9px', borderRadius: 8,
-                border: '1px dashed var(--border)', background: 'transparent',
-                color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', marginBottom: 8,
-              }}>+ Ajouter un ravitaillement</button>
+                  <button onClick={() => {
+                    const lastTime = nutritionItems.length > 0 ? Math.max(...nutritionItems.map(x => x.timeMin)) : 0
+                    setNutritionItems(prev => [...prev, {
+                      id: `nut_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                      timeMin: nutritionItems.length === 0 ? 0 : lastTime + 30,
+                      type: 'gel' as const,
+                      name: '', quantity: '1 gel', glucidesG: 25, proteinesG: 0, notes: '',
+                    }])
+                  }} style={{
+                    width: '100%', padding: '9px', borderRadius: 8,
+                    border: '1px dashed var(--border)', background: 'transparent',
+                    color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
+                  }}>+ Ajouter un ravitaillement</button>
+                </>
+              ) : (
+                <>
+                  {/* MODE IA */}
+                  <textarea value={nutritionAiPrompt} onChange={e => setNutritionAiPrompt(e.target.value)} rows={3}
+                    placeholder={'Ex :\n- 1 gel toutes les 30min\n- 1 barre à mi-parcours\n- Boisson isotonique toutes les 20min\n\nOu simplement : "Sortie vélo 3h, 250w moy, chaleur"'}
+                    style={{
+                      width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 12, outline: 'none',
+                      resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.5,
+                      boxSizing: 'border-box' as const,
+                    }} />
+                  <button onClick={async () => {
+                    if (!nutritionAiPrompt.trim() || nutritionAiLoading) return
+                    setNutritionAiLoading(true)
+                    try {
+                      const blocksDesc = blocks.length > 0
+                        ? blocks.filter(b => b.type !== 'circuit_header').map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
+                        : `${SPORT_LABEL[sport]} ${formatHM(dur)}`
 
-              {/* AI generate button */}
-              <button onClick={async () => {
-                if (blocks.length === 0) return
-                setNutritionLoading(true)
-                try {
-                  const blocksDesc = blocks.map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
-                  const res = await fetch('/api/coach-stream', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      agentId: 'planning',
-                      messages: [{
-                        role: 'user',
-                        content: `Tu es un nutritionniste sportif. Génère une stratégie de ravitaillement pour cette séance de ${SPORT_LABEL[sport]} de ${dur}min.
+                      const res = await fetch('/api/coach-stream', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          messages: [{
+                            role: 'user',
+                            content: `Tu es un nutritionniste sportif expert. L'athlète prévoit cette séance :
+Sport : ${SPORT_LABEL[sport]}
+Durée : ${formatHM(dur)}
 Blocs : ${blocksDesc}
-Réponds UNIQUEMENT en JSON (un tableau []). Format exact :
-[{"timeMin":0,"type":"boisson","name":"Boisson isotonique","quantity":"300ml","glucidesG":20,"proteinesG":0},{"timeMin":45,"type":"gel","name":"Gel énergie","quantity":"1 gel","glucidesG":25,"proteinesG":0}]
-Types possibles : gel | barre | boisson | solide | autre
-Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts > 1h30, eau seulement si < 1h.`,
-                      }],
-                      modelId: 'athena',
-                    }),
-                  })
-                  if (!res.ok) throw new Error('Erreur')
-                  const reader = res.body?.getReader()
-                  const decoder = new TextDecoder()
-                  let raw = ''
-                  if (reader) {
-                    while (true) {
-                      const { done, value } = await reader.read()
-                      if (done) break
-                      const chunk = decoder.decode(value, { stream: true })
-                      for (const line of chunk.split('\n')) {
-                        if (line.startsWith('data: ')) {
-                          const p = line.slice(6).trim()
-                          if (p === '[DONE]') continue
-                          try { const d = JSON.parse(p); if (typeof d === 'string') raw += d; else if (d.text) raw += d.text } catch { raw += p }
+
+DEMANDE DE L'ATHLÈTE :
+${nutritionAiPrompt}
+
+Génère une stratégie de ravitaillement en JSON.
+Réponds UNIQUEMENT avec un tableau []. Pas de texte.
+
+Format :
+[
+  {"timeMin":0,"type":"boisson","name":"Boisson isotonique","quantity":"500ml","glucidesG":30,"proteinesG":0},
+  {"timeMin":30,"type":"gel","name":"Gel énergie","quantity":"1 gel","glucidesG":25,"proteinesG":0},
+  {"timeMin":60,"type":"barre","name":"Barre énergétique","quantity":"1/2 barre","glucidesG":20,"proteinesG":3}
+]
+
+Types : "gel" | "barre" | "boisson" | "solide" | "autre"
+
+Règles :
+- Adapte à la demande de l'athlète
+- Si l'athlète donne un plan précis, suis-le
+- Si l'athlète donne juste le contexte, génère un plan optimal
+- 60-90g glucides/h si > 1h30
+- Séances < 1h : juste hydratation
+- Dernier ravitaillement solide 15-20min avant la fin max`,
+                          }],
+                          modelId: 'athena',
+                        }),
+                      })
+                      if (!res.ok) throw new Error('Erreur')
+                      const reader = res.body?.getReader()
+                      const decoder = new TextDecoder()
+                      let raw = ''
+                      if (reader) {
+                        let currentEvent = ''
+                        while (true) {
+                          const { done, value } = await reader.read()
+                          if (done) break
+                          const chunk = decoder.decode(value, { stream: true })
+                          for (const line of chunk.split('\n')) {
+                            if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim() }
+                            else if (line.startsWith('data: ')) {
+                              const p = line.slice(6)
+                              if (p === '[DONE]') continue
+                              if (currentEvent === 'tool_use') continue
+                              try {
+                                const d = JSON.parse(p) as Record<string, unknown>
+                                if (typeof d === 'string') raw += d
+                                else if (typeof d.text === 'string') raw += d.text
+                                else if (d.delta && typeof (d.delta as Record<string, unknown>).text === 'string') raw += (d.delta as Record<string, unknown>).text
+                              } catch { raw += p }
+                            }
+                          }
                         }
                       }
-                    }
-                  }
-                  const match = raw.match(/\[[\s\S]*\]/)
-                  if (match) {
-                    const parsed = JSON.parse(match[0]) as Record<string, unknown>[]
-                    const items: NutritionItem[] = parsed.map((p, i) => ({
-                      id: `ai_nut_${Date.now()}_${i}`,
-                      timeMin: typeof p.timeMin === 'number' ? p.timeMin : 0,
-                      type: (['gel','barre','boisson','solide','autre'].includes(p.type as string) ? p.type : 'gel') as NutritionItem['type'],
-                      name: typeof p.name === 'string' ? p.name : '',
-                      quantity: typeof p.quantity === 'string' ? p.quantity : '',
-                      glucidesG: typeof p.glucidesG === 'number' ? p.glucidesG : 0,
-                      proteinesG: typeof p.proteinesG === 'number' ? p.proteinesG : 0,
-                      notes: '',
-                    }))
-                    setNutritionItems(items)
-                  }
-                } catch (e) { console.error('[Nutrition IA]', e) }
-                finally { setNutritionLoading(false) }
-              }} disabled={nutritionLoading || blocks.length === 0} style={{
-                width: '100%', padding: '9px', borderRadius: 8, border: 'none',
-                background: blocks.length === 0 ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-                color: '#fff', fontSize: 11, fontWeight: 700,
-                cursor: blocks.length === 0 ? 'not-allowed' : nutritionLoading ? 'wait' : 'pointer',
-                fontFamily: 'Syne, sans-serif', opacity: blocks.length === 0 ? 0.4 : 1,
-              }}>
-                {nutritionLoading ? 'Génération...' : blocks.length === 0 ? 'Crée les blocs d\'abord' : '✦ Générer avec l\'IA'}
-              </button>
+                      const match = raw.match(/\[[\s\S]*\]/)
+                      if (match) {
+                        const parsed = JSON.parse(match[0]) as Record<string, unknown>[]
+                        const items: NutritionItem[] = parsed.map((p, i) => ({
+                          id: `ai_nut_${Date.now()}_${i}`,
+                          timeMin: typeof p.timeMin === 'number' ? p.timeMin : 0,
+                          type: (['gel','barre','boisson','solide','autre'].includes(p.type as string) ? p.type : 'gel') as NutritionItem['type'],
+                          name: typeof p.name === 'string' ? p.name : '',
+                          quantity: typeof p.quantity === 'string' ? p.quantity : '',
+                          glucidesG: typeof p.glucidesG === 'number' ? p.glucidesG : 0,
+                          proteinesG: typeof p.proteinesG === 'number' ? p.proteinesG : 0,
+                          notes: '',
+                        }))
+                        setNutritionItems(items)
+                        setNutritionTab('manual')
+                        setNutritionAiPrompt('')
+                      }
+                    } catch (e) { console.error('[Nutrition IA]', e) }
+                    finally { setNutritionAiLoading(false) }
+                  }} disabled={nutritionAiLoading || !nutritionAiPrompt.trim()} style={{
+                    marginTop: 8, width: '100%', padding: 11, borderRadius: 9, border: 'none',
+                    background: nutritionAiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                    color: '#fff', fontSize: 12, fontWeight: 700,
+                    cursor: nutritionAiLoading ? 'wait' : 'pointer',
+                    fontFamily: 'Syne, sans-serif',
+                    opacity: !nutritionAiPrompt.trim() ? 0.5 : 1,
+                  }}>
+                    {nutritionAiLoading ? 'Génération...' : 'Générer la stratégie'}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
+
+        {/* ── BOUTON EXÉCUTION (muscu uniquement) ── */}
+        {isEdit && isStrength && blocks.filter(b => b.type !== 'circuit_header').length > 0 && (
+          <div style={{ padding: mobile ? '4px 16px 20px' : '4px 24px 24px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={() => setExecuteMode(true)}
+              style={{
+                width: 72, height: 72, borderRadius: '50%', border: 'none',
+                background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                boxShadow: `0 4px 20px ${accent}44`,
+                color: '#fff', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
+                gap: 2, transition: 'transform 0.12s, box-shadow 0.12s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
+            >
+              <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                <path d="M8 5v14l11-7z" fill="#fff" />
+              </svg>
+              <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Lancer</span>
+            </button>
+          </div>
+        )}
+
+        {/* SÉPARATEUR — avant Plan A/B */}
+        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '0 16px 12px' : '0 24px 14px', opacity: 0.5 }} />
 
         {/* PLAN A/B */}
         <div style={{ padding: mobile ? '0 16px 12px' : '0 24px 14px' }}>
@@ -5540,100 +5623,87 @@ Règles : ravitaillement toutes 20-30min si > 1h, 60-90g glucides/h pour efforts
         </div>
 
         {/* ACTIONS */}
-        <div style={{
-          padding: mobile ? '0 16px 28px' : '0 24px 32px',
-          display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const,
-        }}>
-          {/* Delete button — edit mode only */}
-          {isEdit && onDelete && session && (
-            <button onClick={() => { onDelete(session.id); onClose() }} style={{
-              padding: '10px 16px', borderRadius: 8,
-              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)',
-              color: '#ef4444', fontSize: 11, cursor: 'pointer', fontWeight: 600,
-            }}>Supprimer</button>
-          )}
-
-          {/* PDF + Parcours buttons — always visible */}
-          <button
-            onClick={handleExportPDF}
-            title="Exporter en PDF"
-            style={{
-              padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 5,
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
-              <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
-            </svg>
-            PDF
-          </button>
-          <button
-            onClick={() => parcoursInputRef.current?.click()}
-            title="Importer un parcours GPX/TCX/KML"
-            style={{
-              padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 5,
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
-            </svg>
-            {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
-          </button>
-
-          {/* Reset to AI original — edit mode only, when originalContent exists */}
-          {isEdit && session?.originalContent && (
-            <button onClick={() => {
-              const o = session.originalContent as Record<string, unknown>
-              if (typeof o.titre === 'string') setTitle(o.titre)
-              if (typeof o.duration_min === 'number') setDur(o.duration_min)
-              if (typeof o.notes === 'string') setDesc(o.notes)
-              if (typeof o.rpe === 'number') setRpe(o.rpe)
-            }} style={{
-              padding: '10px 14px', borderRadius: 8,
-              background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.20)',
-              color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
-            }}>Réinitialiser IA</button>
-          )}
-
-          <div style={{ flex: 1 }} />
-
-          {/* Validate as done — edit mode, session not done */}
-          {isEdit && session?.status !== 'done' && onValidate && session && (
-            <button onClick={() => {
-              onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })
-            }} style={{
-              padding: '10px 16px', borderRadius: 8,
-              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.20)',
-              color: '#22c55e', fontSize: 11, cursor: 'pointer', fontWeight: 600,
-            }}>Valider</button>
-          )}
-
-          {/* Close / Cancel — save before closing in edit mode */}
-          <button onClick={() => {
-            if (isEdit && session) {
-              onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined })
-            }
-            onClose()
-          }} style={{
-            padding: '10px 16px', borderRadius: 8,
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-          }}>{isEdit ? 'Fermer' : 'Annuler'}</button>
-
-          {/* Add — create mode only */}
-          {!isEdit && (
-            <button onClick={handleSubmit} style={{
-              padding: '10px 28px', borderRadius: 8, border: 'none',
-              background: accent,
-              color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'Syne, sans-serif',
-            }}>Ajouter la séance</button>
+        <div style={{ padding: mobile ? '0 16px 28px' : '0 24px 32px' }}>
+          {isEdit ? (
+            <>
+              {/* Ligne 1 : Supprimer + Valider + (Réinitialiser IA si dispo) */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' as const }}>
+                {onDelete && session && (
+                  <button onClick={() => { if (confirm('Supprimer cette séance ?')) { onDelete(session.id); onClose() } }} style={{
+                    padding: '8px 14px', borderRadius: 8,
+                    background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
+                    color: '#ef4444', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  }}>Supprimer</button>
+                )}
+                {session?.status !== 'done' && onValidate && session && (
+                  <button onClick={() => onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })} style={{
+                    padding: '8px 14px', borderRadius: 8,
+                    background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
+                    color: '#22c55e', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  }}>Valider</button>
+                )}
+                {session?.originalContent && (
+                  <button onClick={() => {
+                    const o = session.originalContent as Record<string, unknown>
+                    if (typeof o.titre === 'string') setTitle(o.titre)
+                    if (typeof o.duration_min === 'number') setDur(o.duration_min)
+                    if (typeof o.notes === 'string') setDesc(o.notes)
+                    if (typeof o.rpe === 'number') setRpe(o.rpe)
+                  }} style={{
+                    padding: '8px 14px', borderRadius: 8,
+                    background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.15)',
+                    color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+                  }}>Réinitialiser IA</button>
+                )}
+              </div>
+              {/* Ligne 2 : PDF + Parcours + Fermer */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button onClick={handleExportPDF} title="Exporter en PDF" style={{
+                  padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+                  border: '1px solid var(--border)', background: 'var(--bg-card)',
+                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/><rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/></svg>
+                  PDF
+                </button>
+                <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML" style={{
+                  padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+                  border: '1px solid var(--border)', background: 'var(--bg-card)',
+                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/></svg>
+                  {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
+                </button>
+                <div style={{ flex: 1 }} />
+                <button onClick={() => {
+                  if (session) {
+                    onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined })
+                  }
+                  onClose()
+                }} style={{
+                  padding: '8px 20px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--bg-card)',
+                  color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>Fermer</button>
+              </div>
+            </>
+          ) : (
+            /* Mode create */
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={onClose} style={{
+                padding: '10px 20px', borderRadius: 8,
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
+              }}>Annuler</button>
+              <div style={{ flex: 1 }} />
+              <button onClick={handleSubmit} style={{
+                padding: '10px 28px', borderRadius: 8, border: 'none',
+                background: accent, color: '#fff', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+              }}>Ajouter la séance</button>
+            </div>
           )}
         </div>
 

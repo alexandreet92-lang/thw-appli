@@ -5502,6 +5502,8 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
   const [parcoursData, setParcoursData] = useState<ParcoursData | null>(session?.parcoursData ?? null)
   const [parcoursLoading, setParcoursLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [parcoursError, setParcoursError] = useState<string | null>(null)
   const [hoveredKm, setHoveredKm] = useState<number | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
@@ -7220,15 +7222,33 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 }}>★ Favori</button>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => {
-                  if (session && onAutoSave) {
-                    onAutoSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined, nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined })
-                  }
+                <button onClick={async () => {
+                  if (!session?.id || saving) return
+                  setSaving(true)
+                  try {
+                    const { createClient: cc } = await import('@/lib/supabase/client')
+                    const sb = cc()
+                    await sb.from('planned_sessions').update({
+                      sport, title, time,
+                      duration_min: dur,
+                      rpe: rpe ?? null,
+                      notes: desc ?? null,
+                      blocks: blocks ?? [],
+                      tss: tssRange.high || session.tss || null,
+                      parcours_data: parcoursData ?? null,
+                      nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
+                      updated_at: new Date().toISOString(),
+                    }).eq('id', session.id)
+                    setSaved(true)
+                    setTimeout(() => setSaved(false), 2000)
+                  } catch (e) { console.error('[Save]', e) }
+                  finally { setSaving(false) }
                 }} style={{
                   padding: '8px 20px', borderRadius: 8,
-                  border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}>Enregistrer</button>
+                  border: 'none', background: saved ? '#22c55e' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
+                  transition: 'background 0.3s',
+                }}>{saving ? '…' : saved ? '✓ Enregistré' : 'Enregistrer'}</button>
                 <button onClick={onClose} style={{
                   padding: '8px 16px', borderRadius: 8,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',

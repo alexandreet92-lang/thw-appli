@@ -616,7 +616,7 @@ function usePlanning(weekStartParam?:string) {
     }
   }
 
-  async function updateSession(id:string, upd:Partial<Session>) {
+  function buildSessionPatch(upd:Partial<Session>): Record<string,unknown> {
     const patch: Record<string,unknown> = {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
@@ -624,13 +624,23 @@ function usePlanning(weekStartParam?:string) {
       validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed },
       updated_at:new Date().toISOString(),
     }
-    // Persiste le sport si fourni (édition inline modal)
     if (upd.sport) patch.sport = upd.sport
     if (upd.parcoursData !== undefined) patch.parcours_data = upd.parcoursData ?? null
     if (upd.nutritionItems !== undefined) patch.nutrition_data = upd.nutritionItems ?? null
-    await supabase.from('planned_sessions').update(patch).eq('id',id)
+    return patch
+  }
+
+  async function updateSession(id:string, upd:Partial<Session>) {
+    await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     window.dispatchEvent(new Event('thw:sessions-changed'))
+  }
+
+  // Silent variant — persiste sans déclencher load() ni fermer les modales
+  async function updateSessionSilent(id:string, upd:Partial<Session>) {
+    await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
+    setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
+    // Pas de thw:sessions-changed → load() ne se déclenche pas → les modales restent ouvertes
   }
 
   async function deleteSession(id:string) {
@@ -708,7 +718,7 @@ function usePlanning(weekStartParam?:string) {
   }
 
   return { sessions, tasks, races, intensities, activities, loading, weekStart,
-    addSession, updateSession, deleteSession, moveSession,
+    addSession, updateSession, updateSessionSilent, deleteSession, moveSession,
     addTask, updateTask, deleteTask,
     addRace, updateRace, deleteRace, setDayIntensity, reload:load }
 }
@@ -3180,7 +3190,7 @@ function TrainingTab() {
   }, []) // Runs once on client mount — window.location is always correct here
 
   const currentWeekStart = getWeekStartFromOffset(weekOffset)
-  const { sessions, races, intensities, activities, loading, addSession, updateSession, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
+  const { sessions, races, intensities, activities, loading, addSession, updateSession, updateSessionSilent, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
   const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0] ?? null
   const [view, setView] = useState<TrainingView>('vertical')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string}|null>(null)
@@ -3377,8 +3387,8 @@ function TrainingTab() {
     setDetailModal(null)
   }
   async function handleAutoSaveSession(s:Session) {
-    await updateSession(s.id, s)
-    // do NOT close modal — inline auto-save
+    // Silent : pas de thw:sessions-changed → load() ne se déclenche pas → modale reste ouverte
+    await updateSessionSilent(s.id, s)
   }
   async function handleValidate(s:Session) {
     await updateSession(s.id, { ...s, status:'done' })
@@ -3613,7 +3623,8 @@ function TrainingTab() {
     )
   }
 
-  if (loading) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
+  // Ne pas masquer les modales pendant un rechargement (ex: auto-save silencieux)
+  if (loading && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>

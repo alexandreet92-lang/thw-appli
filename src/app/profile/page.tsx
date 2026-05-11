@@ -237,7 +237,7 @@ function useConnections() {
 
 function useProfile() {
   const supabase = createClient()
-  const [data, setData] = useState({ full_name:'', bio:'', height_cm:'', weight_kg:'', email:'', avatar_url:'' })
+  const [data, setData] = useState({ full_name:'', bio:'', height_cm:'', weight_kg:'', bike_weight_kg:'', email:'', avatar_url:'' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -246,12 +246,13 @@ function useProfile() {
       if (!user) return
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setData({
-        full_name:  p?.full_name  ?? '',
-        bio:        p?.bio        ?? '',
-        height_cm:  p?.height_cm  ? String(p.height_cm) : '',
-        weight_kg:  p?.weight_kg  ? String(p.weight_kg) : '',
-        email:      user.email    ?? '',
-        avatar_url: p?.avatar_url ?? '',
+        full_name:      p?.full_name      ?? '',
+        bio:            p?.bio            ?? '',
+        height_cm:      p?.height_cm      ? String(p.height_cm) : '',
+        weight_kg:      p?.weight_kg      ? String(p.weight_kg) : '',
+        bike_weight_kg: p?.bike_weight_kg ? String(p.bike_weight_kg) : '',
+        email:          user.email        ?? '',
+        avatar_url:     p?.avatar_url     ?? '',
       })
     }
     load()
@@ -262,13 +263,14 @@ function useProfile() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSaving(false); return }
     await supabase.from('profiles').upsert({
-      id:        user.id,
-      full_name: data.full_name || null,
-      bio:       data.bio       || null,
-      height_cm: data.height_cm ? parseFloat(data.height_cm) : null,
-      weight_kg: data.weight_kg ? parseFloat(data.weight_kg) : null,
-      avatar_url: data.avatar_url || null,
-      updated_at: new Date().toISOString(),
+      id:             user.id,
+      full_name:      data.full_name || null,
+      bio:            data.bio       || null,
+      height_cm:      data.height_cm      ? parseFloat(data.height_cm) : null,
+      weight_kg:      data.weight_kg      ? parseFloat(data.weight_kg) : null,
+      bike_weight_kg: data.bike_weight_kg ? parseFloat(data.bike_weight_kg) : 8.0,
+      avatar_url:     data.avatar_url || null,
+      updated_at:     new Date().toISOString(),
     })
     setSaving(false)
   }
@@ -421,11 +423,12 @@ function ProfilBloc() {
         </div>
 
         {/* Stats */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:20 }}>
           {[
-            { label:'Taille', val:profileData.height_cm, key:'height_cm', unit:'cm', ph:'178' },
-            { label:'Poids',  val:profileData.weight_kg, key:'weight_kg', unit:'kg', ph:'72' },
-            { label:'IMC',    val:imc, key:'', unit:'', ph:'', readonly:true },
+            { label:'Taille',     val:profileData.height_cm,      key:'height_cm',      unit:'cm', ph:'178' },
+            { label:'Poids',      val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
+            { label:'Vélo (kg)',  val:profileData.bike_weight_kg, key:'bike_weight_kg', unit:'kg', ph:'8' },
+            { label:'IMC',        val:imc, key:'', unit:'', ph:'', readonly:true },
           ].map(f=>(
             <div key={f.label} style={{ padding:'13px 14px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
               <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.09em', color:'var(--text-dim)', margin:'0 0 7px' }}>{f.label}</p>

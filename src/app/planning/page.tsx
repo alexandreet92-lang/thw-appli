@@ -108,6 +108,8 @@ interface TrainingActivity {
 interface Block {
   id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
   reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number
+  // Terrain planning — km sur le parcours (overlay ElevationChart)
+  _startKm?: number; _endKm?: number
 }
 interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
@@ -4128,15 +4130,109 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
   })
 }
 
+// ── Terrain analysis ──────────────────────────────
+interface TerrainSegment {
+  startKm: number
+  endKm: number
+  startEle: number
+  endEle: number
+  distanceKm: number
+  avgGradient: number
+  type: 'climb' | 'descent' | 'flat'
+  estimatedMinutes: number
+}
+
+function estimateTimeOnSegment(distKm: number, gradientPct: number, watts: number, riderKg: number, bikeKg: number): number {
+  const totalMass = riderKg + bikeKg
+  const g = 9.81
+  const CdA = 0.35
+  const rho = 1.225
+  const Crr = 0.004
+  const gradient = gradientPct / 100
+  let v = 8
+  for (let iter = 0; iter < 50; iter++) {
+    const resistGravity  = totalMass * g * gradient
+    const resistRolling  = Crr * totalMass * g
+    const resistAero     = 0.5 * CdA * rho * v * v
+    const totalResist    = resistGravity + resistRolling + resistAero
+    const powerNeeded    = v * totalResist
+    if (Math.abs(powerNeeded - watts) < 1) break
+    v += (watts - powerNeeded) / (totalResist + CdA * rho * v * v) * 0.3
+    if (v < 1) v = 1
+    if (v > 25) v = 25
+  }
+  return (distKm * 1000) / Math.max(v, 1) / 60
+}
+
+function analyzeTerrainSegments(
+  profile: Array<{ distKm: number; ele: number }>,
+  ftp: number,
+  riderWeight: number,
+  bikeWeight: number,
+): TerrainSegment[] {
+  if (profile.length < 2) return []
+  type TType = 'climb' | 'descent' | 'flat'
+  function getType(g: number): TType { return g > 2 ? 'climb' : g < -2 ? 'descent' : 'flat' }
+
+  const gradients: Array<{ distKm: number; gradient: number }> = []
+  for (let i = 1; i < profile.length; i++) {
+    const dDist = (profile[i].distKm - profile[i - 1].distKm) * 1000
+    if (dDist <= 0) continue
+    gradients.push({ distKm: profile[i].distKm, gradient: ((profile[i].ele - profile[i - 1].ele) / dDist) * 100 })
+  }
+  if (gradients.length === 0) return []
+
+  const segments: TerrainSegment[] = []
+  let currentType = getType(gradients[0].gradient)
+  let segStartIdx = 0
+  const watts = ftp * 0.85
+
+  const pushSeg = (fromIdx: number, toIdx: number, type: TType) => {
+    const startKm = fromIdx === 0 ? profile[0].distKm : gradients[fromIdx].distKm
+    const endKm   = gradients[Math.min(toIdx, gradients.length - 1)].distKm
+    if (endKm - startKm < 0.3) return
+    const startEle = profile.find(p => p.distKm >= startKm)?.ele ?? 0
+    const endEle   = profile.find(p => p.distKm >= endKm)?.ele   ?? startEle
+    const distKm   = endKm - startKm
+    const avgGrad  = distKm > 0 ? ((endEle - startEle) / (distKm * 1000)) * 100 : 0
+    segments.push({
+      startKm:         Math.round(startKm * 10) / 10,
+      endKm:           Math.round(endKm   * 10) / 10,
+      startEle:        Math.round(startEle),
+      endEle:          Math.round(endEle),
+      distanceKm:      Math.round(distKm  * 10) / 10,
+      avgGradient:     Math.round(avgGrad * 10) / 10,
+      type,
+      estimatedMinutes: Math.round(estimateTimeOnSegment(distKm, avgGrad, watts, riderWeight, bikeWeight) * 10) / 10,
+    })
+  }
+
+  for (let i = 1; i < gradients.length; i++) {
+    const thisType = getType(gradients[i].gradient)
+    if (thisType !== currentType) {
+      pushSeg(segStartIdx, i - 1, currentType)
+      currentType = thisType
+      segStartIdx = i
+    }
+  }
+  pushSeg(segStartIdx, gradients.length - 1, currentType)
+  return segments
+}
+
 // ── ElevationChart ────────────────────────────────
-function ElevationChart({ profile, totalKm, accent, onHover }: {
+type TerrainBlockOverlay = { label: string; startKm: number; endKm: number; zone: number; value: string; blockIdx: number }
+
+function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag }: {
   profile: Array<{ distKm: number; ele: number }>
   totalKm: number
   accent: string
   onHover?: (distKm: number | null) => void
+  terrainBlocks?: TerrainBlockOverlay[]
+  onBlockEdgeDrag?: (blockIdx: number, edge: 'start' | 'end', newKm: number) => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
+  const [dragging, setDragging] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
 
   if (profile.length < 2) return null
 
@@ -4151,8 +4247,7 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
   const svgPoints = profile.map(p => ({
     x: PL + (p.distKm / totalKm) * pW,
     y: PT + pH - ((p.ele - minEle) / eleRange) * pH,
-    distKm: p.distKm,
-    ele: p.ele,
+    distKm: p.distKm, ele: p.ele,
   }))
   const pathD = svgPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
   const fillD = `${pathD} L${svgPoints[svgPoints.length - 1].x.toFixed(1)},${PT + pH} L${PL},${PT + pH} Z`
@@ -4160,7 +4255,6 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
   const yStep = eleRange > 500 ? 200 : eleRange > 200 ? 100 : 50
   const yTicks: number[] = []
   for (let e = Math.ceil(minEle / yStep) * yStep; e <= maxEle; e += yStep) yTicks.push(e)
-
   const xStep = totalKm > 150 ? 20 : totalKm > 80 ? 10 : totalKm > 30 ? 5 : totalKm > 10 ? 2 : 1
   const xTicks: number[] = []
   for (let km = 0; km <= totalKm; km += xStep) xTicks.push(Math.round(km * 10) / 10)
@@ -4174,22 +4268,39 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
     return Math.round(((p2.ele - p1.ele) / dDist) * 1000) / 10
   }
 
+  function svgXToKm(clientX: number): number {
+    const svg = svgRef.current
+    if (!svg) return 0
+    const rect = svg.getBoundingClientRect()
+    const svgX = ((clientX - rect.left) / rect.width) * W
+    return Math.max(0, Math.min(totalKm, ((svgX - PL) / pW) * totalKm))
+  }
+
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (dragging && onBlockEdgeDrag) {
+      const km = Math.round(svgXToKm(e.clientX) * 10) / 10
+      onBlockEdgeDrag(dragging.blockIdx, dragging.edge, km)
+      return
+    }
     const svg = svgRef.current
     if (!svg) return
     const rect = svg.getBoundingClientRect()
     const svgX = ((e.clientX - rect.left) / rect.width) * W
     const distKm = Math.max(0, Math.min(totalKm, ((svgX - PL) / pW) * totalKm))
-    let closest = profile[0]
-    let closestD = Infinity
-    for (const p of profile) {
-      const d = Math.abs(p.distKm - distKm)
-      if (d < closestD) { closestD = d; closest = p }
-    }
+    let closest = profile[0]; let closestD = Infinity
+    for (const p of profile) { const d = Math.abs(p.distKm - distKm); if (d < closestD) { closestD = d; closest = p } }
     const x = PL + (closest.distKm / totalKm) * pW
     setCursor({ x, distKm: closest.distKm, ele: closest.ele, slope: getSlopeAt(closest.distKm) })
     if (onHover) onHover(closest.distKm)
   }
+
+  function handleMouseUp() { setDragging(null) }
+  function handleMouseLeave() {
+    if (!dragging) { setCursor(null); if (onHover) onHover(null) }
+  }
+
+  // Zone colors: Z1→Z5
+  const ZONE_C = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444']
 
   const cursorCy = cursor ? PT + pH - ((cursor.ele - minEle) / eleRange) * pH : 0
   const slopeColor = cursor
@@ -4197,14 +4308,15 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
     : 'var(--text)'
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', userSelect: dragging ? 'none' : 'auto' }}>
       <svg
         ref={svgRef}
         width="100%"
         viewBox={`0 0 ${W} ${H}`}
-        style={{ display: 'block', cursor: 'crosshair' }}
+        style={{ display: 'block', cursor: dragging ? 'ew-resize' : 'crosshair' }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => { setCursor(null); if (onHover) onHover(null) }}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
       >
         {/* Y grid */}
         {yTicks.map(ele => {
@@ -4231,13 +4343,44 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
         <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
         {/* Fill */}
         <path d={fillD} fill={accent} opacity={0.05} />
-        {/* Profile line — fine */}
+        {/* Terrain block overlays — UNDER the profile line */}
+        {terrainBlocks && terrainBlocks.map((block) => {
+          if (block.startKm == null || block.endKm == null) return null
+          const x1 = PL + (block.startKm / totalKm) * pW
+          const x2 = PL + (block.endKm   / totalKm) * pW
+          const zc  = ZONE_C[Math.min(Math.max(block.zone - 1, 0), 4)]
+          const w   = Math.max(x2 - x1, 2)
+          return (
+            <g key={`tb_${block.blockIdx}`}>
+              <rect x={x1} y={PT} width={w} height={pH} fill={zc} opacity={0.13} rx={2} />
+              {/* Top label (watts/zone) */}
+              <text x={(x1 + x2) / 2} y={PT + 9} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} opacity={0.9} fontFamily='"DM Mono",monospace'>
+                {block.value ? `${block.value}W` : `Z${block.zone}`}
+              </text>
+              {/* km range label */}
+              <text x={(x1 + x2) / 2} y={PT + pH - 4} textAnchor="middle" fontSize={6} fill="var(--text-dim)" opacity={0.7} fontFamily='"DM Mono",monospace'>
+                {block.startKm.toFixed(1)}–{block.endKm.toFixed(1)}
+              </text>
+              {/* Left edge — draggable */}
+              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke={zc} strokeWidth={2} opacity={0.6}
+                style={{ cursor: 'ew-resize' }}
+                onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'start' }) }}
+              />
+              {/* Right edge — draggable */}
+              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke={zc} strokeWidth={2} opacity={0.6}
+                style={{ cursor: 'ew-resize' }}
+                onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'end' }) }}
+              />
+            </g>
+          )
+        })}
+        {/* Profile line — above overlays */}
         <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
         {/* min/max labels */}
         <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{Math.round(minEle)}m</text>
         <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='"DM Mono",monospace'>{Math.round(maxEle)}m</text>
         {/* Cursor */}
-        {cursor && (
+        {cursor && !dragging && (
           <g>
             <line x1={cursor.x} y1={PT} x2={cursor.x} y2={PT + pH} stroke={accent} strokeWidth={0.6} strokeDasharray="3 2" opacity={0.5} />
             <circle cx={cursor.x} cy={cursorCy} r={3} fill={accent} stroke="#fff" strokeWidth={1.5} />
@@ -4245,21 +4388,15 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
         )}
       </svg>
       {/* Tooltip sous le SVG */}
-      {cursor && (
+      {cursor && !dragging && (
         <div style={{
           display: 'flex', gap: 16, padding: '7px 12px',
           borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)',
           marginTop: 5, fontSize: 11, justifyContent: 'center', flexWrap: 'wrap' as const,
         }}>
-          <span style={{ color: 'var(--text-dim)' }}>
-            km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong>
-          </span>
-          <span style={{ color: 'var(--text-dim)' }}>
-            altitude <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong>
-          </span>
-          <span style={{ color: 'var(--text-dim)' }}>
-            pente <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong>
-          </span>
+          <span style={{ color: 'var(--text-dim)' }}>km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>altitude <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>pente <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong></span>
         </div>
       )}
     </div>
@@ -5306,6 +5443,9 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [athleteProducts, setAthleteProducts] = useState<Array<{
     name: string; type: string; glucidesG: number; proteinesG: number; quantity: string
   }>>([])
+  const [athleteWeight, setAthleteWeight] = useState<number>(75)
+  const [bikeWeight, setBikeWeight] = useState<number>(8)
+  const [terrainLoading, setTerrainLoading] = useState(false)
 
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
@@ -5323,16 +5463,22 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         const { data: { user } } = await sb.auth.getUser()
         if (!user || cancelled) return
 
-        const [perfRes, actsRes] = await Promise.all([
+        const [perfRes, actsRes, profileRes] = await Promise.all([
           // athlete_performance_profile — vraies colonnes vérifiées
           sb.from('athlete_performance_profile')
             .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m')
             .eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
+          sb.from('profiles').select('weight_kg,bike_weight_kg').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
         ])
 
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
         const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
+        const prof = (profileRes as { data: Record<string, unknown> | null }).data
+        if (!cancelled) {
+          if (prof?.weight_kg) setAthleteWeight(prof.weight_kg as number)
+          if (prof?.bike_weight_kg) setBikeWeight(prof.bike_weight_kg as number)
+        }
 
         const ftp = (perf?.ftp_watts as number) ?? null
         const hrMax = (perf?.hr_max as number) ?? null
@@ -5623,6 +5769,54 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     }
     onSave(savedSession)
     onClose()
+  }
+
+  async function generateBlocksFromTerrain() {
+    if (!parcoursData || !athleteData?.ftp) return
+    setTerrainLoading(true)
+    try {
+      const segs = analyzeTerrainSegments(
+        parcoursData.elevationProfile,
+        athleteData.ftp,
+        athleteWeight,
+        bikeWeight,
+      )
+      // Build Block[] from terrain segments
+      const newBlocks: Block[] = segs.map((seg, i) => {
+        const targetWatts = seg.type === 'climb'
+          ? Math.round(athleteData.ftp! * 0.9)
+          : seg.type === 'descent'
+            ? Math.round(athleteData.ftp! * 0.5)
+            : Math.round(athleteData.ftp! * 0.75)
+        const zone = seg.type === 'climb' ? 4 : seg.type === 'descent' ? 1 : 3
+        const label = seg.type === 'climb'
+          ? `Montée ${seg.avgGradient.toFixed(1)}%`
+          : seg.type === 'descent'
+            ? `Descente ${Math.abs(seg.avgGradient).toFixed(1)}%`
+            : `Plat`
+        return {
+          id: `terrain_${i}`,
+          mode: 'effort' as BlockMode,
+          type: 'effort' as BlockType,
+          durationMin: Math.max(1, Math.round(seg.estimatedMinutes)),
+          zone,
+          value: `${targetWatts}W`,
+          hrAvg: '',
+          label,
+          _startKm: seg.startKm,
+          _endKm: seg.endKm,
+        }
+      })
+      setBlocks(newBlocks)
+      // Update total duration
+      const totalMin = newBlocks.reduce((s, b) => s + b.durationMin, 0)
+      setDur(totalMin)
+      setBuilderTab('manual')
+    } catch (e) {
+      console.error('[Terrain]', e)
+    } finally {
+      setTerrainLoading(false)
+    }
   }
 
   async function handleAIGenerate() {
@@ -6364,12 +6558,61 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
                 {/* Graphique altimétrique interactif */}
                 {parcoursData.elevationProfile.length > 1 && (
-                  <ElevationChart
-                    profile={parcoursData.elevationProfile}
-                    totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
-                    accent={accent}
-                    onHover={setHoveredKm}
-                  />
+                  <>
+                    <ElevationChart
+                      profile={parcoursData.elevationProfile}
+                      totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
+                      accent={accent}
+                      onHover={setHoveredKm}
+                      terrainBlocks={blocks.filter(b => b._startKm != null).map((b, idx) => ({
+                        label: b.label,
+                        startKm: b._startKm!,
+                        endKm: b._endKm!,
+                        zone: b.zone,
+                        value: b.value,
+                        blockIdx: idx,
+                      }))}
+                      onBlockEdgeDrag={(blockIdx, edge, newKm) => {
+                        setBlocks(prev => prev.map((b, i) => {
+                          if (i !== blockIdx) return b
+                          const updated = { ...b }
+                          if (edge === 'start') updated._startKm = newKm
+                          else updated._endKm = newKm
+                          // Recalculate duration if FTP available
+                          if (athleteData?.ftp && updated._startKm != null && updated._endKm != null) {
+                            const distKm = Math.abs(updated._endKm - updated._startKm)
+                            // approximate gradient from elevation profile
+                            const startPt = parcoursData.elevationProfile.find(p => p.distKm >= updated._startKm!)
+                            const endPt = parcoursData.elevationProfile.find(p => p.distKm >= updated._endKm!)
+                            const grad = startPt && endPt && distKm > 0
+                              ? ((endPt.ele - startPt.ele) / (distKm * 1000)) * 100
+                              : 0
+                            const watts = parseFloat(updated.value) || athleteData.ftp * 0.75
+                            const mins = estimateTimeOnSegment(distKm, grad, watts, athleteWeight, bikeWeight)
+                            updated.durationMin = Math.max(1, Math.round(mins))
+                          }
+                          return updated
+                        }))
+                      }}
+                    />
+                    {sport === 'bike' && athleteData?.ftp && (
+                      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={generateBlocksFromTerrain}
+                          disabled={terrainLoading}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '7px 14px', borderRadius: 8, border: `1px solid ${accent}40`,
+                            background: `${accent}12`, color: accent,
+                            fontSize: 11, fontWeight: 700, cursor: terrainLoading ? 'not-allowed' : 'pointer',
+                            opacity: terrainLoading ? 0.6 : 1,
+                          }}
+                        >
+                          {terrainLoading ? '…' : '⛰ Planifier depuis le parcours'}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

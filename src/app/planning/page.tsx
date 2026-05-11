@@ -7177,24 +7177,14 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const [sections,         setSections]         = useState<UserSection[]>([])
   const [showSectionEditor,setShowSectionEditor]= useState(false)
   const [newSectionName,   setNewSectionName]   = useState('')
-  // Tâches du jour (Supabase)
-  interface DailySubtask { id:string; text:string; done:boolean }
-  interface DailyTask {
-    id:string; text:string; description:string; done:boolean; sectionId:string|null
-    startHour:number|null; startMin:number; durationMin:number|null
-    priority:'low'|'medium'|'high'; isRecurring:boolean; recurrenceDays:number[]|null
-    subtasks:DailySubtask[]
-  }
-  const [dailyTasks,    setDailyTasks]   = useState<DailyTask[]>([])
-  const [newTaskText,   setNewTaskText]  = useState('')
-  const [newTaskSection,setNewTaskSection]=useState<string|null>(null)
-  const [showNewTask,   setShowNewTask]  = useState(false)
-  const [newTask, setNewTask] = useState({
-    text:'', description:'', sectionId:'',
-    startHour:9, startMin:0, durationMin:60,
-    priority:'medium' as 'low'|'medium'|'high',
-    isRecurring:false, recurrenceDays:[] as number[], subtasks:[] as string[],
-  })
+  // Tâches du jour (top zone) — checklist simple sans horaire
+  interface DailyTask { id:string; text:string; done:boolean; sectionId:string|null }
+  const [dailyTasks,    setDailyTasks]    = useState<DailyTask[]>([])
+  const [newTaskText,   setNewTaskText]   = useState('')
+  const [newTaskSection,setNewTaskSection]= useState<string|null>(null)
+  // Grid — picker séance vs tâche
+  const [cellPicker,    setCellPicker]    = useState<{dayIndex:number;startHour:number}|null>(null)
+  const [gridTaskModal, setGridTaskModal] = useState<{dayIndex:number;startHour:number}|null>(null)
   // Live clock for hatch + now-line
   const [currentTime, setCurrentTime] = useState(()=>new Date())
   const todayIdx = getTodayIdx()
@@ -7203,7 +7193,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     const iv = setInterval(()=>setCurrentTime(new Date()), 60000)
     return ()=>clearInterval(iv)
   },[])
-  // Load sections + daily tasks (with subtasks + recurring)
+  // Load sections + daily tasks
   useEffect(()=>{
     ;(async()=>{
       try {
@@ -7212,7 +7202,6 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
         const user = data?.user
         if (!user) return
         const today = new Date().toISOString().slice(0,10)
-        const todayDow = new Date().getDay()===0 ? 6 : new Date().getDay()-1 // 0=Lun
         // Sections
         const { data: secs } = await sb.from('user_sections').select('*').eq('user_id',user.id).order('sort_order')
         let loadedSections: UserSection[] = []
@@ -7225,35 +7214,14 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           loadedSections = (secs as {id:string;name:string;color:string;is_sport_default:boolean;sort_order:number}[]).map(s=>({ id:s.id, name:s.name, color:s.color, isSportDefault:s.is_sport_default, sortOrder:s.sort_order }))
         }
         setSections(loadedSections)
-        if (loadedSections[0]) {
-          setNewTaskSection(loadedSections[0].id)
-          setNewTask(t=>({...t, sectionId:loadedSections[0].id}))
-        }
-        // Daily tasks + tâches récurrentes
-        const { data: dts } = await sb.from('daily_tasks').select('*').eq('user_id',user.id).or(`date.eq.${today},is_recurring.eq.true`).order('sort_order')
-        if (!dts) return
-        type RawTask = { id:string;text:string;description:string;done:boolean;section_id:string|null;start_hour:number|null;start_min:number;duration_min:number|null;priority:string;is_recurring:boolean;recurrence_days:number[]|null }
-        const allDts = dts as RawTask[]
-        const taskIds = allDts.map(t=>t.id)
-        type RawSub = { id:string;task_id:string;text:string;done:boolean }
-        let subsData: RawSub[] = []
-        if (taskIds.length>0) {
-          const { data: subs } = await sb.from('daily_subtasks').select('*').in('task_id',taskIds).order('sort_order')
-          subsData = (subs??[]) as RawSub[]
-        }
-        const filtered = allDts.filter(t=>!t.is_recurring || (t.recurrence_days?.includes(todayDow)??false))
-        setDailyTasks(filtered.map(t=>({
-          id:t.id, text:t.text, description:t.description??'', done:t.done, sectionId:t.section_id,
-          startHour:t.start_hour, startMin:t.start_min??0, durationMin:t.duration_min,
-          priority:(t.priority??'medium') as 'low'|'medium'|'high',
-          isRecurring:t.is_recurring??false, recurrenceDays:t.recurrence_days,
-          subtasks:subsData.filter(s=>s.task_id===t.id).map(s=>({id:s.id,text:s.text,done:s.done})),
-        })))
+        if (loadedSections[0]) setNewTaskSection(loadedSections[0].id)
+        // Tâches du jour (top zone uniquement — pas d'horaire)
+        const { data: dts } = await sb.from('daily_tasks').select('id,text,done,section_id').eq('user_id',user.id).eq('date',today).order('sort_order')
+        if (dts) setDailyTasks((dts as {id:string;text:string;done:boolean;section_id:string|null}[]).map(t=>({id:t.id,text:t.text,done:t.done,sectionId:t.section_id})))
       } catch { /* ignore */ }
     })()
   },[])
 
-  // Ajout rapide (titre seul)
   async function addDailyTask() {
     if (!newTaskText.trim()) return
     const sb = createClient()
@@ -7261,61 +7229,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     const user = data?.user
     if (!user) return
     const today = new Date().toISOString().slice(0,10)
-    const { data: ins } = await sb.from('daily_tasks').insert({
-      user_id:user.id, date:today, text:newTaskText.trim(), description:'',
-      done:false, section_id:newTaskSection,
-      start_hour:null, start_min:0, duration_min:null,
-      priority:'medium', is_recurring:false, recurrence_days:null,
-      sort_order:dailyTasks.length,
-    }).select().single()
-    if (ins) setDailyTasks(p=>[...p,{
-      id:ins.id as string, text:ins.text as string, description:'',
-      done:false, sectionId:newTaskSection,
-      startHour:null, startMin:0, durationMin:null,
-      priority:'medium' as const, isRecurring:false, recurrenceDays:null, subtasks:[],
-    }])
+    const { data: ins } = await sb.from('daily_tasks').insert({ user_id:user.id, date:today, text:newTaskText.trim(), done:false, section_id:newTaskSection, sort_order:dailyTasks.length }).select('id,text,done,section_id').single()
+    if (ins) setDailyTasks(p=>[...p,{id:ins.id as string, text:ins.text as string, done:false, sectionId:newTaskSection}])
     setNewTaskText('')
-  }
-  // Ajout détaillé via modal
-  async function saveNewTask() {
-    if (!newTask.text.trim()) return
-    const sb = createClient()
-    const { data } = await sb.auth.getUser()
-    const user = data?.user
-    if (!user) return
-    const today = new Date().toISOString().slice(0,10)
-    const { data: ins } = await sb.from('daily_tasks').insert({
-      user_id:user.id, date:today, text:newTask.text.trim(),
-      description:newTask.description, done:false,
-      section_id:newTask.sectionId||null,
-      start_hour:newTask.startHour, start_min:newTask.startMin,
-      duration_min:newTask.durationMin||null,
-      priority:newTask.priority,
-      is_recurring:newTask.isRecurring,
-      recurrence_days:newTask.isRecurring?newTask.recurrenceDays:null,
-      sort_order:dailyTasks.length,
-    }).select().single()
-    if (ins) {
-      const validSubs = newTask.subtasks.filter(s=>s.trim())
-      let insertedSubs: DailySubtask[] = []
-      if (validSubs.length>0) {
-        const { data: subs } = await sb.from('daily_subtasks').insert(
-          validSubs.map((s,i)=>({ task_id:ins.id as string, text:s.trim(), done:false, sort_order:i }))
-        ).select()
-        insertedSubs = ((subs??[]) as {id:string;text:string;done:boolean}[]).map(s=>({id:s.id,text:s.text,done:s.done}))
-      }
-      setDailyTasks(p=>[...p,{
-        id:ins.id as string, text:ins.text as string, description:newTask.description,
-        done:false, sectionId:newTask.sectionId||null,
-        startHour:newTask.startHour, startMin:newTask.startMin,
-        durationMin:newTask.durationMin||null,
-        priority:newTask.priority, isRecurring:newTask.isRecurring,
-        recurrenceDays:newTask.isRecurring?newTask.recurrenceDays:null,
-        subtasks:insertedSubs,
-      }])
-    }
-    setShowNewTask(false)
-    setNewTask({ text:'', description:'', sectionId:newTaskSection??'', startHour:9, startMin:0, durationMin:60, priority:'medium', isRecurring:false, recurrenceDays:[], subtasks:[] })
   }
   async function toggleTask(id:string) {
     const task = dailyTasks.find(t=>t.id===id)
@@ -7329,11 +7245,6 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     setDailyTasks(p=>p.filter(t=>t.id!==id))
     const sb = createClient()
     await sb.from('daily_tasks').delete().eq('id',id)
-  }
-  async function toggleSubtask(taskId:string, subId:string, currentDone:boolean) {
-    setDailyTasks(p=>p.map(t=>t.id===taskId?{...t,subtasks:t.subtasks.map(s=>s.id===subId?{...s,done:!currentDone}:s)}:t))
-    const sb = createClient()
-    await sb.from('daily_subtasks').update({ done:!currentDone }).eq('id',subId)
   }
   async function addSection() {
     if (!newSectionName.trim()) return
@@ -7549,7 +7460,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 onClick={e=>{
                   const rect=(e.currentTarget as HTMLElement).getBoundingClientRect()
                   const hour=Math.max(5,Math.min(23,Math.floor(5+(e.clientY-rect.top)/CELL_H)))
-                  setTaskModal({dayIndex:d,startHour:hour})
+                  setCellPicker({dayIndex:d,startHour:hour})
                 }}
                 onDragOver={e=>{e.preventDefault();setDragOverDay(d)}}
                 onDragLeave={()=>setDragOverDay(null)}
@@ -7651,6 +7562,35 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                     </div>
                   )
                 })}
+                {/* Picker séance / tâche */}
+                {cellPicker?.dayIndex===d&&(
+                  <div onClick={e=>e.stopPropagation()} style={{
+                    position:'absolute' as const,
+                    top:Math.max(0,(cellPicker.startHour-5)*CELL_H-8),
+                    left:'8%',right:'8%',zIndex:20,
+                    background:'var(--bg-card)',border:'1px solid var(--border-mid)',
+                    borderRadius:10,padding:'10px 10px 8px',
+                    boxShadow:'0 6px 20px rgba(0,0,0,0.3)',
+                  }}>
+                    <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textAlign:'center' as const,margin:'0 0 8px',letterSpacing:'0.06em',textTransform:'uppercase' as const }}>
+                      {String(cellPicker.startHour).padStart(2,'0')}:00
+                    </p>
+                    <div style={{ display:'flex',gap:5,marginBottom:6 }}>
+                      <button onClick={()=>{setTaskModal(cellPicker);setCellPicker(null)}} style={{
+                        flex:1,padding:'8px 4px',borderRadius:7,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,
+                        background:'rgba(249,115,22,0.15)',color:'#f97316',
+                      }}>🏃 Séance</button>
+                      <button onClick={()=>{setGridTaskModal(cellPicker);setCellPicker(null)}} style={{
+                        flex:1,padding:'8px 4px',borderRadius:7,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,
+                        background:'rgba(99,102,241,0.15)',color:'#6366f1',
+                      }}>📋 Tâche</button>
+                    </div>
+                    <button onClick={()=>setCellPicker(null)} style={{
+                      display:'block',width:'100%',padding:'3px',background:'none',border:'none',
+                      color:'var(--text-dim)',fontSize:10,cursor:'pointer',opacity:0.6,
+                    }}>Annuler</button>
+                  </div>
+                )}
               </div>
             )})}
           </div>
@@ -7661,23 +7601,17 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* ── Tâches du jour ── */}
+      {/* ── Tâches du jour (simple checklist) ── */}
       <div style={{ borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)',overflow:'hidden' }}>
-        {/* Header */}
         <div style={{ padding:'10px 14px 8px',borderBottom:'1px solid var(--border)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
             <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:0 }}>Tâches du jour</p>
-            <div style={{ display:'flex',gap:6 }}>
-              <button onClick={()=>setShowNewTask(true)}
-                style={{ fontSize:12,padding:'3px 10px',borderRadius:6,border:'none',background:'#00c8e0',color:'#fff',fontWeight:700,cursor:'pointer' }}>+</button>
-              <button onClick={()=>setShowSectionEditor(true)}
-                style={{ fontSize:10,padding:'3px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}>⚙</button>
-            </div>
+            <button onClick={()=>setShowSectionEditor(true)}
+              style={{ fontSize:10,padding:'3px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}>⚙</button>
           </div>
-          {/* Score de journée */}
           {dailyTasks.length>0&&(()=>{
             const total=dailyTasks.length
-            const done=dailyTasks.filter(t=>t.subtasks.length>0?t.subtasks.every(s=>s.done):t.done).length
+            const done=dailyTasks.filter(t=>t.done).length
             const pct=Math.round((done/total)*100)
             return (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
@@ -7691,71 +7625,31 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             )
           })()}
         </div>
-
-        {/* Liste des tâches */}
         <div style={{ padding:'8px 14px' }}>
-          {[...dailyTasks].sort((a,b)=>{
-            const po={high:0,medium:1,low:2}
-            if(po[a.priority]!==po[b.priority]) return po[a.priority]-po[b.priority]
-            return (a.startHour??99)-(b.startHour??99)
-          }).map(task=>{
-            const sec=sections.find(s=>s.id===task.sectionId)
-            const isDone=task.subtasks.length>0?task.subtasks.every(s=>s.done):task.done
-            const endMin = task.startHour!=null&&task.durationMin ? task.startHour*60+task.startMin+task.durationMin : null
-            return (
-              <div key={task.id} style={{
-                padding:'8px 10px',borderRadius:8,marginBottom:5,
-                border:'1px solid var(--border)',
-                background:isDone?'var(--bg-card2)':'var(--bg-card)',
-                opacity:isDone?0.6:1,
-                borderLeft:task.priority==='high'?'3px solid #ef4444':task.priority==='low'?'3px solid var(--border)':'1px solid var(--border)',
-              }}>
-                {/* Ligne principale */}
-                <div style={{ display:'flex',alignItems:'center',gap:7 }}>
-                  <button onClick={()=>toggleTask(task.id)} style={{
-                    width:16,height:16,borderRadius:4,flexShrink:0,cursor:'pointer',padding:0,
-                    border:isDone?'1.5px solid #22c55e':'1.5px solid var(--border)',
-                    background:isDone?'#22c55e':'transparent',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                  }}>{isDone&&<span style={{ color:'#fff',fontSize:9 }}>✓</span>}</button>
-                  {sec&&<span style={{ width:6,height:6,borderRadius:'50%',background:sec.color,flexShrink:0 }}/>}
-                  <span style={{ fontSize:12,fontWeight:600,flex:1,color:isDone?'var(--text-dim)':'var(--text)',textDecoration:isDone?'line-through':'none' }}>{task.text}</span>
-                  {task.startHour!=null&&(
-                    <span style={{ fontSize:9,color:'var(--text-dim)',fontFamily:'"DM Mono",monospace',flexShrink:0 }}>
-                      {String(task.startHour).padStart(2,'0')}:{String(task.startMin).padStart(2,'0')}
-                      {task.durationMin&&task.durationMin>0?` · ${Math.floor(task.durationMin/60)>0?Math.floor(task.durationMin/60)+'h':''}${task.durationMin%60>0?(task.durationMin%60)+'min':''}`:''}{endMin!=null?` → ${String(Math.floor(endMin/60)%24).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`:''}
-                    </span>
-                  )}
-                  {task.isRecurring&&<span style={{ fontSize:9,color:'var(--text-dim)' }}>↻</span>}
-                  <button onClick={()=>deleteDailyTask(task.id)} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,opacity:0.4,padding:'0 2px',lineHeight:1 }}>×</button>
-                </div>
-                {/* Description */}
-                {task.description&&<p style={{ fontSize:10,color:'var(--text-dim)',margin:'4px 0 0',paddingLeft:23,lineHeight:1.4 }}>{task.description}</p>}
-                {/* Sous-tâches */}
-                {task.subtasks.length>0&&(
-                  <div style={{ paddingLeft:23,marginTop:5,display:'flex',flexDirection:'column' as const,gap:3 }}>
-                    {task.subtasks.map(sub=>(
-                      <div key={sub.id} style={{ display:'flex',alignItems:'center',gap:6 }}>
-                        <button onClick={()=>toggleSubtask(task.id,sub.id,sub.done)} style={{
-                          width:12,height:12,borderRadius:3,flexShrink:0,cursor:'pointer',padding:0,
-                          border:sub.done?'1px solid #22c55e':'1px solid var(--border)',
-                          background:sub.done?'#22c55e':'transparent',
-                          display:'flex',alignItems:'center',justifyContent:'center',
-                        }}>{sub.done&&<span style={{ color:'#fff',fontSize:7 }}>✓</span>}</button>
-                        <span style={{ fontSize:10,color:sub.done?'var(--text-dim)':'var(--text-mid)',textDecoration:sub.done?'line-through':'none' }}>{sub.text}</span>
-                      </div>
-                    ))}
+          {dailyTasks.length>0&&(
+            <div style={{ display:'flex',flexDirection:'column' as const,gap:4,marginBottom:8 }}>
+              {dailyTasks.map(task=>{
+                const sec=sections.find(s=>s.id===task.sectionId)
+                return (
+                  <div key={task.id} style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <button onClick={()=>toggleTask(task.id)} style={{
+                      width:16,height:16,borderRadius:4,flexShrink:0,cursor:'pointer',padding:0,
+                      border:task.done?'1.5px solid #22c55e':'1.5px solid var(--border)',
+                      background:task.done?'#22c55e':'transparent',
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                    }}>{task.done&&<span style={{ color:'#fff',fontSize:9 }}>✓</span>}</button>
+                    {sec&&<span style={{ width:6,height:6,borderRadius:'50%',background:sec.color,flexShrink:0 }}/>}
+                    <span style={{ fontSize:12,flex:1,color:task.done?'var(--text-dim)':'var(--text)',textDecoration:task.done?'line-through':'none' }}>{task.text}</span>
+                    <button onClick={()=>deleteDailyTask(task.id)} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,opacity:0.4,padding:'0 2px',lineHeight:1 }}>×</button>
                   </div>
-                )}
-              </div>
-            )
-          })}
-
-          {/* Ajout rapide */}
-          <div style={{ display:'flex',gap:6,marginTop:dailyTasks.length>0?4:0 }}>
+                )
+              })}
+            </div>
+          )}
+          <div style={{ display:'flex',gap:6 }}>
             <input value={newTaskText} onChange={e=>setNewTaskText(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter')addDailyTask()}}
-              placeholder="Ajout rapide..."
+              placeholder="Ajouter une tâche..."
               style={{ flex:1,padding:'6px 10px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none' }}/>
             {sections.length>0&&(
               <select value={newTaskSection??''} onChange={e=>setNewTaskSection(e.target.value||null)}
@@ -7767,144 +7661,8 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
         </div>
       </div>
 
-      {/* ── Modal nouvelle tâche (détaillée) ── */}
-      {showNewTask&&(
-        <div onClick={()=>setShowNewTask(false)} style={{ position:'fixed' as const,inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:14,padding:20,maxWidth:420,width:'100%',border:'1px solid var(--border)',maxHeight:'85vh',overflowY:'auto' as const }}>
-            <h3 style={{ fontSize:15,fontWeight:700,margin:'0 0 16px',fontFamily:'Syne,sans-serif' }}>Nouvelle tâche</h3>
-
-            {/* Section */}
-            <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Section</p>
-              <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
-                {sections.map(sec=>(
-                  <button key={sec.id} onClick={()=>setNewTask(t=>({...t,sectionId:sec.id}))} style={{
-                    padding:'5px 12px',borderRadius:7,fontSize:11,fontWeight:600,cursor:'pointer',
-                    background:newTask.sectionId===sec.id?`${sec.color}20`:'transparent',
-                    border:newTask.sectionId===sec.id?`1.5px solid ${sec.color}`:'1px solid var(--border)',
-                    color:newTask.sectionId===sec.id?sec.color:'var(--text-dim)',
-                  }}>{sec.name}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* Titre */}
-            <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Titre</p>
-              <input value={newTask.text} onChange={e=>setNewTask(t=>({...t,text:e.target.value}))}
-                placeholder="Nom de la tâche"
-                style={{ width:'100%',padding:'10px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box' as const }}/>
-            </div>
-
-            {/* Description */}
-            <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Description</p>
-              <textarea value={newTask.description} onChange={e=>setNewTask(t=>({...t,description:e.target.value}))}
-                placeholder="Détails, notes..." rows={2}
-                style={{ width:'100%',padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
-            </div>
-
-            {/* Horaire */}
-            <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Horaire</p>
-              <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' as const }}>
-                <div style={{ display:'flex',alignItems:'center',gap:4 }}>
-                  <span style={{ fontSize:10,color:'var(--text-dim)' }}>Début</span>
-                  <input type="number" min={0} max={23} value={newTask.startHour}
-                    onChange={e=>setNewTask(t=>({...t,startHour:parseInt(e.target.value)||0}))}
-                    style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
-                  <span style={{ color:'var(--text-dim)',fontSize:13 }}>:</span>
-                  <input type="number" min={0} max={59} step={5} value={newTask.startMin}
-                    onChange={e=>setNewTask(t=>({...t,startMin:parseInt(e.target.value)||0}))}
-                    style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
-                </div>
-                <div style={{ display:'flex',alignItems:'center',gap:4 }}>
-                  <span style={{ fontSize:10,color:'var(--text-dim)' }}>Durée</span>
-                  <input type="number" min={0} max={23} value={Math.floor(newTask.durationMin/60)}
-                    onChange={e=>setNewTask(t=>({...t,durationMin:(parseInt(e.target.value)||0)*60+(t.durationMin%60)}))}
-                    style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
-                  <span style={{ fontSize:10,color:'var(--text-dim)' }}>h</span>
-                  <input type="number" min={0} max={59} step={5} value={newTask.durationMin%60}
-                    onChange={e=>setNewTask(t=>({...t,durationMin:Math.floor(t.durationMin/60)*60+(parseInt(e.target.value)||0)}))}
-                    style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
-                  <span style={{ fontSize:10,color:'var(--text-dim)' }}>min</span>
-                </div>
-                {newTask.durationMin>0&&(
-                  <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'"DM Mono",monospace' }}>
-                    → {String(Math.floor((newTask.startHour*60+newTask.startMin+newTask.durationMin)/60)%24).padStart(2,'0')}:{String((newTask.startHour*60+newTask.startMin+newTask.durationMin)%60).padStart(2,'0')}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Priorité */}
-            <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Priorité</p>
-              <div style={{ display:'flex',gap:5 }}>
-                {([{id:'low' as const,label:'Basse',color:'#6b7280'},{id:'medium' as const,label:'Moyenne',color:'#f97316'},{id:'high' as const,label:'Haute',color:'#ef4444'}]).map(p=>(
-                  <button key={p.id} onClick={()=>setNewTask(t=>({...t,priority:p.id}))} style={{
-                    padding:'5px 12px',borderRadius:7,fontSize:10,fontWeight:600,cursor:'pointer',
-                    background:newTask.priority===p.id?`${p.color}15`:'transparent',
-                    border:newTask.priority===p.id?`1.5px solid ${p.color}`:'1px solid var(--border)',
-                    color:newTask.priority===p.id?p.color:'var(--text-dim)',
-                  }}>{p.label}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* Sous-tâches */}
-            <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Sous-tâches</p>
-              {newTask.subtasks.map((st,i)=>(
-                <div key={i} style={{ display:'flex',gap:6,alignItems:'center',marginBottom:4 }}>
-                  <span style={{ fontSize:10,color:'var(--text-dim)',width:14 }}>{i+1}.</span>
-                  <input value={st} onChange={e=>{ const upd=[...newTask.subtasks];upd[i]=e.target.value;setNewTask(t=>({...t,subtasks:upd})) }}
-                    placeholder="Étape..."
-                    style={{ flex:1,padding:'5px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' }}/>
-                  <button onClick={()=>setNewTask(t=>({...t,subtasks:t.subtasks.filter((_,j)=>j!==i)}))}
-                    style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:12,opacity:0.5 }}>×</button>
-                </div>
-              ))}
-              <button onClick={()=>setNewTask(t=>({...t,subtasks:[...t.subtasks,'']}))}
-                style={{ padding:'5px 10px',borderRadius:6,border:'1px dashed var(--border)',background:'transparent',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>+ Sous-tâche</button>
-            </div>
-
-            {/* Récurrence */}
-            <div style={{ marginBottom:16 }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
-                <button onClick={()=>setNewTask(t=>({...t,isRecurring:!t.isRecurring}))} style={{
-                  width:18,height:18,borderRadius:4,cursor:'pointer',padding:0,
-                  border:newTask.isRecurring?'1.5px solid #00c8e0':'1.5px solid var(--border)',
-                  background:newTask.isRecurring?'#00c8e0':'transparent',
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                }}>{newTask.isRecurring&&<span style={{ color:'#fff',fontSize:10 }}>✓</span>}</button>
-                <span style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em' }}>Tâche récurrente</span>
-              </div>
-              {newTask.isRecurring&&(
-                <div style={{ display:'flex',gap:4,flexWrap:'wrap' as const }}>
-                  {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((day,i)=>(
-                    <button key={i} onClick={()=>setNewTask(t=>({...t,recurrenceDays:t.recurrenceDays.includes(i)?t.recurrenceDays.filter(d=>d!==i):[...t.recurrenceDays,i]}))} style={{
-                      width:32,height:32,borderRadius:6,fontSize:9,fontWeight:600,cursor:'pointer',
-                      background:newTask.recurrenceDays.includes(i)?'#00c8e0':'var(--bg-card2)',
-                      border:newTask.recurrenceDays.includes(i)?'none':'1px solid var(--border)',
-                      color:newTask.recurrenceDays.includes(i)?'#fff':'var(--text-dim)',
-                    }}>{day}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div style={{ display:'flex',gap:8 }}>
-              <button onClick={()=>setShowNewTask(false)} style={{ flex:1,padding:'10px',borderRadius:8,border:'1px solid var(--border)',background:'transparent',color:'var(--text-dim)',fontSize:12,cursor:'pointer' }}>Annuler</button>
-              <button onClick={saveNewTask} style={{
-                flex:1,padding:'10px',borderRadius:8,border:'none',fontSize:12,fontWeight:700,cursor:'pointer',color:'#fff',
-                background:sections.find(s=>s.id===newTask.sectionId)?.color??'#00c8e0',
-              }}>Ajouter</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal tâche grille (ouvert depuis le picker dans la grille) */}
+      {gridTaskModal&&<GridTaskModal dayIndex={gridTaskModal.dayIndex} startHour={gridTaskModal.startHour} sections={sections} onClose={()=>setGridTaskModal(null)} onSave={handleAddTask}/>}
 
       {/* ── Modal éditeur de sections ── */}
       {showSectionEditor&&(
@@ -8042,6 +7800,127 @@ function TaskEditModal({ task, onClose, onSave, onDelete }:{ task:WeekTask; onCl
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={()=>onDelete(task.id)} style={{ padding:'9px 12px',borderRadius:10,background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:12,cursor:'pointer' }}>Supprimer</button>
           <button onClick={()=>onSave(form)} style={{ flex:1,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>Sauvegarder</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GridTaskModal({ dayIndex, startHour, sections, onClose, onSave }:{
+  dayIndex:number; startHour:number;
+  sections:{id:string;name:string;color:string;isSportDefault:boolean}[];
+  onClose:()=>void; onSave:(t:Omit<WeekTask,'id'>)=>void
+}) {
+  const [title,    setTitle]    = useState('')
+  const [sh,       setSh]       = useState(startHour)
+  const [sm,       setSm]       = useState(0)
+  const [dur,      setDur]      = useState(60)
+  const [priority, setPriority] = useState(false)
+  const [secId,    setSecId]    = useState(sections[0]?.id ?? '')
+
+  function sectionToType(sec:{name:string;isSportDefault:boolean}): TaskType {
+    if (sec.isSportDefault) return 'sport'
+    const n = sec.name.toLowerCase()
+    if (n.includes('récup') || n.includes('recup')) return 'recovery'
+    if (n.includes('personnel') || n.includes('perso')) return 'personal'
+    return 'work'
+  }
+
+  function handleSave() {
+    const sec = sections.find(s=>s.id===secId) ?? sections[0]
+    if (!sec) return
+    onSave({
+      title: title.trim() || 'Tâche',
+      type: sectionToType(sec),
+      dayIndex,
+      startHour: sh,
+      startMin: sm,
+      durationMin: dur,
+      priority,
+    })
+    onClose()
+  }
+
+  const selectedSec = sections.find(s=>s.id===secId)
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
+        {/* Header */}
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>📋 Nouvelle tâche</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+        </div>
+
+        {/* Section selector */}
+        {sections.length > 0 && (
+          <div style={{ marginBottom:12 }}>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>Catégorie</p>
+            <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
+              {sections.map(s=>(
+                <button key={s.id} onClick={()=>setSecId(s.id)} style={{
+                  padding:'5px 10px',borderRadius:8,border:'1px solid',cursor:'pointer',fontSize:12,fontWeight:secId===s.id?700:400,
+                  borderColor: secId===s.id ? s.color : 'var(--border)',
+                  background: secId===s.id ? `${s.color}22` : 'var(--bg-card2)',
+                  color: secId===s.id ? s.color : 'var(--text-mid)',
+                }}>
+                  <span style={{ display:'inline-block',width:7,height:7,borderRadius:'50%',background:s.color,marginRight:5,verticalAlign:'middle' }}/>
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Title */}
+        <div style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p>
+          <input
+            value={title} onChange={e=>setTitle(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter') handleSave() }}
+            placeholder="Nom de la tâche"
+            autoFocus
+            style={{ width:'100%',padding:'8px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}
+          />
+        </div>
+
+        {/* Time + duration */}
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12 }}>
+          <div>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heure</p>
+            <input type="number" min={5} max={23} value={sh} onChange={e=>setSh(parseInt(e.target.value)||sh)}
+              style={{ width:'100%',padding:'7px 8px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+          </div>
+          <div>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Min</p>
+            <select value={sm} onChange={e=>setSm(parseInt(e.target.value))}
+              style={{ width:'100%',padding:'7px 8px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}>
+              <option value={0}>:00</option><option value={15}>:15</option><option value={30}>:30</option><option value={45}>:45</option>
+            </select>
+          </div>
+          <div>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Durée (min)</p>
+            <input type="number" min={15} step={15} value={dur} onChange={e=>setDur(parseInt(e.target.value)||dur)}
+              style={{ width:'100%',padding:'7px 8px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+          </div>
+        </div>
+
+        {/* Priority */}
+        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:16,cursor:'pointer' }} onClick={()=>setPriority(!priority)}>
+          <div style={{ width:20,height:20,borderRadius:5,border:`2px solid ${priority?'#ffb340':'var(--border)'}`,background:priority?'#ffb340':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+            {priority&&<span style={{ color:'#fff',fontSize:12 }}>✓</span>}
+          </div>
+          <p style={{ fontSize:13,fontWeight:500,margin:0,color:priority?'#ffb340':'var(--text-mid)' }}>Tâche prioritaire</p>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display:'flex',gap:8 }}>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={handleSave} style={{
+            flex:2,padding:10,borderRadius:10,border:'none',color:'#fff',
+            fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer',
+            background: selectedSec ? `linear-gradient(135deg,${selectedSec.color},#5b6fff)` : 'linear-gradient(135deg,#6366f1,#5b6fff)',
+          }}>+ Ajouter à la grille</button>
         </div>
       </div>
     </div>

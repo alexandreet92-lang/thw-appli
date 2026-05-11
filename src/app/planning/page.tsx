@@ -1112,18 +1112,22 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                   onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
                   style={{ flex: '1 1 80px', minWidth: 70, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Tours</span>
-                  <input type="number" min={1} max={20} value={circuit.rounds}
-                    onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
-                    style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/tour (s)</span>
-                  <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
-                    onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
-                    style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
-                </div>
+                {(circuit.type ?? 'series') !== 'series' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Tours</span>
+                    <input type="number" min={1} max={20} value={circuit.rounds}
+                      onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
+                      style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  </div>
+                )}
+                {(circuit.type ?? 'series') !== 'series' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/tour (s)</span>
+                    <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
+                      onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
+                      style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  </div>
+                )}
                 {sport === 'hyrox' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
@@ -1392,28 +1396,33 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
           const noRest    = isEmom || isTabata
           return (
             <div key={b.id} style={{ marginTop: i > 0 ? 20 : 0, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-              {/* Ligne 1 : point + nom + quantité + repos + ×  */}
+              {/* Ligne 1 : point + type badge + nom + quantité + repos + ×  */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+                <span style={{ fontSize: 9, fontWeight: 700, color: accent, background: `${accent}18`, padding: '2px 7px', borderRadius: 5, textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                  {CIRCUIT_TYPES.find(c => c.id === circuitType)?.label ?? 'Séries'}
+                </span>
                 <input value={b.label} onChange={e => {
                   const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
                 }} style={{
                   flex: 1, background: 'none', border: 'none', outline: 'none',
                   fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif', minWidth: 0,
                 }} />
-                {/* Quantité : rounds (ou minutes pour EMOM) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                  <input type="number" min={1} max={60}
-                    value={isEmom ? (b.durationMin || 12) : (b.zone ?? (isTabata ? 8 : 3))}
-                    onChange={e => {
-                      const upd = [...blocks]
-                      if (isEmom) upd[i] = { ...b, durationMin: parseInt(e.target.value) || 12 }
-                      else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
-                      onChange(upd)
-                    }}
-                    style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : 'rounds'}</span>
-                </div>
+                {/* Quantité : rounds ou minutes (uniquement pour les circuits non-series) */}
+                {circuitType !== 'series' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <input type="number" min={1} max={60}
+                      value={isEmom ? (b.durationMin || 12) : (b.zone ?? (isTabata ? 8 : 3))}
+                      onChange={e => {
+                        const upd = [...blocks]
+                        if (isEmom) upd[i] = { ...b, durationMin: parseInt(e.target.value) || 12 }
+                        else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
+                        onChange(upd)
+                      }}
+                      style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : 'tours'}</span>
+                  </div>
+                )}
                 {/* Repos (sauf EMOM/tabata) */}
                 {!noRest && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
@@ -1458,6 +1467,10 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
         // ── Flèche de chaîne (repos ≤ 30s avec l'exo précédent) ──
         const prevBlock = i > 0 ? blocks[i - 1] : null
         const isChained = !!(prevBlock && prevBlock.type !== 'circuit_header' && (prevBlock.recoveryMin ?? 0) * 60 <= 30)
+        // Type du circuit parent (pour masquer "Séries" en mode lap/superset/etc.)
+        const parentHeader = [...blocks].slice(0, i).reverse().find(x => x.type === 'circuit_header')
+        const parentCircuitType: CircuitType = (parentHeader && (['series','circuit','superset','emom','tabata'].includes(parentHeader.mode)) ? parentHeader.mode : 'series') as CircuitType
+        const isSeries = parentCircuitType === 'series'
 
         return (
           <div key={b.id}>
@@ -1503,15 +1516,17 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
 
               {/* Ligne 2 : séries × reps | charge | repos */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, alignItems: 'center' }}>
-                {/* Séries */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Séries</span>
-                  <input type="number" min={1} max={20} value={b.zone ?? 3}
-                    onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
-                    style={{ width: 40, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
-                </div>
+                {/* Séries — uniquement pour circuit de type "series" */}
+                {isSeries && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Séries</span>
+                    <input type="number" min={1} max={20} value={b.zone ?? 3}
+                      onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
+                      style={{ width: 40, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                  </div>
+                )}
 
-                <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>×</span>
+                {isSeries && <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>×</span>}
 
                 {/* Reps */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -5015,7 +5030,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
           {circuits.map((circ, ci) => (
             <div key={ci} style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
-                {circ.label}{circ.rounds > 1 ? ` · ${circ.rounds} rounds` : ''}
+                {circ.label}
+                {circ.type !== 'series' && circ.rounds > 1 ? ` · ${circ.rounds} tours` : ''}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
@@ -5024,7 +5040,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     <div style={{ flex: 1 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
-                        {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
+                        {circ.type === 'series'
+                          ? `${exo.targetSets}×${exo.targetReps}${exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}`
+                          : `${exo.targetReps} reps${exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}`
+                        }
                       </span>
                     </div>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
@@ -5203,6 +5222,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
               {ctInfo?.icon} {ctInfo?.label ?? 'Séries'}
               {currentCircuit ? ` · ${currentCircuit.label}` : ''}
+              {currentStep && currentCircuit && currentCircuit.type !== 'series' && currentCircuit.rounds > 1
+                ? ` · Tour ${currentStep.setIdx + 1}/${currentCircuit.rounds}`
+                : ''}
             </p>
           </div>
           <span style={{ fontSize: 16, fontFamily: '"DM Mono",monospace', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>

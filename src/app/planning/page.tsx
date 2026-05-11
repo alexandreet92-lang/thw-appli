@@ -147,11 +147,17 @@ interface Race {
 // ── Helpers ───────────────────────────────────────
 function uid():string { return `${Date.now()}_${Math.random().toString(36).slice(2)}` }
 function hMinToMin(h:number,m:number):number { return h*60+m }
-function minToHMin(total:number):{ h:number; m:number } { return { h:Math.floor(total/60), m:total%60 } }
+function minToHMin(total:number):{ h:number; m:number } { const r=Math.round(total); return { h:Math.floor(r/60), m:r%60 } }
 function formatHM(totalMin:number):string {
-  const h=Math.floor(totalMin/60), m=totalMin%60
+  const h=Math.floor(totalMin/60), m=Math.round(totalMin%60)
   if(h===0) return `${m}min`
   return m===0 ? `${h}h` : `${h}h${String(m).padStart(2,'0')}`
+}
+/** Affiche des minutes décimales en format min:sec — ex: 6.4 → "6:24" */
+function fmtDuration(min: number): string {
+  const m = Math.floor(min)
+  const s = Math.round((min % 1) * 60)
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 // Keep formatDur as alias for backward compat in display
 function formatDur(min:number):string { return formatHM(min) }
@@ -1705,8 +1711,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory }: {
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, color: 'var(--text-dim)' }}>
             <span>Durée : <strong style={{ fontFamily: 'DM Mono, monospace' }}>
               {hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin
-                ? `${Math.round(hoveredBar.block.effortMin * 10) / 10}min`
-                : `${hoveredBar.block.durationMin}min`}
+                ? fmtDuration(hoveredBar.block.effortMin)
+                : fmtDuration(hoveredBar.block.durationMin)}
             </strong></span>
             <span>Zone : <strong style={{ color: ZONE_COLORS[Math.min(4, hoveredBar.block.zone - 1)] }}>Z{hoveredBar.block.zone}</strong></span>
             {hoveredBar.block.value && (
@@ -4335,43 +4341,37 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
         {/* Fill */}
         <path d={fillD} fill={accent} opacity={0.05} />
-        {/* Terrain block overlays — UNDER the profile line */}
-        {terrainBlocks && terrainBlocks.map((block) => {
+        {/* Profile line */}
+        <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
+        {/* Terrain block overlays — OVER the profile line, under cursor */}
+        {terrainBlocks && terrainBlocks.map((block, i) => {
           if (block.startKm == null || block.endKm == null) return null
           const x1 = PL + (block.startKm / totalKm) * pW
           const x2 = PL + (block.endKm   / totalKm) * pW
           const zc  = ZONE_C[Math.min(Math.max(block.zone - 1, 0), 4)]
           const w   = Math.max(x2 - x1, 3)
           return (
-            <g key={`tb_${block.blockIdx}`}>
-              <rect x={x1} y={PT} width={w} height={pH} fill={zc} opacity={0.28} rx={2} />
-              {/* Top label (watts or zone) — only if wide enough */}
-              {w > 20 && (
-                <text x={(x1 + x2) / 2} y={PT + 10} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} opacity={1} fontFamily='"DM Mono",monospace'>
-                  {block.value || `Z${block.zone}`}
-                </text>
-              )}
-              {/* km range label — only if wide enough */}
-              {w > 30 && (
-                <text x={(x1 + x2) / 2} y={PT + pH - 4} textAnchor="middle" fontSize={6} fill="var(--text-dim)" opacity={0.85} fontFamily='"DM Mono",monospace'>
-                  {block.startKm.toFixed(1)}–{block.endKm.toFixed(1)}
+            <g key={`tb${i}`}>
+              <rect x={x1} y={PT} width={w} height={pH} fill={zc} opacity={0.22} rx={2} />
+              {/* Label above chart area */}
+              {w > 18 && (
+                <text x={(x1 + x2) / 2} y={PT - 2} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} fontFamily='"DM Mono",monospace'>
+                  {block.value ? `${block.value}W` : `Z${block.zone}`}
                 </text>
               )}
               {/* Left edge — draggable */}
-              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.8}
+              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.85}
                 style={{ cursor: 'ew-resize' }}
                 onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'start' }) }}
               />
               {/* Right edge — draggable */}
-              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.8}
+              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.85}
                 style={{ cursor: 'ew-resize' }}
                 onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'end' }) }}
               />
             </g>
           )
         })}
-        {/* Profile line — above overlays */}
-        <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
         {/* min/max labels */}
         <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{Math.round(minEle)}m</text>
         <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='"DM Mono",monospace'>{Math.round(maxEle)}m</text>
@@ -5785,15 +5785,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             ? Math.round(athleteData.ftp! * 0.5)
             : Math.round(athleteData.ftp! * 0.75)
         const zone = seg.type === 'climb' ? 4 : seg.type === 'descent' ? 1 : 3
-        const label = seg.type === 'climb'
-          ? `Montée ${seg.avgGradient.toFixed(1)}%`
-          : seg.type === 'descent'
-            ? `Descente ${Math.abs(seg.avgGradient).toFixed(1)}%`
-            : `Plat`
-        // Recalculate duration with the actual target watts for this block type
-        const durationMin = Math.max(1, Math.round(
-          estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, targetWatts, athleteWeight, bikeWeight)
-        ))
+        // Exact time (float) for ±5% range display
+        const timeMinExact = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, targetWatts, athleteWeight, bikeWeight)
+        const durationMin = Math.max(1, Math.round(timeMinExact))
+        const lo = fmtDuration(timeMinExact * 0.95)
+        const hi = fmtDuration(timeMinExact * 1.05)
+        const typeName = seg.type === 'climb' ? 'Montée' : seg.type === 'descent' ? 'Descente' : 'Plat'
+        const gradStr = Math.abs(seg.avgGradient) >= 0.5 ? ` ${Math.abs(seg.avgGradient).toFixed(1)}%` : ''
+        const label = `${typeName}${gradStr} — ${lo} à ${hi}`
         return {
           id: `terrain_${i}`,
           mode: 'effort' as BlockMode,
@@ -7223,8 +7222,8 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
   const c = ZONE_COLORS[block.zone-1]
   const isInterval = block.mode === 'interval' && !!block.reps && !!block.effortMin && !!block.recoveryMin
   const durLabel = isInterval
-    ? `${block.reps}×${block.effortMin}min · récup ${block.recoveryMin}min`
-    : formatHM(block.durationMin)
+    ? `${block.reps}×${fmtDuration(block.effortMin??0)} · récup ${fmtDuration(block.recoveryMin??0)}`
+    : fmtDuration(block.durationMin)
   const valueLabel = block.value ? `${block.value}${sport==='bike'?'W':''}` : null
   const inputStyle: React.CSSProperties = {
     width:'100%', padding:'7px 10px', borderRadius:7,

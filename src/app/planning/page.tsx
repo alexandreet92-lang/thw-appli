@@ -3996,6 +3996,32 @@ interface ParcoursData {
   elevation: number | null
   points: number
   elevationProfile: Array<{ distKm: number; ele: number }>
+  gpsTrace?: Array<{ lat: number; lon: number }>
+  avgSpeed?: number | null
+}
+
+function buildGpsTrace(pts: Array<{ lat: number; lon: number; ele: number }>): Array<{ lat: number; lon: number }> {
+  const trace: Array<{ lat: number; lon: number }> = []
+  for (const pt of pts) {
+    if (trace.length === 0) {
+      trace.push({ lat: pt.lat, lon: pt.lon })
+    } else {
+      const prev = trace[trace.length - 1]
+      const R = 6371000
+      const dLat = (pt.lat - prev.lat) * Math.PI / 180
+      const dLon = (pt.lon - prev.lon) * Math.PI / 180
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(prev.lat * Math.PI / 180) * Math.cos(pt.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+      const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+      if (d >= 100) trace.push({ lat: pt.lat, lon: pt.lon })
+    }
+  }
+  // Always include last point
+  if (pts.length > 0) {
+    const last = pts[pts.length - 1]
+    const t = trace[trace.length - 1]
+    if (!t || t.lat !== last.lat || t.lon !== last.lon) trace.push({ lat: last.lat, lon: last.lon })
+  }
+  return trace
 }
 
 function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -4085,12 +4111,15 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
         if (pts.length === 0) { reject(new Error('Aucun point GPS trouvé')); return }
 
         const { distKm, elevM, profile } = buildElevationProfile(pts)
+        const gpsTrace = buildGpsTrace(pts)
         resolve({
           name,
           distance: distKm > 0 ? distKm : null,
           elevation: elevM > 0 ? elevM : null,
           points: pts.length,
           elevationProfile: profile,
+          gpsTrace,
+          avgSpeed: null,
         })
       } catch (err) { reject(err) }
     }
@@ -4233,6 +4262,56 @@ function ElevationChart({ profile, totalKm, accent }: {
       )}
     </div>
   )
+}
+
+// ── Carte GPS Leaflet (client-side only) ─────────
+function GPSMapInner({ trace, accent }: { trace: Array<{ lat: number; lon: number }>; accent: string }) {
+  const mapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!mapRef.current || trace.length < 2) return
+    const container = mapRef.current
+    // Prevent double init
+    if ((container as HTMLDivElement & { _leaflet_id?: number })._leaflet_id) return
+
+    import('leaflet').then(L => {
+      delete (L.Icon.Default.prototype as unknown as Record<string,unknown>)._getIconUrl
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      })
+      const map = L.map(container, { zoomControl: true, scrollWheelZoom: false, attributionControl: false })
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map)
+      const latlngs = trace.map(p => [p.lat, p.lon] as [number, number])
+      const poly = L.polyline(latlngs, { color: accent, weight: 3, opacity: 0.85, smoothFactor: 1.5 }).addTo(map)
+      const dot = (color: string) => L.divIcon({
+        html: `<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35)"></div>`,
+        iconSize: [10, 10], iconAnchor: [5, 5],
+      })
+      L.marker(latlngs[0], { icon: dot('#22c55e') }).addTo(map)
+      L.marker(latlngs[latlngs.length - 1], { icon: dot('#ef4444') }).addTo(map)
+      map.fitBounds(poly.getBounds(), { padding: [18, 18] })
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+      <div ref={mapRef} style={{ width: '100%', height: 240, borderRadius: 10, overflow: 'hidden', zIndex: 0 }}/>
+    </>
+  )
+}
+
+function GPSMapWrapper({ trace, accent }: { trace: Array<{ lat: number; lon: number }>; accent: string }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) return (
+    <div style={{ width: '100%', height: 240, borderRadius: 10, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+      Chargement de la carte…
+    </div>
+  )
+  return <GPSMapInner trace={trace} accent={accent}/>
 }
 
 // ── Session averages estimation ───────────────────
@@ -5389,9 +5468,42 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
       if (!parcoursData) return ''
       const profile = parcoursData.elevationProfile
       const totalKm = parcoursData.distance ?? (profile.length > 0 ? profile[profile.length - 1].distKm : 0)
-      if (profile.length < 2 || totalKm === 0) {
-        return `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">Parcours — ${parcoursData.name}</h3><p style="font-size:12px;color:#555">${parcoursData.distance ?? '?'} km${parcoursData.elevation ? ' · ' + parcoursData.elevation + ' m D+' : ''}</p>`
-      }
+
+      // SVG Trace GPS
+      const traceSection = (() => {
+        const trace = parcoursData.gpsTrace
+        if (!trace || trace.length < 2) return ''
+        const lats = trace.map(p => p.lat), lons = trace.map(p => p.lon)
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+        const minLon = Math.min(...lons), maxLon = Math.max(...lons)
+        const latRange = maxLat - minLat || 0.01, lonRange = maxLon - minLon || 0.01
+        const W = 500, H = 280
+        const aspect = lonRange / latRange
+        let plotW = W, plotH = H
+        if (aspect > W / H) plotH = W / aspect; else plotW = H * aspect
+        const padX = (W - plotW) / 2, padY = (H - plotH) / 2
+        const svgPts = trace.map(p => ({
+          x: padX + ((p.lon - minLon) / lonRange) * plotW,
+          y: padY + (1 - (p.lat - minLat) / latRange) * plotH,
+        }))
+        const pathD = svgPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+        const sx = svgPts[0].x, sy = svgPts[0].y
+        const ex = svgPts[svgPts.length - 1].x, ey = svgPts[svgPts.length - 1].y
+        return `<h4 style="font-size:12px;font-weight:600;margin:10px 0 6px;color:#555">Trace GPS</h4>
+<svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;margin:4px 0 12px;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb">
+  <path d="${pathD}" fill="none" stroke="${accent}" stroke-width="2.5" stroke-linejoin="round" opacity="0.8"/>
+  <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="5" fill="#22c55e" stroke="#fff" stroke-width="2"/>
+  <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+  <text x="${(sx + 8).toFixed(1)}" y="${(sy + 4).toFixed(1)}" font-size="9" fill="#22c55e" font-weight="700">Départ</text>
+  <text x="${(ex + 8).toFixed(1)}" y="${(ey + 4).toFixed(1)}" font-size="9" fill="#ef4444" font-weight="700">Arrivée</text>
+</svg>`
+      })()
+
+      const header = `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">Parcours — ${parcoursData.name}</h3>
+<div style="display:flex;gap:16px;font-size:11px;color:#666;margin-bottom:8px">${parcoursData.distance != null ? `<span><strong style="color:#333">${parcoursData.distance}</strong> km</span>` : ''}${parcoursData.elevation != null ? `<span><strong style="color:#333">${parcoursData.elevation}</strong> m D+</span>` : ''}</div>${traceSection}`
+
+      if (profile.length < 2 || totalKm === 0) return header
+
       const minEle = Math.min(...profile.map(p => p.ele))
       const maxEle = Math.max(...profile.map(p => p.ele))
       const eleRange = maxEle - minEle || 1
@@ -5406,8 +5518,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
       const xStep = totalKm > 150 ? 20 : totalKm > 80 ? 10 : totalKm > 30 ? 5 : 2
       const xTicks: number[] = []
       for (let km = 0; km <= totalKm; km += xStep) xTicks.push(km)
-      return `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">Parcours — ${parcoursData.name}</h3>
-<div style="display:flex;gap:16px;font-size:11px;color:#666;margin-bottom:8px">${parcoursData.distance != null ? `<span><strong style="color:#333">${parcoursData.distance}</strong> km</span>` : ''}${parcoursData.elevation != null ? `<span><strong style="color:#333">${parcoursData.elevation}</strong> m D+</span>` : ''}</div>
+      return `${header}<h4 style="font-size:12px;font-weight:600;margin:10px 0 6px;color:#555">Profil altimétrique</h4>
 <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;margin:4px 0 8px">
 ${yTicks.map(ele => { const y = PT+pH-((ele-minEle)/eleRange)*pH; return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="0.5"/><text x="${PL-4}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#999" font-family="monospace">${ele}m</text>` }).join('\n')}
 ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed(1)}" y1="${PT}" x2="${x.toFixed(1)}" y2="${PT+pH}" stroke="#e5e7eb" stroke-width="0.5" opacity="0.4"/><text x="${x.toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="7" fill="#999" font-family="monospace">${km}km</text>` }).join('\n')}
@@ -6338,6 +6449,13 @@ Ajoute toujours échauffement et retour au calme.`
                     Supprimer
                   </button>
                 </div>
+
+                {/* Carte GPS Leaflet */}
+                {parcoursData.gpsTrace && parcoursData.gpsTrace.length > 1 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <GPSMapWrapper trace={parcoursData.gpsTrace} accent={accent}/>
+                  </div>
+                )}
 
                 {/* Graphique altimétrique interactif */}
                 {parcoursData.elevationProfile.length > 1 && (

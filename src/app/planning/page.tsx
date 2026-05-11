@@ -800,6 +800,7 @@ interface ExerciseItem {
 interface ExoCircuit {
   id: string
   name: string
+  type: string          // 'series' | 'lap' | 'superset' | 'emom' | 'tabata'
   rounds: number
   restBetweenRoundsSec: number
   targetTimeSec?: number
@@ -926,11 +927,12 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
   exercises: ExerciseItem[]
   onChange: (e: ExerciseItem[]) => void
 }) {
-  const defaultCircuit: ExoCircuit = { id: 'default', name: 'Circuit 1', rounds: 3, restBetweenRoundsSec: 90 }
+  const defaultCircuit: ExoCircuit = { id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }
   const [circuits, setCircuits] = useState<ExoCircuit[]>([defaultCircuit])
   const [blockCircuitMap, setBlockCircuitMap] = useState<Record<string, string>>({})
   const [addingToCircuit, setAddingToCircuit] = useState<string | null>(null)
   const [showCircuitTypeMenu, setShowCircuitTypeMenu] = useState(false)
+  const [changingTypeFor, setChangingTypeFor] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [catFilter, setCatFilter] = useState<ExoCategory | undefined>(
     sport === 'hyrox' ? 'hyrox' : undefined
@@ -957,17 +959,11 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
   function addCircuit(typeId?: string) {
     const num = circuits.length + 1
     const ct = CIRCUIT_TYPES.find(c => c.id === typeId)
-    const name = ct
-      ? `${ct.label} ${num}`
-      : `Circuit ${num}`
-    const rounds = typeId === 'tabata' ? 8 : typeId === 'emom' ? 12 : 3
-    const restBetweenRoundsSec = typeId === 'tabata' ? 10 : typeId === 'emom' ? 0 : 90
-    const newCircuit: ExoCircuit = {
-      id: `circuit_${Date.now()}`,
-      name,
-      rounds,
-      restBetweenRoundsSec,
-    }
+    const type = typeId ?? 'series'
+    const name = ct ? `${ct.label} ${num}` : `Séries ${num}`
+    const rounds = type === 'tabata' ? 8 : type === 'emom' ? 12 : 3
+    const restBetweenRoundsSec = type === 'tabata' ? 10 : type === 'emom' ? 0 : 90
+    const newCircuit: ExoCircuit = { id: `circuit_${Date.now()}`, name, type, rounds, restBetweenRoundsSec }
     setCircuits(prev => [...prev, newCircuit])
     setShowCircuitTypeMenu(false)
   }
@@ -1078,39 +1074,71 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
             overflow: 'hidden',
           }}>
             {/* En-tête circuit */}
-            <div style={{
-              padding: '10px 14px', background: `${accentColor}12`,
-              borderBottom: `1px solid ${accentColor}22`,
-              display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 8,
-            }}>
-              <input
-                value={circuit.name}
-                onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
-                style={{ flex: '1 1 100px', minWidth: 80, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Rounds</span>
-                <input type="number" min={1} max={20} value={circuit.rounds}
-                  onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
-                  style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/round (s)</span>
-                <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
-                  onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
-                  style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
-              </div>
-              {sport === 'hyrox' && (
+            <div style={{ padding: '10px 14px', background: `${accentColor}12`, borderBottom: `1px solid ${accentColor}22` }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 8 }}>
+                {/* Badge type — cliquable pour changer */}
+                <button
+                  onClick={() => setChangingTypeFor(changingTypeFor === circuit.id ? null : circuit.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '3px 8px', borderRadius: 6, border: `1px solid ${accentColor}55`,
+                    background: `${accentColor}22`, color: accentColor,
+                    fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.icon ?? '🔁'}{' '}
+                  {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.label ?? 'Séries'}
+                  <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
+                </button>
+                <input
+                  value={circuit.name}
+                  onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
+                  style={{ flex: '1 1 80px', minWidth: 70, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
+                />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
-                  <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
-                    onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
-                    style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Tours</span>
+                  <input type="number" min={1} max={20} value={circuit.rounds}
+                    onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
+                    style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
                 </div>
-              )}
-              {circuits.length > 1 && (
-                <button onClick={() => removeCircuit(circuit.id)}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/tour (s)</span>
+                  <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
+                    onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
+                    style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                </div>
+                {sport === 'hyrox' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
+                    <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
+                      onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
+                      style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  </div>
+                )}
+                {circuits.length > 1 && (
+                  <button onClick={() => removeCircuit(circuit.id)}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+                )}
+              </div>
+              {/* Sélecteur de type inline */}
+              {changingTypeFor === circuit.id && (
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+                  {CIRCUIT_TYPES.map(ct => (
+                    <button key={ct.id} onClick={() => {
+                      updateCircuit(circuit.id, { type: ct.id })
+                      setChangingTypeFor(null)
+                    }} style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '5px 10px', borderRadius: 7,
+                      border: (circuit.type ?? 'series') === ct.id ? `2px solid ${accentColor}` : '1px solid var(--border)',
+                      background: (circuit.type ?? 'series') === ct.id ? `${accentColor}22` : 'var(--bg-card)',
+                      color: (circuit.type ?? 'series') === ct.id ? accentColor : 'var(--text)',
+                      fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}>
+                      <span>{ct.icon}</span> {ct.label}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -1146,12 +1174,15 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
                     </div>
                     {/* Champs */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
-                      <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
-                        <input type="number" min={1} value={e.sets}
-                          onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
-                          style={inputStyle} />
-                      </div>
+                      {/* Séries uniquement pour le type "series" — les autres utilisent les tours/rounds du circuit */}
+                      {(circuit.type ?? 'series') === 'series' && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
+                          <input type="number" min={1} value={e.sets}
+                            onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
+                            style={inputStyle} />
+                        </div>
+                      )}
                       <div>
                         <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
                         <input type="number" min={1} value={e.reps}
@@ -5630,6 +5661,31 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
       } catch {}
     })()
   }, [])
+
+  // ── Auto-save (edit mode) ─────────────────────────────────────────
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (mode !== 'edit' || !onAutoSave || !session?.id) return
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => {
+      const isStrengthSport = sport === 'gym' || sport === 'hyrox'
+      const autoBlocks = isStrengthSport && exercises.length > 0
+        ? exercises.map(e => ({
+            id: e.id, mode: 'single' as const, type: 'effort' as const,
+            durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
+            zone: e.sets, value: e.weightKg ? String(e.weightKg) : '',
+            hrAvg: e.kcal ? String(e.kcal) : '',
+            label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
+            reps: e.reps, recoveryMin: e.restSec / 60,
+            effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
+          }))
+        : blocks
+      if (autoBlocks.length === 0) return
+      onAutoSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks: autoBlocks, notes: desc || undefined })
+    }, 800)
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, exercises])
 
   const accent = SPORT_BORDER[sport]
   const isStrength = sport === 'gym' || sport === 'hyrox'

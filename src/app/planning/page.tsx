@@ -836,9 +836,10 @@ const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'ohp', name:'Overhead Press', aliases:['ohp','press barre','strict press'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
   { id:'triceps_pushdown', name:'Triceps Pushdown', aliases:['extension triceps','triceps poulie','pushdown'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
   { id:'chest_fly', name:'Chest Fly', aliases:['écarté poulie','écarté haltères','pec fly','butterfly'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'cable_crossover', name:'Cable Crossover', aliases:['poulie vis à vis','poulie vis-à-vis','cable fly','cross over poulie'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
   // PULL
   { id:'pull_up', name:'Pull Up', aliases:['traction','tractions','tractions lestées','weighted pull up'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
-  { id:'barbell_row', name:'Barbell Row', aliases:['rowing','rowing barre'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
+  { id:'barbell_row', name:'Barbell Row', aliases:['rowing','rowing barre','rowing banc'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
   { id:'gorilla_row', name:'Gorilla Row', aliases:['rowing gorilla'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:90 },
   { id:'db_row', name:'Dumbbell Row', aliases:['rowing haltère','rowing haltères','rowing 1 bras'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
   { id:'australian_pullup', name:'Australian Pull Up', aliases:['traction australienne','inverted row'], category:'pull', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
@@ -870,6 +871,7 @@ const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'calf_raise', name:'Calf Raise', aliases:['mollets debout','mollets assis','élévation mollets'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:45 },
   { id:'step_up', name:'Step Up', aliases:['montée sur box'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
   { id:'goblet_squat', name:'Goblet Squat', aliases:['squat gobelet','squat haltère'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'isometric_squat', name:'Isometric Squat', aliases:['squat isométrique','squat iso','iso squat'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:60 },
   // MIXTE
   { id:'power_snatch', name:'Power Snatch', aliases:['arraché','snatch haltères','snatch barre'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:4, defaultRestSec:120 },
   { id:'thruster', name:'Thruster', aliases:['thruster barre','thruster haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
@@ -880,6 +882,7 @@ const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'kb_swing', name:'Kettlebell Swing', aliases:['swing kettlebell','kb swing','russian swing'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:60 },
   { id:'devil_press', name:'Devil Press', aliases:['devil press haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:3, defaultRestSec:90 },
   { id:'man_maker', name:'Man Maker', aliases:['man maker haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:3, defaultRestSec:90 },
+  { id:'double_db_snatch', name:'Double Dumbbell Snatch', aliases:['double dumbell snatch','db snatch double','arraché double haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:4, defaultRestSec:90 },
   // ABDOS
   { id:'crunch', name:'Crunch', aliases:['crunchs','abdos crunch'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:20, defaultSets:3, defaultRestSec:45 },
   { id:'plank', name:'Plank', aliases:['gainage','gainage frontal'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
@@ -927,6 +930,7 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
   const [circuits, setCircuits] = useState<ExoCircuit[]>([defaultCircuit])
   const [blockCircuitMap, setBlockCircuitMap] = useState<Record<string, string>>({})
   const [addingToCircuit, setAddingToCircuit] = useState<string | null>(null)
+  const [showCircuitTypeMenu, setShowCircuitTypeMenu] = useState(false)
   const [query, setQuery] = useState('')
   const [catFilter, setCatFilter] = useState<ExoCategory | undefined>(
     sport === 'hyrox' ? 'hyrox' : undefined
@@ -950,15 +954,22 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
     return exercises.filter(e => (blockCircuitMap[e.id] ?? 'default') === circuitId)
   }
 
-  function addCircuit() {
+  function addCircuit(typeId?: string) {
     const num = circuits.length + 1
+    const ct = CIRCUIT_TYPES.find(c => c.id === typeId)
+    const name = ct
+      ? `${ct.label} ${num}`
+      : `Circuit ${num}`
+    const rounds = typeId === 'tabata' ? 8 : typeId === 'emom' ? 12 : 3
+    const restBetweenRoundsSec = typeId === 'tabata' ? 10 : typeId === 'emom' ? 0 : 90
     const newCircuit: ExoCircuit = {
       id: `circuit_${Date.now()}`,
-      name: `Circuit ${num}`,
-      rounds: 3,
-      restBetweenRoundsSec: 90,
+      name,
+      rounds,
+      restBetweenRoundsSec,
     }
     setCircuits(prev => [...prev, newCircuit])
+    setShowCircuitTypeMenu(false)
   }
 
   function removeCircuit(circuitId: string) {
@@ -1271,13 +1282,42 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
         )
       })}
 
-      {/* Bouton ajouter un circuit */}
-      <button onClick={addCircuit} style={{
-        width: '100%', padding: '10px', borderRadius: 10,
-        background: 'transparent', border: `2px dashed ${accentColor}44`,
-        color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-        marginTop: 4,
-      }}>+ Ajouter un circuit</button>
+      {/* Bouton ajouter un circuit — avec sélecteur de type */}
+      {!showCircuitTypeMenu ? (
+        <button onClick={() => setShowCircuitTypeMenu(true)} style={{
+          width: '100%', padding: '10px', borderRadius: 10,
+          background: 'transparent', border: `2px dashed ${accentColor}44`,
+          color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          marginTop: 4,
+        }}>+ Ajouter un circuit</button>
+      ) : (
+        <div style={{
+          marginTop: 4, padding: '12px 14px', borderRadius: 12,
+          border: '1px solid var(--border)', background: 'var(--bg-card2)',
+        }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>Quel type de circuit ?</p>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+            {CIRCUIT_TYPES.map(ct => (
+              <button key={ct.id} onClick={() => addCircuit(ct.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                cursor: 'pointer', textAlign: 'left' as const, width: '100%',
+              }}>
+                <span style={{ fontSize: 14, width: 20, textAlign: 'center' as const, flexShrink: 0 }}>{ct.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{ct.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{ct.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowCircuitTypeMenu(false)} style={{
+            marginTop: 8, width: '100%', padding: '7px', borderRadius: 6,
+            border: '1px solid var(--border)', background: 'transparent',
+            color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
+          }}>Annuler</button>
+        </div>
+      )}
     </div>
   )
 }

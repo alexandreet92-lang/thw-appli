@@ -1,15 +1,22 @@
 // ══════════════════════════════════════════════════════════════
 // API — /api/coach-stream
-// Approche hybride : appel Anthropic NON-streaming (await complet),
-// puis émission SSE des blocs text + tool_use d'un seul coup.
 //
-// Pourquoi non-streaming ?
-//   Le streaming des input_json_delta pour add_week (JSON volumineux)
-//   causait des interruptions de connexion. En mode non-streaming,
-//   le JSON du tool_use est garanti complet avant toute émission SSE.
+// Deux modes de fonctionnement :
+//
+// 1. SESSION PARSER (nouveau)
+//    Body : { messages, sport, mode? }
+//    Détecté si body.sport est présent (sans agentId).
+//    Appel Anthropic direct (streaming) avec le system prompt
+//    embarqué côté serveur. Le frontend envoie juste la
+//    description brute de la séance ou la demande nutrition.
+//
+// 2. CHAT COACH (existant)
+//    Body : { agentId, messages, context?, modelId?, aiRules? }
+//    Appel Anthropic NON-streaming via buildChatParams + outils.
+//    Approche non-streaming choisie pour garantir le JSON complet
+//    des tool_use avant émission SSE.
 // ══════════════════════════════════════════════════════════════
 
-// Vercel : runtime Node.js requis + maxDuration pour les réponses longues.
 export const runtime     = 'nodejs'
 export const maxDuration = 60
 
@@ -23,7 +30,75 @@ import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 
-// ── Instructions tool use — ajoutées à la fin de tous les system prompts ──
+// ── System prompts côté serveur ───────────────────────────────
+
+const SESSION_SYSTEM_PROMPT = `Tu es un coach sportif expert. Tu reçois une description de séance et tu réponds UNIQUEMENT avec un tableau JSON valide. Aucun texte, aucune explication, pas de backticks. JUSTE le JSON.
+
+FORMAT ENDURANCE : [{"mode":"single|interval","type":"warmup|effort|recovery|cooldown","label":"Nom","zone":1-5,"value":"watts ou allure","durationMin":nombre,"reps":nombre,"effortMin":nombre,"recoveryMin":nombre,"recoveryZone":1-5,"hrAvg":""}]
+FORMAT MUSCU / HYROX : {"mode":"single","type":"effort|circuit_header","label":"Nom EN ANGLAIS","zone":SÉRIES,"value":"CHARGE_KG","reps":REPS,"durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":REPOS}
+
+ZONES ENDURANCE : Z1=récup, Z2=endurance, Z3=tempo/SL1, Z4=seuil/SL2, Z5=VO2max/PMA
+INTENSITÉS : VÉLO/ELLIPTIQUE=watts, RUNNING=allure/km, NATATION=allure/100m, AVIRON=allure/500m
+
+MUSCU / HYROX :
+- zone = nombre de SÉRIES (pas une zone cardio)
+- value = charge kg SANS unité ("60" pas "60kg"). Vide "" si poids de corps
+- reps = répétitions. Si non précisé : 8-10 force, 12-15 endurance musculaire
+- recoveryMin = repos entre séries (1.5 = 90s par défaut)
+- durationMin = distance en mètres pour Sled/Farmer Carry/Run. 0 sinon
+- hrAvg = kcal pour SkiErg/Rowing/Echo Bike. Vide sinon
+- effortMin = durée en minutes si exercice au temps (45s → 0.75). 0 sinon
+- circuit_header OBLIGATOIRE avant chaque groupe d'exercices (sauf séance simple sans circuit)
+  → mode : "series"|"circuit"|"superset"|"emom"|"tabata"
+  → zone = rounds. /lap → mode "circuit". /emom durationMin=durée totale
+FR→EN OBLIGATOIRE : Développé couché→Bench Press, Traction/Pull up→Pull Up, Traction australienne→Australian Pull Up, Rowing banc→Barbell Row, Développé militaire/Push press→Push Press, Pompe/Push up→Push Up, Squat→Squat, Soulevé de terre→Deadlift, Fente→Lunge, Gainage/Plank→Plank, Dips→Dips, Curl biceps→Bicep Curl, Élévation latérale→Lateral Raise, Sled Push→Sled Push, SkiErg→SkiErg, Wall Balls→Wall Balls, Burpee Broad Jump→Burpee Broad Jump, Farmer Carry→Farmer Carry, Echo Bike/Assault Bike→Echo Bike, Rowing→Rowing, KB Swing→Kettlebell Swing
+
+RÈGLES CRITIQUES :
+1. JAMAIS moyenner les intensités — "250w et 220w" = 2 blocs SÉPARÉS, pas 1 bloc à 235w
+2. Parenthèses = structure INTERNE à décomposer bloc par bloc
+3. "/" = "puis" (séquentiel), "x3" ou "×3" = répéter 3 fois, "-" = suivi de
+4. TOUJOURS décomposer en blocs INDIVIDUELS, jamais fusionner des intensités différentes
+5. Ajouter échauffement (warmup) + retour calme (cooldown) si absents pour l'endurance
+6. Pyramide = un bloc interval par palier (montée + descente séparément)
+7. durationMin d'un interval = reps × (effortMin + recoveryMin)
+
+EXEMPLES ENDURANCE :
+"2x30' (30=5'@250w/5'@220w x3) - 10' récup @170w" →
+  interval reps:2 effortMin:30 → DÉCOMPOSÉ en : interval reps:3 effortMin:5 zone:5 value:"250w" / interval reps:3 effortMin:5 zone:4 value:"220w" / single 10' zone:2 value:"170w"
+
+"5×1000m @3:45/km R:90s" → interval reps:5 effortMin:3.75 zone:5 value:"3:45" recoveryMin:1.5 durationMin:26.25
+
+EXEMPLES MUSCU :
+"Bench @60kg + Pull up 12 reps /superset x4" →
+  [{"type":"circuit_header","mode":"superset","label":"Superset","zone":4,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
+   {"type":"effort","mode":"single","label":"Bench Press","zone":4,"reps":10,"value":"60","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
+   {"type":"effort","mode":"single","label":"Pull Up","zone":4,"reps":12,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}]`
+
+const NUTRITION_SYSTEM_PROMPT_TPL = (durationMin: number, blocks: string) =>
+  `Tu es un nutritionniste sportif expert. Génère une stratégie de ravitaillement en JSON.
+Format : [{"timeMin":0,"type":"gel|barre|boisson|solide|autre","name":"Nom","quantity":"1 gel","glucidesG":25,"proteinesG":0}]
+Règles :
+- 60-90g glucides/h si durée > 1h30. Séances < 1h : juste hydratation.
+- Respecte les fréquences EXACTES demandées (1 gel/30min ≠ 1 gel/60min).
+- Si deux aliments tombent au même moment → une entrée PAR aliment avec le MÊME timeMin.
+- Utilise les noms EXACTS des produits si l'athlète en fournit.
+- Dernier ravitaillement solide 15-20min avant la fin max.
+Réponds UNIQUEMENT avec un tableau JSON []. Aucun texte avant ou après.
+Séance : ${durationMin}min, ${blocks || 'non détaillée'}`
+
+// Contexte sport ajouté au message utilisateur
+const SPORT_CONTEXT: Record<string, string> = {
+  bike:       'Sport : Cyclisme. Intensités en WATTS.',
+  run:        'Sport : Running. Intensités en allure min:sec/km.',
+  swim:       'Sport : Natation. Intensités en allure min:sec/100m.',
+  rowing:     'Sport : Aviron. Intensités en allure min:sec/500m.',
+  gym:        'Sport : Musculation. Génère exercices avec séries/reps/charge. Noms EN ANGLAIS.',
+  hyrox:      'Sport : Hyrox. Génère les stations Hyrox + runs. Noms EN ANGLAIS.',
+  muscu:      'Sport : Musculation. Génère exercices avec séries/reps/charge. Noms EN ANGLAIS.',
+  elliptique: 'Sport : Elliptique. Intensités en WATTS.',
+}
+
+// ── Instructions tool use — ajoutées au system prompt chat ────
 
 const TOOL_INSTRUCTIONS = `
 Tu as accès à des outils pour modifier directement le plan d'entraînement de l'athlète.
@@ -63,93 +138,183 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Erreur d\'authentification' }), { status: 401 })
   }
 
-  // ── Quota message ─────────────────────────────────────────────
+  // ── Quota ─────────────────────────────────────────────────────
   const check = await enforceQuota(userId, 'message')
   if (!check.allowed) return check.response
 
-  // ── Sélection du modèle selon le tier ─────────────────────────
+  // ── Tier / modèle ─────────────────────────────────────────────
   const tier      = await getUserTier(userId)
-  const tierModel = TIER_LIMITS[tier].model          // 'hermes' | 'athena' | 'zeus'
-  const model     = MODEL_IDS[tierModel]             // Anthropic model ID
-  const maxTokens = MODEL_MAX_TOKENS[tierModel]      // 4096 ou 8192 pour Zeus
+  const tierModel = TIER_LIMITS[tier].model
+  const model     = MODEL_IDS[tierModel]
+  const maxTokens = MODEL_MAX_TOKENS[tierModel]
 
-  console.log(`[coach-stream] tier=${tier} model=${tierModel} → ${model} max_tokens=${maxTokens}`)
+  console.log(`[coach-stream] tier=${tier} model=${tierModel} → ${model}`)
 
-  let body: ChatInput & { aiRules?: { category: string; rule_text: string }[] }
-
+  let body: Record<string, unknown>
   try {
-    body = await req.json() as typeof body
+    body = await req.json() as Record<string, unknown>
   } catch {
     return new Response('Invalid JSON', { status: 400 })
   }
 
-  if (!body.messages?.length) {
+  // ══════════════════════════════════════════════════════════════
+  // MODE 1 — SESSION PARSER (sport présent, pas d'agentId)
+  // ══════════════════════════════════════════════════════════════
+  if (body.sport !== undefined && !body.agentId) {
+    const sport    = (body.sport as string) || ''
+    const mode     = (body.mode as string | undefined) || 'session'
+    const messages = body.messages as Array<{ role: string; content: string }> | undefined
+    const userMessage = messages?.[0]?.content ?? ''
+
+    if (!userMessage.trim()) {
+      return new Response(JSON.stringify({ error: 'No message provided' }), { status: 400 })
+    }
+
+    let systemPrompt: string
+    let fullMessage: string
+
+    if (mode === 'nutrition') {
+      const ctx = body.context as { duration?: number; blocks?: string } | undefined
+      systemPrompt = NUTRITION_SYSTEM_PROMPT_TPL(ctx?.duration ?? 0, ctx?.blocks ?? '')
+      fullMessage  = userMessage
+    } else {
+      systemPrompt = SESSION_SYSTEM_PROMPT
+      const sportCtx = SPORT_CONTEXT[sport] ?? ''
+      fullMessage = sportCtx
+        ? `${sportCtx}\n\nSÉANCE DEMANDÉE :\n${userMessage}`
+        : userMessage
+    }
+
+    // Appel Anthropic streaming direct
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 8000,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: fullMessage }],
+      }),
+    })
+
+    if (!anthropicRes.ok) {
+      const errorText = await anthropicRes.text()
+      console.error('[coach-stream] parser error:', anthropicRes.status, errorText)
+      return new Response(JSON.stringify({ error: `API error: ${anthropicRes.status}` }), { status: anthropicRes.status })
+    }
+
+    const encoder = new TextEncoder()
+    let inputTokens = 0, outputTokens = 0
+
+    const parserStream = new ReadableStream({
+      async start(controller) {
+        const reader  = anthropicRes.body?.getReader()
+        if (!reader) { controller.close(); return }
+        const decoder = new TextDecoder()
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            const chunk = decoder.decode(value, { stream: true })
+            for (const line of chunk.split('\n')) {
+              if (!line.startsWith('data: ')) continue
+              const data = line.slice(6)
+              if (data === '[DONE]') continue
+              try {
+                const parsed = JSON.parse(data) as Record<string, unknown>
+                if (parsed.type === 'content_block_delta') {
+                  const delta = parsed.delta as Record<string, unknown> | undefined
+                  if (typeof delta?.text === 'string') {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: delta.text })}\n\n`))
+                  }
+                } else if (parsed.type === 'message_start') {
+                  const msg = parsed.message as Record<string, unknown> | undefined
+                  const usage = msg?.usage as Record<string, unknown> | undefined
+                  inputTokens = (usage?.input_tokens as number) ?? 0
+                } else if (parsed.type === 'message_delta') {
+                  const usage = parsed.usage as Record<string, unknown> | undefined
+                  outputTokens = (usage?.output_tokens as number) ?? 0
+                }
+              } catch { /* non-JSON SSE line */ }
+            }
+          }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        } catch (e) {
+          console.error('[coach-stream] parser stream error:', e)
+        } finally {
+          controller.close()
+          void logUsage(userId, 'message', {
+            model,
+            stop_reason: 'end_turn',
+            input_tokens:  inputTokens,
+            output_tokens: outputTokens,
+          })
+        }
+      },
+    })
+
+    return new Response(parserStream, {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // MODE 2 — CHAT COACH (existant, avec outils)
+  // ══════════════════════════════════════════════════════════════
+  const chatBody = body as unknown as ChatInput & { aiRules?: { category: string; rule_text: string }[] }
+
+  if (!chatBody.messages?.length) {
     return new Response('No messages provided', { status: 400 })
   }
 
-  const { systemPrompt, anthropicMessages } = buildChatParams({
-    ...body,
-    aiRules: body.aiRules ?? [],
+  const { systemPrompt: chatSystemPrompt, anthropicMessages } = buildChatParams({
+    ...chatBody,
+    aiRules: chatBody.aiRules ?? [],
   })
   const client = getAnthropicClient()
-
-  const systemWithTools = `${systemPrompt}\n\n${TOOL_INSTRUCTIONS}`
-
-  // ── Appel Anthropic NON-streaming ─────────────────────────────
-  // On attend la réponse complète avant d'émettre quoi que ce soit.
-  // Avantages : JSON tool_use garanti complet, pas d'accumulation de deltas,
-  //             pas de keepalive, pas de problème d'index.
-  // Inconvénient : le texte n'apparaît plus progressivement (acceptable).
-  //
-  // Le modèle et les max_tokens viennent du tier de l'utilisateur :
-  //   premium → hermes (Haiku)  → 4096 tokens
-  //   pro     → athena (Sonnet) → 4096 tokens
-  //   expert  → zeus   (Sonnet) → 8192 tokens
-  const effectiveMaxTokens = maxTokens
+  const systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
 
   const response = await client.messages.create({
     model,
-    max_tokens: effectiveMaxTokens,
+    max_tokens: maxTokens,
     system: systemWithTools,
     messages: anthropicMessages,
     tools: coachTools,
     tool_choice: { type: 'auto' },
   })
 
-  console.log('[coach-stream] response received — stop_reason:', response.stop_reason,
+  console.log('[coach-stream] chat response — stop_reason:', response.stop_reason,
     '— blocks:', response.content.length,
     '— usage:', response.usage)
 
   const encoder = new TextEncoder()
-
-  // ── Émission SSE des blocs ────────────────────────────────────
-  // Format : "event: <type>\ndata: <payload>\n\n"
-  // Les valeurs data sont JSON-encodées pour éviter les \n bruts.
   const readable = new ReadableStream({
     start(controller) {
       const send = (eventType: string, data: string) => {
         controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`))
       }
-
       for (const block of response.content) {
         if (block.type === 'text') {
-          // Texte → JSON.stringify pour éviter les \n bruts dans la ligne data SSE
           send('text', JSON.stringify(block.text))
         } else if (block.type === 'tool_use') {
-          console.log('[coach-stream] emitting tool_use SSE:', block.name,
+          console.log('[coach-stream] tool_use:', block.name,
             '— input keys:', Object.keys(block.input as Record<string, unknown>))
-          send('tool_use', JSON.stringify({
-            tool_name: block.name,
-            tool_input: block.input,
-          }))
+          send('tool_use', JSON.stringify({ tool_name: block.name, tool_input: block.input }))
         }
       }
-
       controller.close()
     },
   })
 
-  // ── Log usage message (fire-and-forget) ─────────────────────
   void logUsage(userId, 'message', {
     model,
     stop_reason: response.stop_reason,

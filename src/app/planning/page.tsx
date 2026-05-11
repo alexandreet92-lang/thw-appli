@@ -5631,213 +5631,22 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     setAiError(null)
     try {
       const isStrengthSport = sport === 'gym' || sport === 'hyrox'
-      console.log('[AI-MUSCU] 1. Sport:', sport, 'isStrength:', isStrengthSport)
+      console.log('[AI] Sport:', sport, 'isStrength:', isStrengthSport)
 
-      const strengthPrompt = `Tu es un préparateur physique expert en ${SPORT_LABEL[sport]}.
-
-SÉANCE DEMANDÉE :
-${aiPrompt}
-
-⚠️ RÈGLE ABSOLUE : Réponds UNIQUEMENT avec un tableau JSON brut []. N'utilise AUCUN outil ou fonction. Ne génère que du texte brut. Aucun texte avant ou après le JSON.
-
-COMPRENDRE LE FORMAT DE L'ATHLÈTE :
-- "Bench press @52.5 kg" → Bench Press, charge 52.5kg, reps par défaut (8-10)
-- "Pull up australien 20 reps" → Australian Pull Up, 20 reps, poids de corps
-- "x3" ou "×3" → les exercices AU-DESSUS se font en 3 rounds/séries
-- Une ligne vide sépare les circuits
-- "Squat 5x5 @100kg" → 5 séries de 5 reps à 100kg
-- "Gainage 45s" → Plank, 45 secondes (effortMin=0.75)
-- "Sled Push 50m @150kg" → distance 50m (durationMin=50), charge 150kg
-
-TYPES DE CIRCUITS :
-L'athlète peut écrire ces slash commands devant un groupe d'exercices :
-- /series (ou rien) : mode par défaut — toutes les séries d'un exo, puis le suivant. mode="series"
-- /lap : enchaîner tous les exos, recommencer X rounds. mode="circuit"
-- /superset : alterner 2 exos sans repos entre eux. mode="superset"
-- /emom : 1 exo par minute pendant X minutes. mode="emom", durationMin=X
-- /tabata : 20s effort / 10s repos × 8 rounds. mode="tabata", zone=8
-
-IMPORTANT : /lap dans le texte → mode="circuit" dans le JSON (alias).
-
-Pour le circuit_header, le champ "mode" correspond au type :
-{"mode":"series","type":"circuit_header","label":"Bloc force","zone":4,...}
-{"mode":"circuit","type":"circuit_header","label":"Lap cardio","zone":3,...}
-{"mode":"superset","type":"circuit_header","label":"Superset bras","zone":4,...}
-{"mode":"emom","type":"circuit_header","label":"EMOM 12min","durationMin":12,"zone":1,...}
-{"mode":"tabata","type":"circuit_header","label":"Tabata finish","zone":8,...}
-
-RÈGLE CRITIQUE — CIRCUITS :
-Si l'athlète mentionne plusieurs circuits/blocs (séparés par une ligne vide, un numéro, ou un label), tu DOIS les séparer avec un bloc marqueur de type "circuit_header".
-Insère un circuit_header AVANT chaque groupe d'exercices.
-- label : nom du circuit ("Circuit A", "Circuit B", "Échauffement", "Core", etc.)
-- zone : nombre de ROUNDS pour ce circuit (ex: "x3" → zone=3). Si pas précisé : 3
-- mode : type de circuit ("series", "circuit", "superset", "emom", "tabata"). Par défaut "series"
-- recoveryMin : repos ENTRE LES ROUNDS (défaut 1.5 min). 0 pour EMOM/tabata
-- durationMin : durée en minutes pour EMOM uniquement
-Si la séance n'a qu'un seul bloc d'exercices, n'ajoute PAS de circuit_header.
-
-EXEMPLE — SUPERSET :
-"Bench @60kg + Pull up 12 reps /superset x4"
-→ [
-  {"type":"circuit_header","mode":"superset","label":"Superset poitrine-dos","zone":4,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Bench Press","zone":4,"reps":10,"value":"60","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
-  {"type":"effort","mode":"single","label":"Pull Up","zone":4,"reps":12,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
-]
-
-EXEMPLE — EMOM :
-"/emom 12min : pair=8 Pull Up, impair=12 KB Swing @20kg"
-→ [
-  {"type":"circuit_header","mode":"emom","label":"EMOM 12min","zone":1,"durationMin":12,"reps":0,"value":"","hrAvg":"","effortMin":0,"recoveryMin":0},
-  {"type":"effort","mode":"single","label":"Pull Up","zone":6,"reps":8,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
-  {"type":"effort","mode":"single","label":"Kettlebell Swing","zone":6,"reps":12,"value":"20","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
-]
-
-EXEMPLE — LAP (circuit) :
-"/lap
-Squat @80kg 10 reps
-Push up 15 reps
-x4"
-→ [
-  {"type":"circuit_header","mode":"circuit","label":"Lap 1","zone":4,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Squat","zone":4,"reps":10,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
-  {"type":"effort","mode":"single","label":"Push Up","zone":4,"reps":15,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
-]
-
-EXEMPLE — 2 CIRCUITS :
-"Circuit A x3 :
-Bench press @52.5kg
-Pull up australien 20 reps
-
-/lap x2 :
-Squat @80kg
-Deadlift @100kg"
-
-→ Tableau JSON :
-[
-  {"type":"circuit_header","mode":"series","label":"Circuit A","zone":3,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Bench Press","zone":3,"reps":8,"value":"52.5","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Australian Pull Up","zone":3,"reps":20,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"circuit_header","mode":"circuit","label":"Circuit 2","zone":2,"reps":0,"value":"","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Squat","zone":2,"reps":8,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0},
-  {"type":"effort","mode":"single","label":"Deadlift","zone":2,"reps":5,"value":"100","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":0}
-]
-
-EXEMPLE SANS CIRCUIT (séance simple) :
-"Bench press 4x8 @80kg
-Squat 3x10 @60kg"
-
-→ Tableau JSON :
-[
-  {"type":"effort","mode":"single","label":"Bench Press","zone":4,"reps":8,"value":"80","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5},
-  {"type":"effort","mode":"single","label":"Squat","zone":3,"reps":10,"value":"60","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
-]
-
-FORMAT PAR EXERCICE (JSON strict, guillemets doubles) :
-{"mode":"single","type":"effort","label":"Bench Press","zone":3,"reps":8,"value":"52.5","durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":1.5}
-
-CHAMPS :
-- label : nom EN ANGLAIS. Correspondances :
-  Développé couché/Bench press→"Bench Press", Traction/Pull up→"Pull Up",
-  Traction australienne/Pull up australien→"Australian Pull Up",
-  Rowing banc→"Barbell Row", Développé militaire/Push press→"Push Press",
-  Pompe/Push up→"Push Up", Squat→"Squat", Soulevé de terre→"Deadlift",
-  Fente→"Lunge", Gainage/Plank→"Plank", Dips→"Dips",
-  Curl biceps→"Bicep Curl", Élévation latérale→"Lateral Raise",
-  Sled Push→"Sled Push", SkiErg→"SkiErg", Wall Balls→"Wall Balls",
-  Burpee Broad Jump→"Burpee Broad Jump", Farmer Carry→"Farmer Carry",
-  Echo Bike/Assault Bike→"Echo Bike", Rowing→"Rowing"
-- zone : nombre de SÉRIES (1-10). "x3" → zone=3
-- reps : nombre de reps. Si non précisé : 8-10 pour force, 12-15 pour endurance musculaire
-- value : charge en kg SANS unité ("52.5"). Vide "" si poids de corps
-- durationMin : distance en mètres pour Sled Push/Farmer Carry/Run. 0 sinon
-- hrAvg : kcal pour SkiErg/Rowing/Echo Bike. Vide sinon
-- effortMin : durée en minutes si exercice au temps (45s=0.75). 0 sinon
-- recoveryMin : repos entre séries (90s=1.5). Défaut 1.5 force, 1.0 endurance musculaire`
-
-      const endurancePrompt = `Tu es un coach sportif expert. Génère des blocs d'entraînement JSON pour une séance de ${SPORT_LABEL[sport]}.
-Description : ${aiPrompt}
-
-⚠️ RÈGLE ABSOLUE : Réponds UNIQUEMENT avec du texte brut JSON. N'utilise AUCUN outil ou fonction.
-
-Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]). Format exact :
-{"mode":"single","type":"warmup","durationMin":15,"zone":2,"value":"","label":"Échauffement"}
-{"mode":"interval","type":"effort","durationMin":40,"zone":4,"value":"260w","label":"20min @260w","reps":3,"effortMin":20,"recoveryMin":10,"recoveryZone":1}
-{"mode":"single","type":"cooldown","durationMin":15,"zone":1,"value":"","label":"Retour au calme"}
-
-Champs obligatoires : mode ("single"|"interval"), type ("warmup"|"effort"|"cooldown"|"technique"), durationMin (total du bloc), zone (1-5), value (puissance/allure/vide), label
-Champs interval uniquement : reps, effortMin, recoveryMin, recoveryZone
-durationMin d'un interval = reps × (effortMin + recoveryMin)
-
-═══ RÈGLES CRITIQUES DE DÉCOMPOSITION ═══
-1. "/" signifie "puis" : "20min Z4 / 10min Z2" → 2 blocs séparés
-2. "×N" ou "xN" signifie répéter N fois : "3×10min" → reps:3, effortMin:10
-3. NE JAMAIS moyenner les intensités : "3min Z5 / 5min Z2" → 2 blocs distincts, JAMAIS 1 bloc Z3
-4. Structures imbriquées = décompose chaque niveau séparément
-5. Pyramide = un bloc par palier (montée + descente)
-6. "tempo" = zone 3-4, "seuil" = zone 4, "SV2"/"lactique" = zone 5, "endurance" = zone 2, "récup" = zone 1
-7. Allure exprimée en min:sec/km (ex: "3:45/km") → value:"3:45"
-8. Puissance exprimée en watts (ex: "280w") → value:"280w"
-9. Nage exprimée en temps/100m (ex: "1:20/100m") → value:"1:20"
-
-═══ EXEMPLES DE FORMATS COMPLEXES ═══
-
-EX 1 — Parenthèses imbriquées : "(3×[5min Z5 + 3min Z1]) + 10min Z3"
-→ bloc interval : reps:3, effortMin:5, zone:5, recoveryMin:3, recoveryZone:1, durationMin:24
-→ bloc single : durationMin:10, zone:3
-
-EX 2 — Pyramide : "1/2/3/4/3/2/1 min en Z5, récup égale Z1"
-→ 7 blocs interval séparés : reps:1,effortMin:1,recoveryMin:1 / reps:1,effortMin:2,recoveryMin:2 / ... / reps:1,effortMin:1,recoveryMin:1
-
-EX 3 — Tempo progressif : "20min à 280w→320w"
-→ 1 bloc single zone:3-4, label:"Tempo progressif 280→320w", value:"280-320w", durationMin:20
-
-EX 4 — Over/Under : "6× (3min @105% FTP + 2min @88% FTP)"
-→ 1 bloc interval : reps:6, effortMin:3, zone:5, recoveryMin:2, recoveryZone:3, durationMin:30
-  (les over/under se représentent comme un interval avec la zone dominante = effort)
-
-EX 5 — Tabata : "8× (20s effort max / 10s repos)"
-→ 1 bloc interval : reps:8, effortMin:0.33, zone:5, recoveryMin:0.17, recoveryZone:1, durationMin:4
-
-EX 6 — Fartlek : "45min avec 6 accélérations de 2min Z5 au choix"
-→ bloc single 45min zone:2, label:"Fartlek 45min"
-→ note dans label : "6×2min accélérations Z5 incluses"
-
-EX 7 — Séance natation : "400m échauff + 8×50m sprint R:20s + 4×200m @1:30/100m R:30s + 200m récup"
-→ bloc warmup : durationMin:8, label:"400m échauffement", value:""
-→ bloc interval : reps:8, effortMin:0.75, zone:5, recoveryMin:0.33, recoveryZone:1, durationMin:9, value:""
-→ bloc interval : reps:4, effortMin:3, zone:4, recoveryMin:0.5, recoveryZone:1, durationMin:14, value:"1:30"
-→ bloc cooldown : durationMin:4, label:"200m récupération", value:""
-
-EX 8 — Longue sortie vélo : "3h endurance + 2×20min au seuil"
-→ bloc single : durationMin:180, zone:2, label:"Endurance"
-→ bloc interval : reps:2, effortMin:20, zone:4, recoveryMin:10, recoveryZone:1, durationMin:60, label:"2×20min seuil"
-
-EX 9 — Course à pied spécifique : "2km échauff + 5×1000m @3:45/km R:90s trot + 2km retour calme"
-→ bloc warmup : durationMin:10, label:"2km échauffement", value:""
-→ bloc interval : reps:5, effortMin:3.75, zone:5, recoveryMin:1.5, recoveryZone:1, durationMin:26, value:"3:45", label:"5×1000m"
-→ bloc cooldown : durationMin:10, label:"2km retour au calme", value:""
-
-Ajoute toujours un échauffement (warmup) et un retour au calme (cooldown) si non précisés.`
-
-      const prompt = isStrengthSport ? strengthPrompt : endurancePrompt
-      console.log('[AI-MUSCU] 2. Prompt sent:', prompt.slice(0, 300))
-      console.log('[AI-MUSCU] 3. Fetch starting...')
-
+      // ── Le frontend envoie juste la description + le sport ──
+      // Le system prompt complet est côté serveur dans /api/coach-stream
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId: isStrengthSport ? 'sessionBuilder' : 'planning',
-          messages: [{ role: 'user', content: prompt }],
-          modelId: 'athena',
+          messages: [{ role: 'user', content: aiPrompt }],
+          sport,
         }),
       })
 
-      console.log('[AI-MUSCU] 4. Response:', res.status, res.ok)
-
       if (!res.ok) {
         const errText = await res.text()
-        throw new Error(`HTTP ${res.status}: ${errText}`)
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`)
       }
 
       const reader = res.body?.getReader()
@@ -5845,39 +5654,25 @@ Ajoute toujours un échauffement (warmup) et un retour au calme (cooldown) si no
       let raw = ''
 
       if (reader) {
-        let currentEvent = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           for (const line of chunk.split('\n')) {
-            if (line.startsWith('event: ')) {
-              currentEvent = line.slice(7).trim()
-            } else if (line.startsWith('data: ')) {
-              const payload = line.slice(6).trim()
-              if (payload === '[DONE]') continue
-              if (currentEvent === 'tool_use') {
-                console.log('[AI-MUSCU] SSE tool_use ignoré:', payload.slice(0, 150))
-                continue
-              }
-              try {
-                const d: unknown = JSON.parse(payload)
-                if (typeof d === 'string') raw += d
-                else if (d !== null && typeof d === 'object') {
-                  const obj = d as Record<string, unknown>
-                  if (typeof obj.text === 'string') raw += obj.text
-                  else if (obj.delta && typeof (obj.delta as Record<string, unknown>).text === 'string')
-                    raw += (obj.delta as Record<string, unknown>).text
-                }
-              } catch { if (payload !== '[DONE]') raw += payload }
-            }
+            if (!line.startsWith('data: ')) continue
+            const p = line.slice(6).trim()
+            if (p === '[DONE]') continue
+            try {
+              const d = JSON.parse(p) as Record<string, unknown>
+              if (typeof d.text === 'string') raw += d.text
+            } catch { if (p !== '[DONE]') raw += p }
           }
         }
       }
 
-      console.log('[AI-MUSCU] 5. Raw response:', raw.slice(0, 500))
+      console.log('[AI] Raw response:', raw.slice(0, 500))
 
-      // Extract JSON array
+      // ── Extraire le JSON ──
       let jsonStr = ''
       const arrayMatch = raw.match(/\[[\s\S]*\]/)
       if (arrayMatch) {
@@ -5894,14 +5689,13 @@ Ajoute toujours un échauffement (warmup) et un retour au calme (cooldown) si no
         }
       }
 
-      console.log('[AI-MUSCU] 6. JSON match:', !!jsonStr, jsonStr.slice(0, 100))
-
       if (!jsonStr) {
-        setAiError(`L'IA n'a pas retourné de JSON valide. Réponse : ${raw.slice(0, 200) || '(vide — probablement un appel outil ignoré)'}`)
+        setAiError(`L'IA n'a pas retourné de JSON valide. Réponse : ${raw.slice(0, 300) || '(vide)'}`)
         return
       }
 
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
+
 
       if (isStrengthSport) {
         // ── GYM / HYROX : convertir en Block[] pour BlockBuilder (support circuit_header) ──
@@ -6880,87 +6674,39 @@ Ajoute toujours un échauffement (warmup) et un retour au calme (cooldown) si no
                         ? blocks.filter(b => b.type !== 'circuit_header').map(b => `${b.label}: ${b.durationMin}min Z${b.zone} ${b.value || ''}`).join(', ')
                         : `${SPORT_LABEL[sport]} ${formatHM(dur)}`
 
-                      const athleteNutritionContext = athleteProducts.length > 0
-                        ? `\nPRODUITS DE L'ATHLÈTE (utilise ces noms et valeurs EXACTES) :\n${athleteProducts.map(p => `- ${p.name} (${p.type}) : ${p.glucidesG}g glucides, ${p.proteinesG}g protéines, quantité standard : ${p.quantity}`).join('\n')}\n`
+                      // Produits de l'athlète inclus dans le message utilisateur
+                      const productCtx = athleteProducts.length > 0
+                        ? `\nPRODUITS DISPONIBLES (utilise ces noms et valeurs EXACTES) :\n${athleteProducts.map(p => `- ${p.name} (${p.type}) : ${p.glucidesG}g glucides, ${p.proteinesG}g protéines, quantité : ${p.quantity}`).join('\n')}`
                         : ''
-                      const athleteGelName = athleteProducts.find(p => p.type === 'gel')?.name ?? 'Gel énergie'
-                      const athleteGelCarbs = athleteProducts.find(p => p.type === 'gel')?.glucidesG ?? 25
-                      const athleteBarName = athleteProducts.find(p => p.type === 'barre')?.name ?? 'Barre énergétique'
-                      const athleteBarCarbs = athleteProducts.find(p => p.type === 'barre')?.glucidesG ?? 30
-                      const athleteBarProtein = athleteProducts.find(p => p.type === 'barre')?.proteinesG ?? 3
+                      const fullNutritionMsg = `${nutritionAiPrompt}${productCtx}`
 
                       const res = await fetch('/api/coach-stream', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          messages: [{
-                            role: 'user',
-                            content: `Tu es un nutritionniste sportif expert. L'athlète prévoit cette séance :
-Sport : ${SPORT_LABEL[sport]}
-Durée : ${formatHM(dur)} (${dur} minutes)
-Blocs : ${blocksDesc}
-
-DEMANDE DE L'ATHLÈTE :
-${nutritionAiPrompt}
-${athleteNutritionContext}
-RÈGLE CRITIQUE — FRÉQUENCES :
-Quand l'athlète donne des fréquences DIFFÉRENTES pour des aliments DIFFÉRENTS, tu dois les respecter EXACTEMENT.
-
-EXEMPLE :
-"1 gel toutes les 30min, 1 barre toutes les heures" sur une séance de 3h signifie :
-- 30' : 1 gel
-- 60' : 1 gel + 1 barre (c'est à la fois un multiple de 30 ET de 60)
-- 90' : 1 gel
-- 120' : 1 gel + 1 barre
-- 150' : 1 gel
-- 180' : 1 gel + 1 barre
-
-Chaque aliment a SA PROPRE fréquence. Ne les mélange PAS.
-Si deux aliments tombent au même moment, ils ont chacun leur entrée avec le MÊME timeMin.
-
-Réponds UNIQUEMENT avec un tableau JSON []. Pas de texte.
-Chaque élément = UN aliment à UN moment précis.
-
-Format :
-[
-  {"timeMin":30,"type":"gel","name":"${athleteGelName}","quantity":"1 gel","glucidesG":${athleteGelCarbs},"proteinesG":0},
-  {"timeMin":60,"type":"gel","name":"${athleteGelName}","quantity":"1 gel","glucidesG":${athleteGelCarbs},"proteinesG":0},
-  {"timeMin":60,"type":"barre","name":"${athleteBarName}","quantity":"1 barre","glucidesG":${athleteBarCarbs},"proteinesG":${athleteBarProtein}}
-]
-
-Types : "gel" | "barre" | "boisson" | "solide" | "autre"
-
-Règles générales :
-- 60-90g glucides/h si > 1h30
-- Séances < 1h : juste hydratation
-- Dernier ravitaillement solide 15-20min avant la fin max`,
-                          }],
-                          modelId: 'athena',
+                          messages: [{ role: 'user', content: fullNutritionMsg }],
+                          sport,
+                          mode: 'nutrition',
+                          context: { duration: dur, blocks: blocksDesc },
                         }),
                       })
-                      if (!res.ok) throw new Error('Erreur')
+                      if (!res.ok) throw new Error(`Erreur ${res.status}`)
                       const reader = res.body?.getReader()
                       const decoder = new TextDecoder()
                       let raw = ''
                       if (reader) {
-                        let currentEvent = ''
                         while (true) {
                           const { done, value } = await reader.read()
                           if (done) break
                           const chunk = decoder.decode(value, { stream: true })
                           for (const line of chunk.split('\n')) {
-                            if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim() }
-                            else if (line.startsWith('data: ')) {
-                              const p = line.slice(6)
-                              if (p === '[DONE]') continue
-                              if (currentEvent === 'tool_use') continue
-                              try {
-                                const d = JSON.parse(p) as Record<string, unknown>
-                                if (typeof d === 'string') raw += d
-                                else if (typeof d.text === 'string') raw += d.text
-                                else if (d.delta && typeof (d.delta as Record<string, unknown>).text === 'string') raw += (d.delta as Record<string, unknown>).text
-                              } catch { raw += p }
-                            }
+                            if (!line.startsWith('data: ')) continue
+                            const p = line.slice(6).trim()
+                            if (p === '[DONE]') continue
+                            try {
+                              const d = JSON.parse(p) as Record<string, unknown>
+                              if (typeof d.text === 'string') raw += d.text
+                            } catch { if (p !== '[DONE]') raw += p }
                           }
                         }
                       }
@@ -6980,6 +6726,8 @@ Règles générales :
                         setNutritionItems(items)
                         setNutritionTab('manual')
                         setNutritionAiPrompt('')
+                      } else {
+                        console.error('[Nutrition IA] No JSON in response:', raw.slice(0, 300))
                       }
                     } catch (e) { console.error('[Nutrition IA]', e) }
                     finally { setNutritionAiLoading(false) }

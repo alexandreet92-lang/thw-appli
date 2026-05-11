@@ -7166,9 +7166,21 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const [mobileDayOffset,setMobileDayOffset]= useState(0)
   const [mobileView,     setMobileView]     = useState<'3days'|'today'>('3days')
   const [desktopView,    setDesktopView]    = useState<'week'|'today'>('week')
-  // Local task list (top zone)
-  const [localTasks, setLocalTasks] = useState<{id:string;text:string;done:boolean}[]>([])
-  const [newTaskText, setNewTaskText] = useState('')
+  // Sections personnalisables
+  interface UserSection { id:string; name:string; color:string; isSportDefault:boolean; sortOrder:number }
+  const DEFAULT_SECTIONS = [
+    { name:'Sport',     color:'#3b82f6', isSportDefault:true,  sortOrder:0 },
+    { name:'Travail',   color:'#8b5cf6', isSportDefault:false, sortOrder:1 },
+    { name:'Personnel', color:'#f59e0b', isSportDefault:false, sortOrder:2 },
+    { name:'Récup',     color:'#10b981', isSportDefault:false, sortOrder:3 },
+  ]
+  const [sections,         setSections]         = useState<UserSection[]>([])
+  const [showSectionEditor,setShowSectionEditor]= useState(false)
+  const [newSectionName,   setNewSectionName]   = useState('')
+  // Tâches du jour (Supabase)
+  const [dailyTasks,   setDailyTasks]   = useState<{id:string;text:string;done:boolean;sectionId:string|null}[]>([])
+  const [newTaskText,  setNewTaskText]  = useState('')
+  const [newTaskSection,setNewTaskSection]=useState<string|null>(null)
   // Live clock for hatch + now-line
   const [currentTime, setCurrentTime] = useState(()=>new Date())
   const todayIdx = getTodayIdx()
@@ -7177,6 +7189,81 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     const iv = setInterval(()=>setCurrentTime(new Date()), 60000)
     return ()=>clearInterval(iv)
   },[])
+  // Load sections + daily tasks from Supabase
+  useEffect(()=>{
+    const sb = createClient()
+    sb.auth.getUser().then(async ({ data })=>{
+      const user = data?.user
+      if (!user) return
+      const today = new Date().toISOString().slice(0,10)
+      // Sections
+      const { data: secs } = await sb.from('user_sections').select('*').eq('user_id',user.id).order('sort_order')
+      let loadedSections: UserSection[] = []
+      if (!secs || secs.length===0) {
+        for (const s of DEFAULT_SECTIONS) {
+          const { data: ins } = await sb.from('user_sections').insert({ user_id:user.id, name:s.name, color:s.color, is_sport_default:s.isSportDefault, sort_order:s.sortOrder }).select().single()
+          if (ins) loadedSections.push({ id:ins.id as string, name:ins.name as string, color:ins.color as string, isSportDefault:ins.is_sport_default as boolean, sortOrder:ins.sort_order as number })
+        }
+      } else {
+        loadedSections = (secs as {id:string;name:string;color:string;is_sport_default:boolean;sort_order:number}[]).map(s=>({ id:s.id, name:s.name, color:s.color, isSportDefault:s.is_sport_default, sortOrder:s.sort_order }))
+      }
+      setSections(loadedSections)
+      if (loadedSections[0]) setNewTaskSection(loadedSections[0].id)
+      // Daily tasks
+      const { data: dts } = await sb.from('daily_tasks').select('*').eq('user_id',user.id).eq('date',today).order('sort_order')
+      if (dts) setDailyTasks((dts as {id:string;text:string;done:boolean;section_id:string|null}[]).map(t=>({ id:t.id, text:t.text, done:t.done, sectionId:t.section_id })))
+    })
+  },[])
+
+  async function addDailyTask() {
+    if (!newTaskText.trim()) return
+    const sb = createClient()
+    const { data } = await sb.auth.getUser()
+    const user = data?.user
+    if (!user) return
+    const today = new Date().toISOString().slice(0,10)
+    const { data: ins } = await sb.from('daily_tasks').insert({ user_id:user.id, date:today, text:newTaskText.trim(), done:false, section_id:newTaskSection, sort_order:dailyTasks.length }).select().single()
+    if (ins) setDailyTasks(p=>[...p,{ id:ins.id as string, text:ins.text as string, done:false, sectionId:newTaskSection }])
+    setNewTaskText('')
+  }
+  async function toggleDailyTask(id:string) {
+    const task = dailyTasks.find(t=>t.id===id)
+    if (!task) return
+    const newDone = !task.done
+    setDailyTasks(p=>p.map(t=>t.id===id?{...t,done:newDone}:t))
+    const sb = createClient()
+    await sb.from('daily_tasks').update({ done:newDone }).eq('id',id)
+  }
+  async function deleteDailyTask(id:string) {
+    setDailyTasks(p=>p.filter(t=>t.id!==id))
+    const sb = createClient()
+    await sb.from('daily_tasks').delete().eq('id',id)
+  }
+  async function addSection() {
+    if (!newSectionName.trim()) return
+    const sb = createClient()
+    const { data } = await sb.auth.getUser()
+    const user = data?.user
+    if (!user) return
+    const { data: ins } = await sb.from('user_sections').insert({ user_id:user.id, name:newSectionName.trim(), color:'#6b7280', is_sport_default:false, sort_order:sections.length }).select().single()
+    if (ins) setSections(p=>[...p,{ id:ins.id as string, name:ins.name as string, color:ins.color as string, isSportDefault:false, sortOrder:sections.length }])
+    setNewSectionName('')
+  }
+  async function updateSectionName(id:string, name:string) {
+    setSections(p=>p.map(s=>s.id===id?{...s,name}:s))
+    const sb = createClient()
+    await sb.from('user_sections').update({ name }).eq('id',id)
+  }
+  async function updateSectionColor(id:string, color:string) {
+    setSections(p=>p.map(s=>s.id===id?{...s,color}:s))
+    const sb = createClient()
+    await sb.from('user_sections').update({ color }).eq('id',id)
+  }
+  async function deleteSection(id:string) {
+    setSections(p=>p.filter(s=>s.id!==id))
+    const sb = createClient()
+    await sb.from('user_sections').delete().eq('id',id)
+  }
   // Drag tracking for touch (week tasks)
   const touchDragRef = useRef<{id:string;fromDay:number}|null>(null)
   const touchTargetRef = useRef<number|null>(null)
@@ -7276,11 +7363,6 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   async function handleAddTask(t:Omit<WeekTask,'id'>) { await addTask(t) }
   async function handleUpdateTask(t:WeekTask) { await updateTask(t) }
   async function handleDeleteTask(id:string) { await deleteTask(id) }
-  function addLocalTask() {
-    if (!newTaskText.trim()) return
-    setLocalTasks(p=>[...p,{id:`lt_${Date.now()}`,text:newTaskText.trim(),done:false}])
-    setNewTaskText('')
-  }
 
   const mobileVisibleDays = mobileView==='today' ? [todayIdx] : [mobileDayOffset,mobileDayOffset+1,mobileDayOffset+2].filter(i=>i<7)
   const desktopVisibleDays = desktopView==='today' ? [todayIdx] : [0,1,2,3,4,5,6]
@@ -7390,8 +7472,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 {/* Past / elapsed hatch overlay */}
                 {hatchH>0&&(
                   <div style={{ position:'absolute' as const,top:0,left:0,right:0,height:hatchH,
-                    backgroundImage:`url("data:image/svg+xml,%3Csvg width='8' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='0' y1='8' x2='8' y2='0' stroke='%23888' stroke-width='0.8' opacity='0.15'/%3E%3C/svg%3E")`,
-                    pointerEvents:'none' as const,zIndex:1,opacity:0.85 }} />
+                    background:'repeating-linear-gradient(-45deg,transparent,transparent 4px,rgba(128,128,128,0.08) 4px,rgba(128,128,128,0.08) 5px)',
+                    backgroundColor:'rgba(0,0,0,0.04)',
+                    pointerEvents:'none' as const,zIndex:1 }} />
                 )}
                 {/* "Now" line — today only */}
                 {nowTop>=0&&(
@@ -7482,37 +7565,105 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* ── Tâches du jour (liste locale) ── */}
-      <div style={{ padding:'10px 14px',borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)' }}>
-        <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Tâches du jour</p>
-        {localTasks.length>0&&(
-          <div style={{ display:'flex',flexDirection:'column' as const,gap:5,marginBottom:8 }}>
-            {localTasks.map(task=>(
-              <div key={task.id} style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <button onClick={()=>setLocalTasks(p=>p.map(t=>t.id===task.id?{...t,done:!t.done}:t))}
-                  style={{ width:16,height:16,borderRadius:4,flexShrink:0,cursor:'pointer',
-                    border:task.done?'1.5px solid #22c55e':'1.5px solid var(--border)',
-                    background:task.done?'#22c55e':'transparent',
-                    display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>
-                  {task.done&&<span style={{ color:'#fff',fontSize:10,lineHeight:1 }}>✓</span>}
-                </button>
-                <span style={{ fontSize:12,color:task.done?'var(--text-dim)':'var(--text)',
-                  textDecoration:task.done?'line-through':'none',flex:1 }}>{task.text}</span>
-                <button onClick={()=>setLocalTasks(p=>p.filter(t=>t.id!==task.id))}
-                  style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:14,opacity:0.5,lineHeight:1,padding:'0 2px' }}>×</button>
-              </div>
+      {/* ── Tâches du jour ── */}
+      <div style={{ borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)',overflow:'hidden' }}>
+        {/* Header : titre + badges sections + bouton éditeur */}
+        <div style={{ padding:'10px 14px 8px',borderBottom:'1px solid var(--border)' }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+            <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:0 }}>Tâches du jour</p>
+            <button onClick={()=>setShowSectionEditor(true)}
+              style={{ fontSize:10,padding:'2px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}>
+              ⚙ Sections
+            </button>
+          </div>
+          {/* Badges sections */}
+          <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
+            {sections.map(s=>(
+              <span key={s.id} style={{ fontSize:10,padding:'2px 8px',borderRadius:20,background:`${s.color}22`,border:`1px solid ${s.color}55`,color:s.color,fontWeight:600 }}>{s.name}</span>
             ))}
           </div>
-        )}
-        <div style={{ display:'flex',gap:6 }}>
-          <input value={newTaskText} onChange={e=>setNewTaskText(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter')addLocalTask()}}
-            placeholder="Ajouter une tâche..."
-            style={{ flex:1,padding:'6px 10px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none' }}/>
-          <button onClick={addLocalTask}
-            style={{ padding:'6px 12px',borderRadius:7,border:'none',background:'#00c8e0',color:'#fff',fontSize:10,fontWeight:700,cursor:'pointer' }}>+</button>
+        </div>
+        {/* Liste des tâches */}
+        <div style={{ padding:'8px 14px' }}>
+          {dailyTasks.length>0&&(
+            <div style={{ display:'flex',flexDirection:'column' as const,gap:5,marginBottom:8 }}>
+              {dailyTasks.map(task=>{
+                const sec = sections.find(s=>s.id===task.sectionId)
+                return (
+                  <div key={task.id} style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <button onClick={()=>toggleDailyTask(task.id)}
+                      style={{ width:16,height:16,borderRadius:4,flexShrink:0,cursor:'pointer',
+                        border:task.done?`1.5px solid #22c55e`:'1.5px solid var(--border)',
+                        background:task.done?'#22c55e':'transparent',
+                        display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>
+                      {task.done&&<span style={{ color:'#fff',fontSize:10,lineHeight:1 }}>✓</span>}
+                    </button>
+                    {sec&&<span style={{ width:7,height:7,borderRadius:'50%',background:sec.color,flexShrink:0 }}/>}
+                    <span style={{ fontSize:12,color:task.done?'var(--text-dim)':'var(--text)',
+                      textDecoration:task.done?'line-through':'none',flex:1 }}>{task.text}</span>
+                    {sec&&<span style={{ fontSize:9,color:sec.color,fontWeight:600,opacity:0.7 }}>{sec.name}</span>}
+                    <button onClick={()=>deleteDailyTask(task.id)}
+                      style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:14,opacity:0.5,lineHeight:1,padding:'0 2px' }}>×</button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {/* Formulaire ajout tâche */}
+          <div style={{ display:'flex',gap:6 }}>
+            <input value={newTaskText} onChange={e=>setNewTaskText(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter')addDailyTask()}}
+              placeholder="Ajouter une tâche..."
+              style={{ flex:1,padding:'6px 10px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none' }}/>
+            {sections.length>0&&(
+              <select value={newTaskSection??''} onChange={e=>setNewTaskSection(e.target.value||null)}
+                style={{ padding:'6px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none',maxWidth:90 }}>
+                {sections.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+            <button onClick={addDailyTask}
+              style={{ padding:'6px 12px',borderRadius:7,border:'none',background:'#00c8e0',color:'#fff',fontSize:10,fontWeight:700,cursor:'pointer' }}>+</button>
+          </div>
         </div>
       </div>
+
+      {/* ── Modal éditeur de sections ── */}
+      {showSectionEditor&&(
+        <div onClick={()=>setShowSectionEditor(false)}
+          style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:400,width:'100%',maxHeight:'80vh',overflowY:'auto' as const }}>
+            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
+              <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Sections</h3>
+              <button onClick={()=>setShowSectionEditor(false)}
+                style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+            </div>
+            <div style={{ display:'flex',flexDirection:'column' as const,gap:8,marginBottom:14 }}>
+              {sections.map(s=>(
+                <div key={s.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <input type="color" value={s.color} onChange={e=>updateSectionColor(s.id,e.target.value)}
+                    style={{ width:28,height:28,border:'none',padding:0,cursor:'pointer',borderRadius:4,background:'none' }}/>
+                  <input defaultValue={s.name} onBlur={e=>updateSectionName(s.id,e.target.value)}
+                    style={{ flex:1,padding:'5px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+                  {s.isSportDefault&&<span style={{ fontSize:9,padding:'2px 6px',borderRadius:10,background:`${s.color}33`,color:s.color,fontWeight:700 }}>SPORT</span>}
+                  {!s.isSportDefault&&(
+                    <button onClick={()=>deleteSection(s.id)}
+                      style={{ padding:'4px 8px',borderRadius:7,background:'rgba(255,95,95,0.1)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:11,cursor:'pointer' }}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{ display:'flex',gap:6 }}>
+              <input value={newSectionName} onChange={e=>setNewSectionName(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter')addSection()}}
+                placeholder="Nouvelle section..."
+                style={{ flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+              <button onClick={addSection}
+                style={{ padding:'7px 14px',borderRadius:8,border:'none',background:'#00c8e0',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer' }}>Ajouter</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MOBILE — switch + nav */}
       <div style={{ display:'flex',flexDirection:'column',gap:8 }} id="mobile-week">

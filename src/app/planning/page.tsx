@@ -7162,14 +7162,21 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const { tasks, activities, intensities, addTask, updateTask, deleteTask } = usePlanning()
   const [taskModal,       setTaskModal]       = useState<{dayIndex:number;startHour:number}|null>(null)
   const [editModal,       setEditModal]       = useState<WeekTask|null>(null)
-  const [mainTaskModal,   setMainTaskModal]   = useState<{dayIndex:number}|null>(null)
   const [activityDetail,  setActivityDetail]  = useState<TrainingActivity|null>(null)
-  const [mainTaskInput,  setMainTaskInput]  = useState('')
   const [mobileDayOffset,setMobileDayOffset]= useState(0)
   const [mobileView,     setMobileView]     = useState<'3days'|'today'>('3days')
   const [desktopView,    setDesktopView]    = useState<'week'|'today'>('week')
+  // Local task list (top zone)
+  const [localTasks, setLocalTasks] = useState<{id:string;text:string;done:boolean}[]>([])
+  const [newTaskText, setNewTaskText] = useState('')
+  // Live clock for hatch + now-line
+  const [currentTime, setCurrentTime] = useState(()=>new Date())
   const todayIdx = getTodayIdx()
   const dates    = getWeekDates()
+  useEffect(()=>{
+    const iv = setInterval(()=>setCurrentTime(new Date()), 60000)
+    return ()=>clearInterval(iv)
+  },[])
   // Drag tracking for touch (week tasks)
   const touchDragRef = useRef<{id:string;fromDay:number}|null>(null)
   const touchTargetRef = useRef<number|null>(null)
@@ -7269,11 +7276,10 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   async function handleAddTask(t:Omit<WeekTask,'id'>) { await addTask(t) }
   async function handleUpdateTask(t:WeekTask) { await updateTask(t) }
   async function handleDeleteTask(id:string) { await deleteTask(id) }
-  async function handleAddMainTask(dayIndex:number) {
-    if(!mainTaskInput.trim()) return
-    await addTask({ title:mainTaskInput.trim(), type:'personal', dayIndex,
-      startHour:8, startMin:0, durationMin:30, priority:true, isMain:true })
-    setMainTaskInput(''); setMainTaskModal(null)
+  function addLocalTask() {
+    if (!newTaskText.trim()) return
+    setLocalTasks(p=>[...p,{id:`lt_${Date.now()}`,text:newTaskText.trim(),done:false}])
+    setNewTaskText('')
   }
 
   const mobileVisibleDays = mobileView==='today' ? [todayIdx] : [mobileDayOffset,mobileDayOffset+1,mobileDayOffset+2].filter(i=>i<7)
@@ -7321,37 +7327,24 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
     return (
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)' }}>
-        {/* Headers with Main Task buttons */}
+        {/* Day headers */}
         <div style={{ display:'grid',gridTemplateColumns:`44px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',background:'var(--bg-card2)' }}>
           <div/>
-          {days.map(d=>{ const load=dayLoad(d)
-            const mainTasks = getTasksForDay(d).filter(t=>t.isMain)
-            return (
+          {days.map(d=>{ const load=dayLoad(d); const isToday=d===todayIdx; return (
             <div key={d} style={{ padding:'7px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)' }}>
-              <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 1px' }}>{DAY_NAMES[d]}</p>
-              <p style={{ fontSize:13,fontWeight:700,margin:'0 0 3px',color:d===todayIdx?'#00c8e0':'var(--text)' }}>{dates[d]}</p>
-              <span style={{ padding:'1px 5px',borderRadius:20,background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize:8,fontWeight:700 }}>{load.label}</span>
-              {/* Main task badges (click to edit) */}
-              {mainTasks.map(mt=>(
-                <div key={mt.id} onClick={e=>{e.stopPropagation();setEditModal(mt)}}
-                  style={{ marginTop:3,padding:'2px 5px',borderRadius:5,background:'rgba(255,179,64,0.15)',border:'1px solid #ffb34055',cursor:'pointer' }}>
-                  <p style={{ fontSize:8,fontWeight:600,color:'#ffb340',margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>• {mt.title}</p>
-                </div>
-              ))}
+              <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 2px' }}>{DAY_NAMES[d]}</p>
+              <div style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',
+                width:isToday?28:undefined,height:isToday?28:undefined,
+                borderRadius:isToday?'50%':undefined,
+                background:isToday?'#ef4444':undefined,
+                margin:'0 auto 3px' }}>
+                <span style={{ fontSize:13,fontWeight:700,color:isToday?'#fff':'var(--text)' }}>{dates[d]}</span>
+              </div>
+              <div>
+                <span style={{ padding:'1px 5px',borderRadius:20,background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize:8,fontWeight:700 }}>{load.label}</span>
+              </div>
             </div>
           )})}
-        </div>
-        {/* Rangée de boutons "+" — un par jour */}
-        <div style={{ display:'grid',gridTemplateColumns:`44px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',background:'var(--bg-card2)' }}>
-          <div/>
-          {days.map(d=>(
-            <div key={d} style={{ borderLeft:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',padding:'4px 0' }}>
-              <button
-                onClick={e=>{e.stopPropagation();setMainTaskModal({dayIndex:d});setMainTaskInput('')}}
-                title={`Tâche principale — ${DAY_NAMES[d]}`}
-                style={{ width:22,height:22,borderRadius:'50%',background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
-            </div>
-          ))}
         </div>
 
         {/* Time body — column-based with absolute positioning for proportional height */}
@@ -7366,7 +7359,14 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
               ))}
             </div>
             {/* Day columns */}
-            {days.map(d=>(
+            {days.map(d=>{
+              const isToday = d===todayIdx
+              const isPast  = d<todayIdx
+              const nowH    = currentTime.getHours() + currentTime.getMinutes()/60
+              const totalH  = HOURS.length*CELL_H
+              const hatchH  = isPast ? totalH : isToday ? Math.max(0,Math.min(totalH,(nowH-5)*CELL_H)) : 0
+              const nowTop  = isToday ? Math.max(0,Math.min(totalH-1,(nowH-5)*CELL_H)) : -1
+              return (
               <div key={d} data-weekday={String(d)}
                 onClick={e=>{
                   const rect=(e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -7387,6 +7387,19 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 {HOURS.map((_,i)=>(
                   <div key={i} style={{ position:'absolute' as const, top:i*CELL_H, left:0, right:0, height:1, background:'var(--border)', opacity:0.25, pointerEvents:'none' as const }} />
                 ))}
+                {/* Past / elapsed hatch overlay */}
+                {hatchH>0&&(
+                  <div style={{ position:'absolute' as const,top:0,left:0,right:0,height:hatchH,
+                    backgroundImage:`url("data:image/svg+xml,%3Csvg width='8' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='0' y1='8' x2='8' y2='0' stroke='%23888' stroke-width='0.8' opacity='0.15'/%3E%3C/svg%3E")`,
+                    pointerEvents:'none' as const,zIndex:1,opacity:0.85 }} />
+                )}
+                {/* "Now" line — today only */}
+                {nowTop>=0&&(
+                  <div style={{ position:'absolute' as const,top:nowTop,left:0,right:0,zIndex:4,pointerEvents:'none' as const,display:'flex',alignItems:'center' }}>
+                    <div style={{ width:8,height:8,borderRadius:'50%',background:'#ef4444',flexShrink:0,marginLeft:-4,boxShadow:'0 0 4px rgba(239,68,68,0.55)' }}/>
+                    <div style={{ flex:1,height:1.5,background:'#ef4444',boxShadow:'0 0 4px rgba(239,68,68,0.3)' }}/>
+                  </div>
+                )}
                 {/* Activities (Strava/Training imports) — full proportional height */}
                 {activities.filter(a=>a.dayIndex===d).map(a=>{
                   const sp=normalizeSportType(a.sport)
@@ -7460,7 +7473,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                   )
                 })}
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </div>
@@ -7469,41 +7482,37 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* Controls */}
-      <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const,alignItems:'center' }}>
-        {/* Labels */}
-        <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
-          {Object.entries(TASK_CONFIG).map(([type,cfg])=>(
-            <span key={type} style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.color}44`,fontSize:9,color:cfg.color,fontWeight:600 }}>{cfg.label}</span>
-          ))}
+      {/* ── Tâches du jour (liste locale) ── */}
+      <div style={{ padding:'10px 14px',borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)' }}>
+        <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Tâches du jour</p>
+        {localTasks.length>0&&(
+          <div style={{ display:'flex',flexDirection:'column' as const,gap:5,marginBottom:8 }}>
+            {localTasks.map(task=>(
+              <div key={task.id} style={{ display:'flex',alignItems:'center',gap:8 }}>
+                <button onClick={()=>setLocalTasks(p=>p.map(t=>t.id===task.id?{...t,done:!t.done}:t))}
+                  style={{ width:16,height:16,borderRadius:4,flexShrink:0,cursor:'pointer',
+                    border:task.done?'1.5px solid #22c55e':'1.5px solid var(--border)',
+                    background:task.done?'#22c55e':'transparent',
+                    display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>
+                  {task.done&&<span style={{ color:'#fff',fontSize:10,lineHeight:1 }}>✓</span>}
+                </button>
+                <span style={{ fontSize:12,color:task.done?'var(--text-dim)':'var(--text)',
+                  textDecoration:task.done?'line-through':'none',flex:1 }}>{task.text}</span>
+                <button onClick={()=>setLocalTasks(p=>p.filter(t=>t.id!==task.id))}
+                  style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:14,opacity:0.5,lineHeight:1,padding:'0 2px' }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display:'flex',gap:6 }}>
+          <input value={newTaskText} onChange={e=>setNewTaskText(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter')addLocalTask()}}
+            placeholder="Ajouter une tâche..."
+            style={{ flex:1,padding:'6px 10px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none' }}/>
+          <button onClick={addLocalTask}
+            style={{ padding:'6px 12px',borderRadius:7,border:'none',background:'#00c8e0',color:'#fff',fontSize:10,fontWeight:700,cursor:'pointer' }}>+</button>
         </div>
       </div>
-
-      {/* ── Tâches importantes du jour + bouton + ── */}
-      {(() => {
-        const todayMainTasks = tasks.filter(t=>t.isMain&&t.dayIndex===todayIdx)
-        return (
-          <div style={{ display:'flex',alignItems:'center',gap:10,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:'10px 14px',minHeight:46 }}>
-            {todayMainTasks.length>0
-              ? <>
-                  <span style={{ fontSize:11,color:'#ffb340',fontWeight:700,whiteSpace:'nowrap' as const }}>• Focus du jour</span>
-                  <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6,flex:1 }}>
-                    {todayMainTasks.map(t=>(
-                      <span key={t.id} onClick={()=>setEditModal(t)}
-                        style={{ padding:'4px 12px',borderRadius:20,background:'rgba(255,179,64,0.15)',border:'1px solid #ffb34066',color:'#ffb340',fontSize:11,fontWeight:700,cursor:'pointer' }}>
-                        {t.title}
-                      </span>
-                    ))}
-                  </div>
-                </>
-              : <span style={{ fontSize:12,color:'var(--text-dim)',flex:1 }}>Pas de tâche principale aujourd'hui</span>
-            }
-            <button onClick={()=>{setMainTaskModal({dayIndex:todayIdx});setMainTaskInput('')}}
-              title="Ajouter une tâche principale"
-              style={{ width:30,height:30,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1,flexShrink:0 }}>+</button>
-          </div>
-        )
-      })()}
 
       {/* MOBILE — switch + nav */}
       <div style={{ display:'flex',flexDirection:'column',gap:8 }} id="mobile-week">
@@ -7545,28 +7554,6 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
       {taskModal && <TaskModal dayIndex={taskModal.dayIndex} startHour={taskModal.startHour} onClose={()=>setTaskModal(null)} onSave={handleAddTask}/>}
       {editModal && <TaskEditModal task={editModal} onClose={()=>setEditModal(null)} onSave={handleUpdateTask} onDelete={handleDeleteTask}/>}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
-
-      {/* Main Task Modal */}
-      {mainTaskModal&&<div onClick={()=>setMainTaskModal(null)} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-        <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:16,border:'1px solid #ffb34066',padding:22,maxWidth:380,width:'100%',boxShadow:'0 0 0 1px #ffb34033' }}>
-          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:14 }}>
-            <span style={{ fontSize:18,color:'#ffb340',fontWeight:900 }}>•</span>
-            <div>
-              <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color:'#ffb340' }}>Main Task — {DAY_NAMES[mainTaskModal.dayIndex]} {dates[mainTaskModal.dayIndex]}</h3>
-              <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>Focus principal de la journée</p>
-            </div>
-          </div>
-          <input value={mainTaskInput} onChange={e=>setMainTaskInput(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter')handleAddMainTask(mainTaskModal.dayIndex)}}
-            placeholder="Ex: Séance longue, Réunion importante, Récup active…"
-            autoFocus
-            style={{ width:'100%',padding:'10px 12px',borderRadius:9,border:'1px solid #ffb34066',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',marginBottom:12 }}/>
-          <div style={{ display:'flex',gap:8 }}>
-            <button onClick={()=>setMainTaskModal(null)} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
-            <button onClick={()=>handleAddMainTask(mainTaskModal.dayIndex)} style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#ffb340,#f97316)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>Ajouter</button>
-          </div>
-        </div>
-      </div>}
     </div>
   )
 }

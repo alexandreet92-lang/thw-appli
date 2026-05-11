@@ -108,6 +108,8 @@ interface TrainingActivity {
 interface Block {
   id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
   reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number
+  // Terrain planning — km sur le parcours (overlay ElevationChart)
+  _startKm?: number; _endKm?: number
 }
 interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
@@ -145,11 +147,17 @@ interface Race {
 // ── Helpers ───────────────────────────────────────
 function uid():string { return `${Date.now()}_${Math.random().toString(36).slice(2)}` }
 function hMinToMin(h:number,m:number):number { return h*60+m }
-function minToHMin(total:number):{ h:number; m:number } { return { h:Math.floor(total/60), m:total%60 } }
+function minToHMin(total:number):{ h:number; m:number } { const r=Math.round(total); return { h:Math.floor(r/60), m:r%60 } }
 function formatHM(totalMin:number):string {
-  const h=Math.floor(totalMin/60), m=totalMin%60
+  const h=Math.floor(totalMin/60), m=Math.round(totalMin%60)
   if(h===0) return `${m}min`
   return m===0 ? `${h}h` : `${h}h${String(m).padStart(2,'0')}`
+}
+/** Affiche des minutes décimales en format min:sec — ex: 6.4 → "6:24" */
+function fmtDuration(min: number): string {
+  const m = Math.floor(min)
+  const s = Math.round((min % 1) * 60)
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 // Keep formatDur as alias for backward compat in display
 function formatDur(min:number):string { return formatHM(min) }
@@ -608,7 +616,7 @@ function usePlanning(weekStartParam?:string) {
     }
   }
 
-  async function updateSession(id:string, upd:Partial<Session>) {
+  function buildSessionPatch(upd:Partial<Session>): Record<string,unknown> {
     const patch: Record<string,unknown> = {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
@@ -616,13 +624,23 @@ function usePlanning(weekStartParam?:string) {
       validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed },
       updated_at:new Date().toISOString(),
     }
-    // Persiste le sport si fourni (édition inline modal)
     if (upd.sport) patch.sport = upd.sport
     if (upd.parcoursData !== undefined) patch.parcours_data = upd.parcoursData ?? null
     if (upd.nutritionItems !== undefined) patch.nutrition_data = upd.nutritionItems ?? null
-    await supabase.from('planned_sessions').update(patch).eq('id',id)
+    return patch
+  }
+
+  async function updateSession(id:string, upd:Partial<Session>) {
+    await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     window.dispatchEvent(new Event('thw:sessions-changed'))
+  }
+
+  // Silent variant — persiste sans déclencher load() ni fermer les modales
+  async function updateSessionSilent(id:string, upd:Partial<Session>) {
+    await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
+    setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
+    // Pas de thw:sessions-changed → load() ne se déclenche pas → les modales restent ouvertes
   }
 
   async function deleteSession(id:string) {
@@ -700,7 +718,7 @@ function usePlanning(weekStartParam?:string) {
   }
 
   return { sessions, tasks, races, intensities, activities, loading, weekStart,
-    addSession, updateSession, deleteSession, moveSession,
+    addSession, updateSession, updateSessionSilent, deleteSession, moveSession,
     addTask, updateTask, deleteTask,
     addRace, updateRace, deleteRace, setDayIntensity, reload:load }
 }
@@ -792,6 +810,7 @@ interface ExerciseItem {
 interface ExoCircuit {
   id: string
   name: string
+  type: string          // 'series' | 'lap' | 'superset' | 'emom' | 'tabata'
   rounds: number
   restBetweenRoundsSec: number
   targetTimeSec?: number
@@ -828,9 +847,10 @@ const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'ohp', name:'Overhead Press', aliases:['ohp','press barre','strict press'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
   { id:'triceps_pushdown', name:'Triceps Pushdown', aliases:['extension triceps','triceps poulie','pushdown'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
   { id:'chest_fly', name:'Chest Fly', aliases:['écarté poulie','écarté haltères','pec fly','butterfly'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'cable_crossover', name:'Cable Crossover', aliases:['poulie vis à vis','poulie vis-à-vis','cable fly','cross over poulie'], category:'push', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
   // PULL
   { id:'pull_up', name:'Pull Up', aliases:['traction','tractions','tractions lestées','weighted pull up'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:120 },
-  { id:'barbell_row', name:'Barbell Row', aliases:['rowing','rowing barre'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
+  { id:'barbell_row', name:'Barbell Row', aliases:['rowing','rowing barre','rowing banc'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
   { id:'gorilla_row', name:'Gorilla Row', aliases:['rowing gorilla'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:90 },
   { id:'db_row', name:'Dumbbell Row', aliases:['rowing haltère','rowing haltères','rowing 1 bras'], category:'pull', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
   { id:'australian_pullup', name:'Australian Pull Up', aliases:['traction australienne','inverted row'], category:'pull', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
@@ -862,6 +882,7 @@ const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'calf_raise', name:'Calf Raise', aliases:['mollets debout','mollets assis','élévation mollets'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:45 },
   { id:'step_up', name:'Step Up', aliases:['montée sur box'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:60 },
   { id:'goblet_squat', name:'Goblet Squat', aliases:['squat gobelet','squat haltère'], category:'legs', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:12, defaultSets:3, defaultRestSec:60 },
+  { id:'isometric_squat', name:'Isometric Squat', aliases:['squat isométrique','squat iso','iso squat'], category:'legs', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:60 },
   // MIXTE
   { id:'power_snatch', name:'Power Snatch', aliases:['arraché','snatch haltères','snatch barre'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:5, defaultSets:4, defaultRestSec:120 },
   { id:'thruster', name:'Thruster', aliases:['thruster barre','thruster haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:4, defaultRestSec:90 },
@@ -872,6 +893,7 @@ const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'kb_swing', name:'Kettlebell Swing', aliases:['swing kettlebell','kb swing','russian swing'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:60 },
   { id:'devil_press', name:'Devil Press', aliases:['devil press haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:8, defaultSets:3, defaultRestSec:90 },
   { id:'man_maker', name:'Man Maker', aliases:['man maker haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:3, defaultRestSec:90 },
+  { id:'double_db_snatch', name:'Double Dumbbell Snatch', aliases:['double dumbell snatch','db snatch double','arraché double haltères'], category:'mixte', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:6, defaultSets:4, defaultRestSec:90 },
   // ABDOS
   { id:'crunch', name:'Crunch', aliases:['crunchs','abdos crunch'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:20, defaultSets:3, defaultRestSec:45 },
   { id:'plank', name:'Plank', aliases:['gainage','gainage frontal'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
@@ -910,15 +932,24 @@ function searchExercises(query: string, category?: ExoCategory): ExoDefinition[]
 // ════════════════════════════════════════════════
 // EXERCISE LIST BUILDER — Gym & Hyrox (circuit-based)
 // ════════════════════════════════════════════════
-function ExerciseListBuilder({ sport, exercises, onChange }: {
+function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
   sport: SportType
   exercises: ExerciseItem[]
   onChange: (e: ExerciseItem[]) => void
+  onCircuitsChange?: (circuits: ExoCircuit[], map: Record<string, string>) => void
 }) {
-  const defaultCircuit: ExoCircuit = { id: 'default', name: 'Circuit 1', rounds: 3, restBetweenRoundsSec: 90 }
+  const defaultCircuit: ExoCircuit = { id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }
   const [circuits, setCircuits] = useState<ExoCircuit[]>([defaultCircuit])
   const [blockCircuitMap, setBlockCircuitMap] = useState<Record<string, string>>({})
+
+  // Expose circuits + map dès qu'ils changent (pour SessionExecute et la sauvegarde)
+  useEffect(() => {
+    onCircuitsChange?.(circuits, blockCircuitMap)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [circuits, blockCircuitMap])
   const [addingToCircuit, setAddingToCircuit] = useState<string | null>(null)
+  const [showCircuitTypeMenu, setShowCircuitTypeMenu] = useState(false)
+  const [changingTypeFor, setChangingTypeFor] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [catFilter, setCatFilter] = useState<ExoCategory | undefined>(
     sport === 'hyrox' ? 'hyrox' : undefined
@@ -942,15 +973,16 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
     return exercises.filter(e => (blockCircuitMap[e.id] ?? 'default') === circuitId)
   }
 
-  function addCircuit() {
+  function addCircuit(typeId?: string) {
     const num = circuits.length + 1
-    const newCircuit: ExoCircuit = {
-      id: `circuit_${Date.now()}`,
-      name: `Circuit ${num}`,
-      rounds: 3,
-      restBetweenRoundsSec: 90,
-    }
+    const ct = CIRCUIT_TYPES.find(c => c.id === typeId)
+    const type = typeId ?? 'series'
+    const name = ct ? `${ct.label} ${num}` : `Séries ${num}`
+    const rounds = type === 'tabata' ? 8 : type === 'emom' ? 12 : 3
+    const restBetweenRoundsSec = type === 'tabata' ? 10 : type === 'emom' ? 0 : 90
+    const newCircuit: ExoCircuit = { id: `circuit_${Date.now()}`, name, type, rounds, restBetweenRoundsSec }
     setCircuits(prev => [...prev, newCircuit])
+    setShowCircuitTypeMenu(false)
   }
 
   function removeCircuit(circuitId: string) {
@@ -1059,39 +1091,75 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
             overflow: 'hidden',
           }}>
             {/* En-tête circuit */}
-            <div style={{
-              padding: '10px 14px', background: `${accentColor}12`,
-              borderBottom: `1px solid ${accentColor}22`,
-              display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 8,
-            }}>
-              <input
-                value={circuit.name}
-                onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
-                style={{ flex: '1 1 100px', minWidth: 80, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Rounds</span>
-                <input type="number" min={1} max={20} value={circuit.rounds}
-                  onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
-                  style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+            <div style={{ padding: '10px 14px', background: `${accentColor}12`, borderBottom: `1px solid ${accentColor}22` }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 8 }}>
+                {/* Badge type — cliquable pour changer */}
+                <button
+                  onClick={() => setChangingTypeFor(changingTypeFor === circuit.id ? null : circuit.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '3px 8px', borderRadius: 6, border: `1px solid ${accentColor}55`,
+                    background: `${accentColor}22`, color: accentColor,
+                    fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.icon ?? '🔁'}{' '}
+                  {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.label ?? 'Séries'}
+                  <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
+                </button>
+                <input
+                  value={circuit.name}
+                  onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
+                  style={{ flex: '1 1 80px', minWidth: 70, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
+                />
+                {(circuit.type ?? 'series') !== 'series' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Tours</span>
+                    <input type="number" min={1} max={20} value={circuit.rounds}
+                      onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
+                      style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  </div>
+                )}
+                {(circuit.type ?? 'series') !== 'series' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/tour (s)</span>
+                    <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
+                      onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
+                      style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  </div>
+                )}
+                {sport === 'hyrox' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
+                    <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
+                      onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
+                      style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                  </div>
+                )}
+                {circuits.length > 1 && (
+                  <button onClick={() => removeCircuit(circuit.id)}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/round (s)</span>
-                <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
-                  onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
-                  style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
-              </div>
-              {sport === 'hyrox' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
-                  <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
-                    onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
-                    style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+              {/* Sélecteur de type inline */}
+              {changingTypeFor === circuit.id && (
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+                  {CIRCUIT_TYPES.map(ct => (
+                    <button key={ct.id} onClick={() => {
+                      updateCircuit(circuit.id, { type: ct.id })
+                      setChangingTypeFor(null)
+                    }} style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '5px 10px', borderRadius: 7,
+                      border: (circuit.type ?? 'series') === ct.id ? `2px solid ${accentColor}` : '1px solid var(--border)',
+                      background: (circuit.type ?? 'series') === ct.id ? `${accentColor}22` : 'var(--bg-card)',
+                      color: (circuit.type ?? 'series') === ct.id ? accentColor : 'var(--text)',
+                      fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}>
+                      <span>{ct.icon}</span> {ct.label}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {circuits.length > 1 && (
-                <button onClick={() => removeCircuit(circuit.id)}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
               )}
             </div>
 
@@ -1127,12 +1195,15 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
                     </div>
                     {/* Champs */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
-                      <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
-                        <input type="number" min={1} value={e.sets}
-                          onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
-                          style={inputStyle} />
-                      </div>
+                      {/* Séries uniquement pour le type "series" — les autres utilisent les tours/rounds du circuit */}
+                      {(circuit.type ?? 'series') === 'series' && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
+                          <input type="number" min={1} value={e.sets}
+                            onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
+                            style={inputStyle} />
+                        </div>
+                      )}
                       <div>
                         <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
                         <input type="number" min={1} value={e.reps}
@@ -1263,13 +1334,42 @@ function ExerciseListBuilder({ sport, exercises, onChange }: {
         )
       })}
 
-      {/* Bouton ajouter un circuit */}
-      <button onClick={addCircuit} style={{
-        width: '100%', padding: '10px', borderRadius: 10,
-        background: 'transparent', border: `2px dashed ${accentColor}44`,
-        color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-        marginTop: 4,
-      }}>+ Ajouter un circuit</button>
+      {/* Bouton ajouter un circuit — avec sélecteur de type */}
+      {!showCircuitTypeMenu ? (
+        <button onClick={() => setShowCircuitTypeMenu(true)} style={{
+          width: '100%', padding: '10px', borderRadius: 10,
+          background: 'transparent', border: `2px dashed ${accentColor}44`,
+          color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          marginTop: 4,
+        }}>+ Ajouter un circuit</button>
+      ) : (
+        <div style={{
+          marginTop: 4, padding: '12px 14px', borderRadius: 12,
+          border: '1px solid var(--border)', background: 'var(--bg-card2)',
+        }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>Quel type de circuit ?</p>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+            {CIRCUIT_TYPES.map(ct => (
+              <button key={ct.id} onClick={() => addCircuit(ct.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                cursor: 'pointer', textAlign: 'left' as const, width: '100%',
+              }}>
+                <span style={{ fontSize: 14, width: 20, textAlign: 'center' as const, flexShrink: 0 }}>{ct.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{ct.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{ct.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowCircuitTypeMenu(false)} style={{
+            marginTop: 8, width: '100%', padding: '7px', borderRadius: 6,
+            border: '1px solid var(--border)', background: 'transparent',
+            color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
+          }}>Annuler</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1296,28 +1396,33 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
           const noRest    = isEmom || isTabata
           return (
             <div key={b.id} style={{ marginTop: i > 0 ? 20 : 0, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-              {/* Ligne 1 : point + nom + quantité + repos + ×  */}
+              {/* Ligne 1 : point + type badge + nom + quantité + repos + ×  */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+                <span style={{ fontSize: 9, fontWeight: 700, color: accent, background: `${accent}18`, padding: '2px 7px', borderRadius: 5, textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                  {CIRCUIT_TYPES.find(c => c.id === circuitType)?.label ?? 'Séries'}
+                </span>
                 <input value={b.label} onChange={e => {
                   const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
                 }} style={{
                   flex: 1, background: 'none', border: 'none', outline: 'none',
                   fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif', minWidth: 0,
                 }} />
-                {/* Quantité : rounds (ou minutes pour EMOM) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                  <input type="number" min={1} max={60}
-                    value={isEmom ? (b.durationMin || 12) : (b.zone ?? (isTabata ? 8 : 3))}
-                    onChange={e => {
-                      const upd = [...blocks]
-                      if (isEmom) upd[i] = { ...b, durationMin: parseInt(e.target.value) || 12 }
-                      else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
-                      onChange(upd)
-                    }}
-                    style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : 'rounds'}</span>
-                </div>
+                {/* Quantité : rounds ou minutes (uniquement pour les circuits non-series) */}
+                {circuitType !== 'series' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <input type="number" min={1} max={60}
+                      value={isEmom ? (b.durationMin || 12) : (b.zone ?? (isTabata ? 8 : 3))}
+                      onChange={e => {
+                        const upd = [...blocks]
+                        if (isEmom) upd[i] = { ...b, durationMin: parseInt(e.target.value) || 12 }
+                        else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
+                        onChange(upd)
+                      }}
+                      style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : 'tours'}</span>
+                  </div>
+                )}
                 {/* Repos (sauf EMOM/tabata) */}
                 {!noRest && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
@@ -1362,6 +1467,10 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
         // ── Flèche de chaîne (repos ≤ 30s avec l'exo précédent) ──
         const prevBlock = i > 0 ? blocks[i - 1] : null
         const isChained = !!(prevBlock && prevBlock.type !== 'circuit_header' && (prevBlock.recoveryMin ?? 0) * 60 <= 30)
+        // Type du circuit parent (pour masquer "Séries" en mode lap/superset/etc.)
+        const parentHeader = [...blocks].slice(0, i).reverse().find(x => x.type === 'circuit_header')
+        const parentCircuitType: CircuitType = (parentHeader && (['series','circuit','superset','emom','tabata'].includes(parentHeader.mode)) ? parentHeader.mode : 'series') as CircuitType
+        const isSeries = parentCircuitType === 'series'
 
         return (
           <div key={b.id}>
@@ -1407,15 +1516,17 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
 
               {/* Ligne 2 : séries × reps | charge | repos */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, alignItems: 'center' }}>
-                {/* Séries */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Séries</span>
-                  <input type="number" min={1} max={20} value={b.zone ?? 3}
-                    onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
-                    style={{ width: 40, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
-                </div>
+                {/* Séries — uniquement pour circuit de type "series" */}
+                {isSeries && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Séries</span>
+                    <input type="number" min={1} max={20} value={b.zone ?? 3}
+                      onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
+                      style={{ width: 40, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                  </div>
+                )}
 
-                <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>×</span>
+                {isSeries && <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>×</span>}
 
                 {/* Reps */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1703,8 +1814,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory }: {
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, color: 'var(--text-dim)' }}>
             <span>Durée : <strong style={{ fontFamily: 'DM Mono, monospace' }}>
               {hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin
-                ? `${Math.round(hoveredBar.block.effortMin * 10) / 10}min`
-                : `${hoveredBar.block.durationMin}min`}
+                ? fmtDuration(hoveredBar.block.effortMin)
+                : fmtDuration(hoveredBar.block.durationMin)}
             </strong></span>
             <span>Zone : <strong style={{ color: ZONE_COLORS[Math.min(4, hoveredBar.block.zone - 1)] }}>Z{hoveredBar.block.zone}</strong></span>
             {hoveredBar.block.value && (
@@ -3101,7 +3212,7 @@ function TrainingTab() {
   }, []) // Runs once on client mount — window.location is always correct here
 
   const currentWeekStart = getWeekStartFromOffset(weekOffset)
-  const { sessions, races, intensities, activities, loading, addSession, updateSession, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
+  const { sessions, races, intensities, activities, loading, addSession, updateSession, updateSessionSilent, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
   const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0] ?? null
   const [view, setView] = useState<TrainingView>('vertical')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string}|null>(null)
@@ -3298,8 +3409,8 @@ function TrainingTab() {
     setDetailModal(null)
   }
   async function handleAutoSaveSession(s:Session) {
-    await updateSession(s.id, s)
-    // do NOT close modal — inline auto-save
+    // Silent : pas de thw:sessions-changed → load() ne se déclenche pas → modale reste ouverte
+    await updateSessionSilent(s.id, s)
   }
   async function handleValidate(s:Session) {
     await updateSession(s.id, { ...s, status:'done' })
@@ -3534,7 +3645,8 @@ function TrainingTab() {
     )
   }
 
-  if (loading) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
+  // Ne pas masquer les modales pendant un rechargement (ex: auto-save silencieux)
+  if (loading && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
@@ -4128,15 +4240,101 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
   })
 }
 
+// ── Terrain analysis ──────────────────────────────
+interface TerrainSegment {
+  startKm: number
+  endKm: number
+  startEle: number
+  endEle: number
+  distanceKm: number
+  avgGradient: number
+  type: 'climb' | 'descent' | 'flat'
+  estimatedMinutes: number
+}
+
+function estimateTimeOnSegment(distKm: number, gradientPct: number, watts: number, riderKg: number, bikeKg: number): number {
+  const totalMass = riderKg + bikeKg
+  const gradient  = gradientPct / 100
+  const Crr       = 0.004
+  const g         = 9.81
+  // Simplified: neglect aero on climbs/descents (gravity + rolling dominate)
+  const vApprox   = watts / (totalMass * g * (Math.abs(gradient) + Crr))
+  // Clamp between 0.5 m/s (1.8 km/h) and 17 m/s (61 km/h)
+  const vClamped  = Math.max(0.5, Math.min(17, vApprox))
+  const timeMin   = (distKm * 1000 / vClamped) / 60
+  console.log('[TIME]', { distKm, gradientPct, watts, riderKg, bikeKg, speedKmh: +(vClamped * 3.6).toFixed(1), timeMin: +timeMin.toFixed(1) })
+  return timeMin
+}
+
+function analyzeTerrainSegments(
+  profile: Array<{ distKm: number; ele: number }>,
+  ftp: number,
+  riderWeight: number,
+  bikeWeight: number,
+): TerrainSegment[] {
+  if (profile.length < 2) return []
+  type TType = 'climb' | 'descent' | 'flat'
+  function getType(g: number): TType { return g > 2 ? 'climb' : g < -2 ? 'descent' : 'flat' }
+
+  const gradients: Array<{ distKm: number; gradient: number }> = []
+  for (let i = 1; i < profile.length; i++) {
+    const dDist = (profile[i].distKm - profile[i - 1].distKm) * 1000
+    if (dDist <= 0) continue
+    gradients.push({ distKm: profile[i].distKm, gradient: ((profile[i].ele - profile[i - 1].ele) / dDist) * 100 })
+  }
+  if (gradients.length === 0) return []
+
+  const segments: TerrainSegment[] = []
+  let currentType = getType(gradients[0].gradient)
+  let segStartIdx = 0
+  const watts = ftp * 0.85
+
+  const pushSeg = (fromIdx: number, toIdx: number, type: TType) => {
+    const startKm = fromIdx === 0 ? profile[0].distKm : gradients[fromIdx].distKm
+    const endKm   = gradients[Math.min(toIdx, gradients.length - 1)].distKm
+    if (endKm - startKm < 0.3) return
+    const startEle = profile.find(p => p.distKm >= startKm)?.ele ?? 0
+    const endEle   = profile.find(p => p.distKm >= endKm)?.ele   ?? startEle
+    const distKm   = endKm - startKm
+    const avgGrad  = distKm > 0 ? ((endEle - startEle) / (distKm * 1000)) * 100 : 0
+    segments.push({
+      startKm:         Math.round(startKm * 10) / 10,
+      endKm:           Math.round(endKm   * 10) / 10,
+      startEle:        Math.round(startEle),
+      endEle:          Math.round(endEle),
+      distanceKm:      Math.round(distKm  * 10) / 10,
+      avgGradient:     Math.round(avgGrad * 10) / 10,
+      type,
+      estimatedMinutes: Math.round(estimateTimeOnSegment(distKm, avgGrad, watts, riderWeight, bikeWeight) * 10) / 10,
+    })
+  }
+
+  for (let i = 1; i < gradients.length; i++) {
+    const thisType = getType(gradients[i].gradient)
+    if (thisType !== currentType) {
+      pushSeg(segStartIdx, i - 1, currentType)
+      currentType = thisType
+      segStartIdx = i
+    }
+  }
+  pushSeg(segStartIdx, gradients.length - 1, currentType)
+  return segments
+}
+
 // ── ElevationChart ────────────────────────────────
-function ElevationChart({ profile, totalKm, accent, onHover }: {
+type TerrainBlockOverlay = { label: string; startKm: number; endKm: number; zone: number; value: string; blockIdx: number }
+
+function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag }: {
   profile: Array<{ distKm: number; ele: number }>
   totalKm: number
   accent: string
   onHover?: (distKm: number | null) => void
+  terrainBlocks?: TerrainBlockOverlay[]
+  onBlockEdgeDrag?: (blockIdx: number, edge: 'start' | 'end', newKm: number) => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
+  const [dragging, setDragging] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
 
   if (profile.length < 2) return null
 
@@ -4151,8 +4349,7 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
   const svgPoints = profile.map(p => ({
     x: PL + (p.distKm / totalKm) * pW,
     y: PT + pH - ((p.ele - minEle) / eleRange) * pH,
-    distKm: p.distKm,
-    ele: p.ele,
+    distKm: p.distKm, ele: p.ele,
   }))
   const pathD = svgPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
   const fillD = `${pathD} L${svgPoints[svgPoints.length - 1].x.toFixed(1)},${PT + pH} L${PL},${PT + pH} Z`
@@ -4160,7 +4357,6 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
   const yStep = eleRange > 500 ? 200 : eleRange > 200 ? 100 : 50
   const yTicks: number[] = []
   for (let e = Math.ceil(minEle / yStep) * yStep; e <= maxEle; e += yStep) yTicks.push(e)
-
   const xStep = totalKm > 150 ? 20 : totalKm > 80 ? 10 : totalKm > 30 ? 5 : totalKm > 10 ? 2 : 1
   const xTicks: number[] = []
   for (let km = 0; km <= totalKm; km += xStep) xTicks.push(Math.round(km * 10) / 10)
@@ -4174,22 +4370,39 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
     return Math.round(((p2.ele - p1.ele) / dDist) * 1000) / 10
   }
 
+  function svgXToKm(clientX: number): number {
+    const svg = svgRef.current
+    if (!svg) return 0
+    const rect = svg.getBoundingClientRect()
+    const svgX = ((clientX - rect.left) / rect.width) * W
+    return Math.max(0, Math.min(totalKm, ((svgX - PL) / pW) * totalKm))
+  }
+
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (dragging && onBlockEdgeDrag) {
+      const km = Math.round(svgXToKm(e.clientX) * 10) / 10
+      onBlockEdgeDrag(dragging.blockIdx, dragging.edge, km)
+      return
+    }
     const svg = svgRef.current
     if (!svg) return
     const rect = svg.getBoundingClientRect()
     const svgX = ((e.clientX - rect.left) / rect.width) * W
     const distKm = Math.max(0, Math.min(totalKm, ((svgX - PL) / pW) * totalKm))
-    let closest = profile[0]
-    let closestD = Infinity
-    for (const p of profile) {
-      const d = Math.abs(p.distKm - distKm)
-      if (d < closestD) { closestD = d; closest = p }
-    }
+    let closest = profile[0]; let closestD = Infinity
+    for (const p of profile) { const d = Math.abs(p.distKm - distKm); if (d < closestD) { closestD = d; closest = p } }
     const x = PL + (closest.distKm / totalKm) * pW
     setCursor({ x, distKm: closest.distKm, ele: closest.ele, slope: getSlopeAt(closest.distKm) })
     if (onHover) onHover(closest.distKm)
   }
+
+  function handleMouseUp() { setDragging(null) }
+  function handleMouseLeave() {
+    if (!dragging) { setCursor(null); if (onHover) onHover(null) }
+  }
+
+  // Zone colors: Z1→Z5
+  const ZONE_C = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444']
 
   const cursorCy = cursor ? PT + pH - ((cursor.ele - minEle) / eleRange) * pH : 0
   const slopeColor = cursor
@@ -4197,14 +4410,15 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
     : 'var(--text)'
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', userSelect: dragging ? 'none' : 'auto' }}>
       <svg
         ref={svgRef}
         width="100%"
         viewBox={`0 0 ${W} ${H}`}
-        style={{ display: 'block', cursor: 'crosshair' }}
+        style={{ display: 'block', cursor: dragging ? 'ew-resize' : 'crosshair' }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => { setCursor(null); if (onHover) onHover(null) }}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
       >
         {/* Y grid */}
         {yTicks.map(ele => {
@@ -4231,13 +4445,42 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
         <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
         {/* Fill */}
         <path d={fillD} fill={accent} opacity={0.05} />
-        {/* Profile line — fine */}
+        {/* Profile line */}
         <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
+        {/* Terrain block overlays — OVER the profile line, under cursor */}
+        {terrainBlocks && terrainBlocks.map((block, i) => {
+          if (block.startKm == null || block.endKm == null) return null
+          const x1 = PL + (block.startKm / totalKm) * pW
+          const x2 = PL + (block.endKm   / totalKm) * pW
+          const zc  = ZONE_C[Math.min(Math.max(block.zone - 1, 0), 4)]
+          const w   = Math.max(x2 - x1, 3)
+          return (
+            <g key={`tb${i}`}>
+              <rect x={x1} y={PT} width={w} height={pH} fill={zc} opacity={0.22} rx={2} />
+              {/* Label above chart area */}
+              {w > 18 && (
+                <text x={(x1 + x2) / 2} y={PT - 2} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} fontFamily='"DM Mono",monospace'>
+                  {block.value ? `${block.value}W` : `Z${block.zone}`}
+                </text>
+              )}
+              {/* Left edge — draggable */}
+              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.85}
+                style={{ cursor: 'ew-resize' }}
+                onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'start' }) }}
+              />
+              {/* Right edge — draggable */}
+              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.85}
+                style={{ cursor: 'ew-resize' }}
+                onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'end' }) }}
+              />
+            </g>
+          )
+        })}
         {/* min/max labels */}
         <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{Math.round(minEle)}m</text>
         <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='"DM Mono",monospace'>{Math.round(maxEle)}m</text>
         {/* Cursor */}
-        {cursor && (
+        {cursor && !dragging && (
           <g>
             <line x1={cursor.x} y1={PT} x2={cursor.x} y2={PT + pH} stroke={accent} strokeWidth={0.6} strokeDasharray="3 2" opacity={0.5} />
             <circle cx={cursor.x} cy={cursorCy} r={3} fill={accent} stroke="#fff" strokeWidth={1.5} />
@@ -4245,21 +4488,15 @@ function ElevationChart({ profile, totalKm, accent, onHover }: {
         )}
       </svg>
       {/* Tooltip sous le SVG */}
-      {cursor && (
+      {cursor && !dragging && (
         <div style={{
           display: 'flex', gap: 16, padding: '7px 12px',
           borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)',
           marginTop: 5, fontSize: 11, justifyContent: 'center', flexWrap: 'wrap' as const,
         }}>
-          <span style={{ color: 'var(--text-dim)' }}>
-            km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong>
-          </span>
-          <span style={{ color: 'var(--text-dim)' }}>
-            altitude <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong>
-          </span>
-          <span style={{ color: 'var(--text-dim)' }}>
-            pente <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong>
-          </span>
+          <span style={{ color: 'var(--text-dim)' }}>km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>altitude <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>pente <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong></span>
         </div>
       )}
     </div>
@@ -4793,7 +5030,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
           {circuits.map((circ, ci) => (
             <div key={ci} style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
-                {circ.label}{circ.rounds > 1 ? ` · ${circ.rounds} rounds` : ''}
+                {circ.label}
+                {circ.type !== 'series' && circ.rounds > 1 ? ` · ${circ.rounds} tours` : ''}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
@@ -4802,7 +5040,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     <div style={{ flex: 1 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
-                        {exo.targetSets}×{exo.targetReps}{exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}
+                        {circ.type === 'series'
+                          ? `${exo.targetSets}×${exo.targetReps}${exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}`
+                          : `${exo.targetReps} reps${exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}`
+                        }
                       </span>
                     </div>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
@@ -4981,6 +5222,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
               {ctInfo?.icon} {ctInfo?.label ?? 'Séries'}
               {currentCircuit ? ` · ${currentCircuit.label}` : ''}
+              {currentStep && currentCircuit && currentCircuit.type !== 'series' && currentCircuit.rounds > 1
+                ? ` · Tour ${currentStep.setIdx + 1}/${currentCircuit.rounds}`
+                : ''}
             </p>
           </div>
           <span style={{ fontSize: 16, fontFamily: '"DM Mono",monospace', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
@@ -5287,6 +5531,11 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
   const [parcoursData, setParcoursData] = useState<ParcoursData | null>(session?.parcoursData ?? null)
   const [parcoursLoading, setParcoursLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  // Circuit info exposé par ExerciseListBuilder (type, rounds, map exo→circuit)
+  const [gymCircuits, setGymCircuits] = useState<ExoCircuit[]>([])
+  const [gymCircuitMap, setGymCircuitMap] = useState<Record<string, string>>({})
   const [parcoursError, setParcoursError] = useState<string | null>(null)
   const [hoveredKm, setHoveredKm] = useState<number | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
@@ -5306,6 +5555,9 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [athleteProducts, setAthleteProducts] = useState<Array<{
     name: string; type: string; glucidesG: number; proteinesG: number; quantity: string
   }>>([])
+  const [athleteWeight, setAthleteWeight] = useState<number>(75)
+  const [bikeWeight, setBikeWeight] = useState<number>(8)
+  const [terrainLoading, setTerrainLoading] = useState(false)
 
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
@@ -5323,16 +5575,22 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         const { data: { user } } = await sb.auth.getUser()
         if (!user || cancelled) return
 
-        const [perfRes, actsRes] = await Promise.all([
+        const [perfRes, actsRes, profileRes] = await Promise.all([
           // athlete_performance_profile — vraies colonnes vérifiées
           sb.from('athlete_performance_profile')
             .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m')
             .eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
+          sb.from('profiles').select('weight_kg,bike_weight_kg').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
         ])
 
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
         const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
+        const prof = (profileRes as { data: Record<string, unknown> | null }).data
+        if (!cancelled) {
+          if (prof?.weight_kg) setAthleteWeight(prof.weight_kg as number)
+          if (prof?.bike_weight_kg) setBikeWeight(prof.bike_weight_kg as number)
+        }
 
         const ftp = (perf?.ftp_watts as number) ?? null
         const hrMax = (perf?.hr_max as number) ?? null
@@ -5448,6 +5706,31 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
       } catch {}
     })()
   }, [])
+
+  // ── Auto-save (edit mode) ─────────────────────────────────────────
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (mode !== 'edit' || !onAutoSave || !session?.id) return
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => {
+      const isStrengthSport = sport === 'gym' || sport === 'hyrox'
+      const autoBlocks = isStrengthSport && exercises.length > 0
+        ? exercises.map(e => ({
+            id: e.id, mode: 'single' as const, type: 'effort' as const,
+            durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
+            zone: e.sets, value: e.weightKg ? String(e.weightKg) : '',
+            hrAvg: e.kcal ? String(e.kcal) : '',
+            label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
+            reps: e.reps, recoveryMin: e.restSec / 60,
+            effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
+          }))
+        : blocks
+      if (autoBlocks.length === 0) return
+      onAutoSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks: autoBlocks, notes: desc || undefined })
+    }, 800)
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, exercises])
 
   const accent = SPORT_BORDER[sport]
   const isStrength = sport === 'gym' || sport === 'hyrox'
@@ -5594,22 +5877,47 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     setSport(s); setTrainingType(null); setBlocks([]); setExercises([])
   }
 
+  // Convertit les circuits + exercices du ExerciseListBuilder en Block[] avec circuit_headers
+  function exercisesToBlocks(exos: ExerciseItem[], circuits: ExoCircuit[], map: Record<string, string>): Block[] {
+    const result: Block[] = []
+    for (const circuit of circuits) {
+      const circuitExos = exos.filter(e => (map[e.id] ?? 'default') === circuit.id)
+      if (circuitExos.length === 0) continue
+      result.push({
+        id: circuit.id,
+        mode: circuit.type as BlockMode,   // 'series' | 'lap' | 'superset' | 'emom' | 'tabata'
+        type: 'circuit_header' as BlockType,
+        durationMin: circuit.targetTimeSec ? Math.ceil(circuit.targetTimeSec / 60) : 0,
+        zone: circuit.rounds,
+        value: '',
+        hrAvg: '',
+        label: circuit.name,
+      })
+      for (const e of circuitExos) {
+        result.push({
+          id: e.id,
+          mode: 'single' as BlockMode,
+          type: 'effort' as BlockType,
+          durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
+          zone: e.sets,
+          value: e.weightKg ? String(e.weightKg) : '',
+          hrAvg: e.kcal ? String(e.kcal) : '',
+          label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
+          reps: e.reps,
+          recoveryMin: e.restSec / 60,
+          effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
+        })
+      }
+    }
+    return result
+  }
+
   function handleSubmit() {
     const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
     const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
-    const finalBlocks = isStrength ? exercises.map(e => ({
-      id: e.id,
-      mode: 'single' as const,
-      type: 'effort' as const,
-      durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
-      zone: e.sets,          // zone = nb de séries (pour SessionExecute)
-      value: e.weightKg ? String(e.weightKg) : '',
-      hrAvg: e.kcal ? String(e.kcal) : '',
-      label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
-      reps: e.reps,          // reps = nb reps par série
-      recoveryMin: e.restSec / 60,
-      effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
-    })) : blocks
+    const finalBlocks = isStrength && exercises.length > 0
+      ? exercisesToBlocks(exercises, gymCircuits, gymCircuitMap)
+      : blocks
     const savedSession: Session = {
       ...(session ?? {}),
       id: session?.id ?? '',
@@ -5623,6 +5931,57 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     }
     onSave(savedSession)
     onClose()
+  }
+
+  async function generateBlocksFromTerrain() {
+    if (!parcoursData || !athleteData?.ftp) return
+    setTerrainLoading(true)
+    try {
+      const segs = analyzeTerrainSegments(
+        parcoursData.elevationProfile,
+        athleteData.ftp,
+        athleteWeight,
+        bikeWeight,
+      )
+      // Build Block[] from terrain segments
+      const newBlocks: Block[] = segs.map((seg, i) => {
+        const targetWatts = seg.type === 'climb'
+          ? Math.round(athleteData.ftp! * 0.9)
+          : seg.type === 'descent'
+            ? Math.round(athleteData.ftp! * 0.5)
+            : Math.round(athleteData.ftp! * 0.75)
+        const zone = seg.type === 'climb' ? 4 : seg.type === 'descent' ? 1 : 3
+        // Exact time (float) for ±5% range display
+        const timeMinExact = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, targetWatts, athleteWeight, bikeWeight)
+        const durationMin = Math.max(1, Math.round(timeMinExact))
+        const lo = fmtDuration(timeMinExact * 0.95)
+        const hi = fmtDuration(timeMinExact * 1.05)
+        const typeName = seg.type === 'climb' ? 'Montée' : seg.type === 'descent' ? 'Descente' : 'Plat'
+        const gradStr = Math.abs(seg.avgGradient) >= 0.5 ? ` ${Math.abs(seg.avgGradient).toFixed(1)}%` : ''
+        const label = `${typeName}${gradStr} — ${lo} à ${hi}`
+        return {
+          id: `terrain_${i}`,
+          mode: 'effort' as BlockMode,
+          type: 'effort' as BlockType,
+          durationMin,
+          zone,
+          value: String(targetWatts),  // just the number — convention throughout the app
+          hrAvg: '',
+          label,
+          _startKm: seg.startKm,
+          _endKm: seg.endKm,
+        }
+      })
+      setBlocks(newBlocks)
+      // Update total duration
+      const totalMin = newBlocks.reduce((s, b) => s + b.durationMin, 0)
+      setDur(totalMin)
+      setBuilderTab('manual')
+    } catch (e) {
+      console.error('[Terrain]', e)
+    } finally {
+      setTerrainLoading(false)
+    }
   }
 
   async function handleAIGenerate() {
@@ -5809,9 +6168,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   // ── Early return : MODE EXÉCUTION ──
   if (executeMode) {
+    // Pour les séances muscu/hyrox créées avec ExerciseListBuilder,
+    // on reconstruit les blocks avec circuit_headers (contenant le bon mode/type de circuit)
+    const execBlocks = isStrength && exercises.length > 0 && gymCircuits.length > 0
+      ? exercisesToBlocks(exercises, gymCircuits, gymCircuitMap)
+      : blocks
     return (
       <SessionExecute
-        blocks={blocks}
+        blocks={execBlocks}
         sport={sport}
         sessionTitle={title || SPORT_LABEL[sport]}
         onExit={() => setExecuteMode(false)}
@@ -6364,12 +6728,61 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
                 {/* Graphique altimétrique interactif */}
                 {parcoursData.elevationProfile.length > 1 && (
-                  <ElevationChart
-                    profile={parcoursData.elevationProfile}
-                    totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
-                    accent={accent}
-                    onHover={setHoveredKm}
-                  />
+                  <>
+                    <ElevationChart
+                      profile={parcoursData.elevationProfile}
+                      totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
+                      accent={accent}
+                      onHover={setHoveredKm}
+                      terrainBlocks={blocks.filter(b => b._startKm != null).map((b, idx) => ({
+                        label: b.label,
+                        startKm: b._startKm!,
+                        endKm: b._endKm!,
+                        zone: b.zone,
+                        value: b.value,
+                        blockIdx: idx,
+                      }))}
+                      onBlockEdgeDrag={(blockIdx, edge, newKm) => {
+                        setBlocks(prev => prev.map((b, i) => {
+                          if (i !== blockIdx) return b
+                          const updated = { ...b }
+                          if (edge === 'start') updated._startKm = newKm
+                          else updated._endKm = newKm
+                          // Recalculate duration if FTP available
+                          if (athleteData?.ftp && updated._startKm != null && updated._endKm != null) {
+                            const distKm = Math.abs(updated._endKm - updated._startKm)
+                            // approximate gradient from elevation profile
+                            const startPt = parcoursData.elevationProfile.find(p => p.distKm >= updated._startKm!)
+                            const endPt = parcoursData.elevationProfile.find(p => p.distKm >= updated._endKm!)
+                            const grad = startPt && endPt && distKm > 0
+                              ? ((endPt.ele - startPt.ele) / (distKm * 1000)) * 100
+                              : 0
+                            const watts = parseFloat(updated.value) || athleteData.ftp * 0.75
+                            const mins = estimateTimeOnSegment(distKm, grad, watts, athleteWeight, bikeWeight)
+                            updated.durationMin = Math.max(1, Math.round(mins))
+                          }
+                          return updated
+                        }))
+                      }}
+                    />
+                    {sport === 'bike' && athleteData?.ftp && (
+                      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={generateBlocksFromTerrain}
+                          disabled={terrainLoading}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '7px 14px', borderRadius: 8, border: `1px solid ${accent}40`,
+                            background: `${accent}12`, color: accent,
+                            fontSize: 11, fontWeight: 700, cursor: terrainLoading ? 'not-allowed' : 'pointer',
+                            opacity: terrainLoading ? 0.6 : 1,
+                          }}
+                        >
+                          {terrainLoading ? '…' : '⛰ Planifier depuis le parcours'}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -6403,7 +6816,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           {builderTab === 'manual' ? (
             isStrength && blocks.length === 0 ? (
               /* Mode manuel : constructeur par exercices (circuits) */
-              <ExerciseListBuilder sport={sport} exercises={exercises} onChange={setExercises} />
+              <ExerciseListBuilder
+                sport={sport}
+                exercises={exercises}
+                onChange={setExercises}
+                onCircuitsChange={(c, m) => { setGymCircuits(c); setGymCircuitMap(m) }}
+              />
             ) : (
               /* Mode IA ou edit : blocs générés (avec circuit_headers) */
               <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} exoHistory={exoHistory} />
@@ -6871,15 +7289,39 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 }}>★ Favori</button>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => {
-                  if (session) {
-                    onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined, nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined })
-                  }
-                  onClose()
+                <button onClick={async () => {
+                  if (!session?.id || saving) return
+                  setSaving(true)
+                  try {
+                    const { createClient: cc } = await import('@/lib/supabase/client')
+                    const sb = cc()
+                    await sb.from('planned_sessions').update({
+                      sport, title, time,
+                      duration_min: dur,
+                      rpe: rpe ?? null,
+                      notes: desc ?? null,
+                      blocks: isStrength && exercises.length > 0 && gymCircuits.length > 0
+                        ? exercisesToBlocks(exercises, gymCircuits, gymCircuitMap)
+                        : blocks ?? [],
+                      tss: tssRange.high || session.tss || null,
+                      parcours_data: parcoursData ?? null,
+                      nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
+                      updated_at: new Date().toISOString(),
+                    }).eq('id', session.id)
+                    setSaved(true)
+                    setTimeout(() => setSaved(false), 2000)
+                  } catch (e) { console.error('[Save]', e) }
+                  finally { setSaving(false) }
                 }} style={{
                   padding: '8px 20px', borderRadius: 8,
+                  border: 'none', background: saved ? '#22c55e' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
+                  transition: 'background 0.3s',
+                }}>{saving ? '…' : saved ? '✓ Enregistré' : 'Enregistrer'}</button>
+                <button onClick={onClose} style={{
+                  padding: '8px 16px', borderRadius: 8,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}>Fermer</button>
               </div>
             </>
@@ -6980,8 +7422,8 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
   const c = ZONE_COLORS[block.zone-1]
   const isInterval = block.mode === 'interval' && !!block.reps && !!block.effortMin && !!block.recoveryMin
   const durLabel = isInterval
-    ? `${block.reps}×${block.effortMin}min · récup ${block.recoveryMin}min`
-    : formatHM(block.durationMin)
+    ? `${block.reps}×${fmtDuration(block.effortMin??0)} · récup ${fmtDuration(block.recoveryMin??0)}`
+    : fmtDuration(block.durationMin)
   const valueLabel = block.value ? `${block.value}${sport==='bike'?'W':''}` : null
   const inputStyle: React.CSSProperties = {
     width:'100%', padding:'7px 10px', borderRadius:7,

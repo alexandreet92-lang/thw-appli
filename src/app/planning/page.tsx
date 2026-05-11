@@ -7221,14 +7221,18 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 }}>★ Favori</button>
                 <div style={{ flex: 1 }} />
                 <button onClick={() => {
-                  if (session) {
-                    onSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined, nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined })
+                  if (session && onAutoSave) {
+                    onAutoSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc, tss: tssRange.high || session.tss, parcoursData: parcoursData ?? undefined, nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined })
                   }
-                  onClose()
                 }} style={{
                   padding: '8px 20px', borderRadius: 8,
+                  border: 'none', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}>Enregistrer</button>
+                <button onClick={onClose} style={{
+                  padding: '8px 16px', borderRadius: 8,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}>Fermer</button>
               </div>
             </>

@@ -7325,7 +7325,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     const sb = createClient()
     await sb.from('daily_tasks').update({ done:newDone }).eq('id',id)
   }
-  async function deleteTask(id:string) {
+  async function deleteDailyTask(id:string) {
     setDailyTasks(p=>p.filter(t=>t.id!==id))
     const sb = createClient()
     await sb.from('daily_tasks').delete().eq('id',id)
@@ -7727,7 +7727,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                     </span>
                   )}
                   {task.isRecurring&&<span style={{ fontSize:9,color:'var(--text-dim)' }}>↻</span>}
-                  <button onClick={()=>deleteTask(task.id)} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,opacity:0.4,padding:'0 2px',lineHeight:1 }}>×</button>
+                  <button onClick={()=>deleteDailyTask(task.id)} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,opacity:0.4,padding:'0 2px',lineHeight:1 }}>×</button>
                 </div>
                 {/* Description */}
                 {task.description&&<p style={{ fontSize:10,color:'var(--text-dim)',margin:'4px 0 0',paddingLeft:23,lineHeight:1.4 }}>{task.description}</p>}

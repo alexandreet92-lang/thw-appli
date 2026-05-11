@@ -4144,24 +4144,16 @@ interface TerrainSegment {
 
 function estimateTimeOnSegment(distKm: number, gradientPct: number, watts: number, riderKg: number, bikeKg: number): number {
   const totalMass = riderKg + bikeKg
-  const g = 9.81
-  const CdA = 0.35
-  const rho = 1.225
-  const Crr = 0.004
-  const gradient = gradientPct / 100
-  let v = 8
-  for (let iter = 0; iter < 50; iter++) {
-    const resistGravity  = totalMass * g * gradient
-    const resistRolling  = Crr * totalMass * g
-    const resistAero     = 0.5 * CdA * rho * v * v
-    const totalResist    = resistGravity + resistRolling + resistAero
-    const powerNeeded    = v * totalResist
-    if (Math.abs(powerNeeded - watts) < 1) break
-    v += (watts - powerNeeded) / (totalResist + CdA * rho * v * v) * 0.3
-    if (v < 1) v = 1
-    if (v > 25) v = 25
-  }
-  return (distKm * 1000) / Math.max(v, 1) / 60
+  const gradient  = gradientPct / 100
+  const Crr       = 0.004
+  const g         = 9.81
+  // Simplified: neglect aero on climbs/descents (gravity + rolling dominate)
+  const vApprox   = watts / (totalMass * g * (Math.abs(gradient) + Crr))
+  // Clamp between 0.5 m/s (1.8 km/h) and 17 m/s (61 km/h)
+  const vClamped  = Math.max(0.5, Math.min(17, vApprox))
+  const timeMin   = (distKm * 1000 / vClamped) / 60
+  console.log('[TIME]', { distKm, gradientPct, watts, riderKg, bikeKg, speedKmh: +(vClamped * 3.6).toFixed(1), timeMin: +timeMin.toFixed(1) })
+  return timeMin
 }
 
 function analyzeTerrainSegments(
@@ -4349,25 +4341,29 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           const x1 = PL + (block.startKm / totalKm) * pW
           const x2 = PL + (block.endKm   / totalKm) * pW
           const zc  = ZONE_C[Math.min(Math.max(block.zone - 1, 0), 4)]
-          const w   = Math.max(x2 - x1, 2)
+          const w   = Math.max(x2 - x1, 3)
           return (
             <g key={`tb_${block.blockIdx}`}>
-              <rect x={x1} y={PT} width={w} height={pH} fill={zc} opacity={0.13} rx={2} />
-              {/* Top label (watts/zone) */}
-              <text x={(x1 + x2) / 2} y={PT + 9} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} opacity={0.9} fontFamily='"DM Mono",monospace'>
-                {block.value ? `${block.value}W` : `Z${block.zone}`}
-              </text>
-              {/* km range label */}
-              <text x={(x1 + x2) / 2} y={PT + pH - 4} textAnchor="middle" fontSize={6} fill="var(--text-dim)" opacity={0.7} fontFamily='"DM Mono",monospace'>
-                {block.startKm.toFixed(1)}–{block.endKm.toFixed(1)}
-              </text>
+              <rect x={x1} y={PT} width={w} height={pH} fill={zc} opacity={0.28} rx={2} />
+              {/* Top label (watts or zone) — only if wide enough */}
+              {w > 20 && (
+                <text x={(x1 + x2) / 2} y={PT + 10} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} opacity={1} fontFamily='"DM Mono",monospace'>
+                  {block.value || `Z${block.zone}`}
+                </text>
+              )}
+              {/* km range label — only if wide enough */}
+              {w > 30 && (
+                <text x={(x1 + x2) / 2} y={PT + pH - 4} textAnchor="middle" fontSize={6} fill="var(--text-dim)" opacity={0.85} fontFamily='"DM Mono",monospace'>
+                  {block.startKm.toFixed(1)}–{block.endKm.toFixed(1)}
+                </text>
+              )}
               {/* Left edge — draggable */}
-              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke={zc} strokeWidth={2} opacity={0.6}
+              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.8}
                 style={{ cursor: 'ew-resize' }}
                 onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'start' }) }}
               />
               {/* Right edge — draggable */}
-              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke={zc} strokeWidth={2} opacity={0.6}
+              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke={zc} strokeWidth={3} opacity={0.8}
                 style={{ cursor: 'ew-resize' }}
                 onMouseDown={e => { e.stopPropagation(); setDragging({ blockIdx: block.blockIdx, edge: 'end' }) }}
               />
@@ -5794,13 +5790,17 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           : seg.type === 'descent'
             ? `Descente ${Math.abs(seg.avgGradient).toFixed(1)}%`
             : `Plat`
+        // Recalculate duration with the actual target watts for this block type
+        const durationMin = Math.max(1, Math.round(
+          estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, targetWatts, athleteWeight, bikeWeight)
+        ))
         return {
           id: `terrain_${i}`,
           mode: 'effort' as BlockMode,
           type: 'effort' as BlockType,
-          durationMin: Math.max(1, Math.round(seg.estimatedMinutes)),
+          durationMin,
           zone,
-          value: `${targetWatts}W`,
+          value: String(targetWatts),  // just the number — convention throughout the app
           hrAvg: '',
           label,
           _startKm: seg.startKm,

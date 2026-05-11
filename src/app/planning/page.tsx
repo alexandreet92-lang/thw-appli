@@ -4129,10 +4129,11 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
 }
 
 // ── ElevationChart ────────────────────────────────
-function ElevationChart({ profile, totalKm, accent }: {
+function ElevationChart({ profile, totalKm, accent, onHover }: {
   profile: Array<{ distKm: number; ele: number }>
   totalKm: number
   accent: string
+  onHover?: (distKm: number | null) => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
@@ -4187,6 +4188,7 @@ function ElevationChart({ profile, totalKm, accent }: {
     }
     const x = PL + (closest.distKm / totalKm) * pW
     setCursor({ x, distKm: closest.distKm, ele: closest.ele, slope: getSlopeAt(closest.distKm) })
+    if (onHover) onHover(closest.distKm)
   }
 
   const cursorCy = cursor ? PT + pH - ((cursor.ele - minEle) / eleRange) * pH : 0
@@ -4202,7 +4204,7 @@ function ElevationChart({ profile, totalKm, accent }: {
         viewBox={`0 0 ${W} ${H}`}
         style={{ display: 'block', cursor: 'crosshair' }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setCursor(null)}
+        onMouseLeave={() => { setCursor(null); if (onHover) onHover(null) }}
       >
         {/* Y grid */}
         {yTicks.map(ele => {
@@ -4265,53 +4267,105 @@ function ElevationChart({ profile, totalKm, accent }: {
 }
 
 // ── Carte GPS Leaflet (client-side only) ─────────
-function GPSMapInner({ trace, accent }: { trace: Array<{ lat: number; lon: number }>; accent: string }) {
+function GPSMapInner({ trace, accent, hoveredKm, elevationProfile }: {
+  trace: Array<{ lat: number; lon: number }>
+  accent: string
+  hoveredKm: number | null
+  elevationProfile: Array<{ distKm: number; ele: number }>
+}) {
   const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<unknown>(null)
+  const cursorMarkerRef = useRef<unknown>(null)
+  const leafletRef = useRef<typeof import('leaflet') | null>(null)
 
+  // Init map once
   useEffect(() => {
     if (!mapRef.current || trace.length < 2) return
     const container = mapRef.current
-    // Prevent double init
     if ((container as HTMLDivElement & { _leaflet_id?: number })._leaflet_id) return
 
     import('leaflet').then(L => {
+      leafletRef.current = L
       delete (L.Icon.Default.prototype as unknown as Record<string,unknown>)._getIconUrl
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       })
-      const map = L.map(container, { zoomControl: true, scrollWheelZoom: false, attributionControl: false })
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map)
+      const map = L.map(container, { zoomControl: true, scrollWheelZoom: true, attributionControl: false })
+      mapInstanceRef.current = map
+
+      // Layers
+      const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+      const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })
+      const hybridLayer = L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
+      ])
+      osmLayer.addTo(map)
+      L.control.layers({ 'Standard': osmLayer, 'Satellite': satLayer, 'Hybride': hybridLayer }, {}, { position: 'topright', collapsed: false }).addTo(map)
+
+      // Trace
       const latlngs = trace.map(p => [p.lat, p.lon] as [number, number])
       const poly = L.polyline(latlngs, { color: accent, weight: 3, opacity: 0.85, smoothFactor: 1.5 }).addTo(map)
       const dot = (color: string) => L.divIcon({
         html: `<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35)"></div>`,
-        iconSize: [10, 10], iconAnchor: [5, 5],
+        iconSize: [10, 10], iconAnchor: [5, 5], className: '',
       })
       L.marker(latlngs[0], { icon: dot('#22c55e') }).addTo(map)
       L.marker(latlngs[latlngs.length - 1], { icon: dot('#ef4444') }).addTo(map)
       map.fitBounds(poly.getBounds(), { padding: [18, 18] })
+
+      // Cursor marker (hidden initially)
+      const cursorIcon = L.divIcon({
+        html: `<div style="width:12px;height:12px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,0.5)"></div>`,
+        iconSize: [12, 12], iconAnchor: [6, 6], className: '',
+      })
+      const cursorMarker = L.marker(latlngs[0], { icon: cursorIcon, opacity: 0, zIndexOffset: 1000 }).addTo(map)
+      cursorMarkerRef.current = cursorMarker
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync cursor marker with hoveredKm
+  useEffect(() => {
+    const marker = cursorMarkerRef.current as { setLatLng: (ll: [number,number]) => void; setOpacity: (o: number) => void } | null
+    const L = leafletRef.current
+    if (!marker || !L) return
+    if (hoveredKm === null || elevationProfile.length === 0 || trace.length < 2) {
+      marker.setOpacity(0)
+      return
+    }
+    const totalKm = elevationProfile[elevationProfile.length - 1].distKm
+    const ratio = totalKm > 0 ? hoveredKm / totalKm : 0
+    const traceIdx = Math.min(Math.max(0, Math.round(ratio * (trace.length - 1))), trace.length - 1)
+    const pt = trace[traceIdx]
+    if (!pt) return
+    marker.setLatLng([pt.lat, pt.lon])
+    marker.setOpacity(1)
+  }, [hoveredKm, elevationProfile, trace])
 
   return (
     <>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-      <div ref={mapRef} style={{ width: '100%', height: 240, borderRadius: 10, overflow: 'hidden', zIndex: 0 }}/>
+      <div ref={mapRef} style={{ width: '100%', height: 400, borderRadius: 10, overflow: 'hidden', zIndex: 0 }}/>
     </>
   )
 }
 
-function GPSMapWrapper({ trace, accent }: { trace: Array<{ lat: number; lon: number }>; accent: string }) {
+function GPSMapWrapper({ trace, accent, hoveredKm, elevationProfile }: {
+  trace: Array<{ lat: number; lon: number }>
+  accent: string
+  hoveredKm: number | null
+  elevationProfile: Array<{ distKm: number; ele: number }>
+}) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   if (!mounted) return (
-    <div style={{ width: '100%', height: 240, borderRadius: 10, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+    <div style={{ width: '100%', height: 400, borderRadius: 10, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
       Chargement de la carte…
     </div>
   )
-  return <GPSMapInner trace={trace} accent={accent}/>
+  return <GPSMapInner trace={trace} accent={accent} hoveredKm={hoveredKm} elevationProfile={elevationProfile}/>
 }
 
 // ── Session averages estimation ───────────────────
@@ -5234,6 +5288,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [parcoursData, setParcoursData] = useState<ParcoursData | null>(session?.parcoursData ?? null)
   const [parcoursLoading, setParcoursLoading] = useState(false)
   const [parcoursError, setParcoursError] = useState<string | null>(null)
+  const [hoveredKm, setHoveredKm] = useState<number | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
   const [athleteData, setAthleteData] = useState<{
     ftp: number | null
@@ -5704,14 +5759,65 @@ Description : ${aiPrompt}
 
 ⚠️ RÈGLE ABSOLUE : Réponds UNIQUEMENT avec du texte brut JSON. N'utilise AUCUN outil ou fonction.
 
-Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]). Format exact de chaque bloc :
+Réponds UNIQUEMENT avec un tableau JSON valide (commence par [ et termine par ]). Format exact :
 {"mode":"single","type":"warmup","durationMin":15,"zone":2,"value":"","label":"Échauffement"}
 {"mode":"interval","type":"effort","durationMin":40,"zone":4,"value":"260w","label":"20min @260w","reps":3,"effortMin":20,"recoveryMin":10,"recoveryZone":1}
 {"mode":"single","type":"cooldown","durationMin":15,"zone":1,"value":"","label":"Retour au calme"}
 
-Champs obligatoires : mode, type, durationMin, zone (1-5), value, label
-Champs interval : reps, effortMin, recoveryMin, recoveryZone
-Ajoute toujours échauffement et retour au calme.`
+Champs obligatoires : mode ("single"|"interval"), type ("warmup"|"effort"|"cooldown"|"technique"), durationMin (total du bloc), zone (1-5), value (puissance/allure/vide), label
+Champs interval uniquement : reps, effortMin, recoveryMin, recoveryZone
+durationMin d'un interval = reps × (effortMin + recoveryMin)
+
+═══ RÈGLES CRITIQUES DE DÉCOMPOSITION ═══
+1. "/" signifie "puis" : "20min Z4 / 10min Z2" → 2 blocs séparés
+2. "×N" ou "xN" signifie répéter N fois : "3×10min" → reps:3, effortMin:10
+3. NE JAMAIS moyenner les intensités : "3min Z5 / 5min Z2" → 2 blocs distincts, JAMAIS 1 bloc Z3
+4. Structures imbriquées = décompose chaque niveau séparément
+5. Pyramide = un bloc par palier (montée + descente)
+6. "tempo" = zone 3-4, "seuil" = zone 4, "SV2"/"lactique" = zone 5, "endurance" = zone 2, "récup" = zone 1
+7. Allure exprimée en min:sec/km (ex: "3:45/km") → value:"3:45"
+8. Puissance exprimée en watts (ex: "280w") → value:"280w"
+9. Nage exprimée en temps/100m (ex: "1:20/100m") → value:"1:20"
+
+═══ EXEMPLES DE FORMATS COMPLEXES ═══
+
+EX 1 — Parenthèses imbriquées : "(3×[5min Z5 + 3min Z1]) + 10min Z3"
+→ bloc interval : reps:3, effortMin:5, zone:5, recoveryMin:3, recoveryZone:1, durationMin:24
+→ bloc single : durationMin:10, zone:3
+
+EX 2 — Pyramide : "1/2/3/4/3/2/1 min en Z5, récup égale Z1"
+→ 7 blocs interval séparés : reps:1,effortMin:1,recoveryMin:1 / reps:1,effortMin:2,recoveryMin:2 / ... / reps:1,effortMin:1,recoveryMin:1
+
+EX 3 — Tempo progressif : "20min à 280w→320w"
+→ 1 bloc single zone:3-4, label:"Tempo progressif 280→320w", value:"280-320w", durationMin:20
+
+EX 4 — Over/Under : "6× (3min @105% FTP + 2min @88% FTP)"
+→ 1 bloc interval : reps:6, effortMin:3, zone:5, recoveryMin:2, recoveryZone:3, durationMin:30
+  (les over/under se représentent comme un interval avec la zone dominante = effort)
+
+EX 5 — Tabata : "8× (20s effort max / 10s repos)"
+→ 1 bloc interval : reps:8, effortMin:0.33, zone:5, recoveryMin:0.17, recoveryZone:1, durationMin:4
+
+EX 6 — Fartlek : "45min avec 6 accélérations de 2min Z5 au choix"
+→ bloc single 45min zone:2, label:"Fartlek 45min"
+→ note dans label : "6×2min accélérations Z5 incluses"
+
+EX 7 — Séance natation : "400m échauff + 8×50m sprint R:20s + 4×200m @1:30/100m R:30s + 200m récup"
+→ bloc warmup : durationMin:8, label:"400m échauffement", value:""
+→ bloc interval : reps:8, effortMin:0.75, zone:5, recoveryMin:0.33, recoveryZone:1, durationMin:9, value:""
+→ bloc interval : reps:4, effortMin:3, zone:4, recoveryMin:0.5, recoveryZone:1, durationMin:14, value:"1:30"
+→ bloc cooldown : durationMin:4, label:"200m récupération", value:""
+
+EX 8 — Longue sortie vélo : "3h endurance + 2×20min au seuil"
+→ bloc single : durationMin:180, zone:2, label:"Endurance"
+→ bloc interval : reps:2, effortMin:20, zone:4, recoveryMin:10, recoveryZone:1, durationMin:60, label:"2×20min seuil"
+
+EX 9 — Course à pied spécifique : "2km échauff + 5×1000m @3:45/km R:90s trot + 2km retour calme"
+→ bloc warmup : durationMin:10, label:"2km échauffement", value:""
+→ bloc interval : reps:5, effortMin:3.75, zone:5, recoveryMin:1.5, recoveryZone:1, durationMin:26, value:"3:45", label:"5×1000m"
+→ bloc cooldown : durationMin:10, label:"2km retour au calme", value:""
+
+Ajoute toujours un échauffement (warmup) et un retour au calme (cooldown) si non précisés.`
 
       const prompt = isStrengthSport ? strengthPrompt : endurancePrompt
       console.log('[AI-MUSCU] 2. Prompt sent:', prompt.slice(0, 300))
@@ -6453,7 +6559,12 @@ Ajoute toujours échauffement et retour au calme.`
                 {/* Carte GPS Leaflet */}
                 {parcoursData.gpsTrace && parcoursData.gpsTrace.length > 1 && (
                   <div style={{ marginBottom: 12 }}>
-                    <GPSMapWrapper trace={parcoursData.gpsTrace} accent={accent}/>
+                    <GPSMapWrapper
+                      trace={parcoursData.gpsTrace}
+                      accent={accent}
+                      hoveredKm={hoveredKm}
+                      elevationProfile={parcoursData.elevationProfile}
+                    />
                   </div>
                 )}
 
@@ -6463,6 +6574,7 @@ Ajoute toujours échauffement et retour au calme.`
                     profile={parcoursData.elevationProfile}
                     totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
                     accent={accent}
+                    onHover={setHoveredKm}
                   />
                 )}
               </div>

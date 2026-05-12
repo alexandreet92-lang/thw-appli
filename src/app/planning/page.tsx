@@ -235,7 +235,10 @@ function normalizeBlock(raw:unknown):Block|null {
 
 function normalizeBlocks(raw:unknown):Block[] {
   if (!Array.isArray(raw)) return []
-  return raw.map(normalizeBlock).filter((b):b is Block => b !== null)
+  const result = raw.map(normalizeBlock).filter((b):b is Block => b !== null)
+  const headers = result.filter(b => b.type === 'circuit_header')
+  if (headers.length > 0) console.log('[LOAD] circuit_headers:', headers.map(h => ({ id: h.id, mode: h.mode, type: h.type, label: h.label })))
+  return result
 }
 
 // Parse un bloc muscu pour en extraire la structure exercice :
@@ -5534,9 +5537,9 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [parcoursLoading, setParcoursLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  // Circuit info exposé par ExerciseListBuilder (type, rounds, map exo→circuit)
-  const [gymCircuits, setGymCircuits] = useState<ExoCircuit[]>([])
-  const [gymCircuitMap, setGymCircuitMap] = useState<Record<string, string>>({})
+  // Circuit info exposé par ExerciseListBuilder — refs synchrones (pas de stale state)
+  const gymCircuitsRef = useRef<ExoCircuit[]>([{ id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
+  const gymCircuitMapRef = useRef<Record<string, string>>({})
   const [parcoursError, setParcoursError] = useState<string | null>(null)
   const [hoveredKm, setHoveredKm] = useState<number | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
@@ -5880,13 +5883,15 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   // Convertit les circuits + exercices du ExerciseListBuilder en Block[] avec circuit_headers
   function exercisesToBlocks(exos: ExerciseItem[], circuits: ExoCircuit[], map: Record<string, string>): Block[] {
+    console.log('[SAVE] exercisesToBlocks circuits:', circuits.map(c => ({ id: c.id, type: c.type, rounds: c.rounds })))
+    console.log('[SAVE] exercisesToBlocks map:', map)
     const result: Block[] = []
     for (const circuit of circuits) {
       const circuitExos = exos.filter(e => (map[e.id] ?? 'default') === circuit.id)
       if (circuitExos.length === 0) continue
       result.push({
         id: circuit.id,
-        mode: circuit.type as BlockMode,   // 'series' | 'lap' | 'superset' | 'emom' | 'tabata'
+        mode: circuit.type as BlockMode,   // 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
         type: 'circuit_header' as BlockType,
         durationMin: circuit.targetTimeSec ? Math.ceil(circuit.targetTimeSec / 60) : 0,
         zone: circuit.rounds,
@@ -5917,7 +5922,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
     const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
     const finalBlocks = isStrength && exercises.length > 0
-      ? exercisesToBlocks(exercises, gymCircuits, gymCircuitMap)
+      ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
       : blocks
     const savedSession: Session = {
       ...(session ?? {}),
@@ -6171,8 +6176,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   if (executeMode) {
     // Pour les séances muscu/hyrox créées avec ExerciseListBuilder,
     // on reconstruit les blocks avec circuit_headers (contenant le bon mode/type de circuit)
-    const execBlocks = isStrength && exercises.length > 0 && gymCircuits.length > 0
-      ? exercisesToBlocks(exercises, gymCircuits, gymCircuitMap)
+    const execBlocks = isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
+      ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
       : blocks
     return (
       <SessionExecute
@@ -6821,7 +6826,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 sport={sport}
                 exercises={exercises}
                 onChange={setExercises}
-                onCircuitsChange={(c, m) => { setGymCircuits(c); setGymCircuitMap(m) }}
+                onCircuitsChange={(c, m) => { gymCircuitsRef.current = c; gymCircuitMapRef.current = m }}
               />
             ) : (
               /* Mode IA ou edit : blocs générés (avec circuit_headers) */
@@ -7301,8 +7306,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       duration_min: dur,
                       rpe: rpe ?? null,
                       notes: desc ?? null,
-                      blocks: isStrength && exercises.length > 0 && gymCircuits.length > 0
-                        ? exercisesToBlocks(exercises, gymCircuits, gymCircuitMap)
+                      blocks: isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
+                        ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
                         : blocks ?? [],
                       tss: tssRange.high || session.tss || null,
                       parcours_data: parcoursData ?? null,

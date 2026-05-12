@@ -188,7 +188,15 @@ function normalizeBlock(raw:unknown):Block|null {
 
   // Déjà au shape Block (édition manuelle, BlockBuilder)
   if (typeof r.id === 'string' && typeof r.durationMin === 'number') {
-    return r as unknown as Block
+    const b = r as unknown as Block
+    // Garantir que mode est un CircuitType valide pour les circuit_header
+    if (b.type === 'circuit_header') {
+      const validModes: BlockMode[] = ['series','circuit','superset','emom','tabata']
+      if (!validModes.includes(b.mode)) {
+        return { ...b, mode: 'series' as BlockMode }
+      }
+    }
+    return b
   }
 
   // Shape agent (training-plan)
@@ -235,10 +243,7 @@ function normalizeBlock(raw:unknown):Block|null {
 
 function normalizeBlocks(raw:unknown):Block[] {
   if (!Array.isArray(raw)) return []
-  const result = raw.map(normalizeBlock).filter((b):b is Block => b !== null)
-  const headers = result.filter(b => b.type === 'circuit_header')
-  if (headers.length > 0) console.log('[LOAD] circuit_headers:', headers.map(h => ({ id: h.id, mode: h.mode, type: h.type, label: h.label })))
-  return result
+  return raw.map(normalizeBlock).filter((b):b is Block => b !== null)
 }
 
 // Parse un bloc muscu pour en extraire la structure exercice :
@@ -1388,6 +1393,61 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
   const exoCount = (upToIdx: number) =>
     blocks.filter((x, j) => j <= upToIdx && x.type !== 'circuit_header').length
 
+  // ── Ajout exercice depuis catalogue ──────────────────────────────
+  const [addingToCircuit, setAddingToCircuit] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [catFilter, setCatFilter] = useState<ExoCategory | undefined>(undefined)
+  const searchResults = searchExercises(searchQuery, catFilter)
+
+  function insertExerciseAfterCircuit(circuitId: string, exo: ExoDefinition) {
+    const circuitIdx = blocks.findIndex(x => x.id === circuitId)
+    // Trouver la position d'insertion : après le dernier effort de ce circuit
+    let insertIdx = circuitIdx + 1
+    while (insertIdx < blocks.length && blocks[insertIdx].type !== 'circuit_header') {
+      insertIdx++
+    }
+    const prev = exoHistory?.[exo.name.toLowerCase().trim()]
+    const newBlock: Block = {
+      id: `exo_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+      mode: 'single' as BlockMode,
+      type: 'effort' as BlockType,
+      durationMin: 0,
+      zone: 3,
+      value: prev?.weight ?? '',
+      hrAvg: '',
+      label: exo.name,
+      reps: prev?.reps ?? exo.defaultReps,
+      recoveryMin: exo.defaultRestSec / 60,
+      effortMin: 0,
+    }
+    const upd = [...blocks]
+    upd.splice(insertIdx, 0, newBlock)
+    onChange(upd)
+    setAddingToCircuit(null)
+    setSearchQuery('')
+    setCatFilter(undefined)
+  }
+
+  function insertCustomAfterCircuit(circuitId: string, name: string) {
+    const circuitIdx = blocks.findIndex(x => x.id === circuitId)
+    let insertIdx = circuitIdx + 1
+    while (insertIdx < blocks.length && blocks[insertIdx].type !== 'circuit_header') {
+      insertIdx++
+    }
+    const newBlock: Block = {
+      id: `exo_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+      mode: 'single' as BlockMode, type: 'effort' as BlockType,
+      durationMin: 0, zone: 3, value: '', hrAvg: '',
+      label: name, reps: 10, recoveryMin: 1, effortMin: 0,
+    }
+    const upd = [...blocks]
+    upd.splice(insertIdx, 0, newBlock)
+    onChange(upd)
+    setAddingToCircuit(null)
+    setSearchQuery('')
+    setCatFilter(undefined)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 0 }}>
       {blocks.map((b, i) => {
@@ -1463,6 +1523,60 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                   </button>
                 ))}
               </div>
+              {/* ── Ajouter un exercice au circuit ── */}
+              {addingToCircuit === b.id ? (
+                <div style={{ marginTop: 10, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>Ajouter un exercice</span>
+                    <button onClick={() => { setAddingToCircuit(null); setSearchQuery(''); setCatFilter(undefined) }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: 0 }}>×</button>
+                  </div>
+                  <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="ex: squat, développé couché, traction..."
+                    autoFocus
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg,var(--bg-card2))', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 7, boxSizing: 'border-box' as const }} />
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 7 }}>
+                    {([{ id: 'push', label: 'Push' }, { id: 'pull', label: 'Pull' }, { id: 'legs', label: 'Legs' }, { id: 'mixte', label: 'Mixte' }, { id: 'abdos', label: 'Abdos' }] as { id: ExoCategory; label: string }[]).map(cat => (
+                      <button key={cat.id} onClick={() => setCatFilter(catFilter === cat.id ? undefined : cat.id)} style={{
+                        padding: '2px 7px', borderRadius: 5, border: '1px solid', fontSize: 9, cursor: 'pointer', fontWeight: 600,
+                        borderColor: catFilter === cat.id ? accent : 'var(--border)',
+                        background: catFilter === cat.id ? `${accent}22` : 'transparent',
+                        color: catFilter === cat.id ? accent : 'var(--text-dim)',
+                      }}>{cat.label}</button>
+                    ))}
+                  </div>
+                  <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                    {searchResults.slice(0, 20).map(exo => (
+                      <button key={exo.id} onClick={() => insertExerciseAfterCircuit(b.id, exo)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '6px 9px', borderRadius: 6, border: '1px solid var(--border)',
+                        background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
+                        textAlign: 'left' as const, width: '100%',
+                      }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{exo.name}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: EXO_CATEGORY_COLOR[exo.category], background: `${EXO_CATEGORY_COLOR[exo.category]}18`, padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                          {EXO_CATEGORY_LABEL[exo.category]}
+                        </span>
+                      </button>
+                    ))}
+                    {searchResults.length === 0 && searchQuery.trim() && (
+                      <div style={{ padding: '8px', textAlign: 'center' as const }}>
+                        <p style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>Aucun résultat pour &ldquo;{searchQuery}&rdquo;</p>
+                        <button onClick={() => insertCustomAfterCircuit(b.id, searchQuery.trim())} style={{
+                          padding: '6px 12px', borderRadius: 6, background: `${accent}22`,
+                          border: `1px solid ${accent}`, color: accent, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        }}>+ Créer &ldquo;{searchQuery.trim()}&rdquo;</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { setAddingToCircuit(b.id); setSearchQuery(''); setCatFilter(undefined) }} style={{
+                  width: '100%', marginTop: 8, padding: '7px', borderRadius: 7,
+                  background: 'transparent', border: `1px dashed ${accent}44`,
+                  color: accent, fontSize: 11, cursor: 'pointer', fontWeight: 600,
+                }}>+ Ajouter un exercice</button>
+              )}
             </div>
           )
         }
@@ -1474,7 +1588,6 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
         const parentHeader = [...blocks].slice(0, i).reverse().find(x => x.type === 'circuit_header')
         const parentCircuitType: CircuitType = (parentHeader && (['series','circuit','superset','emom','tabata'].includes(parentHeader.mode)) ? parentHeader.mode : 'series') as CircuitType
         const isSeries = parentCircuitType === 'series'
-        console.log('[CIRCUIT DEBUG]', { blockLabel: b.label, blockMode: b.mode, blockType: b.type, parentHeaderMode: parentHeader?.mode, parentCircuitType, isSeries })
 
         return (
           <div key={b.id}>
@@ -5718,16 +5831,9 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     autoSaveTimerRef.current = setTimeout(() => {
       const isStrengthSport = sport === 'gym' || sport === 'hyrox'
+      // Utiliser exercisesToBlocks pour inclure les circuit_headers avec le bon mode
       const autoBlocks = isStrengthSport && exercises.length > 0
-        ? exercises.map(e => ({
-            id: e.id, mode: 'single' as const, type: 'effort' as const,
-            durationMin: e.targetTimeSec ? Math.ceil(e.targetTimeSec / 60) : Math.ceil((e.sets * (e.restSec + 60)) / 60),
-            zone: e.sets, value: e.weightKg ? String(e.weightKg) : '',
-            hrAvg: e.kcal ? String(e.kcal) : '',
-            label: [e.name, `${e.sets}×${e.reps}`, e.weightKg ? `@${e.weightKg}kg` : '', e.distanceM ? `${e.distanceM}m` : '', e.notes ? `— ${e.notes}` : ''].filter(Boolean).join(' ').trim(),
-            reps: e.reps, recoveryMin: e.restSec / 60,
-            effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
-          }))
+        ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
         : blocks
       if (autoBlocks.length === 0) return
       onAutoSave({ ...session, sport, title, time, durationMin: dur, rpe, blocks: autoBlocks, notes: desc || undefined })
@@ -5883,8 +5989,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   // Convertit les circuits + exercices du ExerciseListBuilder en Block[] avec circuit_headers
   function exercisesToBlocks(exos: ExerciseItem[], circuits: ExoCircuit[], map: Record<string, string>): Block[] {
-    console.log('[SAVE] exercisesToBlocks circuits:', circuits.map(c => ({ id: c.id, type: c.type, rounds: c.rounds })))
-    console.log('[SAVE] exercisesToBlocks map:', map)
     const result: Block[] = []
     for (const circuit of circuits) {
       const circuitExos = exos.filter(e => (map[e.id] ?? 'default') === circuit.id)
@@ -6820,8 +6924,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           </div>
 
           {builderTab === 'manual' ? (
-            isStrength && blocks.length === 0 ? (
-              /* Mode manuel : constructeur par exercices (circuits) */
+            isStrength && !isEdit && blocks.length === 0 ? (
+              /* Mode création manuel : constructeur par exercices (circuits) */
               <ExerciseListBuilder
                 sport={sport}
                 exercises={exercises}

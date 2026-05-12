@@ -4374,13 +4374,26 @@ function estimateTimeOnSegment(distKm: number, gradientPct: number, watts: numbe
   const gradient  = gradientPct / 100
   const Crr       = 0.004
   const g         = 9.81
-  // Simplified: neglect aero on climbs/descents (gravity + rolling dominate)
-  const vApprox   = watts / (totalMass * g * (Math.abs(gradient) + Crr))
-  // Clamp between 0.5 m/s (1.8 km/h) and 17 m/s (61 km/h)
-  const vClamped  = Math.max(0.5, Math.min(17, vApprox))
-  const timeMin   = (distKm * 1000 / vClamped) / 60
-  console.log('[TIME]', { distKm, gradientPct, watts, riderKg, bikeKg, speedKmh: +(vClamped * 3.6).toFixed(1), timeMin: +timeMin.toFixed(1) })
-  return timeMin
+  const rho       = 1.225  // air density kg/m³
+  const CdA       = 0.36   // road cyclist in hoods (m²)
+
+  // Solve P = [m·g·(grad+Crr) + ½·ρ·CdA·v²]·v  for v (Newton-Raphson)
+  // f(v) = m·g·(grad+Crr)·v + ½·ρ·CdA·v³ − P = 0
+  const Fm = totalMass * g * (gradient + Crr)
+  let v = 5  // initial guess ~18 km/h
+
+  for (let iter = 0; iter < 50; iter++) {
+    const fv  = Fm * v + 0.5 * rho * CdA * v * v * v - watts
+    const dfv = Fm + 1.5 * rho * CdA * v * v
+    if (Math.abs(dfv) < 1e-10) break
+    const delta = fv / dfv
+    v = Math.max(0.28, v - delta)
+    if (Math.abs(delta) < 0.001) break
+  }
+
+  // Clamp to physically plausible range: ~1 km/h to 80 km/h
+  v = Math.max(0.28, Math.min(22, v))
+  return (distKm * 1000 / v) / 60
 }
 
 function analyzeTerrainSegments(
@@ -6100,7 +6113,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     setAiError(null)
     try {
       const isStrengthSport = sport === 'gym' || sport === 'hyrox'
-      console.log('[AI] Sport:', sport, 'isStrength:', isStrengthSport)
 
       // ── Le frontend envoie juste la description + le sport ──
       // Le system prompt complet est côté serveur dans /api/coach-stream
@@ -6138,8 +6150,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           }
         }
       }
-
-      console.log('[AI] Raw response:', raw.slice(0, 500))
 
       // ── Extraire le JSON ──
       let jsonStr = ''
@@ -6192,7 +6202,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             recoveryMin: recoveryMinVal,
           }
         })
-        console.log('[AI-MUSCU] 7. Parsed blocks:', newBlocks.length, newBlocks.slice(0, 2))
         if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
         setBlocks(newBlocks)
         setBuilderTab('manual')
@@ -6232,7 +6241,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
           }
         })
-        console.log('[AI-MUSCU] 7. Parsed blocks:', newBlocks.length, newBlocks.slice(0, 2))
         if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
         setBlocks(newBlocks)
         setBuilderTab('manual')

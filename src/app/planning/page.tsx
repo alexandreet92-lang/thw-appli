@@ -11,6 +11,8 @@ import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
+import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
+import type { ParsedSegment } from '@/lib/gpx/parser'
 import nDynamic from 'next/dynamic'
 const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -123,10 +125,8 @@ interface Session {
   vSwimTime?:string; vBikeTime?:string; vRunTime?:string; vT1?:string; vT2?:string
   vRpe?:number; vSplits?:string[]; vTempMax?:string; vHumidity?:string; vAltMax?:string; vNotes?:string
   vWattsAvg?:string; vWattsWeighted?:string; vCadenceAvg?:string; vCadenceMax?:string
-  parcoursData?: {
-    name: string; distance: number | null; elevation: number | null
-    points: number; elevationProfile: Array<{ distKm: number; ele: number }>
-  }
+  parcoursData?: ParcoursData
+  parcoursId?: string
   nutritionItems?: NutritionItem[]
 }
 interface WeekTask {
@@ -616,6 +616,7 @@ function usePlanning(weekStartParam?:string) {
       rpe:s.rpe??null, blocks:s.blocks??[], validation_data:{},
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
+      parcours_id:   s.parcoursId   ?? null,
       nutrition_data: (s as unknown as Session & { nutritionItems?: NutritionItem[] }).nutritionItems ?? null,
     }).select().single()
     if(!error&&data) {
@@ -634,6 +635,7 @@ function usePlanning(weekStartParam?:string) {
     }
     if (upd.sport) patch.sport = upd.sport
     if (upd.parcoursData !== undefined) patch.parcours_data = upd.parcoursData ?? null
+    if (upd.parcoursId  !== undefined) patch.parcours_id   = upd.parcoursId ?? null
     if (upd.nutritionItems !== undefined) patch.nutrition_data = upd.nutritionItems ?? null
     return patch
   }
@@ -4227,6 +4229,10 @@ interface ParcoursData {
   elevationProfile: Array<{ distKm: number; ele: number }>
   gpsTrace?: Array<{ lat: number; lon: number }>
   avgSpeed?: number | null
+  /** Segments détectés côté client — calculés par segmentElevationProfile() */
+  segments?: ParsedSegment[]
+  /** UUID Supabase après sauvegarde dans la table parcours */
+  parcoursId?: string
 }
 
 function buildGpsTrace(pts: Array<{ lat: number; lon: number; ele: number }>): Array<{ lat: number; lon: number }> {
@@ -4341,6 +4347,8 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
 
         const { distKm, elevM, profile } = buildElevationProfile(pts)
         const gpsTrace = buildGpsTrace(pts)
+        // Segmentation côté client (lissage 100m + gradient + filtrage)
+        const segments = segmentElevationProfile(profile)
         resolve({
           name,
           distance: distKm > 0 ? distKm : null,
@@ -4349,6 +4357,7 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
           elevationProfile: profile,
           gpsTrace,
           avgSpeed: null,
+          segments,
         })
       } catch (err) { reject(err) }
     }
@@ -6050,6 +6059,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
       parcoursData: parcoursData ?? undefined,
+      parcoursId: parcoursData?.parcoursId ?? undefined,
       nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
     }
     onSave(savedSession)
@@ -6116,12 +6126,20 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
       // ── Le frontend envoie juste la description + le sport ──
       // Le system prompt complet est côté serveur dans /api/coach-stream
+      // Si un parcours avec des montées est chargé, on les passe au prompt
+      const parcoursClimbs = parcoursData?.segments
+        ? getSignificantClimbs(parcoursData.segments)
+        : undefined
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [{ role: 'user', content: aiPrompt }],
           sport,
+          parcoursClimbs: parcoursClimbs && parcoursClimbs.length > 0 ? parcoursClimbs : undefined,
+          parcoursName:   parcoursData?.name,
+          parcoursTotalKm: parcoursData?.distance,
         }),
       })
 
@@ -6343,7 +6361,27 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             setParcoursError(null)
             try {
               const data = await parseRouteFile(f)
-              setParcoursData(data)
+              // Sauvegarde en Supabase — async, non bloquante pour l'UI
+              let parcoursId: string | undefined
+              try {
+                const res = await fetch('/api/parcours', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name:             data.name,
+                    totalKm:          data.distance,
+                    elevationGainM:   data.elevation,
+                    elevationLossM:   null,
+                    elevationProfile: data.elevationProfile,
+                    segments:         data.segments ?? [],
+                  }),
+                })
+                if (res.ok) {
+                  const json = await res.json() as { id?: string }
+                  parcoursId = json.id
+                }
+              } catch { /* non critique — l'UI fonctionne sans sauvegarde DB */ }
+              setParcoursData({ ...data, parcoursId })
             } catch (err) {
               setParcoursError(err instanceof Error ? err.message : 'Erreur de lecture')
               setParcoursData(null)

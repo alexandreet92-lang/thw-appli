@@ -166,6 +166,15 @@ export async function POST(req: NextRequest) {
     const messages = body.messages as Array<{ role: string; content: string }> | undefined
     const userMessage = messages?.[0]?.content ?? ''
 
+    // ── Contexte parcours (montées significatives) ─────────────
+    type ClimbInfo = {
+      startKm: number; endKm: number; distanceKm: number
+      elevationGainM: number; avgGradientPct: number; maxGradientPct: number
+    }
+    const parcoursClimbs  = (body.parcoursClimbs as ClimbInfo[] | undefined) ?? []
+    const parcoursName    = (body.parcoursName as string | undefined) ?? ''
+    const parcoursTotalKm = (body.parcoursTotalKm as number | undefined) ?? null
+
     if (!userMessage.trim()) {
       return new Response(JSON.stringify({ error: 'No message provided' }), { status: 400 })
     }
@@ -179,10 +188,19 @@ export async function POST(req: NextRequest) {
       fullMessage  = userMessage
     } else {
       systemPrompt = SESSION_SYSTEM_PROMPT
+
+      // Injecter le contexte altimétrique si des montées significatives sont présentes
+      let climbCtx = ''
+      if (parcoursClimbs.length > 0) {
+        const climbLines = parcoursClimbs.map((c, i) =>
+          `  C${i + 1}: km ${c.startKm}→${c.endKm} | ${c.distanceKm}km | D+${c.elevationGainM}m | moy ${c.avgGradientPct}% | max ${c.maxGradientPct}%`
+        ).join('\n')
+        climbCtx = `\n\nPARCOURS : ${parcoursName}${parcoursTotalKm ? ` (${parcoursTotalKm} km)` : ''}\nMontées significatives :\n${climbLines}\n→ Génère des blocs calés sur ces montées. Les descentes/plats entre elles sont inférés automatiquement.`
+      }
+
       const sportCtx = SPORT_CONTEXT[sport] ?? ''
-      fullMessage = sportCtx
-        ? `${sportCtx}\n\nSÉANCE DEMANDÉE :\n${userMessage}`
-        : userMessage
+      fullMessage = [sportCtx, climbCtx, `\nSÉANCE DEMANDÉE :\n${userMessage}`]
+        .filter(Boolean).join('')
     }
 
     // Appel Anthropic streaming direct

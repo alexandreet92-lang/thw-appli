@@ -1471,6 +1471,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
         const parentHeader = [...blocks].slice(0, i).reverse().find(x => x.type === 'circuit_header')
         const parentCircuitType: CircuitType = (parentHeader && (['series','circuit','superset','emom','tabata'].includes(parentHeader.mode)) ? parentHeader.mode : 'series') as CircuitType
         const isSeries = parentCircuitType === 'series'
+        console.log('[CIRCUIT DEBUG]', { blockLabel: b.label, blockMode: b.mode, blockType: b.type, parentHeaderMode: parentHeader?.mode, parentCircuitType, isSeries })
 
         return (
           <div key={b.id}>

@@ -5654,6 +5654,13 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [aiError, setAiError] = useState<string | null>(null)
   const [showSlashMenu, setShowSlashMenu] = useState(false)
   const [slashFilter, setSlashFilter] = useState('')
+  // Parcours AI flow
+  type AIFlowStep = 'ask' | 'parcours' | 'free'
+  const [aiFlowStep, setAiFlowStep] = useState<AIFlowStep>('ask')
+  const [climbConfigs, setClimbConfigs] = useState<Array<{
+    segIdx: number; selected: boolean; watts: number; estimatedMin: number
+  }>>([])
+  const [efWatts, setEfWatts] = useState(160)
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
@@ -5697,6 +5704,12 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [athleteWeight, setAthleteWeight] = useState<number>(75)
   const [bikeWeight, setBikeWeight] = useState<number>(8)
   const [terrainLoading, setTerrainLoading] = useState(false)
+
+  // Réinitialise le flow IA quand un nouveau parcours est chargé
+  useEffect(() => {
+    setAiFlowStep('ask')
+    setClimbConfigs([])
+  }, [parcoursData?.name])
 
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
@@ -6117,8 +6130,80 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     }
   }
 
-  async function handleAIGenerate() {
-    if (!aiPrompt.trim() || aiLoading) return
+  // ── Parcours AI flow helpers ──────────────────────────────────
+  function initClimbConfigs() {
+    const ftp = athleteData?.ftp ?? 200
+    const segs = parcoursData?.segments ?? []
+    const configs = segs
+      .map((seg, idx) => ({ seg, idx }))
+      .filter(({ seg }) => seg.type === 'climb')
+      .map(({ seg, idx }) => {
+        // Deux itérations pour converger watts ↔ durée
+        let watts = ftp * 0.85
+        for (let iter = 0; iter < 2; iter++) {
+          const mins = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, watts, athleteWeight, bikeWeight)
+          watts = mins < 8 ? ftp * 1.00 : mins < 20 ? ftp * 0.90 : ftp * 0.80
+        }
+        watts = Math.round(watts)
+        const estimatedMin = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, watts, athleteWeight, bikeWeight)
+        return { segIdx: idx, selected: true, watts, estimatedMin }
+      })
+    setClimbConfigs(configs)
+    setEfWatts(Math.round(ftp * 0.65))
+  }
+
+  function computeParcoursFlowTSS(): number {
+    const ftp = athleteData?.ftp ?? 1
+    const segs = parcoursData?.segments ?? []
+    let tss = 0
+    // Montées
+    for (const c of climbConfigs) {
+      const seg = segs[c.segIdx]
+      if (!seg) continue
+      const w = c.selected ? c.watts : efWatts
+      const mins = c.selected ? c.estimatedMin
+        : estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, efWatts, athleteWeight, bikeWeight)
+      tss += (mins / 60) * Math.pow(w / ftp, 2) * 100
+    }
+    // Plats + descentes
+    for (const seg of segs) {
+      if (seg.type !== 'climb') {
+        const mins = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, efWatts, athleteWeight, bikeWeight)
+        tss += (mins / 60) * Math.pow(efWatts / ftp, 2) * 100
+      }
+    }
+    // Échauffement + retour au calme estimés (10 min à 55% FTP)
+    tss += (10 / 60) * Math.pow(0.55, 2) * 100
+    return Math.round(tss)
+  }
+
+  function handleAIGenerateFromParcours() {
+    const ftp = athleteData?.ftp ?? 200
+    const segs = parcoursData?.segments ?? []
+
+    const selectedLines = climbConfigs
+      .filter(c => c.selected)
+      .map((c, i) => {
+        const seg = segs[c.segIdx]
+        if (!seg) return ''
+        return `- Côte ${i + 1} : km${seg.startKm}→km${seg.endKm} | ${seg.distanceKm}km à ${seg.avgGradient}% | D+${seg.elevationDeltaM}m | cible ${c.watts}W (~${c.estimatedMin.toFixed(0)}min)`
+      }).filter(Boolean).join('\n')
+
+    const prompt = [
+      `Génère une séance cyclisme sur ce parcours.`,
+      parcoursData?.name ? `Parcours : ${parcoursData.name}${parcoursData.distance ? ` (${parcoursData.distance} km)` : ''}` : '',
+      `\nIntensité de fond (plats et descentes) : ${efWatts}W (IF ${(efWatts / ftp).toFixed(2)})`,
+      selectedLines ? `\nMontées à travailler :\n${selectedLines}` : '\nPas de montée sélectionnée — génère une séance en endurance de fond.',
+      `\nGénère dans l'ordre : échauffement 15min, puis les blocs du parcours dans l'ordre géographique (côtes à l'intensité cible, plats/descentes à ${efWatts}W), puis retour au calme 10min.`,
+      `Respecte les durées estimées pour les côtes. Pour les plats/descentes entre les côtes, calcule la durée en fonction de la distance restante.`,
+    ].filter(Boolean).join('\n')
+
+    void handleAIGenerate(prompt)
+  }
+
+  async function handleAIGenerate(overridePrompt?: string) {
+    const prompt = overridePrompt ?? aiPrompt
+    if (!prompt.trim() || aiLoading) return
     setAiLoading(true)
     setAiError(null)
     try {
@@ -6135,7 +6220,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: aiPrompt }],
+          messages: [{ role: 'user', content: prompt }],
           sport,
           parcoursClimbs: parcoursClimbs && parcoursClimbs.length > 0 ? parcoursClimbs : undefined,
           parcoursName:   parcoursData?.name,
@@ -6983,83 +7068,254 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} exoHistory={exoHistory} />
             )
           ) : (
-            <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
-              <div style={{ position: 'relative' as const }}>
-                <textarea value={aiPrompt}
-                  onChange={e => {
-                    const val = e.target.value
-                    setAiPrompt(val)
-                    if (aiError) setAiError(null)
-                    // Détecter slash command sur la dernière ligne
-                    const lastLine = val.split('\n').pop() ?? ''
-                    const m = lastLine.match(/\/([\w]*)$/)
-                    if (m) { setShowSlashMenu(true); setSlashFilter(m[1].toLowerCase()) }
-                    else { setShowSlashMenu(false) }
-                  }}
-                  onKeyDown={e => { if (e.key === 'Escape') setShowSlashMenu(false) }}
-                  rows={6}
-                  placeholder={isStrength
-                    ? 'Tape / pour les types de circuits\n\nEx :\n/lap\nSquat @100kg\nBench @80kg\nx4\n\n/superset\nCurl @14kg + Triceps @20kg\nx3'
-                    : 'Ex : 10×400m @3:30/km avec 1min récup, échauffement 15min...'}
-                  style={{
-                    width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                    borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
-                    resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.6,
-                    boxSizing: 'border-box' as const, minHeight: 140,
-                  }} />
+            (() => {
+              const hasClimbs = (parcoursData?.segments ?? []).some(s => s.type === 'climb')
+              const ftp = athleteData?.ftp ?? 200
+              const segs = parcoursData?.segments ?? []
+              const effectiveStep: AIFlowStep = !hasClimbs ? 'free' : aiFlowStep
 
-                {/* ── Autocomplete slash commands ── */}
-                {showSlashMenu && isStrength && (() => {
-                  const filtered = CIRCUIT_TYPES.filter(ct =>
-                    !slashFilter || ct.slash.startsWith(slashFilter) || ct.label.toLowerCase().startsWith(slashFilter)
-                  )
-                  if (filtered.length === 0) return null
-                  return (
-                    <div style={{
-                      position: 'absolute' as const, bottom: '100%', left: 0, right: 0,
-                      marginBottom: 4, borderRadius: 10, overflow: 'hidden',
-                      background: 'var(--bg-card)', border: '1px solid var(--border)',
-                      boxShadow: '0 -6px 24px rgba(0,0,0,0.18)', zIndex: 20,
-                    }}>
-                      {filtered.map((ct, idx) => (
-                        <button key={ct.id} onClick={() => {
-                          const lines = aiPrompt.split('\n')
-                          lines[lines.length - 1] = (lines[lines.length - 1] ?? '').replace(/\/[\w]*$/, `/${ct.slash}`)
-                          setAiPrompt(lines.join('\n') + '\n')
-                          setShowSlashMenu(false)
-                        }} style={{
-                          width: '100%', padding: '10px 14px',
-                          border: 'none', borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-                          background: 'transparent', cursor: 'pointer', textAlign: 'left' as const,
-                          display: 'flex', alignItems: 'center', gap: 10,
+              function zoneColor(w: number): string {
+                const r = w / ftp
+                if (r > 1.05) return '#ef4444'
+                if (r > 0.90) return '#f97316'
+                if (r > 0.76) return '#eab308'
+                if (r > 0.60) return '#22c55e'
+                return '#3b82f6'
+              }
+
+              // ── STEP ASK ──────────────────────────────────────
+              if (effectiveStep === 'ask') {
+                const climbs = segs.filter(s => s.type === 'climb')
+                return (
+                  <div style={{ borderRadius: 12, border: `1px solid ${accent}20`, background: `${accent}05`, padding: 18 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: '#fff' }}>✦</div>
+                      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', flex: 1 }}>
+                        <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text)', lineHeight: 1.5, fontWeight: 500 }}>
+                          Souhaites-tu construire ta séance en tenant compte du profil de ce parcours ?
+                        </p>
+                        <p style={{ margin: '0 0 3px', fontSize: 11, color: accent, fontWeight: 700 }}>{parcoursData?.name}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: 'var(--text-dim)' }}>
+                          {[parcoursData?.distance ? `${parcoursData.distance} km` : '', parcoursData?.elevation ? `${parcoursData.elevation} m D+` : '', `${climbs.length} montée${climbs.length > 1 ? 's' : ''} détectée${climbs.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => { initClimbConfigs(); setAiFlowStep('parcours') }} style={{
+                        flex: 2, padding: '10px 16px', borderRadius: 9, border: 'none',
+                        background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                        color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                      }}>⛰ Oui, intégrer le parcours</button>
+                      <button onClick={() => setAiFlowStep('free')} style={{
+                        flex: 1, padding: '10px 16px', borderRadius: 9,
+                        border: '1px solid var(--border)', background: 'transparent',
+                        color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}>Texte libre</button>
+                    </div>
+                  </div>
+                )
+              }
+
+              // ── STEP PARCOURS CONFIG ──────────────────────────
+              if (effectiveStep === 'parcours') {
+                const tss = computeParcoursFlowTSS()
+                const totalMin = segs.reduce((s, seg) => {
+                  const found = climbConfigs.find(c => c.segIdx === (parcoursData?.segments ?? []).indexOf(seg))
+                  const w = found ? (found.selected ? found.watts : efWatts) : efWatts
+                  return s + estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
+                }, 0) + 25
+                const totalClimbMin = climbConfigs.filter(c => c.selected).reduce((s, c) => s + c.estimatedMin, 0)
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button onClick={() => setAiFlowStep('ask')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: 0, lineHeight: 1 }}>←</button>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{parcoursData?.name}</span>
+                      {parcoursData?.distance && <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{parcoursData.distance} km</span>}
+                    </div>
+
+                    {/* Climb cards */}
+                    {climbConfigs.map((cfg, ci) => {
+                      const seg = segs[cfg.segIdx]
+                      if (!seg) return null
+                      const timeMin = cfg.estimatedMin
+                      const warnOverFtp = cfg.selected && cfg.watts > ftp && timeMin > 20
+                      const zc = zoneColor(cfg.watts)
+                      return (
+                        <div key={ci} style={{
+                          borderRadius: 10, border: `1px solid ${cfg.selected ? `${zc}40` : 'var(--border)'}`,
+                          background: cfg.selected ? `${zc}07` : 'var(--bg-card)', overflow: 'hidden',
                         }}>
-                          <span style={{ fontSize: 14, width: 22, textAlign: 'center' as const, flexShrink: 0 }}>{ct.icon}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>/{ct.slash}</span>
-                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{ct.desc}</span>
+                          <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 9 }}>
+                            {/* Checkbox */}
+                            <button
+                              onClick={() => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))}
+                              style={{ width: 18, height: 18, borderRadius: 5, border: `2px solid ${cfg.selected ? zc : 'var(--border)'}`, background: cfg.selected ? zc : 'transparent', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                              {cfg.selected && <span style={{ fontSize: 10, color: '#fff', lineHeight: 1 }}>✓</span>}
+                            </button>
+                            {/* Accent bar */}
+                            <div style={{ width: 3, height: 36, borderRadius: 2, background: cfg.selected ? zc : 'var(--border)', flexShrink: 0 }} />
+                            {/* Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
+                                Côte {ci + 1} <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 10 }}>km {seg.startKm}→{seg.endKm}</span>
+                              </div>
+                              <div style={{ fontSize: 10, color: 'var(--text-dim)', display: 'flex', flexWrap: 'wrap' as const, gap: '0 6px' }}>
+                                <span>{seg.distanceKm} km</span>
+                                <span>·</span>
+                                <span>{seg.avgGradient}%</span>
+                                <span>·</span>
+                                <span>D+{seg.elevationDeltaM}m</span>
+                                <span>·</span>
+                                <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)', fontWeight: 600 }}>{timeMin.toFixed(0)} min</span>
+                              </div>
+                            </div>
+                            {/* Watts input */}
+                            {cfg.selected && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                <input type="number" value={cfg.watts}
+                                  onChange={e => {
+                                    const w = Math.max(50, Math.min(600, Number(e.target.value) || cfg.watts))
+                                    const mins = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
+                                    setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, watts: w, estimatedMin: mins } : c))
+                                  }}
+                                  style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: `1px solid ${zc}60`, background: 'var(--bg-card2)', color: zc, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                />
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                              </div>
+                            )}
                           </div>
-                        </button>
+                          {/* FTP warning */}
+                          {warnOverFtp && (
+                            <div style={{ padding: '5px 12px', background: 'rgba(234,179,8,0.10)', borderTop: '1px solid rgba(234,179,8,0.25)', fontSize: 10, color: '#ca8a04', display: 'flex', gap: 5, alignItems: 'center' }}>
+                              <span>⚠</span>
+                              <span>{cfg.watts}W &gt; FTP ({ftp}W) sur {timeMin.toFixed(0)} min — intensité non soutenable.</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {/* EF intensity (plats + descentes) */}
+                    <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Plats & descentes</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                          Endurance de fond — Z{efWatts / ftp < 0.56 ? 1 : efWatts / ftp < 0.76 ? 2 : efWatts / ftp < 0.90 ? 3 : 4} ({Math.round((efWatts / ftp) * 100)}% FTP)
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        <input type="number" value={efWatts}
+                          onChange={e => setEfWatts(Math.max(50, Math.min(600, Number(e.target.value) || efWatts)))}
+                          style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                        />
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                      </div>
+                    </div>
+
+                    {/* TSS + durée preview */}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[
+                        { val: String(tss), lbl: 'TSS estimé', color: accent },
+                        { val: String(Math.round(totalMin)), lbl: 'min total', color: 'var(--text)' },
+                        { val: String(Math.round(totalClimbMin)), lbl: 'min côtes', color: 'var(--text)' },
+                      ].map(({ val, lbl, color }) => (
+                        <div key={lbl} style={{ flex: 1, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: 'DM Mono, monospace' }}>{val}</div>
+                          <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{lbl}</div>
+                        </div>
                       ))}
                     </div>
-                  )
-                })()}
-              </div>
-              <button onClick={handleAIGenerate} disabled={aiLoading || !aiPrompt.trim()} style={{
-                marginTop: 8, width: '100%', padding: 11, borderRadius: 9, border: 'none',
-                background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-                color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
-                fontFamily: 'Syne, sans-serif',
-              }}>{aiLoading ? 'Génération...' : 'Générer les blocs'}</button>
-              {aiError && (
-                <div style={{
-                  marginTop: 8, padding: '10px 12px', borderRadius: 8,
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)',
-                  color: '#ef4444', fontSize: 11, lineHeight: 1.5, wordBreak: 'break-all' as const,
-                }}>
-                  {aiError}
+
+                    {/* Generate */}
+                    <button onClick={handleAIGenerateFromParcours} disabled={aiLoading} style={{
+                      width: '100%', padding: 11, borderRadius: 9, border: 'none',
+                      background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                      color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
+                      fontFamily: 'Syne, sans-serif',
+                    }}>{aiLoading ? 'Génération...' : '✦ Générer la séance'}</button>
+
+                    {aiError && (
+                      <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5 }}>
+                        {aiError}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              // ── STEP FREE TEXT (inchangé) ─────────────────────
+              return (
+                <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
+                  {hasClimbs && (
+                    <button onClick={() => setAiFlowStep('ask')} style={{
+                      marginBottom: 10, padding: '4px 10px', borderRadius: 7,
+                      border: '1px solid var(--border)', background: 'transparent',
+                      color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                    }}>← Retour au flow parcours</button>
+                  )}
+                  <div style={{ position: 'relative' as const }}>
+                    <textarea value={aiPrompt}
+                      onChange={e => {
+                        const val = e.target.value
+                        setAiPrompt(val)
+                        if (aiError) setAiError(null)
+                        const lastLine = val.split('\n').pop() ?? ''
+                        const m = lastLine.match(/\/([\w]*)$/)
+                        if (m) { setShowSlashMenu(true); setSlashFilter(m[1].toLowerCase()) }
+                        else { setShowSlashMenu(false) }
+                      }}
+                      onKeyDown={e => { if (e.key === 'Escape') setShowSlashMenu(false) }}
+                      rows={6}
+                      placeholder={isStrength
+                        ? 'Tape / pour les types de circuits\n\nEx :\n/lap\nSquat @100kg\nBench @80kg\nx4\n\n/superset\nCurl @14kg + Triceps @20kg\nx3'
+                        : 'Ex : 10×400m @3:30/km avec 1min récup, échauffement 15min...'}
+                      style={{
+                        width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                        borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
+                        resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.6,
+                        boxSizing: 'border-box' as const, minHeight: 140,
+                      }} />
+                    {showSlashMenu && isStrength && (() => {
+                      const filtered = CIRCUIT_TYPES.filter(ct =>
+                        !slashFilter || ct.slash.startsWith(slashFilter) || ct.label.toLowerCase().startsWith(slashFilter)
+                      )
+                      if (filtered.length === 0) return null
+                      return (
+                        <div style={{ position: 'absolute' as const, bottom: '100%', left: 0, right: 0, marginBottom: 4, borderRadius: 10, overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 -6px 24px rgba(0,0,0,0.18)', zIndex: 20 }}>
+                          {filtered.map((ct, idx) => (
+                            <button key={ct.id} onClick={() => {
+                              const lines = aiPrompt.split('\n')
+                              lines[lines.length - 1] = (lines[lines.length - 1] ?? '').replace(/\/[\w]*$/, `/${ct.slash}`)
+                              setAiPrompt(lines.join('\n') + '\n')
+                              setShowSlashMenu(false)
+                            }} style={{ width: '100%', padding: '10px 14px', border: 'none', borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 14, width: 22, textAlign: 'center' as const, flexShrink: 0 }}>{ct.icon}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>/{ct.slash}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8 }}>{ct.desc}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                  <button onClick={() => handleAIGenerate()} disabled={aiLoading || !aiPrompt.trim()} style={{
+                    marginTop: 8, width: '100%', padding: 11, borderRadius: 9, border: 'none',
+                    background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
+                    color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
+                    fontFamily: 'Syne, sans-serif',
+                  }}>{aiLoading ? 'Génération...' : 'Générer les blocs'}</button>
+                  {aiError && (
+                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5, wordBreak: 'break-all' as const }}>
+                      {aiError}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              )
+            })()
           )}
         </div>
 

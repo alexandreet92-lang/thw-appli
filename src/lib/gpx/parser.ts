@@ -39,7 +39,7 @@ const DESCENT_THRESHOLD = -2.0   // % → descente en dessous
 const SMOOTH_WINDOW_KM  =  0.10  // 100 m — fenêtre lissage altimétrique
 const MIN_LENGTH_KM     =  0.50  // 500 m — longueur minimale d'un segment
 const MIN_ELEV_GAIN_M   =  15    // 15 m D+ minimum pour qualifier une montée
-const GAP_TOLERANCE_KM  =  0.30  // 300 m — transition tolérée entre deux montées
+const GAP_TOLERANCE_KM  =  0.50  // 500 m — transition tolérée entre deux montées
 
 // ─────────────────────────────────────────────────────────────
 /** Lisse un profil altimétrique avec une fenêtre distance (km). */

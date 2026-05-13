@@ -6578,7 +6578,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         })
         if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
         setBlocks(newBlocks)
-        setBuilderTab('manual')
+        // En mode parcours, on reste dans la vue parcours — les blocs sont
+        // stockés pour la sauvegarde et le TSS, mais affichés uniquement
+        // via les jauges SVG sur le graphique altimétrique.
+        if (aiFlowStep !== 'parcours') setBuilderTab('manual')
         setAiPrompt('')
       }
 

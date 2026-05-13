@@ -7455,36 +7455,41 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         )}
 
         {/* BANDEAU ZONES — puissance + FC, sous le graphique */}
-        {sport === 'bike' && athleteData?.ftp && parcoursData && (
+        {sport === 'bike' && parcoursData && (
           <div style={{ margin: mobile ? '8px 16px 0' : '8px 24px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 10px', display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
             {/* Zones puissance W */}
-            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>W</span>
-              {[
-                { z: 'Z1', lo: 0,                                        hi: Math.round(athleteData.ftp * 0.55), c: '#9ca3af', lbl: 'Récup' },
-                { z: 'Z2', lo: Math.round(athleteData.ftp * 0.55), hi: Math.round(athleteData.ftp * 0.75), c: '#22c55e', lbl: 'Endurance' },
-                { z: 'Z3', lo: Math.round(athleteData.ftp * 0.75), hi: Math.round(athleteData.ftp * 0.87), c: '#eab308', lbl: 'Tempo' },
-                { z: 'Z4', lo: Math.round(athleteData.ftp * 0.87), hi: Math.round(athleteData.ftp * 1.05), c: '#f97316', lbl: 'Seuil' },
-                { z: 'Z5', lo: Math.round(athleteData.ftp * 1.05), hi: Math.round(athleteData.ftp * 1.20), c: '#ef4444', lbl: 'VO2max' },
-                { z: 'Z6', lo: Math.round(athleteData.ftp * 1.20), hi: Math.round(athleteData.ftp * 1.50), c: '#991B1B', lbl: 'Anaérobie' },
-                { z: 'Z7', lo: Math.round(athleteData.ftp * 1.50), hi: null,                               c: '#6B21A8', lbl: 'Sprint' },
-              ].map(({ z, lo, hi, c, lbl }) => (
-                <div key={z} style={{ flex: 1, borderRadius: 4, background: `${c}18`, border: `1px solid ${c}40`, padding: '3px 4px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{z}</div>
-                  <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 1 }}>{lbl}</div>
-                  <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{lo}{hi ? `–${hi}` : '+'}W</div>
+            {(() => {
+              const ftp = athleteData?.ftp ?? 250
+              return (
+                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>W</span>
+                  {[
+                    { z: 'Z1', lo: 0,                          hi: Math.round(ftp * 0.55), c: '#9ca3af', lbl: 'Récup' },
+                    { z: 'Z2', lo: Math.round(ftp * 0.55), hi: Math.round(ftp * 0.75), c: '#22c55e', lbl: 'Endurance' },
+                    { z: 'Z3', lo: Math.round(ftp * 0.75), hi: Math.round(ftp * 0.87), c: '#eab308', lbl: 'Tempo' },
+                    { z: 'Z4', lo: Math.round(ftp * 0.87), hi: Math.round(ftp * 1.05), c: '#f97316', lbl: 'Seuil' },
+                    { z: 'Z5', lo: Math.round(ftp * 1.05), hi: Math.round(ftp * 1.20), c: '#ef4444', lbl: 'VO2max' },
+                    { z: 'Z6', lo: Math.round(ftp * 1.20), hi: Math.round(ftp * 1.50), c: '#991B1B', lbl: 'Anaérobie' },
+                    { z: 'Z7', lo: Math.round(ftp * 1.50), hi: null,                   c: '#6B21A8', lbl: 'Sprint' },
+                  ].map(({ z, lo, hi, c, lbl }) => (
+                    <div key={z} style={{ flex: 1, borderRadius: 4, background: `${c}18`, border: `1px solid ${c}40`, padding: '3px 4px', textAlign: 'center' as const }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{z}</div>
+                      <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 1 }}>{lbl}</div>
+                      <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{lo}{hi ? `–${hi}` : '+'}W</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )
+            })()}
             {/* Zones FC si LTHR disponible */}
             {(() => {
-              const lthr = athleteData.lthrBike ?? athleteData.lthrRun ?? null
+              const lthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? null
               if (!lthr) return null
               return (
                 <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                   <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>FC</span>
                   {[
-                    { z: 'Z1', lo: 0,                                hi: Math.round(lthr * 0.80), c: '#9ca3af' },
+                    { z: 'Z1', lo: 0,                          hi: Math.round(lthr * 0.80), c: '#9ca3af' },
                     { z: 'Z2', lo: Math.round(lthr * 0.80), hi: Math.round(lthr * 0.89), c: '#22c55e' },
                     { z: 'Z3', lo: Math.round(lthr * 0.89), hi: Math.round(lthr * 0.95), c: '#eab308' },
                     { z: 'Z4', lo: Math.round(lthr * 0.95), hi: Math.round(lthr * 1.02), c: '#f97316' },

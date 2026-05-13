@@ -5930,24 +5930,27 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         const { data: { user } } = await sb.auth.getUser()
         if (!user || cancelled) return
 
-        const [perfRes, actsRes, profileRes] = await Promise.all([
+        const [perfRes, actsRes, profileRes, zonesRes] = await Promise.all([
           // athlete_performance_profile — vraies colonnes vérifiées
           sb.from('athlete_performance_profile')
             .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m')
             .eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
           sb.from('profiles').select('weight_kg,bike_weight_kg').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
+          // training_zones bike — source canonique du FTP cyclisme
+          sb.from('training_zones').select('ftp_watts').eq('user_id', user.id).eq('sport', 'bike').eq('is_current', true).maybeSingle().then(r => r, () => ({ data: null })),
         ])
 
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
         const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
         const prof = (profileRes as { data: Record<string, unknown> | null }).data
+        const zonesData = (zonesRes as { data: Record<string, unknown> | null }).data
         if (!cancelled) {
           if (prof?.weight_kg) setAthleteWeight(prof.weight_kg as number)
           if (prof?.bike_weight_kg) setBikeWeight(prof.bike_weight_kg as number)
         }
 
-        const ftp = (perf?.ftp_watts as number) ?? null
+        const ftp = (zonesData?.ftp_watts as number) ?? (perf?.ftp_watts as number) ?? null
         const hrMax = (perf?.hr_max as number) ?? null
         const hrRest = (perf?.hr_rest as number) ?? null
         const lthrRun = (perf?.lthr_run as number) ?? null
@@ -7282,13 +7285,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         const ftpVal = athleteData?.ftp ?? 200
                         const wToColor = (w: number) => {
                           const r = w / ftpVal
-                          if (r > 1.50) return '#f472b6'
-                          if (r > 1.20) return '#c084fc'
+                          if (r > 1.50) return '#6B21A8'
+                          if (r > 1.20) return '#991B1B'
                           if (r > 1.05) return '#ef4444'
                           if (r > 0.87) return '#f97316'
                           if (r > 0.75) return '#eab308'
                           if (r > 0.55) return '#22c55e'
-                          return '#6b7280'
+                          return '#9ca3af'
                         }
                         if (builderTab === 'ai' && aiFlowStep === 'parcours') {
                           // Overlays des segments côtes pour le flow parcours IA
@@ -7331,7 +7334,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
                             const wColor = (w: number) => {
                               const r = w / ftp2
-                              return r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
+                              return r > 1.50 ? '#6B21A8' : r > 1.20 ? '#991B1B' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#9ca3af'
                             }
 
                             const selectedClimbs = climbConfigs
@@ -7463,13 +7466,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>W</span>
                 {[
-                  { z: 'Z1', lo: 0,    hi: Math.round(athleteData.ftp * 0.55), c: '#6b7280', lbl: 'Récup' },
+                  { z: 'Z1', lo: 0,    hi: Math.round(athleteData.ftp * 0.55), c: '#9ca3af', lbl: 'Récup' },
                   { z: 'Z2', lo: Math.round(athleteData.ftp * 0.55), hi: Math.round(athleteData.ftp * 0.75), c: '#22c55e', lbl: 'Endurance' },
                   { z: 'Z3', lo: Math.round(athleteData.ftp * 0.75), hi: Math.round(athleteData.ftp * 0.87), c: '#eab308', lbl: 'Tempo' },
                   { z: 'Z4', lo: Math.round(athleteData.ftp * 0.87), hi: Math.round(athleteData.ftp * 1.05), c: '#f97316', lbl: 'Seuil' },
                   { z: 'Z5', lo: Math.round(athleteData.ftp * 1.05), hi: Math.round(athleteData.ftp * 1.20), c: '#ef4444', lbl: 'VO2max' },
-                  { z: 'Z6', lo: Math.round(athleteData.ftp * 1.20), hi: Math.round(athleteData.ftp * 1.50), c: '#c084fc', lbl: 'Anaérobie' },
-                  { z: 'Z7', lo: Math.round(athleteData.ftp * 1.50), hi: null, c: '#f472b6', lbl: 'Sprint' },
+                  { z: 'Z6', lo: Math.round(athleteData.ftp * 1.20), hi: Math.round(athleteData.ftp * 1.50), c: '#991B1B', lbl: 'Anaérobie' },
+                  { z: 'Z7', lo: Math.round(athleteData.ftp * 1.50), hi: null, c: '#6B21A8', lbl: 'Sprint' },
                 ].map(({ z, lo, hi, c }) => (
                   <div key={z} style={{ flex: 1, borderRadius: 4, background: `${c}18`, border: `1px solid ${c}40`, padding: '3px 4px', textAlign: 'center' as const }}>
                     <div style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{z}</div>
@@ -7543,13 +7546,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
               function zoneColor(w: number): string {
                 const r = w / ftp
-                if (r > 1.50) return '#f472b6'  // Z7 Sprint
-                if (r > 1.20) return '#c084fc'  // Z6 Anaérobie
+                if (r > 1.50) return '#6B21A8'  // Z7 Sprint
+                if (r > 1.20) return '#991B1B'  // Z6 Anaérobie
                 if (r > 1.05) return '#ef4444'  // Z5 VO2max
                 if (r > 0.87) return '#f97316'  // Z4 Seuil
                 if (r > 0.75) return '#eab308'  // Z3 Tempo
                 if (r > 0.55) return '#22c55e'  // Z2 Endurance
-                return '#6b7280'                 // Z1 Récup
+                return '#9ca3af'                 // Z1 Récup
               }
               function zoneLabel(w: number): string {
                 const r = w / ftp
@@ -7889,7 +7892,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           const w   = overSb ? overSb.watts : c.watts
                           const min = overSb ? overSb.estimatedMin : c.estimatedMin
                           const r   = w / ftp
-                          const zc  = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
+                          const zc  = r > 1.50 ? '#6B21A8' : r > 1.20 ? '#991B1B' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#9ca3af'
                           const zl  = r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1'
                           return { segIdx: c.segIdx, seg, w, min, zc, zl, isOverride: !!overSb }
                         }).filter((x): x is NonNullable<typeof x> => x !== null)
@@ -7946,7 +7949,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           {/* Blocs spécifiques */}
                           {sbRows.map((sb, i) => {
                             const r = sb.watts / ftp
-                            const zc = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
+                            const zc = r > 1.50 ? '#6B21A8' : r > 1.20 ? '#991B1B' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#9ca3af'
                             return (
                               <div key={sb.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid rgba(249,115,22,0.25)' }}>
                                 <div style={{ width: 3, height: 32, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />

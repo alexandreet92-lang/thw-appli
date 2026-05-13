@@ -4556,6 +4556,9 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
 
   if (profile.length < 2) return null
 
+  // DEBUG — retirer après diagnostic
+  console.log('[ElevationChart] powerGauges=', powerGauges ? `${powerGauges.length} jauges` : 'undefined', powerGauges)
+
   const minEle = Math.min(...profile.map(p => p.ele))
   const maxEle = Math.max(...profile.map(p => p.ele))
   const eleRange = maxEle - minEle || 1
@@ -7311,6 +7314,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             const ftp2 = athleteData.ftp!
                             const allSegs = (parcoursData.segments ?? []).slice().sort((a, b) => a.startKm - b.startKm)
                             const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
+                            // DEBUG
+                            console.log('[powerGauges IIFE] allSegs=', allSegs.map(s => `${s.type}(${s.startKm}→${s.endKm})`), 'routeKm=', routeKm)
 
                             const wColor = (w: number) => {
                               const r = w / ftp2
@@ -7377,6 +7382,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             // Gap final → EF
                             if (routeKm > cursor + 0.05) pushEF(cursor, routeKm)
 
+                            // DEBUG
+                            console.log('[powerGauges IIFE] résultat=', gauges.map(g => `${g.blockIdx}(${g.startKm}→${g.endKm} ${g.watts}W)`))
                             return gauges
                           })()
                         : undefined

@@ -7319,32 +7319,20 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       powerGauges={!!parcoursData && (parcoursData.segments?.length ?? 0) > 0
                         ? (() => {
                             const ftp2 = athleteData?.ftp ?? 250
+                            const segments = parcoursData.segments!
                             const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
-
-                            // Only segments that have a distinct power target (selected climbs or specific blocks)
-                            const activeSegs = (parcoursData.segments ?? [])
-                              .slice()
-                              .sort((a, b) => a.startKm - b.startKm)
-                              .filter(seg => {
-                                const sbOver = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
-                                if (sbOver) return true
-                                if (seg.type === 'climb') {
-                                  const cc = climbConfigs.find(c => parcoursData.segments![c.segIdx] === seg)
-                                  return !!cc?.selected
-                                }
-                                return false
-                              })
-
-                            console.log('[powerGauges IIFE] activeSegs=', activeSegs.map(s => `${s.type}(${s.startKm}→${s.endKm})`), 'routeKm=', routeKm)
 
                             const wColor = (w: number) => {
                               const r = w / ftp2
                               return r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
                             }
 
+                            const selectedClimbs = climbConfigs
+                              .filter(c => c.selected)
+                              .sort((a, b) => segments[a.segIdx].startKm - segments[b.segIdx].startKm)
+
                             const gauges: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }> = []
                             let efIdx = 0
-                            let cursor = 0
 
                             const pushEF = (s: number, e: number) => {
                               if (e - s < 0.05) return
@@ -7361,45 +7349,36 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               })
                             }
 
-                            for (const seg of activeSegs) {
-                              // Everything before this segment → one merged EF block
-                              if (seg.startKm > cursor + 0.05) pushEF(cursor, seg.startKm)
+                            if (selectedClimbs.length === 0) {
+                              // No selected climbs → one full EF block
+                              pushEF(0, routeKm)
+                            } else {
+                              // Gap before first climb
+                              pushEF(0, segments[selectedClimbs[0].segIdx].startKm)
 
-                              const sbOver = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
-                              let w = efWatts
-                              let hrAvg: number | undefined
-                              let bidx = -(efIdx++ + 1000)
-
-                              if (sbOver) {
-                                w = sbOver.watts
-                                hrAvg = sbOver.hrAvg
-                                bidx = -(efIdx - 1 + 2000)
-                              } else if (seg.type === 'climb') {
-                                const cc = climbConfigs.find(c => parcoursData.segments![c.segIdx] === seg)
-                                if (cc?.selected) {
-                                  w = cc.watts
-                                  bidx = cc.segIdx
-                                }
+                              for (let i = 0; i < selectedClimbs.length; i++) {
+                                const cc = selectedClimbs[i]
+                                const seg = segments[cc.segIdx]
+                                // Climb gauge
+                                gauges.push({
+                                  blockIdx: cc.segIdx,
+                                  startKm: seg.startKm,
+                                  endKm: seg.endKm,
+                                  watts: cc.watts,
+                                  ftpRef: ftp2,
+                                  color: wColor(cc.watts),
+                                  label: `km${seg.startKm}→${seg.endKm}`,
+                                  estimatedMin: estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, cc.watts, athleteWeight, bikeWeight),
+                                })
+                                // EF gap until next climb (or end)
+                                const nextStart = i < selectedClimbs.length - 1
+                                  ? segments[selectedClimbs[i + 1].segIdx].startKm
+                                  : routeKm
+                                pushEF(seg.endKm, nextStart)
                               }
-
-                              gauges.push({
-                                blockIdx: bidx,
-                                startKm: seg.startKm,
-                                endKm: seg.endKm,
-                                watts: w,
-                                ftpRef: ftp2,
-                                color: wColor(w),
-                                label: `km${seg.startKm}→${seg.endKm}`,
-                                estimatedMin: estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight),
-                                hrAvg,
-                              })
-                              cursor = seg.endKm
                             }
 
-                            // Tail gap → single EF block
-                            if (routeKm > cursor + 0.05) pushEF(cursor, routeKm)
-
-                            console.log('[powerGauges IIFE] résultat=', gauges.map(g => `${g.blockIdx}(${g.startKm}→${g.endKm} ${g.watts}W)`))
+                            console.log('[powerGauges IIFE] result=', gauges.map(g => `${g.blockIdx}(${g.startKm}→${g.endKm} ${g.watts}W)`))
                             return gauges
                           })()
                         : undefined

@@ -7451,8 +7451,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           if (athleteData?.ftp && updated._startKm != null && updated._endKm != null) {
                             const distKm = Math.abs(updated._endKm - updated._startKm)
                             // approximate gradient from elevation profile
-                            const startPt = parcoursData.elevationProfile.find(p => p.distKm >= updated._startKm!)
-                            const endPt = parcoursData.elevationProfile.find(p => p.distKm >= updated._endKm!)
+                            const startPt = parcoursData?.elevationProfile.find(p => p.distKm >= updated._startKm!)
+                            const endPt = parcoursData?.elevationProfile.find(p => p.distKm >= updated._endKm!)
                             const grad = startPt && endPt && distKm > 0
                               ? ((endPt.ele - startPt.ele) / (distKm * 1000)) * 100
                               : 0

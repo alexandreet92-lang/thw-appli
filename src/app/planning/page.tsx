@@ -4682,7 +4682,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         {/* Profile line */}
         <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
         {/* Terrain block overlays — OVER the profile line, under cursor */}
-        {terrainBlocks && terrainBlocks.map((block, i) => {
+        {terrainBlocks && !powerGauges?.length && terrainBlocks.map((block, i) => {
           if (block.startKm == null || block.endKm == null) return null
           const x1  = PL + (block.startKm / totalKm) * pW
           const x2  = PL + (block.endKm   / totalKm) * pW
@@ -5860,6 +5860,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     hrAvg?: number; estimatedMin: number
   }
   const [specificBlocks, setSpecificBlocks] = useState<SpecificBlock[]>([])
+  const [bulkWatts, setBulkWatts] = useState(250)
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
@@ -5911,9 +5912,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     setSpecificBlocks([])
     if (parcoursData?.segments?.length) {
       initClimbConfigs()
-      setBuilderTab('ai')
-      const newHasClimbs = parcoursData.segments.some((s: { type: string }) => s.type === 'climb')
-      setAiFlowStep(newHasClimbs ? 'parcours' : 'free')
+      setAiFlowStep('parcours')
     } else {
       setClimbConfigs([])
       setAiFlowStep('ask')
@@ -7327,7 +7326,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           blockIdx: idx,
                         }))
                       })()}
-                      onBlockClick={builderTab === 'ai' && aiFlowStep === 'parcours'
+                      onBlockClick={aiFlowStep === 'parcours'
                         ? (ci) => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))
                         : undefined
                       }
@@ -7395,6 +7394,21 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               }
                             }
 
+                            // Overlay specific blocks on top (higher z-order since pushed last)
+                            specificBlocks.forEach((sb, si) => {
+                              gauges.push({
+                                blockIdx: -(si + 2000),
+                                startKm: sb.startKm,
+                                endKm: sb.endKm,
+                                watts: sb.watts,
+                                ftpRef: ftp2,
+                                color: wColor(sb.watts),
+                                label: `Bloc km${sb.startKm}→${sb.endKm}`,
+                                estimatedMin: sb.estimatedMin,
+                                hrAvg: sb.hrAvg,
+                              })
+                            })
+
                             console.log('[powerGauges IIFE] result=', gauges.map(g => `${g.blockIdx}(${g.startKm}→${g.endKm} ${g.watts}W)`))
                             return gauges
                           })()
@@ -7409,12 +7423,25 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             return estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, newWatts, athleteWeight, bikeWeight)
                           })()
                           setClimbConfigs(prev => prev.map(c => c.segIdx === bidx ? { ...c, watts: newWatts, estimatedMin: mins } : c))
+                        } else if (bidx <= -2000) {
+                          // Specific block
+                          const si = -(bidx + 2000)
+                          setSpecificBlocks(prev => prev.map((sb, i) => {
+                            if (i !== si) return sb
+                            const dist = Math.max(0.1, sb.endKm - sb.startKm)
+                            const grad = (() => {
+                              const sp = parcoursData?.elevationProfile.find(p => p.distKm >= sb.startKm)
+                              const ep = parcoursData?.elevationProfile.find(p => p.distKm >= sb.endKm)
+                              return sp && ep && dist > 0 ? ((ep.ele - sp.ele) / (dist * 1000)) * 100 : 0
+                            })()
+                            return { ...sb, watts: newWatts, estimatedMin: estimateTimeOnSegment(dist, grad, newWatts, athleteWeight, bikeWeight) }
+                          }))
                         } else {
                           // EF segment — update global efWatts
                           setEfWatts(newWatts)
                         }
                       }}
-                      onBlockEdgeDrag={builderTab === 'ai' && aiFlowStep === 'parcours' ? undefined : (blockIdx, edge, newKm) => {
+                      onBlockEdgeDrag={aiFlowStep === 'parcours' || !!parcoursData ? undefined : (blockIdx, edge, newKm) => {
                         setBlocks(prev => prev.map((b, i) => {
                           if (i !== blockIdx) return b
                           const updated = { ...b }
@@ -7540,7 +7567,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             </div>
           )}
 
-          {builderTab === 'manual' ? (
+          {builderTab === 'manual' && !parcoursData ? (
             isStrength && !isEdit && blocks.length === 0 ? (
               /* Mode création manuel : constructeur par exercices (circuits) */
               <ExerciseListBuilder
@@ -7643,6 +7670,31 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'center' as const, outline: 'none' }}
                       />
                     </div>
+
+                    {/* Bulk power apply — applique une puissance à toutes les côtes sélectionnées */}
+                    {blocks.length === 0 && climbConfigs.filter(c => c.selected).length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: `1px solid ${accent}20`, background: `${accent}06` }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)', flex: 1 }}>Appliquer aux côtes sélectionnées</span>
+                        <LocalInput
+                          value={bulkWatts}
+                          min={50} max={600}
+                          onCommit={w => setBulkWatts(w)}
+                          style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                        />
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                        <button
+                          onClick={() => {
+                            setClimbConfigs(prev => prev.map(c => {
+                              if (!c.selected) return c
+                              const seg = (parcoursData?.segments ?? [])[c.segIdx]
+                              const mins = seg ? estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, bulkWatts, athleteWeight, bikeWeight) : c.estimatedMin
+                              return { ...c, watts: bulkWatts, estimatedMin: mins }
+                            }))
+                          }}
+                          style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                        >Appliquer</button>
+                      </div>
+                    )}
 
                     {/* Climb cards — masquées après génération */}
                     {blocks.length === 0 && climbConfigs.map((cfg, ci) => {
@@ -7878,14 +7930,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>min côtes</div>
                       </div>
                     </div>
-
-                    {/* Generate */}
-                    <button onClick={handleAIGenerateFromParcours} disabled={aiLoading} style={{
-                      width: '100%', padding: 11, borderRadius: 9, border: 'none',
-                      background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-                      color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
-                      fontFamily: 'Syne, sans-serif',
-                    }}>{aiLoading ? 'Génération...' : '✦ Générer la séance'}</button>
 
                     {aiError && (
                       <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5 }}>

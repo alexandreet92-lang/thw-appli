@@ -7302,37 +7302,116 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         ? (ci) => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))
                         : undefined
                       }
-                      powerGauges={builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp
-                        ? climbConfigs
-                          .filter(cfg => cfg.selected)
-                          .map(cfg => {
-                            const seg = (parcoursData?.segments ?? [])[cfg.segIdx]
-                            if (!seg) return null
+                      powerGauges={builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp && blocks.length > 0
+                        ? (() => {
                             const ftp2 = athleteData.ftp!
-                            const r = cfg.watts / ftp2
-                            const color = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
-                            const overrideSb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
-                            return {
-                              blockIdx: cfg.segIdx,
-                              startKm: seg.startKm,
-                              endKm: seg.endKm,
-                              watts: overrideSb ? overrideSb.watts : cfg.watts,
-                              ftpRef: ftp2,
-                              color,
-                              label: `Côte km${seg.startKm}→${seg.endKm}`,
-                              estimatedMin: cfg.estimatedMin,
-                              hrAvg: overrideSb?.hrAvg,
+                            const allSegs = (parcoursData?.segments ?? []).slice().sort((a, b) => a.startKm - b.startKm)
+                            const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
+
+                            const wColor = (w: number) => {
+                              const r = w / ftp2
+                              return r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
                             }
-                          }).filter((x): x is NonNullable<typeof x> => x !== null)
-                        : undefined
+
+                            const gauges: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }> = []
+                            let cursor = 0
+                            let efIdx = 0
+
+                            const pushEF = (s: number, e: number) => {
+                              if (e - s < 0.05) return
+                              const distKm = e - s
+                              const estMin = estimateTimeOnSegment(distKm, 0, efWatts, athleteWeight, bikeWeight)
+                              gauges.push({
+                                blockIdx: -(efIdx++ + 1000),
+                                startKm: Math.round(s * 10) / 10,
+                                endKm: Math.round(e * 10) / 10,
+                                watts: efWatts,
+                                ftpRef: ftp2,
+                                color: wColor(efWatts),
+                                label: `Plat km${Math.round(s * 10) / 10}→${Math.round(e * 10) / 10}`,
+                                estimatedMin: estMin,
+                              })
+                            }
+
+                            for (const seg of allSegs) {
+                              // Gap before segment → EF
+                              if (seg.startKm > cursor + 0.05) pushEF(cursor, seg.startKm)
+
+                              // Determine watts for this segment
+                              const sbOver = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
+                              let w = efWatts
+                              let hrAvg: number | undefined
+                              let bidx = -(efIdx++ + 1000)
+
+                              if (sbOver) {
+                                w = sbOver.watts
+                                hrAvg = sbOver.hrAvg
+                                bidx = -(efIdx - 1 + 1000)
+                              } else if (seg.type === 'climb') {
+                                const cc = climbConfigs.find(c => (parcoursData?.segments ?? [])[c.segIdx] === seg)
+                                if (cc && cc.selected) {
+                                  w = cc.watts
+                                  bidx = cc.segIdx
+                                }
+                              }
+
+                              const estMin = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
+                              gauges.push({
+                                blockIdx: bidx,
+                                startKm: seg.startKm,
+                                endKm: seg.endKm,
+                                watts: w,
+                                ftpRef: ftp2,
+                                color: wColor(w),
+                                label: `km${seg.startKm}→${seg.endKm}`,
+                                estimatedMin: estMin,
+                                hrAvg,
+                              })
+                              cursor = seg.endKm
+                            }
+
+                            // Gap at end → EF
+                            if (routeKm > cursor + 0.05) pushEF(cursor, routeKm)
+
+                            return gauges
+                          })()
+                        : (builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp && blocks.length === 0)
+                          ? climbConfigs
+                            .filter(cfg => cfg.selected)
+                            .map(cfg => {
+                              const seg = (parcoursData?.segments ?? [])[cfg.segIdx]
+                              if (!seg) return null
+                              const ftp2 = athleteData.ftp!
+                              const r = cfg.watts / ftp2
+                              const color = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
+                              const overrideSb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
+                              return {
+                                blockIdx: cfg.segIdx,
+                                startKm: seg.startKm,
+                                endKm: seg.endKm,
+                                watts: overrideSb ? overrideSb.watts : cfg.watts,
+                                ftpRef: ftp2,
+                                color,
+                                label: `Côte km${seg.startKm}→${seg.endKm}`,
+                                estimatedMin: cfg.estimatedMin,
+                                hrAvg: overrideSb?.hrAvg,
+                              }
+                            }).filter((x): x is NonNullable<typeof x> => x !== null)
+                          : undefined
                       }
-                      onGaugeWattsChange={(segIdx, newWatts) => {
-                        const mins = (() => {
-                          const seg = (parcoursData?.segments ?? [])[segIdx]
-                          if (!seg) return 1
-                          return estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, newWatts, athleteWeight, bikeWeight)
-                        })()
-                        setClimbConfigs(prev => prev.map(c => c.segIdx === segIdx ? { ...c, watts: newWatts, estimatedMin: mins } : c))
+                      onGaugeWattsChange={(bidx, newWatts) => {
+                        if (bidx >= 0) {
+                          // Climb segment
+                          const mins = (() => {
+                            const seg = (parcoursData?.segments ?? [])[bidx]
+                            if (!seg) return 1
+                            return estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, newWatts, athleteWeight, bikeWeight)
+                          })()
+                          setClimbConfigs(prev => prev.map(c => c.segIdx === bidx ? { ...c, watts: newWatts, estimatedMin: mins } : c))
+                        } else {
+                          // EF segment — update global efWatts
+                          setEfWatts(newWatts)
+                        }
                       }}
                       onBlockEdgeDrag={builderTab === 'ai' && aiFlowStep === 'parcours' ? undefined : (blockIdx, edge, newKm) => {
                         setBlocks(prev => prev.map((b, i) => {
@@ -7555,8 +7634,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       />
                     </div>
 
-                    {/* Climb cards */}
-                    {climbConfigs.map((cfg, ci) => {
+                    {/* Climb cards — masquées après génération */}
+                    {blocks.length === 0 && climbConfigs.map((cfg, ci) => {
                       const seg = segs[cfg.segIdx]
                       if (!seg) return null
                       const timeMin = cfg.estimatedMin
@@ -7842,7 +7921,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       const totalWS = allW.reduce((s, x) => s + x.dur_s, 0)
                       const avgW    = totalWS > 0 ? Math.round(allW.reduce((s, x) => s + x.watts * x.dur_s, 0) / totalWS) : 0
                       // Kcal cycling: W × s / 4184 / 0.25 * 1000 (kJ path)
-                      const kcal    = Math.round(allW.reduce((s, x) => s + x.watts * x.dur_s, 0) / 1046)
+                      const kcal    = Math.round(allW.reduce((s, x) => s + (x.watts * x.dur_s) / 1000 * 3.6 / 0.25, 0))
                       const totalClimbS = climbRows.reduce((s, r) => s + r.min * 60, 0)
 
                       return (

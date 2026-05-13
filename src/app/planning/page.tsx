@@ -4725,7 +4725,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           )
         })}
         {/* Power gauges — proportional height, draggable top edge */}
-        {powerGauges && powerGauges.map((pg) => {
+        {(powerGauges ?? []).map((pg) => {
           const x1 = PL + (pg.startKm / totalKm) * pW
           const x2 = PL + (pg.endKm   / totalKm) * pW
           const w  = Math.max(x2 - x1, 3)
@@ -7309,9 +7309,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         ? (ci) => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))
                         : undefined
                       }
-                      powerGauges={builderTab === 'ai' && !!parcoursData && athleteData?.ftp
+                      powerGauges={!!parcoursData && (parcoursData.segments?.length ?? 0) > 0
                         ? (() => {
-                            const ftp2 = athleteData.ftp!
+                            const ftp2 = athleteData?.ftp ?? 250
                             const allSegs = (parcoursData.segments ?? []).slice().sort((a, b) => a.startKm - b.startKm)
                             const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
                             // DEBUG

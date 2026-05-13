@@ -4682,7 +4682,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         {/* Profile line */}
         <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
         {/* Terrain block overlays — OVER the profile line, under cursor */}
-        {terrainBlocks && !powerGauges && terrainBlocks.map((block, i) => {
+        {terrainBlocks && terrainBlocks.map((block, i) => {
           if (block.startKm == null || block.endKm == null) return null
           const x1  = PL + (block.startKm / totalKm) * pW
           const x2  = PL + (block.endKm   / totalKm) * pW

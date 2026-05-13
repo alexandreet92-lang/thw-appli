@@ -7306,10 +7306,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         ? (ci) => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))
                         : undefined
                       }
-                      powerGauges={builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp
+                      powerGauges={builderTab === 'ai' && !!parcoursData && athleteData?.ftp
                         ? (() => {
                             const ftp2 = athleteData.ftp!
-                            const allSegs = (parcoursData?.segments ?? []).slice().sort((a, b) => a.startKm - b.startKm)
+                            const allSegs = (parcoursData.segments ?? []).slice().sort((a, b) => a.startKm - b.startKm)
                             const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
 
                             const wColor = (w: number) => {
@@ -7351,7 +7351,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 hrAvg = sbOver.hrAvg
                                 bidx = -(efIdx - 1 + 2000) // bloc spécifique (namespace 2000)
                               } else if (seg.type === 'climb') {
-                                const cc = climbConfigs.find(c => (parcoursData?.segments ?? [])[c.segIdx] === seg)
+                                const cc = climbConfigs.find(c => parcoursData.segments![c.segIdx] === seg)
                                 if (cc?.selected) {
                                   // Côte cochée → puissance cible
                                   w = cc.watts

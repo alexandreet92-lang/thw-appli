@@ -5904,9 +5904,14 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   // Réinitialise le flow IA quand un nouveau parcours est chargé
   useEffect(() => {
     setAiFlowStep('ask')
-    setClimbConfigs([])
     setTotalDuration('')
     setSpecificBlocks([])
+    if (parcoursData?.segments?.length) {
+      initClimbConfigs()
+    } else {
+      setClimbConfigs([])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcoursData?.name])
 
   useEffect(() => {
@@ -7318,6 +7323,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       }
                       powerGauges={!!parcoursData && (parcoursData.segments?.length ?? 0) > 0
                         ? (() => {
+                            console.log('climbConfigs total:', climbConfigs.length)
+                            console.log('climbConfigs selected:', climbConfigs.filter(c => c.selected).length)
                             const ftp2 = athleteData?.ftp ?? 250
                             const segments = parcoursData.segments!
                             const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)

@@ -4605,7 +4605,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         const deltaY = svgY - gaugeDrag.startY
         const pg = powerGauges.find(g => g.blockIdx === gaugeDrag.blockIdx)
         if (pg) {
-          const wattsPerPx = pg.ftpRef / (0.7 * pH)
+          const wattsPerPx = (pg.ftpRef * 1.5) / pH
           const newWatts = Math.max(50, Math.min(600, Math.round(gaugeDrag.startWatts - deltaY * wattsPerPx)))
           onGaugeWattsChange(gaugeDrag.blockIdx, newWatts)
         }
@@ -4681,7 +4681,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         {/* Profile line */}
         <path d={pathD} fill="none" stroke={accent} strokeWidth={1} opacity={0.65} strokeLinejoin="round" />
         {/* Terrain block overlays — OVER the profile line, under cursor */}
-        {terrainBlocks && terrainBlocks.map((block, i) => {
+        {terrainBlocks && !powerGauges && terrainBlocks.map((block, i) => {
           if (block.startKm == null || block.endKm == null) return null
           const x1  = PL + (block.startKm / totalKm) * pW
           const x2  = PL + (block.endKm   / totalKm) * pW
@@ -4726,7 +4726,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           const x1 = PL + (pg.startKm / totalKm) * pW
           const x2 = PL + (pg.endKm   / totalKm) * pW
           const w  = Math.max(x2 - x1, 4)
-          const gaugeH = Math.min((pg.watts / pg.ftpRef) * 0.7 * pH, pH * 0.92)
+          const gaugeH = Math.min((pg.watts / (pg.ftpRef * 1.5)) * pH, pH * 0.98)
           const yTop   = PT + pH - gaugeH
           const isHovered = hoveredGauge === pg.blockIdx
           const isDragging = gaugeDrag?.blockIdx === pg.blockIdx
@@ -4767,7 +4767,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                     const ty = yTop - 6
                     const zoneStr = (() => {
                       const r = pg.watts / pg.ftpRef
-                      return r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.90 ? 'Z4' : r > 0.76 ? 'Z3' : r > 0.56 ? 'Z2' : 'Z1'
+                      return r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1'
                     })()
                     const lines = [
                       `km ${pg.startKm} → ${pg.endKm}`,
@@ -6344,29 +6344,28 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     return isNaN(n) ? 0 : n
   }
 
-  /** NP-based TSS. Retourne null si durée totale non saisie. */
-  function computeParcoursFlowTSS(): number | null {
+  /** NP-based TSS. Retourne null si FTP absent ou durée non saisie. */
+  function computeParcoursFlowTSS(): { tss: number; np: number; ifVal: number } | null {
     const ftp = athleteData?.ftp
     if (!ftp || ftp <= 0) return null
     const segs = parcoursData?.segments ?? []
     const totalMin = parseDurationToMin(totalDuration)
     if (totalMin <= 0) return null
-    const total_s = totalMin * 60
+    const total_s = totalMin * 60   // secondes
 
-    // Segments pondérés watts × durée
+    // Segments pondérés watts × durée_s
     const weighted: Array<{ watts: number; dur_s: number }> = []
 
     // Montées (specific block override si chevauchement)
     for (const c of climbConfigs) {
       const seg = segs[c.segIdx]
       if (!seg) continue
-      // Cherche un specific block qui chevauche cette montée
       const override = specificBlocks.find(sb =>
         sb.startKm < seg.endKm && sb.endKm > seg.startKm
       )
-      const w    = override ? override.watts : c.selected ? c.watts : efWatts
-      const dur  = override ? override.estimatedMin * 60 : c.estimatedMin * 60
-      weighted.push({ watts: w, dur_s: dur })
+      const w     = override ? override.watts : c.selected ? c.watts : efWatts
+      const dur_s = (override ? override.estimatedMin : c.estimatedMin) * 60  // min → s
+      weighted.push({ watts: w, dur_s })
     }
 
     // Blocs spécifiques hors montées
@@ -6378,19 +6377,20 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       if (!overlapsClimb) weighted.push({ watts: sb.watts, dur_s: sb.estimatedMin * 60 })
     }
 
-    // Temps restant à efWatts
-    const climbDur_s = weighted.reduce((s, x) => s + x.dur_s, 0)
-    const remainingS = Math.max(0, total_s - climbDur_s)
+    // Temps restant à efWatts (total - somme des segments déjà alloués)
+    const allocatedS = weighted.reduce((s, x) => s + x.dur_s, 0)
+    const remainingS = Math.max(0, total_s - allocatedS)
     if (remainingS > 0) weighted.push({ watts: efWatts, dur_s: remainingS })
 
-    // NP = (Σ w⁴·dur / Σ dur)^0.25
-    const durTotal = weighted.reduce((s, x) => s + x.dur_s, 0)
-    if (durTotal <= 0) return null
-    const np4 = weighted.reduce((s, x) => s + Math.pow(x.watts, 4) * x.dur_s, 0) / durTotal
-    const NP  = Math.pow(np4, 0.25)
-    const IF  = NP / ftp
-    const TSS = (total_s * NP * IF) / (ftp * 3600) * 100
-    return Math.round(TSS)
+    // NP = (Σ w⁴·dur_s / Σ dur_s)^(1/4)
+    const totalDurS = weighted.reduce((s, x) => s + x.dur_s, 0)
+    if (totalDurS <= 0) return null
+    const sum_w4 = weighted.reduce((s, x) => s + Math.pow(x.watts, 4) * x.dur_s, 0)
+    const NP    = Math.pow(sum_w4 / totalDurS, 0.25)
+    const IF    = NP / ftp
+    // TSS = (durée_s × NP × IF) / (FTP × 3600) × 100
+    const TSS   = (total_s * NP * IF) / (ftp * 3600) * 100
+    return { tss: Math.round(TSS), np: Math.round(NP), ifVal: Math.round(IF * 100) / 100 }
   }
 
   function handleAIGenerateFromParcours() {
@@ -6423,8 +6423,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       `\nIntensité de fond (plats et descentes) : ${efWatts}W (IF ${(efWatts / ftp).toFixed(2)})`,
       selectedLines ? `\nMontées à travailler :\n${selectedLines}` : '\nPas de montée sélectionnée — génère une séance en endurance de fond.',
       specificLines,
-      `\nGénère dans l'ordre : échauffement 15min, puis les blocs du parcours dans l'ordre géographique (côtes à l'intensité cible, plats/descentes à ${efWatts}W), puis retour au calme 10min.`,
-      `Respecte les durées estimées pour les côtes. Pour les plats/descentes entre les côtes, calcule la durée en fonction de la distance restante${totalMin > 0 ? ' et de la durée totale indiquée' : ''}.`,
+      `\nGénère les blocs du parcours dans l'ordre géographique : côtes à l'intensité cible, plats/descentes à ${efWatts}W. NE PAS ajouter d'échauffement ni de retour au calme — l'utilisateur les ajoute manuellement.`,
+      `Respecte les durées estimées pour les côtes. Pour les plats/descentes, calcule la durée depuis la distance restante${totalMin > 0 ? ' et la durée totale indiquée' : ''}.`,
     ].filter(Boolean).join('\n')
 
     void handleAIGenerate(prompt)
@@ -7208,7 +7208,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         const ftpVal = athleteData?.ftp ?? 200
                         const wToColor = (w: number) => {
                           const r = w / ftpVal
-                          return r > 1.05 ? '#ef4444' : r > 0.90 ? '#f97316' : r > 0.76 ? '#eab308' : r > 0.60 ? '#22c55e' : '#3b82f6'
+                          if (r > 1.50) return '#f472b6'
+                          if (r > 1.20) return '#c084fc'
+                          if (r > 1.05) return '#ef4444'
+                          if (r > 0.87) return '#f97316'
+                          if (r > 0.75) return '#eab308'
+                          if (r > 0.55) return '#22c55e'
+                          return '#6b7280'
                         }
                         if (builderTab === 'ai' && aiFlowStep === 'parcours') {
                           // Overlays des segments côtes pour le flow parcours IA
@@ -7249,7 +7255,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             if (!seg) return null
                             const ftp2 = athleteData.ftp!
                             const r = cfg.watts / ftp2
-                            const color = r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.90 ? '#f97316' : r > 0.76 ? '#eab308' : r > 0.56 ? '#22c55e' : '#3b82f6'
+                            const color = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
                             const overrideSb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
                             return {
                               blockIdx: cfg.segIdx,
@@ -7332,13 +7338,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>W</span>
                 {[
-                  { z: 'Z1', lo: 0,    hi: Math.round(athleteData.ftp * 0.55), c: '#6b7280' },
-                  { z: 'Z2', lo: Math.round(athleteData.ftp * 0.55), hi: Math.round(athleteData.ftp * 0.75), c: '#4ade80' },
-                  { z: 'Z3', lo: Math.round(athleteData.ftp * 0.75), hi: Math.round(athleteData.ftp * 0.90), c: '#facc15' },
-                  { z: 'Z4', lo: Math.round(athleteData.ftp * 0.90), hi: Math.round(athleteData.ftp * 1.05), c: '#fb923c' },
-                  { z: 'Z5', lo: Math.round(athleteData.ftp * 1.05), hi: Math.round(athleteData.ftp * 1.20), c: '#f87171' },
-                  { z: 'Z6', lo: Math.round(athleteData.ftp * 1.20), hi: Math.round(athleteData.ftp * 1.50), c: '#c084fc' },
-                  { z: 'Z7', lo: Math.round(athleteData.ftp * 1.50), hi: null, c: '#f472b6' },
+                  { z: 'Z1', lo: 0,    hi: Math.round(athleteData.ftp * 0.55), c: '#6b7280', lbl: 'Récup' },
+                  { z: 'Z2', lo: Math.round(athleteData.ftp * 0.55), hi: Math.round(athleteData.ftp * 0.75), c: '#22c55e', lbl: 'Endurance' },
+                  { z: 'Z3', lo: Math.round(athleteData.ftp * 0.75), hi: Math.round(athleteData.ftp * 0.87), c: '#eab308', lbl: 'Tempo' },
+                  { z: 'Z4', lo: Math.round(athleteData.ftp * 0.87), hi: Math.round(athleteData.ftp * 1.05), c: '#f97316', lbl: 'Seuil' },
+                  { z: 'Z5', lo: Math.round(athleteData.ftp * 1.05), hi: Math.round(athleteData.ftp * 1.20), c: '#ef4444', lbl: 'VO2max' },
+                  { z: 'Z6', lo: Math.round(athleteData.ftp * 1.20), hi: Math.round(athleteData.ftp * 1.50), c: '#c084fc', lbl: 'Anaérobie' },
+                  { z: 'Z7', lo: Math.round(athleteData.ftp * 1.50), hi: null, c: '#f472b6', lbl: 'Sprint' },
                 ].map(({ z, lo, hi, c }) => (
                   <div key={z} style={{ flex: 1, borderRadius: 4, background: `${c}18`, border: `1px solid ${c}40`, padding: '3px 4px', textAlign: 'center' as const }}>
                     <div style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{z}</div>
@@ -7412,11 +7418,23 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
               function zoneColor(w: number): string {
                 const r = w / ftp
-                if (r > 1.05) return '#ef4444'
-                if (r > 0.90) return '#f97316'
-                if (r > 0.76) return '#eab308'
-                if (r > 0.60) return '#22c55e'
-                return '#3b82f6'
+                if (r > 1.50) return '#f472b6'  // Z7 Sprint
+                if (r > 1.20) return '#c084fc'  // Z6 Anaérobie
+                if (r > 1.05) return '#ef4444'  // Z5 VO2max
+                if (r > 0.87) return '#f97316'  // Z4 Seuil
+                if (r > 0.75) return '#eab308'  // Z3 Tempo
+                if (r > 0.55) return '#22c55e'  // Z2 Endurance
+                return '#6b7280'                 // Z1 Récup
+              }
+              function zoneLabel(w: number): string {
+                const r = w / ftp
+                if (r > 1.50) return 'Z7'
+                if (r > 1.20) return 'Z6'
+                if (r > 1.05) return 'Z5'
+                if (r > 0.87) return 'Z4'
+                if (r > 0.75) return 'Z3'
+                if (r > 0.55) return 'Z2'
+                return 'Z1'
               }
 
               // ── STEP ASK ──────────────────────────────────────
@@ -7454,7 +7472,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
               // ── STEP PARCOURS CONFIG ──────────────────────────
               if (effectiveStep === 'parcours') {
-                const tss = computeParcoursFlowTSS()
+                const tssResult = computeParcoursFlowTSS()
                 const totalClimbMin = climbConfigs.filter(c => c.selected).reduce((s, c) => s + c.estimatedMin, 0)
                 const totalDurMin   = parseDurationToMin(totalDuration)
 
@@ -7694,9 +7712,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
                     {/* TSS + durée preview */}
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <div style={{ flex: 1, borderRadius: 10, border: `1px solid ${tss !== null ? accent + '40' : 'var(--border)'}`, background: tss !== null ? `${accent}08` : 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: tss !== null ? accent : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{tss !== null ? String(tss) : '—'}</div>
-                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{tss !== null ? 'TSS (NP)' : 'TSS — saisir durée'}</div>
+                      <div style={{ flex: 1, borderRadius: 10, border: `1px solid ${tssResult ? accent + '40' : 'var(--border)'}`, background: tssResult ? `${accent}08` : 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: tssResult ? accent : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{tssResult ? String(tssResult.tss) : '—'}</div>
+                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>
+                          {tssResult ? 'TSS' : 'TSS — saisir durée'}
+                        </div>
+                        {tssResult && (
+                          <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3 }}>
+                            NP {tssResult.np}W · IF {tssResult.ifVal.toFixed(2)}
+                          </div>
+                        )}
                       </div>
                       <div style={{ flex: 1, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: totalDurMin > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>

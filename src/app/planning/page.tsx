@@ -5878,6 +5878,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   // Circuit info exposé par ExerciseListBuilder — refs synchrones (pas de stale state)
   const gymCircuitsRef = useRef<ExoCircuit[]>([{ id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
   const gymCircuitMapRef = useRef<Record<string, string>>({})
+  const { zones: trainingZones } = useTrainingZones()
   const [parcoursError, setParcoursError] = useState<string | null>(null)
   const [hoveredKm, setHoveredKm] = useState<number | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
@@ -6374,7 +6375,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   // ── Parcours AI flow helpers ──────────────────────────────────
   function initClimbConfigs() {
-    const ftp = athleteData?.ftp ?? 200
+    const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
     const segs = parcoursData?.segments ?? []
     const configs = segs
       .map((seg, idx) => ({ seg, idx }))
@@ -6452,7 +6453,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   }
 
   function handleAIGenerateFromParcours() {
-    const ftp = athleteData?.ftp ?? 200
+    const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
     const segs = parcoursData?.segments ?? []
 
     const selectedLines = climbConfigs
@@ -7328,7 +7329,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         ? (() => {
                             console.log('climbConfigs total:', climbConfigs.length)
                             console.log('climbConfigs selected:', climbConfigs.filter(c => c.selected).length)
-                            const ftp2 = athleteData?.ftp ?? 250
+                            const ftp2 = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
                             const segments = parcoursData.segments!
                             const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
 
@@ -7459,7 +7460,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           <div style={{ margin: mobile ? '8px 16px 0' : '8px 24px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 10px', display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
             {/* Zones puissance W */}
             {(() => {
-              const ftp = athleteData?.ftp ?? 250
+              const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
               return (
                 <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                   <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>W</span>
@@ -7546,7 +7547,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           ) : (
             (() => {
               const hasClimbs = (parcoursData?.segments ?? []).some(s => s.type === 'climb')
-              const ftp = athleteData?.ftp ?? 200
+              const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
               const segs = parcoursData?.segments ?? []
               const effectiveStep: AIFlowStep = !hasClimbs ? 'free' : aiFlowStep
 

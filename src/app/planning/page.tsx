@@ -4221,6 +4221,13 @@ const NUTRITION_TYPES: { id: NutritionItem['type']; label: string; defaultQty: s
 ]
 
 // ── Parcours helpers ──────────────────────────────
+interface ParcoursPlanningConfig {
+  climbConfigs: Array<{ segIdx: number; selected: boolean; watts: number; estimatedMin: number }>
+  specificBlocks: Array<{ id: string; startKm: number; endKm: number; watts: number; hrAvg?: number; estimatedMin: number }>
+  efWatts: number
+  totalDuration: string
+}
+
 interface ParcoursData {
   name: string
   distance: number | null
@@ -4233,6 +4240,8 @@ interface ParcoursData {
   segments?: ParsedSegment[]
   /** UUID Supabase après sauvegarde dans la table parcours */
   parcoursId?: string
+  /** Config de planification (watts côtes, blocs spécifiques, EF, durée) */
+  planningConfig?: ParcoursPlanningConfig
 }
 
 function buildGpsTrace(pts: Array<{ lat: number; lon: number; ele: number }>): Array<{ lat: number; lon: number }> {
@@ -5909,12 +5918,22 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
 
   // Réinitialise le flow IA quand un nouveau parcours est chargé
   useEffect(() => {
-    setTotalDuration('')
-    setSpecificBlocks([])
     if (parcoursData?.segments?.length) {
-      initClimbConfigs()
+      if (parcoursData.planningConfig) {
+        // Restore saved planning state
+        setClimbConfigs(parcoursData.planningConfig.climbConfigs)
+        setSpecificBlocks(parcoursData.planningConfig.specificBlocks)
+        setEfWatts(parcoursData.planningConfig.efWatts)
+        setTotalDuration(parcoursData.planningConfig.totalDuration)
+      } else {
+        setTotalDuration('')
+        setSpecificBlocks([])
+        initClimbConfigs()
+      }
       setAiFlowStep('parcours')
     } else {
+      setTotalDuration('')
+      setSpecificBlocks([])
       setClimbConfigs([])
       setAiFlowStep('ask')
     }
@@ -6322,7 +6341,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       durationMin: dur || 60, tss: tssRange.high || undefined,
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
-      parcoursData: parcoursData ?? undefined,
+      parcoursData: parcoursDataWithConfig() ?? undefined,
       parcoursId: parcoursData?.parcoursId ?? undefined,
       nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
     }
@@ -6382,6 +6401,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   }
 
   // ── Parcours AI flow helpers ──────────────────────────────────
+  function parcoursDataWithConfig(): ParcoursData | null {
+    if (!parcoursData) return null
+    if (aiFlowStep !== 'parcours') return parcoursData
+    return { ...parcoursData, planningConfig: { climbConfigs, specificBlocks, efWatts, totalDuration } }
+  }
+
   function initClimbConfigs() {
     const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
     const segs = parcoursData?.segments ?? []
@@ -8663,7 +8688,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           ? buildParcoursBlocks()
                           : blocks ?? [],
                       tss: tssRange.high || session.tss || null,
-                      parcours_data: parcoursData ?? null,
+                      parcours_data: parcoursDataWithConfig() ?? null,
                       nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
                       updated_at: new Date().toISOString(),
                     }).eq('id', session.id)

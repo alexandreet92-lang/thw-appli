@@ -4737,10 +4737,10 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           const gaugePath = `M${x1+r4},${yTop} H${x2-r4} Q${x2},${yTop} ${x2},${yTop+r4} V${yBot} H${x1} V${yTop+r4} Q${x1},${yTop} ${x1+r4},${yTop} Z`
           return (
             <g key={`pg${pg.blockIdx}`}>
-              {/* Gauge fill — coins supérieurs arrondis */}
+              {/* Gauge fill */}
               <path
                 d={gaugePath}
-                fill={pg.color} opacity={isHovered || isDragging ? 0.45 : 0.28}
+                fill={pg.color} opacity={isHovered || isDragging ? 0.55 : 0.38}
                 style={{ cursor: onGaugeWattsChange ? 'ns-resize' : 'default' }}
                 onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
                 onMouseLeave={() => setHoveredGauge(null)}
@@ -4754,15 +4754,18 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                 } : undefined}
               />
               {/* Gauge border */}
-              <path d={gaugePath} fill="none" stroke={pg.color} strokeWidth={1.5} opacity={0.7} />
-              {/* Watts label */}
-              {w > 20 && gaugeH > 16 && (
-                <text x={(x1 + x2) / 2} y={yTop + 11} textAnchor="middle" fontSize={8} fill={pg.color} fontWeight={800} fontFamily='"DM Mono",monospace'>{pg.watts}W</text>
+              <path d={gaugePath} fill="none" stroke={pg.color} strokeWidth={2} opacity={0.9} />
+              {/* Watts label + zone */}
+              {w > 18 && gaugeH > 20 && (
+                <>
+                  <text x={(x1 + x2) / 2} y={yTop + 12} textAnchor="middle" fontSize={9} fill={pg.color} fontWeight={900} fontFamily='"DM Mono",monospace' opacity={0.95}>{pg.watts}W</text>
+                  {gaugeH > 32 && <text x={(x1 + x2) / 2} y={yTop + 23} textAnchor="middle" fontSize={7} fill={pg.color} fontWeight={600} fontFamily='"DM Mono",monospace' opacity={0.7}>{(() => { const r = pg.watts / pg.ftpRef; return r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1' })()}</text>}
+                </>
               )}
-              {/* Draggable top edge */}
+              {/* Draggable top edge — thicker, more visible */}
               <line
                 x1={x1 + 2} y1={yTop} x2={x2 - 2} y2={yTop}
-                stroke={pg.color} strokeWidth={4} strokeLinecap="round" opacity={0.9}
+                stroke={pg.color} strokeWidth={5} strokeLinecap="round" opacity={1}
                 style={{ cursor: 'ns-resize' }}
                 onMouseDown={e => {
                   e.stopPropagation()
@@ -5904,13 +5907,16 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
 
   // Réinitialise le flow IA quand un nouveau parcours est chargé
   useEffect(() => {
-    setAiFlowStep('ask')
     setTotalDuration('')
     setSpecificBlocks([])
     if (parcoursData?.segments?.length) {
       initClimbConfigs()
+      setBuilderTab('ai')
+      const newHasClimbs = parcoursData.segments.some((s: { type: string }) => s.type === 'climb')
+      setAiFlowStep(newHasClimbs ? 'parcours' : 'free')
     } else {
       setClimbConfigs([])
+      setAiFlowStep('ask')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcoursData?.name])
@@ -7457,13 +7463,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
         {/* BANDEAU ZONES — puissance + FC, sous le graphique */}
         {sport === 'bike' && parcoursData && (
-          <div style={{ margin: mobile ? '8px 16px 0' : '8px 24px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 10px', display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+          <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             {/* Zones puissance W */}
             {(() => {
               const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
               return (
-                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>W</span>
+                <div style={{ display: 'flex', gap: 3, alignItems: 'stretch' }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 20, flexShrink: 0, fontWeight: 700, display: 'flex', alignItems: 'center', paddingBottom: 2 }}>W</span>
                   {[
                     { z: 'Z1', lo: 0,                          hi: Math.round(ftp * 0.55), c: '#9ca3af', lbl: 'Récup' },
                     { z: 'Z2', lo: Math.round(ftp * 0.55), hi: Math.round(ftp * 0.75), c: '#22c55e', lbl: 'Endurance' },
@@ -7473,32 +7479,33 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     { z: 'Z6', lo: Math.round(ftp * 1.20), hi: Math.round(ftp * 1.50), c: '#991B1B', lbl: 'Anaérobie' },
                     { z: 'Z7', lo: Math.round(ftp * 1.50), hi: null,                   c: '#6B21A8', lbl: 'Sprint' },
                   ].map(({ z, lo, hi, c, lbl }) => (
-                    <div key={z} style={{ flex: 1, borderRadius: 4, background: `${c}18`, border: `1px solid ${c}40`, padding: '3px 4px', textAlign: 'center' as const }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{z}</div>
-                      <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 1 }}>{lbl}</div>
-                      <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{lo}{hi ? `–${hi}` : '+'}W</div>
+                    <div key={z} style={{ flex: 1, borderRadius: 6, background: `${c}20`, border: `1.5px solid ${c}60`, padding: '6px 4px 5px', textAlign: 'center' as const, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: c, fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{z}</div>
+                      <div style={{ fontSize: 9, color: c, fontFamily: 'DM Mono, monospace', marginTop: 2, opacity: 0.85, lineHeight: 1 }}>{lbl}</div>
+                      <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3, lineHeight: 1 }}>{lo}{hi ? `–${hi}` : '+'}W</div>
                     </div>
                   ))}
                 </div>
               )
             })()}
-            {/* Zones FC si LTHR disponible */}
+            {/* Zones FC */}
             {(() => {
               const lthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? null
               if (!lthr) return null
               return (
-                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 22, flexShrink: 0, fontWeight: 600 }}>FC</span>
+                <div style={{ display: 'flex', gap: 3, alignItems: 'stretch' }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 20, flexShrink: 0, fontWeight: 700, display: 'flex', alignItems: 'center', paddingBottom: 2 }}>FC</span>
                   {[
-                    { z: 'Z1', lo: 0,                          hi: Math.round(lthr * 0.80), c: '#9ca3af' },
-                    { z: 'Z2', lo: Math.round(lthr * 0.80), hi: Math.round(lthr * 0.89), c: '#22c55e' },
-                    { z: 'Z3', lo: Math.round(lthr * 0.89), hi: Math.round(lthr * 0.95), c: '#eab308' },
-                    { z: 'Z4', lo: Math.round(lthr * 0.95), hi: Math.round(lthr * 1.02), c: '#f97316' },
-                    { z: 'Z5', lo: Math.round(lthr * 1.02), hi: null,                    c: '#ef4444' },
-                  ].map(({ z, lo, hi, c }) => (
-                    <div key={z} style={{ flex: 1, borderRadius: 4, background: `${c}18`, border: `1px solid ${c}40`, padding: '3px 4px', textAlign: 'center' as const }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{z}</div>
-                      <div style={{ fontSize: 7, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 1 }}>{lo}{hi ? `–${hi}` : '+'}</div>
+                    { z: 'Z1', lo: 0,                          hi: Math.round(lthr * 0.80), c: '#9ca3af', lbl: 'Récup' },
+                    { z: 'Z2', lo: Math.round(lthr * 0.80), hi: Math.round(lthr * 0.89), c: '#22c55e', lbl: 'Endurance' },
+                    { z: 'Z3', lo: Math.round(lthr * 0.89), hi: Math.round(lthr * 0.95), c: '#eab308', lbl: 'Tempo' },
+                    { z: 'Z4', lo: Math.round(lthr * 0.95), hi: Math.round(lthr * 1.02), c: '#f97316', lbl: 'Seuil' },
+                    { z: 'Z5', lo: Math.round(lthr * 1.02), hi: null,                    c: '#ef4444', lbl: 'VO2max' },
+                  ].map(({ z, lo, hi, c, lbl }) => (
+                    <div key={z} style={{ flex: 1, borderRadius: 6, background: `${c}20`, border: `1.5px solid ${c}60`, padding: '6px 4px 5px', textAlign: 'center' as const, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: c, fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{z}</div>
+                      <div style={{ fontSize: 9, color: c, fontFamily: 'DM Mono, monospace', marginTop: 2, opacity: 0.85, lineHeight: 1 }}>{lbl}</div>
+                      <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3, lineHeight: 1 }}>{lo}{hi ? `–${hi}` : '+'}</div>
                     </div>
                   ))}
                 </div>
@@ -7512,24 +7519,26 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
         {/* CONSTRUCTEUR */}
         <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span style={lbl}>Construction de la séance</span>
-            <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
-              <button onClick={() => setBuilderTab('manual')} style={{
-                padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                background: builderTab === 'manual' ? `${accent}18` : 'transparent',
-                color: builderTab === 'manual' ? accent : 'var(--text-dim)',
-              }}>Manuel</button>
-              <button onClick={() => setBuilderTab('ai')} style={{
-                padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                background: builderTab === 'ai' ? `${accent}18` : 'transparent',
-                color: builderTab === 'ai' ? accent : 'var(--text-dim)',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-                <span style={{ fontSize: 11 }}>✦</span> IA
-              </button>
+          {!parcoursData && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={lbl}>Construction de la séance</span>
+              <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <button onClick={() => setBuilderTab('manual')} style={{
+                  padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                  background: builderTab === 'manual' ? `${accent}18` : 'transparent',
+                  color: builderTab === 'manual' ? accent : 'var(--text-dim)',
+                }}>Manuel</button>
+                <button onClick={() => setBuilderTab('ai')} style={{
+                  padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                  background: builderTab === 'ai' ? `${accent}18` : 'transparent',
+                  color: builderTab === 'ai' ? accent : 'var(--text-dim)',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <span style={{ fontSize: 11 }}>✦</span> IA
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {builderTab === 'manual' ? (
             isStrength && !isEdit && blocks.length === 0 ? (

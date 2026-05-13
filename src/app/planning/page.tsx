@@ -4606,7 +4606,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         const pg = powerGauges.find(g => g.blockIdx === gaugeDrag.blockIdx)
         if (pg) {
           const wattsPerPx = (pg.ftpRef * 1.5) / pH
-          const newWatts = Math.max(50, Math.min(600, Math.round(gaugeDrag.startWatts - deltaY * wattsPerPx)))
+          const newWatts = Math.max(50, Math.min(600, Math.round((gaugeDrag.startWatts - deltaY * wattsPerPx) / 5) * 5))
           onGaugeWattsChange(gaugeDrag.blockIdx, newWatts)
         }
       }
@@ -4725,22 +4725,26 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         {powerGauges && powerGauges.map((pg) => {
           const x1 = PL + (pg.startKm / totalKm) * pW
           const x2 = PL + (pg.endKm   / totalKm) * pW
-          const w  = Math.max(x2 - x1, 4)
+          const w  = Math.max(x2 - x1, 3)
           const gaugeH = Math.min((pg.watts / (pg.ftpRef * 1.5)) * pH, pH * 0.98)
           const yTop   = PT + pH - gaugeH
+          const yBot   = PT + pH
           const isHovered = hoveredGauge === pg.blockIdx
           const isDragging = gaugeDrag?.blockIdx === pg.blockIdx
+          const r4 = Math.min(4, w / 2, gaugeH / 2)
+          // Path avec coins supérieurs arrondis uniquement (bas plat, ancré sur l'axe)
+          const gaugePath = `M${x1+r4},${yTop} H${x2-r4} Q${x2},${yTop} ${x2},${yTop+r4} V${yBot} H${x1} V${yTop+r4} Q${x1},${yTop} ${x1+r4},${yTop} Z`
           return (
             <g key={`pg${pg.blockIdx}`}>
-              {/* Gauge fill */}
-              <rect
-                x={x1} y={yTop} width={w} height={gaugeH}
-                fill={pg.color} opacity={isHovered || isDragging ? 0.45 : 0.30} rx={2}
+              {/* Gauge fill — coins supérieurs arrondis */}
+              <path
+                d={gaugePath}
+                fill={pg.color} opacity={isHovered || isDragging ? 0.45 : 0.28}
                 onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
                 onMouseLeave={() => setHoveredGauge(null)}
               />
               {/* Gauge border */}
-              <rect x={x1} y={yTop} width={w} height={gaugeH} fill="none" stroke={pg.color} strokeWidth={1.5} rx={2} opacity={0.7} />
+              <path d={gaugePath} fill="none" stroke={pg.color} strokeWidth={1.5} opacity={0.7} />
               {/* Watts label */}
               {w > 20 && gaugeH > 16 && (
                 <text x={(x1 + x2) / 2} y={yTop + 11} textAnchor="middle" fontSize={8} fill={pg.color} fontWeight={800} fontFamily='"DM Mono",monospace'>{pg.watts}W</text>
@@ -7302,7 +7306,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         ? (ci) => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))
                         : undefined
                       }
-                      powerGauges={builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp && blocks.length > 0
+                      powerGauges={builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp
                         ? (() => {
                             const ftp2 = athleteData.ftp!
                             const allSegs = (parcoursData?.segments ?? []).slice().sort((a, b) => a.startKm - b.startKm)
@@ -7314,13 +7318,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             }
 
                             const gauges: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }> = []
-                            let cursor = 0
                             let efIdx = 0
+                            let cursor = 0
 
                             const pushEF = (s: number, e: number) => {
                               if (e - s < 0.05) return
-                              const distKm = e - s
-                              const estMin = estimateTimeOnSegment(distKm, 0, efWatts, athleteWeight, bikeWeight)
+                              const distKm = Math.round((e - s) * 10) / 10
                               gauges.push({
                                 blockIdx: -(efIdx++ + 1000),
                                 startKm: Math.round(s * 10) / 10,
@@ -7328,34 +7331,35 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 watts: efWatts,
                                 ftpRef: ftp2,
                                 color: wColor(efWatts),
-                                label: `Plat km${Math.round(s * 10) / 10}→${Math.round(e * 10) / 10}`,
-                                estimatedMin: estMin,
+                                label: `EF km${Math.round(s * 10) / 10}→${Math.round(e * 10) / 10}`,
+                                estimatedMin: estimateTimeOnSegment(distKm, 0, efWatts, athleteWeight, bikeWeight),
                               })
                             }
 
                             for (const seg of allSegs) {
-                              // Gap before segment → EF
+                              // Gap avant ce segment → EF
                               if (seg.startKm > cursor + 0.05) pushEF(cursor, seg.startKm)
 
-                              // Determine watts for this segment
+                              // Déterminer la puissance de ce segment
                               const sbOver = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
                               let w = efWatts
                               let hrAvg: number | undefined
-                              let bidx = -(efIdx++ + 1000)
+                              let bidx = -(efIdx++ + 1000) // défaut EF
 
                               if (sbOver) {
                                 w = sbOver.watts
                                 hrAvg = sbOver.hrAvg
-                                bidx = -(efIdx - 1 + 1000)
+                                bidx = -(efIdx - 1 + 2000) // bloc spécifique (namespace 2000)
                               } else if (seg.type === 'climb') {
                                 const cc = climbConfigs.find(c => (parcoursData?.segments ?? [])[c.segIdx] === seg)
-                                if (cc && cc.selected) {
+                                if (cc?.selected) {
+                                  // Côte cochée → puissance cible
                                   w = cc.watts
-                                  bidx = cc.segIdx
+                                  bidx = cc.segIdx // positif = côte draggable
                                 }
+                                // Côte décochée → reste EF (pas de jauge distincte)
                               }
 
-                              const estMin = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
                               gauges.push({
                                 blockIdx: bidx,
                                 startKm: seg.startKm,
@@ -7364,40 +7368,18 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 ftpRef: ftp2,
                                 color: wColor(w),
                                 label: `km${seg.startKm}→${seg.endKm}`,
-                                estimatedMin: estMin,
+                                estimatedMin: estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight),
                                 hrAvg,
                               })
                               cursor = seg.endKm
                             }
 
-                            // Gap at end → EF
+                            // Gap final → EF
                             if (routeKm > cursor + 0.05) pushEF(cursor, routeKm)
 
                             return gauges
                           })()
-                        : (builderTab === 'ai' && aiFlowStep === 'parcours' && athleteData?.ftp && blocks.length === 0)
-                          ? climbConfigs
-                            .filter(cfg => cfg.selected)
-                            .map(cfg => {
-                              const seg = (parcoursData?.segments ?? [])[cfg.segIdx]
-                              if (!seg) return null
-                              const ftp2 = athleteData.ftp!
-                              const r = cfg.watts / ftp2
-                              const color = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
-                              const overrideSb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
-                              return {
-                                blockIdx: cfg.segIdx,
-                                startKm: seg.startKm,
-                                endKm: seg.endKm,
-                                watts: overrideSb ? overrideSb.watts : cfg.watts,
-                                ftpRef: ftp2,
-                                color,
-                                label: `Côte km${seg.startKm}→${seg.endKm}`,
-                                estimatedMin: cfg.estimatedMin,
-                                hrAvg: overrideSb?.hrAvg,
-                              }
-                            }).filter((x): x is NonNullable<typeof x> => x !== null)
-                          : undefined
+                        : undefined
                       }
                       onGaugeWattsChange={(bidx, newWatts) => {
                         if (bidx >= 0) {

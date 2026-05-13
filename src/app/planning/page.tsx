@@ -7332,6 +7332,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* CONSTRUCTEUR */}
         <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
           {/* Zone strip — puissance Z1-Z7 + FC */}
+          {console.log('[DEBUG] sport=', sport, 'ftp=', athleteData?.ftp, 'athleteData=', athleteData)}
           {sport === 'bike' && athleteData?.ftp && (
             <div style={{ marginBottom: 10, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 10px', display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
               {/* Power zones */}

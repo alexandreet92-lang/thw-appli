@@ -5970,13 +5970,16 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         let ctl = 0
         for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
 
-        if (!cancelled) setAthleteData({
-          ftp, runThresholdPaceSec, cssSecPer100m,
-          rowThresholdSecPer500m: rowSecPer500m,
-          ctl: Math.round(ctl),
-          hrMax, hrRest, lthrRun, lthrBike,
-          runThresholdPaceStr, swimCSSStr,
-        })
+        if (!cancelled) {
+          console.log('[DEBUG] athleteData loaded — ftp=', ftp, 'sport=', sport)
+          setAthleteData({
+            ftp, runThresholdPaceSec, cssSecPer100m,
+            rowThresholdSecPer500m: rowSecPer500m,
+            ctl: Math.round(ctl),
+            hrMax, hrRest, lthrRun, lthrBike,
+            runThresholdPaceStr, swimCSSStr,
+          })
+        }
       } catch { /* ignore */ }
     })()
     return () => { cancelled = true }
@@ -7332,7 +7335,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* CONSTRUCTEUR */}
         <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
           {/* Zone strip — puissance Z1-Z7 + FC */}
-          {console.log('[DEBUG] sport=', sport, 'ftp=', athleteData?.ftp, 'athleteData=', athleteData)}
           {sport === 'bike' && athleteData?.ftp && (
             <div style={{ marginBottom: 10, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 10px', display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
               {/* Power zones */}

@@ -5985,6 +5985,39 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     return () => { cancelled = true }
   }, [])
 
+  // Auto-charger le parcours depuis Supabase si la séance a un parcours_id
+  useEffect(() => {
+    const pid = session?.parcoursId
+    if (!pid || parcoursData) return
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data, error } = await sb
+          .from('parcours')
+          .select('id, name, total_km, elevation_gain_m, elevation_loss_m, elevation_profile, segments')
+          .eq('id', pid)
+          .single()
+        if (error || !data) {
+          console.warn('[auto-load parcours] not found or error:', error?.message)
+          return
+        }
+        const ep = (data.elevation_profile ?? []) as Array<{ distKm: number; ele: number }>
+        setParcoursData({
+          name:             data.name,
+          distance:         (data.total_km as number) ?? null,
+          elevation:        (data.elevation_gain_m as number) ?? null,
+          points:           ep.length,
+          elevationProfile: ep,
+          segments:         ((data.segments ?? []) as import('@/lib/gpx/parser').ParsedSegment[]),
+          parcoursId:       data.id,
+        })
+      } catch (e) {
+        console.error('[auto-load parcours]', e)
+      }
+    })()
+  }, [session?.parcoursId])
+
   useEffect(() => {
     if (mode !== 'create') return
     ;(async () => {
@@ -6444,20 +6477,33 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       // ── Le frontend envoie juste la description + le sport ──
       // Le system prompt complet est côté serveur dans /api/coach-stream
       // Si un parcours avec des montées est chargé, on les passe au prompt
-      const parcoursClimbs = parcoursData?.segments
-        ? getSignificantClimbs(parcoursData.segments)
-        : undefined
+      // En mode parcours, envoyer uniquement les côtes cochées (déjà dans le prompt)
+      const parcoursClimbs: Array<{ startKm: number; endKm: number; distanceKm: number; elevationGainM: number; avgGradientPct: number; maxGradientPct: number }> | undefined =
+        (aiFlowStep === 'parcours')
+          ? climbConfigs
+            .filter(c => c.selected)
+            .map(c => {
+              const seg = (parcoursData?.segments ?? [])[c.segIdx]
+              if (!seg) return null
+              return { startKm: seg.startKm, endKm: seg.endKm, distanceKm: seg.distanceKm, elevationGainM: seg.elevationDeltaM, avgGradientPct: seg.avgGradient, maxGradientPct: seg.maxGradient }
+            }).filter((x): x is NonNullable<typeof x> => x !== null)
+          : (parcoursData?.segments ? getSignificantClimbs(parcoursData.segments) : undefined)
+
+      const payload = {
+        messages: [{ role: 'user', content: prompt }],
+        sport,
+        parcoursClimbs: parcoursClimbs && parcoursClimbs.length > 0 ? parcoursClimbs : undefined,
+        parcoursName:   parcoursData?.name,
+        parcoursTotalKm: parcoursData?.distance,
+      }
+      if (aiFlowStep === 'parcours') {
+        console.log('[parcours] payload climbs:', payload.parcoursClimbs?.length, 'prompt preview:', prompt.slice(0, 300))
+      }
 
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: prompt }],
-          sport,
-          parcoursClimbs: parcoursClimbs && parcoursClimbs.length > 0 ? parcoursClimbs : undefined,
-          parcoursName:   parcoursData?.name,
-          parcoursTotalKm: parcoursData?.distance,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -6503,6 +6549,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         }
       }
 
+      if (aiFlowStep === 'parcours') {
+        console.log('[parcours] raw response (first 500):', raw.slice(0, 500))
+      }
       if (!jsonStr) {
         setAiError(`L'IA n'a pas retourné de JSON valide. Réponse : ${raw.slice(0, 300) || '(vide)'}`)
         return
@@ -7754,6 +7803,142 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         {aiError}
                       </div>
                     )}
+
+                    {/* ── Panneau de synthèse post-génération ── */}
+                    {blocks.length > 0 && !aiLoading && (() => {
+                      const tssResult = computeParcoursFlowTSS()
+                      const totalMin  = parseDurationToMin(totalDuration)
+                      const total_s   = totalMin * 60
+
+                      // Données côtes sélectionnées
+                      const climbRows = climbConfigs
+                        .filter(c => c.selected)
+                        .map(c => {
+                          const seg = segs[c.segIdx]; if (!seg) return null
+                          const overSb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
+                          const w   = overSb ? overSb.watts : c.watts
+                          const min = overSb ? overSb.estimatedMin : c.estimatedMin
+                          const r   = w / ftp
+                          const zc  = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
+                          const zl  = r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1'
+                          return { segIdx: c.segIdx, seg, w, min, zc, zl, isOverride: !!overSb }
+                        }).filter((x): x is NonNullable<typeof x> => x !== null)
+
+                      // Blocs spécifiques hors côtes
+                      const sbRows = specificBlocks.filter(sb =>
+                        !climbConfigs.some(c => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm })
+                      )
+
+                      // Durée allouée côtes + blocs spécifiques
+                      const allocatedS = [...climbRows.map(r => r.min * 60), ...sbRows.map(s => s.estimatedMin * 60)].reduce((a, b) => a + b, 0)
+                      const remainingS = Math.max(0, total_s - allocatedS)
+
+                      // Puissance moyenne pondérée
+                      const allW: Array<{ watts: number; dur_s: number }> = [
+                        ...climbRows.map(r => ({ watts: r.w, dur_s: r.min * 60 })),
+                        ...sbRows.map(s => ({ watts: s.watts, dur_s: s.estimatedMin * 60 })),
+                        ...(remainingS > 0 ? [{ watts: efWatts, dur_s: remainingS }] : []),
+                      ]
+                      const totalWS = allW.reduce((s, x) => s + x.dur_s, 0)
+                      const avgW    = totalWS > 0 ? Math.round(allW.reduce((s, x) => s + x.watts * x.dur_s, 0) / totalWS) : 0
+                      // Kcal cycling: W × s / 4184 / 0.25 * 1000 (kJ path)
+                      const kcal    = Math.round(allW.reduce((s, x) => s + x.watts * x.dur_s, 0) / 1046)
+                      const totalClimbS = climbRows.reduce((s, r) => s + r.min * 60, 0)
+
+                      return (
+                        <div style={{ borderRadius: 12, border: `1px solid ${accent}30`, background: `${accent}06`, padding: 14, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                          {/* Title */}
+                          <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Résumé séance</div>
+
+                          {/* Côtes */}
+                          {climbRows.map((r, i) => (
+                            <div key={r.segIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: `1px solid ${r.zc}30` }}>
+                              <div style={{ width: 3, height: 32, borderRadius: 2, background: r.zc, flexShrink: 0 }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                  Côte {i + 1} · km{r.seg.startKm}→{r.seg.endKm}
+                                </div>
+                                <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{r.min.toFixed(0)} min · {r.zl}</div>
+                              </div>
+                              <LocalInput
+                                value={r.w}
+                                min={50} max={600}
+                                onCommit={newW => {
+                                  const mins = estimateTimeOnSegment(r.seg.distanceKm, r.seg.avgGradient, newW, athleteWeight, bikeWeight)
+                                  setClimbConfigs(prev => prev.map(c => c.segIdx === r.segIdx ? { ...c, watts: newW, estimatedMin: mins } : c))
+                                }}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${r.zc}50`, background: 'var(--bg-card2)', color: r.zc, fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
+                            </div>
+                          ))}
+
+                          {/* Blocs spécifiques */}
+                          {sbRows.map((sb, i) => {
+                            const r = sb.watts / ftp
+                            const zc = r > 1.50 ? '#f472b6' : r > 1.20 ? '#c084fc' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#6b7280'
+                            return (
+                              <div key={sb.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid rgba(249,115,22,0.25)' }}>
+                                <div style={{ width: 3, height: 32, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                    Bloc {i + 1} · km{sb.startKm}→{sb.endKm}
+                                  </div>
+                                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{sb.estimatedMin.toFixed(0)} min{sb.hrAvg ? ` · FC ~${sb.hrAvg}` : ''}</div>
+                                </div>
+                                <LocalInput
+                                  value={sb.watts}
+                                  min={50} max={600}
+                                  onCommit={newW => {
+                                    setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, watts: newW } : x))
+                                  }}
+                                  style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${zc}50`, background: 'var(--bg-card2)', color: zc, fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                />
+                                <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
+                              </div>
+                            )
+                          })}
+
+                          {/* EF */}
+                          {remainingS > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                              <div style={{ width: 3, height: 32, borderRadius: 2, background: '#22c55e', flexShrink: 0 }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)' }}>Plats & descentes</div>
+                                <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{Math.round(remainingS / 60)} min · Z2</div>
+                              </div>
+                              <LocalInput
+                                value={efWatts}
+                                min={50} max={600}
+                                onCommit={setEfWatts}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid rgba(34,197,94,0.4)', background: 'var(--bg-card2)', color: '#22c55e', fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
+                            </div>
+                          )}
+
+                          {/* KPIs */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                            {[
+                              { lbl: 'Moy', val: `${avgW}W` },
+                              { lbl: 'TSS', val: tssResult ? String(tssResult.tss) : '—' },
+                              { lbl: 'Kcal', val: kcal > 0 ? String(kcal) : '—' },
+                              { lbl: '↑ Total', val: `${Math.round(totalClimbS / 60)}min` },
+                            ].map(({ lbl, val }) => (
+                              <div key={lbl} style={{ borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 6px', textAlign: 'center' as const }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{val}</div>
+                                <div style={{ fontSize: 8, color: 'var(--text-dim)', marginTop: 2, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{lbl}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {tssResult && (
+                            <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', textAlign: 'center' as const }}>
+                              NP {tssResult.np}W · IF {tssResult.ifVal.toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               }

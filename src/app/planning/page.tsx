@@ -5861,6 +5861,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   }
   const [specificBlocks, setSpecificBlocks] = useState<SpecificBlock[]>([])
   const [bulkWatts, setBulkWatts] = useState(250)
+  const [showDurPicker, setShowDurPicker] = useState(false)
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
@@ -6310,7 +6311,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
     const finalBlocks = isStrength && exercises.length > 0
       ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
-      : blocks
+      : aiFlowStep === 'parcours' && parcoursData
+        ? buildParcoursBlocks()
+        : blocks
     const savedSession: Session = {
       ...(session ?? {}),
       id: session?.id ?? '',
@@ -6455,6 +6458,75 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     // TSS = (durée_s × NP × IF) / (FTP × 3600) × 100
     const TSS   = (total_s * NP * IF) / (ftp * 3600) * 100
     return { tss: Math.round(TSS), np: Math.round(NP), ifVal: Math.round(IF * 100) / 100 }
+  }
+
+  function buildParcoursBlocks(): Block[] {
+    if (!parcoursData?.segments) return blocks
+    const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
+    const segs = parcoursData.segments
+    const routeKm = parcoursData.distance ?? (parcoursData.elevationProfile.length > 0 ? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm : 0)
+    const result: Block[] = []
+    let bIdx = 0
+    const zn = (w: number) => {
+      const r = w / ftp
+      return r > 1.50 ? 7 : r > 1.20 ? 6 : r > 1.05 ? 5 : r > 0.87 ? 4 : r > 0.75 ? 3 : r > 0.55 ? 2 : 1
+    }
+    const push = (label: string, watts: number, distKm: number, grad: number) => {
+      const mins = estimateTimeOnSegment(distKm, grad, watts, athleteWeight, bikeWeight)
+      result.push({ id: `parcours_${bIdx++}`, mode: 'effort' as BlockMode, type: 'effort' as BlockType, durationMin: Math.max(1, Math.round(mins)), zone: zn(watts), value: String(watts), hrAvg: '', label })
+    }
+
+    const selectedClimbs = climbConfigs.filter(c => c.selected).sort((a, b) => segs[a.segIdx].startKm - segs[b.segIdx].startKm)
+
+    // Build ordered timeline: EF gaps + climbs, then cut out specificBlock ranges
+    type Range = { startKm: number; endKm: number; watts: number; grad: number; label: string }
+    let timeline: Range[] = []
+
+    const pushEF = (s: number, e: number) => {
+      if (e - s < 0.05) return
+      const distKm = e - s
+      const sp = parcoursData.elevationProfile.find(p => p.distKm >= s)
+      const ep = parcoursData.elevationProfile.find(p => p.distKm >= e)
+      const grad = sp && ep && distKm > 0 ? ((ep.ele - sp.ele) / (distKm * 1000)) * 100 : 0
+      timeline.push({ startKm: s, endKm: e, watts: efWatts, grad, label: `EF km${Math.round(s * 10) / 10}→${Math.round(e * 10) / 10}` })
+    }
+
+    if (selectedClimbs.length === 0) {
+      pushEF(0, routeKm)
+    } else {
+      pushEF(0, segs[selectedClimbs[0].segIdx].startKm)
+      for (let i = 0; i < selectedClimbs.length; i++) {
+        const cc = selectedClimbs[i]
+        const seg = segs[cc.segIdx]
+        timeline.push({ startKm: seg.startKm, endKm: seg.endKm, watts: cc.watts, grad: seg.avgGradient, label: `Côte ${i + 1} km${seg.startKm}→${seg.endKm}` })
+        const nextStart = i < selectedClimbs.length - 1 ? segs[selectedClimbs[i + 1].segIdx].startKm : routeKm
+        pushEF(seg.endKm, nextStart)
+      }
+    }
+
+    // Subtract specificBlock ranges from timeline, then add specific blocks in order
+    for (const sb of specificBlocks) {
+      timeline = timeline.flatMap(r => {
+        if (r.endKm <= sb.startKm || r.startKm >= sb.endKm) return [r]
+        const parts: Range[] = []
+        if (r.startKm < sb.startKm) parts.push({ ...r, endKm: sb.startKm })
+        if (r.endKm > sb.endKm)     parts.push({ ...r, startKm: sb.endKm })
+        return parts
+      })
+    }
+    const sortedSb = [...specificBlocks].sort((a, b) => a.startKm - b.startKm)
+    for (const sb of sortedSb) {
+      const dist = Math.max(0.1, sb.endKm - sb.startKm)
+      const sp = parcoursData.elevationProfile.find(p => p.distKm >= sb.startKm)
+      const ep = parcoursData.elevationProfile.find(p => p.distKm >= sb.endKm)
+      const grad = sp && ep && dist > 0 ? ((ep.ele - sp.ele) / (dist * 1000)) * 100 : 0
+      timeline.push({ startKm: sb.startKm, endKm: sb.endKm, watts: sb.watts, grad, label: `Bloc spécifique km${sb.startKm}→${sb.endKm}` })
+    }
+
+    // Sort by startKm and emit Block objects
+    timeline.sort((a, b) => a.startKm - b.startKm)
+    for (const r of timeline) push(r.label, r.watts, r.endKm - r.startKm, r.grad)
+    return result
   }
 
   function handleAIGenerateFromParcours() {
@@ -7394,9 +7466,26 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               }
                             }
 
-                            // Overlay specific blocks on top (higher z-order since pushed last)
+                            // Subtract specificBlock ranges from existing gauges (no visual overlap)
+                            let finalGauges = [...gauges]
+                            for (const sb of specificBlocks) {
+                              finalGauges = finalGauges.flatMap(g => {
+                                if (g.endKm <= sb.startKm || g.startKm >= sb.endKm) return [g]
+                                const parts: typeof gauges = []
+                                if (g.startKm < sb.startKm) {
+                                  const d = sb.startKm - g.startKm
+                                  parts.push({ ...g, endKm: sb.startKm, estimatedMin: estimateTimeOnSegment(d, 0, g.watts, athleteWeight, bikeWeight) })
+                                }
+                                if (g.endKm > sb.endKm) {
+                                  const d = g.endKm - sb.endKm
+                                  parts.push({ ...g, startKm: sb.endKm, estimatedMin: estimateTimeOnSegment(d, 0, g.watts, athleteWeight, bikeWeight) })
+                                }
+                                return parts
+                              })
+                            }
+                            // Add specific blocks after trimming
                             specificBlocks.forEach((sb, si) => {
-                              gauges.push({
+                              finalGauges.push({
                                 blockIdx: -(si + 2000),
                                 startKm: sb.startKm,
                                 endKm: sb.endKm,
@@ -7408,9 +7497,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 hrAvg: sb.hrAvg,
                               })
                             })
+                            const gauges_final = finalGauges
 
-                            console.log('[powerGauges IIFE] result=', gauges.map(g => `${g.blockIdx}(${g.startKm}→${g.endKm} ${g.watts}W)`))
-                            return gauges
+                            return gauges_final
                           })()
                         : undefined
                       }
@@ -7657,18 +7746,43 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     </div>
 
                     {/* Durée totale prévue (requis pour TSS) */}
-                    <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, position: 'relative' as const }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Durée prévue de la sortie</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Format h:mm · nécessaire pour le TSS</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Heures · minutes · nécessaire pour le TSS</div>
                       </div>
-                      <input
-                        type="text"
-                        value={totalDuration}
-                        onChange={e => setTotalDuration(e.target.value)}
-                        placeholder="3:30"
-                        style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'center' as const, outline: 'none' }}
-                      />
+                      <button
+                        onClick={() => setShowDurPicker(v => !v)}
+                        style={{ minWidth: 64, padding: '5px 10px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: totalDuration ? 'var(--text)' : 'var(--text-dim)', fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}
+                      >{totalDuration || '—:——'}</button>
+                      {showDurPicker && (() => {
+                        const parts = totalDuration.split(':')
+                        const curH = parseInt(parts[0]) || 0
+                        const curM = parseInt(parts[1]) || 0
+                        const hours = Array.from({ length: 13 }, (_, i) => i)
+                        const mins  = Array.from({ length: 12 }, (_, i) => i * 5)
+                        return (
+                          <div style={{ position: 'absolute' as const, right: 0, top: '100%', marginTop: 6, zIndex: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', padding: 12, display: 'flex', gap: 0, minWidth: 180 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Heures</div>
+                              <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                                {hours.map(h => (
+                                  <button key={h} onClick={() => { setTotalDuration(`${h}:${String(curM).padStart(2, '0')}`); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curH === h ? `${accent}22` : 'transparent', color: curH === h ? accent : 'var(--text)', fontSize: 13, fontWeight: curH === h ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{h}h</button>
+                                ))}
+                              </div>
+                            </div>
+                            <div style={{ width: 1, background: 'var(--border)', margin: '0 8px' }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Minutes</div>
+                              <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                                {mins.map(m => (
+                                  <button key={m} onClick={() => { setTotalDuration(`${curH}:${String(m).padStart(2, '0')}`); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curM === m ? `${accent}22` : 'transparent', color: curM === m ? accent : 'var(--text)', fontSize: 13, fontWeight: curM === m ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{String(m).padStart(2, '0')}</button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     {/* Bulk power apply — applique une puissance à toutes les côtes sélectionnées */}
@@ -8545,7 +8659,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       notes: desc ?? null,
                       blocks: isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
                         ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
-                        : blocks ?? [],
+                        : aiFlowStep === 'parcours' && parcoursData
+                          ? buildParcoursBlocks()
+                          : blocks ?? [],
                       tss: tssRange.high || session.tss || null,
                       parcours_data: parcoursData ?? null,
                       nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,

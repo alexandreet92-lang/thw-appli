@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
@@ -1159,15 +1159,17 @@ function IcoBook()   { return <svg width="13" height="13" viewBox="0 0 24 24" fi
 function IcoClock()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> }
 function IcoSave()   { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> }
 
-interface TestHistoryEntry { id: string; date: string; valeurs: Record<string, string> }
+interface TestHistoryEntry { id: string; date: string; valeurs: Record<string, string>; documents?: { name: string; path: string; size: number; type: string }[] }
 
 function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClose: () => void }) {
-  const [vals, setVals]           = useState<Record<string, string>>({})
-  const [saving, setSaving]       = useState(false)
-  const [saved, setSaved]         = useState(false)
-  const [history, setHistory]     = useState<TestHistoryEntry[]>([])
+  const [vals, setVals]               = useState<Record<string, string>>({})
+  const [saving, setSaving]           = useState(false)
+  const [saved, setSaved]             = useState(false)
+  const [history, setHistory]         = useState<TestHistoryEntry[]>([])
   const [histLoading, setHistLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [pendingDocs, setPendingDocs] = useState<{ file: File; name: string }[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const testId = ot?.test.id ?? null
 
@@ -1186,7 +1188,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
       if (!defData?.id) return
       const { data } = await sb
         .from('test_results')
-        .select('id, date, valeurs')
+        .select('id, date, valeurs, documents')
         .eq('user_id', user.id)
         .eq('test_definition_id', defData.id)
         .order('date', { ascending: false })
@@ -1229,14 +1231,26 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
         .eq('nom', ot.test.name)
         .eq('sport', ot.sport)
         .maybeSingle()
+
+      // Upload des documents en attente
+      const uploadedDocs: { name: string; path: string; size: number; type: string }[] = []
+      for (const doc of pendingDocs) {
+        const safeName = doc.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `${user.id}/${ot.test.id}/${Date.now()}_${safeName}`
+        const { data: up } = await sb.storage.from('test-documents').upload(path, doc.file, { upsert: false })
+        if (up) uploadedDocs.push({ name: doc.name, path: up.path, size: doc.file.size, type: doc.file.type })
+      }
+
       await sb.from('test_results').insert({
         user_id: user.id,
         test_definition_id: defData?.id ?? null,
         date: new Date().toISOString().slice(0, 10),
         valeurs: vals,
+        documents: uploadedDocs,
       })
       setSaved(true)
       setVals({})
+      setPendingDocs([])
       setTimeout(() => setSaved(false), 3000)
       void loadHistory(ot.test.name, ot.sport)
     } finally {
@@ -1390,6 +1404,49 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
               </div>
             )}
 
+            {/* Documents */}
+            <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <SH icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>} label="Documents" color="var(--text-mid)"/>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,application/pdf,.doc,.docx,.txt"
+                style={{ display:'none' }}
+                onChange={e => {
+                  const files = Array.from(e.target.files ?? [])
+                  setPendingDocs(prev => [...prev, ...files.map(f => ({ file: f, name: f.name }))])
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+              />
+              {pendingDocs.length > 0 && (
+                <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:10 }}>
+                  {pendingDocs.map((doc, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', borderRadius:8, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                      <span style={{ fontSize:11, color:'var(--text)', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{doc.name}</span>
+                      <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:8, flexShrink:0 }}>{(doc.file.size / 1024).toFixed(0)} KB</span>
+                      <button onClick={() => setPendingDocs(p => p.filter((_, j) => j !== i))}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:16, lineHeight:1, padding:'0 0 0 8px', flexShrink:0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{ width:'100%', padding:'8px', borderRadius:9, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'border-color 0.15s, color 0.15s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = cfg.color; (e.currentTarget as HTMLButtonElement).style.color = cfg.color }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Ajouter un fichier (PDF, image, document…)
+              </button>
+              {pendingDocs.length > 0 && (
+                <p style={{ fontSize:10, color:'var(--text-dim)', margin:'6px 0 0', textAlign:'center' as const }}>
+                  {pendingDocs.length} fichier{pendingDocs.length > 1 ? 's' : ''} — seront uploadés à l&apos;enregistrement
+                </p>
+              )}
+            </div>
+
             {/* Historique des résultats */}
             {(history.length > 0 || histLoading) && (
               <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
@@ -1412,7 +1469,15 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
                     <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10 }}>
                       {history.map(entry => (
                         <div key={entry.id} style={{ padding:'9px 12px', borderRadius:9, background:'var(--bg)', border:'1px solid var(--border)' }}>
-                          <p style={{ fontSize:10, fontWeight:700, color:cfg.color, margin:'0 0 5px', fontFamily:'DM Mono,monospace' }}>{entry.date}</p>
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                            <p style={{ fontSize:10, fontWeight:700, color:cfg.color, margin:0, fontFamily:'DM Mono,monospace' }}>{entry.date}</p>
+                            {entry.documents && entry.documents.length > 0 && (
+                              <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                {entry.documents.length} doc{entry.documents.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
                           <div style={{ display:'flex', flexWrap:'wrap' as const, gap:'4px 12px' }}>
                             {Object.entries(entry.valeurs).map(([k, v]) => {
                               if (!v) return null
@@ -1491,6 +1556,7 @@ interface GlobalTestResult {
   id: string
   date: string
   valeurs: Record<string, string>
+  documents?: { name: string; path: string; size: number; type: string }[]
   nom: string
   sport?: string
 }
@@ -1506,7 +1572,7 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
       if (!user) { setLoading(false); return }
       const { data } = await sb
         .from('test_results')
-        .select('id, date, valeurs, test_definitions(nom, sport)')
+        .select('id, date, valeurs, documents, test_definitions(nom, sport)')
         .eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(100)
@@ -1517,6 +1583,7 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
             id: r.id as string,
             date: r.date as string,
             valeurs: (r.valeurs ?? {}) as Record<string, string>,
+            documents: (r.documents ?? []) as GlobalTestResult['documents'],
             nom: td?.nom ?? '—',
             sport: td?.sport,
           }
@@ -1570,7 +1637,15 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
                         )}
                         <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:0, color:'var(--text)' }}>{r.nom}</h3>
                       </div>
-                      <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, fontFamily:'DM Mono,monospace' }}>{fmtDate(r.date)}</p>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, fontFamily:'DM Mono,monospace' }}>{fmtDate(r.date)}</p>
+                        {r.documents && r.documents.length > 0 && (
+                          <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            {r.documents.length} doc{r.documents.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {vals.length > 0 && (

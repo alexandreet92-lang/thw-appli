@@ -7612,84 +7612,80 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
         {/* ZONE WHEEL + CARB ESTIMATE — sous le graphique parcours */}
         {sport === 'bike' && parcoursData && (() => {
-          const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+          const ftp  = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
           const lthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? null
           const totalMin = parseDurationToMin(totalDuration)
           const segs = parcoursData.segments ?? []
 
-          // ── Compute W zone time distribution ──────────────────
+          // ── W zone time distribution ───────────────────────────
           const wZoneIdx = (w: number): number => {
             const r = w / ftp
             return r > 1.50 ? 6 : r > 1.20 ? 5 : r > 1.05 ? 4 : r > 0.87 ? 3 : r > 0.75 ? 2 : r > 0.55 ? 1 : 0
           }
           const zoneMinW = new Array(7).fill(0)
-          if (totalMin > 0) {
-            climbConfigs.filter(c => c.selected).forEach(c => {
-              const seg = segs[c.segIdx]; if (!seg) return
-              const sb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
-              zoneMinW[wZoneIdx(sb ? sb.watts : c.watts)] += sb ? sb.estimatedMin : c.estimatedMin
-            })
-            specificBlocks.filter(sb => !climbConfigs.some(c => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm }))
-              .forEach(sb => { zoneMinW[wZoneIdx(sb.watts)] += sb.estimatedMin })
-            const allocW = zoneMinW.reduce((s, m) => s + m, 0)
-            zoneMinW[wZoneIdx(efWatts)] += Math.max(0, totalMin - allocW)
-          }
-          const zonePctW = zoneMinW.map(m => totalMin > 0 ? Math.round(m / totalMin * 100) : 0)
+          // Always accumulate allocated time (climbs + specific blocks)
+          climbConfigs.filter(c => c.selected).forEach(c => {
+            const seg = segs[c.segIdx]; if (!seg) return
+            const sb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
+            zoneMinW[wZoneIdx(sb ? sb.watts : c.watts)] += sb ? sb.estimatedMin : c.estimatedMin
+          })
+          specificBlocks.filter(sb => !climbConfigs.some(c => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm }))
+            .forEach(sb => { zoneMinW[wZoneIdx(sb.watts)] += sb.estimatedMin })
+          // Remaining time at EF — use totalMin if set, else estimate from allocated only
+          const allocW = zoneMinW.reduce((s, m) => s + m, 0)
+          const effectiveTotalMin = totalMin > 0 ? totalMin : allocW  // show even without duration
+          if (totalMin > 0) zoneMinW[wZoneIdx(efWatts)] += Math.max(0, totalMin - allocW)
+          else if (allocW === 0) zoneMinW[wZoneIdx(efWatts)] = 1  // placeholder so Z2 lights up
+          const zonePctW = zoneMinW.map(m => effectiveTotalMin > 0 ? Math.round(m / effectiveTotalMin * 100) : 0)
 
-          // ── SVG wheel renderer ─────────────────────────────────
-          const R = 54, RI = 18, CX = 64, CY = 64
-          const secPath = (r: number, sa: number, ea: number) => {
-            const gap = 0.05
-            const a1 = sa + gap, a2 = ea - gap
-            const x1 = CX + r * Math.cos(a1), y1 = CY + r * Math.sin(a1)
-            const x2 = CX + r * Math.cos(a2), y2 = CY + r * Math.sin(a2)
-            return `M${CX},${CY} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r},0,${a2 - a1 > Math.PI ? 1 : 0},1,${x2.toFixed(2)},${y2.toFixed(2)} Z`
-          }
-
+          // ── SVG wheel renderer (size-aware) ───────────────────
           type ZoneDef = { label: string; name: string; c: string; lo: number; hi: number | null }
-          const renderWheel = (zones: ZoneDef[], pcts: number[], unit: string) => {
-            const N = zones.length
-            const sliceA = (2 * Math.PI) / N
+
+          const renderWheel = (zones: ZoneDef[], pcts: number[], unit: string, sz: number) => {
+            const N   = zones.length
+            const slA = (2 * Math.PI) / N
+            const R   = sz * 0.43   // outer radius
+            const RI  = sz * 0.14   // inner hole
+            const CW  = sz, CH = sz, cx = sz / 2, cy = sz / 2
+            const secP = (r: number, sa: number, ea: number) => {
+              const g = 0.045; const a1 = sa + g, a2 = ea - g
+              const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1)
+              const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2)
+              return `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r},0,${a2 - a1 > Math.PI ? 1 : 0},1,${x2.toFixed(2)},${y2.toFixed(2)} Z`
+            }
             return (
-              <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6, flex: 1 }}>
-                <svg width={128} height={128} viewBox="0 0 128 128" style={{ overflow: 'visible' as const }}>
-                  {/* BG circle */}
-                  <circle cx={CX} cy={CY} r={R} fill="var(--bg-card2)" opacity={0.4} />
+              <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
+                <svg width={CW} height={CH} viewBox={`0 0 ${CW} ${CH}`} style={{ overflow: 'visible' as const }}>
+                  <circle cx={cx} cy={cy} r={R} fill="var(--bg-card2)" opacity={0.35} />
                   {zones.map((z, i) => {
-                    const sa = -Math.PI / 2 + i * sliceA
-                    const ea = sa + sliceA
-                    const pct = pcts[i] ?? 0
-                    // Fill radius: RI + (R-RI)*sqrt(pct/100) — area proportional, min RI
-                    const fillR = pct > 0 ? Math.max(RI + 4, RI + (R - RI) * Math.sqrt(pct / 100)) : 0
+                    const sa   = -Math.PI / 2 + i * slA
+                    const ea   = sa + slA
+                    const pct  = pcts[i] ?? 0
+                    const fillR = pct > 0 ? Math.max(RI + sz * 0.05, RI + (R - RI) * Math.sqrt(pct / 100)) : 0
                     const midA = (sa + ea) / 2
-                    const lxOut = CX + (R * 0.72) * Math.cos(midA)
-                    const lyOut = CY + (R * 0.72) * Math.sin(midA)
-                    const lxIn  = CX + (R * 0.46) * Math.cos(midA)
-                    const lyIn  = CY + (R * 0.46) * Math.sin(midA)
+                    const lOx  = cx + R * 0.73 * Math.cos(midA)
+                    const lOy  = cy + R * 0.73 * Math.sin(midA)
+                    const lIx  = cx + R * 0.47 * Math.cos(midA)
+                    const lIy  = cy + R * 0.47 * Math.sin(midA)
+                    const fSz  = sz >= 160 ? 8 : 6.5
                     return (
                       <g key={i}>
-                        {/* Background sector */}
-                        <path d={secPath(R, sa, ea)} fill={z.c} opacity={0.12} />
-                        {/* Fill sector */}
-                        {fillR > RI && <path d={secPath(fillR, sa, ea)} fill={z.c} opacity={0.72} />}
-                        {/* Zone label */}
-                        <text x={lxOut.toFixed(1)} y={(lyOut + 3.5).toFixed(1)} textAnchor="middle" fontSize={7.5} fontWeight={700} fill={pct > 0 ? z.c : 'var(--text-dim)'} fontFamily="DM Mono,monospace">{z.label}</text>
-                        {/* % label */}
-                        {pct > 0 && <text x={lxIn.toFixed(1)} y={(lyIn + 3.5).toFixed(1)} textAnchor="middle" fontSize={7} fontWeight={600} fill={z.c} fontFamily="DM Mono,monospace">{pct}%</text>}
+                        <path d={secP(R, sa, ea)} fill={z.c} opacity={0.13} />
+                        {fillR > RI && <path d={secP(fillR, sa, ea)} fill={z.c} opacity={0.78} />}
+                        <text x={lOx.toFixed(1)} y={(lOy + fSz * 0.45).toFixed(1)} textAnchor="middle" fontSize={fSz} fontWeight={700} fill={pct > 0 ? z.c : 'var(--text-dim)'} fontFamily="DM Mono,monospace">{z.label}</text>
+                        {pct > 0 && <text x={lIx.toFixed(1)} y={(lIy + fSz * 0.4).toFixed(1)} textAnchor="middle" fontSize={fSz * 0.88} fontWeight={600} fill={z.c} fontFamily="DM Mono,monospace">{pct}%</text>}
                       </g>
                     )
                   })}
-                  {/* Inner circle covers sector roots */}
-                  <circle cx={CX} cy={CY} r={RI} fill="var(--bg-card)" />
-                  {/* Center label */}
-                  <text x={CX} y={CY + 4} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="var(--text-dim)" fontFamily="DM Mono,monospace">{unit}</text>
+                  <circle cx={cx} cy={cy} r={RI} fill="var(--bg-card)" />
+                  <text x={cx} y={cy + sz * 0.025} textAnchor="middle" fontSize={sz >= 160 ? 9 : 7.5} fontWeight={800} fill="var(--text-dim)" fontFamily="DM Mono,monospace">{unit}</text>
                 </svg>
                 {/* Legend */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px', width: '100%', maxWidth: 140 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 6px', width: '100%' }}>
                   {zones.map((z, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <div style={{ width: 7, height: 7, borderRadius: 2, background: z.c, opacity: (pcts[i] ?? 0) > 0 ? 1 : 0.28, flexShrink: 0 }} />
-                      <span style={{ fontSize: 8, color: (pcts[i] ?? 0) > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono,monospace', whiteSpace: 'nowrap' as const }}>
+                      <div style={{ width: 6, height: 6, borderRadius: 2, background: z.c, opacity: (pcts[i] ?? 0) > 0 ? 1 : 0.25, flexShrink: 0 }} />
+                      <span style={{ fontSize: 7.5, color: (pcts[i] ?? 0) > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono,monospace', whiteSpace: 'nowrap' as const }}>
                         {z.label} {z.lo}{z.hi != null ? `–${z.hi}` : '+'}{unit}
                       </span>
                     </div>
@@ -7718,36 +7714,39 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
           // ── Carb estimation ───────────────────────────────────
           const carbEst = (() => {
-            if (totalMin <= 0) return null
-            const hours = totalMin / 60
+            const h = effectiveTotalMin / 60
+            if (h < 0.25) return null
             const tssR = computeParcoursFlowTSS()
             const ifVal = tssR?.ifVal ?? 0.72
             const loGh = ifVal >= 0.95 ? 80 : ifVal >= 0.85 ? 70 : ifVal >= 0.75 ? 60 : 50
             const hiGh = ifVal >= 0.95 ? 100 : ifVal >= 0.85 ? 90 : ifVal >= 0.75 ? 80 : 65
-            return { lo: Math.round(loGh * hours), hi: Math.round(hiGh * hours), loGh, hiGh, h: hours }
+            return { lo: Math.round(loGh * h), hi: Math.round(hiGh * h), loGh, hiGh, h }
           })()
 
           return (
-            <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '12px 14px' }}>
-              {/* Wheels row */}
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'space-around', alignItems: 'flex-start' }}>
-                {renderWheel(ZONES_W, zonePctW, 'W')}
-                {ZONES_FC && renderWheel(ZONES_FC, new Array(5).fill(0), 'FC')}
-              </div>
-              {/* Carb estimate */}
-              {carbEst && (
-                <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 16 }}>🍯</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', marginBottom: 1 }}>Glucides estimés</div>
-                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h · {carbEst.h.toFixed(1)}h de sortie</div>
-                  </div>
-                  <div style={{ textAlign: 'right' as const }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent, lineHeight: 1 }}>{carbEst.lo}–{carbEst.hi}g</div>
-                    <div style={{ fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>total glucides</div>
-                  </div>
+            <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px' }}>
+              {/* Wheels row — W large gauche, FC compact droite */}
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                <div style={{ flex: '0 0 auto' }}>
+                  {renderWheel(ZONES_W, zonePctW, 'W', mobile ? 160 : 190)}
                 </div>
-              )}
+                {ZONES_FC && (
+                  <div style={{ flex: '0 0 auto' }}>
+                    {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', mobile ? 130 : 150)}
+                  </div>
+                )}
+                {/* Carb estimate — colonne droite */}
+                {carbEst && (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: 8, paddingLeft: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4 }}>🍯 Glucides estimés</div>
+                      <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent, lineHeight: 1 }}>{carbEst.lo}–{carbEst.hi}g</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{carbEst.loGh}–{carbEst.hiGh}g/h</div>
+                      <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{carbEst.h.toFixed(1)}h de sortie</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )
         })()}
@@ -8778,21 +8777,35 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     const _saveDur = aiFlowStep === 'parcours' && _parcoursMin > 0 ? _parcoursMin : dur
                     const _pTss = computeParcoursFlowTSS()
                     const _saveTss = (aiFlowStep === 'parcours' && _pTss ? _pTss.tss : tssRange.high) || session.tss || null
+                    const _savedBlocks = isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
+                      ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
+                      : aiFlowStep === 'parcours' && parcoursData
+                        ? buildParcoursBlocks()
+                        : blocks ?? []
+                    const _savedParcours = parcoursDataWithConfig()
                     await sb.from('planned_sessions').update({
                       sport, title, time,
                       duration_min: _saveDur,
                       rpe: rpe ?? null,
                       notes: desc ?? null,
-                      blocks: isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
-                        ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
-                        : aiFlowStep === 'parcours' && parcoursData
-                          ? buildParcoursBlocks()
-                          : blocks ?? [],
+                      blocks: _savedBlocks,
                       tss: _saveTss,
-                      parcours_data: parcoursDataWithConfig() ?? null,
+                      parcours_data: _savedParcours ?? null,
                       nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
                       updated_at: new Date().toISOString(),
                     }).eq('id', session.id)
+                    // Sync parent state so re-opening the modal shows updated data
+                    onAutoSave?.({
+                      ...session,
+                      sport, title, time,
+                      durationMin: _saveDur,
+                      tss: _saveTss ?? undefined,
+                      notes: desc || undefined,
+                      rpe,
+                      blocks: _savedBlocks,
+                      parcoursData: _savedParcours ?? undefined,
+                      nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
+                    })
                     setSaved(true)
                     setTimeout(() => setSaved(false), 2000)
                   } catch (e) { console.error('[Save]', e) }

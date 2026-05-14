@@ -2535,6 +2535,50 @@ function ChartSection({
 function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const posRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null)
+
+  // Init position from localStorage or default bottom-right
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('coachIaPos')
+      if (s) { const p = JSON.parse(s); posRef.current = p; setPos(p); return }
+    } catch {}
+    const defaultPos = { x: window.innerWidth - 150, y: window.innerHeight - 140 }
+    posRef.current = defaultPos
+    setPos(defaultPos)
+  }, [])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const cur = posRef.current
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: cur.x, startPosY: cur.y, moved: false }
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const dx = ev.clientX - dragRef.current.startX
+      const dy = ev.clientY - dragRef.current.startY
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.moved = true
+      if (dragRef.current.moved) {
+        const nx = Math.max(4, Math.min(window.innerWidth - 150, dragRef.current.startPosX + dx))
+        const ny = Math.max(4, Math.min(window.innerHeight - 52, dragRef.current.startPosY + dy))
+        posRef.current = { x: nx, y: ny }
+        setPos({ x: nx, y: ny })
+      }
+    }
+    const onUp = () => {
+      if (dragRef.current) {
+        if (!dragRef.current.moved) setOpen(o => !o)
+        try { localStorage.setItem('coachIaPos', JSON.stringify(posRef.current)) } catch {}
+        dragRef.current = null
+      }
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   // Contexte plan injecté dans le system prompt du coach
   const planContext = {
@@ -2552,14 +2596,16 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
     },
   }
 
+  if (!pos) return null  // wait for client-side position init
+
   return (
     <>
-      <div style={{ position: 'fixed', bottom: 92, right: 20, zIndex: 90 }}>
+      <div style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 90, userSelect: 'none' }}>
         <button
-          onClick={() => setOpen(o => !o)}
+          onMouseDown={handleMouseDown}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          title={`Coach IA — ${plan.name}`}
+          title={`Coach IA — ${plan.name} · Glisser pour déplacer`}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 13px 7px 10px',
@@ -2573,15 +2619,17 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
               : hovered
               ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(91,111,255,0.12))'
               : 'var(--bg-card)',
-            cursor: 'pointer', transition: 'all 0.16s',
+            cursor: dragRef.current?.moved ? 'grabbing' : 'grab',
+            transition: 'border-color 0.16s, background 0.16s',
             boxShadow: open
               ? '0 0 0 3px rgba(139,92,246,0.14), 0 4px 16px rgba(139,92,246,0.22)'
               : '0 2px 10px rgba(0,0,0,0.14)',
           }}
         >
+          <span style={{ fontSize: 10, color: 'var(--text-dim)', opacity: 0.5, letterSpacing: '-1px', marginRight: -2 }}>⠿</span>
           <span style={{ fontSize: 13 }}>✦</span>
           <span style={{ fontSize: 11, fontWeight: 600, color: open ? '#a78bfa' : 'var(--text-mid)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-            Mon plan
+            Coach IA
           </span>
         </button>
       </div>

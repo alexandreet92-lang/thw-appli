@@ -5879,18 +5879,6 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   </div>
                 </div>
 
-                {/* Notes rapides */}
-                <div style={{ display: 'flex', gap: 7, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' as const }}>
-                  {NOTE_CONFIG.map(note => (
-                    <button key={note.id} onClick={() => validateSet(note.id)} style={{
-                      padding: '10px 18px', borderRadius: 10,
-                      border: `1px solid ${note.color}33`,
-                      background: `${note.color}0e`,
-                      color: note.color, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                      letterSpacing: '0.01em',
-                    }}>{note.label}</button>
-                  ))}
-                </div>
 
                 {/* Bouton principal */}
                 <button onClick={() => validateSet('ok')} style={{

@@ -5384,8 +5384,13 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
         setPhase('work') // pas de repos entre exos du circuit
       }
     } else {
-      // Séries : repos entre chaque série/exercice
-      startRest(currentExo?.restSec ?? 90)
+      // Séries : repos seulement quand on passe à un nouvel exercice, pas entre les séries du même exo
+      const isNewExo = nextS.exoIdx !== currentStep?.exoIdx || nextS.circuitIdx !== currentStep?.circuitIdx
+      if (isNewExo && (currentExo?.restSec ?? 0) > 0) {
+        startRest(currentExo!.restSec)
+      } else {
+        setPhase('work')
+      }
     }
   }
 

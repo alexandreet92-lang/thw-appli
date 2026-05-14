@@ -1171,7 +1171,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
 
   const testId = ot?.test.id ?? null
 
-  const loadHistory = useCallback(async (testName: string) => {
+  const loadHistory = useCallback(async (testName: string, sport: string) => {
     setHistLoading(true)
     try {
       const sb = createClient()
@@ -1181,6 +1181,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
         .from('test_definitions')
         .select('id')
         .eq('nom', testName)
+        .eq('sport', sport)
         .maybeSingle()
       if (!defData?.id) return
       const { data } = await sb
@@ -1201,7 +1202,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
     setVals({})
     setSaved(false)
     setShowHistory(false)
-    void loadHistory(ot.test.name)
+    void loadHistory(ot.test.name, ot.sport)
   }, [testId, loadHistory])
 
   if (!ot || typeof document === 'undefined') return null
@@ -1226,6 +1227,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
         .from('test_definitions')
         .select('id')
         .eq('nom', ot.test.name)
+        .eq('sport', ot.sport)
         .maybeSingle()
       await sb.from('test_results').insert({
         user_id: user.id,
@@ -1236,7 +1238,7 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
       setSaved(true)
       setVals({})
       setTimeout(() => setSaved(false), 3000)
-      void loadHistory(ot.test.name)
+      void loadHistory(ot.test.name, ot.sport)
     } finally {
       setSaving(false)
     }
@@ -1504,18 +1506,20 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
       if (!user) { setLoading(false); return }
       const { data } = await sb
         .from('test_results')
-        .select('id, date, valeurs, test_definitions(nom)')
+        .select('id, date, valeurs, test_definitions(nom, sport)')
         .eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(100)
       if (data) {
         setResults(data.map((r: Record<string, unknown>) => {
-          const td = r.test_definitions as { nom?: string } | null
-          const nom = td?.nom ?? '—'
-          const sport = Object.entries(TESTS).find(([, tests]) =>
-            tests.some(t => t.name === nom)
-          )?.[0]
-          return { id: r.id as string, date: r.date as string, valeurs: (r.valeurs ?? {}) as Record<string, string>, nom, sport }
+          const td = r.test_definitions as { nom?: string; sport?: string } | null
+          return {
+            id: r.id as string,
+            date: r.date as string,
+            valeurs: (r.valeurs ?? {}) as Record<string, string>,
+            nom: td?.nom ?? '—',
+            sport: td?.sport,
+          }
         }))
       }
       setLoading(false)

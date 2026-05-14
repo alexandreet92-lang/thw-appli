@@ -231,6 +231,20 @@ const TRIATHLON_FORMATS: { id: string; label: string; swim: string; bike: string
   { id: 'Ironman',   label: 'Ironman',   swim: '3800m',  bike: '180 km', run: '42,2 km'},
 ]
 
+// Distances réelles pour le calcul automatique des allures (M / 70.3 / Ironman seulement)
+const TRI_DIST: Record<string, { swimM: number; runKm: number }> = {
+  'M':       { swimM: 1500, runKm: 10   },
+  '70.3':    { swimM: 1900, runKm: 21.1 },
+  'Ironman': { swimM: 3800, runKm: 42.2 },
+}
+
+// Formate secondes → mm:ss ou hh:mm:ss
+function secToHms(s: number): string {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.round(s % 60)
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+  return `${m}:${String(sec).padStart(2,'0')}`
+}
+
 const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmers Carry','Sandbag Lunges','Wall Balls']
 interface HyroxRecord {
   format: string; date: string; total: string; roxzone: string; penalties: string
@@ -2096,6 +2110,9 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   const [editSplitBike, setEditSplitBike] = useState('')
   const [editSplitT2,   setEditSplitT2]   = useState('')
   const [editSplitRun,  setEditSplitRun]  = useState('')
+  // Champs vélo enrichis (watts + NP) pour M / 70.3 / Ironman
+  const [editBikeWatts, setEditBikeWatts] = useState('')
+  const [editBikeNP,    setEditBikeNP]    = useState('')
 
   // Tous les records vélo depuis Supabase (toutes années)
   const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
@@ -2182,6 +2199,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     setEditingRecordId(null)
     setEditDraft('')
     setEditSplitSwim(''); setEditSplitT1(''); setEditSplitBike(''); setEditSplitT2(''); setEditSplitRun('')
+    setEditBikeWatts(''); setEditBikeNP('')
   }
 
   // Meilleur record triathlon pour un format (filtré par année)
@@ -2773,6 +2791,152 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             const labelStyle = { fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }
 
             if (isEditing) {
+              const dist = TRI_DIST[fmt.id] ?? null
+
+              // ── Live calculations ──────────────────────────────────────
+              const swimSec = toSec(editSplitSwim)
+              const swimAllure = dist && swimSec > 0
+                ? (() => { const s = swimSec / (dist.swimM / 100); return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/100m` })()
+                : null
+
+              const runSec = toSec(editSplitRun)
+              const runAllure = dist && runSec > 0
+                ? (() => { const s = runSec / dist.runKm; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` })()
+                : null
+
+              const watts = parseFloat(editBikeWatts) || 0
+              const wkg = dist && watts > 0 && profile.weight > 0
+                ? `${(watts / profile.weight).toFixed(2)} W/kg`
+                : null
+              const npWkg = dist && parseFloat(editBikeNP) > 0 && profile.weight > 0
+                ? `NP: ${(parseFloat(editBikeNP) / profile.weight).toFixed(2)} W/kg`
+                : null
+
+              const t1s = toSec(editSplitT1), t2s = toSec(editSplitT2), bikeS = toSec(editSplitBike)
+              const autoTotal = swimSec + t1s + bikeS + t2s + runSec
+              const autoTotalStr = autoTotal > 0 ? secToHms(autoTotal) : '—'
+
+              // Sync auto-total to editDraft (display only — user can override)
+              const displayTotal = editDraft || (autoTotal > 0 ? autoTotalStr : '')
+
+              const calcBadge = (txt: string) => (
+                <span style={{ fontSize: 9, color: '#f59e0b', fontFamily: 'DM Mono,monospace', fontWeight: 600, marginTop: 2 }}>
+                  ⟶ {txt}
+                </span>
+              )
+
+              if (dist) {
+                // ── Formulaire détaillé (M / 70.3 / Ironman) ──────────────
+                return (
+                  <Card key={fmt.id} style={{ padding: '14px 16px', border: '1px solid #f59e0b' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                      <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
+                        {fmt.label}
+                        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 8 }}>
+                          {fmt.swim} · {fmt.bike} · {fmt.run}
+                        </span>
+                      </span>
+                      <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                    </div>
+
+                    {/* Discipline fields */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                      {/* Natation */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
+                          <span style={{ ...labelStyle, fontWeight: 700 }}>🏊 Natation</span>
+                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{fmt.swim}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <input value={editSplitSwim} onChange={e => setEditSplitSwim(e.target.value)}
+                            placeholder="hh:mm:ss" style={fieldStyle} />
+                          {swimAllure && calcBadge(`Allure : ${swimAllure}`)}
+                        </div>
+                      </div>
+
+                      {/* T1 */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '90px 120px', gap: 8 }}>
+                        <span style={{ ...labelStyle, paddingTop: 6 }}>T1</span>
+                        <input value={editSplitT1} onChange={e => setEditSplitT1(e.target.value)}
+                          placeholder="mm:ss" style={fieldStyle} />
+                      </div>
+
+                      {/* Vélo */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
+                          <span style={{ ...labelStyle, fontWeight: 700 }}>🚴 Vélo</span>
+                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{fmt.bike}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          <input value={editSplitBike} onChange={e => setEditSplitBike(e.target.value)}
+                            placeholder="hh:mm:ss (durée)" style={fieldStyle} />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <input value={editBikeWatts} onChange={e => setEditBikeWatts(e.target.value)}
+                                placeholder="Watts moyens (W)" type="number"
+                                style={{ ...fieldStyle, fontFamily: 'DM Mono,monospace', fontSize: 11 }} />
+                              {wkg && calcBadge(wkg)}
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <input value={editBikeNP} onChange={e => setEditBikeNP(e.target.value)}
+                                placeholder="NP (W) — optionnel" type="number"
+                                style={{ ...fieldStyle, fontFamily: 'DM Mono,monospace', fontSize: 11, opacity: 0.8 }} />
+                              {npWkg && calcBadge(npWkg)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* T2 */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '90px 120px', gap: 8 }}>
+                        <span style={{ ...labelStyle, paddingTop: 6 }}>T2</span>
+                        <input value={editSplitT2} onChange={e => setEditSplitT2(e.target.value)}
+                          placeholder="mm:ss" style={fieldStyle} />
+                      </div>
+
+                      {/* Course */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
+                          <span style={{ ...labelStyle, fontWeight: 700 }}>🏃 Course</span>
+                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{fmt.run}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <input value={editSplitRun} onChange={e => setEditSplitRun(e.target.value)}
+                            placeholder="hh:mm:ss" style={fieldStyle} />
+                          {runAllure && calcBadge(`Allure : ${runAllure}`)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Temps final auto */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, padding: '10px 12px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flex: 1 }}>
+                        ⏱ Temps final
+                        {autoTotal > 0 && <span style={{ color: '#f59e0b', fontWeight: 700, marginLeft: 6 }}>{autoTotalStr}</span>}
+                      </span>
+                      <input value={displayTotal} onChange={e => setEditDraft(e.target.value)}
+                        placeholder="ou saisir manuellement"
+                        style={{ ...fieldStyle, maxWidth: 120, fontWeight: 700, flex: 0 }} />
+                      <button onClick={() => {
+                        if (autoTotal > 0) setEditDraft(autoTotalStr)
+                        void confirmTriathlonRecord(fmt.id)
+                      }} disabled={recordSaving}
+                        style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                        {recordSaving ? '…' : 'Confirmer'}
+                      </button>
+                      <button onClick={cancelEdit}
+                        style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        Annuler
+                      </button>
+                    </div>
+                  </Card>
+                )
+              }
+
+              // ── Formulaire simple (XS / Sprint) ───────────────────────
               return (
                 <Card key={fmt.id} style={{ padding: '14px 16px', border: '1px solid #f59e0b' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -2785,8 +2949,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                     <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
                       style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
                   </div>
-
-                  {/* Grille des splits */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr 80px 1fr', gap: 8, marginBottom: 10 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={labelStyle}>🏊 Natation</span>
@@ -2814,8 +2976,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                         placeholder="hh:mm:ss" style={fieldStyle} />
                     </div>
                   </div>
-
-                  {/* Temps final + actions */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Temps final</span>
                     <input value={editDraft} onChange={e => setEditDraft(e.target.value)}

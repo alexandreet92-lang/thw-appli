@@ -652,6 +652,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   },
   'vma': {
     objectif: "Déterminer la Vitesse Maximale Aérobie (VMA) pour calibrer toutes les zones d'entraînement running.",
+    avertissement: "Effort maximal jusqu'à épuisement volontaire. Contre-indiqué en cas de douleur musculaire aiguë, tendinopathie active ou pathologie cardiaque non contrôlée. Échauffement obligatoire.",
     conditions: ["Piste 400m plate", "Vent nul ou faible", "Reposé 48h", "Chaussures légères de compétition"],
     echauffement: ["15 min à allure très facile", "3 × 100m progressifs", "5 min marche"],
     etapes: ["Option VAMEVAL : départ à 8 km/h, +0,5 km/h toutes les 1 min (balise sonore)", "Option Brue court : paliers de 2 min, +1 km/h à chaque palier", "Option 6 min all-out : VMA ≈ distance (m) / 100", "Arrêt quand impossible de tenir l'allure 2 paliers consécutifs"],
@@ -714,6 +715,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   // ── Cyclisme ────────────────────────────────
   'cp20': {
     objectif: "Mesurer la puissance maximale soutenue sur 20 min pour estimer la FTP (FTP = puissance moy × 0,95).",
+    avertissement: "Effort maximal soutenu 20 min — très exigeant sur le plan cardiovasculaire. Contre-indiqué sans capteur de puissance calibré, ou si douleur au genou/hanche/lombaire. Échauffement complet obligatoire.",
     conditions: ["Capteur de puissance (wattmètre) indispensable", "Vélo en parfait état ou ergocycle calibré", "Reposé 48–72h", "Température < 25°C"],
     echauffement: ["20 min à 55–65% FTP", "3 × 1 min @ 105% FTP avec 1 min récup", "5 min récup légère avant le départ test"],
     etapes: ["20 min all-out en cherchant à maintenir la puissance la plus haute possible", "Première minute : ne pas dépasser +5% au-dessus de l'objectif", "Maintenir constant — variations > 20W dégradent la puissance moyenne", "Enregistrer la puissance moyenne exacte sur les 20 min"],
@@ -1162,6 +1164,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   // ── Hyrox Force ─────────────────────────────
   'hyrox-force': {
     objectif: "Évaluer la force globale via 3 mouvements fondamentaux corrélés aux stations Hyrox (sled, sandbag, wall ball).",
+    avertissement: "Efforts maximaux avec charges lourdes (1RM). Spotter obligatoire sur Squat et Bench Press. Contre-indiqué en cas de douleur lombaire, articulaire ou de fatigue musculaire aiguë. Échauffement spécifique par mouvement obligatoire.",
     conditions: ["Reposé 48h", "Échauffement spécifique à la force", "Barres olympiques + capteur de charge ou cage de squat"],
     echauffement: ["10 min cardio léger", "2–3 séries montantes par mouvement avant le 1RM"],
     etapes: ["Deadlift 1RM : charges progressives, repos 3–5 min entre essais", "Squat barre 1RM : même protocole", "Bench Press 1RM puis max reps au poids du corps (PDC)", "Calculer les ratios charge / poids du corps pour chaque exercice"],
@@ -1179,6 +1182,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   // ── Hyrox Endurance Fonctionnelle ────────────
   'hyrox-endurance-wod': {
     objectif: "Mesurer la capacité à enchaîner des mouvements fonctionnels sous fatigue — très représentatif de la 2ème moitié d'un Hyrox.",
+    avertissement: "Effort maximal de 20 à 50 min enchaînant tractions, pompes et squats. Contre-indiqué si douleur à l'épaule, au coude ou au genou. Ne pas réaliser moins de 48h après une séance intense. Échauffement mobilité obligatoire.",
     conditions: ["Barre de traction fixe + espace sol plat", "Chronomètre visible", "Reposé 48h"],
     echauffement: ["10 min mobilité", "1 série légère à 50% de chaque mouvement"],
     etapes: ["5 rounds pour le temps : 20 tractions / 40 pompes / 60 squats", "Pas de repos imposé entre exercices ni entre rounds", "Chronométrer dès le départ de la 1ère traction jusqu'à la dernière squat"],
@@ -1192,6 +1196,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   // ── Hyrox Explosivité ─────────────────────────
   'hyrox-explosivite': {
     objectif: "Mesurer la puissance explosive des membres inférieurs sous 3 angles : saut horizontal unique, sauts répétés, sprint accéléré.",
+    avertissement: "Efforts explosifs maximaux — risque de claquage ou entorse sur surface inadaptée. Contre-indiqué en cas de douleur aux ischio-jambiers, quadriceps ou cheville. Sol antidérapant impératif. Échauffement neuromusculaire obligatoire.",
     conditions: ["Sol plat antidérapant", "Ruban de mesure au sol", "Chronométrage électronique ou assistant pour le sprint"],
     echauffement: ["15 min cardio léger", "3 × 3 squats sautés progressifs", "Lignes hautes 2 × 20m"],
     etapes: ["3 tentatives pour chaque exercice — retenir le meilleur", "Saut avant : pieds joints, propulsion maximale vers l'avant, mesurer de la pointe des pieds jusqu'au talon d'atterrissage", "Triple saut : 3 sauts enchaînés sans repositionnement, mesurer la distance totale", "Sprint 20m : départ lancé, chrono déclenché au premier mouvement"],
@@ -1248,6 +1253,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   // ── Running 10km ─────────────────────────────
   'running-10km': {
     objectif: "Mesurer la performance sur 10 km — distance de référence pour la résistance à allure seuil.",
+    avertissement: "Effort maximal sur 10 km. Ne pas réaliser en cas de douleur musculaire ou tendineuse active, de fièvre ou fatigue cumulée. Échauffement de 20 min minimum obligatoire.",
     conditions: ["Piste ou route plate (<20m dénivelé)", "GPS de précision", "Conditions météo neutres (< 20°C, vent < 15 km/h)"],
     echauffement: ["20 min à allure facile", "4 × 100m progressifs", "5 min marche"],
     etapes: ["Courir 10 km à l'effort le plus soutenu possible", "Enregistrer le temps final (mm:ss)"],

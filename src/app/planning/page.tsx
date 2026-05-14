@@ -4547,7 +4547,7 @@ function LocalInput({ value, onCommit, min, max, style, placeholder, step }: {
 // ── ElevationChart ────────────────────────────────
 type TerrainBlockOverlay = { label: string; startKm: number; endKm: number; zone: number; value: string; blockIdx: number; color?: string }
 
-function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag, onBlockClick, powerGauges, onGaugeWattsChange }: {
+function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag, onBlockClick, powerGauges, onGaugeWattsChange, onGaugeEdgeChange }: {
   profile: Array<{ distKm: number; ele: number }>
   totalKm: number
   accent: string
@@ -4557,11 +4557,13 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   onBlockClick?: (blockIdx: number) => void
   powerGauges?: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }>
   onGaugeWattsChange?: (blockIdx: number, newWatts: number) => void
+  onGaugeEdgeChange?: (blockIdx: number, edge: 'start' | 'end', newKm: number) => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
   const [dragging, setDragging] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
   const [gaugeDrag, setGaugeDrag] = useState<{ blockIdx: number; startY: number; startWatts: number } | null>(null)
+  const [gaugeEdgeDrag, setGaugeEdgeDrag] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
   const [hoveredGauge, setHoveredGauge] = useState<number | null>(null)
 
   if (profile.length < 2) return null
@@ -4610,6 +4612,11 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   }
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (gaugeEdgeDrag && onGaugeEdgeChange) {
+      const km = Math.round(svgXToKm(e.clientX) * 10) / 10
+      onGaugeEdgeChange(gaugeEdgeDrag.blockIdx, gaugeEdgeDrag.edge, km)
+      return
+    }
     if (gaugeDrag && onGaugeWattsChange && powerGauges) {
       const svg = svgRef.current
       if (svg) {
@@ -4640,9 +4647,9 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
     if (onHover) onHover(closest.distKm)
   }
 
-  function handleMouseUp() { setDragging(null); setGaugeDrag(null) }
+  function handleMouseUp() { setDragging(null); setGaugeDrag(null); setGaugeEdgeDrag(null) }
   function handleMouseLeave() {
-    if (!dragging && !gaugeDrag) { setCursor(null); if (onHover) onHover(null) }
+    if (!dragging && !gaugeDrag && !gaugeEdgeDrag) { setCursor(null); if (onHover) onHover(null) }
   }
 
   // Zone colors: Z1→Z5
@@ -4659,7 +4666,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         ref={svgRef}
         width="100%"
         viewBox={`0 0 ${W} ${H}`}
-        style={{ display: 'block', cursor: gaugeDrag ? 'ns-resize' : dragging ? 'ew-resize' : 'crosshair' }}
+        style={{ display: 'block', cursor: gaugeDrag ? 'ns-resize' : (dragging || gaugeEdgeDrag) ? 'ew-resize' : 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
@@ -4786,6 +4793,33 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                   setGaugeDrag({ blockIdx: pg.blockIdx, startY: svgY, startWatts: pg.watts })
                 }}
               />
+              {/* Left/Right edge handles (width resize) — only for specificBlocks (blockIdx <= -2000) */}
+              {onGaugeEdgeChange && pg.blockIdx <= -2000 && (
+                <>
+                  {/* Left handle */}
+                  <rect
+                    x={x1 - 4} y={yTop + (gaugeH - 20) / 2} width={8} height={20}
+                    rx={3} fill={pg.color} opacity={0.85}
+                    style={{ cursor: 'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'start' }) }}
+                  />
+                  <line x1={x1} y1={yTop + gaugeH * 0.3} x2={x1} y2={yBot} stroke={pg.color} strokeWidth={2.5} opacity={0.7}
+                    style={{ cursor: 'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'start' }) }}
+                  />
+                  {/* Right handle */}
+                  <rect
+                    x={x2 - 4} y={yTop + (gaugeH - 20) / 2} width={8} height={20}
+                    rx={3} fill={pg.color} opacity={0.85}
+                    style={{ cursor: 'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}
+                  />
+                  <line x1={x2} y1={yTop + gaugeH * 0.3} x2={x2} y2={yBot} stroke={pg.color} strokeWidth={2.5} opacity={0.7}
+                    style={{ cursor: 'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}
+                  />
+                </>
+              )}
               {/* Tooltip on hover */}
               {isHovered && !isDragging && (
                 <g>
@@ -5872,6 +5906,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   }
   const [specificBlocks, setSpecificBlocks] = useState<SpecificBlock[]>([])
   const [bulkWatts, setBulkWatts] = useState(250)
+  const [bulkHr, setBulkHr] = useState(0)  // 0 = not set yet, compute from wattToFc on use
   const [showDurPicker, setShowDurPicker] = useState(false)
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
@@ -7581,6 +7616,24 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           setEfWatts(newWatts)
                         }
                       }}
+                      onGaugeEdgeChange={(bidx, edge, newKm) => {
+                        if (bidx <= -2000) {
+                          const si = -(bidx + 2000)
+                          setSpecificBlocks(prev => prev.map((sb, i) => {
+                            if (i !== si) return sb
+                            const newStart = edge === 'start' ? Math.min(newKm, sb.endKm - 0.1) : sb.startKm
+                            const newEnd   = edge === 'end'   ? Math.max(newKm, sb.startKm + 0.1) : sb.endKm
+                            const dist = Math.max(0.1, newEnd - newStart)
+                            const grad = (() => {
+                              const sp = parcoursData?.elevationProfile.find(p => p.distKm >= newStart)
+                              const ep = parcoursData?.elevationProfile.find(p => p.distKm >= newEnd)
+                              return sp && ep && dist > 0 ? ((ep.ele - sp.ele) / (dist * 1000)) * 100 : 0
+                            })()
+                            const mins = estimateTimeOnSegment(dist, grad, sb.watts, athleteWeight, bikeWeight)
+                            return { ...sb, startKm: newStart, endKm: newEnd, estimatedMin: mins }
+                          }))
+                        }
+                      }}
                       onBlockEdgeDrag={aiFlowStep === 'parcours' ? undefined : (blockIdx, edge, newKm) => {
                         setBlocks(prev => prev.map((b, i) => {
                           if (i !== blockIdx) return b
@@ -7946,29 +7999,42 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     </div>
 
                     {/* Bulk power apply — applique une puissance à toutes les côtes sélectionnées */}
-                    {blocks.length === 0 && climbConfigs.filter(c => c.selected).length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: `1px solid ${accent}20`, background: `${accent}06` }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-dim)', flex: 1 }}>Appliquer aux côtes sélectionnées</span>
-                        <LocalInput
-                          value={bulkWatts}
-                          min={50} max={600}
-                          onCommit={w => setBulkWatts(w)}
-                          style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
-                        />
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
-                        <button
-                          onClick={() => {
-                            setClimbConfigs(prev => prev.map(c => {
-                              if (!c.selected) return c
-                              const seg = (parcoursData?.segments ?? [])[c.segIdx]
-                              const mins = seg ? estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, bulkWatts, athleteWeight, bikeWeight) : c.estimatedMin
-                              return { ...c, watts: bulkWatts, estimatedMin: mins }
-                            }))
-                          }}
-                          style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
-                        >Appliquer</button>
-                      </div>
-                    )}
+                    {blocks.length === 0 && climbConfigs.filter(c => c.selected).length > 0 && (() => {
+                      const bFtp  = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                      const bLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
+                      const displayHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: `1px solid ${accent}20`, background: `${accent}06` }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-dim)', flex: 1 }}>Appliquer aux côtes sélectionnées</span>
+                          <LocalInput
+                            value={bulkWatts}
+                            min={50} max={600}
+                            onCommit={w => { setBulkWatts(w); setBulkHr(wattToFc(w, bFtp, bLthr)) }}
+                            style={{ width: 52, padding: '4px 6px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                          />
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                          <LocalInput
+                            value={displayHr}
+                            min={60} max={220}
+                            onCommit={hr => setBulkHr(hr)}
+                            style={{ width: 44, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                          />
+                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                          <button
+                            onClick={() => {
+                              const applyHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
+                              setClimbConfigs(prev => prev.map(c => {
+                                if (!c.selected) return c
+                                const seg = (parcoursData?.segments ?? [])[c.segIdx]
+                                const mins = seg ? estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, bulkWatts, athleteWeight, bikeWeight) : c.estimatedMin
+                                return { ...c, watts: bulkWatts, hrAvg: applyHr, estimatedMin: mins }
+                              }))
+                            }}
+                            style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                          >Appliquer</button>
+                        </div>
+                      )
+                    })()}
 
                     {/* Climb cards — masquées après génération */}
                     {blocks.length === 0 && climbConfigs.map((cfg, ci) => {

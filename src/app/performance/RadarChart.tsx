@@ -14,6 +14,17 @@ const LEVELS = [
 ] as const
 type LevelEntry = typeof LEVELS[number]
 
+// 7-level table (adds Débutant below Amateur) — used in BenchmarkModal
+const BENCH_LEVELS = [
+  { label: 'Alien',    score: '10',  color: '#00FF87' },
+  { label: 'Élite',   score: '9',   color: '#00C8E0' },
+  { label: 'AHN',     score: '8',   color: '#5B6FFF' },
+  { label: 'TBA',     score: '7',   color: '#FFD700' },
+  { label: 'BA',      score: '6',   color: '#FF9500' },
+  { label: 'Amateur', score: '5',   color: '#D1D5DB' },
+  { label: 'Débutant',score: '0–4', color: '#EF4444' },
+] as const
+
 // Score where higher raw value = better (0–10)
 function scoreH(v: number, b: readonly [number,number,number,number,number,number]): number {
   if (!v || v <= 0) return 0
@@ -135,120 +146,122 @@ const CYCLING_AXES: AxisDef[] = [
 ]
 
 // RUNNING (H / F)
+// Order: [0]=top, [1]=upper-right, [2]=lower-right, [3]=lower-left, [4]=upper-left
 const RUNNING_AXES: AxisDef[] = [
   {
     key: 'vma',
     label: 'VMA',
     unit: 'km/h',
     description: 'Vitesse Maximale Aérobie — vitesse au VO2max',
-    benchH: [23, 21, 19, 17.5, 16, 14],
-    benchF: [21, 19, 17.5, 16, 14.5, 13],
+    benchH: [24, 21, 18, 16, 14, 11],
+    benchF: [21, 18.5, 16, 14, 12, 9],
     lowerBetter: false,
     inputLabel: 'VMA (km/h)',
     placeholder: 'ex: 17.0',
   },
   {
-    key: 'vo2max',
-    label: 'VO2max',
-    unit: 'ml/kg/min',
-    description: 'Consommation maximale d\'oxygène — capacité aérobie totale',
-    benchH: [80, 72, 65, 58, 52, 45],
-    benchF: [72, 65, 58, 52, 46, 40],
-    lowerBetter: false,
-    inputLabel: 'VO2max (ml/kg/min)',
-    placeholder: 'ex: 55',
+    key: 'eco_fc150',
+    label: 'Économie de course',
+    unit: 's/km',
+    description: 'Allure de course à FC 150 bpm — efficience et économie d\'oxygène',
+    benchH: [200, 225, 250, 280, 320, 380],
+    benchF: [225, 250, 280, 310, 350, 420],
+    lowerBetter: true,
+    inputLabel: 'Allure à FC150 (s/km)',
+    placeholder: 'ex: 260 (= 4:20/km)',
   },
   {
     key: 'pace_10k',
-    label: '10 km',
-    unit: 's/km',
-    description: 'Allure de course sur 10 km — vitesse seuil lactique en compétition',
-    benchH: [170, 185, 205, 230, 260, 300],
-    benchF: [185, 205, 230, 260, 295, 340],
+    label: '10km',
+    unit: 's',
+    description: 'Temps total sur 10 km — vitesse seuil lactique en compétition',
+    benchH: [1620, 1800, 2040, 2280, 2640, 3300],
+    benchF: [1800, 2040, 2280, 2580, 3000, 3720],
     lowerBetter: true,
-    inputLabel: 'Allure 10km (s/km)',
-    placeholder: 'ex: 240 (= 4:00/km)',
+    inputLabel: 'Temps 10km (secondes)',
+    placeholder: 'ex: 2400 (= 40:00)',
   },
   {
-    key: 'pace_semi',
-    label: 'Semi',
-    unit: 's/km',
-    description: 'Allure de course sur semi-marathon — endurance vitesse',
-    benchH: [180, 200, 225, 255, 290, 330],
-    benchF: [200, 225, 255, 285, 325, 375],
-    lowerBetter: true,
-    inputLabel: 'Allure semi (s/km)',
-    placeholder: 'ex: 270 (= 4:30/km)',
+    key: 'end_marathon_pct',
+    label: 'Endurance marathon',
+    unit: '%',
+    description: 'Pourcentage de VMA maintenu sur marathon — endurance aérobie fondamentale',
+    benchH: [85, 80, 74, 68, 61, 52],
+    benchF: [85, 80, 74, 68, 61, 52],
+    lowerBetter: false,
+    inputLabel: 'Endurance marathon (% VMA)',
+    placeholder: 'ex: 72',
   },
   {
-    key: 'pace_marathon',
-    label: 'Marathon',
-    unit: 's/km',
-    description: 'Allure de course sur marathon — endurance fondamentale',
-    benchH: [195, 220, 250, 285, 325, 380],
-    benchF: [220, 250, 285, 320, 365, 430],
-    lowerBetter: true,
-    inputLabel: 'Allure marathon (s/km)',
-    placeholder: 'ex: 300 (= 5:00/km)',
+    key: 'recup_fc',
+    label: 'Récupération FC',
+    unit: 'bpm',
+    description: 'Chute de fréquence cardiaque en 1 minute après effort maximal',
+    benchH: [40, 35, 30, 25, 20, 14],
+    benchF: [38, 33, 28, 23, 18, 12],
+    lowerBetter: false,
+    inputLabel: 'Récupération FC (bpm en 1min)',
+    placeholder: 'ex: 28',
   },
 ]
 
 // HYROX — 5-axis overview (H / F solo open)
+// Order: [0]=top, [1]=upper-right, [2]=lower-right, [3]=lower-left, [4]=upper-left
 const HYROX_MAIN_AXES: AxisDef[] = [
   {
-    key: 'total_time',
-    label: 'Total',
+    key: 'run_compromised',
+    label: 'Run compromised',
     unit: 's',
-    description: 'Temps total de course Hyrox — mesure globale de performance',
-    benchH: [3480, 3960, 4560, 5160, 5760, 6600],
-    benchF: [3960, 4560, 5280, 5880, 6600, 7680],
+    description: 'Run total compromis (8 × 1km intercalés) — capacité à courir sous fatigue',
+    benchH: [1680, 1920, 2160, 2400, 2760, 3120],
+    benchF: [1920, 2220, 2520, 2880, 3300, 3840],
     lowerBetter: true,
-    inputLabel: 'Temps total (secondes)',
-    placeholder: 'ex: 4800',
+    inputLabel: 'Run total (secondes)',
+    placeholder: 'ex: 2400 (= 40:00)',
   },
   {
-    key: 'run_time',
-    label: 'Running',
+    key: 'force_sleds',
+    label: 'Force (Sleds)',
     unit: 's',
-    description: 'Temps cumulé running (8 × 1 km) — composante cardiovasculaire',
-    benchH: [1620, 1920, 2220, 2580, 2940, 3480],
-    benchF: [1920, 2280, 2640, 3060, 3540, 4200],
+    description: 'Sled Push 50m PRO — force explosive des membres inférieurs sous charge lourde',
+    benchH: [150, 180, 225, 270, 330, 420],
+    benchF: [165, 195, 240, 290, 345, 450],
     lowerBetter: true,
-    inputLabel: 'Running cumulé (secondes)',
-    placeholder: 'ex: 2400',
+    inputLabel: 'Sled Push 50m (secondes)',
+    placeholder: 'ex: 240 (= 4:00)',
   },
   {
-    key: 'station_time',
-    label: 'Stations',
+    key: 'endurance_wod',
+    label: 'Endurance fonctionnelle',
     unit: 's',
-    description: 'Temps cumulé sur les 8 stations — composante force-endurance',
-    benchH: [1620, 1980, 2340, 2700, 3060, 3600],
-    benchF: [1980, 2340, 2760, 3180, 3660, 4380],
+    description: 'Farmers Carry 200m PRO — endurance fonctionnelle et force de préhension',
+    benchH: [90, 105, 130, 165, 210, 270],
+    benchF: [110, 125, 155, 190, 240, 300],
     lowerBetter: true,
-    inputLabel: 'Stations cumulé (secondes)',
-    placeholder: 'ex: 2100',
+    inputLabel: 'Farmers Carry 200m (secondes)',
+    placeholder: 'ex: 150',
   },
   {
-    key: 'skierg_1000',
-    label: 'SkiErg',
+    key: 'explosivite_bbj',
+    label: 'Explosivité (BBJ)',
     unit: 's',
-    description: 'SkiErg 1000m — capacité cardio + endurance haut du corps',
-    benchH: [180, 210, 245, 280, 320, 380],
-    benchF: [200, 235, 275, 315, 360, 430],
+    description: 'Burpee Broad Jump 80m — explosivité + capacité cardio en condition de course',
+    benchH: [105, 125, 150, 180, 220, 270],
+    benchF: [120, 142, 168, 200, 245, 310],
+    lowerBetter: true,
+    inputLabel: 'Burpee BBJ 80m (secondes)',
+    placeholder: 'ex: 150',
+  },
+  {
+    key: 'cardio_skierg_row',
+    label: 'Cardio (SkiErg+Row)',
+    unit: 's',
+    description: 'SkiErg 1000m — cardio haut du corps, représentatif du cardio global Hyrox',
+    benchH: [180, 200, 225, 255, 290, 345],
+    benchF: [210, 235, 260, 290, 330, 390],
     lowerBetter: true,
     inputLabel: 'SkiErg 1000m (secondes)',
-    placeholder: 'ex: 250',
-  },
-  {
-    key: 'wall_ball_100',
-    label: 'Wall Ball',
-    unit: 's',
-    description: 'Wall Ball 100 reps — puissance, coordination, endurance musculaire',
-    benchH: [130, 160, 195, 235, 280, 340],
-    benchF: [150, 185, 225, 270, 320, 390],
-    lowerBetter: true,
-    inputLabel: 'Wall Ball 100 reps (secondes)',
-    placeholder: 'ex: 200',
+    placeholder: 'ex: 220',
   },
 ]
 
@@ -775,7 +788,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         width: '100%',
         maxWidth: 520,
         margin: '0 auto',
-        background: '#141820',
+        background: 'var(--bg-card)',
         borderRadius: '20px 20px 0 0',
         padding: '24px 20px',
         maxHeight: '90vh',
@@ -814,9 +827,9 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
                 onChange={e => setDraft(prev => ({ ...prev, [def.key]: e.target.value }))}
                 style={{
                   width: '100%', boxSizing: 'border-box',
-                  background: '#1e2433', border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'var(--bg-card2, var(--bg))', border: '1px solid var(--border)',
                   borderRadius: 8, padding: '9px 12px',
-                  color: '#fff', fontSize: 14,
+                  color: 'var(--text)', fontSize: 14,
                   fontFamily: 'DM Mono, monospace',
                   outline: 'none',
                 }}
@@ -865,6 +878,204 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
   )
 }
 
+// ─── BenchmarkModal ───────────────────────────────────────────────────────────
+
+/** Format the value range for a given axis + level index + gender */
+function formatBenchRange(def: AxisDef, lvIdx: number, gender: 'M' | 'F'): string {
+  const bench = gender === 'M' ? def.benchH : def.benchF
+  const [a, e, ahn, tba, ba, am] = bench
+  const v = [a, e, ahn, tba, ba, am]
+
+  function fv(n: number): string {
+    if (def.unit === 's/km') {
+      const m = Math.floor(n / 60), s = Math.round(n % 60)
+      return `${m}:${String(s).padStart(2, '0')}`
+    }
+    if (def.unit === 's/100m') {
+      const m = Math.floor(n / 60), s = Math.round(n % 60)
+      return `${m}:${String(s).padStart(2, '0')}`
+    }
+    if (def.unit === 's') {
+      const h = Math.floor(n / 3600)
+      const m = Math.floor((n % 3600) / 60)
+      const s = Math.round(n % 60)
+      if (h > 0) return `${h}h${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}`
+      return `${m}'${String(s).padStart(2, '0')}`
+    }
+    if (def.unit === '%') return `${n}%`
+    return n % 1 === 0 ? String(n) : n.toFixed(1)
+  }
+
+  if (!def.lowerBetter) {
+    // Higher = better: threshold[0] = alien (highest)
+    if (lvIdx === 0) return `≥${fv(v[0])}`
+    if (lvIdx === 6) return `<${fv(v[5])}`
+    return `${fv(v[lvIdx])}–${fv(v[lvIdx - 1])}`
+  } else {
+    // Lower = better: threshold[0] = alien (lowest)
+    if (lvIdx === 0) return `<${fv(v[0])}`
+    if (lvIdx === 6) return `>${fv(v[5])}`
+    return `${fv(v[lvIdx - 1])}–${fv(v[lvIdx])}`
+  }
+}
+
+/** Return the BENCH_LEVELS index (0=Alien … 6=Débutant) for an athlete's raw value on a given axis */
+function getAthleteLevel(def: AxisDef, rawValue: number, gender: 'M' | 'F'): number {
+  if (rawValue <= 0) return -1
+  const bench = gender === 'M' ? def.benchH : def.benchF
+  const score = def.lowerBetter ? scoreL(rawValue, bench) : scoreH(rawValue, bench)
+  if (score >= 10) return 0
+  if (score >= 9)  return 1
+  if (score >= 8)  return 2
+  if (score >= 7)  return 3
+  if (score >= 6)  return 4
+  if (score >= 5)  return 5
+  if (score > 0)   return 6
+  return -1
+}
+
+interface BenchmarkModalProps {
+  title: string
+  sportColor: string
+  axisDefs: AxisDef[]
+  rawValues: Record<string, number>
+  onClose: () => void
+}
+
+function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: BenchmarkModalProps) {
+  const [g, setG] = useState<'M' | 'F'>('M')
+
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9100,
+        background: 'rgba(0,0,0,0.72)',
+        display: 'flex', alignItems: 'flex-end',
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{
+        width: '100%', maxWidth: 680, margin: '0 auto',
+        background: 'var(--bg-card)',
+        borderRadius: '20px 20px 0 0',
+        maxHeight: '88vh',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 20px 12px',
+          borderBottom: '1px solid var(--border)',
+        }}>
+          <div>
+            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+              Barème — {title}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+              Niveaux de référence par axe · cellules surlignées = votre niveau actuel
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Gender tabs */}
+            <div style={{ display: 'flex', background: 'rgba(128,128,128,0.12)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['M', 'F'] as const).map(gi => (
+                <button key={gi} onClick={() => setG(gi)} style={{
+                  padding: '4px 12px',
+                  background: g === gi ? sportColor : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  color: g === gi ? '#fff' : 'var(--text-dim)',
+                  fontSize: 11, fontWeight: 700,
+                  transition: 'background 0.15s',
+                }}>
+                  {gi}
+                </button>
+              ))}
+            </div>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', color: 'var(--text-dim)',
+              fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1,
+            }}>
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable table */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+            <thead>
+              <tr>
+                <th style={{
+                  padding: '8px 12px', textAlign: 'left', fontWeight: 700,
+                  color: 'var(--text-dim)', fontSize: 10,
+                  position: 'sticky', left: 0, top: 0,
+                  background: 'var(--bg-card)',
+                  borderBottom: '1px solid var(--border)',
+                  whiteSpace: 'nowrap', minWidth: 90, zIndex: 2,
+                }}>
+                  Niveau
+                </th>
+                {axisDefs.map(def => (
+                  <th key={def.key} style={{
+                    padding: '8px 10px', textAlign: 'center', fontWeight: 600,
+                    color: 'var(--text-dim)', fontSize: 10,
+                    position: 'sticky', top: 0,
+                    background: 'var(--bg-card)',
+                    borderBottom: '1px solid var(--border)',
+                    whiteSpace: 'nowrap', minWidth: 100,
+                  }}>
+                    <div style={{ fontWeight: 700 }}>{def.label}</div>
+                    <div style={{ fontSize: 9, opacity: 0.55, fontWeight: 400, marginTop: 1 }}>{def.unit}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {BENCH_LEVELS.map((lv, lvIdx) => (
+                <tr key={lv.label} style={{ borderBottom: '1px solid rgba(128,128,128,0.08)' }}>
+                  {/* Level label cell */}
+                  <td style={{
+                    padding: '8px 12px',
+                    position: 'sticky', left: 0,
+                    background: 'var(--bg-card)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: lv.color, flexShrink: 0 }} />
+                      <span style={{ fontWeight: 700, color: lv.color, fontSize: 11 }}>{lv.label}</span>
+                      <span style={{ fontSize: 9, color: 'var(--text-dim)', opacity: 0.55 }}>{lv.score}</span>
+                    </div>
+                  </td>
+                  {/* Value cells */}
+                  {axisDefs.map(def => {
+                    const athleteLvIdx = getAthleteLevel(def, rawValues[def.key] ?? 0, g)
+                    const isMe = athleteLvIdx === lvIdx
+                    return (
+                      <td key={def.key} style={{
+                        padding: '7px 10px', textAlign: 'center',
+                        fontFamily: 'DM Mono, monospace',
+                        fontSize: 10, whiteSpace: 'nowrap',
+                        background: isMe ? `${lv.color}1A` : 'transparent',
+                        borderLeft: isMe ? `2px solid ${lv.color}60` : '2px solid transparent',
+                        borderRight: isMe ? `2px solid ${lv.color}60` : '2px solid transparent',
+                        color: isMe ? lv.color : 'var(--text-mid)',
+                        fontWeight: isMe ? 700 : 400,
+                      }}>
+                        {formatBenchRange(def, lvIdx, g)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ─── RadarCard ────────────────────────────────────────────────────────────────
 interface RadarCardProps {
   dbSport: string
@@ -881,6 +1092,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
   const [rawValues, setRawValues] = useState<Record<string, number>>({})
   const [loaded, setLoaded] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showBenchmark, setShowBenchmark] = useState(false)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   // Capture defaults once at mount — prevents infinite re-fetch if parent re-creates the object
@@ -972,6 +1184,22 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
               </button>
             ))}
           </div>
+          {/* Barème button */}
+          <button
+            onClick={() => setShowBenchmark(true)}
+            style={{
+              padding: '5px 12px',
+              background: `${sportColor}18`,
+              border: `1px solid ${sportColor}44`,
+              borderRadius: 8,
+              color: sportColor,
+              fontSize: 11, fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Barème
+          </button>
           {/* Update button */}
           <button
             onClick={() => setShowModal(true)}
@@ -1014,7 +1242,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       {/* Tooltip */}
       {tooltip && <RadarTooltip tooltip={tooltip} />}
 
-      {/* Modal */}
+      {/* Edit modal */}
       {showModal && (
         <UpdateModal
           sport={dbSport}
@@ -1024,6 +1252,17 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
           currentValues={rawValues}
           onClose={() => setShowModal(false)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {/* Barème modal */}
+      {showBenchmark && (
+        <BenchmarkModal
+          title={title}
+          sportColor={sportColor}
+          axisDefs={axisDefs}
+          rawValues={rawValues}
+          onClose={() => setShowBenchmark(false)}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import type { ZoneSport } from '@/hooks/useTrainingZones'
 import { SportTabs } from '@/components/ui/SportTabs'
+import { CyclingRadar, RunningRadar, HyroxRadar, TriathlonRadar } from './RadarChart'
 
 // ── Types ────────────────────────────────────────────────────────
 type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
@@ -2466,6 +2467,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {/* BIKE */}
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <CyclingRadar profile={profile} />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
@@ -2572,6 +2574,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {/* RUN */}
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <RunningRadar profile={profile} />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
@@ -2754,6 +2757,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {/* TRIATHLON */}
       {sport === 'triathlon' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <TriathlonRadar profile={profile} />
           {TRIATHLON_FORMATS.map(fmt => {
             const editKey  = `triathlon-${fmt.id}`
             const isEditing = activeEdit === editKey
@@ -2880,7 +2884,10 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
 
       {/* HYROX */}
       {sport === 'hyrox' && (
-        <HyroxSection onSelect={onSelect} selectedDatum={selectedDatum} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <HyroxRadar />
+          <HyroxSection onSelect={onSelect} selectedDatum={selectedDatum} />
+        </div>
       )}
 
       {/* GYM */}

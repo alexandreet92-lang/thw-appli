@@ -551,6 +551,16 @@ function formatRaw(value: number, unit: string): string {
   return `${value % 1 === 0 ? value : value.toFixed(2)} ${unit}`
 }
 
+// Parse "HH:MM:SS" or "MM:SS" → total seconds (returns 0 on invalid / "—")
+function parseTimeToSec(t: string | null | undefined): number {
+  if (!t || t === '—') return 0
+  const parts = t.trim().split(':').map(Number)
+  if (parts.some(isNaN)) return 0
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  return 0
+}
+
 // ─── RadarSVG ─────────────────────────────────────────────────────────────────
 const SVG_W = 300, SVG_H = 260, CX = 150, CY = 128, MAX_R = 92
 
@@ -944,24 +954,41 @@ interface BenchmarkModalProps {
 
 function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: BenchmarkModalProps) {
   const [g, setG] = useState<'M' | 'F'>('M')
+  const [visible, setVisible] = useState(false)
+  const [closing, setClosing] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 10)
+    return () => clearTimeout(t)
+  }, [])
+
+  function handleClose() {
+    setClosing(true)
+    setTimeout(() => onClose(), 300)
+  }
+
+  const shown = visible && !closing
 
   return createPortal(
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 9100,
-        background: 'rgba(0,0,0,0.72)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '20px',
+        background: shown ? 'rgba(0,0,0,0.72)' : 'rgba(0,0,0,0)',
+        display: 'flex', alignItems: 'flex-end',
+        transition: 'background 300ms ease-out',
       }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      onClick={e => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div style={{
         width: '100%', maxWidth: 800,
+        margin: '0 auto',
         background: 'var(--bg-card)',
-        borderRadius: 20,
+        borderRadius: '20px 20px 0 0',
         maxHeight: '85vh',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
+        transform: `translateY(${shown ? '0%' : '100%'})`,
+        transition: 'transform 300ms ease-out',
       }}>
         {/* Header */}
         <div style={{
@@ -993,7 +1020,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
                 </button>
               ))}
             </div>
-            <button onClick={onClose} style={{
+            <button onClick={handleClose} style={{
               background: 'none', border: 'none', color: 'var(--text-dim)',
               fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1,
             }}>
@@ -1104,6 +1131,8 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // 1. Fetch performance_scores (primary source)
     const { data } = await supabase
       .from('performance_scores')
       .select('axis, raw_value')
@@ -1115,8 +1144,60 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
         fetched[row.axis as string] = Number(row.raw_value)
       }
     }
-    // Merge: DB overrides defaults
-    setRawValues({ ...(defaultsRef.current ?? {}), ...fetched })
+
+    // 2. Derive from personal_records (secondary — fills gaps not covered by performance_scores)
+    const derived: Record<string, number> = {}
+
+    if (dbSport === 'running') {
+      // Best 10km running record → pace_10k axis (total seconds)
+      const { data: runRec } = await supabase
+        .from('personal_records')
+        .select('performance')
+        .eq('user_id', user.id)
+        .eq('sport', 'run')
+        .eq('distance_label', '10km')
+        .neq('performance', '—')
+        .order('performance', { ascending: true })
+        .limit(1)
+      if (runRec?.[0]?.performance) {
+        const sec = parseTimeToSec(runRec[0].performance as string)
+        if (sec > 0 && !fetched['pace_10k']) derived['pace_10k'] = sec
+      }
+    }
+
+    if (dbSport.startsWith('triathlon_')) {
+      const fmt = dbSport.replace('triathlon_', '') // 'M', '703', 'full'
+      // Swim distances (in 100m units) and run distances (km) per format
+      const swimDist: Record<string, number> = { M: 15, '703': 19, full: 38 }
+      const runDist:  Record<string, number> = { M: 10, '703': 21.1, full: 42.2 }
+      const { data: triRec } = await supabase
+        .from('personal_records')
+        .select('split_swim, split_t1, split_t2, split_run, performance')
+        .eq('user_id', user.id)
+        .eq('sport', 'triathlon')
+        .eq('distance_label', fmt)
+        .neq('performance', '—')
+        .order('performance', { ascending: true })
+        .limit(1)
+      if (triRec?.[0]) {
+        const r = triRec[0] as { split_swim?: string | null; split_t1?: string | null; split_t2?: string | null; split_run?: string | null }
+        const swimSec = parseTimeToSec(r.split_swim)
+        const runSec  = parseTimeToSec(r.split_run)
+        const t1Sec   = parseTimeToSec(r.split_t1)
+        const t2Sec   = parseTimeToSec(r.split_t2)
+        const sd = swimDist[fmt] ?? 0
+        const rd = runDist[fmt]  ?? 0
+        if (swimSec > 0 && sd > 0 && !fetched[`swim_pace_${fmt}`])
+          derived[`swim_pace_${fmt}`] = swimSec / sd
+        if (runSec > 0 && rd > 0 && !fetched[`run_pace_${fmt}`])
+          derived[`run_pace_${fmt}`] = runSec / rd
+        if ((t1Sec > 0 || t2Sec > 0) && !fetched[`transitions_${fmt}`])
+          derived[`transitions_${fmt}`] = t1Sec + t2Sec
+      }
+    }
+
+    // Merge: performance_scores > personal_records-derived > defaultValues
+    setRawValues({ ...(defaultsRef.current ?? {}), ...derived, ...fetched })
     setLoaded(true)
   }, [dbSport])
 

@@ -41,13 +41,13 @@ const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme',
 const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP' }
 const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
-  run:       ['EF','SL1','SL2','VMA','Strides','Heat Training'],
-  bike:      ['EF','SL1','SL2','PMA','Sprints','Heat Training'],
-  swim:      ['EF','Technique','Seuil','Sprints'],
-  hyrox:     ['Simulation','Ergo','Wall Ball','BBJ','Fentes','Sled Push','Sled Pull','Farmer Carry'],
-  gym:       ['Strength','Strength endurance','Explosivité'],
-  rowing:    ['EF','SL1','SL2','PMA','Sprints'],
-  elliptique:['EF','SL1','SL2','PMA','Heat Training'],
+  run:        ['EF','SL1','SL2','VMA','Strides','Heat Training','Mixte'],
+  bike:       ['EF','SL1','SL2','PMA','Sprints','Heat Training','Mixte'],
+  swim:       ['EF','Technique','Seuil','Sprints','Mixte'],
+  hyrox:      ['Simulation','Ergo','Wall Ball','BBJ','Fentes','Sled Push','Sled Pull','Farmer Carry','Mixte'],
+  gym:        ['Strength','Strength endurance','Explosivité','Mixte'],
+  rowing:     ['EF','SL1','SL2','PMA','Sprints','Mixte'],
+  elliptique: ['EF','SL1','SL2','PMA','Heat Training','Mixte'],
 }
 const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
 const ZONE_COLORS_7 = ['#6b7280', '#4ade80', '#facc15', '#fb923c', '#f87171', '#c084fc', '#ec4899']
@@ -5840,7 +5840,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
-  const [trainingType, setTrainingType] = useState<string | null>(null)
+  const [trainingTypes, setTrainingTypes] = useState<string[]>([])
   const [title, setTitle] = useState(session?.title ?? '')
   const [date, setDate] = useState('')
   const [time, setTime] = useState(session?.time ?? '09:00')
@@ -5925,6 +5925,8 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         setSpecificBlocks(parcoursData.planningConfig.specificBlocks)
         setEfWatts(parcoursData.planningConfig.efWatts)
         setTotalDuration(parcoursData.planningConfig.totalDuration)
+        const _hm = parcoursData.planningConfig.totalDuration.match(/^(\d+):(\d{2})$/)
+        if (_hm) setDur(parseInt(_hm[1]) * 60 + parseInt(_hm[2]))
       } else {
         setTotalDuration('')
         setSpecificBlocks([])
@@ -6204,7 +6206,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   // Auto-save intentionally removed — save on close instead to avoid infinite re-render loop
 
   function handleExportPDF() {
-    const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingType || ''}`
+    const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`
     const blocksHtml = blocks.map(b => {
       const durStr = b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin
         ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min récup`
@@ -6326,8 +6328,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   }
 
   function handleSubmit() {
-    const finalTitle = title || (trainingType ? `${SPORT_LABEL[sport]} ${trainingType}` : SPORT_LABEL[sport])
+    const ttStr = trainingTypes.join('+')
+    const finalTitle = title || (ttStr ? `${SPORT_LABEL[sport]} ${ttStr}` : SPORT_LABEL[sport])
     const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
+    const parcoursMin = parseDurationToMin(totalDuration)
+    const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : dur || 60
+    const parcoursFlowTss = computeParcoursFlowTSS()
+    const finalTss = (aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : tssRange.high) || undefined
     const finalBlocks = isStrength && exercises.length > 0
       ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
       : aiFlowStep === 'parcours' && parcoursData
@@ -6338,7 +6345,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       id: session?.id ?? '',
       dayIndex: dayIndex ?? session?.dayIndex ?? 0,
       sport, title: finalTitle + subLabel, time,
-      durationMin: dur || 60, tss: tssRange.high || undefined,
+      durationMin: finalDur, tss: finalTss,
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
       parcoursData: parcoursDataWithConfig() ?? undefined,
@@ -6889,7 +6896,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* TITRE */}
         <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
           <input value={title} onChange={e => setTitle(e.target.value)}
-            placeholder={`${SPORT_LABEL[sport]} ${trainingType || ''}`}
+            placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
             style={{
               flex: 1, background: 'none', border: 'none', color: 'var(--text)',
               fontSize: mobile ? 20 : 24, fontWeight: 800, outline: 'none', padding: 0,
@@ -7024,11 +7031,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <span style={lbl}>Type de séance</span>
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                   {trainTypes.map(t => {
-                    const active = trainingType === t
+                    const active = trainingTypes.includes(t)
                     return (
                       <button key={t} onClick={() => {
-                        setTrainingType(active ? null : t)
-                        if (!active && !title) setTitle(`${SPORT_LABEL[sport]} ${t}`)
+                        const next = active ? trainingTypes.filter(x => x !== t) : [...trainingTypes, t]
+                        setTrainingTypes(next)
+                        if (!active && !title) setTitle(`${SPORT_LABEL[sport]} ${next.join('+')}`)
                       }} style={{
                         padding: mobile ? '5px 11px' : '6px 14px', borderRadius: 7,
                         fontSize: mobile ? 10 : 11, fontWeight: 600, cursor: 'pointer',
@@ -7602,58 +7610,147 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           </div>
         )}
 
-        {/* BANDEAU ZONES — puissance + FC, sous le graphique */}
-        {sport === 'bike' && parcoursData && (
-          <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-            {/* Zones puissance W */}
-            {(() => {
-              const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
-              return (
-                <div style={{ display: 'flex', gap: 3, alignItems: 'stretch' }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 20, flexShrink: 0, fontWeight: 700, display: 'flex', alignItems: 'center', paddingBottom: 2 }}>W</span>
-                  {[
-                    { z: 'Z1', lo: 0,                          hi: Math.round(ftp * 0.55), c: '#9ca3af', lbl: 'Récup' },
-                    { z: 'Z2', lo: Math.round(ftp * 0.55), hi: Math.round(ftp * 0.75), c: '#22c55e', lbl: 'Endurance' },
-                    { z: 'Z3', lo: Math.round(ftp * 0.75), hi: Math.round(ftp * 0.87), c: '#eab308', lbl: 'Tempo' },
-                    { z: 'Z4', lo: Math.round(ftp * 0.87), hi: Math.round(ftp * 1.05), c: '#f97316', lbl: 'Seuil' },
-                    { z: 'Z5', lo: Math.round(ftp * 1.05), hi: Math.round(ftp * 1.20), c: '#ef4444', lbl: 'VO2max' },
-                    { z: 'Z6', lo: Math.round(ftp * 1.20), hi: Math.round(ftp * 1.50), c: '#991B1B', lbl: 'Anaérobie' },
-                    { z: 'Z7', lo: Math.round(ftp * 1.50), hi: null,                   c: '#6B21A8', lbl: 'Sprint' },
-                  ].map(({ z, lo, hi, c, lbl }) => (
-                    <div key={z} style={{ flex: 1, borderRadius: 6, background: `${c}20`, border: `1.5px solid ${c}60`, padding: '6px 4px 5px', textAlign: 'center' as const, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: c, fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{z}</div>
-                      <div style={{ fontSize: 9, color: c, fontFamily: 'DM Mono, monospace', marginTop: 2, opacity: 0.85, lineHeight: 1 }}>{lbl}</div>
-                      <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3, lineHeight: 1 }}>{lo}{hi ? `–${hi}` : '+'}W</div>
+        {/* ZONE WHEEL + CARB ESTIMATE — sous le graphique parcours */}
+        {sport === 'bike' && parcoursData && (() => {
+          const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+          const lthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? null
+          const totalMin = parseDurationToMin(totalDuration)
+          const segs = parcoursData.segments ?? []
+
+          // ── Compute W zone time distribution ──────────────────
+          const wZoneIdx = (w: number): number => {
+            const r = w / ftp
+            return r > 1.50 ? 6 : r > 1.20 ? 5 : r > 1.05 ? 4 : r > 0.87 ? 3 : r > 0.75 ? 2 : r > 0.55 ? 1 : 0
+          }
+          const zoneMinW = new Array(7).fill(0)
+          if (totalMin > 0) {
+            climbConfigs.filter(c => c.selected).forEach(c => {
+              const seg = segs[c.segIdx]; if (!seg) return
+              const sb = specificBlocks.find(sb => sb.startKm < seg.endKm && sb.endKm > seg.startKm)
+              zoneMinW[wZoneIdx(sb ? sb.watts : c.watts)] += sb ? sb.estimatedMin : c.estimatedMin
+            })
+            specificBlocks.filter(sb => !climbConfigs.some(c => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm }))
+              .forEach(sb => { zoneMinW[wZoneIdx(sb.watts)] += sb.estimatedMin })
+            const allocW = zoneMinW.reduce((s, m) => s + m, 0)
+            zoneMinW[wZoneIdx(efWatts)] += Math.max(0, totalMin - allocW)
+          }
+          const zonePctW = zoneMinW.map(m => totalMin > 0 ? Math.round(m / totalMin * 100) : 0)
+
+          // ── SVG wheel renderer ─────────────────────────────────
+          const R = 54, RI = 18, CX = 64, CY = 64
+          const secPath = (r: number, sa: number, ea: number) => {
+            const gap = 0.05
+            const a1 = sa + gap, a2 = ea - gap
+            const x1 = CX + r * Math.cos(a1), y1 = CY + r * Math.sin(a1)
+            const x2 = CX + r * Math.cos(a2), y2 = CY + r * Math.sin(a2)
+            return `M${CX},${CY} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r},0,${a2 - a1 > Math.PI ? 1 : 0},1,${x2.toFixed(2)},${y2.toFixed(2)} Z`
+          }
+
+          type ZoneDef = { label: string; name: string; c: string; lo: number; hi: number | null }
+          const renderWheel = (zones: ZoneDef[], pcts: number[], unit: string) => {
+            const N = zones.length
+            const sliceA = (2 * Math.PI) / N
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6, flex: 1 }}>
+                <svg width={128} height={128} viewBox="0 0 128 128" style={{ overflow: 'visible' as const }}>
+                  {/* BG circle */}
+                  <circle cx={CX} cy={CY} r={R} fill="var(--bg-card2)" opacity={0.4} />
+                  {zones.map((z, i) => {
+                    const sa = -Math.PI / 2 + i * sliceA
+                    const ea = sa + sliceA
+                    const pct = pcts[i] ?? 0
+                    // Fill radius: RI + (R-RI)*sqrt(pct/100) — area proportional, min RI
+                    const fillR = pct > 0 ? Math.max(RI + 4, RI + (R - RI) * Math.sqrt(pct / 100)) : 0
+                    const midA = (sa + ea) / 2
+                    const lxOut = CX + (R * 0.72) * Math.cos(midA)
+                    const lyOut = CY + (R * 0.72) * Math.sin(midA)
+                    const lxIn  = CX + (R * 0.46) * Math.cos(midA)
+                    const lyIn  = CY + (R * 0.46) * Math.sin(midA)
+                    return (
+                      <g key={i}>
+                        {/* Background sector */}
+                        <path d={secPath(R, sa, ea)} fill={z.c} opacity={0.12} />
+                        {/* Fill sector */}
+                        {fillR > RI && <path d={secPath(fillR, sa, ea)} fill={z.c} opacity={0.72} />}
+                        {/* Zone label */}
+                        <text x={lxOut.toFixed(1)} y={(lyOut + 3.5).toFixed(1)} textAnchor="middle" fontSize={7.5} fontWeight={700} fill={pct > 0 ? z.c : 'var(--text-dim)'} fontFamily="DM Mono,monospace">{z.label}</text>
+                        {/* % label */}
+                        {pct > 0 && <text x={lxIn.toFixed(1)} y={(lyIn + 3.5).toFixed(1)} textAnchor="middle" fontSize={7} fontWeight={600} fill={z.c} fontFamily="DM Mono,monospace">{pct}%</text>}
+                      </g>
+                    )
+                  })}
+                  {/* Inner circle covers sector roots */}
+                  <circle cx={CX} cy={CY} r={RI} fill="var(--bg-card)" />
+                  {/* Center label */}
+                  <text x={CX} y={CY + 4} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="var(--text-dim)" fontFamily="DM Mono,monospace">{unit}</text>
+                </svg>
+                {/* Legend */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px', width: '100%', maxWidth: 140 }}>
+                  {zones.map((z, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: 2, background: z.c, opacity: (pcts[i] ?? 0) > 0 ? 1 : 0.28, flexShrink: 0 }} />
+                      <span style={{ fontSize: 8, color: (pcts[i] ?? 0) > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono,monospace', whiteSpace: 'nowrap' as const }}>
+                        {z.label} {z.lo}{z.hi != null ? `–${z.hi}` : '+'}{unit}
+                      </span>
                     </div>
                   ))}
                 </div>
-              )
-            })()}
-            {/* Zones FC */}
-            {(() => {
-              const lthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? null
-              if (!lthr) return null
-              return (
-                <div style={{ display: 'flex', gap: 3, alignItems: 'stretch' }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 20, flexShrink: 0, fontWeight: 700, display: 'flex', alignItems: 'center', paddingBottom: 2 }}>FC</span>
-                  {[
-                    { z: 'Z1', lo: 0,                          hi: Math.round(lthr * 0.80), c: '#9ca3af', lbl: 'Récup' },
-                    { z: 'Z2', lo: Math.round(lthr * 0.80), hi: Math.round(lthr * 0.89), c: '#22c55e', lbl: 'Endurance' },
-                    { z: 'Z3', lo: Math.round(lthr * 0.89), hi: Math.round(lthr * 0.95), c: '#eab308', lbl: 'Tempo' },
-                    { z: 'Z4', lo: Math.round(lthr * 0.95), hi: Math.round(lthr * 1.02), c: '#f97316', lbl: 'Seuil' },
-                    { z: 'Z5', lo: Math.round(lthr * 1.02), hi: null,                    c: '#ef4444', lbl: 'VO2max' },
-                  ].map(({ z, lo, hi, c, lbl }) => (
-                    <div key={z} style={{ flex: 1, borderRadius: 6, background: `${c}20`, border: `1.5px solid ${c}60`, padding: '6px 4px 5px', textAlign: 'center' as const, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: c, fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{z}</div>
-                      <div style={{ fontSize: 9, color: c, fontFamily: 'DM Mono, monospace', marginTop: 2, opacity: 0.85, lineHeight: 1 }}>{lbl}</div>
-                      <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3, lineHeight: 1 }}>{lo}{hi ? `–${hi}` : '+'}</div>
-                    </div>
-                  ))}
+              </div>
+            )
+          }
+
+          const ZONES_W: ZoneDef[] = [
+            { label:'Z1', name:'Récup',     c:'#9ca3af', lo:0,                          hi:Math.round(ftp*0.55) },
+            { label:'Z2', name:'Endurance', c:'#22c55e', lo:Math.round(ftp*0.55), hi:Math.round(ftp*0.75) },
+            { label:'Z3', name:'Tempo',     c:'#eab308', lo:Math.round(ftp*0.75), hi:Math.round(ftp*0.87) },
+            { label:'Z4', name:'Seuil',     c:'#f97316', lo:Math.round(ftp*0.87), hi:Math.round(ftp*1.05) },
+            { label:'Z5', name:'VO2max',    c:'#ef4444', lo:Math.round(ftp*1.05), hi:Math.round(ftp*1.20) },
+            { label:'Z6', name:'Anaérobie', c:'#991B1B', lo:Math.round(ftp*1.20), hi:Math.round(ftp*1.50) },
+            { label:'Z7', name:'Sprint',    c:'#6B21A8', lo:Math.round(ftp*1.50), hi:null },
+          ]
+          const ZONES_FC: ZoneDef[] | null = lthr ? [
+            { label:'Z1', name:'Récup',     c:'#9ca3af', lo:0,                          hi:Math.round(lthr*0.80) },
+            { label:'Z2', name:'Endurance', c:'#22c55e', lo:Math.round(lthr*0.80), hi:Math.round(lthr*0.89) },
+            { label:'Z3', name:'Tempo',     c:'#eab308', lo:Math.round(lthr*0.89), hi:Math.round(lthr*0.95) },
+            { label:'Z4', name:'Seuil',     c:'#f97316', lo:Math.round(lthr*0.95), hi:Math.round(lthr*1.02) },
+            { label:'Z5', name:'VO2max',    c:'#ef4444', lo:Math.round(lthr*1.02), hi:null },
+          ] : null
+
+          // ── Carb estimation ───────────────────────────────────
+          const carbEst = (() => {
+            if (totalMin <= 0) return null
+            const hours = totalMin / 60
+            const tssR = computeParcoursFlowTSS()
+            const ifVal = tssR?.ifVal ?? 0.72
+            const loGh = ifVal >= 0.95 ? 80 : ifVal >= 0.85 ? 70 : ifVal >= 0.75 ? 60 : 50
+            const hiGh = ifVal >= 0.95 ? 100 : ifVal >= 0.85 ? 90 : ifVal >= 0.75 ? 80 : 65
+            return { lo: Math.round(loGh * hours), hi: Math.round(hiGh * hours), loGh, hiGh, h: hours }
+          })()
+
+          return (
+            <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '12px 14px' }}>
+              {/* Wheels row */}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'space-around', alignItems: 'flex-start' }}>
+                {renderWheel(ZONES_W, zonePctW, 'W')}
+                {ZONES_FC && renderWheel(ZONES_FC, new Array(5).fill(0), 'FC')}
+              </div>
+              {/* Carb estimate */}
+              {carbEst && (
+                <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>🍯</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', marginBottom: 1 }}>Glucides estimés</div>
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h · {carbEst.h.toFixed(1)}h de sortie</div>
+                  </div>
+                  <div style={{ textAlign: 'right' as const }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent, lineHeight: 1 }}>{carbEst.lo}–{carbEst.hi}g</div>
+                    <div style={{ fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>total glucides</div>
+                  </div>
                 </div>
-              )
-            })()}
-          </div>
-        )}
+              )}
+            </div>
+          )
+        })()}
 
         {/* SÉPARATEUR 2 — entre Description et Construction */}
         <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '12px 16px' : '16px 24px', opacity: 0.5 }} />
@@ -7792,7 +7889,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Heures</div>
                               <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                 {hours.map(h => (
-                                  <button key={h} onClick={() => { setTotalDuration(`${h}:${String(curM).padStart(2, '0')}`); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curH === h ? `${accent}22` : 'transparent', color: curH === h ? accent : 'var(--text)', fontSize: 13, fontWeight: curH === h ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{h}h</button>
+                                  <button key={h} onClick={() => { setTotalDuration(`${h}:${String(curM).padStart(2, '0')}`); setDur(h * 60 + curM); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curH === h ? `${accent}22` : 'transparent', color: curH === h ? accent : 'var(--text)', fontSize: 13, fontWeight: curH === h ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{h}h</button>
                                 ))}
                               </div>
                             </div>
@@ -7801,7 +7898,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Minutes</div>
                               <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                 {mins.map(m => (
-                                  <button key={m} onClick={() => { setTotalDuration(`${curH}:${String(m).padStart(2, '0')}`); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curM === m ? `${accent}22` : 'transparent', color: curM === m ? accent : 'var(--text)', fontSize: 13, fontWeight: curM === m ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{String(m).padStart(2, '0')}</button>
+                                  <button key={m} onClick={() => { setTotalDuration(`${curH}:${String(m).padStart(2, '0')}`); setDur(curH * 60 + m); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curM === m ? `${accent}22` : 'transparent', color: curM === m ? accent : 'var(--text)', fontSize: 13, fontWeight: curM === m ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{String(m).padStart(2, '0')}</button>
                                 ))}
                               </div>
                             </div>
@@ -8660,7 +8757,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     if (!user) return
                     await sb.from('session_favorites').insert({
                       user_id: user.id, name, sport,
-                      training_type: trainingType, blocks_data: blocks,
+                      training_type: trainingTypes.join('+') || null, blocks_data: blocks,
                       nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
                     })
                     alert('✓ Favori sauvegardé')
@@ -8677,9 +8774,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   try {
                     const { createClient: cc } = await import('@/lib/supabase/client')
                     const sb = cc()
+                    const _parcoursMin = parseDurationToMin(totalDuration)
+                    const _saveDur = aiFlowStep === 'parcours' && _parcoursMin > 0 ? _parcoursMin : dur
+                    const _pTss = computeParcoursFlowTSS()
+                    const _saveTss = (aiFlowStep === 'parcours' && _pTss ? _pTss.tss : tssRange.high) || session.tss || null
                     await sb.from('planned_sessions').update({
                       sport, title, time,
-                      duration_min: dur,
+                      duration_min: _saveDur,
                       rpe: rpe ?? null,
                       notes: desc ?? null,
                       blocks: isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
@@ -8687,7 +8788,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         : aiFlowStep === 'parcours' && parcoursData
                           ? buildParcoursBlocks()
                           : blocks ?? [],
-                      tss: tssRange.high || session.tss || null,
+                      tss: _saveTss,
                       parcours_data: parcoursDataWithConfig() ?? null,
                       nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
                       updated_at: new Date().toISOString(),
@@ -8727,7 +8828,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   if (!user) return
                   await sb.from('session_favorites').insert({
                     user_id: user.id, name, sport,
-                    training_type: trainingType, blocks_data: blocks,
+                    training_type: trainingTypes.join('+') || null, blocks_data: blocks,
                     nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
                   })
                   alert('✓ Favori sauvegardé')

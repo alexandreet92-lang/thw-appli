@@ -4222,9 +4222,10 @@ const NUTRITION_TYPES: { id: NutritionItem['type']; label: string; defaultQty: s
 
 // ── Parcours helpers ──────────────────────────────
 interface ParcoursPlanningConfig {
-  climbConfigs: Array<{ segIdx: number; selected: boolean; watts: number; estimatedMin: number }>
+  climbConfigs: Array<{ segIdx: number; selected: boolean; watts: number; hrAvg?: number; estimatedMin: number }>
   specificBlocks: Array<{ id: string; startKm: number; endKm: number; watts: number; hrAvg?: number; estimatedMin: number }>
   efWatts: number
+  efHr?: number
   totalDuration: string
 }
 
@@ -5860,9 +5861,10 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   type AIFlowStep = 'ask' | 'parcours' | 'free'
   const [aiFlowStep, setAiFlowStep] = useState<AIFlowStep>('ask')
   const [climbConfigs, setClimbConfigs] = useState<Array<{
-    segIdx: number; selected: boolean; watts: number; estimatedMin: number
+    segIdx: number; selected: boolean; watts: number; hrAvg?: number; estimatedMin: number
   }>>([])
   const [efWatts, setEfWatts] = useState(160)
+  const [efHr, setEfHr] = useState(0)
   const [totalDuration, setTotalDuration] = useState('')  // format 'h:mm'
   interface SpecificBlock {
     id: string; startKm: number; endKm: number; watts: number
@@ -5916,6 +5918,17 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [bikeWeight, setBikeWeight] = useState<number>(8)
   const [terrainLoading, setTerrainLoading] = useState(false)
 
+  /** Piecewise linear W → FC estimation (IF → %LTHR) */
+  function wattToFc(watts: number, ftpVal: number, lthrVal: number): number {
+    const ifVal = watts / ftpVal
+    const pts: [number, number][] = [[0,0.50],[0.55,0.80],[0.75,0.89],[0.87,0.95],[1.05,1.02],[1.50,1.08]]
+    for (let i = 1; i < pts.length; i++) {
+      const [x0,y0] = pts[i-1]; const [x1,y1] = pts[i]
+      if (ifVal <= x1) return Math.round(lthrVal * (y0 + ((ifVal-x0)/(x1-x0))*(y1-y0)))
+    }
+    return Math.round(lthrVal * 1.10)
+  }
+
   // Réinitialise le flow IA quand un nouveau parcours est chargé
   useEffect(() => {
     if (parcoursData?.segments?.length) {
@@ -5924,6 +5937,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
         setClimbConfigs(parcoursData.planningConfig.climbConfigs)
         setSpecificBlocks(parcoursData.planningConfig.specificBlocks)
         setEfWatts(parcoursData.planningConfig.efWatts)
+        if (parcoursData.planningConfig.efHr) setEfHr(parcoursData.planningConfig.efHr)
         setTotalDuration(parcoursData.planningConfig.totalDuration)
         const _hm = parcoursData.planningConfig.totalDuration.match(/^(\d+):(\d{2})$/)
         if (_hm) setDur(parseInt(_hm[1]) * 60 + parseInt(_hm[2]))
@@ -6411,11 +6425,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   function parcoursDataWithConfig(): ParcoursData | null {
     if (!parcoursData) return null
     if (aiFlowStep !== 'parcours') return parcoursData
-    return { ...parcoursData, planningConfig: { climbConfigs, specificBlocks, efWatts, totalDuration } }
+    return { ...parcoursData, planningConfig: { climbConfigs, specificBlocks, efWatts, efHr, totalDuration } }
   }
 
   function initClimbConfigs() {
     const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
+    const lthrVal = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
     const segs = parcoursData?.segments ?? []
     const configs = segs
       .map((seg, idx) => ({ seg, idx }))
@@ -6429,10 +6444,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         }
         watts = Math.round(watts)
         const estimatedMin = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, watts, athleteWeight, bikeWeight)
-        return { segIdx: idx, selected: true, watts, estimatedMin }
+        const hrAvg = wattToFc(watts, ftp, lthrVal)
+        return { segIdx: idx, selected: true, watts, hrAvg, estimatedMin }
       })
     setClimbConfigs(configs)
-    setEfWatts(Math.round(ftp * 0.65))
+    const initEfW = Math.round(ftp * 0.65)
+    setEfWatts(initEfW)
+    setEfHr(wattToFc(initEfW, ftp, lthrVal))
   }
 
   /** Parse "h:mm" ou "mm" → minutes */
@@ -7739,14 +7757,35 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', wheelSz)}
                 </div>
               </div>
-              {/* Carb estimate — sous les deux cercles */}
-              {carbEst && (
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 Glucides estimés</span>
-                  <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h · {carbEst.h.toFixed(1)}h</span>
-                </div>
-              )}
+              {/* Carb estimate + avg power — sous les deux cercles */}
+              {(() => {
+                // Average power (time-weighted)
+                const tssR = computeParcoursFlowTSS()
+                const avgPower = tssR ? tssR.np : (() => {
+                  // fallback: weighted mean from allocated blocks
+                  let wSum = 0, tSum = 0
+                  climbConfigs.filter(c => c.selected).forEach(c => { wSum += c.watts * c.estimatedMin; tSum += c.estimatedMin })
+                  specificBlocks.forEach(sb => { wSum += sb.watts * sb.estimatedMin; tSum += sb.estimatedMin })
+                  const totalMin = parseDurationToMin(totalDuration)
+                  const remaining = Math.max(0, totalMin - tSum)
+                  wSum += efWatts * remaining; tSum += remaining
+                  return tSum > 0 ? Math.round(wSum / tSum) : efWatts
+                })()
+                return (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' as const }}>
+                    {carbEst && (
+                      <>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 Glucides estimés</span>
+                        <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h · {carbEst.h.toFixed(1)}h</span>
+                        <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
+                      </>
+                    )}
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ Puissance moy.</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{avgPower}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>W</span></span>
+                  </div>
+                )
+              })()}
             </div>
           )
         })()}
@@ -7976,22 +8015,41 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 </span>
                               </div>
                             </div>
-                            {/* Watts input (disabled if overridden) */}
-                            {cfg.selected && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, opacity: overrideBlock ? 0.4 : 1 }}>
-                                <LocalInput
-                                  value={overrideBlock ? overrideBlock.watts : cfg.watts}
-                                  min={50} max={600}
-                                  onCommit={w => {
-                                    if (overrideBlock) return
-                                    const mins = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
-                                    setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, watts: w, estimatedMin: mins } : c))
-                                  }}
-                                  style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: `1px solid ${overrideBlock ? '#f97316' : zc}60`, background: overrideBlock ? 'transparent' : 'var(--bg-card2)', color: overrideBlock ? '#f97316' : zc, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: overrideBlock ? 'not-allowed' : 'text' }}
-                                />
-                                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
-                              </div>
-                            )}
+                            {/* Watts + FC inputs (disabled if overridden) */}
+                            {cfg.selected && (() => {
+                              const curFtp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                              const curLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 3, flexShrink: 0, opacity: overrideBlock ? 0.4 : 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <LocalInput
+                                      value={overrideBlock ? overrideBlock.watts : cfg.watts}
+                                      min={50} max={600}
+                                      onCommit={w => {
+                                        if (overrideBlock) return
+                                        const mins = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
+                                        const hr = wattToFc(w, curFtp, curLthr)
+                                        setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, watts: w, hrAvg: hr, estimatedMin: mins } : c))
+                                      }}
+                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${overrideBlock ? '#f97316' : zc}60`, background: overrideBlock ? 'transparent' : 'var(--bg-card2)', color: overrideBlock ? '#f97316' : zc, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: overrideBlock ? 'not-allowed' : 'text' }}
+                                    />
+                                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <LocalInput
+                                      value={cfg.hrAvg ?? wattToFc(cfg.watts, curFtp, curLthr)}
+                                      min={60} max={220}
+                                      onCommit={hr => {
+                                        if (overrideBlock) return
+                                        setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, hrAvg: hr } : c))
+                                      }}
+                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: overrideBlock ? 'not-allowed' : 'text' }}
+                                    />
+                                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                                  </div>
+                                </div>
+                              )
+                            })()}
                           </div>
                           {/* FTP warning */}
                           {warnOverFtp && !overrideBlock && (
@@ -8005,23 +8063,40 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     })}
 
                     {/* EF intensity (plats + descentes) */}
-                    <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Plats & descentes</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                          Endurance de fond — Z{efWatts / ftp < 0.56 ? 1 : efWatts / ftp < 0.76 ? 2 : efWatts / ftp < 0.90 ? 3 : 4} ({Math.round((efWatts / ftp) * 100)}% FTP)
+                    {(() => {
+                      const efFtp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                      const efLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
+                      return (
+                        <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Plats & descentes</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                              Endurance de fond — Z{efWatts / efFtp < 0.56 ? 1 : efWatts / efFtp < 0.76 ? 2 : efWatts / efFtp < 0.90 ? 3 : 4} ({Math.round((efWatts / efFtp) * 100)}% FTP)
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <LocalInput
+                                value={efWatts}
+                                min={50} max={600}
+                                onCommit={w => { setEfWatts(w); setEfHr(wattToFc(w, efFtp, efLthr)) }}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <LocalInput
+                                value={efHr > 0 ? efHr : wattToFc(efWatts, efFtp, efLthr)}
+                                min={60} max={220}
+                                onCommit={setEfHr}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        <LocalInput
-                          value={efWatts}
-                          min={50} max={600}
-                          onCommit={setEfWatts}
-                          style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
-                        />
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
-                      </div>
-                    </div>
+                      )
+                    })()}
 
                     {/* ── Blocs spécifiques ─────────────────────── */}
                     <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', overflow: 'hidden' }}>
@@ -8105,23 +8180,29 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                         return sp && ep && dist > 0 ? ((ep.ele - sp.ele) / (dist * 1000)) * 100 : 0
                                       })()
                                       const mins = estimateTimeOnSegment(dist, grad, w, athleteWeight, bikeWeight)
-                                      setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, watts: w, estimatedMin: mins } : x))
+                                      const autoHr = wattToFc(w, trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250, athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170)
+                                      setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, watts: w, hrAvg: autoHr, estimatedMin: mins } : x))
                                     }}
                                     style={{ width: 52, padding: '3px 5px', borderRadius: 5, border: `1px solid ${zoneColor(sb.watts)}60`, background: 'var(--bg-card2)', color: zoneColor(sb.watts), fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
                                   />
                                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                                 </div>
-                                {/* HR optionnel */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                  <LocalInput
-                                    value={sb.hrAvg ?? undefined}
-                                    min={60} max={220}
-                                    placeholder="FC"
-                                    onCommit={v => setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, hrAvg: v } : x))}
-                                    style={{ width: 44, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
-                                  />
-                                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
-                                </div>
+                                {/* HR — pre-filled from watts */}
+                                {(() => {
+                                  const sbFtp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                                  const sbLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
+                                  return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                      <LocalInput
+                                        value={sb.hrAvg ?? wattToFc(sb.watts, sbFtp, sbLthr)}
+                                        min={60} max={220}
+                                        onCommit={v => setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, hrAvg: v } : x))}
+                                        style={{ width: 44, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 10, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                      />
+                                      <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                                    </div>
+                                  )
+                                })()}
                                 <button onClick={() => setSpecificBlocks(prev => prev.filter(x => x.id !== sb.id))}
                                   style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>×</button>
                               </div>

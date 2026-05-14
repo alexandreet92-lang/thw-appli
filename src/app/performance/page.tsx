@@ -1483,14 +1483,123 @@ function TestCard({ test, accentColor, onOpen }: { test: TestDef; accentColor: s
 }
 
 // ════════════════════════════════════════════════
+// HISTORIQUE TESTS GLOBAL
+// ════════════════════════════════════════════════
+interface GlobalTestResult {
+  id: string
+  date: string
+  valeurs: Record<string, string>
+  nom: string
+  sport?: string
+}
+
+function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
+  const [results,  setResults]  = useState<GlobalTestResult[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setLoading(false); return }
+      const { data } = await sb
+        .from('test_results')
+        .select('id, date, valeurs, test_definitions(nom)')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(100)
+      if (data) {
+        setResults(data.map((r: Record<string, unknown>) => {
+          const td = r.test_definitions as { nom?: string } | null
+          const nom = td?.nom ?? '—'
+          const sport = Object.entries(TESTS).find(([, tests]) =>
+            tests.some(t => t.name === nom)
+          )?.[0]
+          return { id: r.id as string, date: r.date as string, valeurs: (r.valeurs ?? {}) as Record<string, string>, nom, sport }
+        }))
+      }
+      setLoading(false)
+    }
+    void load()
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })
+
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(4px)', animation:'cardEnter 0.2s ease both' }}/>
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'22px 22px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'20px 22px 44px', boxShadow:'0 -10px 50px rgba(0,0,0,0.35)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'90vh', overflowY:'auto' as const }}>
+
+        {/* Handle */}
+        <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 18px' }}/>
+
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+          <div>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.02em' }}>Historique des tests</h2>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Toutes disciplines · triés par date</p>
+          </div>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign:'center' as const, padding:'40px 0', color:'var(--text-dim)', fontSize:13 }}>Chargement…</div>
+        ) : results.length === 0 ? (
+          <div style={{ textAlign:'center' as const, padding:'40px 0' }}>
+            <p style={{ fontSize:14, color:'var(--text-dim)', marginBottom:8 }}>Aucun test enregistré</p>
+            <p style={{ fontSize:12, color:'var(--text-dim)' }}>Ouvre un protocole de test et clique sur &quot;Enregistrer ce test&quot; pour commencer.</p>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {results.map(r => {
+              const sportCfg = r.sport ? TEST_SPORT_TABS.find(t => t.id === r.sport) : undefined
+              const vals = Object.entries(r.valeurs).filter(([,v]) => v && String(v).trim())
+              return (
+                <div key={r.id} style={{ padding:'13px 16px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom: vals.length > 0 ? 10 : 0 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3, flexWrap:'wrap' as const }}>
+                        {sportCfg && (
+                          <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${sportCfg.color}18`, color:sportCfg.color, textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{sportCfg.label}</span>
+                        )}
+                        <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:0, color:'var(--text)' }}>{r.nom}</h3>
+                      </div>
+                      <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, fontFamily:'DM Mono,monospace' }}>{fmtDate(r.date)}</p>
+                    </div>
+                  </div>
+                  {vals.length > 0 && (
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
+                      {vals.slice(0, 6).map(([k, v]) => (
+                        <div key={k} style={{ padding:'4px 10px', borderRadius:8, background:'var(--bg-card)', border:'1px solid var(--border)' }}>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{k}: </span>
+                          <span style={{ fontSize:10, fontWeight:700, color:'var(--text)', fontFamily:'DM Mono,monospace' }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>,
+    document.body
+  )
+}
+
+// ════════════════════════════════════════════════
 // ONGLET TESTS
 // ════════════════════════════════════════════════
 function TestsTab({ profile, onAnalyzeTest }: {
   profile: typeof INIT_PROFILE
   onAnalyzeTest?: (test: TestDef) => Promise<void>
 }) {
-  const [testSport, setTestSport] = useState<TestSport>('running')
-  const [openTest,  setOpenTest]  = useState<OpenTest | null>(null)
+  const [testSport,      setTestSport]      = useState<TestSport>('running')
+  const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
+  const [showHistorique, setShowHistorique] = useState(false)
 
   const cfg   = TEST_SPORT_TABS.find(t => t.id === testSport)!
   const tests = TESTS[testSport]
@@ -1498,24 +1607,39 @@ function TestsTab({ profile, onAnalyzeTest }: {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-      {/* Sport tabs desktop */}
-      <div className="hidden md:flex" style={{ gap:8, flexWrap:'wrap' as const }}>
-        {TEST_SPORT_TABS.map(t => (
-          <button key={t.id} onClick={() => setTestSport(t.id)}
-            style={{ flex:1, minWidth:110, padding:'10px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:testSport===t.id?700:400, boxShadow:testSport===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-            <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.label}
-          </button>
-        ))}
-      </div>
+      {/* Header row: tabs + Historique button */}
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, flexWrap:'wrap' as const }}>
 
-      {/* Sport tabs mobile */}
-      <div className="md:hidden" style={{ display:'flex', gap:5, flexWrap:'wrap' as const }}>
-        {TEST_SPORT_TABS.map(t => (
-          <button key={t.id} onClick={() => setTestSport(t.id)}
-            style={{ flex:1, minWidth:58, padding:'7px 5px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:11, fontWeight:testSport===t.id?700:400, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-            <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.short}
-          </button>
-        ))}
+        {/* Sport tabs desktop */}
+        <div className="hidden md:flex" style={{ gap:8, flexWrap:'wrap' as const, flex:1 }}>
+          {TEST_SPORT_TABS.map(t => (
+            <button key={t.id} onClick={() => setTestSport(t.id)}
+              style={{ flex:1, minWidth:110, padding:'10px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:testSport===t.id?700:400, boxShadow:testSport===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+              <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sport tabs mobile */}
+        <div className="md:hidden" style={{ display:'flex', gap:5, flexWrap:'wrap' as const, flex:1 }}>
+          {TEST_SPORT_TABS.map(t => (
+            <button key={t.id} onClick={() => setTestSport(t.id)}
+              style={{ flex:1, minWidth:58, padding:'7px 5px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:11, fontWeight:testSport===t.id?700:400, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
+              <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.short}
+            </button>
+          ))}
+        </div>
+
+        {/* Bouton Historique */}
+        <button
+          onClick={() => setShowHistorique(true)}
+          style={{ padding:'9px 14px', borderRadius:11, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' as const, transition:'border-color 0.15s, color 0.15s', flexShrink:0 }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
+        >
+          <IcoClock/>
+          Historique
+        </button>
       </div>
 
       {/* Section label */}
@@ -1536,6 +1660,9 @@ function TestsTab({ profile, onAnalyzeTest }: {
 
       {/* Protocol panel */}
       {openTest && <TestProtocolPanel open={openTest} onClose={() => setOpenTest(null)}/>}
+
+      {/* Historique global */}
+      {showHistorique && <HistoriqueTestsPanel onClose={() => setShowHistorique(false)}/>}
     </div>
   )
 }

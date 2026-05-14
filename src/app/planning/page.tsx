@@ -7784,6 +7784,33 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             { label:'Z5', name:'VO2max',    c:'#ef4444', lo:Math.round(lthrVal*1.02), hi:null },
           ]
 
+          // ── FC zone time distribution ──────────────────────────
+          const fcZoneIdx = (hr: number): number => {
+            const r = hr / lthrVal
+            return r >= 1.02 ? 4 : r >= 0.95 ? 3 : r >= 0.89 ? 2 : r >= 0.80 ? 1 : 0
+          }
+          const zoneMinFC = new Array(5).fill(0)
+          // Climbs
+          climbConfigs.filter(c => c.selected).forEach(c => {
+            const sb = specificBlocks.find(sb => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm })
+            const hr = sb ? (sb.hrAvg ?? wattToFc(sb.watts, ftp, lthrVal)) : (c.hrAvg ?? wattToFc(c.watts, ftp, lthrVal))
+            const mins = sb ? sb.estimatedMin : c.estimatedMin
+            zoneMinFC[fcZoneIdx(hr)] += mins
+          })
+          // Standalone specific blocks (not overlapping a climb)
+          specificBlocks.filter(sb => !climbConfigs.some(c => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm }))
+            .forEach(sb => { zoneMinFC[fcZoneIdx(sb.hrAvg ?? wattToFc(sb.watts, ftp, lthrVal))] += sb.estimatedMin })
+          // EF remainder
+          const allocFC = zoneMinFC.reduce((s, m) => s + m, 0)
+          const effectiveTotalMinFC = totalMin > 0 ? totalMin : allocFC
+          if (totalMin > 0) {
+            const efHrVal = efHr > 0 ? efHr : wattToFc(efWatts, ftp, lthrVal)
+            zoneMinFC[fcZoneIdx(efHrVal)] += Math.max(0, totalMin - allocFC)
+          } else if (allocFC === 0) {
+            zoneMinFC[fcZoneIdx(wattToFc(efWatts, ftp, lthrVal))] = 1
+          }
+          const zonePctFC = zoneMinFC.map(m => effectiveTotalMinFC > 0 ? Math.round(m / effectiveTotalMinFC * 100) : 0)
+
           // ── Carb estimation ───────────────────────────────────
           const carbEst = (() => {
             const h = effectiveTotalMin / 60
@@ -7807,7 +7834,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 </div>
                 {/* Moitié droite — FC */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-                  {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', wheelSz)}
+                  {renderWheel(ZONES_FC, zonePctFC, 'FC', wheelSz)}
                 </div>
               </div>
               {/* Carb estimate + avg power — sous les deux cercles */}
@@ -8081,23 +8108,24 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 </span>
                               </div>
                             </div>
-                            {/* Watts + FC inputs (disabled if overridden) */}
-                            {cfg.selected && (() => {
-                              const curFtp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                            {/* Watts + FC inputs — toujours visibles, grisées si non sélectionnée */}
+                            {(() => {
+                              const curFtp  = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
                               const curLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
+                              const disabled = !cfg.selected || !!overrideBlock
                               return (
-                                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 3, flexShrink: 0, opacity: overrideBlock ? 0.4 : 1 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 3, flexShrink: 0, opacity: disabled ? 0.35 : 1 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <LocalInput
                                       value={overrideBlock ? overrideBlock.watts : cfg.watts}
                                       min={50} max={600}
                                       onCommit={w => {
-                                        if (overrideBlock) return
+                                        if (disabled) return
                                         const mins = estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, w, athleteWeight, bikeWeight)
                                         const hr = wattToFc(w, curFtp, curLthr)
                                         setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, watts: w, hrAvg: hr, estimatedMin: mins } : c))
                                       }}
-                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${overrideBlock ? '#f97316' : zc}60`, background: overrideBlock ? 'transparent' : 'var(--bg-card2)', color: overrideBlock ? '#f97316' : zc, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: overrideBlock ? 'not-allowed' : 'text' }}
+                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${overrideBlock ? '#f97316' : zc}60`, background: 'var(--bg-card2)', color: overrideBlock ? '#f97316' : zc, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: disabled ? 'default' : 'text' }}
                                     />
                                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                                   </div>
@@ -8106,10 +8134,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                       value={cfg.hrAvg ?? wattToFc(cfg.watts, curFtp, curLthr)}
                                       min={60} max={220}
                                       onCommit={hr => {
-                                        if (overrideBlock) return
+                                        if (disabled) return
                                         setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, hrAvg: hr } : c))
                                       }}
-                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: overrideBlock ? 'not-allowed' : 'text' }}
+                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: disabled ? 'default' : 'text' }}
                                     />
                                     <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
                                   </div>

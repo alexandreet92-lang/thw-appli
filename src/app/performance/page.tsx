@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { CountUp } from '@/components/ui/AnimatedBar'
 import DatasTab from './DatasTab'
+import { createClient } from '@/lib/supabase/client'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -331,13 +332,17 @@ const TESTS: Record<TestSport, TestDef[]> = {
     { id:'cp20',             name:'CP20',           desc:'Critical Power sur 20 minutes — puissance moyenne × 0.95 = estimation FTP. Le test vélo de référence.',                                           duration:'~35 min',    difficulty:'Maximal' },
     { id:'critical-power',   name:'Critical Power', desc:'Modèle multi-durées (3–12–20 min) pour tracer la courbe puissance-durée et calculer W\' et CP.',                                                  duration:'2 × séances', difficulty:'Maximal' },
     { id:'lactate-cycling',  name:'Lactate',        desc:'Profil lactatémique sur ergocycle. Paliers de 5 min, prise de sang au doigt. Zones ultra-précises.',                                              duration:'60–90 min',  difficulty:'Modéré'  },
-    { id:'endurance-cycling',name:'Endurance',      desc:'Test de 2h à puissance modérée (60–65% FTP). Calibration de la zone 2 et mesure de la dérive cardiaque.',                                        duration:'120 min',    difficulty:'Modéré'  },
+    { id:'endurance-cycling',    name:'Endurance 2h',   desc:'Test de 2h à puissance modérée (60–65% FTP). Calibration de la zone 2 et mesure de la dérive cardiaque.',                                                         duration:'120 min',    difficulty:'Modéré'  },
+    { id:'endurance-4h',         name:'Endurance 4h',   desc:'Test de 4h en zone 2 (60–65% FTP). Calibration longue de l\'endurance fondamentale et mesure de la dérive cardiaque sur ultra-endurance.',                  duration:'240 min',    difficulty:'Modéré'  },
+    { id:'endurance-drift',      name:'Endurance Progressive', desc:'2h EF basse + 2h EF moyenne + 1h EF haute. Test de dérive cardiaque en 3 blocs pour calibrer les 3 sous-zones de l\'endurance fondamentale.',        duration:'300 min',    difficulty:'Modéré'  },
+    { id:'endurance-long-ftp',   name:'Endurance + FTP',desc:'3h30–5h30 en endurance fondamentale suivie de 20 min à FTP et 10 min de récupération. Mesure la capacité à produire de la puissance au seuil après fatigue.', duration:'4–6h',       difficulty:'Intense' },
     { id:'vo2max-cycling',   name:'VO2max / PMA',   desc:'Test rampe sur ergocycle. Paliers de 1 min, +20W à chaque étape. Détermine la Puissance Maximale Aérobie.',                                      duration:'15–25 min',  difficulty:'Maximal' },
     { id:'wingate',          name:'Wingate',        desc:'Sprint anaérobie de 30 secondes à résistance maximale. Mesure puissance de crête et capacité anaérobie.',                                         duration:'30 sec',     difficulty:'Maximal' },
   ],
   natation: [
     { id:'css',       name:'CSS',  desc:'Critical Swim Speed — allure au seuil lactate en natation. Calculée depuis le 400m et le 200m.',              duration:'~30 min', difficulty:'Intense' },
     { id:'vmax-swim', name:'VMax', desc:'Vitesse maximale sur 25 ou 50m. Mesure la puissance explosive en eau et le sprint nage.',                      duration:'~15 min', difficulty:'Maximal' },
+    { id:'hypoxie',   name:'Hypoxie', desc:'Distance maximale parcourue en apnée complète au crawl, sans aucune respiration. Mesure la capacité respiratoire et la résistance à l\'hypoxie.', duration:'1–3 min', difficulty:'Intense' },
   ],
   aviron: [
     { id:'2000m-row',  name:'2000m',           desc:'Test référence Concept2. Effort anaérobie lactique de ~7 min. Comparaison mondiale via le classement Concept2.',                                    duration:'~7 min',  difficulty:'Maximal' },
@@ -349,9 +354,14 @@ const TESTS: Record<TestSport, TestDef[]> = {
   hyrox: [
     { id:'pft',            name:'PFT',             desc:'Performance Fitness Test — circuit Hyrox complet chronométré. Référence globale pour évaluer ton niveau.',                                      duration:'50–90 min', difficulty:'Maximal' },
     { id:'station',        name:'Station isolée',  desc:'Test chronométré sur une station Hyrox spécifique au choix. Identifie tes points faibles station par station.',                                 duration:'3–8 min',   difficulty:'Intense' },
-    { id:'bbj',            name:'BBJ',             desc:'Burpee Broad Jump — 20 répétitions chronométrées ou distance maximale sur série standardisée.',                                                  duration:'3–5 min',   difficulty:'Intense' },
-    { id:'farmer-carry',   name:'Farmer Carry',    desc:'Charges standardisées Hyrox (24/32 kg). Distance maximale ou chrono sur 200m. Test de grip et gainage.',                                        duration:'2–4 min',   difficulty:'Intense' },
-    { id:'wall-ball',      name:'Wall Ball',       desc:'Nombre maximal de répétitions en 5 min ou chrono sur 100 reps. Mesure puissance-endurance des membres inférieurs.',                             duration:'5 min',     difficulty:'Intense' },
+    { id:'bbj',              name:'BBJ 80m',          desc:'Burpee Broad Jump — 80m officiels Hyrox chronométrés. Mesure la puissance explosive et l\'endurance anaérobie.',                                duration:'3–5 min',   difficulty:'Intense' },
+    { id:'bbj-200m',         name:'BBJ 200m',         desc:'Burpee Broad Jumps sur 200m. Endurance anaérobie prolongée — double la distance officielle pour identifier les limites lactiques.',              duration:'5–8 min',   difficulty:'Intense' },
+    { id:'bbj-400m',         name:'BBJ 400m',         desc:'Burpee Broad Jumps sur 400m — épreuve d\'endurance extrême. Mesure la dégradation technique et la résistance lactique sur longue durée.',     duration:'10–18 min', difficulty:'Maximal' },
+    { id:'farmer-carry',     name:'Farmer Carry',     desc:'Charges standardisées Hyrox (24/32 kg). Chrono sur 200m. Test de grip et gainage.',                                                             duration:'2–4 min',   difficulty:'Intense' },
+    { id:'farmer-carry-max', name:'Farmer Carry Max', desc:'Distance maximale au poids officiel Hyrox sans poser les charges. Mesure l\'endurance de grip et la capacité neuromusculaire en portage.',      duration:'2–5 min',   difficulty:'Intense' },
+    { id:'wall-ball',        name:'Wall Ball 100',    desc:'100 Wall Balls chronométrées. Mesure puissance-endurance des membres inférieurs et explosivité du push.',                                       duration:'5 min',     difficulty:'Intense' },
+    { id:'wall-ball-max-reps',name:'Wall Ball Max',   desc:'Nombre maximal de reps Wall Ball au poids officiel Hyrox sur série continue jusqu\'à épuisement technique.',                                   duration:'5–10 min',  difficulty:'Intense' },
+    { id:'wall-ball-tabata', name:'Wall Ball Tabata', desc:'10 Wall Ball + 10s pause balle au-dessus de la tête, répéter jusqu\'à épuisement. Toutes les reps comptent même en milieu de série.',           duration:'10–20 min', difficulty:'Intense' },
     { id:'sled-push',      name:'Sled Push',       desc:'Poids maximal poussé sur 25m × 4 allers-retours. Test de force-vitesse sur sled Hyrox standardisé.',                                           duration:'2–4 min',   difficulty:'Maximal' },
     { id:'sled-pull',      name:'Sled Pull',       desc:'Poids maximal tiré sur 25m × 4 allers-retours avec corde. Test de force de traction et endurance musculaire.',                                  duration:'2–4 min',   difficulty:'Maximal' },
     { id:'run-compromised',name:'Run Compromised', desc:'Allure de course mesurée immédiatement après une station Hyrox. Quantifie l\'impact de la fatigue sur la foulée.',                              duration:'10–20 min', difficulty:'Intense' },
@@ -738,6 +748,144 @@ const PROTOCOLS: Record<string, TestProtocol> = {
       { cle:'charge', label:'Charge totale sled', unite:'kg', type:'number' },
     ],
   },
+  // ── Cyclisme Endurance (variantes) ─────────
+  'endurance-4h': {
+    objectif: "Test de 4h en zone 2 (60–65% FTP) — calibrage long de l'endurance fondamentale et mesure de la dérive cardiaque sur ultra-endurance.",
+    conditions: ["Capteur de puissance", "FTP connue", "Home trainer ou route plate", "Hydratation et nutrition prévues (60g glucides/h)", "Reposé 48h"],
+    echauffement: ["15 min léger puis directement à la puissance cible"],
+    etapes: ["Rouler 240 min à 60–65% FTP (zone 2)", "Enregistrer FC toutes les 30 min", "Mesurer la dérive cardiaque (∆FC entre min 15 et min 210)", "Maintenir la puissance constante", "Gérer la nutrition : ~60g glucides/h recommandés"],
+    interpretation: ["Dérive FC < 5 bpm sur 4h = zone 2 excellente, forte capacité aérobie de base", "Dérive 5–12 bpm = adaptations nécessaires en endurance longue durée", "Dérive > 15 bpm = intensité trop haute ou déficit nutritionnel", "Si puissance chute de > 5% après 3h → glycogène insuffisant ou intensité surestimée"],
+    erreurs: ["Partir trop fort en début de séance", "Négliger la nutrition — chute de puissance à 2h–3h = déficit glucidique", "Arrêts qui cassent la continuité aérobie"],
+    frequence: "1 fois / 6–8 semaines en bloc de construction aérobie longue",
+    fields: [
+      { cle:'fc_15min',   label:'FC à 15 min',            unite:'bpm', type:'number' as const },
+      { cle:'fc_120min',  label:'FC à 2h',                unite:'bpm', type:'number' as const },
+      { cle:'fc_210min',  label:'FC à 3h30',              unite:'bpm', type:'number' as const },
+      { cle:'derive_fc',  label:'Dérive cardiaque totale', unite:'bpm', type:'number' as const, helper:'FC 3h30 − FC 15 min' },
+      { cle:'puissance_moy', label:'Puissance moyenne',    unite:'W',   type:'number' as const },
+    ],
+  },
+  'endurance-drift': {
+    objectif: "Test en 3 blocs progressifs : 2h EF basse + 2h EF moyenne + 1h EF haute. Calibre les 3 sous-zones de l'endurance fondamentale par la réponse cardiaque.",
+    conditions: ["Capteur de puissance et FC thoracique", "Home trainer ou route plate", "Hydratation disponible", "FTP connue"],
+    echauffement: ["10 min léger puis directement au bloc 1"],
+    etapes: ["Bloc 1 (2h) @ 55–60% FTP — enregistrer FC toutes les 30 min", "Bloc 2 (2h) @ 62–68% FTP — noter l'élévation FC entre les blocs", "Bloc 3 (1h) @ 68–75% FTP — mesurer FC finale", "Ne pas dépasser les zones cibles", "Calculer les dérives FC dans chaque bloc et entre les blocs"],
+    interpretation: ["FC stable dans chaque bloc = bonne capacité aérobie dans cette zone", "Élévation FC > 10 bpm en passant au bloc suivant = seuil de fatigue identifié", "Si FC s'emballe au bloc 3 → EF haute dépasse le seuil réel"],
+    erreurs: ["Transitions de blocs trop abruptes — monter en 5 min", "Oublier de noter les FC à chaque demi-heure", "Mauvaise nutrition sur test de 5h"],
+    frequence: "1 fois / bloc de 8–12 semaines",
+    fields: [
+      { cle:'fc_bloc1_debut', label:'FC début bloc 1',     unite:'bpm', type:'number' as const },
+      { cle:'fc_bloc1_fin',   label:'FC fin bloc 1 (2h)',  unite:'bpm', type:'number' as const },
+      { cle:'fc_bloc2_debut', label:'FC début bloc 2',     unite:'bpm', type:'number' as const },
+      { cle:'fc_bloc2_fin',   label:'FC fin bloc 2 (4h)',  unite:'bpm', type:'number' as const },
+      { cle:'fc_bloc3_fin',   label:'FC fin bloc 3 (5h)',  unite:'bpm', type:'number' as const },
+      { cle:'puiss_cible_1',  label:'Puissance cible bloc 1', unite:'W', type:'number' as const },
+      { cle:'puiss_cible_2',  label:'Puissance cible bloc 2', unite:'W', type:'number' as const },
+      { cle:'puiss_cible_3',  label:'Puissance cible bloc 3', unite:'W', type:'number' as const },
+    ],
+  },
+  'endurance-long-ftp': {
+    objectif: "Simuler un fond long (3h30–5h30) suivi de 20 min à FTP + 10 min récupération. Mesure la capacité à produire de la puissance au seuil après fatigue.",
+    conditions: ["Capteur de puissance", "FTP connue et récente", "Ravitaillement pour toute la durée", "Reposé 72h — test très exigeant"],
+    echauffement: ["Directement dans le bloc endurance — l'intensité est modérée par définition"],
+    etapes: ["Phase 1 (3h30–5h30) : rouler à 55–65% FTP — endurance fondamentale", "Phase 2 (20 min) : sans pause, passer à 95–105% FTP — maintenir la puissance malgré la fatigue", "Phase 3 (10 min) : récupération @ 40–50% FTP — noter la FC de récupération", "Comparer la puissance FTP obtenue ici à la puissance CP20 à frais"],
+    interpretation: ["Puissance FTP post-endurance > 90% CP20 = très bonne résistance à la fatigue", "80–90% = fatigue normale — continuer à construire la base", "< 80% = base aérobie insuffisante ou volume trop élevé", "FC récup doit descendre de > 30 bpm en 5 min"],
+    erreurs: ["Partir trop fort en phase FTP par envie de compenser la fatigue", "Négliger la nutrition sur la phase endurance", "Ne pas noter les puissances intermédiaires"],
+    frequence: "1 fois / 8 semaines — test de spécificité longue distance",
+    fields: [
+      { cle:'duree_endurance',      label:'Durée phase endurance',       unite:'min', type:'number' as const, required:true },
+      { cle:'puiss_endurance',      label:'Puissance moyenne endurance',  unite:'W',   type:'number' as const },
+      { cle:'puiss_ftp_20min',      label:'Puissance moyenne 20 min FTP', unite:'W',   type:'number' as const, required:true },
+      { cle:'pct_ftp',              label:'% de la FTP atteint',          unite:'%',   type:'number' as const, helper:'(Puiss 20min / FTP) × 100' },
+      { cle:'fc_fin_endurance',     label:'FC fin phase endurance',       unite:'bpm', type:'number' as const },
+      { cle:'fc_5min_recup',        label:'FC après 5 min récup',         unite:'bpm', type:'number' as const },
+    ],
+  },
+  // ── Natation Hypoxie ────────────────────────
+  'hypoxie': {
+    objectif: "Mesurer la distance maximale parcourue en apnée complète (sans aucune respiration) au crawl — mesure de la capacité respiratoire et de la résistance à l'hypoxie.",
+    avertissement: "Protocole avec risque de syncope hypoxique. OBLIGATOIRE : partenaire de sécurité en bord de bassin + maître-nageur informé. Ne JAMAIS réaliser seul.",
+    conditions: ["Piscine avec couloir dédié", "Maître-nageur ou partenaire obligatoire (sécurité)", "Reposé 48h", "Ne jamais faire ce test seul — risque vital"],
+    echauffement: ["600m nage à allure très facile", "5 min de respiration ventrale profonde (ne pas hyperventiler — contre-productif et dangereux)"],
+    etapes: ["Prendre une dernière grande inspiration sur le bord", "Pousser sur le mur, nager au crawl à allure modérée-soutenue", "Nager sans respirer aussi loin que possible", "Sortir de l'eau ou s'arrêter dès que l'envie de respirer devient irrésistible", "Mesurer la distance exacte parcourue en mètres"],
+    interpretation: ["< 25m : niveau de base · 25–50m : intermédiaire · 50–75m : bon · > 75m : excellent", "Progression de +5m en 4 semaines = adaptation hypoxique efficace", "Utiliser pour calibrer les exercices d'apnée fractionnée (3 × 25m récup complète)"],
+    erreurs: ["Hyperventiler avant le départ — interdit (risque de syncope hypoxique)", "Nager trop vite — augmente la consommation d'O₂ et réduit la distance", "Réaliser ce test sans surveillance"],
+    frequence: "1 fois / 3–4 semaines",
+    fields: [
+      { cle:'distance', label:'Distance parcourue', unite:'m', type:'number' as const, placeholder:'Ex: 45', required:true },
+      { cle:'bassin',   label:'Longueur du bassin',  unite:'m', type:'number' as const, placeholder:'25 ou 50' },
+    ],
+  },
+  // ── Hyrox variantes ────────────────────────
+  'bbj-200m': {
+    objectif: "BBJ sur 200m — double la distance officielle Hyrox. Mesure l'endurance anaérobie et la résistance à la dégradation technique sur durée prolongée.",
+    conditions: ["Sol plat non glissant", "200m continus (8 allers-retours de 25m ou 4 allers de 50m)", "Poids corporel uniquement"],
+    echauffement: ["10 min cardio léger", "5 BBJ lents + 5 BBJ à 80%"],
+    etapes: ["200m de BBJ consécutifs à effort maximal — rythme constant recommandé", "Chrono démarré au 1er mouvement, arrêté au franchissement de la ligne d'arrivée", "Technique officielle : planche — saut pieds joints — maximum longueur — ramener les pieds", "Genoux au sol = +5s de pénalité"],
+    interpretation: ["< 5:30 : élite · 5:30–7:00 : bon · 7:00–8:30 : moyen · > 8:30 : à améliorer", "Ratio temps 200m / (2 × temps 80m) > 2.4 → endurance BBJ à travailler"],
+    erreurs: ["Partir trop vite sur les 5 premiers mètres → effondrement à mi-parcours", "Réduction de la longueur de saut sous fatigue", "Mauvaise technique sur les 100 derniers mètres"],
+    frequence: "1 fois / 2 semaines en préparation Hyrox spécifique",
+    fields: [
+      { cle:'temps_200m',    label:'Temps 200m BBJ',         unite:null, type:'string' as const, placeholder:'Ex: 6:15', required:true },
+      { cle:'distance_moy',  label:'Distance moy par saut',  unite:'m',  type:'number' as const },
+    ],
+  },
+  'bbj-400m': {
+    objectif: "BBJ sur 400m — épreuve d'endurance extrême. Mesure la dégradation technique et la résistance lactique sur très longue durée.",
+    conditions: ["Sol plat", "400m continus (piste ou couloir)", "Poids corporel uniquement", "Eau disponible — test de 10–18 min"],
+    echauffement: ["10 min cardio", "10 BBJ lents + 5 BBJ rapides", "5 min marche récup"],
+    etapes: ["400m de BBJ à effort modéré-soutenu — gestion d'allure obligatoire", "Stratégie recommandée : 200m @ 80% + 200m all-out, ou rythme constant", "Chrono global arrêté à la ligne d'arrivée"],
+    interpretation: ["< 13 min : élite · 13–16 min : bon · > 18 min : à travailler", "Index de dégradation : (temps 400m / 2 × temps 200m) − 1 → objectif < 15%"],
+    erreurs: ["Départ trop explosif — cassure à 150m garantie", "Mauvaise gestion du carrefour technique-physique", "Oublier la nutrition si > 15 min"],
+    frequence: "1 fois / mois en cycle de préparation Hyrox",
+    fields: [
+      { cle:'temps_400m',        label:'Temps 400m BBJ',          unite:null, type:'string' as const, placeholder:'Ex: 14:30', required:true },
+      { cle:'distance_moy_saut', label:'Distance moy par saut',   unite:'m',  type:'number' as const },
+    ],
+  },
+  'farmer-carry-max': {
+    objectif: "Distance maximale parcourue au poids officiel Hyrox sans poser les charges — mesure l'endurance de grip et la capacité neuromusculaire en portage.",
+    conditions: ["2 kettlebells : 32 kg H / 24 kg F (poids officiels Hyrox)", "Couloir 25m minimum", "Sol plat", "Partenaire de sécurité"],
+    echauffement: ["5 min marche", "100m @ 40% de la charge", "3 min récup complète"],
+    etapes: ["Prendre les charges, partir au signal", "Marcher sans poser les charges le plus loin possible (allers-retours de 25m)", "Les demi-tours sont autorisés aux bornes", "Arrêt et mesure de la distance dès que les charges doivent être posées"],
+    interpretation: ["< 100m : grip et endurance à prioriser · 100–200m : intermédiaire · > 300m : bon · > 500m : excellent", "Si distance < 200m → prioriser travail grip (dead hang, farmer carry progressif)"],
+    erreurs: ["Courber le dos sous la charge (risque lombaire)", "Prise trop serrée dès le départ (épuise le grip prématurément)", "Essayer de courir → réduit la distance"],
+    frequence: "1 fois / 2 semaines",
+    fields: [
+      { cle:'distance_max',       label:'Distance maximale',       unite:'m',  type:'number' as const, placeholder:'Ex: 280', required:true },
+      { cle:'poids_par_main',     label:'Poids par main',          unite:'kg', type:'number' as const },
+      { cle:'nb_allers_retours',  label:'Allers-retours réalisés', unite:null, type:'number' as const },
+    ],
+  },
+  'wall-ball-max-reps': {
+    objectif: "Nombre maximal de répétitions Wall Ball au poids officiel Hyrox (9kg H / 6kg F) sur série continue jusqu'à épuisement technique complet.",
+    conditions: ["Wall Ball 9kg H / 6kg F", "Mur plat avec cible à 3m", "Sol antidérapant"],
+    echauffement: ["10 min cardio", "20 reps @ 50%", "5 min récup"],
+    etapes: ["Commencer la série, continuer sans s'arrêter tant que la technique est maintenue", "Arrêt volontaire ou arrêt technique (balle sous la cible, squat insuffisant)", "Compter toutes les répétitions valides"],
+    interpretation: ["< 40 reps : à travailler · 40–80 : intermédiaire · 80–120 : bon · > 120 : élite", "Si < 100 reps → la station Wall Ball peut limiter ton PFT"],
+    erreurs: ["Continuer avec mauvaise technique (ne compte pas, risque blessure)", "Pas assez de récupération avant le test", "Poids de balle incorrect"],
+    frequence: "1 fois / 3 semaines",
+    fields: [
+      { cle:'max_reps',     label:'Nombre max de reps',   unite:'reps', type:'number' as const, required:true },
+      { cle:'poids_balle',  label:'Poids de la balle',    unite:'kg',   type:'number' as const },
+      { cle:'arret_raison', label:"Raison de l'arrêt",    unite:null,   type:'string' as const, placeholder:'Fatigue musculaire / technique / grip' },
+    ],
+  },
+  'wall-ball-tabata': {
+    objectif: "10 Wall Ball + 10 secondes de pause balle maintenue au-dessus de la tête, répété jusqu'à épuisement. Toutes les reps comptent même en milieu de série.",
+    conditions: ["Wall Ball 9kg H / 6kg F", "Mur plat cible à 3m", "Sol antidérapant", "Chrono visible ou assistant"],
+    echauffement: ["10 min cardio", "2 séries de 5 reps + 10s pause à 50%"],
+    etapes: ["Faire 10 reps Wall Ball", "Tenir la balle à hauteur de poitrine ou au-dessus de la tête pendant 10s", "Reprendre immédiatement 10 nouvelles reps dès la fin des 10s", "Répéter jusqu'à épuisement complet ou arrêt technique", "Compter le total de reps valides — y compris les reps d'une série incomplète"],
+    interpretation: ["10 séries (100 reps) = bon niveau · 15 séries (150 reps) = excellent", "Test qui révèle l'endurance spécifique aux pauses imposées en compétition"],
+    erreurs: ["Balle posée au sol pendant la pause (doit être maintenue)", "Pause > 10s — arrêter le test, protocole non respecté", "Mauvaise technique sur les reps finales"],
+    frequence: "1 fois / 2–3 semaines",
+    fields: [
+      { cle:'total_reps',  label:'Total reps valides',         unite:'reps', type:'number' as const, required:true },
+      { cle:'nb_series',   label:'Nb de séries complètes ×10', unite:null,   type:'number' as const },
+      { cle:'poids_balle', label:'Poids de la balle',          unite:'kg',   type:'number' as const },
+    ],
+  },
+  // ── Run Compromised ─────────────────────────
   'run-compromised': {
     objectif: "Mesurer l'allure de course immédiatement après une station Hyrox pour quantifier l'impact de la fatigue musculaire sur la foulée.",
     conditions: ["GPS de précision ou piste 400m", "Station Hyrox réalisée immédiatement avant (Wall Ball, BBJ, Sled ou FC)", "Reposé 48h avant le test global"],
@@ -765,9 +913,50 @@ function IcoBook()   { return <svg width="13" height="13" viewBox="0 0 24 24" fi
 function IcoClock()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> }
 function IcoSave()   { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> }
 
+interface TestHistoryEntry { id: string; date: string; valeurs: Record<string, string> }
+
 function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClose: () => void }) {
-  const [vals, setVals]   = useState<Record<string, string>>({})
-  const [saved, setSaved] = useState(false)
+  const [vals, setVals]           = useState<Record<string, string>>({})
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
+  const [history, setHistory]     = useState<TestHistoryEntry[]>([])
+  const [histLoading, setHistLoading] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+
+  const testId = ot?.test.id ?? null
+
+  const loadHistory = useCallback(async (testName: string) => {
+    setHistLoading(true)
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data: defData } = await sb
+        .from('test_definitions')
+        .select('id')
+        .eq('nom', testName)
+        .maybeSingle()
+      if (!defData?.id) return
+      const { data } = await sb
+        .from('test_results')
+        .select('id, date, valeurs')
+        .eq('user_id', user.id)
+        .eq('test_definition_id', defData.id)
+        .order('date', { ascending: false })
+        .limit(10)
+      if (data) setHistory(data as TestHistoryEntry[])
+    } finally {
+      setHistLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!ot) return
+    setVals({})
+    setSaved(false)
+    setShowHistory(false)
+    void loadHistory(ot.test.name)
+  }, [testId, loadHistory])
 
   if (!ot || typeof document === 'undefined') return null
 
@@ -775,7 +964,37 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
   const proto = PROTOCOLS[ot.test.id]
 
   function setVal(cle: string, v: string) { setVals(p => ({...p, [cle]: v})); setSaved(false) }
-  function handleSave() { setSaved(true); setTimeout(() => setSaved(false), 2500) }
+
+  async function handleSave() {
+    if (!ot) return
+    const protoNow = PROTOCOLS[ot.test.id]
+    const required = protoNow?.fields.filter(f => f.required) ?? []
+    if (required.some(f => !vals[f.cle]?.trim())) return
+
+    setSaving(true)
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data: defData } = await sb
+        .from('test_definitions')
+        .select('id')
+        .eq('nom', ot.test.name)
+        .maybeSingle()
+      await sb.from('test_results').insert({
+        user_id: user.id,
+        test_definition_id: defData?.id ?? null,
+        date: new Date().toISOString().slice(0, 10),
+        valeurs: vals,
+      })
+      setSaved(true)
+      setVals({})
+      setTimeout(() => setSaved(false), 3000)
+      void loadHistory(ot.test.name)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const SH = ({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) => (
     <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:9 }}>
@@ -914,11 +1133,55 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
                   ))}
                 </div>
                 <button
-                  onClick={handleSave}
-                  style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:saved ? '#22c55e' : cfg.color, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : cfg.color+'40'}` }}
+                  onClick={() => { void handleSave() }}
+                  disabled={saving}
+                  style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
                 >
-                  {saved ? '✓ Résultats enregistrés' : 'Enregistrer ce test'}
+                  {saved ? '✓ Résultats enregistrés' : saving ? 'Enregistrement…' : 'Enregistrer ce test'}
                 </button>
+              </div>
+            )}
+
+            {/* Historique des résultats */}
+            {(history.length > 0 || histLoading) && (
+              <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <div
+                  onClick={() => setShowHistory(h => !h)}
+                  style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}
+                >
+                  <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                    <IcoClock/>
+                    <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-mid)' }}>
+                      Historique ({history.length})
+                    </span>
+                  </div>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2} style={{ transform: showHistory ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                {showHistory && (
+                  histLoading ? (
+                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'10px 0 0' }}>Chargement…</p>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10 }}>
+                      {history.map(entry => (
+                        <div key={entry.id} style={{ padding:'9px 12px', borderRadius:9, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                          <p style={{ fontSize:10, fontWeight:700, color:cfg.color, margin:'0 0 5px', fontFamily:'DM Mono,monospace' }}>{entry.date}</p>
+                          <div style={{ display:'flex', flexWrap:'wrap' as const, gap:'4px 12px' }}>
+                            {Object.entries(entry.valeurs).map(([k, v]) => {
+                              if (!v) return null
+                              const fieldDef = proto?.fields.find(f => f.cle === k)
+                              return (
+                                <span key={k} style={{ fontSize:11, color:'var(--text-mid)' }}>
+                                  <span style={{ color:'var(--text-dim)' }}>{fieldDef?.label ?? k} : </span>
+                                  <span style={{ fontFamily:'DM Mono,monospace', fontWeight:600, color:'var(--text)' }}>{v}{fieldDef?.unite ? ` ${fieldDef.unite}` : ''}</span>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -929,10 +1192,27 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
   )
 }
 
-function TestCard({ test, accentColor, onOpen, onAnalyze }: { test: TestDef; accentColor: string; onOpen: () => void; onAnalyze?: () => void }) {
+function TestCard({ test, accentColor, onOpen }: { test: TestDef; accentColor: string; onOpen: () => void }) {
   const diffColor = DIFFICULTY_COLOR[test.difficulty]
   return (
-    <div className="card-enter" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', boxShadow:'var(--shadow-card)', display:'flex', flexDirection:'column', gap:12 }}>
+    <div
+      className="card-enter"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpen() }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLDivElement
+        el.style.borderColor = `${accentColor}55`
+        el.style.boxShadow   = `0 0 0 1px ${accentColor}20, var(--shadow-card)`
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLDivElement
+        el.style.borderColor = 'var(--border)'
+        el.style.boxShadow   = 'var(--shadow-card)'
+      }}
+      style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', boxShadow:'var(--shadow-card)', display:'flex', flexDirection:'column', gap:12, cursor:'pointer', transition:'border-color 0.15s, box-shadow 0.15s' }}
+    >
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' as const, marginBottom:6 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)', letterSpacing:'-0.01em' }}>{test.name}</h3>
@@ -947,24 +1227,10 @@ function TestCard({ test, accentColor, onOpen, onAnalyze }: { test: TestDef; acc
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{test.duration}</span>
         </div>
-        <div style={{ display:'flex', gap:6 }}>
-          {onAnalyze && (
-            <button
-              onClick={onAnalyze}
-              style={{ padding:'7px 12px', borderRadius:9, background:'rgba(249,115,22,0.12)', border:'1px solid rgba(249,115,22,0.35)', color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const }}
-            >
-              Analyser
-            </button>
-          )}
-          <button
-            onClick={onOpen}
-            style={{ padding:'7px 16px', borderRadius:9, background:`${accentColor}18`, border:`1px solid ${accentColor}40`, color:accentColor, fontSize:12, fontWeight:600, cursor:'pointer', transition:'background 0.15s, border-color 0.15s', whiteSpace:'nowrap' as const }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`${accentColor}28`; (e.currentTarget as HTMLButtonElement).style.borderColor=`${accentColor}70` }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background=`${accentColor}18`; (e.currentTarget as HTMLButtonElement).style.borderColor=`${accentColor}40` }}
-          >
-            Ouvrir
-          </button>
-        </div>
+        <span style={{ fontSize:11, color:accentColor, fontWeight:600, display:'flex', alignItems:'center', gap:4, opacity:0.8 }}>
+          Voir le protocole
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M9 18l6-6-6-6"/></svg>
+        </span>
       </div>
     </div>
   )
@@ -1018,7 +1284,7 @@ function TestsTab({ profile, onAnalyzeTest }: {
       {/* Cards grid */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(1,1fr)', gap:12 }} className="md:grid-cols-2">
         {tests.map(test => (
-          <TestCard key={test.id} test={test} accentColor={cfg.color} onOpen={() => setOpenTest({ sport:testSport, test })} onAnalyze={onAnalyzeTest ? () => void onAnalyzeTest(test) : undefined}/>
+          <TestCard key={test.id} test={test} accentColor={cfg.color} onOpen={() => setOpenTest({ sport:testSport, test })}/>
         ))}
       </div>
 

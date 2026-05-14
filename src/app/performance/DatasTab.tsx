@@ -99,6 +99,14 @@ function secToStr(sec: number): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 }
 
+/** Formate une durée en heures → "4h53" (convention HhMM, pas de zéro devant les heures) */
+function fmtHhMM(h: number): string {
+  const totalMin = Math.round(h * 60)
+  const hrs  = Math.floor(totalMin / 60)
+  const mins = totalMin % 60
+  return `${hrs}h${String(mins).padStart(2, '0')}`
+}
+
 function toSec(t: string): number {
   if (!t || t === '—') return 0
   const p = t.split(':').map(Number)
@@ -298,7 +306,7 @@ function TimeBarChart({ records, chartDists, color }: {
       byYear[yr] = { perf: rec.performance, date: rec.achieved_at }
     }
   }
-  const sortedYears = Object.keys(byYear).sort((a, b) => b.localeCompare(a)).slice(0, 5)
+  const sortedYears = Object.keys(byYear).sort((a, b) => b.localeCompare(a))
 
   const W = 360, H = 160, padL = 48, padR = 16, padT = 20, padB = 36
   const plotW = W - padL - padR
@@ -3026,7 +3034,7 @@ interface YDMetric {
 
 const YD_METRICS: Record<string, YDMetric> = {
   km:            { key: 'km',            label: 'Distance',   fmt: v => `${v.toFixed(0)} km`, fromAuto: s => s.km,          fromManual: e => e.km,            manualKey: 'km',            step: '0.1' },
-  heures:        { key: 'heures',        label: 'Heures',     fmt: v => `${v.toFixed(1)} h`,  fromAuto: s => s.heures,      fromManual: e => e.heures,        manualKey: 'heures',        step: '0.1' },
+  heures:        { key: 'heures',        label: 'Heures',     fmt: v => fmtHhMM(v),           fromAuto: s => s.heures,      fromManual: e => e.heures,        manualKey: 'heures',        step: '0.1' },
   denivele:      { key: 'denivele',      label: 'D+',         fmt: v => `${Math.round(v)} m`, fromAuto: s => s.denivele,    fromManual: e => e.denivele,      manualKey: 'denivele',      step: '1'   },
   nb_sorties:    { key: 'nb_sorties',    label: 'Sorties',    fmt: v => `${Math.round(v)}`,   fromAuto: s => s.nb_sorties,  fromManual: e => e.nb_sorties,    manualKey: 'nb_sorties',    step: '1'   },
   tss:           { key: 'tss',           label: 'TSS',        fmt: v => `${Math.round(v)}`,   fromAuto: s => s.tss,         fromManual: e => e.tss,           manualKey: 'tss',           step: '1'   },

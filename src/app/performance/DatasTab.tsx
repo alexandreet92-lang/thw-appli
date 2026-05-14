@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
@@ -709,100 +710,114 @@ function HyroxSection({ onSelect, selectedDatum }: {
         </Card>
       )}
 
-      {/* Modal: add race */}
+      {/* Wingate-style Hyrox drawer */}
       {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9000,
-          background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 16,
-        }} onClick={() => { setShowModal(false); resetForm() }}>
+        <div style={{ position:'fixed', inset:0, zIndex:9000, background:'rgba(0,0,0,0.72)', display:'flex', alignItems:'flex-end' }}
+          onClick={() => { setShowModal(false); resetForm() }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--bg-card)', borderRadius: 16, padding: 24,
-            width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
-            border: '1px solid var(--border)',
+            width:'100%', maxHeight:'92vh',
+            background:'var(--bg-card)', borderRadius:'20px 20px 0 0',
+            border:'1px solid #ef444430', display:'flex', flexDirection:'column', overflow:'hidden',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle course Hyrox</h2>
-              <button onClick={() => { setShowModal(false); resetForm() }} style={{
-                width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)',
-                background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>×</button>
+            {/* Header */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', background:'rgba(239,68,68,0.10)', borderBottom:'1px solid rgba(239,68,68,0.2)', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ padding:'4px 10px', borderRadius:8, background:'rgba(239,68,68,0.2)', border:'1px solid rgba(239,68,68,0.4)', fontSize:11, fontWeight:700, color:'#ef4444' }}>Hyrox</span>
+                <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Nouvelle course</h2>
+              </div>
+              <button onClick={() => { setShowModal(false); resetForm() }} style={{ width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Date</p>
-                  <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} style={{
-                    width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
-                    background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none',
-                  }} />
+
+            {/* Body */}
+            <div style={{ flex:1, overflowY:'auto', padding:'16px 20px 100px' }}>
+
+              {/* Section: Résultat global */}
+              <div style={{ background:'rgba(239,68,68,0.10)', border:'1px solid rgba(239,68,68,0.18)', borderRadius:12, padding:'14px 16px', marginBottom:12 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2.5}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#ef4444' }}>Résultat global</span>
                 </div>
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Format</p>
-                  <select value={fFormat} onChange={e => setFFormat(e.target.value as HyroxRace['format'])} style={{
-                    width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
-                    background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none', cursor: 'pointer',
-                  }}>
-                    {Object.entries(HYROX_FORMAT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                  <div>
+                    <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:5 }}>Date</p>
+                    <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} style={{ width:'100%', padding:'9px 11px', borderRadius:9, border:'1px solid rgba(239,68,68,0.4)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', boxSizing:'border-box' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:5 }}>Format</p>
+                    <select value={fFormat} onChange={e => setFFormat(e.target.value as HyroxRace['format'])} style={{ width:'100%', padding:'9px 11px', borderRadius:9, border:'1px solid rgba(239,68,68,0.4)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', cursor:'pointer', boxSizing:'border-box' }}>
+                      {Object.entries(HYROX_FORMAT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </div>
                 </div>
+                {(fFormat === 'duo_open' || fFormat === 'duo_pro') && (
+                  <div style={{ marginBottom:12 }}>
+                    <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:5 }}>Partenaire</p>
+                    <input type="text" value={fPartenaire} onChange={e => setFPartenaire(e.target.value)} placeholder="Prénom Nom" style={{ width:'100%', padding:'9px 11px', borderRadius:9, border:'1px solid rgba(239,68,68,0.3)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', boxSizing:'border-box' }} />
+                  </div>
+                )}
+                <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:5 }}>Temps final *</p>
+                <input type="text" value={fFinal} onChange={e => setFFinal(e.target.value)} placeholder="ex : 1:02:45" autoFocus style={{ width:'100%', padding:'11px 12px', borderRadius:10, border:'1px solid rgba(239,68,68,0.5)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:16, fontWeight:700, outline:'none', boxSizing:'border-box' }} />
               </div>
-              {(fFormat === 'duo_open' || fFormat === 'duo_pro') && (
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Partenaire</p>
-                  <input type="text" value={fPartenaire} onChange={e => setFPartenaire(e.target.value)} placeholder="Prénom Nom" style={{
-                    width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
-                    background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none',
-                  }} />
+
+              {/* Section: Splits stations */}
+              <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.15)', borderRadius:12, padding:'14px 16px', marginBottom:12 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2.5}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#ef4444' }}>Splits par station</span>
+                  <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:4 }}>optionnel</span>
                 </div>
-              )}
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>Temps final</p>
-                <input type="text" value={fFinal} onChange={e => setFFinal(e.target.value)} placeholder="ex: 1:02:45" style={{
-                  width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)',
-                  background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 14, outline: 'none',
-                }} />
-              </div>
-              <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Stations</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                   {HYROX_STATIONS.map((s, i) => (
-                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 10, color: '#ef4444', width: 14, flexShrink: 0, fontWeight: 700 }}>{i + 1}</span>
-                      <span style={{ flex: 1, fontSize: 11 }}>{s}</span>
+                    <div key={s} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', borderRadius:8, background:'rgba(239,68,68,0.05)', border:'1px solid rgba(239,68,68,0.10)' }}>
+                      <span style={{ fontSize:10, color:'#ef4444', width:16, flexShrink:0, fontWeight:700, fontFamily:'Syne,sans-serif' }}>{i + 1}</span>
+                      <span style={{ flex:1, fontSize:11, color:'var(--text-mid)' }}>{s}</span>
                       <input type="text" value={fStations[s]} onChange={e => setFStations(prev => ({ ...prev, [s]: e.target.value }))}
-                        placeholder="mm:ss" style={{
-                          width: 72, padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)',
-                          background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none', textAlign: 'right',
-                        }} />
+                        placeholder="mm:ss" style={{ width:76, padding:'5px 9px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none', textAlign:'right' }} />
                     </div>
                   ))}
                 </div>
               </div>
-              <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Runs (8×1km)</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+
+              {/* Section: Runs */}
+              <div style={{ background:'rgba(239,68,68,0.05)', border:'1px solid rgba(239,68,68,0.12)', borderRadius:12, padding:'14px 16px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                  <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#ef4444' }}>Runs 8 × 1km</span>
+                  <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:4 }}>optionnel</span>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i}>
-                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textAlign: 'center' }}>Run {i + 1}</p>
+                      <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 4px', textAlign:'center' }}>Run {i + 1}</p>
                       <input type="text" value={fRuns[i]} placeholder="mm:ss"
                         onChange={e => setFRuns(prev => { const n = [...prev]; n[i] = e.target.value; return n })}
-                        style={{
-                          width: '100%', padding: '5px 6px', borderRadius: 7, border: '1px solid var(--border)',
-                          background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none', textAlign: 'center',
-                        }} />
+                        style={{ width:'100%', padding:'6px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:11, outline:'none', textAlign:'center', boxSizing:'border-box' }} />
                     </div>
                   ))}
                 </div>
+                {fRuns.some(r => r) && (() => {
+                  const totalS = fRuns.reduce((acc, r) => acc + toSec(r), 0)
+                  if (!totalS) return null
+                  return (
+                    <div style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:10, padding:'4px 10px', borderRadius:6, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, color:'#ef4444' }}>
+                      ⟶ Run total : {`${Math.floor(totalS/60)}:${String(totalS%60).padStart(2,'0')}`}
+                    </div>
+                  )
+                })()}
               </div>
+            </div>
+
+            {/* Fixed save */}
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:'1px solid rgba(239,68,68,0.15)' }}>
               <button onClick={() => void saveRace()} disabled={!fFinal || saving} style={{
-                padding: '10px', borderRadius: 10, border: 'none',
+                width:'100%', padding:'14px', borderRadius:12, border:'none',
                 background: fFinal && !saving ? 'linear-gradient(135deg,#ef4444,#f97316)' : 'var(--bg-card2)',
                 color: fFinal && !saving ? '#fff' : 'var(--text-dim)',
-                fontSize: 13, fontWeight: 700, cursor: fFinal && !saving ? 'pointer' : 'not-allowed', marginTop: 4,
+                fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700,
+                cursor: fFinal && !saving ? 'pointer' : 'not-allowed',
+                transition:'all 0.15s',
               }}>
-                {saving ? 'Sauvegarde…' : 'Enregistrer la course'}
+                {saving ? 'Enregistrement…' : 'Enregistrer ce record'}
               </button>
             </div>
           </div>
@@ -990,6 +1005,390 @@ function SectionHeader({ label, gradient }: { label: string; gradient: string })
       <div style={{ width: 3, height: 20, borderRadius: 2, background: gradient }} />
       <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{label}</h2>
     </div>
+  )
+}
+
+// ── RecordDrawer — Wingate-style fullscreen record entry ─────────
+interface RecordDrawerProps {
+  sport: RecordSport
+  distLabel: string
+  draft: string
+  setDraft: (v: string) => void
+  date: string
+  setDate: (v: string) => void
+  saving: boolean
+  onConfirm: () => Promise<void>
+  onClose: () => void
+  profile: Props['profile']
+}
+
+function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving, onConfirm, onClose, profile }: RecordDrawerProps) {
+  const [mounted, setMounted] = useState(false)
+  const [np,      setNp]      = useState('')
+  const [dur,     setDur]     = useState('')
+  const [surface, setSurface] = useState<'route'|'piste'|'trail'>('route')
+  const [dplus,   setDplus]   = useState('')
+  const [pool,    setPool]    = useState<'25m'|'50m'|'open'>('25m')
+  const [combi,   setCombi]   = useState(false)
+  const [ergo,    setErgo]    = useState(true)
+  const [damper,  setDamper]  = useState('')
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
+
+  const COLOR: Partial<Record<RecordSport, string>> = {
+    bike: '#EAB308', run: '#F97316', swim: '#06B6D4',
+    rowing: '#0EA5E9', hyrox: '#EF4444', triathlon: '#8B5CF6', gym: '#f97316',
+  }
+  const SPORT_LABEL: Partial<Record<RecordSport, string>> = {
+    bike: 'Cyclisme', run: 'Running', swim: 'Natation',
+    rowing: 'Aviron', hyrox: 'Hyrox', triathlon: 'Triathlon', gym: 'Musculation',
+  }
+  const color      = COLOR[sport] ?? '#5b6fff'
+  const sportLabel = SPORT_LABEL[sport] ?? sport
+  const bg         = `${color}12`
+  const bgSec      = `${color}08`
+
+  // ── Calculations ─────────────────────────────────────────────
+  const timeSec = toSec(draft)
+
+  // RUN
+  const runKm       = RUN_KM[distLabel] ?? 0
+  const runPaceSec  = timeSec > 0 && runKm > 0 ? timeSec / runKm : 0
+  const runPaceStr  = runPaceSec > 0 ? `${Math.floor(runPaceSec/60)}:${String(Math.round(runPaceSec%60)).padStart(2,'0')}/km` : null
+  const runSpeedStr = timeSec > 0 && runKm > 0 ? `${(runKm/timeSec*3600).toFixed(1)} km/h` : null
+  const runVmaStr   = runSpeedStr && profile.vma > 0
+    ? `${((parseFloat(runSpeedStr)/profile.vma)*100).toFixed(0)}% VMA` : null
+
+  // SWIM
+  const swimM        = SWIM_M[distLabel] ?? 0
+  const swimSplit100 = timeSec > 0 && swimM > 0 ? timeSec/(swimM/100) : 0
+  const swimSplitStr = swimSplit100 > 0 ? `${Math.floor(swimSplit100/60)}:${String(Math.round(swimSplit100%60)).padStart(2,'0')}/100m` : null
+
+  // ROWING
+  const rowM       = ROW_M[distLabel] ?? 0
+  const rowSpl500  = timeSec > 0 && rowM > 0 ? (timeSec/rowM)*500 : 0
+  const rowSplStr  = rowSpl500 > 0 ? `${Math.floor(rowSpl500/60)}:${String(Math.round(rowSpl500%60)).padStart(2,'0')}/500m` : null
+  const rowPower   = rowSpl500 > 0 ? Math.round(2.80/(rowSpl500/500)**3) : null
+
+  // BIKE
+  const bikeW    = parseInt(draft) || 0
+  const bikeWkg  = bikeW > 0 && profile.weight > 0 ? (bikeW/profile.weight).toFixed(2) : null
+  const npW      = parseInt(np) || 0
+  const npWkg    = npW > 0 && profile.weight > 0 ? (npW/profile.weight).toFixed(2) : null
+
+  // ── Styles ────────────────────────────────────────────────────
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: `1px solid ${color}44`, background: 'var(--input-bg)',
+    color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 13,
+    outline: 'none', boxSizing: 'border-box',
+  }
+  const secBox = (secBg: string): React.CSSProperties => ({
+    background: secBg, border: `1px solid ${color}20`,
+    borderRadius: 12, padding: '14px 16px', marginBottom: 12,
+  })
+  const secHdr: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+  }
+  const secLbl: React.CSSProperties = {
+    fontFamily: 'Syne,sans-serif', fontSize: 11, fontWeight: 700,
+    textTransform: 'uppercase', letterSpacing: '0.07em', color,
+  }
+  const lbl10: React.CSSProperties = {
+    fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+    letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
+  }
+  const tog = (active: boolean): React.CSSProperties => ({
+    padding: '6px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    fontSize: 11, fontWeight: active ? 700 : 400,
+    background: active ? color : 'var(--bg-card2)',
+    color: active ? '#000' : 'var(--text-dim)',
+    transition: 'all 0.15s',
+  })
+  const calc = (txt: string) => (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '4px 10px', borderRadius: 6,
+      background: `${color}18`, border: `1px solid ${color}30`,
+      fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 700, color,
+      marginTop: 6, marginRight: 6,
+    }}>⟶ {txt}</div>
+  )
+
+  // ── Per-sport sections ────────────────────────────────────────
+  let perfSec: React.ReactNode = null
+  let condSec: React.ReactNode = null
+  const sumItems: { label: string; value: string; hi?: boolean }[] = []
+
+  if (sport === 'run') {
+    perfSec = (
+      <div style={secBox(bg)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span style={secLbl}>Performance</span>
+        </div>
+        <p style={lbl10}>Temps (hh:mm:ss)</p>
+        <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 0:45:30" autoFocus />
+        {timeSec > 0 && runKm > 0 && <div style={{ display:'flex', flexWrap:'wrap' }}>
+          {runPaceStr  && calc(runPaceStr)}
+          {runSpeedStr && calc(runSpeedStr)}
+          {runVmaStr   && calc(runVmaStr)}
+        </div>}
+        {profile.vma <= 0 && <p style={{ fontSize:10, color:'var(--text-dim)', marginTop:6 }}>Renseignez votre VMA dans le profil pour voir le % VMA.</p>}
+      </div>
+    )
+    condSec = (
+      <div style={secBox(bgSec)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+          <span style={secLbl}>Conditions</span>
+        </div>
+        <p style={lbl10}>Surface</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          {(['route','piste','trail'] as const).map(s => (
+            <button key={s} style={tog(surface===s)} onClick={() => setSurface(s)}>
+              {s.charAt(0).toUpperCase()+s.slice(1)}
+            </button>
+          ))}
+        </div>
+        {surface==='trail' && <>
+          <p style={lbl10}>Dénivelé positif (m)</p>
+          <input style={{ ...inp, maxWidth:160 }} type="number" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="ex : 450" />
+        </>}
+      </div>
+    )
+    if (draft)        sumItems.push({ label:'Distance', value:distLabel })
+    if (draft)        sumItems.push({ label:'Temps', value:draft })
+    if (runPaceStr)   sumItems.push({ label:'Allure', value:runPaceStr, hi:true })
+    if (runSpeedStr)  sumItems.push({ label:'Vitesse', value:runSpeedStr, hi:true })
+    if (runVmaStr)    sumItems.push({ label:'% VMA', value:runVmaStr, hi:true })
+    sumItems.push({ label:'Surface', value:surface })
+    if (surface==='trail' && dplus) sumItems.push({ label:'D+', value:`${dplus} m` })
+  }
+
+  if (sport === 'swim') {
+    perfSec = (
+      <div style={secBox(bg)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span style={secLbl}>Performance</span>
+        </div>
+        <p style={lbl10}>Temps (mm:ss)</p>
+        <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 5:20" autoFocus />
+        {swimSplitStr && <div>{calc(`Allure : ${swimSplitStr}`)}</div>}
+      </div>
+    )
+    condSec = (
+      <div style={secBox(bgSec)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><path d="M2 18c1.4-1.4 3-2 5-2s3.6.6 5 2 3 2 5 2 3.6-.6 5-2"/></svg>
+          <span style={secLbl}>Conditions</span>
+        </div>
+        <p style={lbl10}>Bassin</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          {(['25m','50m','open'] as const).map(s => (
+            <button key={s} style={tog(pool===s)} onClick={() => setPool(s)}>
+              {s==='open'?'Open water':`Bassin ${s}`}
+            </button>
+          ))}
+        </div>
+        <p style={lbl10}>Combinaison</p>
+        <div style={{ display:'flex', gap:6 }}>
+          <button style={tog(!combi)} onClick={() => setCombi(false)}>Sans combi</button>
+          <button style={tog(combi)}  onClick={() => setCombi(true)}>Avec combi</button>
+        </div>
+      </div>
+    )
+    if (draft)          sumItems.push({ label:'Distance', value:distLabel })
+    if (draft)          sumItems.push({ label:'Temps', value:draft })
+    if (swimSplitStr)   sumItems.push({ label:'Allure', value:swimSplitStr, hi:true })
+    sumItems.push({ label:'Bassin', value:pool==='open'?'Open water':`Bassin ${pool}` })
+    sumItems.push({ label:'Combi', value:combi?'Oui':'Non' })
+  }
+
+  if (sport === 'rowing') {
+    perfSec = (
+      <div style={secBox(bg)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span style={secLbl}>Performance</span>
+        </div>
+        <p style={lbl10}>Temps (mm:ss ou hh:mm:ss)</p>
+        <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 6:52" autoFocus />
+        {(rowSplStr || rowPower) && <div style={{ display:'flex', flexWrap:'wrap' }}>
+          {rowSplStr && calc(`Split : ${rowSplStr}`)}
+          {rowPower  && calc(`~${rowPower} W (Concept2)`)}
+        </div>}
+      </div>
+    )
+    condSec = (
+      <div style={secBox(bgSec)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><path d="M5 19l14-14M5 5l7 7M12 12l7 7"/></svg>
+          <span style={secLbl}>Conditions</span>
+        </div>
+        <p style={lbl10}>Support</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          <button style={tog(ergo)}  onClick={() => setErgo(true)}>Ergomètre</button>
+          <button style={tog(!ergo)} onClick={() => setErgo(false)}>Sur l&apos;eau</button>
+        </div>
+        {ergo && <>
+          <p style={lbl10}>Résistance damper (1–10)</p>
+          <input style={{ ...inp, maxWidth:110 }} type="number" value={damper} onChange={e => setDamper(e.target.value)} placeholder="4–5" min={1} max={10} />
+        </>}
+      </div>
+    )
+    if (draft)    sumItems.push({ label:'Distance', value:distLabel })
+    if (draft)    sumItems.push({ label:'Temps', value:draft })
+    if (rowSplStr) sumItems.push({ label:'Split /500m', value:rowSplStr, hi:true })
+    if (rowPower)  sumItems.push({ label:'Puissance est.', value:`~${rowPower} W`, hi:true })
+    sumItems.push({ label:'Support', value:ergo?'Ergomètre':'Sur l\'eau' })
+    if (ergo && damper) sumItems.push({ label:'Damper', value:damper })
+  }
+
+  if (sport === 'bike') {
+    perfSec = (
+      <div style={secBox(bg)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span style={secLbl}>Performance</span>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+          <div>
+            <p style={lbl10}>Watts moyens *</p>
+            <input style={inp} type="number" value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 250" autoFocus />
+            {bikeWkg && <div>{calc(`${bikeWkg} W/kg`)}</div>}
+            {!bikeWkg && draft && profile.weight === 0 && (
+              <p style={{ fontSize:10, color:'#f59e0b', marginTop:6 }}>Renseignez votre poids dans le profil.</p>
+            )}
+          </div>
+          <div>
+            <p style={lbl10}>NP (watts normalisés) — optionnel</p>
+            <input style={{ ...inp, opacity:0.85 }} type="number" value={np} onChange={e => setNp(e.target.value)} placeholder="ex : 265" />
+            {npWkg && <div>{calc(`NP : ${npWkg} W/kg`)}</div>}
+          </div>
+        </div>
+        <p style={lbl10}>Durée (hh:mm:ss) — optionnel</p>
+        <input style={{ ...inp, maxWidth:200 }} value={dur} onChange={e => setDur(e.target.value)} placeholder="ex : 1:02:30" />
+      </div>
+    )
+    condSec = (
+      <div style={secBox(bgSec)}>
+        <div style={secHdr}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-10h4l4 10M9 7h6"/></svg>
+          <span style={secLbl}>Conditions</span>
+        </div>
+        <p style={lbl10}>Environnement</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          <button style={tog(ergo)}  onClick={() => setErgo(true)}>Home trainer</button>
+          <button style={tog(!ergo)} onClick={() => setErgo(false)}>Extérieur</button>
+        </div>
+        {!ergo && <>
+          <p style={lbl10}>D+ (dénivelé positif)</p>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <input style={{ ...inp, maxWidth:140 }} type="number" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="ex : 800" />
+            <span style={{ fontSize:12, color:'var(--text-dim)' }}>m</span>
+          </div>
+        </>}
+      </div>
+    )
+    if (draft)   sumItems.push({ label:'Format', value:distLabel })
+    if (draft)   sumItems.push({ label:'Watts', value:`${draft} W` })
+    if (bikeWkg) sumItems.push({ label:'W/kg', value:`${bikeWkg} W/kg`, hi:true })
+    if (np)      sumItems.push({ label:'NP', value:`${np} W` })
+    if (npWkg)   sumItems.push({ label:'NP W/kg', value:`${npWkg} W/kg`, hi:true })
+    if (dur)     sumItems.push({ label:'Durée', value:dur })
+    sumItems.push({ label:'Environnement', value:ergo?'Home trainer':'Extérieur' })
+    if (!ergo && dplus) sumItems.push({ label:'D+', value:`${dplus} m` })
+  }
+
+  const canSave = !!draft.trim()
+  const validItems = sumItems.filter(i => i.value)
+
+  return createPortal(
+    <div
+      style={{ position:'fixed', inset:0, zIndex:3000, background:'rgba(0,0,0,0.72)', display:'flex', alignItems:'flex-end' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width:'100%', maxHeight:'92vh',
+          background:'var(--bg-card)', borderRadius:'20px 20px 0 0',
+          border:`1px solid ${color}30`,
+          display:'flex', flexDirection:'column', overflow:'hidden',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'16px 20px', background:`${color}10`,
+          borderBottom:`1px solid ${color}25`, flexShrink:0, flexWrap:'wrap', gap:8,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span style={{ padding:'4px 10px', borderRadius:8, background:`${color}20`, border:`1px solid ${color}40`, fontSize:11, fontWeight:700, color }}>
+              {sportLabel}
+            </span>
+            <span style={{ padding:'4px 10px', borderRadius:8, background:'var(--bg-card2)', border:'1px solid var(--border)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
+              {distLabel}
+            </span>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>
+              Record {sportLabel}
+            </h2>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ padding:'5px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none' }} />
+            <button onClick={onClose} style={{ width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 20px 100px' }}>
+          {perfSec}
+          {condSec}
+
+          {/* Résumé */}
+          {validItems.length > 0 && (
+            <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#22c55e' }}>Résumé</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
+                {validItems.map(item => (
+                  <div key={item.label}>
+                    <p style={{ fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 2px' }}>{item.label}</p>
+                    <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, margin:0, color:item.hi?color:'var(--text)' }}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Fixed save */}
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${color}20` }}>
+          <button
+            onClick={() => void onConfirm()}
+            disabled={!canSave || saving}
+            style={{
+              width:'100%', padding:'14px',
+              borderRadius:12, border:'none',
+              cursor: canSave && !saving ? 'pointer' : 'not-allowed',
+              background: canSave && !saving ? `linear-gradient(135deg,${color},${color}cc)` : 'var(--bg-card2)',
+              color: canSave && !saving ? '#000' : 'var(--text-dim)',
+              fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700,
+              transition:'all 0.15s',
+            }}
+          >
+            {saving ? 'Enregistrement…' : 'Enregistrer ce record'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
 
@@ -2114,6 +2513,22 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
   const [editBikeWatts, setEditBikeWatts] = useState('')
   const [editBikeNP,    setEditBikeNP]    = useState('')
 
+  // ── Wingate-style drawer ─────────────────────────────────────────
+  const [drawerSpec, setDrawerSpec] = useState<{ sport: RecordSport; distLabel: string } | null>(null)
+
+  function openDrawer(sport: RecordSport, distLabel: string, id: string | null, perf: string) {
+    setActiveEdit(`${sport}-record-${distLabel}`)
+    setEditingRecordId(id)
+    setEditDraft(perf)
+    setEditDate(new Date().toISOString().slice(0, 10))
+    setDrawerSpec({ sport, distLabel })
+  }
+
+  function closeDrawer() {
+    setDrawerSpec(null)
+    cancelEdit()
+  }
+
   // Tous les records vélo depuis Supabase (toutes années)
   const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
 
@@ -2455,6 +2870,30 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SectionHeader label="Records personnels" gradient="linear-gradient(180deg,#ffb340,#f97316)" />
 
+      {/* Wingate-style record drawer */}
+      {drawerSpec && (
+        <RecordDrawer
+          sport={drawerSpec.sport}
+          distLabel={drawerSpec.distLabel}
+          draft={editDraft}
+          setDraft={setEditDraft}
+          date={editDate}
+          setDate={setEditDate}
+          saving={recordSaving}
+          onConfirm={async () => {
+            if (drawerSpec.sport === 'bike') {
+              await confirmBikeRecord(drawerSpec.distLabel)
+            } else {
+              const unit = drawerSpec.sport === 'gym' ? 'kg' : 'time'
+              await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit)
+            }
+            setDrawerSpec(null)
+          }}
+          onClose={closeDrawer}
+          profile={profile}
+        />
+      )}
+
       {/* Sport tabs */}
       <SportTabs
         tabs={SPORT_TABS.map(([id, label, color]) => ({ id, label, color }))}
@@ -2523,50 +2962,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             {BIKE_DURS.map(d => {
               const eff = getEffectiveRec(d)
               const prev = getPrevRec(d)
-              const editKey = `bike-record-${d}`
-              const isEditing = activeEdit === editKey
               const sel = selectedDatum?.label === `Vélo ${d}` && selectedDatum?.value === `${eff.w}W`
-
-              if (isEditing) {
-                return (
-                  <div key={d} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
-                    background: 'rgba(0,200,224,0.06)', border: '1px solid #00c8e0',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{d}</span>
-                    <input
-                      type="number"
-                      value={editDraft}
-                      onChange={e => setEditDraft(e.target.value)}
-                      autoFocus
-                      placeholder="Watts"
-                      style={{ width: 76, padding: '4px 8px', borderRadius: 6, border: '1px solid #00c8e0', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
-                      onKeyDown={e => { if (e.key === 'Enter') void confirmBikeRecord(d); if (e.key === 'Escape') cancelEdit() }}
-                    />
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>W</span>
-                    <input
-                      type="date"
-                      value={editDate}
-                      onChange={e => setEditDate(e.target.value)}
-                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }}
-                    />
-                    <button
-                      onClick={() => void confirmBikeRecord(d)}
-                      disabled={recordSaving}
-                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#00c8e0', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}
-                    >
-                      {recordSaving ? '…' : 'Confirmer'}
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                )
-              }
-
               return (
                 <RecordRow key={d} label={d}
                   rec24={eff.w > 0 ? `${eff.w}W` : '—'}
@@ -2576,7 +2972,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                   selected={sel}
                   actions={
                     <button
-                      onClick={() => tryEdit(editKey, eff.w > 0 ? String(eff.w) : '', eff.id)}
+                      onClick={() => openDrawer('bike', d, eff.id, eff.w > 0 ? String(eff.w) : '')}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       Modifier
@@ -2599,36 +2995,10 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
             {RUN_DISTS.map(d => {
-              const editKey = `run-${d}`
-              const isEditing = activeEdit === editKey
               const spBest  = getSpBest('run', d, recordYear)
               const prevRec = getSpPrev('run', d)
               const pace = spBest ? calcPacePerKm(RUN_KM[d] ?? 0, spBest.perf) : '—'
               const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              if (isEditing) {
-                return (
-                  <div key={d} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
-                    background: 'rgba(34,197,94,0.06)', border: '1px solid #22c55e',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{d}</span>
-                    <input type="text" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
-                      placeholder="mm:ss ou h:mm:ss"
-                      style={{ flex: 1, padding: '4px 8px', borderRadius: 6, border: '1px solid #22c55e', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
-                      onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('run', d, 'time'); if (e.key === 'Escape') cancelEdit() }} />
-                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-                    <button onClick={() => void confirmSpRecord('run', d, 'time')} disabled={recordSaving}
-                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                      {recordSaving ? '…' : 'Confirmer'}
-                    </button>
-                    <button onClick={cancelEdit}
-                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      Annuler
-                    </button>
-                  </div>
-                )
-              }
               return (
                 <RecordRow key={d} label={d}
                   rec24={spBest?.perf ?? '—'}
@@ -2637,7 +3007,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                   onSelect={() => spBest ? onSelect(`Course ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={
-                    <button onClick={() => tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null)}
+                    <button onClick={() => openDrawer('run', d, spBest?.id ?? null, spBest?.perf ?? '')}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Modifier
                     </button>
@@ -2657,36 +3027,10 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} color="#38bdf8" />
             {SWIM_DISTS.map(d => {
-              const editKey = `swim-${d}`
-              const isEditing = activeEdit === editKey
               const spBest  = getSpBest('swim', d, recordYear)
               const prevRec = getSpPrev('swim', d)
               const split   = spBest ? calcSplit500m(SWIM_M[d] ?? 0, spBest.perf).replace('/500m', '/100m') : '—'
               const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              if (isEditing) {
-                return (
-                  <div key={d} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
-                    background: 'rgba(56,189,248,0.06)', border: '1px solid #38bdf8',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{d}</span>
-                    <input type="text" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
-                      placeholder="mm:ss"
-                      style={{ flex: 1, padding: '4px 8px', borderRadius: 6, border: '1px solid #38bdf8', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
-                      onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('swim', d, 'time'); if (e.key === 'Escape') cancelEdit() }} />
-                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-                    <button onClick={() => void confirmSpRecord('swim', d, 'time')} disabled={recordSaving}
-                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#38bdf8', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                      {recordSaving ? '…' : 'Confirmer'}
-                    </button>
-                    <button onClick={cancelEdit}
-                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      Annuler
-                    </button>
-                  </div>
-                )
-              }
               return (
                 <RecordRow key={d} label={d}
                   rec24={spBest?.perf ?? '—'}
@@ -2695,7 +3039,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                   onSelect={() => spBest ? onSelect(`Natation ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={
-                    <button onClick={() => tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null)}
+                    <button onClick={() => openDrawer('swim', d, spBest?.id ?? null, spBest?.perf ?? '')}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Modifier
                     </button>
@@ -2715,8 +3059,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} color="#14b8a6" />
             {ROW_DISTS.map(d => {
-              const editKey = `rowing-${d}`
-              const isEditing = activeEdit === editKey
               const spBest  = getSpBest('rowing', d, recordYear)
               const prevRec = getSpPrev('rowing', d)
               const split   = spBest ? calcSplit500m(ROW_M[d] ?? 0, spBest.perf) : '—'
@@ -2728,30 +3070,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
               })()
               const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
               const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              if (isEditing) {
-                return (
-                  <div key={d} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, marginBottom: 5,
-                    background: 'rgba(20,184,166,0.06)', border: '1px solid #14b8a6',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', minWidth: 80, flexShrink: 0 }}>{lbl}</span>
-                    <input type="text" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
-                      placeholder="mm:ss ou h:mm:ss"
-                      style={{ flex: 1, padding: '4px 8px', borderRadius: 6, border: '1px solid #14b8a6', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
-                      onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('rowing', d, 'time'); if (e.key === 'Escape') cancelEdit() }} />
-                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                      style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-                    <button onClick={() => void confirmSpRecord('rowing', d, 'time')} disabled={recordSaving}
-                      style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: '#14b8a6', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                      {recordSaving ? '…' : 'Confirmer'}
-                    </button>
-                    <button onClick={cancelEdit}
-                      style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      Annuler
-                    </button>
-                  </div>
-                )
-              }
               return (
                 <RecordRow key={d} label={lbl}
                   rec24={spBest?.perf ?? '—'}
@@ -2760,7 +3078,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                   onSelect={() => spBest ? onSelect(`Aviron ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={
-                    <button onClick={() => tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null)}
+                    <button onClick={() => openDrawer('rowing', d, spBest?.id ?? null, spBest?.perf ?? '')}
                       style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Modifier
                     </button>

@@ -3758,20 +3758,22 @@ function YearDatasSubTab() {
             </select>
           </div>
 
-          {/* Ligne 2 : saisie d'année */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input
-              type="number" value={addYearInput}
-              onChange={e => setAddYearInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddYear()}
-              placeholder="2023" min="2000" max="2035"
-              style={{ flex: 1, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
-            />
-            <button onClick={handleAddYear} style={{
-              padding: '5px 12px', borderRadius: 7, border: '1px solid #a855f7',
-              background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-            }}>+ Saisir</button>
-          </div>
+          {/* Ligne 2 : saisie d'année — uniquement en mode manuel */}
+          {mode === 'manual' && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="number" value={addYearInput}
+                onChange={e => setAddYearInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddYear()}
+                placeholder="2023" min="2000" max="2035"
+                style={{ flex: 1, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+              />
+              <button onClick={handleAddYear} style={{
+                padding: '5px 12px', borderRadius: 7, border: '1px solid #a855f7',
+                background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>+ Saisir</button>
+            </div>
+          )}
 
           {/* Ligne 3 : sync + import */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -3840,40 +3842,33 @@ function YearDatasSubTab() {
                       </span>
                     </div>
                   ))}
+                  {stravaConnected && (
+                    <>
+                      <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+                      <button
+                        onClick={() => { void handleImportHistory(); setShowSyncMenu(false) }}
+                        disabled={importing || syncing}
+                        style={{
+                          width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                          background: 'transparent', textAlign: 'left',
+                          cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          opacity: importing || syncing ? 0.5 : 1, color: 'var(--text)',
+                          fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+                        }}
+                        onMouseEnter={e => { if (!importing && !syncing) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+                        </svg>
+                        {importing ? 'Import en cours…' : 'Importer l\'historique'}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
-
-            {/* Import — Primary §15 */}
-            {stravaConnected && (
-              <button
-                onClick={() => void handleImportHistory()}
-                disabled={importing || syncing}
-                style={{
-                  flex: 1, padding: '5px 11px', borderRadius: 7,
-                  border: 'none',
-                  background: importing || syncing ? 'rgba(0,200,224,0.45)' : '#00c8e0',
-                  color: '#fff', fontSize: 11, fontWeight: 600,
-                  cursor: importing || syncing ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap', opacity: importing || syncing ? 0.8 : 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'opacity 0.15s',
-                }}
-              >
-                {importing ? (
-                  <>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
-                    Import…
-                  </>
-                ) : (
-                  <>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
-                    </svg>
-                    Importer
-                  </>
-                )}
-              </button>
-            )}
           </div>
         </div>
       ) : (
@@ -3903,20 +3898,22 @@ function YearDatasSubTab() {
               {mode === 'auto' && <option value="all">Toutes années</option>}
               {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
             </select>
-            {/* Add year */}
-            <div style={{ display: 'flex', gap: 3 }}>
-              <input
-                type="number" value={addYearInput}
-                onChange={e => setAddYearInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddYear()}
-                placeholder="2023" min="2000" max="2035"
-                style={{ width: 58, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
-              />
-              <button onClick={handleAddYear} style={{
-                padding: '5px 10px', borderRadius: 7, border: '1px solid #a855f7',
-                background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-              }}>+ Saisir</button>
-            </div>
+            {/* Add year — uniquement en mode manuel */}
+            {mode === 'manual' && (
+              <div style={{ display: 'flex', gap: 3 }}>
+                <input
+                  type="number" value={addYearInput}
+                  onChange={e => setAddYearInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddYear()}
+                  placeholder="2023" min="2000" max="2035"
+                  style={{ width: 58, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+                />
+                <button onClick={handleAddYear} style={{
+                  padding: '5px 10px', borderRadius: 7, border: '1px solid #a855f7',
+                  background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>+ Saisir</button>
+              </div>
+            )}
             {/* Sync dropdown */}
             <div ref={syncMenuRef} style={{ position: 'relative' }}>
               <button
@@ -3984,39 +3981,33 @@ function YearDatasSubTab() {
                       </span>
                     </div>
                   ))}
+                  {stravaConnected && (
+                    <>
+                      <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+                      <button
+                        onClick={() => { void handleImportHistory(); setShowSyncMenu(false) }}
+                        disabled={importing || syncing}
+                        style={{
+                          width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                          background: 'transparent', textAlign: 'left',
+                          cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          opacity: importing || syncing ? 0.5 : 1, color: 'var(--text)',
+                          fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+                        }}
+                        onMouseEnter={e => { if (!importing && !syncing) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+                        </svg>
+                        {importing ? 'Import en cours…' : 'Importer l\'historique Strava'}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
-            {/* Bouton import historique — distinct du sync */}
-            {stravaConnected && (
-              <button
-                onClick={() => void handleImportHistory()}
-                disabled={importing || syncing}
-                style={{
-                  padding: '5px 11px', borderRadius: 7,
-                  border: '1px solid rgba(168,85,247,0.35)',
-                  background: importing ? 'rgba(168,85,247,0.04)' : 'rgba(168,85,247,0.08)',
-                  color: '#a855f7', fontSize: 11, fontWeight: 600,
-                  cursor: importing || syncing ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap', opacity: importing || syncing ? 0.6 : 1,
-                  display: 'flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s',
-                }}
-              >
-                {importing ? (
-                  <>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(168,85,247,0.3)', borderTopColor: '#a855f7', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
-                    Import…
-                  </>
-                ) : (
-                  <>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
-                    </svg>
-                    Importer l&apos;historique Strava
-                  </>
-                )}
-              </button>
-            )}
           </div>
         </div>
       )}

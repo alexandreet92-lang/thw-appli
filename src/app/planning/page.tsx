@@ -8025,40 +8025,46 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       })()}
                     </div>
 
-                    {/* Bulk power apply — applique une puissance à toutes les côtes sélectionnées */}
-                    {blocks.length === 0 && climbConfigs.filter(c => c.selected).length > 0 && (() => {
+                    {/* Bulk power apply — toujours visible, applique à toutes les côtes */}
+                    {blocks.length === 0 && climbConfigs.length > 0 && (() => {
                       const bFtp  = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
                       const bLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
                       const displayHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
                       return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: `1px solid ${accent}20`, background: `${accent}06` }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)', flex: 1 }}>Appliquer aux côtes sélectionnées</span>
-                          <LocalInput
-                            value={bulkWatts}
-                            min={50} max={600}
-                            onCommit={w => { setBulkWatts(w); setBulkHr(wattToFc(w, bFtp, bLthr)) }}
-                            style={{ width: 52, padding: '4px 6px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
-                          />
-                          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
-                          <LocalInput
-                            value={displayHr}
-                            min={60} max={220}
-                            onCommit={hr => setBulkHr(hr)}
-                            style={{ width: 44, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
-                          />
-                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
-                          <button
-                            onClick={() => {
-                              const applyHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
-                              setClimbConfigs(prev => prev.map(c => {
-                                if (!c.selected) return c
-                                const seg = (parcoursData?.segments ?? [])[c.segIdx]
-                                const mins = seg ? estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, bulkWatts, athleteWeight, bikeWeight) : c.estimatedMin
-                                return { ...c, watts: bulkWatts, hrAvg: applyHr, estimatedMin: mins }
-                              }))
-                            }}
-                            style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
-                          >Appliquer</button>
+                        <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px' }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8 }}>⚡ Même puissance pour toutes les côtes</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <LocalInput
+                                value={bulkWatts}
+                                min={50} max={600}
+                                onCommit={w => { setBulkWatts(w); setBulkHr(wattToFc(w, bFtp, bLthr)) }}
+                                style={{ width: 60, padding: '5px 7px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}>W</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <LocalInput
+                                value={displayHr}
+                                min={60} max={220}
+                                onCommit={hr => setBulkHr(hr)}
+                                style={{ width: 52, padding: '5px 7px', borderRadius: 6, border: '1px solid #ef444450', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
+                            </div>
+                            <div style={{ flex: 1 }} />
+                            <button
+                              onClick={() => {
+                                const applyHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
+                                setClimbConfigs(prev => prev.map(c => {
+                                  const seg = (parcoursData?.segments ?? [])[c.segIdx]
+                                  const mins = seg ? estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, bulkWatts, athleteWeight, bikeWeight) : c.estimatedMin
+                                  return { ...c, watts: bulkWatts, hrAvg: applyHr, estimatedMin: mins }
+                                }))
+                              }}
+                              style={{ padding: '6px 16px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                            >Appliquer à toutes</button>
+                          </div>
                         </div>
                       )
                     })()}
@@ -8106,6 +8112,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)', fontWeight: 600 }}>
                                   {overrideBlock ? overrideBlock.estimatedMin.toFixed(0) : timeMin.toFixed(0)} min
                                 </span>
+                                {cfg.selected && (
+                                  <>
+                                    <span>·</span>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', color: '#ef4444', fontWeight: 700 }}>
+                                      {cfg.hrAvg ?? wattToFc(cfg.watts, trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250, athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170)} bpm
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                             {/* Watts + FC inputs — toujours visibles, grisées si non sélectionnée */}

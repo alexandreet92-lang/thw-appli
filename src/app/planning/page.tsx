@@ -7724,28 +7724,29 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             return { lo: Math.round(loGh * h), hi: Math.round(hiGh * h), loGh, hiGh, h }
           })()
 
+          const wheelSz = mobile ? 160 : 190
+
           return (
             <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px' }}>
-              {/* Wheels row — W large gauche, FC compact droite */}
-              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                <div style={{ flex: '0 0 auto' }}>
-                  {renderWheel(ZONES_W, zonePctW, 'W', mobile ? 160 : 190)}
+              {/* Wheels row — W centré côté gauche, FC centré côté droit, même taille */}
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                {/* Moitié gauche — W */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+                  {renderWheel(ZONES_W, zonePctW, 'W', wheelSz)}
                 </div>
-                <div style={{ flex: '0 0 auto' }}>
-                  {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', mobile ? 130 : 150)}
+                {/* Moitié droite — FC */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+                  {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', wheelSz)}
                 </div>
-                {/* Carb estimate — colonne droite */}
-                {carbEst && (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: 8, paddingLeft: 8 }}>
-                    <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4 }}>🍯 Glucides estimés</div>
-                      <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent, lineHeight: 1 }}>{carbEst.lo}–{carbEst.hi}g</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{carbEst.loGh}–{carbEst.hiGh}g/h</div>
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{carbEst.h.toFixed(1)}h de sortie</div>
-                    </div>
-                  </div>
-                )}
               </div>
+              {/* Carb estimate — sous les deux cercles */}
+              {carbEst && (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 Glucides estimés</span>
+                  <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h · {carbEst.h.toFixed(1)}h</span>
+                </div>
+              )}
             </div>
           )
         })()}

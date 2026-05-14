@@ -318,11 +318,11 @@ function ClimbDrawer({ profileWeight, onSaved, onClose }: ClimbDrawerProps) {
         pre_fatigue:      preFatigue,
         with_nutrition:   withNutrition,
       }).select().single()
-      if (dbErr) throw dbErr
+      if (dbErr) throw new Error(dbErr.message ?? JSON.stringify(dbErr))
       onSaved(data as ClimbRecord)
       handleClose()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+      setError(e instanceof Error ? e.message : String(e) || 'Erreur inconnue')
     } finally {
       setSaving(false)
     }

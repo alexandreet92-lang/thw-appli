@@ -4547,7 +4547,7 @@ function LocalInput({ value, onCommit, min, max, style, placeholder, step }: {
 // ── ElevationChart ────────────────────────────────
 type TerrainBlockOverlay = { label: string; startKm: number; endKm: number; zone: number; value: string; blockIdx: number; color?: string }
 
-function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag, onBlockClick, powerGauges, onGaugeWattsChange, onGaugeEdgeChange }: {
+function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag, onBlockClick, powerGauges, onGaugeWattsChange, onGaugeEdgeChange, drawModeActive, onBlockDraw }: {
   profile: Array<{ distKm: number; ele: number }>
   totalKm: number
   accent: string
@@ -4558,6 +4558,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   powerGauges?: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }>
   onGaugeWattsChange?: (blockIdx: number, newWatts: number) => void
   onGaugeEdgeChange?: (blockIdx: number, edge: 'start' | 'end', newKm: number) => void
+  drawModeActive?: boolean
+  onBlockDraw?: (startKm: number, endKm: number, anchorPct: number) => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
@@ -4565,6 +4567,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   const [gaugeDrag, setGaugeDrag] = useState<{ blockIdx: number; startY: number; startWatts: number } | null>(null)
   const [gaugeEdgeDrag, setGaugeEdgeDrag] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
   const [hoveredGauge, setHoveredGauge] = useState<number | null>(null)
+  const [drawDrag, setDrawDrag] = useState<{ startKm: number; currentKm: number } | null>(null)
 
   if (profile.length < 2) return null
 
@@ -4612,6 +4615,11 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   }
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (drawDrag) {
+      const km = Math.round(svgXToKm(e.clientX) * 10) / 10
+      setDrawDrag(prev => prev ? { ...prev, currentKm: km } : null)
+      return
+    }
     if (gaugeEdgeDrag && onGaugeEdgeChange) {
       const km = Math.round(svgXToKm(e.clientX) * 10) / 10
       onGaugeEdgeChange(gaugeEdgeDrag.blockIdx, gaugeEdgeDrag.edge, km)
@@ -4647,9 +4655,22 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
     if (onHover) onHover(closest.distKm)
   }
 
-  function handleMouseUp() { setDragging(null); setGaugeDrag(null); setGaugeEdgeDrag(null) }
+  function handleMouseUp(e: React.MouseEvent<SVGSVGElement>) {
+    if (drawDrag && onBlockDraw) {
+      const s = Math.min(drawDrag.startKm, drawDrag.currentKm)
+      const end = Math.max(drawDrag.startKm, drawDrag.currentKm)
+      if (end - s >= 0.2) {
+        const svg = svgRef.current
+        const anchorPct = svg ? (e.clientX - svg.getBoundingClientRect().left) / svg.getBoundingClientRect().width : 0.5
+        onBlockDraw(Math.round(s * 10) / 10, Math.round(end * 10) / 10, anchorPct)
+      }
+      setDrawDrag(null)
+      return
+    }
+    setDragging(null); setGaugeDrag(null); setGaugeEdgeDrag(null)
+  }
   function handleMouseLeave() {
-    if (!dragging && !gaugeDrag && !gaugeEdgeDrag) { setCursor(null); if (onHover) onHover(null) }
+    if (!dragging && !gaugeDrag && !gaugeEdgeDrag && !drawDrag) { setCursor(null); if (onHover) onHover(null) }
   }
 
   // Zone colors: Z1→Z5
@@ -4666,10 +4687,15 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
         ref={svgRef}
         width="100%"
         viewBox={`0 0 ${W} ${H}`}
-        style={{ display: 'block', cursor: gaugeDrag ? 'ns-resize' : (dragging || gaugeEdgeDrag) ? 'ew-resize' : 'crosshair' }}
+        style={{ display: 'block', cursor: drawModeActive ? (drawDrag ? 'col-resize' : 'crosshair') : gaugeDrag ? 'ns-resize' : (dragging || gaugeEdgeDrag) ? 'ew-resize' : 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
+        onMouseDown={drawModeActive ? e => {
+          e.stopPropagation()
+          const km = Math.round(svgXToKm(e.clientX) * 10) / 10
+          setDrawDrag({ startKm: km, currentKm: km })
+        } : undefined}
       >
         {/* Y grid */}
         {yTicks.map(ele => {
@@ -4852,6 +4878,22 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
             </g>
           )
         })}
+        {/* Draw mode preview */}
+        {drawDrag && (() => {
+          const x1 = PL + (Math.min(drawDrag.startKm, drawDrag.currentKm) / totalKm) * pW
+          const x2 = PL + (Math.max(drawDrag.startKm, drawDrag.currentKm) / totalKm) * pW
+          const w  = Math.max(x2 - x1, 1)
+          return (
+            <g>
+              <rect x={x1} y={PT} width={w} height={pH} fill="#f97316" opacity={0.18} rx={3} />
+              <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke="#f97316" strokeWidth={2} opacity={0.9} strokeDasharray="4 2" />
+              <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke="#f97316" strokeWidth={2} opacity={0.9} strokeDasharray="4 2" />
+              <text x={(x1 + x2) / 2} y={PT + 14} textAnchor="middle" fontSize={8} fill="#f97316" fontWeight={800} fontFamily='"DM Mono",monospace'>
+                {Math.abs(drawDrag.currentKm - drawDrag.startKm).toFixed(1)} km
+              </text>
+            </g>
+          )
+        })()}
         {/* min/max labels */}
         <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{Math.round(minEle)}m</text>
         <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='"DM Mono",monospace'>{Math.round(maxEle)}m</text>
@@ -5906,7 +5948,11 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   }
   const [specificBlocks, setSpecificBlocks] = useState<SpecificBlock[]>([])
   const [bulkWatts, setBulkWatts] = useState(250)
-  const [bulkHr, setBulkHr] = useState(0)  // 0 = not set yet, compute from wattToFc on use
+  const [bulkHr, setBulkHr] = useState(0)
+  const [drawModeActive, setDrawModeActive] = useState(false)
+  const [pendingBlock, setPendingBlock] = useState<{ startKm: number; endKm: number; anchorPct: number } | null>(null)
+  const [pendingWatts, setPendingWatts] = useState(250)
+  const [pendingHr, setPendingHr] = useState(0)
   const [showDurPicker, setShowDurPicker] = useState(false)
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
@@ -7439,7 +7485,97 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
                 {/* Graphique altimétrique interactif */}
                 {parcoursData.elevationProfile.length > 1 && (
-                  <>
+                  <div style={{ position: 'relative' as const }}>
+                    {/* Bouton + pour dessin de bloc spécifique */}
+                    <button
+                      onClick={() => { setDrawModeActive(v => !v); setPendingBlock(null) }}
+                      title={drawModeActive ? 'Annuler le dessin' : 'Dessiner un bloc spécifique'}
+                      style={{
+                        position: 'absolute' as const, top: 4, right: 4, zIndex: 10,
+                        width: 26, height: 26, borderRadius: 6,
+                        border: drawModeActive ? `2px solid #f97316` : '1px solid var(--border)',
+                        background: drawModeActive ? 'rgba(249,115,22,0.15)' : 'var(--bg-card)',
+                        color: drawModeActive ? '#f97316' : 'var(--text-dim)',
+                        fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                      }}
+                    >{drawModeActive ? '×' : '+'}</button>
+
+                    {/* Popup saisie du nouveau bloc */}
+                    {pendingBlock && (() => {
+                      const pb_ftp  = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                      const pb_lthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
+                      const displayPW = pendingWatts
+                      const displayPH = pendingHr > 0 ? pendingHr : wattToFc(pendingWatts, pb_ftp, pb_lthr)
+                      const left = `${Math.min(Math.max(pendingBlock.anchorPct * 100, 5), 75)}%`
+                      return (
+                        <div style={{
+                          position: 'absolute' as const, top: 28, left,
+                          zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)',
+                          borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', padding: '14px 16px',
+                          minWidth: 220,
+                        }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
+                            Nouveau bloc · km {pendingBlock.startKm} → {pendingBlock.endKm}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>
+                            {(pendingBlock.endKm - pendingBlock.startKm).toFixed(1)} km
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 28 }}>Watts</span>
+                              <LocalInput
+                                value={displayPW}
+                                min={50} max={600}
+                                onCommit={w => { setPendingWatts(w); setPendingHr(wattToFc(w, pb_ftp, pb_lthr)) }}
+                                style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 28 }}>FC</span>
+                              <LocalInput
+                                value={displayPH}
+                                min={60} max={220}
+                                onCommit={hr => setPendingHr(hr)}
+                                style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: '1px solid #ef444450', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', textAlign: 'right' as const, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                              <button
+                                onClick={() => {
+                                  const applyHr = pendingHr > 0 ? pendingHr : wattToFc(pendingWatts, pb_ftp, pb_lthr)
+                                  const dist = Math.max(0.1, pendingBlock.endKm - pendingBlock.startKm)
+                                  const grad = (() => {
+                                    const sp = parcoursData?.elevationProfile.find(p => p.distKm >= pendingBlock.startKm)
+                                    const ep = parcoursData?.elevationProfile.find(p => p.distKm >= pendingBlock.endKm)
+                                    return sp && ep ? ((ep.ele - sp.ele) / (dist * 1000)) * 100 : 0
+                                  })()
+                                  const mins = estimateTimeOnSegment(dist, grad, pendingWatts, athleteWeight, bikeWeight)
+                                  setSpecificBlocks(prev => [...prev, {
+                                    id: `sb_${Date.now()}`,
+                                    startKm: pendingBlock.startKm,
+                                    endKm: pendingBlock.endKm,
+                                    watts: pendingWatts,
+                                    hrAvg: applyHr,
+                                    estimatedMin: mins,
+                                  }])
+                                  setPendingBlock(null)
+                                  setDrawModeActive(false)
+                                }}
+                                style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              >Créer le bloc</button>
+                              <button
+                                onClick={() => { setPendingBlock(null); setDrawModeActive(false) }}
+                                style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}
+                              >Annuler</button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
                     <ElevationChart
                       profile={parcoursData.elevationProfile}
                       totalKm={parcoursData.distance ?? parcoursData.elevationProfile[parcoursData.elevationProfile.length - 1].distKm}
@@ -7616,6 +7752,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           setEfWatts(newWatts)
                         }
                       }}
+                      drawModeActive={drawModeActive}
+                      onBlockDraw={(startKm, endKm, anchorPct) => {
+                        const pb_ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
+                        const defaultW = Math.round(pb_ftp * 0.90)
+                        setPendingWatts(defaultW)
+                        setPendingHr(wattToFc(defaultW, pb_ftp, athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170))
+                        setPendingBlock({ startKm, endKm, anchorPct })
+                      }}
                       onGaugeEdgeChange={(bidx, edge, newKm) => {
                         if (bidx <= -2000) {
                           const si = -(bidx + 2000)
@@ -7674,7 +7818,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         </button>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             )}

@@ -7837,12 +7837,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   {renderWheel(ZONES_FC, zonePctFC, 'FC', wheelSz)}
                 </div>
               </div>
-              {/* Carb estimate + avg power — sous les deux cercles */}
+              {/* Carb estimate + avg power + avg FC — sous les deux cercles */}
               {(() => {
+                const _ftpA  = ftp
+                const _lthrA = lthrVal
                 // Average power (time-weighted)
                 const tssR = computeParcoursFlowTSS()
                 const avgPower = tssR ? tssR.np : (() => {
-                  // fallback: weighted mean from allocated blocks
                   let wSum = 0, tSum = 0
                   climbConfigs.filter(c => c.selected).forEach(c => { wSum += c.watts * c.estimatedMin; tSum += c.estimatedMin })
                   specificBlocks.forEach(sb => { wSum += sb.watts * sb.estimatedMin; tSum += sb.estimatedMin })
@@ -7851,18 +7852,38 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   wSum += efWatts * remaining; tSum += remaining
                   return tSum > 0 ? Math.round(wSum / tSum) : efWatts
                 })()
+                // Average FC (time-weighted)
+                const avgFc = (() => {
+                  let hSum = 0, tSum = 0
+                  climbConfigs.filter(c => c.selected).forEach(c => {
+                    const sb = specificBlocks.find(sb => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm })
+                    const hr = sb ? (sb.hrAvg ?? wattToFc(sb.watts, _ftpA, _lthrA)) : (c.hrAvg ?? wattToFc(c.watts, _ftpA, _lthrA))
+                    const mins = sb ? sb.estimatedMin : c.estimatedMin
+                    hSum += hr * mins; tSum += mins
+                  })
+                  specificBlocks.filter(sb => !climbConfigs.some(c => { const s = segs[c.segIdx]; return s && sb.startKm < s.endKm && sb.endKm > s.startKm }))
+                    .forEach(sb => { hSum += (sb.hrAvg ?? wattToFc(sb.watts, _ftpA, _lthrA)) * sb.estimatedMin; tSum += sb.estimatedMin })
+                  const totalMin = parseDurationToMin(totalDuration)
+                  const remaining = Math.max(0, totalMin - tSum)
+                  const efHrVal = efHr > 0 ? efHr : wattToFc(efWatts, _ftpA, _lthrA)
+                  hSum += efHrVal * remaining; tSum += remaining
+                  return tSum > 0 ? Math.round(hSum / tSum) : efHrVal
+                })()
                 return (
-                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' as const }}>
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
                     {carbEst && (
                       <>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 Glucides estimés</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 Glucides</span>
                         <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h · {carbEst.h.toFixed(1)}h</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h</span>
                         <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
                       </>
                     )}
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ Puissance moy.</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ Moy.</span>
                     <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{avgPower}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>W</span></span>
+                    <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>❤️ FC moy.</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#ef4444' }}>{avgFc}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>bpm</span></span>
                   </div>
                 )
               })()}

@@ -20,6 +20,7 @@ interface Props {
     vma: number; css: string; vo2max: number
   }
   onOpenAI?: (prompt: string) => void
+  onNavigateToTests?: () => void
 }
 
 // ── Shared primitives ────────────────────────────────────────────
@@ -472,6 +473,128 @@ function HyroxTotalChart({ races, bestId, bestByYear }: {
       <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
       <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
     </svg>
+  )
+}
+
+// ── HyroxTestsBandeau — résumé des tests Hyrox ───────────────────
+const HYROX_TESTS_DEF = [
+  { id: 'hyrox-force',         label: 'Force',          icon: '🏋️' },
+  { id: 'hyrox-endurance-wod', label: 'Endurance WOD',  icon: '💪' },
+  { id: 'hyrox-explosivite',   label: 'Explosivité',    icon: '⚡' },
+] as const
+
+const HYROX_LEVEL_COLOR: Record<string, string> = {
+  'Débutant':       '#9ca3af',
+  'Intermédiaire':  '#3b82f6',
+  'Avancé':         '#22c55e',
+  'Expert':         '#f97316',
+  'Élite':          '#ef4444',
+}
+
+function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => void }) {
+  type TestRow = { test_type: string; score: number | null; level: string | null; performed_at: string }
+  const [tests,   setTests]   = useState<TestRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+      const { data } = await supabase
+        .from('performance_tests')
+        .select('test_type, score, level, performed_at')
+        .eq('user_id', user.id)
+        .in('test_type', ['hyrox-force', 'hyrox-endurance-wod', 'hyrox-explosivite'])
+        .order('performed_at', { ascending: false })
+      if (data) setTests(data as TestRow[])
+      setLoading(false)
+    }
+    void load()
+  }, [])
+
+  const getLatest = (id: string) => tests.find(t => t.test_type === id) ?? null
+
+  return (
+    <Card style={{ padding: '14px 16px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 18, borderRadius: 2, background: 'linear-gradient(180deg,#ef4444,#f97316)', flexShrink: 0 }} />
+          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Tests Hyrox</h2>
+          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>· résultats les plus récents</span>
+        </div>
+        <button onClick={onNavigateToTests} style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '5px 11px', borderRadius: 8,
+          border: '1px solid rgba(239,68,68,0.35)',
+          background: 'rgba(239,68,68,0.08)',
+          color: '#ef4444', fontSize: 11, fontWeight: 600,
+          cursor: 'pointer', whiteSpace: 'nowrap',
+        }}>
+          Faire un test
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Rows */}
+      {loading ? (
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', margin: '4px 0', padding: '8px 0' }}>Chargement…</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {HYROX_TESTS_DEF.map(t => {
+            const latest   = getLatest(t.id)
+            const lvlColor = latest?.level ? (HYROX_LEVEL_COLOR[latest.level] ?? '#ef4444') : 'var(--text-dim)'
+            return (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '9px 12px', borderRadius: 9,
+                background: latest ? 'rgba(239,68,68,0.06)' : 'var(--bg-card2)',
+                border: `1px solid ${latest ? 'rgba(239,68,68,0.18)' : 'var(--border)'}`,
+              }}>
+                {/* Left */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <span style={{ fontSize: 16 }}>{t.icon}</span>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'Syne,sans-serif' }}>{t.label}</p>
+                    {latest && (
+                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                        {latest.performed_at.slice(0, 10)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {/* Right */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                  {latest ? (
+                    <>
+                      {latest.level && (
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 5,
+                          background: `${lvlColor}20`, border: `1px solid ${lvlColor}50`,
+                          fontSize: 10, fontWeight: 700, color: lvlColor,
+                        }}>
+                          {latest.level}
+                        </span>
+                      )}
+                      {latest.score !== null && (
+                        <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                          Score {latest.score.toFixed(1)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>Non réalisé</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -2752,10 +2875,11 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
 // ════════════════════════════════════════════════
 // SUB-TAB 2: RECORDS PERSONNELS
 // ════════════════════════════════════════════════
-function RecordsSubTab({ onSelect, selectedDatum, profile }: {
+function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: {
   onSelect: Props['onSelect']
   selectedDatum: Props['selectedDatum']
   profile: Props['profile']
+  onNavigateToTests?: () => void
 }) {
   const [sport, setSport] = useState<RecordSport>('bike')
   // ── Année globale (pills DS §16) ─────────────────────────────────
@@ -3449,6 +3573,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
       {sport === 'hyrox' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <HyroxRadar />
+          <HyroxTestsBandeau onNavigateToTests={onNavigateToTests} />
           <HyroxSection onSelect={onSelect} selectedDatum={selectedDatum} />
         </div>
       )}
@@ -5473,7 +5598,7 @@ function YearDatasSubTab() {
 // ════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════
-export default function DatasTab({ onSelect, selectedDatum, profile, onOpenAI }: Props) {
+export default function DatasTab({ onSelect, selectedDatum, profile, onOpenAI, onNavigateToTests }: Props) {
   type SubTab = 'zones' | 'records' | 'yeardata'
   const [subTab, setSubTab] = useState<SubTab>('zones')
 
@@ -5501,7 +5626,7 @@ export default function DatasTab({ onSelect, selectedDatum, profile, onOpenAI }:
       </div>
 
       {subTab === 'zones'    && <ZonesSubTab profile={profile} onSelect={onSelect} selectedDatum={selectedDatum} onOpenAI={onOpenAI} />}
-      {subTab === 'records'  && <RecordsSubTab onSelect={onSelect} selectedDatum={selectedDatum} profile={profile} />}
+      {subTab === 'records'  && <RecordsSubTab onSelect={onSelect} selectedDatum={selectedDatum} profile={profile} onNavigateToTests={onNavigateToTests} />}
       {subTab === 'yeardata' && <YearDatasSubTab />}
     </div>
   )

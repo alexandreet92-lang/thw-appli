@@ -7,6 +7,14 @@ import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { CountUp } from '@/components/ui/AnimatedBar'
 import DatasTab from './DatasTab'
 import { createClient } from '@/lib/supabase/client'
+import {
+  TEST_BENCHMARKS,
+  computeTestScoreResult,
+  LevelTable,
+  TestScoreDisplay,
+  ScoreBadge,
+  levelFromScore,
+} from './PerformanceTestLevels'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -568,21 +576,25 @@ const TEST_SPORT_TABS: { id: TestSport; label: string; short: string; color: str
 
 const TESTS: Record<TestSport, TestDef[]> = {
   running: [
+    { id:'vma',                    name:'VMA',                   desc:'Vitesse Maximale Aérobie sur piste. Détermine ton allure plafond pour calibrer toutes tes zones d\'entraînement.',                 duration:'~6 min',    difficulty:'Maximal' },
+    { id:'running-endurance-pct',  name:'Endurance',             desc:'% de la VMA tenu sur marathon. Mesure l\'efficacité aérobie : plus vous courez le marathon près de votre VMA, meilleur le profil.', duration:'42 km',     difficulty:'Maximal' },
+    { id:'running-10km',           name:'Résistance 10 km',      desc:'Meilleur temps sur 10 km. Combine vitesse et endurance au seuil lactique. Référence mondiale : 26:24 (H) / 29:01 (F).',             duration:'27–62 min', difficulty:'Maximal' },
+    { id:'running-economie-fc',    name:'Économie de course',    desc:'Allure tenue à FC 150 bpm. Mesure l\'efficacité de course et l\'économie de mouvement — calculé depuis vos sorties avec capteur FC.',duration:'30 min',    difficulty:'Modéré'  },
+    { id:'running-recup-fc',       name:'Récupération FC',       desc:'Chute de FC en 1 minute après effort intense. Indicateur clé de condition cardiovasculaire générale — calculé automatiquement.',     duration:'5 min',     difficulty:'Intense' },
     { id:'vo2max-run',    name:'VO2max',       desc:'Test d\'effort gradué pour mesurer la consommation maximale d\'oxygène. Paliers progressifs jusqu\'à épuisement.',                                      duration:'20–35 min', difficulty:'Maximal' },
-    { id:'vma',           name:'VMA',           desc:'Vitesse Maximale Aérobie sur piste. Détermine ton allure plafond pour calibrer toutes tes zones.',                                                      duration:'~6 min',    difficulty:'Maximal' },
     { id:'lactate-run',   name:'Test lactate',  desc:'Mesure de la lactatémie à différentes intensités. Zones précises, identification du seuil SL1 et SL2.',                                                duration:'60–90 min', difficulty:'Modéré'  },
     { id:'cooper',        name:'Cooper',         desc:'12 minutes d\'effort maximal en continu. Distance parcourue → estimation VO2max selon la formule Cooper.',                                              duration:'12 min',    difficulty:'Maximal' },
     { id:'tmi',           name:'TMI',            desc:'Test de Maintien d\'Intensité. Mesure la capacité à tenir une allure au seuil lactate sur durée prolongée.',                                          duration:'30 min',    difficulty:'Intense' },
   ],
   cycling: [
-    { id:'cp20',             name:'CP20',           desc:'Critical Power sur 20 minutes — puissance moyenne × 0.95 = estimation FTP. Le test vélo de référence.',                                           duration:'~35 min',    difficulty:'Maximal' },
+    { id:'cp20',             name:'FTP',            desc:'Critical Power 20 min — puissance moyenne × 0.95 = FTP. Exprimé en W/kg. Indicateur principal en cyclisme.',                                    duration:'~35 min',    difficulty:'Maximal' },
+    { id:'vo2max-cycling',   name:'PMA / Sprint',   desc:'Test rampe sur ergocycle (paliers +20W/min) pour la PMA, ou sprint 5s pour la puissance neuromusculaire maximale. Exprimé en W/kg.',             duration:'15–25 min',  difficulty:'Maximal' },
+    { id:'endurance-cycling',name:'Endurance 3h',   desc:'% du FTP tenu sur 3h en puissance normalisée. Mesure l\'efficience aérobie sur longue durée. Calculé depuis vos sorties enregistrées.',         duration:'180 min',    difficulty:'Modéré'  },
+    { id:'cycling-z4',       name:'Résistance Z4',  desc:'Durée maximale tenue à Z4 (95-105% FTP) en un effort continu. Mesure la capacité à soutenir un effort au seuil — clé pour les courses.',        duration:'12–70 min',  difficulty:'Intense' },
+    { id:'cycling-grimpeur', name:'Grimpeur',       desc:'Puissance normalisée (W/kg) sur un effort de montée 20–40 min. Indicateur clé pour les cyclistes qui font des courses avec dénivelé.',           duration:'20–40 min',  difficulty:'Maximal' },
     { id:'critical-power',   name:'Critical Power', desc:'Modèle multi-durées (3–12–20 min) pour tracer la courbe puissance-durée et calculer W\' et CP.',                                                  duration:'2 × séances', difficulty:'Maximal' },
     { id:'lactate-cycling',  name:'Lactate',        desc:'Profil lactatémique sur ergocycle. Paliers de 5 min, prise de sang au doigt. Zones ultra-précises.',                                              duration:'60–90 min',  difficulty:'Modéré'  },
-    { id:'endurance-cycling',    name:'Endurance 2h',   desc:'Test de 2h à puissance modérée (60–65% FTP). Calibration de la zone 2 et mesure de la dérive cardiaque.',                                                         duration:'120 min',    difficulty:'Modéré'  },
-    { id:'endurance-4h',         name:'Endurance 4h',   desc:'Test de 4h en zone 2 (60–65% FTP). Calibration longue de l\'endurance fondamentale et mesure de la dérive cardiaque sur ultra-endurance.',                  duration:'240 min',    difficulty:'Modéré'  },
-    { id:'endurance-drift',      name:'Endurance Progressive', desc:'2h EF basse + 2h EF moyenne + 1h EF haute. Test de dérive cardiaque en 3 blocs pour calibrer les 3 sous-zones de l\'endurance fondamentale.',        duration:'300 min',    difficulty:'Modéré'  },
-    { id:'endurance-long-ftp',   name:'Endurance + FTP',desc:'3h30–5h30 en endurance fondamentale suivie de 20 min à FTP et 10 min de récupération. Mesure la capacité à produire de la puissance au seuil après fatigue.', duration:'4–6h',       difficulty:'Intense' },
-    { id:'vo2max-cycling',   name:'VO2max / PMA',   desc:'Test rampe sur ergocycle. Paliers de 1 min, +20W à chaque étape. Détermine la Puissance Maximale Aérobie.',                                      duration:'15–25 min',  difficulty:'Maximal' },
+    { id:'endurance-4h',         name:'Endurance 4h',   desc:'Test de 4h en zone 2 (60–65% FTP). Calibration longue de l\'endurance fondamentale et mesure de la dérive cardiaque sur ultra-endurance.',   duration:'240 min',    difficulty:'Modéré'  },
     { id:'wingate',          name:'Wingate',        desc:'Sprint anaérobie de 30 secondes à résistance maximale. Mesure puissance de crête et capacité anaérobie.',                                         duration:'30 sec',     difficulty:'Maximal' },
   ],
   natation: [
@@ -598,6 +610,10 @@ const TESTS: Record<TestSport, TestDef[]> = {
     { id:'vo2max-row', name:'VO2max',          desc:'Test rampe sur ergomètre. Résistance croissante toutes les 60 secondes jusqu\'à épuisement. Détermine la PMA aviron.',                              duration:'15–20 min',difficulty:'Maximal' },
   ],
   hyrox: [
+    { id:'run-compromised',          name:'Run Compromised',          desc:'Temps cumulé des 8 × 1 km de running en course Hyrox. Indicateur clé d\'endurance spécifique sous fatigue après stations.',                                  duration:'analyse auto', difficulty:'Intense' },
+    { id:'hyrox-force',              name:'Force',                    desc:'Score de force globale : Deadlift 1RM, Squat 1RM, Bench Press 1RM et max reps PDC. Directement corrélé aux stations sled, sandbag et wall ball.',              duration:'2–3 séances',  difficulty:'Maximal' },
+    { id:'hyrox-endurance-wod',      name:'Endurance Fonctionnelle',  desc:'5 rounds de 20 tractions / 40 pompes / 60 squats. Mesure la capacité à enchaîner des mouvements fonctionnels sous fatigue — représentatif 2e moitié Hyrox.',   duration:'20–50 min',    difficulty:'Maximal' },
+    { id:'hyrox-explosivite',        name:'Explosivité',              desc:'Saut avant (1 saut), triple saut (3 enchaînés) et sprint 20 m. Mesure la puissance explosive des membres inférieurs — clé pour les Burpee Broad Jumps.',        duration:'20 min',       difficulty:'Maximal' },
     { id:'pft',            name:'PFT',             desc:'Performance Fitness Test — circuit Hyrox complet chronométré. Référence globale pour évaluer ton niveau.',                                      duration:'50–90 min', difficulty:'Maximal' },
     { id:'station',        name:'Station isolée',  desc:'Test chronométré sur une station Hyrox spécifique au choix. Identifie tes points faibles station par station.',                                 duration:'3–8 min',   difficulty:'Intense' },
     { id:'bbj',              name:'BBJ 80m',          desc:'Burpee Broad Jump — 80m officiels Hyrox chronométrés. Mesure la puissance explosive et l\'endurance anaérobie.',                                duration:'3–5 min',   difficulty:'Intense' },
@@ -610,7 +626,6 @@ const TESTS: Record<TestSport, TestDef[]> = {
     { id:'wall-ball-tabata', name:'Wall Ball Tabata', desc:'10 Wall Ball + 10s pause balle au-dessus de la tête, répéter jusqu\'à épuisement. Toutes les reps comptent même en milieu de série.',           duration:'10–20 min', difficulty:'Intense' },
     { id:'sled-push',      name:'Sled Push',       desc:'Poids maximal poussé sur 25m × 4 allers-retours. Test de force-vitesse sur sled Hyrox standardisé.',                                           duration:'2–4 min',   difficulty:'Maximal' },
     { id:'sled-pull',      name:'Sled Pull',       desc:'Poids maximal tiré sur 25m × 4 allers-retours avec corde. Test de force de traction et endurance musculaire.',                                  duration:'2–4 min',   difficulty:'Maximal' },
-    { id:'run-compromised',name:'Run Compromised', desc:'Allure de course mesurée immédiatement après une station Hyrox. Quantifie l\'impact de la fatigue sur la foulée.',                              duration:'10–20 min', difficulty:'Intense' },
   ],
 }
 
@@ -1133,18 +1148,140 @@ const PROTOCOLS: Record<string, TestProtocol> = {
   },
   // ── Run Compromised ─────────────────────────
   'run-compromised': {
-    objectif: "Mesurer l'allure de course immédiatement après une station Hyrox pour quantifier l'impact de la fatigue musculaire sur la foulée.",
-    conditions: ["GPS de précision ou piste 400m", "Station Hyrox réalisée immédiatement avant (Wall Ball, BBJ, Sled ou FC)", "Reposé 48h avant le test global"],
-    echauffement: ["Pas d'échauffement spécifique course — la station fait office de stimulus de fatigue"],
-    etapes: ["Réaliser la station choisie aux poids et distances officiels Hyrox", "Départ course immédiatement après la dernière répétition (< 10s de transition)", "Courir 1km à l'effort maximal soutenu", "Enregistrer l'allure et comparer à l'allure 1km fresh de référence"],
-    interpretation: ["Delta < 10 s/km : très bonne résistance à la fatigue musculaire", "Delta 10–25 s/km : impact modéré, travail couplé possible", "Delta > 30 s/km : point faible significatif → intervals station + run à intégrer", "Tester avec différentes stations pour identifier celle qui dégrade le plus la foulée"],
-    erreurs: ["Délai > 10s entre la station et le run (fausse le test)", "GPS imprécis en intérieur", "Ne pas noter quelle station a précédé la course"],
-    frequence: "1 fois/semaine en préparation spécifique Hyrox",
+    objectif: "Mesurer le temps cumulé des 8 × 1 km de running en course Hyrox — indicateur d'endurance spécifique sous fatigue.",
+    conditions: ["Lors d'une vraie course Hyrox ou d'un test complet en salle", "Enregistrement Garmin / Supabase avec splits par km"],
+    echauffement: ["Échauffement complet Hyrox standard 15 min"],
+    etapes: ["Réaliser une course Hyrox complète (ou test intégral PFT)", "Relever le temps cumulé de running : somme des 8 × 1 km", "Comparer avec les courses précédentes pour suivre la progression"],
+    interpretation: ["Analysé automatiquement depuis vos courses Hyrox enregistrées", "Ou saisir manuellement le temps total running en mm:ss"],
+    erreurs: ["Confondre le temps total et le temps running seul", "Ne pas inclure les 8 fractions complètes"],
+    frequence: "À chaque course Hyrox",
     fields: [
-      { cle:'station_prec', label:'Station précédente', unite:null, type:'string', placeholder:'Ex: Wall Ball', required:true },
-      { cle:'allure_1km', label:'Allure 1km compromised', unite:'/km', type:'string', placeholder:'Ex: 4:05' },
-      { cle:'allure_fresh', label:'Allure 1km fresh (ref)', unite:'/km', type:'string', placeholder:'Ex: 3:38' },
-      { cle:'delta', label:'Delta allure', unite:'s/km', type:'number', helper:'Compromised − Fresh (en secondes)' },
+      { cle:'run_time_sec', label:'Temps running total (secondes)', unite:'s', type:'number' as const, placeholder:'Ex: 2520 (= 42:00)', required: true },
+    ],
+  },
+  // ── Hyrox Force ─────────────────────────────
+  'hyrox-force': {
+    objectif: "Évaluer la force globale via 3 mouvements fondamentaux corrélés aux stations Hyrox (sled, sandbag, wall ball).",
+    conditions: ["Reposé 48h", "Échauffement spécifique à la force", "Barres olympiques + capteur de charge ou cage de squat"],
+    echauffement: ["10 min cardio léger", "2–3 séries montantes par mouvement avant le 1RM"],
+    etapes: ["Deadlift 1RM : charges progressives, repos 3–5 min entre essais", "Squat barre 1RM : même protocole", "Bench Press 1RM puis max reps au poids du corps (PDC)", "Calculer les ratios charge / poids du corps pour chaque exercice"],
+    interpretation: ["Score Force = moyenne des 3 sous-scores (DL + SQ + Bench)", "Bench = moyenne (1RM ratio + max reps PDC)", "Un ratio DL > 2.5× est optimal pour les stations sled"],
+    erreurs: ["Ne pas forcer le 1RM sans spotters", "Confondre poids barre totale et charge ajoutée"],
+    frequence: "1 fois par mois en préparation, 1 fois par bloc en compétition",
+    fields: [
+      { cle:'dl_charge',    label:'Deadlift 1RM (kg)',         unite:'kg',   type:'number' as const, placeholder:'Ex: 150',  required: true },
+      { cle:'body_weight',  label:'Poids du corps (kg)',        unite:'kg',   type:'number' as const, placeholder:'Ex: 75',   required: true },
+      { cle:'sq_charge',    label:'Squat 1RM (kg)',            unite:'kg',   type:'number' as const, placeholder:'Ex: 120' },
+      { cle:'bench_1rm',    label:'Bench Press 1RM (kg)',      unite:'kg',   type:'number' as const, placeholder:'Ex: 100' },
+      { cle:'bench_reps',   label:'Max reps bench au PDC',     unite:'reps', type:'number' as const, placeholder:'Ex: 15' },
+    ],
+  },
+  // ── Hyrox Endurance Fonctionnelle ────────────
+  'hyrox-endurance-wod': {
+    objectif: "Mesurer la capacité à enchaîner des mouvements fonctionnels sous fatigue — très représentatif de la 2ème moitié d'un Hyrox.",
+    conditions: ["Barre de traction fixe + espace sol plat", "Chronomètre visible", "Reposé 48h"],
+    echauffement: ["10 min mobilité", "1 série légère à 50% de chaque mouvement"],
+    etapes: ["5 rounds pour le temps : 20 tractions / 40 pompes / 60 squats", "Pas de repos imposé entre exercices ni entre rounds", "Chronométrer dès le départ de la 1ère traction jusqu'à la dernière squat"],
+    interpretation: ["< 12' (H) / < 16' (F) : niveau Alien", "Résultat directement comparé aux niveaux de référence ci-dessous"],
+    erreurs: ["Tractions incomplètes (menton sous la barre = invalide)", "Squats peu profonds (hanche sous genou requis)", "Pompes sans contact de la poitrine au sol"],
+    frequence: "1 fois par mois",
+    fields: [
+      { cle:'wod_time_sec', label:'Temps total (secondes)', unite:'s', type:'number' as const, placeholder:'Ex: 1080 (= 18:00)', required: true },
+    ],
+  },
+  // ── Hyrox Explosivité ─────────────────────────
+  'hyrox-explosivite': {
+    objectif: "Mesurer la puissance explosive des membres inférieurs sous 3 angles : saut horizontal unique, sauts répétés, sprint accéléré.",
+    conditions: ["Sol plat antidérapant", "Ruban de mesure au sol", "Chronométrage électronique ou assistant pour le sprint"],
+    echauffement: ["15 min cardio léger", "3 × 3 squats sautés progressifs", "Lignes hautes 2 × 20m"],
+    etapes: ["3 tentatives pour chaque exercice — retenir le meilleur", "Saut avant : pieds joints, propulsion maximale vers l'avant, mesurer de la pointe des pieds jusqu'au talon d'atterrissage", "Triple saut : 3 sauts enchaînés sans repositionnement, mesurer la distance totale", "Sprint 20m : départ lancé, chrono déclenché au premier mouvement"],
+    interpretation: ["Score Explosivité = moyenne des 3 sous-scores", "Le saut avant est le meilleur prédicteur de la puissance de BBJ"],
+    erreurs: ["Pas de préparation balistique = résultat sous-estimé", "Mal mesurer le triple saut (compter à partir du pied de départ)", "Sprint sur surface glissante (chaussures adaptées requis)"],
+    frequence: "1 fois par mois en préparation",
+    fields: [
+      { cle:'saut_avant_m',  label:'Saut avant (mètres)',        unite:'m',   type:'number' as const, placeholder:'Ex: 2.45', required: true },
+      { cle:'triple_saut_m', label:'Triple saut (mètres total)', unite:'m',   type:'number' as const, placeholder:'Ex: 7.10' },
+      { cle:'sprint20m_s',   label:'Sprint 20m (secondes)',      unite:'s',   type:'number' as const, placeholder:'Ex: 3.25' },
+    ],
+  },
+  // ── Cycling Z4 ───────────────────────────────
+  'cycling-z4': {
+    objectif: "Mesurer la durée maximale tenable à 95-105% du FTP (Zone 4) en un effort continu.",
+    conditions: ["Ergocycle ou home trainer avec capteur de puissance", "FTP connu et à jour", "Reposé 48h"],
+    echauffement: ["20 min montée progressive", "3 × 1 min à 100% FTP avec 2 min récup"],
+    etapes: ["Partir à 100% FTP et maintenir autant que possible", "Arrêter dès que la puissance chute > 5% pendant 30s consécutives", "Enregistrer la durée exacte"],
+    interpretation: ["Mesuré depuis vos meilleures sorties enregistrées ou manuellement", "> 55 min : profil Élite seuil / < 20 min : endurance seuil à développer"],
+    erreurs: ["Partir trop fort (dépasser 105% FTP détruit la durée)", "FTP pas à jour (fausse l'intensité cible)"],
+    frequence: "1 fois par cycle de 6 semaines",
+    fields: [
+      { cle:'z4_duration_min', label:'Durée à Z4 (minutes)', unite:'min', type:'number' as const, placeholder:'Ex: 35', required: true },
+    ],
+  },
+  // ── Cycling Grimpeur ─────────────────────────
+  'cycling-grimpeur': {
+    objectif: "Mesurer la puissance normalisée (W/kg) sur un effort de montée de 20 à 40 minutes.",
+    conditions: ["Montée de 20-40 min (Col ou segment Strava/Garmin)", "Capteur de puissance", "Conditions météo favorables"],
+    echauffement: ["30 min à allure endurance sur le plat", "3 × 2 min à FTP avant attaque de la montée"],
+    etapes: ["Attaquer la montée cible à effort maximal soutenu (20–40 min)", "Enregistrer la puissance normalisée et le poids du corps", "Calculer le ratio W/kg"],
+    interpretation: ["Calculé automatiquement depuis vos meilleures montées (filtrer segments > 4% de pente, durée 20-40 min)", "Ou saisir manuellement après analyse de votre fichier .fit"],
+    erreurs: ["Vent de face (sous-estime la puissance)", "Ne pas utiliser un segment court (< 15 min) qui sur-estime la capacité longue"],
+    frequence: "Début et fin de saison, ou à chaque nouveau col clé",
+    fields: [
+      { cle:'climb_wkg', label:'Puissance montée W/kg', unite:'W/kg', type:'number' as const, placeholder:'Ex: 3.6', required: true },
+    ],
+  },
+  // ── Running Endurance % ──────────────────────
+  'running-endurance-pct': {
+    objectif: "Mesurer l'efficacité aérobie : ratio vitesse marathon / VMA × 100.",
+    conditions: ["VMA connue et récente (< 3 mois)", "Meilleur temps marathon officiel ou enregistré"],
+    echauffement: ["N/A — basé sur des performances existantes"],
+    etapes: ["Convertir le temps marathon en vitesse (km/h)", "Diviser par la VMA × 100 pour obtenir le %", "Ex : marathon 3h30 (12 km/h) / VMA 16 km/h = 75%"],
+    interpretation: ["> 80% : profil marathonien efficace", "Un bon ratio indique que votre endurance est très développée par rapport à votre vitesse maximale"],
+    erreurs: ["VMA datée de plus de 6 mois (résultat peu fiable)", "Utiliser un temps marathon estimé plutôt que mesuré"],
+    frequence: "À chaque nouveau marathon / nouvelle VMA",
+    fields: [
+      { cle:'endurance_pct', label:'% VMA marathon', unite:'%', type:'number' as const, placeholder:'Ex: 75', required: true },
+      { cle:'marathon_time', label:'Temps marathon (mm:ss)', unite:'h:mm:ss', type:'string' as const, placeholder:'Ex: 3:30:00', helper:'Optionnel — pour référence' },
+      { cle:'vma_used',      label:'VMA utilisée', unite:'km/h', type:'number' as const, placeholder:'Ex: 16.0' },
+    ],
+  },
+  // ── Running 10km ─────────────────────────────
+  'running-10km': {
+    objectif: "Mesurer la performance sur 10 km — distance de référence pour la résistance à allure seuil.",
+    conditions: ["Piste ou route plate (<20m dénivelé)", "GPS de précision", "Conditions météo neutres (< 20°C, vent < 15 km/h)"],
+    echauffement: ["20 min à allure facile", "4 × 100m progressifs", "5 min marche"],
+    etapes: ["Courir 10 km à l'effort le plus soutenu possible", "Enregistrer le temps final (mm:ss)"],
+    interpretation: ["Référence mondiale : 26:24 (H, Joshua Cheptegei) / 29:01 (F, Beatrice Chebet)", "Bon niveau amateur H : < 40 min / F : < 46 min"],
+    erreurs: ["Partir trop vite sur le premier km", "Parcours non validé (dénivelé ou distance imprécise)"],
+    frequence: "1 fois par mois en préparation, 2-3 fois par saison",
+    fields: [
+      { cle:'time_10km_sec', label:'Temps 10km (secondes)', unite:'s', type:'number' as const, placeholder:'Ex: 2160 (= 36:00)', required: true },
+    ],
+  },
+  // ── Running Économie FC ──────────────────────
+  'running-economie-fc': {
+    objectif: "Mesurer l'efficacité de course via l'allure tenue à FC 150 bpm.",
+    conditions: ["Capteur FC thoracique", "Piste ou route plate", "Conditions thermoneutres (15-20°C)"],
+    echauffement: ["15 min à allure très facile jusqu'à FC stable"],
+    etapes: ["Courir à FC stable de 145-155 bpm pendant 20-30 min", "Relever l'allure moyenne (s/km) pendant la période stable", "Calculé automatiquement depuis vos sorties avec capteur FC"],
+    interpretation: ["Plus l'allure est rapide à FC 150, meilleure est l'économie de course", "Amélioration typique : 10-20 s/km en 3-6 mois d'entraînement"],
+    erreurs: ["FC instable (vent, chaleur, caféine)", "Capteur optique au poignet (FC moins précise)"],
+    frequence: "1 fois par mois — mesure de progression à long terme",
+    fields: [
+      { cle:'pace_fc150_sec', label:'Allure à FC150 (s/km)', unite:'s/km', type:'number' as const, placeholder:'Ex: 270 (= 4:30/km)', required: true },
+    ],
+  },
+  // ── Running Récupération FC ──────────────────
+  'running-recup-fc': {
+    objectif: "Mesurer la chute de FC dans la 1ère minute après un effort intense — indicateur de condition cardiovasculaire.",
+    conditions: ["Capteur FC thoracique", "Effort maximal soutenu 3-5 min juste avant", "Arrêt complet (assis ou couché)"],
+    echauffement: ["20 min montée progressive", "2 × 2 min à 95% FCmax"],
+    etapes: ["Réaliser un effort à > 90% FCmax pendant 3-5 min", "S'arrêter complètement en notant la FC max atteinte", "Relever la FC exactement 60s après l'arrêt", "Calculer la chute : FC_max − FC_60s"],
+    interpretation: ["Calculé automatiquement depuis vos activités avec FC enregistrées", "Une baisse > 30 bpm indique un très bon niveau de condition"],
+    erreurs: ["Continuer à marcher pendant la mesure (fausse la baisse)", "Utiliser la FC sur montre sans capteur thoracique"],
+    frequence: "1 fois par mois — évolue lentement",
+    fields: [
+      { cle:'fc_drop_bpm', label:'Chute FC en 1 minute (bpm)', unite:'bpm', type:'number' as const, placeholder:'Ex: 32', required: true },
     ],
   },
 }
@@ -1169,9 +1306,28 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
   const [histLoading, setHistLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [pendingDocs, setPendingDocs] = useState<{ file: File; name: string }[]>([])
+  const [gender, setGender]           = useState<'M' | 'F'>('M')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const testId = ot?.test.id ?? null
+
+  // Load athlete gender from Supabase
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb
+          .from('athlete_performance_profile')
+          .select('gender')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (data?.gender === 'f') setGender('F')
+      } catch { /* ignore */ }
+    }
+    void load()
+  }, [])
 
   const loadHistory = useCallback(async (testName: string, sport: string) => {
     setHistLoading(true)
@@ -1214,6 +1370,25 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
 
   function setVal(cle: string, v: string) { setVals(p => ({...p, [cle]: v})); setSaved(false) }
 
+  // Build compound vals before saving (compute ratios for force test)
+  function buildSaveVals(): Record<string, string> {
+    if (!ot) return vals
+    if (ot.test.id === 'hyrox-force') {
+      const bw = parseFloat(vals['body_weight'] ?? '') || 0
+      const out = { ...vals }
+      if (bw > 0) {
+        const dl = parseFloat(vals['dl_charge'] ?? '') || 0
+        if (dl > 0) out['dl_ratio']         = (dl / bw).toFixed(3)
+        const sq = parseFloat(vals['sq_charge'] ?? '') || 0
+        if (sq > 0) out['sq_ratio']         = (sq / bw).toFixed(3)
+        const b1 = parseFloat(vals['bench_1rm'] ?? '') || 0
+        if (b1 > 0) out['bench_1rm_ratio']  = (b1 / bw).toFixed(3)
+      }
+      return out
+    }
+    return vals
+  }
+
   async function handleSave() {
     if (!ot) return
     const protoNow = PROTOCOLS[ot.test.id]
@@ -1241,13 +1416,53 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
         if (up) uploadedDocs.push({ name: doc.name, path: up.path, size: doc.file.size, type: doc.file.type })
       }
 
+      const saveVals = buildSaveVals()
+
       await sb.from('test_results').insert({
         user_id: user.id,
         test_definition_id: defData?.id ?? null,
         date: new Date().toISOString().slice(0, 10),
-        valeurs: vals,
+        valeurs: saveVals,
         documents: uploadedDocs,
       })
+
+      // Also save structured score to performance_tests
+      const scoreResult = computeTestScoreResult(ot.test.id, saveVals, gender)
+      if (scoreResult) {
+        await sb.from('performance_tests').insert({
+          user_id:    user.id,
+          sport:      ot.sport,
+          test_type:  ot.test.id,
+          performed_at: new Date().toISOString(),
+          result:     JSON.stringify({ score: scoreResult.overall, level: scoreResult.level.label }),
+          value:      scoreResult.overall,
+          score:      parseFloat(scoreResult.overall.toFixed(2)),
+          level:      scoreResult.level.label,
+          gender:     gender.toLowerCase(),
+        })
+
+        // Update performance_scores radar — for select tests
+        const axisMap: Record<string, { sport: string; axis: string; rawKey?: string; rawFn?: (v: Record<string,string>) => number }> = {
+          'cp20':               { sport: 'cycling', axis: 'ftp_wkg',        rawKey: 'ftp_wkg' },
+          'vo2max-cycling':     { sport: 'cycling', axis: 'pma_wkg',        rawKey: 'pma_wkg' },
+          'vma':                { sport: 'running', axis: 'vma',            rawKey: 'vma_kmh' },
+          'running-10km':       { sport: 'running', axis: 'pace_10k',       rawKey: 'time_10km_sec',
+            rawFn: (v) => { const t = parseFloat(v['time_10km_sec']??''); return t > 0 ? t / 10 : 0 } }, // s/km
+          'running-economie-fc':{ sport: 'running', axis: 'pace_semi',      rawKey: 'pace_fc150_sec' },
+          'cycling-grimpeur':   { sport: 'cycling', axis: 'end4h_wkg',      rawKey: 'climb_wkg' },
+        }
+        const map = axisMap[ot.test.id]
+        if (map) {
+          const rawVal = map.rawFn ? map.rawFn(saveVals) : parseFloat(saveVals[map.rawKey ?? ''] ?? '')
+          if (rawVal > 0) {
+            await sb.from('performance_scores').upsert(
+              { user_id: user.id, sport: map.sport, axis: map.axis, raw_value: rawVal },
+              { onConflict: 'user_id,sport,axis' }
+            )
+          }
+        }
+      }
+
       setSaved(true)
       setVals({})
       setPendingDocs([])
@@ -1374,35 +1589,79 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
             </div>
 
             {/* Saisie des résultats */}
-            {proto.fields.length > 0 && (
-              <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
-                <SH icon={<IcoSave/>} label="Saisir mes résultats" color={cfg.color}/>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
-                  {proto.fields.map(f => (
-                    <div key={f.cle} style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                      <label style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600 }}>
-                        {f.label}{f.unite ? <span style={{ color:'var(--text-dim)', fontWeight:400 }}> ({f.unite})</span> : null}
-                        {f.required && <span style={{ color:cfg.color }}>*</span>}
-                      </label>
-                      <input
-                        value={vals[f.cle] ?? ''}
-                        onChange={e => setVal(f.cle, e.target.value)}
-                        placeholder={f.placeholder ?? (f.unite ? `En ${f.unite}` : '—')}
-                        style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', width:'100%', boxSizing:'border-box' as const }}
-                      />
-                      {f.helper && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{f.helper}</span>}
+            {proto.fields.length > 0 && (() => {
+              const valsForScore = ot.test.id === 'hyrox-force' ? buildSaveVals() : vals
+              const scoreResult = computeTestScoreResult(ot.test.id, valsForScore, gender)
+              const hasBench = ot.test.id in TEST_BENCHMARKS
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
+                    {/* Gender toggle in header */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                      <SH icon={<IcoSave/>} label="Saisir mes résultats" color={cfg.color}/>
+                      {hasBench && (
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>Genre :</span>
+                          <div style={{ display:'flex', background:'var(--bg)', borderRadius:7, overflow:'hidden', border:'1px solid var(--border)' }}>
+                            {(['M','F'] as const).map(g => (
+                              <button key={g} onClick={() => setGender(g)} style={{ padding:'3px 11px', background:gender===g?cfg.color:'transparent', border:'none', cursor:'pointer', color:gender===g?'#fff':'var(--text-dim)', fontSize:11, fontWeight:700, transition:'background 0.15s' }}>{g}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
+                      {proto.fields.map(f => (
+                        <div key={f.cle} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                          <label style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600 }}>
+                            {f.label}{f.unite ? <span style={{ color:'var(--text-dim)', fontWeight:400 }}> ({f.unite})</span> : null}
+                            {f.required && <span style={{ color:cfg.color }}>*</span>}
+                          </label>
+                          <input
+                            value={vals[f.cle] ?? ''}
+                            onChange={e => setVal(f.cle, e.target.value)}
+                            placeholder={f.placeholder ?? (f.unite ? `En ${f.unite}` : '—')}
+                            style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', width:'100%', boxSizing:'border-box' as const }}
+                          />
+                          {f.helper && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{f.helper}</span>}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => { void handleSave() }}
+                      disabled={saving}
+                      style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
+                    >
+                      {saved ? '✓ Résultats enregistrés' : saving ? 'Enregistrement…' : 'Enregistrer ce test'}
+                    </button>
+                  </div>
+
+                  {/* Live score display */}
+                  {scoreResult && (
+                    <TestScoreDisplay result={scoreResult} accentColor={cfg.color} />
+                  )}
+
+                  {/* Level reference table — always visible for scored tests */}
+                  {hasBench && (
+                    <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:12 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth={2}><path d="M3 3h18M3 9h18M3 15h18M3 21h18"/></svg>
+                        <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color }}>Niveaux de référence</span>
+                        {scoreResult && (
+                          <ScoreBadge score={scoreResult.overall} level={scoreResult.level} size="sm" />
+                        )}
+                      </div>
+                      <LevelTable
+                        testId={ot.test.id}
+                        gender={gender}
+                        currentScore={scoreResult?.overall ?? null}
+                        accentColor={cfg.color}
+                      />
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => { void handleSave() }}
-                  disabled={saving}
-                  style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
-                >
-                  {saved ? '✓ Résultats enregistrés' : saving ? 'Enregistrement…' : 'Enregistrer ce test'}
-                </button>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Documents */}
             <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>

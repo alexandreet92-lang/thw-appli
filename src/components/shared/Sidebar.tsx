@@ -238,6 +238,14 @@ function NavItem({
   href: string; label: string; icon: React.ReactNode
   active: boolean; onClick?: () => void
 }) {
+  function press(el: HTMLElement) {
+    el.style.transform = 'scale(0.93)'
+    el.style.opacity = '0.75'
+  }
+  function release(el: HTMLElement) {
+    el.style.transform = 'scale(1)'
+    el.style.opacity = '1'
+  }
   return (
     <Link
       href={href}
@@ -253,7 +261,7 @@ function NavItem({
         color: active ? '#00c8e0' : 'var(--text-mid)',
         background: active ? 'rgba(0,200,224,0.10)' : 'transparent',
         borderLeft: `3px solid ${active ? '#00c8e0' : 'transparent'}`,
-        transition: 'background 0.14s, color 0.14s',
+        transition: 'background 0.14s, color 0.14s, transform 0.12s ease, opacity 0.12s ease',
       }}
       onMouseEnter={e => {
         if (!active) {
@@ -266,7 +274,12 @@ function NavItem({
           (e.currentTarget as HTMLElement).style.background = 'transparent'
           ;(e.currentTarget as HTMLElement).style.color = 'var(--text-mid)'
         }
+        release(e.currentTarget as HTMLElement)
       }}
+      onMouseDown={e => press(e.currentTarget as HTMLElement)}
+      onMouseUp={e => release(e.currentTarget as HTMLElement)}
+      onTouchStart={e => press(e.currentTarget as HTMLElement)}
+      onTouchEnd={e => release(e.currentTarget as HTMLElement)}
     >
       <span style={{ flexShrink: 0, opacity: active ? 1 : 0.6, display: 'flex' }}>
         {icon}
@@ -302,10 +315,30 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           textDecoration: 'none',
           borderBottom: '1px solid var(--nav-border)',
           flexShrink: 0,
-          transition: 'background 0.14s',
+          transition: 'background 0.14s, transform 0.12s ease, opacity 0.12s ease',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.05)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.background = 'transparent'
+          ;(e.currentTarget as HTMLElement).style.transform = 'scale(1)'
+          ;(e.currentTarget as HTMLElement).style.opacity = '1'
+        }}
+        onMouseDown={e => {
+          (e.currentTarget as HTMLElement).style.transform = 'scale(0.96)'
+          ;(e.currentTarget as HTMLElement).style.opacity = '0.75'
+        }}
+        onMouseUp={e => {
+          (e.currentTarget as HTMLElement).style.transform = 'scale(1)'
+          ;(e.currentTarget as HTMLElement).style.opacity = '1'
+        }}
+        onTouchStart={e => {
+          (e.currentTarget as HTMLElement).style.transform = 'scale(0.96)'
+          ;(e.currentTarget as HTMLElement).style.opacity = '0.75'
+        }}
+        onTouchEnd={e => {
+          (e.currentTarget as HTMLElement).style.transform = 'scale(1)'
+          ;(e.currentTarget as HTMLElement).style.opacity = '1'
+        }}
       >
         <Avatar
           url={profile?.avatar_url ?? null}

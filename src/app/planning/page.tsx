@@ -7704,13 +7704,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             { label:'Z6', name:'Anaérobie', c:'#991B1B', lo:Math.round(ftp*1.20), hi:Math.round(ftp*1.50) },
             { label:'Z7', name:'Sprint',    c:'#6B21A8', lo:Math.round(ftp*1.50), hi:null },
           ]
-          const ZONES_FC: ZoneDef[] | null = lthr ? [
-            { label:'Z1', name:'Récup',     c:'#9ca3af', lo:0,                          hi:Math.round(lthr*0.80) },
-            { label:'Z2', name:'Endurance', c:'#22c55e', lo:Math.round(lthr*0.80), hi:Math.round(lthr*0.89) },
-            { label:'Z3', name:'Tempo',     c:'#eab308', lo:Math.round(lthr*0.89), hi:Math.round(lthr*0.95) },
-            { label:'Z4', name:'Seuil',     c:'#f97316', lo:Math.round(lthr*0.95), hi:Math.round(lthr*1.02) },
-            { label:'Z5', name:'VO2max',    c:'#ef4444', lo:Math.round(lthr*1.02), hi:null },
-          ] : null
+          const lthrVal = lthr ?? 170  // default 170 bpm if no LTHR set
+          const ZONES_FC: ZoneDef[] = [
+            { label:'Z1', name:'Récup',     c:'#9ca3af', lo:0,                               hi:Math.round(lthrVal*0.80) },
+            { label:'Z2', name:'Endurance', c:'#22c55e', lo:Math.round(lthrVal*0.80), hi:Math.round(lthrVal*0.89) },
+            { label:'Z3', name:'Tempo',     c:'#eab308', lo:Math.round(lthrVal*0.89), hi:Math.round(lthrVal*0.95) },
+            { label:'Z4', name:'Seuil',     c:'#f97316', lo:Math.round(lthrVal*0.95), hi:Math.round(lthrVal*1.02) },
+            { label:'Z5', name:'VO2max',    c:'#ef4444', lo:Math.round(lthrVal*1.02), hi:null },
+          ]
 
           // ── Carb estimation ───────────────────────────────────
           const carbEst = (() => {
@@ -7730,11 +7731,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <div style={{ flex: '0 0 auto' }}>
                   {renderWheel(ZONES_W, zonePctW, 'W', mobile ? 160 : 190)}
                 </div>
-                {ZONES_FC && (
-                  <div style={{ flex: '0 0 auto' }}>
-                    {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', mobile ? 130 : 150)}
-                  </div>
-                )}
+                <div style={{ flex: '0 0 auto' }}>
+                  {renderWheel(ZONES_FC, new Array(5).fill(0), 'FC', mobile ? 130 : 150)}
+                </div>
                 {/* Carb estimate — colonne droite */}
                 {carbEst && (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: 8, paddingLeft: 8 }}>

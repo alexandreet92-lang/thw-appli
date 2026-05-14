@@ -161,6 +161,54 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
   )
 }
 
+// ── Profil Spécifique : champs par sport ──────────────────────────
+type SportSpecId = 'running' | 'cycling' | 'swimming' | 'hyrox'
+interface SportSpecField { key: string; label: string; unit?: string; placeholder?: string; type?: 'number' | 'text' }
+const SPORT_SPEC_FIELDS: Record<SportSpecId, SportSpecField[]> = {
+  running: [
+    { key:'fc_ef',          label:'FC Endurance Fondamentale', unit:'bpm' },
+    { key:'fc_sl1',         label:'FC Seuil 1 (SL1)',          unit:'bpm' },
+    { key:'fc_sl2',         label:'FC Seuil 2 (SL2)',          unit:'bpm' },
+    { key:'allure_ef_low',  label:'Allure EF basse',           unit:'/km',  placeholder:'ex: 5:30' },
+    { key:'allure_ef_high', label:'Allure EF haute',           unit:'/km',  placeholder:'ex: 5:00' },
+    { key:'allure_sl1',     label:'Allure SL1',                unit:'/km',  placeholder:'ex: 4:30' },
+    { key:'allure_sl2',     label:'Allure SL2',                unit:'/km',  placeholder:'ex: 4:10' },
+    { key:'allure_vma',     label:'Allure VMA',                unit:'/km',  placeholder:'ex: 3:15' },
+  ],
+  cycling: [
+    { key:'fc_ef',          label:'FC Endurance Fondamentale', unit:'bpm' },
+    { key:'fc_sl1',         label:'FC SL1',                    unit:'bpm' },
+    { key:'fc_sl2',         label:'FC SL2',                    unit:'bpm' },
+    { key:'watts_ef_low',   label:'Watts EF bas',              unit:'W' },
+    { key:'watts_ef_high',  label:'Watts EF haut',             unit:'W' },
+    { key:'watts_sl1',      label:'Watts SL1',                 unit:'W' },
+    { key:'watts_sl2',      label:'Watts SL2',                 unit:'W' },
+    { key:'watts_pma',      label:'Watts PMA',                 unit:'W' },
+    { key:'max_power',      label:'Puissance max sprint',      unit:'W' },
+  ],
+  swimming: [
+    { key:'css',            label:'CSS (allure seuil)',         unit:'/100m', placeholder:'ex: 1:28' },
+    { key:'t400m',          label:'400m chrono référence',     unit:'mm:ss', placeholder:'ex: 5:52' },
+  ],
+  hyrox: [
+    { key:'wall_ball_max',  label:'Wall Ball max reps',        unit:'reps' },
+    { key:'run_compromised',label:'Allure run compromised',    unit:'/km',   placeholder:'ex: 4:05' },
+    { key:'farmer_max_m',   label:'Farmer Carry max distance', unit:'m' },
+    { key:'bbj_100m',       label:'BBJ 100m temps',            unit:'mm:ss' },
+    { key:'lunges_200m',    label:'Lunges 200m temps',         unit:'mm:ss' },
+    { key:'sled_push_100m', label:'Sled Push 100m',            unit:'mm:ss' },
+    { key:'sled_pull_100m', label:'Sled Pull 100m',            unit:'mm:ss' },
+    { key:'ski_erg_2000m',  label:'SkiErg 2000m',              unit:'mm:ss' },
+    { key:'row_2000m',      label:'Rowing 2000m',              unit:'mm:ss' },
+  ],
+}
+const SPORT_SPEC_TABS: { id: SportSpecId; label: string; color: string }[] = [
+  { id:'running',  label:'Running',  color:'#22c55e' },
+  { id:'cycling',  label:'Cyclisme', color:'#00c8e0' },
+  { id:'swimming', label:'Natation', color:'#38bdf8' },
+  { id:'hyrox',    label:'Hyrox',    color:'#ef4444' },
+]
+
 // ════════════════════════════════════════════════
 // ONGLET PROFIL
 // ════════════════════════════════════════════════
@@ -172,21 +220,167 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   onAnalyzeProfile?: () => Promise<void>
 }) {
   const [editing,   setEditing]   = useState(false)
+  const [saving,    setSaving]    = useState(false)
+  const [savedOk,   setSavedOk]   = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [profLoading, setProfLoading] = useState(true)
+
+  // Profil Spécifique
+  const [specSport,  setSpecSport]  = useState<SportSpecId>('running')
+  const [specParams, setSpecParams] = useState<Record<SportSpecId, Record<string, string>>>({
+    running: {}, cycling: {}, swimming: {}, hyrox: {},
+  })
+  const [specSaving, setSpecSaving] = useState(false)
+  const [specSavedOk,setSpecSavedOk]= useState(false)
+
   const wkg = (p.ftp / p.weight).toFixed(2)
+
+  // ── Charger depuis Supabase au montage ─────────────────────────
+  useEffect(() => {
+    void (async () => {
+      setProfLoading(true)
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+
+        const [perfRes, profilesRes, specRes] = await Promise.all([
+          sb.from('athlete_performance_profile')
+            .select('ftp_watts,hr_max,hr_rest,lthr_run,threshold_pace_s_km,css_s_100m,vma_km_h,vo2max_ml_kg_min,age_years')
+            .eq('user_id', user.id).maybeSingle(),
+          sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle(),
+          sb.from('athlete_sport_profile').select('sport,params').eq('user_id', user.id),
+        ])
+
+        const perf = perfRes.data
+        const prof = profilesRes.data
+
+        if (perf || prof) {
+          setP(prev => ({
+            ...prev,
+            ftp:           perf?.ftp_watts           ?? prev.ftp,
+            hrMax:         perf?.hr_max              ?? prev.hrMax,
+            hrRest:        perf?.hr_rest             ?? prev.hrRest,
+            lthr:          perf?.lthr_run            ?? prev.lthr,
+            vma:           perf?.vma_km_h            ?? prev.vma,
+            vo2max:        perf?.vo2max_ml_kg_min     ?? prev.vo2max,
+            age:           perf?.age_years           ?? prev.age,
+            weight:        prof?.weight_kg           ?? prev.weight,
+            thresholdPace: perf?.threshold_pace_s_km
+              ? `${Math.floor(perf.threshold_pace_s_km / 60)}:${String(perf.threshold_pace_s_km % 60).padStart(2,'0')}`
+              : prev.thresholdPace,
+            css: perf?.css_s_100m
+              ? `${Math.floor(perf.css_s_100m / 60)}:${String(perf.css_s_100m % 60).padStart(2,'0')}`
+              : prev.css,
+          }))
+        }
+
+        if (specRes.data) {
+          const merged: Record<SportSpecId, Record<string, string>> = { running: {}, cycling: {}, swimming: {}, hyrox: {} }
+          for (const row of specRes.data as { sport: string; params: Record<string, string> }[]) {
+            if (row.sport in merged) {
+              merged[row.sport as SportSpecId] = row.params ?? {}
+            }
+          }
+          setSpecParams(merged)
+        }
+      } finally {
+        setProfLoading(false)
+      }
+    })()
+  }, [setP])
+
+  // ── Sauvegarder le profil global ───────────────────────────────
+  async function handleSaveGlobal() {
+    setSaving(true)
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      // Parse allure seuil → secondes/km
+      const tParts = p.thresholdPace.split(':').map(Number)
+      const threshSec = tParts.length === 2 ? tParts[0] * 60 + (tParts[1] || 0) : 0
+
+      // Parse CSS → secondes/100m
+      const cParts = p.css.split(':').map(Number)
+      const cssSec = cParts.length === 2 ? cParts[0] * 60 + (cParts[1] || 0) : 0
+
+      await Promise.all([
+        sb.from('athlete_performance_profile').upsert({
+          user_id:              user.id,
+          ftp_watts:            p.ftp,
+          hr_max:               p.hrMax,
+          hr_rest:              p.hrRest,
+          lthr_run:             p.lthr,
+          lthr_bike:            p.lthr,
+          vma_km_h:             p.vma,
+          vo2max_ml_kg_min:     p.vo2max,
+          age_years:            p.age,
+          threshold_pace_s_km:  threshSec || null,
+          css_s_100m:           cssSec || null,
+          updated_at:           new Date().toISOString(),
+        }, { onConflict: 'user_id' }),
+        sb.from('profiles').upsert({ id: user.id, weight_kg: p.weight }, { onConflict: 'id' }),
+      ])
+      setSavedOk(true)
+      setTimeout(() => setSavedOk(false), 2500)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Sauvegarder le profil spécifique ───────────────────────────
+  async function handleSaveSpec() {
+    setSpecSaving(true)
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      await sb.from('athlete_sport_profile').upsert({
+        user_id:    user.id,
+        sport:      specSport,
+        params:     specParams[specSport],
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,sport' })
+      setSpecSavedOk(true)
+      setTimeout(() => setSpecSavedOk(false), 2500)
+    } finally {
+      setSpecSaving(false)
+    }
+  }
 
   function isSel(label: string, value: string | number, unit?: string) {
     const v = `${value}${unit ? ` ${unit}` : ''}`
     return selectedDatum?.label === label && selectedDatum?.value === v
   }
 
+  function setSpecField(key: string, val: string) {
+    setSpecParams(prev => ({ ...prev, [specSport]: { ...prev[specSport], [key]: val } }))
+  }
+
+  if (profLoading) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 0', color:'var(--text-dim)', fontSize:13, gap:10 }}>
+        <span style={{ width:16, height:16, border:'2px solid var(--border)', borderTopColor:'#00c8e0', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+        Chargement du profil…
+      </div>
+    )
+  }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* ── Profil Global ── */}
       <Card>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap' as const, gap:8 }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil athlete</h2>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Parametres physiologiques</p>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
+              <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#00c8e0,#5b6fff)' }}/>
+              <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil Global</h2>
+            </div>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0 11px' }}>Paramètres physiologiques transversaux</p>
           </div>
           <div style={{ display:'flex', gap:8 }}>
             {!editing && onAnalyzeProfile && (
@@ -195,16 +389,28 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
                 disabled={analyzing}
                 style={{ padding:'6px 14px', borderRadius:9, background:'linear-gradient(135deg,#f97316,#fb923c)', border:'1px solid transparent', color:'#fff', fontSize:12, cursor:analyzing?'not-allowed':'pointer', fontWeight:600, opacity:analyzing?0.7:1, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' as const }}
               >
-                {analyzing
-                  ? <><span style={{ width:11, height:11, border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>Analyse…</>
-                  : 'Analyser'
-                }
+                {analyzing ? <><span style={{ width:11, height:11, border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>Analyse…</> : 'Analyser'}
               </button>
             )}
-            <button onClick={() => setEditing(!editing)}
-              style={{ padding:'6px 14px', borderRadius:9, background:editing?'linear-gradient(135deg,#00c8e0,#5b6fff)':'var(--bg-card2)', border:`1px solid ${editing?'transparent':'var(--border)'}`, color:editing?'#fff':'var(--text-mid)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
-              {editing ? 'Sauvegarder' : 'Modifier'}
-            </button>
+            {editing ? (
+              <>
+                <button onClick={() => setEditing(false)}
+                  style={{ padding:'6px 12px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
+                  Annuler
+                </button>
+                <button
+                  onClick={() => { void handleSaveGlobal() }}
+                  disabled={saving}
+                  style={{ padding:'6px 14px', borderRadius:9, background:savedOk?'rgba(34,197,94,0.25)':'linear-gradient(135deg,#00c8e0,#5b6fff)', border:`1px solid ${savedOk?'rgba(34,197,94,0.5)':'transparent'}`, color:savedOk?'#22c55e':'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:600, opacity:saving?0.7:1 }}>
+                  {saving ? 'Enregistrement…' : savedOk ? '✓ Enregistré' : 'Enregistrer'}
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setEditing(true)}
+                style={{ padding:'6px 14px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
+                Modifier
+              </button>
+            )}
           </div>
         </div>
         {editing ? (
@@ -234,25 +440,65 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
         )}
       </Card>
 
+      {/* ── Profil Spécifique ── */}
       <Card>
-        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:'0 0 14px' }}>Niveau estime</h2>
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
+            <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#f97316,#ef4444)' }}/>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil Spécifique</h2>
+          </div>
+          <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0 11px' }}>Benchmarks personnels par discipline — références de forme actuelles</p>
+        </div>
+        {/* Sport tabs */}
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' as const, marginBottom:14 }}>
+          {SPORT_SPEC_TABS.map(t => (
+            <button key={t.id} onClick={() => setSpecSport(t.id)} style={{
+              padding:'5px 13px', borderRadius:8, border:'1px solid',
+              borderColor: specSport === t.id ? t.color : 'var(--border)',
+              background: specSport === t.id ? `${t.color}15` : 'var(--bg-card2)',
+              color: specSport === t.id ? t.color : 'var(--text-mid)',
+              fontSize:11, fontWeight: specSport === t.id ? 700 : 400, cursor:'pointer', transition:'all 0.15s',
+            }}>{t.label}</button>
+          ))}
+        </div>
+        {/* Fields grid */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:9 }} className="md:grid-cols-3">
+          {SPORT_SPEC_FIELDS[specSport].map(f => (
+            <div key={f.key} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              <label style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)' }}>
+                {f.label}{f.unit && <span style={{ fontWeight:400, marginLeft:3, textTransform:'none' as const }}>({f.unit})</span>}
+              </label>
+              <input
+                type="text"
+                value={specParams[specSport][f.key] ?? ''}
+                onChange={e => setSpecField(f.key, e.target.value)}
+                placeholder={f.placeholder ?? (f.unit ? `En ${f.unit}` : '—')}
+                style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => { void handleSaveSpec() }}
+          disabled={specSaving}
+          style={{ marginTop:12, width:'100%', padding:'9px', borderRadius:10, background:specSavedOk?'rgba(34,197,94,0.20)':SPORT_SPEC_TABS.find(t=>t.id===specSport)!.color+'22', color:specSavedOk?'#22c55e':SPORT_SPEC_TABS.find(t=>t.id===specSport)!.color, fontSize:12, fontWeight:700, cursor:specSaving?'not-allowed':'pointer', border:`1px solid ${specSavedOk?'rgba(34,197,94,0.4)':SPORT_SPEC_TABS.find(t=>t.id===specSport)!.color+'40'}`, transition:'all 0.2s' }}
+        >
+          {specSaving ? 'Enregistrement…' : specSavedOk ? '✓ Benchmarks enregistrés' : `Enregistrer benchmarks ${SPORT_SPEC_TABS.find(t=>t.id===specSport)!.label}`}
+        </button>
+      </Card>
+
+      {/* ── Niveau estimé ── */}
+      <Card>
+        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:'0 0 14px' }}>Niveau estimé</h2>
         {[
-          { label:'W/kg',    val:parseFloat(wkg), max:6,  display:`${wkg} W/kg`,           color:'#00c8e0', desc:parseFloat(wkg)>=4.5?'Expert':parseFloat(wkg)>=3.5?'Avance':'Intermediaire' },
-          { label:'VO2max',  val:p.vo2max,        max:80, display:`${p.vo2max} ml/kg/min`,  color:'#a855f7', desc:p.vo2max>=65?'Elite':p.vo2max>=55?'Eleve':'Moyen' },
-          { label:'FC repos',val:80-p.hrRest,     max:50, display:`${p.hrRest} bpm`,        color:'#22c55e', desc:p.hrRest<=40?'Elite':p.hrRest<=50?'Eleve':'Moyen' },
+          { label:'W/kg',    val:parseFloat(wkg), max:6,  display:`${wkg} W/kg`,           color:'#00c8e0', desc:parseFloat(wkg)>=4.5?'Expert':parseFloat(wkg)>=3.5?'Avancé':'Intermédiaire' },
+          { label:'VO2max',  val:p.vo2max,        max:80, display:`${p.vo2max} ml/kg/min`,  color:'#a855f7', desc:p.vo2max>=65?'Élite':p.vo2max>=55?'Élevé':'Moyen' },
+          { label:'FC repos',val:80-p.hrRest,     max:50, display:`${p.hrRest} bpm`,        color:'#22c55e', desc:p.hrRest<=40?'Élite':p.hrRest<=50?'Élevé':'Moyen' },
         ].map(item => {
           const sel = selectedDatum?.label === item.label
           return (
-            <div
-              key={item.label}
-              onClick={() => onSelect(item.label, item.display)}
-              style={{
-                marginBottom:12, padding:'8px 10px', borderRadius:10, cursor:'pointer',
-                background: sel ? `${item.color}10` : undefined,
-                border: `1px solid ${sel ? item.color+'55' : 'transparent'}`,
-                transition:'background 0.15s, border-color 0.15s',
-              }}
-            >
+            <div key={item.label} onClick={() => onSelect(item.label, item.display)}
+              style={{ marginBottom:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', background:sel?`${item.color}10`:undefined, border:`1px solid ${sel?item.color+'55':'transparent'}`, transition:'background 0.15s, border-color 0.15s' }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                 <span style={{ fontSize:12, color:'var(--text-mid)' }}>{item.label}</span>
                 <div style={{ display:'flex', gap:8, alignItems:'center' }}>

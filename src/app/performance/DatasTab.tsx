@@ -478,9 +478,9 @@ function HyroxTotalChart({ races, bestId, bestByYear }: {
 
 // ── HyroxTestsBandeau — résumé des tests Hyrox ───────────────────
 const HYROX_TESTS_DEF = [
-  { id: 'hyrox-force',         label: 'Force',          icon: '🏋️' },
-  { id: 'hyrox-endurance-wod', label: 'Endurance WOD',  icon: '💪' },
-  { id: 'hyrox-explosivite',   label: 'Explosivité',    icon: '⚡' },
+  { id: 'hyrox-force',         label: 'Force',                   urlTest: 'force'                   },
+  { id: 'hyrox-endurance-wod', label: 'Endurance Fonctionnelle', urlTest: 'endurance-fonctionnelle' },
+  { id: 'hyrox-explosivite',   label: 'Explosivité',             urlTest: 'explosivite'             },
 ] as const
 
 const HYROX_LEVEL_COLOR: Record<string, string> = {
@@ -495,6 +495,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
   type TestRow = { test_type: string; score: number | null; level: string | null; performed_at: string }
   const [tests,   setTests]   = useState<TestRow[]>([])
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     const load = async () => {
@@ -514,6 +515,10 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
   }, [])
 
   const getLatest = (id: string) => tests.find(t => t.test_type === id) ?? null
+
+  function goToTest(urlTest: string) {
+    router.push(`/performance?tab=tests&sport=hyrox&test=${urlTest}`)
+  }
 
   return (
     <Card style={{ padding: '14px 16px' }}>
@@ -548,15 +553,22 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
             const latest   = getLatest(t.id)
             const lvlColor = latest?.level ? (HYROX_LEVEL_COLOR[latest.level] ?? '#ef4444') : 'var(--text-dim)'
             return (
-              <div key={t.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '9px 12px', borderRadius: 9,
-                background: latest ? 'rgba(239,68,68,0.06)' : 'var(--bg-card2)',
-                border: `1px solid ${latest ? 'rgba(239,68,68,0.18)' : 'var(--border)'}`,
-              }}>
-                {/* Left */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                  <span style={{ fontSize: 16 }}>{t.icon}</span>
+              <div
+                key={t.id}
+                onClick={() => goToTest(t.urlTest)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 12px', borderRadius: 9, cursor: 'pointer',
+                  background: latest ? 'rgba(239,68,68,0.06)' : 'var(--bg-card2)',
+                  border: `1px solid ${latest ? 'rgba(239,68,68,0.18)' : 'var(--border)'}`,
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}>
+                {/* Left — colored dot + label */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: latest ? '#ef4444' : 'var(--text-dim)',
+                  }} />
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'Syne,sans-serif' }}>{t.label}</p>
                     {latest && (
@@ -567,7 +579,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                   </div>
                 </div>
                 {/* Right */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {latest ? (
                     <>
                       {latest.level && (
@@ -581,13 +593,16 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                       )}
                       {latest.score !== null && (
                         <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
-                          Score {latest.score.toFixed(1)}
+                          {latest.score.toFixed(1)}
                         </span>
                       )}
                     </>
                   ) : (
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>Non réalisé</span>
                   )}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
                 </div>
               </div>
             )

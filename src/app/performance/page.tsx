@@ -1937,13 +1937,27 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
 // ════════════════════════════════════════════════
 // ONGLET TESTS
 // ════════════════════════════════════════════════
-function TestsTab({ profile, onAnalyzeTest }: {
+function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId }: {
   profile: typeof INIT_PROFILE
   onAnalyzeTest?: (test: TestDef) => Promise<void>
+  initialSport?: TestSport
+  initialTestId?: string
 }) {
-  const [testSport,      setTestSport]      = useState<TestSport>('running')
+  const [testSport,      setTestSport]      = useState<TestSport>(initialSport ?? 'running')
   const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
   const [showHistorique, setShowHistorique] = useState(false)
+
+  // Open specific test on mount when navigated via URL params
+  useEffect(() => {
+    if (!initialSport || !initialTestId) return
+    const sport = initialSport
+    const found = TESTS[sport]?.find(t => t.id === initialTestId)
+    if (found) {
+      setTestSport(sport)
+      setOpenTest({ sport, test: found })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const cfg   = TEST_SPORT_TABS.find(t => t.id === testSport)!
   const tests = TESTS[testSport]
@@ -2014,6 +2028,13 @@ function TestsTab({ profile, onAnalyzeTest }: {
 // ════════════════════════════════════════════════
 // PAGE
 // ════════════════════════════════════════════════
+// URL param → internal test ID mapping
+const HYROX_TEST_URL_MAP: Record<string, string> = {
+  'force':                   'hyrox-force',
+  'endurance-fonctionnelle': 'hyrox-endurance-wod',
+  'explosivite':             'hyrox-explosivite',
+}
+
 export default function PerformancePage() {
   const [tab, setTab]                   = useState<PerfTab>('profil')
   const [profile, setProfile]           = useState({ ...INIT_PROFILE })
@@ -2022,6 +2043,24 @@ export default function PerformancePage() {
   const [aiPrefill, setAiPrefill]       = useState('')
   const [aiInitLabel, setAiInitLabel]   = useState<string | undefined>(undefined)
   const [aiInitMsg,   setAiInitMsg]     = useState<string | undefined>(undefined)
+  const [initialTest, setInitialTest]   = useState<{ sport: TestSport; testId: string } | null>(null)
+
+  // Read URL params on first mount — navigate to specific test if needed
+  useEffect(() => {
+    const params   = new URLSearchParams(window.location.search)
+    const tabParam  = params.get('tab')
+    const sportParam = params.get('sport')
+    const testParam  = params.get('test')
+    if (tabParam === 'tests') {
+      setTab('tests')
+      if (sportParam && testParam) {
+        const sport  = sportParam as TestSport
+        const testId = HYROX_TEST_URL_MAP[testParam] ?? testParam
+        setInitialTest({ sport, testId })
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function onSelectDatum(label: string, value: string) {
     setSelectedDatum(prev =>
@@ -2128,6 +2167,8 @@ export default function PerformancePage() {
         <TestsTab
           profile={profile}
           onAnalyzeTest={handleAnalyzeTest}
+          initialSport={initialTest?.sport}
+          initialTestId={initialTest?.testId}
         />
       )}
 

@@ -755,6 +755,20 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [visible, setVisible] = useState(false)
+  const [closing, setClosing] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 10)
+    return () => clearTimeout(t)
+  }, [])
+
+  function handleClose() {
+    setClosing(true)
+    setTimeout(() => onClose(), 300)
+  }
+
+  const shown = visible && !closing
 
   async function handleSave() {
     setSaving(true)
@@ -789,10 +803,11 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 9000,
-        background: 'rgba(0,0,0,0.65)',
+        background: shown ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0)',
         display: 'flex', alignItems: 'flex-end',
+        transition: 'background 300ms ease-out',
       }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      onClick={e => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div style={{
         width: '100%',
@@ -803,6 +818,8 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         padding: '24px 20px',
         maxHeight: '90vh',
         overflowY: 'auto',
+        transform: `translateY(${shown ? '0%' : '100%'})`,
+        transition: 'transform 300ms ease-out',
       }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -815,7 +832,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 22, cursor: 'pointer', padding: 4 }}
           >
             ×
@@ -860,7 +877,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               flex: 1, padding: '12px', borderRadius: 10,
               background: 'rgba(255,255,255,0.07)', border: 'none',

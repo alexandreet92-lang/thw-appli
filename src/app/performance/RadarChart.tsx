@@ -75,12 +75,13 @@ interface AxisData {
 // ─── Benchmark definitions ────────────────────────────────────────────────────
 
 // CYCLING (H / F)
+// Order = radar position: [0]=top, [1]=upper-right, [2]=lower-right, [3]=lower-left, [4]=upper-left
 const CYCLING_AXES: AxisDef[] = [
   {
     key: 'ftp_wkg',
-    label: 'FTP',
+    label: 'Puissance (W/kg)',
     unit: 'W/kg',
-    description: 'Puissance seuil fonctionnel normalisée au poids corporel',
+    description: 'Puissance seuil fonctionnel (FTP) normalisée au poids corporel',
     benchH: [6.5, 5.5, 4.7, 4.0, 3.5, 3.0],
     benchF: [5.5, 4.8, 4.2, 3.6, 3.0, 2.5],
     lowerBetter: false,
@@ -88,48 +89,48 @@ const CYCLING_AXES: AxisDef[] = [
     placeholder: 'ex: 3.8',
   },
   {
-    key: 'pma_wkg',
-    label: 'PMA',
-    unit: 'W/kg',
-    description: 'Puissance maximale aérobie — pic VO2max sur test progressif',
-    benchH: [8.0, 7.0, 6.2, 5.5, 4.8, 4.0],
-    benchF: [7.0, 6.2, 5.5, 4.8, 4.2, 3.5],
-    lowerBetter: false,
-    inputLabel: 'PMA (W/kg)',
-    placeholder: 'ex: 5.2',
-  },
-  {
     key: 'end4h_wkg',
-    label: 'Endurance 4h',
+    label: 'Endurance',
     unit: 'W/kg',
-    description: 'Puissance normalisée tenue sur 4 heures — capacité aérobie longue',
+    description: 'Puissance normalisée tenue sur 3–4 heures — capacité aérobie longue',
     benchH: [4.5, 4.0, 3.5, 3.0, 2.5, 2.0],
     benchF: [3.8, 3.4, 3.0, 2.7, 2.2, 1.8],
     lowerBetter: false,
-    inputLabel: 'Endurance 4h (W/kg)',
+    inputLabel: 'Endurance longue (W/kg)',
     placeholder: 'ex: 2.8',
   },
   {
     key: 'sprint5s_wkg',
-    label: 'Sprint 5s',
+    label: 'Résistance Z4',
     unit: 'W/kg',
-    description: 'Puissance maximale sprint 5 secondes — capacité neuromusculaire explosive',
+    description: 'Puissance soutenue en zone 4 — résistance à l\'effort intense prolongé',
     benchH: [20, 18, 16, 14, 12, 10],
     benchF: [17, 15, 13, 11, 9, 8],
     lowerBetter: false,
-    inputLabel: 'Sprint 5s (W/kg)',
+    inputLabel: 'Résistance Z4 (W/kg)',
     placeholder: 'ex: 12.5',
   },
   {
     key: 'exp30s_wkg',
-    label: 'Explosivité 30s',
+    label: 'Grimpeur',
     unit: 'W/kg',
-    description: 'Puissance moyenne sur 30 secondes — capacité anaérobie lactique',
+    description: 'Puissance normalisée en montée — ratio puissance/poids sur effort grimpant',
     benchH: [14, 12, 10, 9, 8, 6.5],
     benchF: [12, 10, 8.5, 7.5, 6.5, 5.5],
     lowerBetter: false,
-    inputLabel: 'Explosivité 30s (W/kg)',
+    inputLabel: 'Grimpeur (W/kg)',
     placeholder: 'ex: 9.0',
+  },
+  {
+    key: 'pma_wkg',
+    label: 'Sprint / PMA',
+    unit: 'W/kg',
+    description: 'Puissance maximale aérobie / sprint — pic VO2max et capacité explosive',
+    benchH: [8.0, 7.0, 6.2, 5.5, 4.8, 4.0],
+    benchF: [7.0, 6.2, 5.5, 4.8, 4.2, 3.5],
+    lowerBetter: false,
+    inputLabel: 'PMA / Sprint (W/kg)',
+    placeholder: 'ex: 5.2',
   },
 ]
 
@@ -922,10 +923,10 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
 
   return (
     <div style={{
-      background: '#141820',
+      background: 'var(--bg-card)',
       borderRadius: 16,
       padding: '16px 16px 12px',
-      border: '1px solid rgba(255,255,255,0.08)',
+      border: '1px solid var(--border)',
       position: 'relative',
     }}>
       {/* Header */}

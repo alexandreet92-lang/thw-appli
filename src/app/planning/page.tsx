@@ -5150,6 +5150,7 @@ interface ExecCircuit {
   rounds: number
   type: CircuitType
   durationMin: number
+  restBetweenRoundsSec: number
   exos: ExecExo[]
 }
 
@@ -5164,12 +5165,13 @@ function buildExecCircuits(blocks: Block[]): ExecCircuit[] {
         rounds: ct === 'tabata' ? 8 : (b.zone || 1),
         type: ct,
         durationMin: b.durationMin || 0,
+        restBetweenRoundsSec: b.recoveryMin ? Math.round(b.recoveryMin * 60) : 90,
         exos: [],
       }
       result.push(current)
     } else {
       if (!current) {
-        current = { label: 'Séance', rounds: 1, type: 'series', durationMin: 0, exos: [] }
+        current = { label: 'Séance', rounds: 1, type: 'series', durationMin: 0, restBetweenRoundsSec: 90, exos: [] }
         result.push(current)
       }
       current.exos.push({
@@ -5375,13 +5377,24 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
     } else if (cType === 'emom') {
       // EMOM : repos = temps restant dans la minute (simplifié : 15s)
       startRest(15)
-    } else if (cType === 'circuit' || cType === 'superset') {
-      // Circuit/superset : repos seulement quand on revient au premier exo (fin de round)
+    } else if (cType === 'circuit') {
+      // Lap : repos après chaque exo, repos de fin de tour entre les tours
+      const isEndOfRound = nextS.exoIdx === 0 && nextS.setIdx !== currentStep?.setIdx
+      const restSec = isEndOfRound
+        ? (currentCircuit?.restBetweenRoundsSec ?? 90)
+        : (currentExo?.restSec ?? 60)
+      if (restSec > 0) {
+        startRest(restSec)
+      } else {
+        setPhase('work')
+      }
+    } else if (cType === 'superset') {
+      // Superset : pas de repos entre exos, repos seulement en fin de tour
       const isEndOfRound = nextS.exoIdx === 0 && nextS.setIdx !== currentStep?.setIdx
       if (isEndOfRound) {
-        startRest(nextE?.restSec ?? currentExo?.restSec ?? 90)
+        startRest(currentCircuit?.restBetweenRoundsSec ?? 90)
       } else {
-        setPhase('work') // pas de repos entre exos du circuit
+        setPhase('work') // pas de repos entre exos du superset
       }
     } else {
       // Séries : repos seulement quand on passe à un nouvel exercice, pas entre les séries du même exo
@@ -6449,6 +6462,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         value: '',
         hrAvg: '',
         label: circuit.name,
+        recoveryMin: circuit.restBetweenRoundsSec / 60,  // repos entre tours
       })
       for (const e of circuitExos) {
         result.push({

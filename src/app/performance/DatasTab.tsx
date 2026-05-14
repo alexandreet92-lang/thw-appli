@@ -390,9 +390,13 @@ function TimeBarChart({ records, chartDists, color }: {
 }
 
 // ── HyroxTotalChart ───────────────────────────────────────────────
-function HyroxTotalChart({ races, bestId }: { races: HyroxRace[]; bestId: string | null }) {
+function HyroxTotalChart({ races, bestId, bestByYear }: {
+  races: HyroxRace[]
+  bestId: string | null
+  bestByYear: Record<string, string>  // year → race id
+}) {
   const [hovIdx, setHovIdx] = useState<number | null>(null)
-  const W = 360, H = 140, padL = 50, padR = 16, padT = 20, padB = 40
+  const W = 360, H = 150, padL = 50, padR = 16, padT = 24, padB = 40
   const plotW = W - padL - padR
   const plotH = H - padT - padB
   const maxSec = Math.max(...races.map(r => toSec(r.temps_final)))
@@ -420,18 +424,23 @@ function HyroxTotalChart({ races, bestId }: { races: HyroxRace[]; bestId: string
       })}
       {races.map((r, i) => {
         const secs  = toSec(r.temps_final)
+        const year  = r.date.slice(0, 4)
         const x = bx(i), y = by(secs), h = bh(secs)
-        const isBest = r.id === bestId
-        const isHov  = hovIdx === i
-        const col    = isBest ? '#ef4444' : '#ef444455'
+        const isBestAll  = r.id === bestId
+        const isBestYear = bestByYear[year] === r.id && !isBestAll
+        const isHov      = hovIdx === i
+        const col        = isBestAll ? '#ef4444' : isBestYear ? '#ef444488' : '#ef444433'
         return (
           <g key={r.id} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
             <rect x={x} y={y} width={barW} height={h}
-              fill={isHov ? '#ef4444aa' : col}
-              stroke={isBest ? '#ef4444' : 'none'} strokeWidth={2} rx={3} />
-            {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill="#ef4444" fontWeight="bold">★</text>}
+              fill={isHov ? '#ef4444bb' : col}
+              stroke={isBestAll ? '#ef4444' : isBestYear ? '#ef444488' : 'none'} strokeWidth={isBestAll ? 2 : 1} rx={3} />
+            {/* Étoile meilleur global */}
+            {isBestAll && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={8} fill="#ef4444" fontWeight="bold">★</text>}
+            {/* Demi-étoile meilleur annuel */}
+            {isBestYear && <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize={7} fill="#ef4444aa" fontWeight="600">✦</text>}
             {(isHov || secs === minSec) && (
-              <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill="#ef4444" fontWeight="600">
+              <text x={x + barW / 2} y={y - (isBestAll ? 16 : isBestYear ? 14 : 6)} textAnchor="middle" fontSize={8} fill="#ef4444" fontWeight="600">
                 {r.temps_final}
               </text>
             )}
@@ -526,10 +535,21 @@ function HyroxSection({ onSelect, selectedDatum }: {
 
   const c1Races = races
     .filter(r => c1Format === 'all' || r.format === c1Format)
-    .slice(0, 10)
+    .slice(0, 12)
+
+  // Meilleur global parmi les courses affichées
   const bestId = c1Races.length > 0
     ? c1Races.reduce((b, r) => toSec(r.temps_final) < toSec(b.temps_final) ? r : b).id
     : null
+
+  // Meilleur par année (pour l'indicateur ✦ sur le graphique)
+  const bestByYear: Record<string, string> = {}
+  for (const r of c1Races) {
+    const yr = r.date.slice(0, 4)
+    if (!bestByYear[yr] || toSec(r.temps_final) < toSec(c1Races.find(x => x.id === bestByYear[yr])!.temps_final)) {
+      bestByYear[yr] = r.id
+    }
+  }
   const selectedRace = races.find(r => r.id === c2Id) ?? races[0] ?? null
 
   if (loading) {
@@ -579,7 +599,17 @@ function HyroxSection({ onSelect, selectedDatum }: {
                 Aucune course {HYROX_FORMAT_LABELS[c1Format] ?? ''} enregistrée.
               </p>
             ) : (
-              <HyroxTotalChart races={c1Races} bestId={bestId} />
+              <HyroxTotalChart races={c1Races} bestId={bestId} bestByYear={bestByYear} />
+              {c1Races.length > 0 && (
+                <div style={{ display:'flex', gap:12, alignItems:'center', justifyContent:'flex-end', marginTop:4 }}>
+                  <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
+                    <span style={{ color:'#ef4444', fontWeight:700 }}>★</span> Meilleur global
+                  </span>
+                  <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
+                    <span style={{ color:'#ef4444aa', fontWeight:700 }}>✦</span> Meilleur annuel
+                  </span>
+                </div>
+              )}
             )}
           </>
         )}
@@ -590,7 +620,7 @@ function HyroxSection({ onSelect, selectedDatum }: {
         <Card>
           <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Détail par station</h2>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-            {races.slice(0, 5).map(r => {
+            {races.slice(0, 8).map(r => {
               const isActive = selectedRace?.id === r.id
               return (
                 <button key={r.id} onClick={() => setC2Id(r.id)} style={{

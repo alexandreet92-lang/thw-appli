@@ -2532,46 +2532,44 @@ function ChartSection({
 
 // ── Floating Coach IA bubble — visible when an active AI plan exists ──────
 
+const COACH_POS_KEY = 'coachIaPos_v2'
+
 function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
   const [open, setOpen] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
-  const posRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
-  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null)
-
-  // Init position from localStorage or default bottom-right
-  useEffect(() => {
+  // offset from default anchor (bottom:92, right:20) — persisted
+  const [offset, setOffset] = useState<{ dx: number; dy: number }>(() => {
     try {
-      const s = localStorage.getItem('coachIaPos')
-      if (s) { const p = JSON.parse(s); posRef.current = p; setPos(p); return }
+      const s = typeof window !== 'undefined' ? localStorage.getItem(COACH_POS_KEY) : null
+      if (s) return JSON.parse(s)
     } catch {}
-    const defaultPos = { x: window.innerWidth - 150, y: window.innerHeight - 140 }
-    posRef.current = defaultPos
-    setPos(defaultPos)
-  }, [])
+    return { dx: 0, dy: 0 }
+  })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef<{ startX: number; startY: number; startDx: number; startDy: number; moved: boolean } | null>(null)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
-    const cur = posRef.current
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: cur.x, startPosY: cur.y, moved: false }
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startDx: offset.dx, startDy: offset.dy, moved: false }
 
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return
       const dx = ev.clientX - dragRef.current.startX
       const dy = ev.clientY - dragRef.current.startY
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.moved = true
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) { dragRef.current.moved = true; setIsDragging(true) }
       if (dragRef.current.moved) {
-        const nx = Math.max(4, Math.min(window.innerWidth - 150, dragRef.current.startPosX + dx))
-        const ny = Math.max(4, Math.min(window.innerHeight - 52, dragRef.current.startPosY + dy))
-        posRef.current = { x: nx, y: ny }
-        setPos({ x: nx, y: ny })
+        setOffset({ dx: dragRef.current.startDx + dx, dy: dragRef.current.startDy + dy })
       }
     }
-    const onUp = () => {
+    const onUp = (ev: MouseEvent) => {
       if (dragRef.current) {
         if (!dragRef.current.moved) setOpen(o => !o)
-        try { localStorage.setItem('coachIaPos', JSON.stringify(posRef.current)) } catch {}
+        const newOffset = {
+          dx: dragRef.current.startDx + (ev.clientX - dragRef.current.startX),
+          dy: dragRef.current.startDy + (ev.clientY - dragRef.current.startY),
+        }
+        try { localStorage.setItem(COACH_POS_KEY, JSON.stringify(newOffset)) } catch {}
         dragRef.current = null
+        setIsDragging(false)
       }
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
@@ -2580,7 +2578,6 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
     document.addEventListener('mouseup', onUp)
   }
 
-  // Contexte plan injecté dans le system prompt du coach
   const planContext = {
     trainingPlan: {
       name:                plan.name,
@@ -2596,39 +2593,36 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
     },
   }
 
-  if (!pos) return null  // wait for client-side position init
-
   return (
     <>
-      <div style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 90, userSelect: 'none' }}>
+      {/* Position de base identique à l'original : bottom 92 right 20, modifiable par offset */}
+      <div style={{
+        position: 'fixed',
+        bottom: 92 - offset.dy,
+        right: 20 - offset.dx,
+        zIndex: 90,
+        userSelect: 'none',
+      }}>
         <button
           onMouseDown={handleMouseDown}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
           title={`Coach IA — ${plan.name} · Glisser pour déplacer`}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 13px 7px 10px',
             borderRadius: 24,
-            border: '1px solid',
-            borderColor: open
-              ? 'rgba(139,92,246,0.6)'
-              : hovered ? 'rgba(139,92,246,0.35)' : 'rgba(139,92,246,0.20)',
+            border: `1px solid ${open ? 'rgba(139,92,246,0.6)' : 'rgba(139,92,246,0.22)'}`,
             background: open
               ? 'linear-gradient(135deg,rgba(139,92,246,0.22),rgba(91,111,255,0.22))'
-              : hovered
-              ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(91,111,255,0.12))'
               : 'var(--bg-card)',
-            cursor: dragRef.current?.moved ? 'grabbing' : 'grab',
-            transition: 'border-color 0.16s, background 0.16s',
+            cursor: isDragging ? 'grabbing' : 'grab',
             boxShadow: open
               ? '0 0 0 3px rgba(139,92,246,0.14), 0 4px 16px rgba(139,92,246,0.22)'
               : '0 2px 10px rgba(0,0,0,0.14)',
           }}
         >
-          <span style={{ fontSize: 10, color: 'var(--text-dim)', opacity: 0.5, letterSpacing: '-1px', marginRight: -2 }}>⠿</span>
+          <span style={{ fontSize: 9, color: 'rgba(139,92,246,0.5)', letterSpacing: '0px', marginRight: -1 }}>⠿</span>
           <span style={{ fontSize: 13 }}>✦</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: open ? '#a78bfa' : 'var(--text-mid)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: open ? '#a78bfa' : 'var(--text-mid)', whiteSpace: 'nowrap' as const }}>
             Coach IA
           </span>
         </button>

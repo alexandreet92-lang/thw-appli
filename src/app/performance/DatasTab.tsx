@@ -1392,6 +1392,270 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   )
 }
 
+// ── TriathlonDrawer — Wingate-style fullscreen triathlon record ───
+interface TriathlonDrawerProps {
+  fmtId:     string
+  fmtLabel:  string
+  fmtSwim:   string
+  fmtBike:   string
+  fmtRun:    string
+  draft:     string; setDraft:    (v: string) => void
+  date:      string; setDate:     (v: string) => void
+  swim:      string; setSwim:     (v: string) => void
+  t1:        string; setT1:       (v: string) => void
+  bikeTime:  string; setBikeTime: (v: string) => void
+  t2:        string; setT2:       (v: string) => void
+  run:       string; setRun:      (v: string) => void
+  profile:   Props['profile']
+  saving:    boolean
+  onConfirm: (totalOverride?: string) => Promise<void>
+  onClose:   () => void
+}
+
+function TriathlonDrawer({ fmtId, fmtLabel, fmtSwim, fmtBike, fmtRun, draft, setDraft, date, setDate, swim, setSwim, t1, setT1, bikeTime, setBikeTime, t2, setT2, run, setRun, profile, saving, onConfirm, onClose }: TriathlonDrawerProps) {
+  const [mounted,   setMounted]   = useState(false)
+  const [bikeWatts, setBikeWatts] = useState('')
+  const [bikeNP,    setBikeNP]    = useState('')
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
+
+  const TRI_COLOR  = '#8B5CF6'
+  const SWIM_COLOR = '#06B6D4'
+  const BIKE_COLOR = '#EAB308'
+  const RUN_COLOR  = '#F97316'
+  const GREY_BG    = 'rgba(100,100,100,0.06)'
+
+  const TRI_ALL_DIST: Record<string, { swimM: number; bikeKm: number; runKm: number }> = {
+    'XS':      { swimM: 400,  bikeKm: 10,  runKm: 2.5  },
+    'S':       { swimM: 750,  bikeKm: 20,  runKm: 5    },
+    'M':       { swimM: 1500, bikeKm: 40,  runKm: 10   },
+    '70.3':    { swimM: 1900, bikeKm: 90,  runKm: 21.1 },
+    'Ironman': { swimM: 3800, bikeKm: 180, runKm: 42.2 },
+  }
+  const dist = TRI_ALL_DIST[fmtId]
+
+  const swimSec   = toSec(swim)
+  const swimAllure = dist && swimSec > 0
+    ? (() => { const s = swimSec / (dist.swimM / 100); return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/100m` })()
+    : null
+
+  const runSec    = toSec(run)
+  const runAllure = dist && runSec > 0
+    ? (() => { const s = runSec / dist.runKm; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` })()
+    : null
+
+  const watts  = parseFloat(bikeWatts) || 0
+  const wkg    = watts > 0 && profile.weight > 0 ? `${(watts / profile.weight).toFixed(2)} W/kg` : null
+  const npWkg  = parseFloat(bikeNP) > 0 && profile.weight > 0 ? `NP : ${(parseFloat(bikeNP) / profile.weight).toFixed(2)} W/kg` : null
+
+  const t1s          = toSec(t1)
+  const t2s          = toSec(t2)
+  const bikeS        = toSec(bikeTime)
+  const autoTotal    = swimSec + t1s + bikeS + t2s + runSec
+  const autoTotalStr = autoTotal > 0 ? secToHms(autoTotal) : ''
+  const displayTotal = draft || autoTotalStr
+
+  const inp = (c: string): React.CSSProperties => ({
+    width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: `1px solid ${c}44`, background: 'var(--input-bg)',
+    color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 13,
+    outline: 'none', boxSizing: 'border-box',
+  })
+  const inpGrey: React.CSSProperties = {
+    padding: '10px 12px', borderRadius: 10, maxWidth: 160,
+    border: '1px solid var(--border)', background: 'var(--input-bg)',
+    color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 13,
+    outline: 'none', boxSizing: 'border-box',
+  }
+  const secBox = (bg: string, border: string): React.CSSProperties => ({
+    background: bg, border: `1px solid ${border}`,
+    borderRadius: 12, padding: '14px 16px', marginBottom: 10,
+  })
+  const lbl: React.CSSProperties = {
+    fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
+  }
+  const badge = (txt: string, c: string) => (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '4px 10px', borderRadius: 6,
+      background: `${c}18`, border: `1px solid ${c}30`,
+      fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 700, color: c,
+      marginTop: 6, marginRight: 6,
+    }}>⟶ {txt}</div>
+  )
+  const secTitle = (emoji: string, label: string, color: string, distLabel: string) => (
+    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+      <span style={{ fontSize:14 }}>{emoji}</span>
+      <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color }}>{label}</span>
+      <span style={{ fontSize:10, color:'var(--text-dim)' }}>{distLabel}</span>
+    </div>
+  )
+
+  const canSave = !!(swim || bikeTime || run || draft)
+
+  return createPortal(
+    <div style={{ position:'fixed', inset:0, zIndex:3000, background:'rgba(0,0,0,0.72)', display:'flex', alignItems:'flex-end' }}
+      onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width:'100%', maxHeight:'92vh', background:'var(--bg-card)',
+        borderRadius:'20px 20px 0 0', border:`1px solid ${TRI_COLOR}30`,
+        display:'flex', flexDirection:'column', overflow:'hidden',
+      }}>
+
+        {/* Header */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'16px 20px', background:`${TRI_COLOR}10`,
+          borderBottom:`1px solid ${TRI_COLOR}25`, flexShrink:0, flexWrap:'wrap', gap:8,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span style={{ padding:'4px 10px', borderRadius:8, background:`${TRI_COLOR}20`, border:`1px solid ${TRI_COLOR}40`, fontSize:11, fontWeight:700, color:TRI_COLOR }}>
+              Triathlon
+            </span>
+            <span style={{ padding:'4px 10px', borderRadius:8, background:'var(--bg-card2)', border:'1px solid var(--border)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
+              {fmtLabel}
+            </span>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>
+              Record Triathlon {fmtLabel}
+            </h2>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ padding:'5px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none' }} />
+            <button onClick={onClose} style={{ width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 20px 100px' }}>
+
+          {/* NATATION */}
+          <div style={secBox(`${SWIM_COLOR}1a`, `${SWIM_COLOR}30`)}>
+            {secTitle('🏊', 'Natation', SWIM_COLOR, fmtSwim)}
+            <p style={lbl}>Temps (hh:mm:ss)</p>
+            <input style={inp(SWIM_COLOR)} value={swim} onChange={e => setSwim(e.target.value)} placeholder="ex : 0:25:00" autoFocus />
+            {swimAllure && <div>{badge(`Allure : ${swimAllure}`, SWIM_COLOR)}</div>}
+          </div>
+
+          {/* T1 */}
+          <div style={secBox(GREY_BG, 'var(--border)')}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+              <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-mid)' }}>T1 — Transition</span>
+            </div>
+            <p style={lbl}>Durée (mm:ss)</p>
+            <input style={inpGrey} value={t1} onChange={e => setT1(e.target.value)} placeholder="ex : 1:30" />
+          </div>
+
+          {/* VÉLO */}
+          <div style={secBox(`${BIKE_COLOR}1a`, `${BIKE_COLOR}30`)}>
+            {secTitle('🚴', 'Vélo', BIKE_COLOR, fmtBike)}
+            <p style={lbl}>Watts moyens</p>
+            <input style={inp(BIKE_COLOR)} type="number" value={bikeWatts} onChange={e => setBikeWatts(e.target.value)} placeholder="ex : 210" />
+            {wkg && <div style={{ display:'flex', flexWrap:'wrap' }}>{badge(wkg, BIKE_COLOR)}</div>}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:12 }}>
+              <div>
+                <p style={lbl}>NP (watts normalisés) — optionnel</p>
+                <input style={{ ...inp(BIKE_COLOR), opacity:0.85 }} type="number" value={bikeNP} onChange={e => setBikeNP(e.target.value)} placeholder="ex : 225" />
+                {npWkg && <div>{badge(npWkg, BIKE_COLOR)}</div>}
+              </div>
+              <div>
+                <p style={lbl}>Durée (hh:mm:ss) — optionnel</p>
+                <input style={{ ...inp(BIKE_COLOR), opacity:0.85 }} value={bikeTime} onChange={e => setBikeTime(e.target.value)} placeholder="ex : 1:30:00" />
+              </div>
+            </div>
+          </div>
+
+          {/* T2 */}
+          <div style={secBox(GREY_BG, 'var(--border)')}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+              <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-mid)' }}>T2 — Transition</span>
+            </div>
+            <p style={lbl}>Durée (mm:ss)</p>
+            <input style={inpGrey} value={t2} onChange={e => setT2(e.target.value)} placeholder="ex : 1:00" />
+          </div>
+
+          {/* COURSE */}
+          <div style={secBox(`${RUN_COLOR}1a`, `${RUN_COLOR}30`)}>
+            {secTitle('🏃', 'Course à pied', RUN_COLOR, fmtRun)}
+            <p style={lbl}>Temps (hh:mm:ss)</p>
+            <input style={inp(RUN_COLOR)} value={run} onChange={e => setRun(e.target.value)} placeholder="ex : 0:45:00" />
+            {runAllure && <div>{badge(`Allure : ${runAllure}`, RUN_COLOR)}</div>}
+          </div>
+
+          {/* RÉSUMÉ */}
+          <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:12, padding:'14px 16px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'#22c55e' }}>Résumé</span>
+            </div>
+            <p style={{ ...lbl, marginBottom:4 }}>Temps final</p>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+              <input
+                style={{ padding:'10px 12px', borderRadius:10, border:`1px solid ${TRI_COLOR}44`, background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, outline:'none', maxWidth:180, boxSizing:'border-box' as const }}
+                value={displayTotal} onChange={e => setDraft(e.target.value)}
+                placeholder="auto-calculé ou manuel" />
+              {autoTotalStr && autoTotalStr !== displayTotal && (
+                <button onClick={() => setDraft(autoTotalStr)}
+                  style={{ padding:'6px 12px', borderRadius:8, border:`1px solid ${TRI_COLOR}40`, background:`${TRI_COLOR}18`, color:TRI_COLOR, fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                  Auto ({autoTotalStr})
+                </button>
+              )}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
+              {autoTotalStr && (
+                <div>
+                  <p style={{ ...lbl, margin:'0 0 2px' }}>Temps total auto</p>
+                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, margin:0, color:'#22c55e' }}>{autoTotalStr}</p>
+                </div>
+              )}
+              {wkg && (
+                <div>
+                  <p style={{ ...lbl, margin:'0 0 2px' }}>W/kg vélo</p>
+                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, margin:0, color:BIKE_COLOR }}>{wkg}</p>
+                </div>
+              )}
+              {swimAllure && (
+                <div>
+                  <p style={{ ...lbl, margin:'0 0 2px' }}>Allure natation</p>
+                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, margin:0, color:SWIM_COLOR }}>{swimAllure}</p>
+                </div>
+              )}
+              {runAllure && (
+                <div>
+                  <p style={{ ...lbl, margin:'0 0 2px' }}>Allure course</p>
+                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, margin:0, color:RUN_COLOR }}>{runAllure}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Fixed save */}
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${TRI_COLOR}20` }}>
+          <button
+            onClick={() => void onConfirm(!draft && autoTotalStr ? autoTotalStr : undefined)}
+            disabled={!canSave || saving}
+            style={{
+              width:'100%', padding:'14px', borderRadius:12, border:'none',
+              cursor: canSave && !saving ? 'pointer' : 'not-allowed',
+              background: canSave && !saving ? 'linear-gradient(135deg,#8B5CF6,#6D28D9)' : 'var(--bg-card2)',
+              color: canSave && !saving ? '#fff' : 'var(--text-dim)',
+              fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, transition:'all 0.15s',
+            }}
+          >
+            {saving ? 'Enregistrement…' : 'Enregistrer ce record'}
+          </button>
+        </div>
+
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Empty state §13 ──────────────────────────────────────────────
 function EmptyState({ icon, title, description }: { icon: 'chart' | 'activity'; title: string; description: string }) {
   return (
@@ -2529,6 +2793,28 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     cancelEdit()
   }
 
+  // ── Triathlon drawer ───────────────────────────────────────────────
+  const [trDrawerFmt, setTriDrawerFmt] = useState<string | null>(null)
+
+  function openTriDrawer(fmtId: string, rec: SpRecord | null) {
+    setEditDate(rec?.achieved_at ?? new Date().toISOString().slice(0, 10))
+    setEditingRecordId(rec?.id ?? null)
+    setEditDraft(rec?.performance ?? '')
+    setEditSplitSwim(rec?.split_swim ?? '')
+    setEditSplitT1(rec?.split_t1 ?? '')
+    setEditSplitBike(rec?.split_bike ?? '')
+    setEditSplitT2(rec?.split_t2 ?? '')
+    setEditSplitRun(rec?.split_run ?? '')
+    setEditBikeWatts('')
+    setEditBikeNP('')
+    setTriDrawerFmt(fmtId)
+  }
+
+  function closeTriDrawer() {
+    setTriDrawerFmt(null)
+    cancelEdit()
+  }
+
   // Tous les records vélo depuis Supabase (toutes années)
   const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
 
@@ -2644,29 +2930,14 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     return [...recs].sort((a, b) => toSec(a.performance) - toSec(b.performance))[0]
   }
 
-  function tryEditTriathlon(key: string, rec: SpRecord | null) {
-    if (activeEdit && activeEdit !== key) {
-      if (!window.confirm('Abandonner les modifications en cours ?')) return
-    }
-    setActiveEdit(key)
-    setEditingRecordId(rec?.id ?? null)
-    setEditDraft(rec?.performance ?? '')
-    setEditDate(rec?.achieved_at ?? new Date().toISOString().slice(0, 10))
-    setEditSplitSwim(rec?.split_swim ?? '')
-    setEditSplitT1(rec?.split_t1 ?? '')
-    setEditSplitBike(rec?.split_bike ?? '')
-    setEditSplitT2(rec?.split_t2 ?? '')
-    setEditSplitRun(rec?.split_run ?? '')
-  }
-
-  async function confirmTriathlonRecord(fmt: string) {
+  async function confirmTriathlonRecord(fmt: string, draftOverride?: string) {
     setRecordSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const achievedAt = editDate || new Date().toISOString().slice(0, 10)
       const payload = {
-        performance:      editDraft || '0:00:00',
+        performance:      draftOverride || editDraft || '0:00:00',
         performance_unit: 'time',
         split_swim:       editSplitSwim || null,
         split_t1:         editSplitT1   || null,
@@ -2870,7 +3141,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SectionHeader label="Records personnels" gradient="linear-gradient(180deg,#ffb340,#f97316)" />
 
-      {/* Wingate-style record drawer */}
+      {/* Wingate-style record drawer — bike / run / swim / rowing / gym */}
       {drawerSpec && (
         <RecordDrawer
           sport={drawerSpec.sport}
@@ -2893,6 +3164,35 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
           profile={profile}
         />
       )}
+
+      {/* Triathlon Wingate-style drawer */}
+      {(() => {
+        const trFmt = trDrawerFmt ? TRIATHLON_FORMATS.find(f => f.id === trDrawerFmt) : null
+        if (!trFmt) return null
+        return (
+          <TriathlonDrawer
+            fmtId={trFmt.id}
+            fmtLabel={trFmt.label}
+            fmtSwim={trFmt.swim}
+            fmtBike={trFmt.bike}
+            fmtRun={trFmt.run}
+            draft={editDraft}       setDraft={setEditDraft}
+            date={editDate}         setDate={setEditDate}
+            swim={editSplitSwim}    setSwim={setEditSplitSwim}
+            t1={editSplitT1}        setT1={setEditSplitT1}
+            bikeTime={editSplitBike} setBikeTime={setEditSplitBike}
+            t2={editSplitT2}        setT2={setEditSplitT2}
+            run={editSplitRun}      setRun={setEditSplitRun}
+            profile={profile}
+            saving={recordSaving}
+            onConfirm={async (totalOverride) => {
+              await confirmTriathlonRecord(trDrawerFmt!, totalOverride)
+              setTriDrawerFmt(null)
+            }}
+            onClose={closeTriDrawer}
+          />
+        )
+      })()}
 
       {/* Sport tabs */}
       <SportTabs
@@ -3095,223 +3395,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <TriathlonRadar profile={profile} />
           {TRIATHLON_FORMATS.map(fmt => {
-            const editKey  = `triathlon-${fmt.id}`
-            const isEditing = activeEdit === editKey
-            const best     = getTrBest(fmt.id)
-            const prev     = getTrPrev(fmt.id)
-
-            const fieldStyle = {
-              flex: 1, padding: '4px 8px', borderRadius: 6,
-              border: '1px solid #f59e0b', background: 'var(--input-bg)',
-              color: 'var(--text)', fontFamily: 'DM Mono,monospace',
-              fontSize: 11, outline: 'none', minWidth: 0,
-            }
-            const labelStyle = { fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }
-
-            if (isEditing) {
-              const dist = TRI_DIST[fmt.id] ?? null
-
-              // ── Live calculations ──────────────────────────────────────
-              const swimSec = toSec(editSplitSwim)
-              const swimAllure = dist && swimSec > 0
-                ? (() => { const s = swimSec / (dist.swimM / 100); return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/100m` })()
-                : null
-
-              const runSec = toSec(editSplitRun)
-              const runAllure = dist && runSec > 0
-                ? (() => { const s = runSec / dist.runKm; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` })()
-                : null
-
-              const watts = parseFloat(editBikeWatts) || 0
-              const wkg = dist && watts > 0 && profile.weight > 0
-                ? `${(watts / profile.weight).toFixed(2)} W/kg`
-                : null
-              const npWkg = dist && parseFloat(editBikeNP) > 0 && profile.weight > 0
-                ? `NP: ${(parseFloat(editBikeNP) / profile.weight).toFixed(2)} W/kg`
-                : null
-
-              const t1s = toSec(editSplitT1), t2s = toSec(editSplitT2), bikeS = toSec(editSplitBike)
-              const autoTotal = swimSec + t1s + bikeS + t2s + runSec
-              const autoTotalStr = autoTotal > 0 ? secToHms(autoTotal) : '—'
-
-              // Sync auto-total to editDraft (display only — user can override)
-              const displayTotal = editDraft || (autoTotal > 0 ? autoTotalStr : '')
-
-              const calcBadge = (txt: string) => (
-                <span style={{ fontSize: 9, color: '#f59e0b', fontFamily: 'DM Mono,monospace', fontWeight: 600, marginTop: 2 }}>
-                  ⟶ {txt}
-                </span>
-              )
-
-              if (dist) {
-                // ── Formulaire détaillé (M / 70.3 / Ironman) ──────────────
-                return (
-                  <Card key={fmt.id} style={{ padding: '14px 16px', border: '1px solid #f59e0b' }}>
-                    {/* Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
-                        {fmt.label}
-                        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 8 }}>
-                          {fmt.swim} · {fmt.bike} · {fmt.run}
-                        </span>
-                      </span>
-                      <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-                    </div>
-
-                    {/* Discipline fields */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-                      {/* Natation */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
-                          <span style={{ ...labelStyle, fontWeight: 700 }}>🏊 Natation</span>
-                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{fmt.swim}</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <input value={editSplitSwim} onChange={e => setEditSplitSwim(e.target.value)}
-                            placeholder="hh:mm:ss" style={fieldStyle} />
-                          {swimAllure && calcBadge(`Allure : ${swimAllure}`)}
-                        </div>
-                      </div>
-
-                      {/* T1 */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '90px 120px', gap: 8 }}>
-                        <span style={{ ...labelStyle, paddingTop: 6 }}>T1</span>
-                        <input value={editSplitT1} onChange={e => setEditSplitT1(e.target.value)}
-                          placeholder="mm:ss" style={fieldStyle} />
-                      </div>
-
-                      {/* Vélo */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
-                          <span style={{ ...labelStyle, fontWeight: 700 }}>🚴 Vélo</span>
-                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{fmt.bike}</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          <input value={editSplitBike} onChange={e => setEditSplitBike(e.target.value)}
-                            placeholder="hh:mm:ss (durée)" style={fieldStyle} />
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <input value={editBikeWatts} onChange={e => setEditBikeWatts(e.target.value)}
-                                placeholder="Watts moyens (W)" type="number"
-                                style={{ ...fieldStyle, fontFamily: 'DM Mono,monospace', fontSize: 11 }} />
-                              {wkg && calcBadge(wkg)}
-                            </div>
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <input value={editBikeNP} onChange={e => setEditBikeNP(e.target.value)}
-                                placeholder="NP (W) — optionnel" type="number"
-                                style={{ ...fieldStyle, fontFamily: 'DM Mono,monospace', fontSize: 11, opacity: 0.8 }} />
-                              {npWkg && calcBadge(npWkg)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* T2 */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '90px 120px', gap: 8 }}>
-                        <span style={{ ...labelStyle, paddingTop: 6 }}>T2</span>
-                        <input value={editSplitT2} onChange={e => setEditSplitT2(e.target.value)}
-                          placeholder="mm:ss" style={fieldStyle} />
-                      </div>
-
-                      {/* Course */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2 }}>
-                          <span style={{ ...labelStyle, fontWeight: 700 }}>🏃 Course</span>
-                          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{fmt.run}</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <input value={editSplitRun} onChange={e => setEditSplitRun(e.target.value)}
-                            placeholder="hh:mm:ss" style={fieldStyle} />
-                          {runAllure && calcBadge(`Allure : ${runAllure}`)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Temps final auto */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, padding: '10px 12px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flex: 1 }}>
-                        ⏱ Temps final
-                        {autoTotal > 0 && <span style={{ color: '#f59e0b', fontWeight: 700, marginLeft: 6 }}>{autoTotalStr}</span>}
-                      </span>
-                      <input value={displayTotal} onChange={e => setEditDraft(e.target.value)}
-                        placeholder="ou saisir manuellement"
-                        style={{ ...fieldStyle, maxWidth: 120, fontWeight: 700, flex: 0 }} />
-                      <button onClick={() => {
-                        if (autoTotal > 0) setEditDraft(autoTotalStr)
-                        void confirmTriathlonRecord(fmt.id)
-                      }} disabled={recordSaving}
-                        style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                        {recordSaving ? '…' : 'Confirmer'}
-                      </button>
-                      <button onClick={cancelEdit}
-                        style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        Annuler
-                      </button>
-                    </div>
-                  </Card>
-                )
-              }
-
-              // ── Formulaire simple (XS / Sprint) ───────────────────────
-              return (
-                <Card key={fmt.id} style={{ padding: '14px 16px', border: '1px solid #f59e0b' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
-                      {fmt.label}
-                      <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 8 }}>
-                        {fmt.swim} · {fmt.bike} · {fmt.run}
-                      </span>
-                    </span>
-                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                      style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr 80px 1fr', gap: 8, marginBottom: 10 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={labelStyle}>🏊 Natation</span>
-                      <input value={editSplitSwim} onChange={e => setEditSplitSwim(e.target.value)}
-                        placeholder="hh:mm:ss" style={fieldStyle} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={labelStyle}>T1</span>
-                      <input value={editSplitT1} onChange={e => setEditSplitT1(e.target.value)}
-                        placeholder="mm:ss" style={fieldStyle} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={labelStyle}>🚴 Vélo</span>
-                      <input value={editSplitBike} onChange={e => setEditSplitBike(e.target.value)}
-                        placeholder="hh:mm:ss" style={fieldStyle} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={labelStyle}>T2</span>
-                      <input value={editSplitT2} onChange={e => setEditSplitT2(e.target.value)}
-                        placeholder="mm:ss" style={fieldStyle} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={labelStyle}>🏃 Course</span>
-                      <input value={editSplitRun} onChange={e => setEditSplitRun(e.target.value)}
-                        placeholder="hh:mm:ss" style={fieldStyle} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Temps final</span>
-                    <input value={editDraft} onChange={e => setEditDraft(e.target.value)}
-                      placeholder="hh:mm:ss"
-                      onKeyDown={e => { if (e.key === 'Enter') void confirmTriathlonRecord(fmt.id); if (e.key === 'Escape') cancelEdit() }}
-                      style={{ ...fieldStyle, maxWidth: 110, fontWeight: 700 }} />
-                    <button onClick={() => void confirmTriathlonRecord(fmt.id)} disabled={recordSaving}
-                      style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                      {recordSaving ? '…' : 'Confirmer'}
-                    </button>
-                    <button onClick={cancelEdit}
-                      style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      Annuler
-                    </button>
-                  </div>
-                </Card>
-              )
-            }
+            const best = getTrBest(fmt.id)
+            const prev = getTrPrev(fmt.id)
 
             return (
               <Card key={fmt.id} style={{ padding: '12px 16px' }}>
@@ -3349,7 +3434,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile }: {
                     )}
                   </div>
 
-                  <button onClick={() => tryEditTriathlon(editKey, best)}
+                  <button onClick={() => openTriDrawer(fmt.id, best)}
                     style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     Modifier
                   </button>

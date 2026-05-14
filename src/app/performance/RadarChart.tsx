@@ -980,11 +980,10 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
       onClick={e => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div style={{
-        width: '100%', maxWidth: 800,
-        margin: '0 auto',
+        width: '100%',
         background: 'var(--bg-card)',
         borderRadius: '20px 20px 0 0',
-        maxHeight: '85vh',
+        maxHeight: '92vh',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
         transform: `translateY(${shown ? '0%' : '100%'})`,
@@ -1282,22 +1281,6 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
             }}
           >
             Barème
-          </button>
-          {/* Update button */}
-          <button
-            onClick={() => setShowModal(true)}
-            style={{
-              padding: '5px 12px',
-              background: 'rgba(91,111,255,0.15)',
-              border: '1px solid rgba(91,111,255,0.35)',
-              borderRadius: 8,
-              color: '#8b9aff',
-              fontSize: 11, fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Mettre à jour
           </button>
         </div>
       </div>

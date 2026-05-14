@@ -600,8 +600,8 @@ function HyroxSection({ onSelect, selectedDatum }: {
                 Aucune course {HYROX_FORMAT_LABELS[c1Format] ?? ''} enregistrée.
               </p>
             ) : (
-              <HyroxTotalChart races={c1Races} bestId={bestId} bestByYear={bestByYear} />
-              {c1Races.length > 0 && (
+              <>
+                <HyroxTotalChart races={c1Races} bestId={bestId} bestByYear={bestByYear} />
                 <div style={{ display:'flex', gap:12, alignItems:'center', justifyContent:'flex-end', marginTop:4 }}>
                   <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
                     <span style={{ color:'#ef4444', fontWeight:700 }}>★</span> Meilleur global
@@ -610,7 +610,7 @@ function HyroxSection({ onSelect, selectedDatum }: {
                     <span style={{ color:'#ef4444aa', fontWeight:700 }}>✦</span> Meilleur annuel
                   </span>
                 </div>
-              )}
+              </>
             )}
           </>
         )}

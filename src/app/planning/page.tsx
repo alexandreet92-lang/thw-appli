@@ -6289,7 +6289,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   }
 
   function handleSportChange(s: SportType) {
-    setSport(s); setTrainingType(null); setBlocks([]); setExercises([])
+    setSport(s); setTrainingTypes([]); setBlocks([]); setExercises([])
   }
 
   // Convertit les circuits + exercices du ExerciseListBuilder en Block[] avec circuit_headers
@@ -6956,7 +6956,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 {favorites.map(fav => (
                   <button key={fav.id} onClick={() => {
                     setSport(fav.sport as SportType)
-                    setTrainingType(fav.training_type ?? null)
+                    setTrainingTypes(fav.training_type ? fav.training_type.split('+').filter(Boolean) : [])
                     setTitle(fav.name)
                     setBlocks(fav.blocks_data ?? [])
                     setNutritionItems(fav.nutrition_data ?? [])

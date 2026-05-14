@@ -110,6 +110,7 @@ function fmtHhMM(h: number): string {
 function toSec(t: string): number {
   if (!t || t === '—') return 0
   const p = t.split(':').map(Number)
+  if (p.some(n => isNaN(n))) return 0
   return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0)
 }
 

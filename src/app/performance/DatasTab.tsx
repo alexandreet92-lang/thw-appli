@@ -3282,6 +3282,26 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SectionHeader label="Records personnels" gradient="linear-gradient(180deg,#ffb340,#f97316)" />
 
+      {/* Year pills — just below section title, applies to all sports */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {(['All Time', ...allRecordYears] as string[]).map(yr => {
+          const active = recordYear === yr
+          const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+          return (
+            <button key={yr} onClick={() => setRecordYear(yr)} style={{
+              padding: '5px 12px', borderRadius: 20, border: 'none',
+              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              fontSize: 12, fontWeight: active ? 700 : 500,
+              transition: 'background 0.15s, color 0.15s',
+              background: active ? color : 'var(--bg-card2)',
+              color: active ? '#ffffff' : 'var(--text-dim)',
+            }}>
+              {yr}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Wingate-style record drawer — bike / run / swim / rowing / gym */}
       {drawerSpec && (
         <RecordDrawer
@@ -3342,53 +3362,12 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         onChange={(id) => setSport(id as RecordSport)}
       />
 
-      {/* Year pills DS §16 */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {(['All Time', ...allRecordYears] as string[]).map(yr => {
-          const active = recordYear === yr
-          const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
-          return (
-            <button key={yr} onClick={() => setRecordYear(yr)} style={{
-              padding: '5px 12px', borderRadius: 20, border: 'none',
-              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-              fontSize: 12, fontWeight: active ? 700 : 500,
-              transition: 'background 0.15s, color 0.15s',
-              background: active ? color : 'var(--bg-card2)',
-              color: active ? '#ffffff' : 'var(--text-dim)',
-            }}>
-              {yr}
-            </button>
-          )
-        })}
-      </div>
-
       {/* BIKE */}
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <CyclingRadar profile={profile} />
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
-              {/* Year filter — same state as global pills */}
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {(['All Time', ...bikeYears] as string[]).map(yr => {
-                  const active = recordYear === yr
-                  const color  = yr === 'All Time' ? '#5b6fff' : (getPCColor(yr, bikeYears))
-                  return (
-                    <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                      padding: '4px 10px', borderRadius: 16, border: 'none',
-                      cursor: 'pointer', whiteSpace: 'nowrap',
-                      fontSize: 11, fontWeight: active ? 700 : 500,
-                      transition: 'background 0.15s, color 0.15s',
-                      background: active ? color : 'var(--bg-card2)',
-                      color: active ? '#ffffff' : 'var(--text-dim)',
-                    }}>
-                      {yr}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 10px' }}>Power Curve</h2>
 
             {/* Scroll horizontal sur mobile si l'axe X est trop dense */}
             <div style={{ overflowX: 'auto', overflowY: 'visible', margin: '0 -4px' }}>

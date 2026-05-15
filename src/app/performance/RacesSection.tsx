@@ -617,6 +617,15 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
 }
 
 // ─── FileUploadDrawer ─────────────────────────────────────────────────────────
+interface ParsedActivity {
+  name: string | null; date: string | null; duration_seconds: number | null
+  distance_km: number | null; elevation_gain_m: number | null; altitude_max_m: number | null
+  watts_avg: number | null; watts_np: number | null; hr_avg: number | null
+  hr_max: number | null; cadence_avg: number | null; speed_avg_kmh: number | null
+  calories: number | null; temp_celsius: number | null; tss: number | null
+  if_score: number | null; has_power: boolean; source: 'gpx' | 'fit'
+}
+
 function FileUploadDrawer({ weightKg, onSaved, onClose }: {
   weightKg: number
   onSaved: (r: RaceRecord) => void
@@ -626,47 +635,61 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
   const [parsing, setParsing] = useState(false)
-  const [parsed, setParsed] = useState<any | null>(null)
+  const [activity, setActivity] = useState<ParsedActivity | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
-  // Form fields
-  const [name, setName] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [durationStr, setDurationStr] = useState('')
-  const [wattsNpStr, setWattsNpStr] = useState('')
-  const [raceType, setRaceType] = useState('training')
   const [saving, setSaving] = useState(false)
 
+  // Editable form state — pre-filled from parsed data
+  const [name,        setName]        = useState('')
+  const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10))
+  const [durationStr, setDurationStr] = useState('')
+  const [wattsNpStr,  setWattsNpStr]  = useState('')
+  const [wattsAvgStr, setWattsAvgStr] = useState('')
+  const [hrAvgStr,    setHrAvgStr]    = useState('')
+  const [hrMaxStr,    setHrMaxStr]    = useState('')
+  const [tssStr,      setTssStr]      = useState('')
+  const [tempStr,     setTempStr]     = useState('')
+  const [raceType,    setRaceType]    = useState('training')
+  const [preFatigue,  setPreFatigue]  = useState('fresh')
+  const [effortRating,setEffortRating]= useState(3)
+  const [notes,       setNotes]       = useState('')
+
   useEffect(() => { setMounted(true); setTimeout(() => setVisible(true), 10) }, [])
+
+  // Pre-fill form from parsed activity
+  function prefill(a: ParsedActivity) {
+    if (a.name)             setName(a.name)
+    if (a.date)             setDate(a.date)
+    if (a.duration_seconds) setDurationStr(secToInput(a.duration_seconds))
+    if (a.watts_np)         setWattsNpStr(String(a.watts_np))
+    if (a.watts_avg)        setWattsAvgStr(String(a.watts_avg))
+    if (a.hr_avg)           setHrAvgStr(String(a.hr_avg))
+    if (a.hr_max)           setHrMaxStr(String(a.hr_max))
+    if (a.tss)              setTssStr(String(a.tss))
+    if (a.temp_celsius != null) setTempStr(String(a.temp_celsius))
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setFileName(file.name)
     setError(null)
-    setParsed(null)
-    if (!file.name.toLowerCase().endsWith('.gpx')) {
-      // .fit → manual form only
-      setName(file.name.replace(/\.fit$/i, ''))
-      return
-    }
+    setActivity(null)
     setParsing(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/parse-course-file', { method:'POST', body:fd })
+      const res  = await fetch('/api/parse-activity-file', { method: 'POST', body: fd })
       const json = await res.json()
       if (json.error) throw new Error(json.error)
-      const p = json.profile
-      setParsed(p)
-      setName(file.name.replace(/\.gpx$/i, '').replace(/_/g,' '))
-      if (p.total_distance_km) {
-        // estimate duration from distance (rough: 25km/h avg)
-        const estSec = Math.round((p.total_distance_km / 25) * 3600)
-        setDurationStr(secToInput(estSec))
-      }
+      const a: ParsedActivity = json.activity
+      setActivity(a)
+      prefill(a)
     } catch (err: any) {
       setError(err.message ?? 'Erreur de parsing')
+      // Fallback: pre-fill name from filename
+      setName(file.name.replace(/\.(gpx|fit)$/i, '').replace(/[_-]/g, ' '))
     } finally {
       setParsing(false)
     }
@@ -679,23 +702,39 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Non connecté')
-      const durSec = toSec(durationStr) || null
-      const wattsNp = wattsNpStr ? Math.round(Number(wattsNpStr)) : null
-      const wpkgNp = wattsNp && weightKg > 0 ? +(wattsNp / weightKg).toFixed(3) : null
-      const distKm = parsed?.total_distance_km ?? null
-      const elevGain = parsed?.total_denivele_pos ?? null
-      const tempScore = wpkgNp && durSec ? computeRaceScore({
+
+      const durSec   = toSec(durationStr) || activity?.duration_seconds || null
+      const np       = wattsNpStr  ? Math.round(Number(wattsNpStr))  : (activity?.watts_np  ?? null)
+      const avg      = wattsAvgStr ? Math.round(Number(wattsAvgStr)) : (activity?.watts_avg ?? null)
+      const wpkgNp   = np && weightKg > 0 ? +(np / weightKg).toFixed(3) : null
+      const distKm   = activity?.distance_km      ?? null
+      const elevGain = activity?.elevation_gain_m ?? null
+      const hrAvg    = hrAvgStr ? Math.round(Number(hrAvgStr)) : (activity?.hr_avg ?? null)
+      const hrMax    = hrMaxStr ? Math.round(Number(hrMaxStr)) : (activity?.hr_max ?? null)
+      const tempC    = tempStr  ? Number(tempStr) : (activity?.temp_celsius ?? null)
+      const tss      = tssStr   ? Number(tssStr)  : (activity?.tss ?? null)
+      const ifScore  = activity?.if_score ?? null
+      const cadAvg   = activity?.cadence_avg ?? null
+      const spdKmh   = activity?.speed_avg_kmh ?? null
+      const cals     = activity?.calories ?? null
+
+      const sd = wpkgNp && durSec ? computeRaceScore({
         wpkg_np: wpkgNp, duration_seconds: durSec,
-        pre_fatigue: null, effort_rating: null,
-        temp_celsius: null, elevation_gain_m: elevGain, distance_km: distKm,
+        pre_fatigue: preFatigue, effort_rating: effortRating,
+        temp_celsius: tempC, elevation_gain_m: elevGain, distance_km: distKm,
       }) : null
+
       const { data, error: err } = await supabase.from('race_records').insert({
         user_id: user.id, name, date, race_type: raceType,
         distance_km: distKm, elevation_gain_m: elevGain,
-        duration_seconds: durSec, watts_np: wattsNp, watts_avg: wattsNp,
+        duration_seconds: durSec, watts_np: np, watts_avg: avg,
         wpkg_np: wpkgNp, weight_kg: weightKg,
-        score: tempScore ? +tempScore.total.toFixed(1) : null,
-        level: tempScore ? levelOf(tempScore.total).label : null,
+        hr_avg: hrAvg, hr_max: hrMax, cadence_avg: cadAvg,
+        speed_avg_kmh: spdKmh, calories: cals,
+        tss, if_score: ifScore, temp_celsius: tempC,
+        pre_fatigue: preFatigue, effort_rating: effortRating, notes: notes || null,
+        score: sd ? +sd.total.toFixed(1) : null,
+        level: sd ? levelOf(sd.total).label : null,
       }).select().single()
       if (err) throw new Error(err.message)
       onSaved(data as RaceRecord)
@@ -710,6 +749,19 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
   if (!mounted) return null
   const shown = visible && !closing
 
+  const npVal  = wattsNpStr  ? Number(wattsNpStr)  : null
+  const wpkgNpPreview = npVal && weightKg > 0 ? (npVal / weightKg).toFixed(2) : null
+  const durSec = toSec(durationStr) || activity?.duration_seconds || null
+  const sd = npVal && weightKg > 0 && durSec ? computeRaceScore({
+    wpkg_np: npVal / weightKg, duration_seconds: durSec,
+    pre_fatigue: preFatigue, effort_rating: effortRating,
+    temp_celsius: tempStr ? Number(tempStr) : null,
+    elevation_gain_m: activity?.elevation_gain_m ?? null,
+    distance_km: activity?.distance_km ?? null,
+  }) : null
+
+  const INTENSITY_LABELS: Record<number, string> = { 5:'À fond', 4:'Très dur', 3:'Contrôle', 2:'Facile', 1:'Très facile' }
+
   return createPortal(
     <div style={{
       position:'fixed', inset:0, zIndex:3200,
@@ -717,21 +769,28 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
       display:'flex', alignItems:'flex-end', transition:'background 300ms ease-out',
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
-        width:'100%', maxWidth:540, margin:'0 auto',
-        maxHeight:'88vh', background:'var(--bg-card)',
+        width:'100%', maxWidth:560, margin:'0 auto',
+        maxHeight:'94vh', background:'var(--bg-card)',
         borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
       }}>
+        {/* Header */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'16px 20px', flexShrink:0,
+          padding:'14px 20px', flexShrink:0,
           background:`${RACE_COLOR}10`, borderBottom:`1px solid ${RACE_COLOR}25`,
         }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Upload fichier</h2>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>.gpx ou .fit</p>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>
+              {activity ? 'Données extraites — vérifiez et confirmez' : 'Upload fichier .gpx / .fit'}
+            </h2>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>
+              {activity
+                ? `${activity.source.toUpperCase()} · ${Object.values(activity).filter(v => v != null && v !== false).length} champs détectés`
+                : 'Extraction automatique de toutes les données disponibles'}
+            </p>
           </div>
           <button onClick={handleClose} style={{
             width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
@@ -740,72 +799,231 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           }}>×</button>
         </div>
 
-        <div style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-          {/* File picker */}
+        {/* Body */}
+        <div style={{ flex:1, overflowY:'auto', padding:'14px 18px 16px', display:'flex', flexDirection:'column', gap:12 }}>
+
+          {/* ── File picker (always visible) */}
           <label style={{
-            display:'flex', alignItems:'center', gap:10, padding:'14px',
-            background:'var(--bg-card2)', border:`2px dashed ${RACE_COLOR}40`,
+            display:'flex', alignItems:'center', gap:10, padding:'12px 14px',
+            background:'var(--bg-card2)', border:`2px dashed ${activity ? RACE_COLOR : 'var(--border)'}`,
             borderRadius:12, cursor:'pointer',
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={RACE_COLOR} strokeWidth={2}>
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            <span style={{ fontSize:13, color: fileName ? 'var(--text)' : 'var(--text-dim)' }}>
-              {parsing ? 'Analyse en cours…' : fileName || 'Choisir un fichier .gpx ou .fit'}
+            {parsing
+              ? <div style={{ width:18, height:18, border:`2px solid ${RACE_COLOR}40`, borderTopColor:RACE_COLOR, borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activity ? RACE_COLOR : 'var(--text-dim)'} strokeWidth={2}>
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            }
+            <span style={{ fontSize:13, color: fileName ? 'var(--text)' : 'var(--text-dim)', flex:1 }}>
+              {parsing
+                ? 'Analyse du fichier en cours…'
+                : fileName
+                  ? `${fileName} ${activity ? '✓' : ''}`
+                  : 'Choisir un fichier .gpx ou .fit'}
             </span>
+            {activity && !parsing && (
+              <span style={{ fontSize:10, fontWeight:700, color:'#22c55e', background:'rgba(34,197,94,0.12)', padding:'3px 8px', borderRadius:5, border:'1px solid rgba(34,197,94,0.3)' }}>
+                {Object.entries(activity).filter(([k, v]) => v != null && v !== false && k !== 'source' && k !== 'has_power').length} champs extraits
+              </span>
+            )}
             <input type="file" accept=".gpx,.fit" onChange={handleFile} style={{ display:'none' }}/>
           </label>
 
-          {error && <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'8px 12px' }}>{error}</div>}
+          {error && (
+            <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'8px 12px' }}>{error}</div>
+          )}
 
-          {parsed && (
-            <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:10, padding:'10px 14px' }}>
-              <p style={{ fontSize:11, fontWeight:700, color:'#22c55e', margin:'0 0 6px' }}>✓ Profil GPS détecté</p>
-              <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
-                {parsed.total_distance_km && <span style={{ fontSize:11, color:'var(--text-mid)' }}>{parsed.total_distance_km.toFixed(1)} km</span>}
-                {parsed.total_denivele_pos && <span style={{ fontSize:11, color:'var(--text-mid)' }}>D+ {Math.round(parsed.total_denivele_pos)} m</span>}
-                {parsed.altitude_max && <span style={{ fontSize:11, color:'var(--text-mid)' }}>{parsed.altitude_max} m max</span>}
+          {/* ── No-power notice */}
+          {activity && !activity.has_power && (
+            <div style={{ background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.25)', borderRadius:10, padding:'10px 14px' }}>
+              <p style={{ fontSize:12, fontWeight:700, color:'#eab308', margin:'0 0 4px' }}>⚠ Aucun capteur de puissance détecté</p>
+              <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>
+                Saisis manuellement les watts NP ci-dessous, ou laisse vide.
+                Le score ne sera pas calculé sans données de puissance.
+              </p>
+            </div>
+          )}
+
+          {/* ── IDENTIFICATION */}
+          <div style={secBox('var(--bg-card2)', 'var(--border)')}>
+            <div style={secHdr}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2.5}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <span style={secLbl('var(--text-mid)')}>Identification</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <div>
+                <p style={lbl10}>Nom de la course *</p>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Tour du Ventoux" style={inp}/>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <p style={lbl10}>Date</p>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inpGrey}/>
+                </div>
+                <div>
+                  <p style={lbl10}>Durée</p>
+                  <input value={durationStr} onChange={e => setDurationStr(e.target.value)} placeholder="3:45:00" style={inpGrey}/>
+                </div>
+              </div>
+              <div>
+                <p style={lbl10}>Type de course</p>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {RACE_TYPES.map(rt => (
+                    <button key={rt.value} onClick={() => setRaceType(rt.value)} style={{ ...tog(raceType === rt.value), fontSize:11 }}>
+                      {rt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── PERFORMANCE (only if we have some data) */}
+          {(activity?.distance_km || activity?.elevation_gain_m || wattsNpStr || wattsAvgStr || hrAvgStr) && (
+            <div style={secBox('rgba(234,179,8,0.06)', 'rgba(234,179,8,0.2)')}>
+              <div style={secHdr}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth={2.5}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span style={secLbl('#eab308')}>Performance</span>
+              </div>
+
+              {/* Read-only GPS metrics */}
+              {(activity?.distance_km || activity?.elevation_gain_m || activity?.altitude_max_m || activity?.speed_avg_kmh) && (
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:10 }}>
+                  {activity?.distance_km && (
+                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)' }}>{activity.distance_km.toFixed(1)} km</span>
+                  )}
+                  {activity?.elevation_gain_m && (
+                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)' }}>D+ {activity.elevation_gain_m} m</span>
+                  )}
+                  {activity?.altitude_max_m && (
+                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>Alt max {activity.altitude_max_m} m</span>
+                  )}
+                  {activity?.speed_avg_kmh && (
+                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{activity.speed_avg_kmh} km/h moy</span>
+                  )}
+                  {activity?.calories && (
+                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{activity.calories} kcal</span>
+                  )}
+                </div>
+              )}
+
+              {/* Editable power */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                <div>
+                  <p style={lbl10}>NP Watts</p>
+                  <input type="number" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)}
+                    placeholder="Ex: 220" style={inpGrey}/>
+                  {wpkgNpPreview && (
+                    <p style={{ fontSize:11, color:RACE_COLOR, margin:'3px 0 0', fontFamily:'DM Mono,monospace' }}>{wpkgNpPreview} W/kg</p>
+                  )}
+                </div>
+                <div>
+                  <p style={lbl10}>Watts moyens</p>
+                  <input type="number" value={wattsAvgStr} onChange={e => setWattsAvgStr(e.target.value)}
+                    placeholder="Ex: 200" style={inpGrey}/>
+                </div>
+                {(hrAvgStr || activity?.hr_avg) && (
+                  <div>
+                    <p style={lbl10}>FC moyenne (bpm)</p>
+                    <input type="number" value={hrAvgStr} onChange={e => setHrAvgStr(e.target.value)}
+                      placeholder="Ex: 158" style={inpGrey}/>
+                  </div>
+                )}
+                {(hrMaxStr || activity?.hr_max) && (
+                  <div>
+                    <p style={lbl10}>FC max (bpm)</p>
+                    <input type="number" value={hrMaxStr} onChange={e => setHrMaxStr(e.target.value)}
+                      placeholder="Ex: 178" style={inpGrey}/>
+                  </div>
+                )}
+                {(tssStr || activity?.tss) && (
+                  <div>
+                    <p style={lbl10}>TSS</p>
+                    <input type="number" value={tssStr} onChange={e => setTssStr(e.target.value)}
+                      placeholder="Ex: 280" style={inpGrey}/>
+                  </div>
+                )}
+                {(tempStr || activity?.temp_celsius != null) && (
+                  <div>
+                    <p style={lbl10}>Température (°C)</p>
+                    <input type="number" value={tempStr} onChange={e => setTempStr(e.target.value)}
+                      placeholder="Ex: 22" style={inpGrey}/>
+                  </div>
+                )}
+              </div>
+              {/* Cadence read-only */}
+              {activity?.cadence_avg && (
+                <p style={{ fontSize:11, color:'var(--text-dim)', margin:'8px 0 0' }}>
+                  Cadence moy : {activity.cadence_avg} rpm
+                  {activity.if_score && ` · IF : ${activity.if_score.toFixed(3)}`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── CONDITIONS */}
+          <div style={secBox('var(--bg-card2)', 'var(--border)')}>
+            <div style={secHdr}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2.5}><path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24"/></svg>
+              <span style={secLbl('var(--text-mid)')}>Conditions</span>
+            </div>
+            <div style={{ marginBottom:10 }}>
+              <p style={lbl10}>Pré-fatigue au départ</p>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {(['fresh','light','moderate','high'] as const).map(k => (
+                  <button key={k} onClick={() => setPreFatigue(k)} style={{ ...tog(preFatigue === k), fontSize:11 }}>
+                    {PRE_LABELS[k]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom:10 }}>
+              <p style={lbl10}>Ressenti global</p>
+              <div style={{ display:'flex', gap:5 }}>
+                {[1,2,3,4,5].map(v => (
+                  <button key={v} onClick={() => setEffortRating(v)} style={{
+                    ...tog(effortRating === v),
+                    display:'flex', flexDirection:'column', alignItems:'center', padding:'7px 10px', gap:2,
+                  }}>
+                    <span style={{ fontSize:13, fontWeight:700 }}>{v}</span>
+                    <span style={{ fontSize:9, opacity:0.8 }}>{INTENSITY_LABELS[v]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {!tempStr && !activity?.temp_celsius && (
+              <div>
+                <p style={lbl10}>Température (°C) — optionnel</p>
+                <input type="number" value={tempStr} onChange={e => setTempStr(e.target.value)} placeholder="Ex: 22" style={{ ...inpGrey, maxWidth:130 }}/>
+              </div>
+            )}
+            <div style={{ marginTop:10 }}>
+              <p style={lbl10}>Notes (optionnel)</p>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observations…"
+                rows={2} style={{ ...inpGrey, resize:'vertical', fontFamily:'DM Sans,sans-serif' }}/>
+            </div>
+          </div>
+
+          {/* ── Score preview */}
+          {sd && (
+            <div style={{ background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.25)', borderRadius:12, padding:'12px 14px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ fontFamily:'DM Mono,monospace', fontSize:36, fontWeight:900, color: levelOf(sd.total).color }}>{sd.total.toFixed(0)}</div>
+                <div>
+                  <div style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color: levelOf(sd.total).color }}>{levelOf(sd.total).label}</div>
+                  <div style={{ height:5, width:100, borderRadius:3, background:'var(--bg-card)', marginTop:6 }}>
+                    <div style={{ height:'100%', width:`${Math.min(100, sd.total)}%`, background: levelOf(sd.total).color, borderRadius:3 }}/>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Form */}
-          <div>
-            <p style={lbl10}>Nom de la course</p>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Tour du Ventoux" style={inp}/>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <div>
-              <p style={lbl10}>Date</p>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inpGrey}/>
-            </div>
-            <div>
-              <p style={lbl10}>Durée (hh:mm:ss)</p>
-              <input value={durationStr} onChange={e => setDurationStr(e.target.value)} placeholder="3:45:00" style={inpGrey}/>
-            </div>
-          </div>
-          <div>
-            <p style={lbl10}>NP Watts (puissance normalisée)</p>
-            <input type="number" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)} placeholder="Ex: 210" style={inpGrey}/>
-            {wattsNpStr && weightKg > 0 && (
-              <p style={{ fontSize:11, color:RACE_COLOR, margin:'4px 0 0', fontFamily:'DM Mono,monospace' }}>
-                {(Number(wattsNpStr) / weightKg).toFixed(2)} W/kg
-              </p>
-            )}
-          </div>
-          <div>
-            <p style={lbl10}>Type</p>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {RACE_TYPES.map(rt => (
-                <button key={rt.value} onClick={() => setRaceType(rt.value)} style={tog(raceType === rt.value)}>
-                  {rt.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
-        <div style={{ padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${RACE_COLOR}20`, flexShrink:0 }}>
+        {/* Footer */}
+        <div style={{ padding:'12px 18px 20px', background:'var(--bg-card)', borderTop:`1px solid ${RACE_COLOR}20`, flexShrink:0 }}>
+          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>{error}</div>}
           <button onClick={() => void handleSave()} disabled={!name || saving} style={{
             width:'100%', padding:'14px', borderRadius:12, border:'none',
             cursor: name && !saving ? 'pointer' : 'not-allowed',
@@ -813,7 +1031,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
             color: name && !saving ? '#fff' : 'var(--text-dim)',
             fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700,
           }}>
-            {saving ? 'Enregistrement…' : 'Enregistrer cette course'}
+            {saving ? 'Enregistrement…' : 'Confirmer et enregistrer'}
           </button>
         </div>
       </div>

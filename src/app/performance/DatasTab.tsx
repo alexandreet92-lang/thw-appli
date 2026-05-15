@@ -8,6 +8,7 @@ import type { ZoneSport } from '@/hooks/useTrainingZones'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { CyclingRadar, RunningRadar, HyroxRadar, TriathlonRadar } from './RadarChart'
 import { ClimbsSection } from './ClimbsSection'
+import { RacesSection } from './RacesSection'
 
 // ── Types ────────────────────────────────────────────────────────
 type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
@@ -3424,6 +3425,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           </Card>
 
           <ClimbsSection profile={profile} />
+          <RacesSection profile={profile} />
         </div>
       )}
 

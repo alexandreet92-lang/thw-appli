@@ -538,13 +538,27 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
   onImported: (r: RaceRecord) => void
   onClose: () => void
 }) {
-  const [mounted, setMounted] = useState(false)
-  const [visible, setVisible] = useState(false)
-  const [closing, setClosing] = useState(false)
-  const [activities, setActivities] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [importing, setImporting] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [mounted,    setMounted]    = useState(false)
+  const [visible,    setVisible]    = useState(false)
+  const [closing,    setClosing]    = useState(false)
+  const [allActs,    setAllActs]    = useState<any[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [importing,  setImporting]  = useState<string | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
+  const [racesOnly,  setRacesOnly]  = useState(true)
+
+  const RACE_KW = /course|compétition|competition|race|gran\s?fondo|cyclosportive/i
+
+  // Filter applied in render
+  const activities = allActs.filter(a => {
+    const notImported = (() => {
+      const sid = a.provider_id ? Number(a.provider_id) : null
+      return sid === null || !existingStravaIds.has(sid)
+    })()
+    if (!notImported) return false
+    if (!racesOnly) return true
+    return a.is_race === true || RACE_KW.test(a.title ?? '')
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -556,12 +570,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
     try {
       const res = await fetch('/api/strava/activities?limit=100&sport_type=bike')
       const json = await res.json()
-      const acts: any[] = json.activities ?? []
-      const filtered = acts.filter(a => {
-        const sid = a.provider_id ? Number(a.provider_id) : null
-        return sid === null || !existingStravaIds.has(sid)
-      })
-      setActivities(filtered)
+      setAllActs(json.activities ?? [])
     } catch {
       setError('Impossible de charger les activités Strava')
     } finally {
@@ -596,10 +605,10 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
         date: (a.started_at ?? new Date().toISOString()).slice(0, 10),
         race_type: a.is_race ? 'race' : 'training',
         distance_km: distKm,
-        elevation_gain_m: a.elevation_gain_m ?? null,
+        elevation_gain_m: a.elevation_gain_m != null ? +a.elevation_gain_m : null,  // float OK
         duration_seconds: durSec,
-        watts_avg: wattsAvg,
-        watts_np: wattsNp,
+        watts_avg: wattsAvg != null ? Math.round(wattsAvg) : null,
+        watts_np:  wattsNp  != null ? Math.round(wattsNp)  : null,
         tss: a.tss ?? null,
         if_score: null,
         wpkg_np: wpkgNp,
@@ -647,13 +656,30 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
         }}>
           <div>
             <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Importer depuis Strava</h2>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Activités vélo non encore importées</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>
+              {racesOnly ? 'Courses uniquement' : 'Toutes les sorties vélo'} — {activities.length} activité{activities.length !== 1 ? 's' : ''}
+            </p>
           </div>
-          <button onClick={handleClose} style={{
-            width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
-            background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer',
-            fontSize:16, display:'flex', alignItems:'center', justifyContent:'center',
-          }}>×</button>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            {/* Toggle Courses / Tout */}
+            <button onClick={() => setRacesOnly(v => !v)} style={{
+              display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8,
+              border:`1px solid ${racesOnly ? RACE_COLOR + '50' : 'var(--border)'}`,
+              background: racesOnly ? `${RACE_COLOR}12` : 'var(--bg-card2)',
+              color: racesOnly ? RACE_COLOR : 'var(--text-dim)',
+              fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                {racesOnly ? <><polyline points="20 6 9 17 4 12"/></> : <><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></>}
+              </svg>
+              {racesOnly ? 'Courses' : 'Tout'}
+            </button>
+            <button onClick={handleClose} style={{
+              width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
+              background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer',
+              fontSize:16, display:'flex', alignItems:'center', justifyContent:'center',
+            }}>×</button>
+          </div>
         </div>
 
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
@@ -663,7 +689,9 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
           )}
           {!loading && activities.length === 0 && (
             <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>
-              Toutes tes activités Strava vélo ont déjà été importées
+              {racesOnly
+                ? <><p style={{ margin:'0 0 8px' }}>Aucune course Strava détectée</p><button onClick={() => setRacesOnly(false)} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:11, cursor:'pointer' }}>Voir toutes les sorties vélo</button></>
+                : 'Toutes tes activités Strava vélo ont déjà été importées'}
             </div>
           )}
           {activities.map(a => {
@@ -795,15 +823,15 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
       const avg      = wattsAvgStr ? Math.round(Number(wattsAvgStr)) : (activity?.watts_avg ?? null)
       const wpkgNp   = np && weightKg > 0 ? +(np / weightKg).toFixed(3) : null
       const distKm   = activity?.distance_km      ?? null
-      const elevGain = activity?.elevation_gain_m ?? null
-      const hrAvg    = hrAvgStr ? Math.round(Number(hrAvgStr)) : (activity?.hr_avg ?? null)
-      const hrMax    = hrMaxStr ? Math.round(Number(hrMaxStr)) : (activity?.hr_max ?? null)
+      const elevGain = activity?.elevation_gain_m ?? null  // float column — no rounding needed
+      const hrAvg    = hrAvgStr ? Math.round(Number(hrAvgStr)) : (activity?.hr_avg    != null ? Math.round(activity.hr_avg)    : null)
+      const hrMax    = hrMaxStr ? Math.round(Number(hrMaxStr)) : (activity?.hr_max    != null ? Math.round(activity.hr_max)    : null)
+      const cadAvg   = activity?.cadence_avg   != null ? Math.round(activity.cadence_avg)   : null  // INTEGER col
+      const cals     = activity?.calories      != null ? Math.round(activity.calories)      : null  // INTEGER col
       const tempC    = tempStr  ? Number(tempStr) : (activity?.temp_celsius ?? null)
       const tss      = tssStr   ? Number(tssStr)  : (activity?.tss ?? null)
       const ifScore  = activity?.if_score ?? null
-      const cadAvg   = activity?.cadence_avg ?? null
       const spdKmh   = activity?.speed_avg_kmh ?? null
-      const cals     = activity?.calories ?? null
 
       const sd = wpkgNp && durSec ? computeRaceScore({
         wpkg_np: wpkgNp, duration_seconds: durSec,

@@ -585,11 +585,32 @@ interface RadarSVGProps {
   onHover: (state: TooltipState | null) => void
 }
 
+function useDarkMode() {
+  const [dark, setDark] = useState(true)
+  useEffect(() => {
+    const check = () => setDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return dark
+}
+
 function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
   const n = axes.length
   if (n < 3) return null
   const scores = axes.map(a => a.score)
   const ringLevels = [5, 6, 7, 8, 9, 10]
+  const isDark = useDarkMode()
+
+  // Couleurs adaptées au thème
+  const axisStroke   = isDark ? 'rgba(255,255,255,0.08)' : '#94A3B8'
+  const labelActive  = isDark ? 'rgba(255,255,255,0.88)' : '#374151'
+  const labelInactive = isDark ? 'rgba(255,255,255,0.32)' : '#94A3B8'
+  const dotEmpty     = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'
+  const dotStroke    = isDark ? '#fff' : '#374151'
+  const dotEmptyStroke = isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'
 
   return (
     <svg
@@ -605,7 +626,7 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
             x1={CX} y1={CY}
             x2={CX + MAX_R * Math.cos(angle)}
             y2={CY + MAX_R * Math.sin(angle)}
-            stroke="rgba(255,255,255,0.08)" strokeWidth={1}
+            stroke={axisStroke} strokeWidth={1}
           />
         )
       })}
@@ -618,7 +639,7 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
           <polygon key={lv}
             points={polarPts(arr)}
             fill="none"
-            stroke={lvEntry?.color ?? '#fff'}
+            stroke={lvEntry?.color ?? (isDark ? '#fff' : '#94A3B8')}
             strokeOpacity={lv === 10 ? 0.4 : 0.18}
             strokeWidth={lv === 10 ? 1 : 0.75}
             strokeDasharray={lv === 10 ? undefined : '3 4'}
@@ -645,8 +666,8 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
         const y = CY + rad * Math.sin(angle)
         return (
           <circle key={i} cx={x} cy={y} r={s > 0 ? 4.5 : 3}
-            fill={s > 0 ? sportColor : 'rgba(255,255,255,0.15)'}
-            stroke={s > 0 ? '#fff' : 'rgba(255,255,255,0.3)'}
+            fill={s > 0 ? sportColor : dotEmpty}
+            stroke={s > 0 ? dotStroke : dotEmptyStroke}
             strokeWidth={1.5}
             style={{ cursor: 'pointer' }}
             onMouseEnter={e => onHover({ axis, x: e.clientX, y: e.clientY })}
@@ -669,7 +690,7 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
           <text key={i} x={x} y={y + dy}
             textAnchor={anchor}
             fontSize={10} fontFamily="DM Sans, sans-serif" fontWeight={600}
-            fill={axis.score > 0 ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.32)'}
+            fill={axis.score > 0 ? labelActive : labelInactive}
           >
             {axis.label}
           </text>

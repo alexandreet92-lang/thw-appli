@@ -66,15 +66,38 @@ function yearColor(yr: string, all: string[]) {
 // Paliers de durée en minutes
 const BP = [5, 10, 20, 30, 45, 60, 90, 120]
 
-// Référence Alien W/kg à chaque palier selon la table de pré-fatigue
-// heavy: non-monotone à 45' (référence Pogacar sur cols longs avec fatigue)
-const REF_ALIEN = {
-  standard: [8.5, 7.8, 7.2, 6.9, 6.6, 6.4, 6.0, 5.6],  // fresh / light
-  moderate: [7.8, 7.2, 6.6, 6.3, 6.1, 5.9, 5.5, 5.2],  // moderate
-  heavy:    [7.2, 6.6, 6.1, 5.9, 6.2, 5.4, 5.1, 4.8],  // high
+// 3 tables × 6 niveaux × 8 paliers de durée
+// Ligne 0 = Alien (formule), lignes 1-5 = niveaux inférieurs (barème)
+// heavy : 45' = 6.2 (non-monotone, calibré Pogacar TdF 2ème semaine)
+const REF_TABLES_ALL = {
+  //           5'    10'   20'   30'   45'   60'   90'   120'
+  standard: [
+    [9.5, 8.8, 8.0, 7.5, 7.0, 6.8, 6.4, 6.0],  // Alien
+    [8.0, 7.4, 6.8, 6.4, 6.0, 5.8, 5.5, 5.2],  // Pro top intl.
+    [6.8, 6.3, 5.8, 5.5, 5.2, 5.0, 4.7, 4.4],  // Pro
+    [5.8, 5.4, 5.0, 4.7, 4.5, 4.3, 4.0, 3.8],  // AHN
+    [5.0, 4.6, 4.2, 4.0, 3.8, 3.6, 3.4, 3.2],  // Bon amateur
+    [4.0, 3.7, 3.4, 3.2, 3.0, 2.8, 2.6, 2.4],  // Amateur
+  ],
+  moderate: [
+    [8.7, 8.1, 7.4, 6.9, 6.4, 6.3, 5.9, 5.5],
+    [7.4, 6.8, 6.3, 5.9, 5.5, 5.3, 5.1, 4.8],
+    [6.3, 5.8, 5.3, 5.1, 4.8, 4.6, 4.3, 4.0],
+    [5.3, 5.0, 4.6, 4.3, 4.1, 4.0, 3.7, 3.5],
+    [4.6, 4.2, 3.9, 3.7, 3.5, 3.3, 3.1, 2.9],
+    [3.7, 3.4, 3.1, 2.9, 2.8, 2.6, 2.4, 2.2],
+  ],
+  heavy: [
+    [8.1, 7.5, 6.8, 6.4, 6.2, 5.8, 5.4, 5.1],
+    [6.8, 6.3, 5.8, 5.4, 5.1, 4.9, 4.7, 4.4],
+    [5.8, 5.4, 4.9, 4.7, 4.4, 4.3, 4.0, 3.7],
+    [4.9, 4.6, 4.3, 4.0, 3.8, 3.7, 3.4, 3.2],
+    [4.3, 3.9, 3.6, 3.4, 3.2, 3.1, 2.9, 2.7],
+    [3.4, 3.1, 2.9, 2.7, 2.6, 2.4, 2.2, 2.0],
+  ],
 } as const
 
-type FatigueTable = keyof typeof REF_ALIEN
+type FatigueTable = keyof typeof REF_TABLES_ALL
 
 function fatigueToTable(preFatigue: string | null): FatigueTable {
   if (!preFatigue || preFatigue === 'fresh' || preFatigue === 'light') return 'standard'
@@ -83,7 +106,7 @@ function fatigueToTable(preFatigue: string | null): FatigueTable {
 }
 
 function interpolateAlienRef(durMin: number, table: FatigueTable): number {
-  const refs = REF_ALIEN[table]
+  const refs = REF_TABLES_ALL[table][0]  // ligne 0 = Alien
   if (durMin <= BP[0]) return refs[0]
   if (durMin >= BP[BP.length - 1]) return refs[BP.length - 1]
   for (let i = 0; i < BP.length - 1; i++) {
@@ -173,8 +196,10 @@ function scoreColor(s: number): string {
   const l = levelOf(s); return l.color
 }
 
-// Durées affichées dans le barème dynamique (minutes)
-const BAREM_DURS = [10, 20, 30, 45, 60, 90]
+// Durées affichées dans le barème (doivent correspondre à des paliers BP exacts)
+// Indices dans BP = [5,10,20,30,45,60,90,120] → [1,2,3,4,5,6]
+const BAREM_DURS    = [10, 20, 30, 45, 60, 90]
+const BAREM_BP_IDX  = [ 1,  2,  3,  4,  5,  6]
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
@@ -651,8 +676,8 @@ const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
 function BaremeAccordion() {
   const [tab, setTab] = useState<FatigueTable>('standard')
 
-  // Niveaux affichés (Alien → Bon amateur)
-  const shownLevels = LEVELS.slice(0, 5)
+  // 6 niveaux affichés (Alien → Amateur), correspondant aux 6 lignes de REF_TABLES_ALL
+  const shownLevels = LEVELS.slice(0, 6)
 
   return (
     <Accordion title="Barème des niveaux">
@@ -683,15 +708,15 @@ function BaremeAccordion() {
           </thead>
           <tbody>
             {BAREM_DURS.map((dur, ri) => {
-              const alienRef = interpolateAlienRef(dur, tab)
+              const bpIdx = BAREM_BP_IDX[ri]
               return (
                 <tr key={dur} style={{ background: ri%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
                   <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
-                  {shownLevels.map(l => {
-                    const minWkg = (l.min / 100) * alienRef
+                  {shownLevels.map((l, li) => {
+                    const val = REF_TABLES_ALL[tab][li][bpIdx]
                     return (
                       <td key={l.label} style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)', textAlign:'right' }}>
-                        ≥ {minWkg.toFixed(1)}
+                        ≥ {val.toFixed(1)}
                       </td>
                     )
                   })}
@@ -702,7 +727,7 @@ function BaremeAccordion() {
         </table>
       </div>
       <p style={{ fontSize:10, color:'var(--text-dim)', margin:'8px 0 0', lineHeight:1.5 }}>
-        W/kg minimum pour atteindre chaque niveau en conditions neutres (sans bonus temp/altitude/ressenti). Score = W/kg ÷ Réf. Alien × 100.
+        W/kg minimum pour atteindre chaque niveau (conditions neutres, hors bonus temp/altitude/ressenti).
       </p>
     </Accordion>
   )
@@ -863,42 +888,43 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
             {/* Exemples */}
             {[
               {
-                title: 'Exemple 1 — Bon amateur, 45 min, conditions standard',
+                title: 'Exemple 1 — Bon amateur, 12 min, conditions standard',
                 lines: [
-                  'W/kg : 3.2 · Durée : 45 min · Frais · 15°C · 800 m · Ressenti 4',
-                  'Réf. Alien (45 min, standard) : 6.6 W/kg',
-                  'score_brut = 3.2 / 6.6 × 100 = 48.5',
-                  'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02',
+                  'W/kg : 3.2 · Durée : 12 min · Frais · 15°C · 900 m · Ressenti 4',
+                  'Réf. Alien 12 min (interp. standard) ≈ 8.4 W/kg',
+                  'score_brut = 3.2 / 8.4 × 100 = 38',
+                  'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02 → ×1.03',
                 ],
-                result: 'Score = min(100, 48.5 × 1.00 × 1.01 × 1.02) = 50/100 — AHN',
+                result: 'Score = min(100, 38 × 1.03) = 39/100 — Bon amateur',
               },
               {
-                title: 'Exemple 2 — Même athlète, 33°C, 1800 m, ressenti 3',
+                title: 'Exemple 2 — 50 min, grosse fatigue, chaleur, 1800 m',
                 lines: [
-                  'W/kg : 3.2 · Durée : 45 min · Frais · 33°C · 1800 m · Ressenti 3',
-                  'score_brut = 48.5 (identique)',
-                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04',
+                  'W/kg : 3.6 · Durée : 50 min · Grosse pré-fatigue · 32°C · 1800 m · Ressenti 3',
+                  'Réf. Alien 50 min (interp. heavy) ≈ 6.2 W/kg',
+                  'score_brut = 3.6 / 6.2 × 100 = 58',
+                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04 → ×1.11',
                 ],
-                result: 'Score = min(100, 48.5 × 1.04 × 1.03 × 1.04) = 54/100 — AHN+',
-                note: 'Conditions très difficiles : 4 points de bonus sur la même puissance.',
+                result: 'Score = min(100, 58 × 1.11) = 64/100 — AHN',
+                note: 'Grosse fatigue + chaleur + altitude : la table heavy + les coefficients reflètent la vraie difficulté.',
               },
               {
-                title: 'Exemple 3 — Grosse fatigue, 60 min, 5.0 W/kg',
+                title: 'Exemple 3 — Pogacar, 40 min, grosse fatigue',
                 lines: [
-                  'W/kg : 5.0 · Durée : 60 min · Pré-fatigue élevée',
-                  'Réf. Alien (60 min, heavy) : 5.4 W/kg',
-                  'score_brut = 5.0 / 5.4 × 100 = 92.6',
-                  'Conditions normales : cTemp/cAlt/cRessenti = ×1.00',
+                  'W/kg : 6.8 · Durée : 40 min · Grosse fatigue · 30°C+ · 2000 m+',
+                  'Réf. Alien 40 min (interp. heavy) ≈ 6.2 W/kg',
+                  'score_brut = 6.8 / 6.2 × 100 = 110 → plafonné à 100',
+                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.00 → ×1.07',
                 ],
-                result: 'Score = 92.6/100 — Pro top intl.',
-                note: 'La table "fatigue élevée" valorise cette performance : 5.0 W/kg sous fatigue vaut presque le niveau Alien fatigué.',
+                result: 'Score = min(100, 100) = 100/100 — Alien',
+                note: 'Dépasser la référence Alien plafonne le score à 100. Seuls quelques athlètes au monde peuvent y prétendre.',
               },
               {
                 title: 'Exemple 4 — Ressenti facile = marge restante',
                 lines: [
-                  'Deux montées à 3.8 W/kg, 45 min, conditions identiques :',
-                  'Ressenti 5 (à fond) → score = 57.6 × 1.00 = 58/100',
-                  'Ressenti 2 (facile) → score = 57.6 × 1.06 = 61/100',
+                  'Deux montées à 3.8 W/kg, 45 min standard, conditions identiques :',
+                  'Ressenti 5 (à fond) → score_brut = 54 × 1.00 = 54/100',
+                  'Ressenti 2 (facile) → score_brut = 54 × 1.06 = 57/100',
                 ],
                 note: 'Produire la même puissance sans se mettre dans le rouge indique une capacité supérieure. Le score le récompense.',
               },

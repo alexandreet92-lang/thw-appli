@@ -227,11 +227,12 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   setProfile: React.Dispatch<React.SetStateAction<typeof INIT_PROFILE>>
   onAnalyzeProfile?: () => Promise<void>
 }) {
-  const [editing,   setEditing]   = useState(false)
-  const [saving,    setSaving]    = useState(false)
-  const [savedOk,   setSavedOk]   = useState(false)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [profLoading, setProfLoading] = useState(true)
+  const [editing,      setEditing]      = useState(false)
+  const [saving,       setSaving]       = useState(false)
+  const [savedOk,      setSavedOk]      = useState(false)
+  const [analyzing,    setAnalyzing]    = useState(false)
+  const [profLoading,  setProfLoading]  = useState(true)
+  const [profileEmpty, setProfileEmpty] = useState(false)
 
   // Profil Spécifique
   const [specSport,  setSpecSport]  = useState<SportSpecId>('running')
@@ -264,6 +265,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
         const prof = profilesRes.data
 
         if (perf || prof) {
+          setProfileEmpty(false)
           setP(prev => ({
             ...prev,
             ftp:           perf?.ftp_watts           ?? prev.ftp,
@@ -281,6 +283,8 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
               ? `${Math.floor(perf.css_s_100m / 60)}:${String(perf.css_s_100m % 60).padStart(2,'0')}`
               : prev.css,
           }))
+        } else {
+          setProfileEmpty(true)
         }
 
         if (specRes.data) {
@@ -379,6 +383,30 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* ── Bannière profil non configuré ── */}
+      {profileEmpty && (
+        <div style={{
+          background:'rgba(234,179,8,0.07)', border:'1px solid rgba(234,179,8,0.3)',
+          borderRadius:12, padding:'12px 16px',
+          display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' as const,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth={2} style={{ flexShrink:0 }}>
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div style={{ flex:1 }}>
+            <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'#eab308', margin:'0 0 2px' }}>Profil non configuré</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Les valeurs affichées sont des exemples. Renseigne ton profil pour des analyses personnalisées.</p>
+          </div>
+          <button onClick={() => setEditing(true)} style={{
+            padding:'7px 14px', borderRadius:8,
+            background:'rgba(234,179,8,0.15)', border:'1px solid rgba(234,179,8,0.4)',
+            color:'#eab308', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const,
+          }}>
+            Compléter mon profil →
+          </button>
+        </div>
+      )}
 
       {/* ── Profil Global ── */}
       <Card>
@@ -1304,7 +1332,7 @@ function IcoSave()   { return <svg width="14" height="14" viewBox="0 0 24 24" fi
 
 interface TestHistoryEntry { id: string; date: string; valeurs: Record<string, string>; documents?: { name: string; path: string; size: number; type: string }[] }
 
-function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClose: () => void }) {
+function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest | null; onClose: () => void; onFtpUpdate?: (ftp: number) => void }) {
   const [vals, setVals]               = useState<Record<string, string>>({})
   const [saving, setSaving]           = useState(false)
   const [saved, setSaved]             = useState(false)
@@ -1466,6 +1494,19 @@ function TestProtocolPanel({ open: ot, onClose }: { open: OpenTest | null; onClo
               { onConflict: 'user_id,sport,axis' }
             )
           }
+        }
+      }
+
+      // Auto-update profile FTP for CP20 test
+      if (ot.test.id === 'cp20' && onFtpUpdate) {
+        const ftpW = parseFloat(saveVals['ftp'] ?? '') ||
+                     Math.round((parseFloat(saveVals['puissance_moy'] ?? '') || 0) * 0.95)
+        if (ftpW > 0) {
+          await sb.from('athlete_performance_profile').upsert(
+            { user_id: user.id, ftp_watts: ftpW, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' }
+          )
+          onFtpUpdate(ftpW)
         }
       }
 
@@ -1937,11 +1978,12 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
 // ════════════════════════════════════════════════
 // ONGLET TESTS
 // ════════════════════════════════════════════════
-function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId }: {
+function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUpdate }: {
   profile: typeof INIT_PROFILE
   onAnalyzeTest?: (test: TestDef) => Promise<void>
   initialSport?: TestSport
   initialTestId?: string
+  onFtpUpdate?: (ftp: number) => void
 }) {
   const [testSport,      setTestSport]      = useState<TestSport>(initialSport ?? 'running')
   const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
@@ -2017,7 +2059,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId }: {
       </div>
 
       {/* Protocol panel */}
-      {openTest && <TestProtocolPanel open={openTest} onClose={() => setOpenTest(null)}/>}
+      {openTest && <TestProtocolPanel open={openTest} onClose={() => setOpenTest(null)} onFtpUpdate={onFtpUpdate}/>}
 
       {/* Historique global */}
       {showHistorique && <HistoriqueTestsPanel onClose={() => setShowHistorique(false)}/>}
@@ -2169,6 +2211,7 @@ export default function PerformancePage() {
           onAnalyzeTest={handleAnalyzeTest}
           initialSport={initialTest?.sport}
           initialTestId={initialTest?.testId}
+          onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))}
         />
       )}
 

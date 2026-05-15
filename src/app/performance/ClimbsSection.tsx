@@ -37,6 +37,7 @@ interface ClimbRecord {
   temp_bottom_celsius: number | null
   temp_summit_celsius: number | null
   intensity_rating: number | null
+  race_id: string | null
   created_at: string
 }
 
@@ -384,13 +385,24 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
   const [tempBottom, setTempBottom] = useState(existing?.temp_bottom_celsius != null ? String(existing.temp_bottom_celsius) : '')
   const [tempSummit, setTempSummit] = useState(existing?.temp_summit_celsius != null ? String(existing.temp_summit_celsius) : '')
   const [intensity, setIntensity]   = useState<number | null>(existing?.intensity_rating ?? null)
-  const [saving,   setSaving]   = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [saving,    setSaving]   = useState(false)
+  const [deleting,  setDeleting] = useState(false)
+  const [error,     setError]    = useState<string | null>(null)
+  const [raceName,  setRaceName] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
     const t = setTimeout(() => setVisible(true), 10)
+    // Fetch linked race name if race_id is set
+    if (existing?.race_id) {
+      void (async () => {
+        try {
+          const sb = createClient()
+          const { data } = await sb.from('race_records').select('name').eq('id', existing.race_id!).maybeSingle()
+          if (data?.name) setRaceName(data.name)
+        } catch { /* ignore */ }
+      })()
+    }
     return () => clearTimeout(t)
   }, [])
   if (!mounted) return null
@@ -448,6 +460,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
         temp_bottom_celsius: partialRecord.temp_bottom_celsius,
         temp_summit_celsius: partialRecord.temp_summit_celsius,
         intensity_rating: intensity,
+        race_id: existing?.race_id ?? null,
       }
       let data: ClimbRecord
       if (isEdit && existing) {
@@ -528,6 +541,15 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
             </div>
             <p style={lbl10}>Nom de l'ascension</p>
             <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="ex : Alpe d'Huez, Col du Tourmalet…" autoFocus={!isEdit}/>
+            {existing?.race_id && (
+              <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6,
+                            background:'rgba(249,115,22,0.07)', border:'1px solid rgba(249,115,22,0.25)',
+                            borderRadius:8, padding:'6px 10px' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={2}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <span style={{ fontSize:11, color:'var(--text-dim)' }}>Course associée :</span>
+                <span style={{ fontSize:11, fontWeight:600, color:'#f97316' }}>{raceName ?? '…'}</span>
+              </div>
+            )}
           </div>
 
           {/* PERFORMANCE */}

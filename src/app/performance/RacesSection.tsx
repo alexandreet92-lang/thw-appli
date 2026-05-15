@@ -324,23 +324,25 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
   const dimColor     = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'
 
   const H = 260
-  const valid = races.filter(r => r.duration_seconds && r.wpkg_np)
+  const allWithDur = races.filter(r => r.duration_seconds)
+  const withPower  = allWithDur.filter(r => r.wpkg_np)
+  const withoutPow = allWithDur.filter(r => !r.wpkg_np)
 
-  if (valid.length === 0) {
+  if (allWithDur.length === 0) {
     return (
       <div ref={wrapRef} style={{ height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-dim)', fontSize:13 }}>
-        Aucune course avec données de puissance
+        Aucune course enregistrée
       </div>
     )
   }
 
-  const maxDurMin = Math.max(...valid.map(r => (r.duration_seconds ?? 0) / 60))
-  const maxWkg    = Math.max(...valid.map(r => r.wpkg_np ?? 0))
+  const maxDurMin = Math.max(...allWithDur.map(r => (r.duration_seconds ?? 0) / 60))
+  const maxWkg    = withPower.length > 0 ? Math.max(...withPower.map(r => r.wpkg_np ?? 0)) : 4
 
   const xStep = 30
   const xMax  = Math.max(60, Math.ceil(maxDurMin * 1.15 / 30) * 30)
   const yStep = 0.5
-  const yMax  = Math.ceil(maxWkg * 1.20 / 0.5) * 0.5
+  const yMax  = Math.max(1, Math.ceil(maxWkg * 1.20 / 0.5) * 0.5)
 
   const cW = w - PL - PR
   const cH = H - PT - PB
@@ -379,8 +381,27 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
         <text x={PL + cW / 2} y={H - 2} textAnchor="middle" fontSize={9} fill={axisLblColor}>Durée (min)</text>
         <text x={10} y={PT + cH / 2} textAnchor="middle" fontSize={9} fill={axisLblColor}
           transform={`rotate(-90, 10, ${PT + cH / 2})`}>NP W/kg</text>
-        {/* Points */}
-        {valid.map(r => {
+        {/* Points sans puissance — grisés en bas */}
+        {withoutPow.map(r => {
+          const durMin = (r.duration_seconds ?? 0) / 60
+          const lit    = highlightIds === null || highlightIds.has(r.id)
+          const cx = px(durMin), cy = py(0)
+          return (
+            <circle key={r.id}
+              cx={cx} cy={cy}
+              r={lit ? 5 : 3}
+              fill={isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}
+              stroke={lit ? 'var(--bg-card)' : 'transparent'}
+              strokeWidth={1}
+              style={{ cursor:'pointer', transition:'r 0.1s' }}
+              onMouseEnter={() => setTooltip({ race: r, x: cx, y: cy })}
+              onMouseLeave={() => setTooltip(null)}
+              onClick={() => onPointClick(r)}
+            />
+          )
+        })}
+        {/* Points avec puissance — colorés par année */}
+        {withPower.map(r => {
           const durMin = (r.duration_seconds ?? 0) / 60
           const wkg    = r.wpkg_np ?? 0
           const yr     = yearOf(r.date)
@@ -395,10 +416,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
               stroke={lit ? 'var(--bg-card)' : 'transparent'}
               strokeWidth={1.5}
               style={{ cursor:'pointer', transition:'r 0.1s' }}
-              onMouseEnter={e => {
-                const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect()
-                setTooltip({ race: r, x: cx, y: cy })
-              }}
+              onMouseEnter={() => setTooltip({ race: r, x: cx, y: cy })}
               onMouseLeave={() => setTooltip(null)}
               onClick={() => onPointClick(r)}
             />
@@ -431,13 +449,19 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
 
       {/* Year legend */}
       {allYears.length > 0 && (
-        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:8, paddingLeft:PL }}>
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:8, paddingLeft:PL, alignItems:'center' }}>
           {[...allYears].sort().map(yr => (
             <div key={yr} style={{ display:'flex', alignItems:'center', gap:5 }}>
               <div style={{ width:8, height:8, borderRadius:'50%', background:yearColor(yr, allYears) }}/>
               <span style={{ fontSize:11, color:'var(--text-dim)' }}>{yr}</span>
             </div>
           ))}
+          {withoutPow.length > 0 && (
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--text-dim)', opacity:0.4 }}/>
+              <span style={{ fontSize:11, color:'var(--text-dim)' }}>Sans puissance</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -492,7 +516,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
       const durSec = a.elapsed_time_s ?? a.moving_time_s ?? 0
       const distKm = a.distance_m ? a.distance_m / 1000 : null
       const wattsAvg = a.avg_watts ?? null
-      const wattsNp = a.avg_watts ?? null // NP not stored separately
+      const wattsNp = a.weighted_average_watts ?? a.avg_watts ?? null
       const wpkgNp = wattsNp && weightKg > 0 ? wattsNp / weightKg : null
 
       const tempScore = wpkgNp && durSec ? computeRaceScore({
@@ -1166,6 +1190,17 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                 {elevGain && <span style={{ fontSize:12, color:'var(--text-mid)' }}>D+ {elevGain} m</span>}
                 {durSec && <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-mid)' }}>{secToHMS(durSec)}</span>}
               </div>
+              {race.strava_activity_id && (
+                <a href={`https://www.strava.com/activities/${race.strava_activity_id}`}
+                   target="_blank" rel="noopener noreferrer"
+                   style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:6,
+                            color:'#fc4c02', fontSize:11, textDecoration:'none', fontWeight:600 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/>
+                  </svg>
+                  Voir sur Strava
+                </a>
+              )}
             </div>
             <button onClick={handleClose} style={{
               width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
@@ -1653,12 +1688,34 @@ export function RacesSection({ profile }: RacesSectionProps) {
       {!loaded && <div className="skeleton-shimmer" style={{ height:220, borderRadius:8 }}/>}
       {loaded && races.length === 0 && (
         <div style={{
-          height:180, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-          gap:10, border:'1px dashed var(--border)', borderRadius:12, color:'var(--text-dim)',
+          padding:'32px 20px', display:'flex', flexDirection:'column', alignItems:'center',
+          gap:14, border:'1px dashed var(--border)', borderRadius:12, textAlign:'center',
         }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
-          <p style={{ fontSize:13, margin:0 }}>Aucune course enregistrée</p>
-          <p style={{ fontSize:11, margin:0 }}>Importe depuis Strava ou uploade un fichier GPX/FIT</p>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5}>
+            <circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/>
+          </svg>
+          <div>
+            <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:'0 0 4px' }}>Aucune course enregistrée</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Importe ta première course depuis Strava ou un fichier GPX/FIT</p>
+          </div>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
+            <button onClick={() => setShowStrava(true)} style={{
+              display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:9,
+              background:'rgba(249,115,22,0.10)', border:'1px solid rgba(249,115,22,0.35)',
+              color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/></svg>
+              Importer depuis Strava
+            </button>
+            <button onClick={() => setShowUpload(true)} style={{
+              display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:9,
+              background:'var(--bg-card2)', border:'1px solid var(--border)',
+              color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload fichier GPX/FIT
+            </button>
+          </div>
         </div>
       )}
       {loaded && races.length > 0 && (

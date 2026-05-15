@@ -3,6 +3,19 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 
+// ─── useDarkMode — suit la classe dark/light sur <html> ──────────────────────
+function useDarkMode() {
+  const [dark, setDark] = useState(true)
+  useEffect(() => {
+    const check = () => setDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return dark
+}
+
 // ─── Design token §2.3 ───────────────────────────────────────────────────────
 const BIKE_COLOR = '#3b82f6'
 
@@ -252,6 +265,7 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(520)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const isDark = useDarkMode()
 
   useEffect(() => {
     if (!wrapRef.current) return
@@ -259,6 +273,13 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
     ro.observe(wrapRef.current)
     return () => ro.disconnect()
   }, [])
+
+  // Couleurs adaptatives dark / light
+  const gridColor  = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'
+  const axisColor  = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'
+  const labelColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)'
+  const axisLblColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
+  const dimPointColor = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.15)'
 
   const H  = Math.max(220, Math.min(w * 0.48, 300))
   const CW = w - PL - PR, CH = H - PT - PB
@@ -279,19 +300,19 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <svg width="100%" height={H} viewBox={`0 0 ${w} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
         {/* Grille verticale — toutes les 15 min */}
-        {xTicks.map(v => <line key={`xg${v}`} x1={xPos(v)} y1={PT} x2={xPos(v)} y2={PT+CH} stroke="rgba(255,255,255,0.10)" strokeWidth={1}/>)}
+        {xTicks.map(v => <line key={`xg${v}`} x1={xPos(v)} y1={PT} x2={xPos(v)} y2={PT+CH} stroke={gridColor} strokeWidth={1}/>)}
         {/* Grille horizontale — tous les 0.5 W/kg */}
-        {yTicks.map(v => <line key={`yg${v}`} x1={PL} y1={yPos(v)} x2={PL+CW} y2={yPos(v)} stroke="rgba(255,255,255,0.10)" strokeWidth={1}/>)}
+        {yTicks.map(v => <line key={`yg${v}`} x1={PL} y1={yPos(v)} x2={PL+CW} y2={yPos(v)} stroke={gridColor} strokeWidth={1}/>)}
         {/* Axes */}
-        <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke="rgba(255,255,255,0.25)" strokeWidth={1}/>
-        <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke="rgba(255,255,255,0.25)" strokeWidth={1}/>
+        <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
+        <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
         {/* Labels axe X */}
-        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.55)">{v}</text>)}
-        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.5)">Durée (min)</text>
+        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v}</text>)}
+        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor}>Durée (min)</text>
         {/* Labels axe Y */}
-        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.55)">{v.toFixed(1)}</text>)}
-        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.5)" transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
-        {/* Points — grisés à 25% si hors filtre actif */}
+        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v.toFixed(1)}</text>)}
+        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor} transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
+        {/* Points — grisés si hors filtre actif */}
         {climbs.map(c => {
           const cx  = xPos(c.duration_seconds / 60)
           const cy  = yPos(c.wpkg)
@@ -300,9 +321,9 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
           return (
             <g key={c.id} style={{ cursor: 'pointer' }} onClick={() => onPointClick(c)}>
               <circle cx={cx} cy={cy} r={12} fill="transparent"/>
-              <circle cx={cx} cy={cy} r={lit ? 6 : 4} fill={lit ? col : 'rgba(255,255,255,0.25)'}
+              <circle cx={cx} cy={cy} r={lit ? 6 : 4} fill={lit ? col : dimPointColor}
                 fillOpacity={lit ? 0.90 : 1}
-                stroke={lit ? col : 'rgba(255,255,255,0.15)'} strokeWidth={lit ? 1.5 : 1}
+                stroke={lit ? col : dimPointColor} strokeWidth={lit ? 1.5 : 1}
                 strokeOpacity={lit ? 0.6 : 1}
                 style={{ transition: 'all 0.2s' }}
                 onMouseEnter={e => setTooltip({ climb: c, x: e.clientX, y: e.clientY })}

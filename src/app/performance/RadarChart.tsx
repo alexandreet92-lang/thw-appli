@@ -710,16 +710,16 @@ function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
       left: x + 14,
       top: y - 8,
       zIndex: 9999,
-      background: '#1A1F2E',
+      background: 'var(--bg-card2)',
       border: `1px solid ${lv.color}44`,
       borderRadius: 10,
       padding: '10px 14px',
       minWidth: 180,
       pointerEvents: 'none',
-      boxShadow: `0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px ${lv.color}22`,
+      boxShadow: `0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px ${lv.color}22`,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: '#fff' }}>
+        <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
           {axis.label}
         </span>
         {axis.score > 0 && (
@@ -737,15 +737,15 @@ function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
         )}
       </div>
       {axis.score > 0 && (
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>
-          Valeur : <strong style={{ color: '#fff' }}>{formatRaw(axis.rawValue, axis.unit)}</strong>
+        <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 4 }}>
+          Valeur : <strong style={{ color: 'var(--text)' }}>{formatRaw(axis.rawValue, axis.unit)}</strong>
         </div>
       )}
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+      <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
         {axis.description}
       </div>
       {axis.score === 0 && (
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4, fontStyle: 'italic' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic', opacity: 0.7 }}>
           Non renseigné — cliquez Mettre à jour
         </div>
       )}
@@ -845,16 +845,16 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: '#fff' }}>
+            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
               {title}
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
               Genre sélectionné : {gender === 'M' ? 'Homme' : 'Femme'} — les benchmarks s&apos;adaptent
             </div>
           </div>
           <button
             onClick={handleClose}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 22, cursor: 'pointer', padding: 4 }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 22, cursor: 'pointer', padding: 4 }}
           >
             ×
           </button>
@@ -864,7 +864,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {axisDefs.map(def => (
             <div key={def.key}>
-              <label style={{ display: 'block', fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 5, fontWeight: 600 }}>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-mid)', marginBottom: 5, fontWeight: 600 }}>
                 {def.inputLabel ?? def.label}
               </label>
               <input
@@ -882,7 +882,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
                   outline: 'none',
                 }}
               />
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>
                 {def.description}
               </div>
             </div>
@@ -890,7 +890,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         </div>
 
         {error && (
-          <div style={{ marginTop: 14, fontSize: 12, color: '#f87171', background: '#2a1515', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ marginTop: 14, fontSize: 12, color: '#f87171', background: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: '8px 12px' }}>
             {error}
           </div>
         )}
@@ -901,8 +901,8 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
             onClick={handleClose}
             style={{
               flex: 1, padding: '12px', borderRadius: 10,
-              background: 'rgba(255,255,255,0.07)', border: 'none',
-              color: 'rgba(255,255,255,0.7)', fontSize: 14, cursor: 'pointer',
+              background: 'var(--bg-card2)', border: '1px solid var(--border)',
+              color: 'var(--text-mid)', fontSize: 14, cursor: 'pointer',
             }}
           >
             Annuler
@@ -1264,7 +1264,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: '#fff' }}>
+          <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
             {title}
           </span>
           {overallLevel && (
@@ -1282,7 +1282,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
             </span>
           )}
           {!hasData && loaded && (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic' }}>
               Aucune donnée
             </span>
           )}
@@ -1290,13 +1290,13 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {extraControls}
           {/* Gender toggle */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
             {(['M', 'F'] as const).map(g => (
               <button key={g} onClick={() => setGender(g)} style={{
                 padding: '4px 11px',
                 background: gender === g ? sportColor : 'transparent',
                 border: 'none', cursor: 'pointer',
-                color: gender === g ? '#fff' : 'rgba(255,255,255,0.45)',
+                color: gender === g ? '#fff' : 'var(--text-dim)',
                 fontSize: 11, fontWeight: 700,
                 transition: 'background 0.15s',
               }}>
@@ -1334,7 +1334,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
         {LEVELS.map(lv => (
           <div key={lv.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: lv.color, opacity: 0.8 }} />
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+            <span style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 500 }}>
               {lv.label} <span style={{ opacity: 0.55 }}>{lv.pct}</span>
             </span>
           </div>
@@ -1436,10 +1436,10 @@ export function HyroxRadar() {
       onClick={() => setView(v => v === 'main' ? 'stations' : 'main')}
       style={{
         padding: '4px 11px',
-        background: 'rgba(255,255,255,0.07)',
-        border: '1px solid rgba(255,255,255,0.15)',
+        background: 'var(--bg-card2)',
+        border: '1px solid var(--border)',
         borderRadius: 8,
-        color: 'rgba(255,255,255,0.65)',
+        color: 'var(--text-mid)',
         fontSize: 11, fontWeight: 600,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
@@ -1489,13 +1489,13 @@ export function TriathlonRadar({ profile }: { profile?: ProfileHint }) {
   }
 
   const formatSelector = (
-    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 8, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
       {(Object.keys(TRI_FORMAT_LABELS) as TriFormat[]).map(f => (
         <button key={f} onClick={() => setFormat(f)} style={{
           padding: '4px 10px',
           background: format === f ? '#f59e0b' : 'transparent',
           border: 'none', cursor: 'pointer',
-          color: format === f ? '#000' : 'rgba(255,255,255,0.45)',
+          color: format === f ? '#000' : 'var(--text-dim)',
           fontSize: 11, fontWeight: 700,
           transition: 'background 0.15s',
         }}>

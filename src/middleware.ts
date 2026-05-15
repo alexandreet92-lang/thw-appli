@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Routes publiques — toujours accessibles
-  const publicRoutes = ['/login', '/onboarding']
+  const publicRoutes = ['/login', '/onboarding', '/access-expired']
   if (publicRoutes.some(r => path.startsWith(r))) {
     // Si déjà connecté et va sur /login → redirige vers home
     if (path === '/login' && user) {
@@ -41,14 +41,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Connecté → vérifie onboarding uniquement
+  // Vérifier le statut de l'abonnement
+  const { data: subscription } = await supabase
+    .from('user_subscriptions')
+    .select('status')
+    .eq('user_id', user.id)
+    .single()
+
+  const blockedStatuses = ['trial_expired', 'cancelled', 'canceled']
+  if (subscription && blockedStatuses.includes(subscription.status)) {
+    return NextResponse.redirect(new URL('/access-expired', request.url))
+  }
+
+  // Vérifier onboarding uniquement si accès autorisé
   const { data: profile } = await supabase
     .from('profiles')
     .select('onboarding_completed')
     .eq('id', user.id)
     .single()
 
-  // Onboarding pas terminé → redirige
   if (profile && !profile.onboarding_completed && path !== '/onboarding') {
     return NextResponse.redirect(new URL('/onboarding', request.url))
   }

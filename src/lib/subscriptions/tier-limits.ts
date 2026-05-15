@@ -4,6 +4,26 @@
 // ══════════════════════════════════════════════════════════════════
 
 export const TIER_LIMITS = {
+  // Essai 14 jours — mêmes capacités que Premium
+  trial: {
+    // ── IA ──────────────────────────────────────────────────────
+    messages_per_month: 30,
+    messages_per_conversation: 15,
+    plans_per_month: 2,
+    tool_use_per_month: 50,
+    nutrition_plans_per_month: 1,
+    // ── Briefing ─────────────────────────────────────────────────
+    briefings_per_week: 4,
+    briefing_web_search: false,
+    // ── Modèle ───────────────────────────────────────────────────
+    model: 'hermes' as const,
+    // ── Données ──────────────────────────────────────────────────
+    history_months: 6,
+    strava_sync_per_month: 100,
+    storage_gb: 1,
+    conversations_history_days: 90,
+  },
+
   premium: {
     // ── IA ──────────────────────────────────────────────────────
     messages_per_month: 30,             // messages chat + micro_agents combinés
@@ -62,7 +82,7 @@ export const TIER_LIMITS = {
   },
 } as const
 
-export type TierName = keyof typeof TIER_LIMITS
+export type TierName = keyof typeof TIER_LIMITS  // 'trial' | 'premium' | 'pro' | 'expert'
 export type TierModel = typeof TIER_LIMITS[TierName]['model']
 
 // ── Mapping modèle → identifiant Anthropic ─────────────────────────

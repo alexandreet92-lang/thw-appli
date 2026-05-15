@@ -307,104 +307,289 @@ const CHART_DISTS: Record<string, string[]> = {
 }
 
 
-// ── TimeBarChart ─────────────────────────────────────────────────
-// Taller bar = slower = worse. Supabase data only.
-function TimeBarChart({ records, chartDists, color }: {
+// ── TimeBarChart v2 — compact, all distances at once ─────────────
+// 12px bars, 80px max height, tooltip on hover
+type PaceMode = 'pace_km' | 'split_100m' | 'split_500m'
+type TBTip = { dist: string; yr: string; clientX: number; clientY: number }
+
+function TimeBarChart({ records, chartDists, paceMode, distMeters }: {
   records: SpRecord[]
   chartDists: string[]
-  color: string
+  paceMode?: PaceMode
+  distMeters?: Record<string, number>
 }) {
-  const [selDist, setSelDist] = useState(chartDists[0] ?? '')
-  const [hovIdx, setHovIdx]   = useState<number | null>(null)
+  const [tip, setTip] = useState<TBTip | null>(null)
+  const MAX_H = 80, BAR_W = 12, BAR_GAP = 4
 
-  const distRecs = records.filter(r => r.distance_label === selDist && r.performance !== '—')
-
-  const byYear: Record<string, { perf: string; date: string }> = {}
-  for (const rec of distRecs) {
-    const yr = rec.achieved_at.slice(0, 4)
-    if (!byYear[yr] || toSec(rec.performance) < toSec(byYear[yr].perf)) {
-      byYear[yr] = { perf: rec.performance, date: rec.achieved_at }
+  const groups = chartDists.map(dist => {
+    const recs = records.filter(r => r.distance_label === dist && r.performance && r.performance !== '—')
+    const byYear: Record<string, SpRecord> = {}
+    for (const r of recs) {
+      const yr = r.achieved_at.slice(0, 4)
+      if (!byYear[yr] || toSec(r.performance) < toSec(byYear[yr].performance)) byYear[yr] = r
     }
-  }
-  const sortedYears = Object.keys(byYear).sort((a, b) => b.localeCompare(a))
+    const years = Object.keys(byYear).sort((a, b) => b.localeCompare(a)).slice(0, 6)
+    const secs  = years.map(y => toSec(byYear[y].performance))
+    const maxS  = secs.length > 0 ? Math.max(...secs) : 0
+    const minS  = secs.length > 0 ? Math.min(...secs) : 0
+    const topS  = maxS + (maxS - minS || maxS * 0.1 || 60) * 0.2
+    return { dist, byYear, years, topS, minS }
+  })
 
-  const W = 360, H = 160, padL = 48, padR = 16, padT = 20, padB = 36
-  const plotW = W - padL - padR
-  const plotH = H - padT - padB
-
-  function fmtSec(s: number): string {
-    if (s >= 3600) {
-      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60
-      return `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`
-    }
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`
+  function getPace(dist: string, perf: string): string | null {
+    if (!paceMode || !distMeters) return null
+    const m = distMeters[dist] ?? 0
+    if (m <= 0) return null
+    if (paceMode === 'pace_km') { const v = calcPacePerKm(m, perf); return v === '—' ? null : v }
+    const raw = calcSplit500m(m, perf)
+    if (raw === '—') return null
+    return paceMode === 'split_100m' ? raw.replace('/500m', '/100m') : raw
   }
+
+  const tipGrp = tip ? groups.find(g => g.dist === tip.dist) : null
+  const tipRec = tipGrp?.byYear[tip?.yr ?? ''] ?? null
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
-        {chartDists.map(d => (
-          <button key={d} onClick={() => setSelDist(d)} style={{
-            padding: '4px 10px', borderRadius: 6,
-            background: selDist === d ? `${color}22` : 'var(--bg-card2)',
-            border: `1px solid ${selDist === d ? color : 'var(--border)'}`,
-            color: selDist === d ? color : 'var(--text-dim)',
-            fontSize: 11, fontWeight: selDist === d ? 600 : 400, cursor: 'pointer',
-          }}>{d}</button>
+    <div style={{ marginBottom: 14, position: 'relative' }}>
+      <div style={{
+        display: 'flex', gap: 20, overflowX: 'auto',
+        padding: '10px 12px 12px', background: 'var(--bg-card2)',
+        borderRadius: 10, alignItems: 'flex-end',
+      }}>
+        {groups.map(({ dist, byYear, years, topS, minS }) => (
+          <div key={dist} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: BAR_GAP }}>
+              {years.length === 0
+                ? <div style={{ width: BAR_W, height: 8, background: 'var(--border)', borderRadius: '4px 4px 0 0', opacity: 0.3 }} />
+                : years.map(yr => {
+                    const rec  = byYear[yr]
+                    const s    = toSec(rec.performance)
+                    const h    = Math.max(8, topS > 0 ? (s / topS) * MAX_H : 8)
+                    const col  = getPCColor(yr, years)
+                    const best = s === minS
+                    return (
+                      <div key={yr} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default' }}
+                        onMouseEnter={e => setTip({ dist, yr, clientX: e.clientX, clientY: e.clientY })}
+                        onMouseMove={e  => setTip({ dist, yr, clientX: e.clientX, clientY: e.clientY })}
+                        onMouseLeave={() => setTip(null)}>
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, color: col, whiteSpace: 'nowrap',
+                          marginBottom: 2, height: 13, display: 'block', opacity: h >= 22 ? 1 : 0,
+                        }}>{rec.performance}</span>
+                        <div style={{ width: BAR_W, height: h, background: col, opacity: best ? 1 : 0.72, borderRadius: '4px 4px 0 0' }} />
+                      </div>
+                    )
+                  })
+              }
+            </div>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, whiteSpace: 'nowrap' }}>{dist}</span>
+          </div>
         ))}
       </div>
-      {sortedYears.length === 0 ? (
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
-          Ajoute un record {selDist} pour voir l'évolution annuelle.
-        </p>
-      ) : (() => {
-        const maxSec = Math.max(...sortedYears.map(y => toSec(byYear[y].perf)))
-        const minSec = Math.min(...sortedYears.map(y => toSec(byYear[y].perf)))
-        const range   = maxSec - minSec || maxSec * 0.1 || 60
-        const topSec  = maxSec + range * 0.2
-        const barW    = Math.min(40, plotW / sortedYears.length * 0.65)
-        const gap     = plotW / sortedYears.length
-        const bh  = (s: number) => (s / topSec) * plotH
-        const bx  = (i: number) => padL + gap * i + gap / 2 - barW / 2
-        const by  = (s: number) => padT + plotH - bh(s)
-        return (
-          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-            {[0, 0.5, 1].map(f => {
-              const y = padT + plotH * (1 - f)
-              return (
-                <g key={f}>
-                  <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3,3" />
-                  <text x={padL - 4} y={y + 4} textAnchor="end" fontSize={8} fill="var(--text-dim)">{fmtSec(Math.round(topSec * f))}</text>
-                </g>
-              )
-            })}
-            {sortedYears.map((yr, i) => {
-              const secs  = toSec(byYear[yr].perf)
-              const x     = bx(i), y = by(secs), h = bh(secs)
-              const col   = getPCColor(yr, sortedYears)
-              const isHov = hovIdx === i
-              const isBest = secs === minSec
-              return (
-                <g key={yr} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
-                  <rect x={x} y={y} width={barW} height={h}
-                    fill={`${col}${isHov ? 'ee' : '88'}`} stroke={col}
-                    strokeWidth={isBest ? 2 : 1} rx={3} />
-                  {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill={col} fontWeight="bold">★</text>}
-                  {(isHov || isBest) && (
-                    <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill={col} fontWeight="600">
-                      {byYear[yr].perf}
-                    </text>
-                  )}
-                  <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize={9}
-                    fill={isHov ? col : 'var(--text-dim)'}>{yr}</text>
-                </g>
-              )
-            })}
-            <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
-            <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
-          </svg>
-        )
-      })()}
+
+      {tip && tipRec && createPortal(
+        (() => {
+          const pStr = getPace(tip.dist, tipRec.performance)
+          let dateStr = tipRec.achieved_at
+          try { dateStr = new Date(tipRec.achieved_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { /* */ }
+          return (
+            <div style={{
+              position: 'fixed', left: tip.clientX + 14, top: tip.clientY - 90,
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 8, padding: '8px 12px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.22)', zIndex: 9999, pointerEvents: 'none', minWidth: 120,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: getPCColor(tip.yr, tipGrp!.years), marginBottom: 3 }}>{tip.yr}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: 'DM Mono,monospace', color: 'var(--text)', marginBottom: 2 }}>{tipRec.performance}</div>
+              {pStr && <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 2 }}>{pStr}</div>}
+              <div style={{ color: 'var(--text-dim)', fontSize: 10 }}>{dateStr}</div>
+            </div>
+          )
+        })(),
+        document.body
+      )}
+    </div>
+  )
+}
+
+// ── TriathlonBarChart — all formats + expandable discipline splits ─
+type TriTip = { fmtId: string; yr: string; discipline: string; clientX: number; clientY: number }
+
+function TriathlonBarChart({ records }: { records: SpRecord[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [tip, setTip] = useState<TriTip | null>(null)
+  const MAX_H = 80, BAR_W = 12, BAR_GAP = 4
+
+  const fmtGroups = TRIATHLON_FORMATS.map(fmt => {
+    const recs = records.filter(r => r.distance_label === fmt.id && r.performance && r.performance !== '—')
+    const byYear: Record<string, SpRecord> = {}
+    for (const r of recs) {
+      const yr = r.achieved_at.slice(0, 4)
+      if (!byYear[yr] || toSec(r.performance) < toSec(byYear[yr].performance)) byYear[yr] = r
+    }
+    const years = Object.keys(byYear).sort((a, b) => b.localeCompare(a)).slice(0, 6)
+    const secs  = years.map(y => toSec(byYear[y].performance))
+    const maxS  = secs.length > 0 ? Math.max(...secs) : 0
+    const minS  = secs.length > 0 ? Math.min(...secs) : 0
+    const topS  = maxS + (maxS - minS || maxS * 0.1 || 60) * 0.2
+    return { fmt, byYear, years, topS, minS }
+  })
+
+  function discSecs(r: SpRecord, field: 'split_swim' | 'split_bike' | 'split_run' | 'transition'): number {
+    if (field === 'split_swim') return toSec(r.split_swim ?? '')
+    if (field === 'split_bike') return toSec(r.split_bike ?? '')
+    if (field === 'split_run')  return toSec(r.split_run  ?? '')
+    return toSec(r.split_t1 ?? '') + toSec(r.split_t2 ?? '')
+  }
+  function discStr(r: SpRecord, field: 'split_swim' | 'split_bike' | 'split_run' | 'transition'): string {
+    if (field === 'split_swim') return r.split_swim ?? '—'
+    if (field === 'split_bike') return r.split_bike ?? '—'
+    if (field === 'split_run')  return r.split_run  ?? '—'
+    const s = toSec(r.split_t1 ?? '') + toSec(r.split_t2 ?? '')
+    return s > 0 ? secToHms(s) : '—'
+  }
+
+  const expData = expanded ? (() => {
+    const fmt = TRIATHLON_FORMATS.find(f => f.id === expanded)
+    if (!fmt) return null
+    const allRecs = records
+      .filter(r => r.distance_label === expanded)
+      .sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
+      .slice(0, 6)
+    return {
+      fmt,
+      disciplines: [
+        { label: 'Natation', sub: fmt.swim, icon: '🏊', color: '#38bdf8', field: 'split_swim'  as const },
+        { label: 'Vélo',     sub: fmt.bike, icon: '🚴', color: '#5b6fff', field: 'split_bike'  as const },
+        { label: 'Run',      sub: fmt.run,  icon: '🏃', color: '#22c55e', field: 'split_run'   as const },
+        { label: 'Transitions', sub: 'T1+T2', icon: '⏱', color: '#f97316', field: 'transition' as const },
+      ],
+      allRecs,
+    }
+  })() : null
+
+  const tipFmtGrp = tip ? fmtGroups.find(g => g.fmt.id === tip.fmtId) : null
+  const tipTotalRec = (tip?.discipline === 'total' && tipFmtGrp) ? tipFmtGrp.byYear[tip.yr] ?? null : null
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      {/* Level 1 — total time per format */}
+      <div style={{
+        display: 'flex', gap: 20, overflowX: 'auto',
+        padding: '10px 12px 12px', background: 'var(--bg-card2)',
+        borderRadius: 10, alignItems: 'flex-end',
+      }}>
+        {fmtGroups.map(({ fmt, byYear, years, topS, minS }) => (
+          <div key={fmt.id}
+            onClick={() => setExpanded(expanded === fmt.id ? null : fmt.id)}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: BAR_GAP }}>
+              {years.length === 0
+                ? <div style={{ width: BAR_W, height: 8, background: 'var(--border)', borderRadius: '4px 4px 0 0', opacity: 0.3 }} />
+                : years.map(yr => {
+                    const rec  = byYear[yr]
+                    const s    = toSec(rec.performance)
+                    const h    = Math.max(8, topS > 0 ? (s / topS) * MAX_H : 8)
+                    const col  = getPCColor(yr, years)
+                    const best = s === minS
+                    return (
+                      <div key={yr} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                        onMouseEnter={e => { e.stopPropagation(); setTip({ fmtId: fmt.id, yr, discipline: 'total', clientX: e.clientX, clientY: e.clientY }) }}
+                        onMouseMove={e  => setTip({ fmtId: fmt.id, yr, discipline: 'total', clientX: e.clientX, clientY: e.clientY })}
+                        onMouseLeave={() => setTip(null)}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: col, whiteSpace: 'nowrap', marginBottom: 2, height: 13, display: 'block', opacity: h >= 22 ? 1 : 0 }}>
+                          {rec.performance}
+                        </span>
+                        <div style={{ width: BAR_W, height: h, background: col, opacity: best ? 1 : 0.72, borderRadius: '4px 4px 0 0' }} />
+                      </div>
+                    )
+                  })
+              }
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 5 }}>
+              <span style={{ fontSize: 10, color: expanded === fmt.id ? '#f59e0b' : 'var(--text-dim)', fontWeight: expanded === fmt.id ? 700 : 400 }}>{fmt.label}</span>
+              <span style={{ fontSize: 8, color: expanded === fmt.id ? '#f59e0b' : 'var(--text-dim)' }}>{expanded === fmt.id ? '▲' : '▼'}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Level 2 — discipline splits (expand) */}
+      {expData && (
+        <div style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '12px 14px', marginTop: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 10 }}>
+            {expData.fmt.label} — {expData.fmt.swim} · {expData.fmt.bike} · {expData.fmt.run}
+          </div>
+          {expData.disciplines.map(disc => {
+            const recsWithData = expData.allRecs.filter(r => discSecs(r, disc.field) > 0)
+            if (recsWithData.length === 0) return null
+            const secsList = recsWithData.map(r => discSecs(r, disc.field))
+            const maxS = Math.max(...secsList), minS = Math.min(...secsList)
+            const topS = maxS + (maxS - minS || maxS * 0.1 || 30) * 0.2
+            return (
+              <div key={disc.field} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 80, flexShrink: 0, paddingBottom: 2 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: disc.color }}>{disc.icon} {disc.label}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{disc.sub}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4 }}>
+                  {recsWithData.map(r => {
+                    const s    = discSecs(r, disc.field)
+                    const h    = Math.max(6, (s / topS) * 50)
+                    const best = s === minS
+                    const yr   = r.achieved_at.slice(0, 4)
+                    return (
+                      <div key={r.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default' }}
+                        onMouseEnter={e => setTip({ fmtId: expanded!, yr, discipline: disc.field, clientX: e.clientX, clientY: e.clientY })}
+                        onMouseMove={e  => setTip({ fmtId: expanded!, yr, discipline: disc.field, clientX: e.clientX, clientY: e.clientY })}
+                        onMouseLeave={() => setTip(null)}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: disc.color, whiteSpace: 'nowrap', marginBottom: 2, height: 13, display: 'block', opacity: h >= 20 ? 1 : 0 }}>
+                          {discStr(r, disc.field)}
+                        </span>
+                        <div style={{ width: 10, height: h, background: disc.color, opacity: best ? 1 : 0.65, borderRadius: '3px 3px 0 0' }} />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Tooltip */}
+      {tip && createPortal(
+        (() => {
+          let time = '—', dateStr = tip.yr, colorStr = '#f59e0b'
+          if (tip.discipline === 'total' && tipTotalRec) {
+            time = tipTotalRec.performance
+            colorStr = getPCColor(tip.yr, tipFmtGrp?.years ?? [])
+            try { dateStr = new Date(tipTotalRec.achieved_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { /* */ }
+          } else if (tip.discipline !== 'total' && expData) {
+            const r = expData.allRecs.find(rec => rec.achieved_at.slice(0,4) === tip.yr)
+            if (r) {
+              const field = tip.discipline as 'split_swim' | 'split_bike' | 'split_run' | 'transition'
+              time = discStr(r, field)
+              try { dateStr = new Date(r.achieved_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { /* */ }
+              colorStr = expData.disciplines.find(d => d.field === field)?.color ?? '#f59e0b'
+            }
+          }
+          if (time === '—') return null
+          return (
+            <div style={{
+              position: 'fixed', left: tip.clientX + 14, top: tip.clientY - 90,
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 8, padding: '8px 12px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.22)', zIndex: 9999, pointerEvents: 'none', minWidth: 120,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: colorStr, marginBottom: 3 }}>{tip.yr}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: 'DM Mono,monospace', color: 'var(--text)', marginBottom: 2 }}>{time}</div>
+              <div style={{ color: 'var(--text-dim)', fontSize: 10 }}>{dateStr}</div>
+            </div>
+          )
+        })(),
+        document.body
+      )}
     </div>
   )
 }
@@ -3449,7 +3634,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
             </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} paceMode="pace_km" distMeters={RUN_KM} />
             {RUN_DISTS.map(d => {
               const spBest  = getSpBest('run', d, recordYear)
               const prevRec = getSpPrev('run', d)
@@ -3498,7 +3683,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
             </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} color="#38bdf8" />
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} paceMode="split_100m" distMeters={SWIM_M} />
             {SWIM_DISTS.map(d => {
               const spBest  = getSpBest('swim', d, recordYear)
               const prevRec = getSpPrev('swim', d)
@@ -3547,7 +3732,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
             </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} color="#14b8a6" />
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} paceMode="split_500m" distMeters={ROW_M} />
             {ROW_DISTS.map(d => {
               const spBest  = getSpBest('rowing', d, recordYear)
               const prevRec = getSpPrev('rowing', d)
@@ -3601,6 +3786,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
               )
             })}
           </div>
+          <TriathlonBarChart records={allSpRecords.filter(r => r.sport === 'triathlon')} />
+
           {TRIATHLON_FORMATS.map(fmt => {
             const best = getTrBest(fmt.id)
             const prev = getTrPrev(fmt.id)

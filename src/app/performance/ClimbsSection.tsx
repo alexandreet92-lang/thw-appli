@@ -182,12 +182,12 @@ function calcScore(c: ClimbRecord): number {
 interface Level { label: string; color: string; min: number; max: number }
 const LEVELS: Level[] = [
   { label: 'Alien',              color: '#00FF87', min: 95, max: 100 },
-  { label: 'Pro top intl.',      color: '#00C8E0', min: 80, max:  94 },
-  { label: 'Pro',                color: '#5B6FFF', min: 65, max:  79 },
-  { label: 'Amateur haut niv.',  color: '#FFD700', min: 50, max:  64 },
-  { label: 'Bon amateur',        color: '#FF9500', min: 35, max:  49 },
-  { label: 'Amateur',            color: '#D1D5DB', min: 20, max:  34 },
-  { label: 'Débutant',           color: '#EF4444', min:  0, max:  19 },
+  { label: 'Pro top intl.',      color: '#00C8E0', min: 90, max:  94 },
+  { label: 'Pro',                color: '#5B6FFF', min: 80, max:  89 },
+  { label: 'Amateur haut niv.',  color: '#FFD700', min: 65, max:  79 },
+  { label: 'Bon amateur',        color: '#FF9500', min: 50, max:  64 },
+  { label: 'Amateur',            color: '#D1D5DB', min: 30, max:  49 },
+  { label: 'Débutant',           color: '#EF4444', min:  0, max:  29 },
 ]
 function levelOf(s: number): Level {
   return LEVELS.find(l => s >= l.min) ?? LEVELS[LEVELS.length - 1]
@@ -895,7 +895,7 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
                   'score_brut = 3.2 / 8.4 × 100 = 38',
                   'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02 → ×1.03',
                 ],
-                result: 'Score = min(100, 38 × 1.03) = 39/100 — Bon amateur',
+                result: 'Score = min(100, 38 × 1.03) = 39/100 — Amateur',
               },
               {
                 title: 'Exemple 2 — 50 min, grosse fatigue, chaleur, 1800 m',
@@ -905,7 +905,7 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
                   'score_brut = 3.6 / 6.2 × 100 = 58',
                   'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04 → ×1.11',
                 ],
-                result: 'Score = min(100, 58 × 1.11) = 64/100 — AHN',
+                result: 'Score = min(100, 58 × 1.11) = 64/100 — Bon amateur',
                 note: 'Grosse fatigue + chaleur + altitude : la table heavy + les coefficients reflètent la vraie difficulté.',
               },
               {
@@ -923,8 +923,8 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
                 title: 'Exemple 4 — Ressenti facile = marge restante',
                 lines: [
                   'Deux montées à 3.8 W/kg, 45 min standard, conditions identiques :',
-                  'Ressenti 5 (à fond) → score_brut = 54 × 1.00 = 54/100',
-                  'Ressenti 2 (facile) → score_brut = 54 × 1.06 = 57/100',
+                  'Ressenti 5 (à fond) → score_brut = 54 × 1.00 = 54/100 — Bon amateur',
+                  'Ressenti 2 (facile) → score_brut = 54 × 1.06 = 57/100 — Bon amateur',
                 ],
                 note: 'Produire la même puissance sans se mettre dans le rouge indique une capacité supérieure. Le score le récompense.',
               },

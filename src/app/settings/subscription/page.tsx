@@ -31,9 +31,12 @@ interface SummaryData {
 
 // ── Plan definitions ───────────────────────────────────────────
 
+// 'trial' est un état interne, pas un plan achetable — on l'exclut ici
+type PurchasableTier = Exclude<TierName, 'trial'>
+
 interface PlanFeature {
   label: string
-  values: Record<TierName, string | boolean>
+  values: Record<PurchasableTier, string | boolean>
 }
 
 const FEATURES: PlanFeature[] = [
@@ -50,7 +53,7 @@ const FEATURES: PlanFeature[] = [
 ]
 
 interface PlanDef {
-  tier:           TierName
+  tier:           PurchasableTier
   name:           string
   subtitle:       string
   monthlyPrice:   number
@@ -196,7 +199,7 @@ export default function SubscriptionPage() {
   }, [])
 
   // ── Checkout ──────────────────────────────────────────────────
-  const handleCheckout = useCallback(async (tier: TierName) => {
+  const handleCheckout = useCallback(async (tier: PurchasableTier) => {
     setCtaLoading(tier)
     setBanner(null)
     try {

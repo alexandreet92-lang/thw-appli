@@ -79,35 +79,35 @@ function getCoeffs(c: {
   altitude_summit_m: number | null
   intensity_rating: number | null
 }): ScoreCoeffs {
-  // Fatigue
-  const fatigue = { fresh: 1.00, light: 1.05, moderate: 1.12, high: 1.20 } as Record<string, number>
+  // Fatigue — coefficients modestes
+  const fatigue = { fresh: 1.00, light: 1.01, moderate: 1.03, high: 1.05 } as Record<string, number>
   const cFatigue = c.pre_fatigue ? (fatigue[c.pre_fatigue] ?? 1.00) : 1.00
 
-  // Température
+  // Température (pied prioritaire, sinon sommet)
   const t = c.temp_bottom_celsius ?? c.temp_summit_celsius ?? null
   let cTemp = 1.00
   if (t !== null) {
     if      (t >= 10 && t <= 18) cTemp = 1.00
-    else if (t >=  5 && t <  10) cTemp = 1.06
-    else if (t <   5)            cTemp = 1.12
-    else if (t >  18 && t <= 25) cTemp = 1.05
-    else if (t >  25 && t <= 30) cTemp = 1.10
-    else if (t >  30)            cTemp = 1.18
+    else if (t >=  5 && t <  10) cTemp = 1.02
+    else if (t <   5)            cTemp = 1.04
+    else if (t >  18 && t <= 25) cTemp = 1.01
+    else if (t >  25 && t <= 30) cTemp = 1.03
+    else if (t >  30)            cTemp = 1.04
   }
 
   // Durée
   const min = c.duration_seconds / 60
-  const cDuration = min < 15 ? 1.00 : min < 30 ? 1.06 : min < 45 ? 1.10
-    : min < 60 ? 1.14 : min < 90 ? 1.18 : 1.24
+  const cDuration = min < 15 ? 1.00 : min < 30 ? 1.02 : min < 45 ? 1.04
+    : min < 60 ? 1.05 : min < 90 ? 1.05 : 1.06
 
-  // Altitude
+  // Altitude sommet
   const alt = c.altitude_summit_m
   const cAltitude = alt == null ? 1.00
-    : alt < 500  ? 1.00 : alt < 1000 ? 1.04 : alt < 1500 ? 1.08
-    : alt < 2000 ? 1.12 : alt < 2500 ? 1.16 : 1.22
+    : alt < 500  ? 1.00 : alt < 1000 ? 1.01 : alt < 1500 ? 1.02
+    : alt < 2000 ? 1.03 : alt < 2500 ? 1.04 : 1.05
 
-  // Ressenti inversé
-  const intensityMap: Record<number, number> = { 5: 1.00, 4: 1.06, 3: 1.14, 2: 1.22, 1: 1.32 }
+  // Ressenti inversé (plafond à ×1.06)
+  const intensityMap: Record<number, number> = { 5: 1.00, 4: 1.02, 3: 1.04, 2: 1.06, 1: 1.06 }
   const cIntensity = c.intensity_rating != null ? (intensityMap[c.intensity_rating] ?? 1.00) : 1.00
 
   return { fatigue: cFatigue, temp: cTemp, duration: cDuration, altitude: cAltitude, intensity: cIntensity }
@@ -139,12 +139,12 @@ function scoreColor(s: number): string {
 // Barème W/kg H/F de référence
 const LEVEL_WPKG: { label: string; H: string; F: string }[] = [
   { label: 'Alien',             H: '> 6.0',     F: '> 5.4'     },
-  { label: 'Pro top intl.',     H: '5.2 – 6.0', F: '4.7 – 5.4' },
-  { label: 'Pro',               H: '4.4 – 5.2', F: '4.0 – 4.7' },
-  { label: 'Amateur haut niv.', H: '3.6 – 4.4', F: '3.3 – 4.0' },
-  { label: 'Bon amateur',       H: '2.9 – 3.6', F: '2.6 – 3.3' },
-  { label: 'Amateur',           H: '2.2 – 2.9', F: '2.0 – 2.6' },
-  { label: 'Débutant',          H: '< 2.2',     F: '< 2.0'     },
+  { label: 'Pro top intl.',     H: '5.1 – 6.0', F: '4.6 – 5.4' },
+  { label: 'Pro',               H: '4.2 – 5.1', F: '3.8 – 4.6' },
+  { label: 'Amateur haut niv.', H: '3.2 – 4.2', F: '2.9 – 3.8' },
+  { label: 'Bon amateur',       H: '2.6 – 3.2', F: '2.3 – 2.9' },
+  { label: 'Amateur',           H: '1.9 – 2.6', F: '1.7 – 2.3' },
+  { label: 'Débutant',          H: '< 1.9',     F: '< 1.7'     },
 ]
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
@@ -777,34 +777,116 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
 
           {/* ── Accordion : Méthode ── */}
           <Accordion title="Méthode de calcul">
-            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.6, margin:'0 0 12px' }}>
-              Le score combine votre W/kg avec 5 coefficients qui reflètent la difficulté des conditions. Chaque condition difficile augmente le score final. La référence (100) correspond au niveau Alien : <strong style={{ color:'var(--text)' }}>6.4 W/kg en conditions standard.</strong>
+            {/* Intro */}
+            <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>Comment est calculé le score ?</p>
+            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
+              Chaque ascension reçoit un score sur 100 basé sur votre W/kg ajusté selon les conditions de la montée.
             </p>
+            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
+              La référence absolue est le niveau Alien : <strong style={{ color:'var(--text)' }}>6.4 W/kg en conditions standard</strong>. Seuls quelques athlètes dans le monde (Pogacar, Vingegaard) atteignent ce niveau.
+            </p>
+
+            {/* Formule */}
+            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 14px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
+              Score = (W/kg × conditions) / 6.4 × 100
+            </div>
+            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 14px' }}>
+              Les conditions sont des coefficients multiplicateurs très modestes (max ×1.28 cumulé) qui valorisent les performances réalisées dans des circonstances plus difficiles que la normale.
+            </p>
+
+            {/* Exemples */}
             {[
               {
-                label: 'Fatigue',
-                rows: [['Fraîche','×1.00'],['Légère','×1.05'],['Modérée','×1.12'],['Élevée','×1.20']],
+                title: 'Exemple 1 — Bon amateur, conditions idéales',
+                lines: [
+                  'Athlète : 3.0 W/kg, frais, 15°C, 20min, 800m, ressenti 4',
+                  'Coefficients : 1.00 × 1.00 × 1.02 × 1.01 × 1.02 = ×1.05',
+                ],
+                result: 'Score = (3.0 × 1.05) / 6.4 × 100 = 49/100 — Bon amateur',
               },
               {
-                label: 'Température (au pied)',
-                rows: [['10–18°C (confort)','×1.00'],['5–10°C (fraîche)','×1.06'],['< 5°C (froide)','×1.12'],['18–25°C (chaude)','×1.05'],['25–30°C (très chaude)','×1.10'],['> 30°C (extrême)','×1.18']],
+                title: 'Exemple 2 — Même athlète, conditions difficiles',
+                lines: [
+                  'Athlète : 2.8 W/kg, fatigué, 33°C, 35min, 1800m, ressenti 4',
+                  'Coefficients : 1.05 × 1.04 × 1.04 × 1.03 × 1.02 = ×1.19',
+                ],
+                result: 'Score = (2.8 × 1.19) / 6.4 × 100 = 52/100 — AHN',
+                note: 'Moins de watts mais conditions plus dures : le score reflète la vraie difficulté de l\'effort.',
               },
               {
-                label: 'Durée',
-                rows: [['< 15 min','×1.00'],['15–30 min','×1.06'],['30–45 min','×1.10'],['45–60 min','×1.14'],['60–90 min','×1.18'],['> 90 min','×1.24']],
+                title: 'Exemple 3 — Amateur haut niveau, bonne journée',
+                lines: [
+                  'Athlète : 4.0 W/kg, frais, 12°C, 45min, 1500m, ressenti 3',
+                  'Coefficients : 1.00 × 1.00 × 1.05 × 1.03 × 1.04 = ×1.12',
+                ],
+                result: 'Score = (4.0 × 1.12) / 6.4 × 100 = 70/100 — Pro',
+                note: 'Bonne performance dans de bonnes conditions : le score monte mais reste ancré dans la réalité.',
               },
               {
-                label: 'Altitude sommet',
-                rows: [['< 500 m','×1.00'],['500–1000 m','×1.04'],['1000–1500 m','×1.08'],['1500–2000 m','×1.12'],['2000–2500 m','×1.16'],['> 2500 m','×1.22']],
+                title: 'Exemple 4 — Pourquoi un ressenti facile augmente le score',
+                lines: [
+                  'Deux montées identiques à 3.8 W/kg, mêmes conditions :',
+                  'Ressenti 5 (à fond)  → score = 59/100',
+                  'Ressenti 2 (facile)  → score = 63/100',
+                ],
+                note: 'Produire la même puissance avec moins d\'effort signifie que vous avez progressé et que vous avez encore de la marge. C\'est une meilleure performance.',
               },
-              {
-                label: 'Ressenti inversé',
-                rows: [['À fond (5)','×1.00'],['Très dur (4)','×1.06'],['Contrôle (3)','×1.14'],['Facile (2)','×1.22'],['Très facile (1)','×1.32']],
-              },
+            ].map(ex => (
+              <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius:8, border:'1px solid var(--border)' }}>
+                <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>{ex.title}</p>
+                {ex.lines.map(l => (
+                  <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily:'DM Mono,monospace' }}>{l}</p>
+                ))}
+                {ex.result && (
+                  <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily:'DM Mono,monospace' }}>{ex.result}</p>
+                )}
+                {ex.note && (
+                  <p style={{ fontSize:11, color:'var(--text-mid)', margin:'6px 0 0', lineHeight:1.5, fontStyle:'italic' }}>→ {ex.note}</p>
+                )}
+              </div>
+            ))}
+
+            {/* Tableau des 5 facteurs */}
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Les 5 facteurs et leur impact</p>
+            <div style={{ overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                <thead>
+                  <tr>
+                    {['Facteur','Impact max','Ce qu\'il mesure'].map(h => (
+                      <th key={h} style={{ textAlign:'left', padding:'4px 8px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Durée',       '+6%', 'Efforts longs = plus méritoires'],
+                    ['Ressenti',    '+6%', 'Puissance produite avec marge'],
+                    ['Fatigue',     '+5%', 'Performer sous fatigue'],
+                    ['Altitude',    '+5%', 'Conditions physiologiques difficiles'],
+                    ['Température', '+4%', 'Chaleur ou froid extrême'],
+                  ].map(([f, imp, desc], i) => (
+                    <tr key={f} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                      <td style={{ padding:'5px 8px', color:'var(--text)', fontWeight:600 }}>{f}</td>
+                      <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:BIKE_COLOR, fontWeight:700 }}>{imp}</td>
+                      <td style={{ padding:'5px 8px', color:'var(--text-dim)' }}>{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Tableau coefficients détaillés */}
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Valeurs des coefficients</p>
+            {[
+              { label:'Fatigue', rows:[['Fraîche','×1.00'],['Légère','×1.01'],['Modérée','×1.03'],['Élevée','×1.05']] },
+              { label:'Température', rows:[['10–18°C (confort)','×1.00'],['18–25°C (chaude)','×1.01'],['5–10°C (fraîche)','×1.02'],['25–30°C (très chaude)','×1.03'],['< 5°C (froide)','×1.04'],['>30°C (extrême)','×1.04']] },
+              { label:'Durée', rows:[['< 15 min','×1.00'],['15–30 min','×1.02'],['30–45 min','×1.04'],['45–90 min','×1.05'],['> 90 min','×1.06']] },
+              { label:'Altitude sommet', rows:[['< 500 m','×1.00'],['500–1000 m','×1.01'],['1000–1500 m','×1.02'],['1500–2000 m','×1.03'],['2000–2500 m','×1.04'],['> 2500 m','×1.05']] },
+              { label:'Ressenti inversé', rows:[['À fond (5)','×1.00'],['Très dur (4)','×1.02'],['Contrôle (3)','×1.04'],['Facile (1–2)','×1.06']] },
             ].map(({ label, rows }) => (
-              <div key={label} style={{ marginBottom:12 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--text)', marginBottom:5, fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+              <div key={label} style={{ marginBottom:10 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-mid)', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                   {rows.map(([cat, coeff]) => (
                     <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
                       <span style={{ color:'var(--text-dim)' }}>{cat}</span>

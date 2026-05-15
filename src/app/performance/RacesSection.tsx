@@ -295,6 +295,69 @@ function BaremeAccordion() {
   )
 }
 
+// ─── ScoreSparkline ───────────────────────────────────────────────────────────
+function ScoreSparkline({ races }: { races: RaceRecord[] }) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [w, setW] = useState(400)
+  useEffect(() => {
+    if (!wrapRef.current) return
+    const ro = new ResizeObserver(e => setW(e[0]?.contentRect.width ?? 400))
+    ro.observe(wrapRef.current)
+    return () => ro.disconnect()
+  }, [])
+
+  const byMonth: Record<string, number> = {}
+  for (const r of races) {
+    const month = r.date.slice(0, 7)
+    const sc = r.score ?? computeRaceScore(r).total
+    if (!byMonth[month] || sc > byMonth[month]) byMonth[month] = sc
+  }
+  const months = Object.keys(byMonth).sort()
+  if (months.length < 2) return null
+
+  const H = 36, padL = 4, padR = 4, padT = 3, padB = 0
+  const scores = months.map(m => byMonth[m])
+  const maxS = Math.max(...scores)
+  const minS = Math.min(...scores)
+  const range = maxS - minS || 1
+  const cW = w - padL - padR
+  const cH = H - padT - padB
+  const px = (i: number) => padL + (i / (months.length - 1)) * cW
+  const py = (s: number) => padT + cH - ((s - minS) / range) * cH
+
+  const pts: [number, number][] = months.map((_, i) => [px(i), py(scores[i])])
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
+  const areaPath = `${linePath} L${pts[pts.length-1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`
+  const lastPt   = pts[pts.length - 1]
+
+  return (
+    <div ref={wrapRef} style={{ marginBottom:8 }}>
+      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'0 0 3px', fontWeight:600,
+                  textTransform:'uppercase', letterSpacing:'0.06em' }}>
+        Meilleur score / mois
+      </p>
+      <svg width={w} height={H} style={{ display:'block', overflow:'visible' }}>
+        <defs>
+          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={RACE_COLOR} stopOpacity="0.25"/>
+            <stop offset="100%" stopColor={RACE_COLOR} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#sparkGrad)"/>
+        <path d={linePath} fill="none" stroke={RACE_COLOR} strokeWidth={1.5} strokeLinejoin="round"/>
+        {pts.map((p, i) => (
+          <circle key={i} cx={p[0]} cy={p[1]} r={2.5} fill={RACE_COLOR} opacity={0.8}/>
+        ))}
+        {/* Last value label */}
+        <text x={lastPt[0]} y={lastPt[1] - 5} textAnchor="end"
+          fontSize={9} fill={RACE_COLOR} fontWeight={700}>
+          {scores[scores.length - 1].toFixed(0)}
+        </text>
+      </svg>
+    </div>
+  )
+}
+
 // ─── ScatterRaceSVG ───────────────────────────────────────────────────────────
 const PL = 52, PR = 16, PT = 16, PB = 44
 interface TooltipState { race: RaceRecord; x: number; y: number }
@@ -1514,6 +1577,46 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
 
         {/* List */}
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
+
+          {/* Best efforts per duration */}
+          {(() => {
+            const bandDefs = [
+              { label: "< 30'",   min: 0,    max: 1800  },
+              { label: '30-90\'', min: 1800,  max: 5400  },
+              { label: '1h30+',   min: 5400,  max: Infinity },
+            ]
+            const bestBands = bandDefs.map(({ label, min, max }) => {
+              const best = [...races]
+                .filter(r => r.duration_seconds && r.duration_seconds >= min && r.duration_seconds < max && r.wpkg_np)
+                .sort((a, b) => (b.wpkg_np ?? 0) - (a.wpkg_np ?? 0))[0] ?? null
+              return { label, best }
+            }).filter(b => b.best !== null)
+            if (bestBands.length === 0) return null
+            return (
+              <div style={{ marginBottom:14 }}>
+                <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em',
+                             color:'var(--text-dim)', margin:'0 0 8px' }}>Meilleur NP W/kg par durée</p>
+                <div style={{ display:'grid', gridTemplateColumns:`repeat(${bestBands.length},1fr)`, gap:6 }}>
+                  {bestBands.map(({ label, best }) => best && (
+                    <div key={label} style={{
+                      background:'var(--bg-card2)', border:`1px solid ${RACE_COLOR}30`,
+                      borderRadius:10, padding:'10px 12px', textAlign:'center', cursor:'pointer',
+                    }} onClick={() => { onRaceClick(best!); }}>
+                      <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>{label}</div>
+                      <div style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:900,
+                                    color:RACE_COLOR }}>{best.wpkg_np!.toFixed(2)}</div>
+                      <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>W/kg NP</div>
+                      <div style={{ fontSize:10, color:'var(--text-mid)', marginTop:3,
+                                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {best.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
           {ranked.length === 0 && (
             <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>Aucune course pour ce filtre</div>
           )}
@@ -1719,12 +1822,17 @@ export function RacesSection({ profile }: RacesSectionProps) {
         </div>
       )}
       {loaded && races.length > 0 && (
-        <ScatterRaceSVG
-          races={races}
-          allYears={allYears}
-          onPointClick={r => setSelectedRace(r)}
-          highlightIds={highlightIds}
-        />
+        <>
+          {races.filter(r => r.score || r.wpkg_np).length >= 2 && (
+            <ScoreSparkline races={races}/>
+          )}
+          <ScatterRaceSVG
+            races={races}
+            allYears={allYears}
+            onPointClick={r => setSelectedRace(r)}
+            highlightIds={highlightIds}
+          />
+        </>
       )}
 
       {/* Drawers */}

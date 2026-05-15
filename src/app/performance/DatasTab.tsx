@@ -3282,26 +3282,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SectionHeader label="Records personnels" gradient="linear-gradient(180deg,#ffb340,#f97316)" />
 
-      {/* Year pills — just below section title, applies to all sports */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {(['All Time', ...allRecordYears] as string[]).map(yr => {
-          const active = recordYear === yr
-          const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
-          return (
-            <button key={yr} onClick={() => setRecordYear(yr)} style={{
-              padding: '5px 12px', borderRadius: 20, border: 'none',
-              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-              fontSize: 12, fontWeight: active ? 700 : 500,
-              transition: 'background 0.15s, color 0.15s',
-              background: active ? color : 'var(--bg-card2)',
-              color: active ? '#ffffff' : 'var(--text-dim)',
-            }}>
-              {yr}
-            </button>
-          )
-        })}
-      </div>
-
       {/* Wingate-style record drawer — bike / run / swim / rowing / gym */}
       {drawerSpec && (
         <RecordDrawer
@@ -3396,6 +3376,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             </div>
           </Card>
 
+          {/* Year pills — bike */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['All Time', ...allRecordYears] as string[]).map(yr => {
+              const active = recordYear === yr
+              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              return (
+                <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                  padding: '5px 12px', borderRadius: 20, border: 'none',
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  transition: 'background 0.15s, color 0.15s',
+                  background: active ? color : 'var(--bg-card2)',
+                  color: active ? '#ffffff' : 'var(--text-dim)',
+                }}>{yr}</button>
+              )
+            })}
+          </div>
           <Card>
             <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Records de puissance</h2>
             {BIKE_DURS.map(d => {
@@ -3431,6 +3428,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <RunningRadar profile={profile} />
+          {/* Year pills — run */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['All Time', ...allRecordYears] as string[]).map(yr => {
+              const active = recordYear === yr
+              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              return (
+                <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                  padding: '5px 12px', borderRadius: 20, border: 'none',
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  transition: 'background 0.15s, color 0.15s',
+                  background: active ? color : 'var(--bg-card2)',
+                  color: active ? '#ffffff' : 'var(--text-dim)',
+                }}>{yr}</button>
+              )
+            })}
+          </div>
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
@@ -3463,6 +3477,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {/* SWIM */}
       {sport === 'swim' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Year pills — swim */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['All Time', ...allRecordYears] as string[]).map(yr => {
+              const active = recordYear === yr
+              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              return (
+                <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                  padding: '5px 12px', borderRadius: 20, border: 'none',
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  transition: 'background 0.15s, color 0.15s',
+                  background: active ? color : 'var(--bg-card2)',
+                  color: active ? '#ffffff' : 'var(--text-dim)',
+                }}>{yr}</button>
+              )
+            })}
+          </div>
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
@@ -3495,6 +3526,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {/* ROWING */}
       {sport === 'rowing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Year pills — rowing */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['All Time', ...allRecordYears] as string[]).map(yr => {
+              const active = recordYear === yr
+              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              return (
+                <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                  padding: '5px 12px', borderRadius: 20, border: 'none',
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  transition: 'background 0.15s, color 0.15s',
+                  background: active ? color : 'var(--bg-card2)',
+                  color: active ? '#ffffff' : 'var(--text-dim)',
+                }}>{yr}</button>
+              )
+            })}
+          </div>
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
@@ -3536,6 +3584,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {sport === 'triathlon' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <TriathlonRadar profile={profile} />
+          {/* Year pills — triathlon */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['All Time', ...allRecordYears] as string[]).map(yr => {
+              const active = recordYear === yr
+              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              return (
+                <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                  padding: '5px 12px', borderRadius: 20, border: 'none',
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  transition: 'background 0.15s, color 0.15s',
+                  background: active ? color : 'var(--bg-card2)',
+                  color: active ? '#ffffff' : 'var(--text-dim)',
+                }}>{yr}</button>
+              )
+            })}
+          </div>
           {TRIATHLON_FORMATS.map(fmt => {
             const best = getTrBest(fmt.id)
             const prev = getTrPrev(fmt.id)
@@ -3599,6 +3664,23 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {/* GYM */}
       {sport === 'gym' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Year pills — gym */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['All Time', ...allRecordYears] as string[]).map(yr => {
+              const active = recordYear === yr
+              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              return (
+                <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                  padding: '5px 12px', borderRadius: 20, border: 'none',
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  transition: 'background 0.15s, color 0.15s',
+                  background: active ? color : 'var(--bg-card2)',
+                  color: active ? '#ffffff' : 'var(--text-dim)',
+                }}>{yr}</button>
+              )
+            })}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <SectionHeader label="Records muscu" gradient="linear-gradient(180deg,#fb923c,#f97316)" />
           </div>

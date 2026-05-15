@@ -59,30 +59,58 @@ function yearColor(yr: string, all: string[]) {
   return YEAR_PAL[[...all].sort().indexOf(yr) % YEAR_PAL.length] ?? '#9ca3af'
 }
 
-// ─── Nouvelle formule de score ────────────────────────────────────────────────
-// Score = (W/kg × cFatigue × cTemp × cDuration × cAltitude × cIntensity) / 6.4 × 100
-// Plafonné à 100
+// ─── Score V4 — référence Alien dynamique par durée + pré-fatigue ─────────────
+// score_brut  = (W/kg / alien_ref(dur, fatigue)) × 100
+// score_final = min(100, score_brut × cTemp × cAltitude × cRessenti)
+
+// Paliers de durée en minutes
+const BP = [5, 10, 20, 30, 45, 60, 90, 120]
+
+// Référence Alien W/kg à chaque palier selon la table de pré-fatigue
+// heavy: non-monotone à 45' (référence Pogacar sur cols longs avec fatigue)
+const REF_ALIEN = {
+  standard: [8.5, 7.8, 7.2, 6.9, 6.6, 6.4, 6.0, 5.6],  // fresh / light
+  moderate: [7.8, 7.2, 6.6, 6.3, 6.1, 5.9, 5.5, 5.2],  // moderate
+  heavy:    [7.2, 6.6, 6.1, 5.9, 6.2, 5.4, 5.1, 4.8],  // high
+} as const
+
+type FatigueTable = keyof typeof REF_ALIEN
+
+function fatigueToTable(preFatigue: string | null): FatigueTable {
+  if (!preFatigue || preFatigue === 'fresh' || preFatigue === 'light') return 'standard'
+  if (preFatigue === 'moderate') return 'moderate'
+  return 'heavy'
+}
+
+function interpolateAlienRef(durMin: number, table: FatigueTable): number {
+  const refs = REF_ALIEN[table]
+  if (durMin <= BP[0]) return refs[0]
+  if (durMin >= BP[BP.length - 1]) return refs[BP.length - 1]
+  for (let i = 0; i < BP.length - 1; i++) {
+    if (durMin >= BP[i] && durMin < BP[i + 1]) {
+      const t = (durMin - BP[i]) / (BP[i + 1] - BP[i])
+      return refs[i] + t * (refs[i + 1] - refs[i])
+    }
+  }
+  return refs[BP.length - 1]
+}
+
+function getAlienRef(c: { duration_seconds: number; pre_fatigue: string | null }): number {
+  return interpolateAlienRef(c.duration_seconds / 60, fatigueToTable(c.pre_fatigue))
+}
 
 interface ScoreCoeffs {
-  fatigue: number
   temp: number
-  duration: number
   altitude: number
   intensity: number
 }
 
 function getCoeffs(c: {
-  pre_fatigue: string | null
   temp_bottom_celsius: number | null
   temp_summit_celsius: number | null
-  duration_seconds: number
   altitude_summit_m: number | null
   intensity_rating: number | null
 }): ScoreCoeffs {
-  // Fatigue — coefficients modestes
-  const fatigue = { fresh: 1.00, light: 1.01, moderate: 1.03, high: 1.05 } as Record<string, number>
-  const cFatigue = c.pre_fatigue ? (fatigue[c.pre_fatigue] ?? 1.00) : 1.00
-
   // Température (pied prioritaire, sinon sommet)
   const t = c.temp_bottom_celsius ?? c.temp_summit_celsius ?? null
   let cTemp = 1.00
@@ -95,11 +123,6 @@ function getCoeffs(c: {
     else if (t >  30)            cTemp = 1.04
   }
 
-  // Durée
-  const min = c.duration_seconds / 60
-  const cDuration = min < 15 ? 1.00 : min < 30 ? 1.02 : min < 45 ? 1.04
-    : min < 60 ? 1.05 : min < 90 ? 1.05 : 1.06
-
   // Altitude sommet
   const alt = c.altitude_summit_m
   const cAltitude = alt == null ? 1.00
@@ -110,12 +133,26 @@ function getCoeffs(c: {
   const intensityMap: Record<number, number> = { 5: 1.00, 4: 1.02, 3: 1.04, 2: 1.06, 1: 1.06 }
   const cIntensity = c.intensity_rating != null ? (intensityMap[c.intensity_rating] ?? 1.00) : 1.00
 
-  return { fatigue: cFatigue, temp: cTemp, duration: cDuration, altitude: cAltitude, intensity: cIntensity }
+  return { temp: cTemp, altitude: cAltitude, intensity: cIntensity }
+}
+
+interface ScoreDetails {
+  alienRef: number
+  scoreBrut: number
+  total: number
+  coeffs: ScoreCoeffs
+}
+
+function computeScoreDetails(c: ClimbRecord): ScoreDetails {
+  const alienRef  = getAlienRef(c)
+  const scoreBrut = (c.wpkg / alienRef) * 100
+  const coeffs    = getCoeffs(c)
+  const total     = Math.min(100, scoreBrut * coeffs.temp * coeffs.altitude * coeffs.intensity)
+  return { alienRef, scoreBrut, total, coeffs }
 }
 
 function calcScore(c: ClimbRecord): number {
-  const cf = getCoeffs(c)
-  return Math.min(100, (c.wpkg * cf.fatigue * cf.temp * cf.duration * cf.altitude * cf.intensity) / 6.4 * 100)
+  return computeScoreDetails(c).total
 }
 
 // ─── Niveaux ──────────────────────────────────────────────────────────────────
@@ -136,16 +173,8 @@ function scoreColor(s: number): string {
   const l = levelOf(s); return l.color
 }
 
-// Barème W/kg H/F de référence
-const LEVEL_WPKG: { label: string; H: string; F: string }[] = [
-  { label: 'Alien',             H: '> 6.0',     F: '> 5.4'     },
-  { label: 'Pro top intl.',     H: '5.1 – 6.0', F: '4.6 – 5.4' },
-  { label: 'Pro',               H: '4.2 – 5.1', F: '3.8 – 4.6' },
-  { label: 'Amateur haut niv.', H: '3.2 – 4.2', F: '2.9 – 3.8' },
-  { label: 'Bon amateur',       H: '2.6 – 3.2', F: '2.3 – 2.9' },
-  { label: 'Amateur',           H: '1.9 – 2.6', F: '1.7 – 2.3' },
-  { label: 'Débutant',          H: '< 1.9',     F: '< 1.7'     },
-]
+// Durées affichées dans le barème dynamique (minutes)
+const BAREM_DURS = [10, 20, 30, 45, 60, 90]
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
@@ -612,6 +641,73 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
   )
 }
 
+// ─── BaremeAccordion — 3 onglets dynamiques ───────────────────────────────────
+const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
+  standard: 'Standard (frais / légère)',
+  moderate: 'Pré-fatigue modérée',
+  heavy:    'Grosse pré-fatigue',
+}
+
+function BaremeAccordion() {
+  const [tab, setTab] = useState<FatigueTable>('standard')
+
+  // Niveaux affichés (Alien → Bon amateur)
+  const shownLevels = LEVELS.slice(0, 5)
+
+  return (
+    <Accordion title="Barème des niveaux">
+      {/* Onglets */}
+      <div style={{ display:'flex', gap:5, marginBottom:12, flexWrap:'wrap' }}>
+        {(['standard','moderate','heavy'] as FatigueTable[]).map(t => (
+          <button key={t} onClick={()=>setTab(t)} style={{
+            ...tog(tab===t), fontSize:10, padding:'5px 10px',
+          }}>
+            {BAREM_TABLE_LABELS[t]}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ overflowX:'auto' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:10 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign:'left', padding:'4px 6px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>
+                Durée
+              </th>
+              {shownLevels.map(l => (
+                <th key={l.label} style={{ textAlign:'right', padding:'4px 6px', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>
+                  <span style={{ color:l.color, fontWeight:700 }}>{l.label}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {BAREM_DURS.map((dur, ri) => {
+              const alienRef = interpolateAlienRef(dur, tab)
+              return (
+                <tr key={dur} style={{ background: ri%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                  <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
+                  {shownLevels.map(l => {
+                    const minWkg = (l.min / 100) * alienRef
+                    return (
+                      <td key={l.label} style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)', textAlign:'right' }}>
+                        ≥ {minWkg.toFixed(1)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'8px 0 0', lineHeight:1.5 }}>
+        W/kg minimum pour atteindre chaque niveau en conditions neutres (sans bonus temp/altitude/ressenti). Score = W/kg ÷ Réf. Alien × 100.
+      </p>
+    </Accordion>
+  )
+}
+
 // ─── RankingDrawer ────────────────────────────────────────────────────────────
 function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: () => void }) {
   const [mounted, setMounted]   = useState(false)
@@ -630,13 +726,8 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
   const shown = visible && !closing
 
   const ranked = [...climbs]
-    .map(c => ({
-      c,
-      s:     calcScore(c),
-      cf:    getCoeffs(c),
-      stored: c.score ?? calcScore(c),
-    }))
-    .sort((a, b) => b.s - a.s)
+    .map(c => ({ c, sd: computeScoreDetails(c) }))
+    .sort((a, b) => b.sd.total - a.sd.total)
 
   return createPortal(
     <div style={{
@@ -672,9 +763,9 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
 
         {/* List */}
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
-          {ranked.map(({ c, s, cf }, idx) => {
+          {ranked.map(({ c, sd }, idx) => {
             const rank = idx + 1
-            const col  = scoreColor(s)
+            const col  = scoreColor(sd.total)
             const isOpen = expanded === c.id
             return (
               <div key={c.id} style={{
@@ -705,38 +796,38 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
                   </div>
                   {/* Score */}
                   <div style={{ textAlign:'right', flexShrink:0, minWidth:70 }}>
-                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:800, color:col }}>{s.toFixed(0)}</div>
+                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:800, color:col }}>{sd.total.toFixed(0)}</div>
                     <div style={{ height:4, borderRadius:2, background:'var(--bg-card)', marginTop:4, width:70 }}>
-                      <div style={{ height:'100%', width:`${Math.min(100,s)}%`, background:col, borderRadius:2 }}/>
+                      <div style={{ height:'100%', width:`${Math.min(100,sd.total)}%`, background:col, borderRadius:2 }}/>
                     </div>
-                    <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>/ 100 · {levelOf(s).label}</div>
+                    <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>/ 100 · {levelOf(sd.total).label}</div>
                   </div>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}
                     style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }}>
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </div>
-                {/* Expand */}
+                {/* Expand — détail du calcul V4 */}
                 {isOpen && (
                   <div style={{ padding:'0 14px 12px', borderTop:'1px solid var(--border)' }}>
                     <div style={{ paddingTop:10, display:'flex', flexDirection:'column', gap:7 }}>
                       {([
-                        { label:'W/kg brut',    val:`${c.wpkg.toFixed(2)}` },
-                        { label:'× Fatigue',    val:`×${cf.fatigue.toFixed(2)}` },
-                        { label:'× Température',val:`×${cf.temp.toFixed(2)}` },
-                        { label:'× Durée',       val:`×${cf.duration.toFixed(2)}` },
-                        { label:'× Altitude',    val:`×${cf.altitude.toFixed(2)}` },
-                        { label:'× Ressenti',    val:`×${cf.intensity.toFixed(2)}` },
-                      ]).map(({ label, val }) => (
+                        { label:'W/kg',           val: c.wpkg.toFixed(2),                         color: BIKE_COLOR },
+                        { label:'÷ Réf. Alien',   val: `${sd.alienRef.toFixed(2)} W/kg`,           color: 'var(--text-mid)' },
+                        { label:'Score brut',     val: `${sd.scoreBrut.toFixed(1)} / 100`,         color: 'var(--text-mid)' },
+                        { label:'× Température',  val: `×${sd.coeffs.temp.toFixed(2)}`,            color: 'var(--text-mid)' },
+                        { label:'× Altitude',     val: `×${sd.coeffs.altitude.toFixed(2)}`,        color: 'var(--text-mid)' },
+                        { label:'× Ressenti',     val: `×${sd.coeffs.intensity.toFixed(2)}`,       color: 'var(--text-mid)' },
+                      ] as { label: string; val: string; color: string }[]).map(({ label, val, color }) => (
                         <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                           <span style={{ fontSize:11, color:'var(--text-dim)' }}>{label}</span>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)', fontWeight:600 }}>{val}</span>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color, fontWeight:600 }}>{val}</span>
                         </div>
                       ))}
                       <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <span style={{ fontSize:11, fontWeight:700, color:'var(--text)' }}>Score final</span>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:800, color:col }}>{s.toFixed(1)} / 100</span>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:800, color:col }}>{sd.total.toFixed(1)} / 100</span>
                       </div>
                     </div>
                   </div>
@@ -745,91 +836,71 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
             )
           })}
 
-          {/* ── Accordion : Barème ── */}
-          <Accordion title="Barème des niveaux">
-            <div style={{ overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                <thead>
-                  <tr>
-                    {['Niveau','Score','H (W/kg)','F (W/kg)'].map(h => (
-                      <th key={h} style={{ textAlign:'left', padding:'4px 8px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {LEVELS.map((l, i) => (
-                    <tr key={l.label} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding:'5px 8px' }}>
-                        <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
-                          <span style={{ width:8, height:8, borderRadius:'50%', background:l.color, display:'inline-block', flexShrink:0 }}/>
-                          <span style={{ color:l.color, fontWeight:700, fontSize:11 }}>{l.label}</span>
-                        </span>
-                      </td>
-                      <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)' }}>{l.min}–{l.max}</td>
-                      <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)' }}>{LEVEL_WPKG[i].H}</td>
-                      <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)' }}>{LEVEL_WPKG[i].F}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Accordion>
+          {/* ── Accordion : Barème dynamique 3 onglets ── */}
+          <BaremeAccordion />
 
           {/* ── Accordion : Méthode ── */}
           <Accordion title="Méthode de calcul">
-            {/* Intro */}
             <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>Comment est calculé le score ?</p>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
-              Chaque ascension reçoit un score sur 100 basé sur votre W/kg ajusté selon les conditions de la montée.
+              Chaque ascension reçoit un score sur 100. La référence absolue est le niveau <strong style={{ color:'var(--text)' }}>Alien</strong> — elle n'est pas fixe : elle dépend de la durée de l'effort <em>et</em> du niveau de pré-fatigue.
             </p>
-            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
-              La référence absolue est le niveau Alien : <strong style={{ color:'var(--text)' }}>6.4 W/kg en conditions standard</strong>. Seuls quelques athlètes dans le monde (Pogacar, Vingegaard) atteignent ce niveau.
+            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 12px' }}>
+              À 60 min frais, la référence Alien est <strong style={{ color:'var(--text)' }}>6.4 W/kg</strong> (Pogacar TdF). À 10 min frais elle monte à <strong style={{ color:'var(--text)' }}>7.8 W/kg</strong> (sprint long), à 120 min elle descend à <strong style={{ color:'var(--text)' }}>5.6 W/kg</strong> (col marathon).
             </p>
 
             {/* Formule */}
+            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 6px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
+              score_brut = (W/kg ÷ Réf. Alien) × 100
+            </div>
             <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 14px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
-              Score = (W/kg × conditions) / 6.4 × 100
+              score_final = min(100, score_brut × cTemp × cAlt × cRessenti)
             </div>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 14px' }}>
-              Les conditions sont des coefficients multiplicateurs très modestes (max ×1.28 cumulé) qui valorisent les performances réalisées dans des circonstances plus difficiles que la normale.
+              La <strong style={{ color:'var(--text)' }}>pré-fatigue</strong> est déjà encodée dans la sélection de la table de référence — un effort à 5 W/kg avec grosse fatigue vaut plus qu'à 5 W/kg frais. Seuls 3 coefficients ajustent encore : température, altitude et ressenti subjectif.
             </p>
 
             {/* Exemples */}
             {[
               {
-                title: 'Exemple 1 — Bon amateur, conditions idéales',
+                title: 'Exemple 1 — Bon amateur, 45 min, conditions standard',
                 lines: [
-                  'Athlète : 3.0 W/kg, frais, 15°C, 20min, 800m, ressenti 4',
-                  'Coefficients : 1.00 × 1.00 × 1.02 × 1.01 × 1.02 = ×1.05',
+                  'W/kg : 3.2 · Durée : 45 min · Frais · 15°C · 800 m · Ressenti 4',
+                  'Réf. Alien (45 min, standard) : 6.6 W/kg',
+                  'score_brut = 3.2 / 6.6 × 100 = 48.5',
+                  'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02',
                 ],
-                result: 'Score = (3.0 × 1.05) / 6.4 × 100 = 49/100 — Bon amateur',
+                result: 'Score = min(100, 48.5 × 1.00 × 1.01 × 1.02) = 50/100 — AHN',
               },
               {
-                title: 'Exemple 2 — Même athlète, conditions difficiles',
+                title: 'Exemple 2 — Même athlète, 33°C, 1800 m, ressenti 3',
                 lines: [
-                  'Athlète : 2.8 W/kg, fatigué, 33°C, 35min, 1800m, ressenti 4',
-                  'Coefficients : 1.05 × 1.04 × 1.04 × 1.03 × 1.02 = ×1.19',
+                  'W/kg : 3.2 · Durée : 45 min · Frais · 33°C · 1800 m · Ressenti 3',
+                  'score_brut = 48.5 (identique)',
+                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04',
                 ],
-                result: 'Score = (2.8 × 1.19) / 6.4 × 100 = 52/100 — AHN',
-                note: 'Moins de watts mais conditions plus dures : le score reflète la vraie difficulté de l\'effort.',
+                result: 'Score = min(100, 48.5 × 1.04 × 1.03 × 1.04) = 54/100 — AHN+',
+                note: 'Conditions très difficiles : 4 points de bonus sur la même puissance.',
               },
               {
-                title: 'Exemple 3 — Amateur haut niveau, bonne journée',
+                title: 'Exemple 3 — Grosse fatigue, 60 min, 5.0 W/kg',
                 lines: [
-                  'Athlète : 4.0 W/kg, frais, 12°C, 45min, 1500m, ressenti 3',
-                  'Coefficients : 1.00 × 1.00 × 1.05 × 1.03 × 1.04 = ×1.12',
+                  'W/kg : 5.0 · Durée : 60 min · Pré-fatigue élevée',
+                  'Réf. Alien (60 min, heavy) : 5.4 W/kg',
+                  'score_brut = 5.0 / 5.4 × 100 = 92.6',
+                  'Conditions normales : cTemp/cAlt/cRessenti = ×1.00',
                 ],
-                result: 'Score = (4.0 × 1.12) / 6.4 × 100 = 70/100 — Pro',
-                note: 'Bonne performance dans de bonnes conditions : le score monte mais reste ancré dans la réalité.',
+                result: 'Score = 92.6/100 — Pro top intl.',
+                note: 'La table "fatigue élevée" valorise cette performance : 5.0 W/kg sous fatigue vaut presque le niveau Alien fatigué.',
               },
               {
-                title: 'Exemple 4 — Pourquoi un ressenti facile augmente le score',
+                title: 'Exemple 4 — Ressenti facile = marge restante',
                 lines: [
-                  'Deux montées identiques à 3.8 W/kg, mêmes conditions :',
-                  'Ressenti 5 (à fond)  → score = 59/100',
-                  'Ressenti 2 (facile)  → score = 63/100',
+                  'Deux montées à 3.8 W/kg, 45 min, conditions identiques :',
+                  'Ressenti 5 (à fond) → score = 57.6 × 1.00 = 58/100',
+                  'Ressenti 2 (facile) → score = 57.6 × 1.06 = 61/100',
                 ],
-                note: 'Produire la même puissance avec moins d\'effort signifie que vous avez progressé et que vous avez encore de la marge. C\'est une meilleure performance.',
+                note: 'Produire la même puissance sans se mettre dans le rouge indique une capacité supérieure. Le score le récompense.',
               },
             ].map(ex => (
               <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius:8, border:'1px solid var(--border)' }}>
@@ -846,8 +917,8 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
               </div>
             ))}
 
-            {/* Tableau des 5 facteurs */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Les 5 facteurs et leur impact</p>
+            {/* Tableau des 3 facteurs */}
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Les 3 facteurs de conditions</p>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
                 <thead>
@@ -859,10 +930,8 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
                 </thead>
                 <tbody>
                   {[
-                    ['Durée',       '+6%', 'Efforts longs = plus méritoires'],
-                    ['Ressenti',    '+6%', 'Puissance produite avec marge'],
-                    ['Fatigue',     '+5%', 'Performer sous fatigue'],
-                    ['Altitude',    '+5%', 'Conditions physiologiques difficiles'],
+                    ['Ressenti',    '+6%', 'Puissance produite avec de la marge'],
+                    ['Altitude',    '+5%', 'Raréfaction de l\'air au sommet'],
                     ['Température', '+4%', 'Chaleur ou froid extrême'],
                   ].map(([f, imp, desc], i) => (
                     <tr key={f} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
@@ -875,12 +944,10 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
               </table>
             </div>
 
-            {/* Tableau coefficients détaillés */}
+            {/* Valeurs détaillées */}
             <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Valeurs des coefficients</p>
             {[
-              { label:'Fatigue', rows:[['Fraîche','×1.00'],['Légère','×1.01'],['Modérée','×1.03'],['Élevée','×1.05']] },
               { label:'Température', rows:[['10–18°C (confort)','×1.00'],['18–25°C (chaude)','×1.01'],['5–10°C (fraîche)','×1.02'],['25–30°C (très chaude)','×1.03'],['< 5°C (froide)','×1.04'],['>30°C (extrême)','×1.04']] },
-              { label:'Durée', rows:[['< 15 min','×1.00'],['15–30 min','×1.02'],['30–45 min','×1.04'],['45–90 min','×1.05'],['> 90 min','×1.06']] },
               { label:'Altitude sommet', rows:[['< 500 m','×1.00'],['500–1000 m','×1.01'],['1000–1500 m','×1.02'],['1500–2000 m','×1.03'],['2000–2500 m','×1.04'],['> 2500 m','×1.05']] },
               { label:'Ressenti inversé', rows:[['À fond (5)','×1.00'],['Très dur (4)','×1.02'],['Contrôle (3)','×1.04'],['Facile (1–2)','×1.06']] },
             ].map(({ label, rows }) => (

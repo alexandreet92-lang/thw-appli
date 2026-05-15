@@ -243,10 +243,11 @@ const calcBadge = (txt: string, color = BIKE_COLOR) => (
 const PL = 48, PR = 16, PT = 16, PB = 40
 interface TooltipState { climb: ClimbRecord; x: number; y: number }
 
-function ScatterSVG({ climbs, allYears, onPointClick }: {
+function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
   climbs: ClimbRecord[]
   allYears: string[]
   onPointClick: (c: ClimbRecord) => void
+  highlightIds: Set<string> | null
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(520)
@@ -263,35 +264,47 @@ function ScatterSVG({ climbs, allYears, onPointClick }: {
   const CW = w - PL - PR, CH = H - PT - PB
   const maxDurMin = Math.max(...climbs.map(c => c.duration_seconds / 60))
   const maxWkg    = Math.max(...climbs.map(c => c.wpkg))
-  const xMax = Math.ceil(maxDurMin * 1.15 / 5) * 5
-  const yMax = Math.ceil(maxWkg * 1.18 * 10) / 10
+  // Axe X : pas fixe de 15 min, minimum 30 min affiché
+  const xStep = 15
+  const xMax  = Math.max(30, Math.ceil(maxDurMin * 1.15 / 15) * 15)
+  // Axe Y : pas fixe de 0.5 W/kg
+  const yStep = 0.5
+  const yMax  = Math.ceil(maxWkg * 1.20 / 0.5) * 0.5
   const xPos = (d: number) => PL + (d / xMax) * CW
   const yPos = (v: number) => PT + CH - (v / yMax) * CH
-  const xStep = xMax <= 30 ? 5 : xMax <= 60 ? 10 : xMax <= 120 ? 20 : 30
   const xTicks: number[] = []; for (let v = 0; v <= xMax; v += xStep) xTicks.push(v)
-  const yStep = yMax <= 3 ? 0.5 : yMax <= 6 ? 1 : 1.5
   const yTicks: number[] = []; for (let v = 0; v <= yMax + 0.01; v += yStep) yTicks.push(parseFloat(v.toFixed(1)))
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <svg width="100%" height={H} viewBox={`0 0 ${w} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
-        {xTicks.map(v => <line key={`xg${v}`} x1={xPos(v)} y1={PT} x2={xPos(v)} y2={PT+CH} stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>)}
-        {yTicks.map(v => <line key={`yg${v}`} x1={PL} y1={yPos(v)} x2={PL+CW} y2={yPos(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>)}
-        <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke="rgba(255,255,255,0.15)" strokeWidth={1}/>
-        <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke="rgba(255,255,255,0.15)" strokeWidth={1}/>
-        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.35)">{v}</text>)}
-        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.4)">Durée (min)</text>
-        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.35)">{v}</text>)}
-        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.4)" transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
+        {/* Grille verticale — toutes les 15 min */}
+        {xTicks.map(v => <line key={`xg${v}`} x1={xPos(v)} y1={PT} x2={xPos(v)} y2={PT+CH} stroke="rgba(255,255,255,0.10)" strokeWidth={1}/>)}
+        {/* Grille horizontale — tous les 0.5 W/kg */}
+        {yTicks.map(v => <line key={`yg${v}`} x1={PL} y1={yPos(v)} x2={PL+CW} y2={yPos(v)} stroke="rgba(255,255,255,0.10)" strokeWidth={1}/>)}
+        {/* Axes */}
+        <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke="rgba(255,255,255,0.25)" strokeWidth={1}/>
+        <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke="rgba(255,255,255,0.25)" strokeWidth={1}/>
+        {/* Labels axe X */}
+        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.55)">{v}</text>)}
+        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.5)">Durée (min)</text>
+        {/* Labels axe Y */}
+        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.55)">{v.toFixed(1)}</text>)}
+        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.5)" transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
+        {/* Points — grisés à 25% si hors filtre actif */}
         {climbs.map(c => {
           const cx  = xPos(c.duration_seconds / 60)
           const cy  = yPos(c.wpkg)
           const col = yearColor(yearOf(c.date), allYears)
+          const lit = highlightIds === null || highlightIds.has(c.id)
           return (
             <g key={c.id} style={{ cursor: 'pointer' }} onClick={() => onPointClick(c)}>
               <circle cx={cx} cy={cy} r={12} fill="transparent"/>
-              <circle cx={cx} cy={cy} r={5} fill={col} fillOpacity={0.85}
-                stroke={col} strokeWidth={1.5} strokeOpacity={0.5}
+              <circle cx={cx} cy={cy} r={lit ? 6 : 4} fill={lit ? col : 'rgba(255,255,255,0.25)'}
+                fillOpacity={lit ? 0.90 : 1}
+                stroke={lit ? col : 'rgba(255,255,255,0.15)'} strokeWidth={lit ? 1.5 : 1}
+                strokeOpacity={lit ? 0.6 : 1}
+                style={{ transition: 'all 0.2s' }}
                 onMouseEnter={e => setTooltip({ climb: c, x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setTooltip(null)}/>
             </g>
@@ -666,6 +679,29 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
   )
 }
 
+// ─── Filtres durée ────────────────────────────────────────────────────────────
+type DurFilterId = 'lt5' | '5-10' | '10-20' | '20-30' | '30-60' | '1h+'
+const DUR_FILTERS: { label: string; id: DurFilterId | null }[] = [
+  { label: 'Toutes',  id: null    },
+  { label: "<5'",     id: 'lt5'   },
+  { label: "5-10'",   id: '5-10'  },
+  { label: "10-20'",  id: '10-20' },
+  { label: "20-30'",  id: '20-30' },
+  { label: "30-60'",  id: '30-60' },
+  { label: "1H+",     id: '1h+'   },
+]
+function matchDurFilter(durSec: number, id: DurFilterId | null): boolean {
+  const min = durSec / 60
+  if (!id)             return true
+  if (id === 'lt5')    return min < 5
+  if (id === '5-10')   return min >= 5  && min < 10
+  if (id === '10-20')  return min >= 10 && min < 20
+  if (id === '20-30')  return min >= 20 && min < 30
+  if (id === '30-60')  return min >= 30 && min < 60
+  if (id === '1h+')    return min >= 60
+  return true
+}
+
 // ─── BaremeAccordion — 3 onglets dynamiques ───────────────────────────────────
 const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
   standard: 'Standard (frais / légère)',
@@ -734,23 +770,59 @@ function BaremeAccordion() {
 }
 
 // ─── RankingDrawer ────────────────────────────────────────────────────────────
-function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: () => void }) {
-  const [mounted, setMounted]   = useState(false)
-  const [visible, setVisible]   = useState(false)
-  const [closing, setClosing]   = useState(false)
-  const [expanded, setExpanded] = useState<string | null>(null)
+function RankingDrawer({ climbs, onClose, onFilterChange }: {
+  climbs: ClimbRecord[]
+  onClose: () => void
+  onFilterChange: (ids: Set<string> | null) => void
+}) {
+  const [mounted, setMounted]         = useState(false)
+  const [visible, setVisible]         = useState(false)
+  const [closing, setClosing]         = useState(false)
+  const [expanded, setExpanded]       = useState<string | null>(null)
+  const [yearFilter, setYearFilter]   = useState<string | null>(null)
+  const [durFilter,  setDurFilter]    = useState<DurFilterId | null>(null)
+
+  // Années présentes dans les données
+  const allYearsRanking = [...new Set(climbs.map(c => yearOf(c.date)))].sort()
 
   useEffect(() => {
     setMounted(true)
     const t = setTimeout(() => setVisible(true), 10)
     return () => clearTimeout(t)
   }, [])
+
+  // Synchroniser la surbrillance du graphique à chaque changement de filtre
+  useEffect(() => {
+    if (yearFilter === null && durFilter === null) {
+      onFilterChange(null)
+      return
+    }
+    const ids = new Set(
+      climbs
+        .filter(c =>
+          (yearFilter === null || yearOf(c.date) === yearFilter) &&
+          matchDurFilter(c.duration_seconds, durFilter)
+        )
+        .map(c => c.id)
+    )
+    onFilterChange(ids)
+  }, [yearFilter, durFilter, climbs, onFilterChange])
+
   if (!mounted) return null
 
-  function handleClose() { setClosing(true); setTimeout(() => onClose(), 300) }
+  function handleClose() {
+    onFilterChange(null)
+    setClosing(true)
+    setTimeout(() => onClose(), 300)
+  }
   const shown = visible && !closing
 
+  // Liste filtrée + re-classée sur le sous-ensemble
   const ranked = [...climbs]
+    .filter(c =>
+      (yearFilter === null || yearOf(c.date) === yearFilter) &&
+      matchDurFilter(c.duration_seconds, durFilter)
+    )
     .map(c => ({ c, sd: computeScoreDetails(c) }))
     .sort((a, b) => b.sd.total - a.sd.total)
 
@@ -786,8 +858,37 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
           }}>×</button>
         </div>
 
+        {/* Filtres */}
+        <div style={{ padding:'10px 16px 0', flexShrink:0, borderBottom:'1px solid var(--border)' }}>
+          {/* Filtre année */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
+            <button style={tog(yearFilter===null, BIKE_COLOR)} onClick={()=>setYearFilter(null)}>Toutes</button>
+            {allYearsRanking.map(yr => (
+              <button key={yr} style={tog(yearFilter===yr, BIKE_COLOR)} onClick={()=>setYearFilter(yr===yearFilter ? null : yr)}>{yr}</button>
+            ))}
+          </div>
+          {/* Filtre durée */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
+            {DUR_FILTERS.map(({ label, id }) => (
+              <button key={label} style={tog(durFilter===id, '#6b7280')} onClick={()=>setDurFilter(id===durFilter ? null : id)}>{label}</button>
+            ))}
+          </div>
+          {/* Résumé filtre actif */}
+          {(yearFilter || durFilter) && (
+            <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:8 }}>
+              {ranked.length} ascension{ranked.length!==1?'s':''} filtrée{ranked.length!==1?'s':''}
+              {ranked.length === 0 && ' — aucun résultat'}
+            </div>
+          )}
+        </div>
+
         {/* List */}
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
+          {ranked.length === 0 && (
+            <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>
+              Aucune ascension pour ce filtre
+            </div>
+          )}
           {ranked.map(({ c, sd }, idx) => {
             const rank = idx + 1
             const col  = scoreColor(sd.total)
@@ -1001,11 +1102,16 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
 interface ClimbsSectionProps { profile: { weight: number } }
 
 export function ClimbsSection({ profile }: ClimbsSectionProps) {
-  const [climbs,      setClimbs]      = useState<ClimbRecord[]>([])
-  const [loaded,      setLoaded]      = useState(false)
-  const [showDrawer,  setShowDrawer]  = useState(false)
-  const [editClimb,   setEditClimb]   = useState<ClimbRecord | null>(null)
-  const [showRanking, setShowRanking] = useState(false)
+  const [climbs,       setClimbs]       = useState<ClimbRecord[]>([])
+  const [loaded,       setLoaded]       = useState(false)
+  const [showDrawer,   setShowDrawer]   = useState(false)
+  const [editClimb,    setEditClimb]    = useState<ClimbRecord | null>(null)
+  const [showRanking,  setShowRanking]  = useState(false)
+  const [highlightIds, setHighlightIds] = useState<Set<string> | null>(null)
+
+  const handleFilterChange = useCallback((ids: Set<string> | null) => {
+    setHighlightIds(ids)
+  }, [])
 
   const allYears = [...new Set(climbs.map(c => yearOf(c.date)))].sort()
 
@@ -1085,7 +1191,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
       {/* Chart + légende années */}
       {loaded && climbs.length > 0 && (
         <>
-          <ScatterSVG climbs={climbs} allYears={allYears} onPointClick={c => setEditClimb(c)}/>
+          <ScatterSVG climbs={climbs} allYears={allYears} onPointClick={c => setEditClimb(c)} highlightIds={highlightIds}/>
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:10 }}>
             {allYears.map(yr => {
               const col = yearColor(yr, allYears)
@@ -1102,7 +1208,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
 
       {showDrawer && <ClimbDrawer profileWeight={profile.weight} onSaved={handleSaved} onClose={()=>setShowDrawer(false)}/>}
       {editClimb  && <ClimbDrawer profileWeight={profile.weight} existing={editClimb} onSaved={handleSaved} onDeleted={handleDeleted} onClose={()=>setEditClimb(null)}/>}
-      {showRanking && <RankingDrawer climbs={climbs} onClose={()=>setShowRanking(false)}/>}
+      {showRanking && <RankingDrawer climbs={climbs} onFilterChange={handleFilterChange} onClose={()=>{ setShowRanking(false); setHighlightIds(null) }}/>}
     </div>
   )
 }

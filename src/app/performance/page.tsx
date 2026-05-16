@@ -217,6 +217,112 @@ const SPORT_SPEC_TABS: { id: SportSpecId; label: string; color: string }[] = [
   { id:'hyrox',    label:'Hyrox',    color:'#ef4444' },
 ]
 
+// ── Premium stat card ────────────────────────────────────────────
+function PremiumStatCard({ label, value, unit, sub, color, onSelect, selected, onAnalyze }: {
+  label: string; value: string|number; unit?: string; sub?: string; color: string;
+  onSelect?: () => void; selected?: boolean; onAnalyze?: () => void;
+}) {
+  const isInt = typeof value === 'number' && Number.isInteger(value)
+  return (
+    <div onClick={onSelect} style={{
+      background: selected ? `${color}10` : 'var(--bg-card)',
+      border: `1px solid ${selected ? color + '55' : 'var(--border)'}`,
+      borderRadius: 12, padding: '16px', cursor: onSelect ? 'pointer' : undefined,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)', position: 'relative',
+      transition: 'border-color 0.15s, background 0.15s', userSelect: 'none' as const,
+    }}>
+      {onAnalyze && (
+        <button onClick={e => { e.stopPropagation(); onAnalyze() }} title="Analyser avec l'IA"
+          style={{ position:'absolute', top:10, right:10, background:'none', border:'none', cursor:'pointer', padding:3, borderRadius:4, color:'#D1D5DB', display:'flex', alignItems:'center', lineHeight:1, transition:'color 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = color }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#D1D5DB' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </button>
+      )}
+      <p style={{ fontSize:11, fontWeight:500, textTransform:'uppercase' as const, letterSpacing:'0.05em', color:'#9CA3AF', margin:'0 0 8px' }}>{label}</p>
+      <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+        <span style={{ fontFamily:'DM Mono,monospace', fontSize:24, fontWeight:700, color, lineHeight:1 }}>
+          {isInt ? <CountUp value={value as number} /> : value}
+        </span>
+        {unit && <span style={{ fontSize:14, fontWeight:400, color:'#9CA3AF' }}>{unit}</span>}
+      </div>
+      {sub && <p style={{ fontSize:12, color:'#6B7280', margin:'4px 0 0' }}>{sub}</p>}
+    </div>
+  )
+}
+
+// ── Semi-circular gauge ───────────────────────────────────────────
+function SemiGauge({ value, max, label, display, color, levelLabel }: {
+  value: number; max: number; label: string; display: string; color: string; levelLabel: string;
+}) {
+  const W = 150, H = 86, CX = W / 2, CY = H - 4, R = 62, STROKE = 10
+  const pct = Math.min(Math.max(value / max, 0), 0.999)
+  const currentAngle = Math.PI - pct * Math.PI
+
+  function arcPath(fromA: number, toA: number): string {
+    const x1 = CX + R * Math.cos(fromA), y1 = CY - R * Math.sin(fromA)
+    const x2 = CX + R * Math.cos(toA),   y2 = CY - R * Math.sin(toA)
+    const sweep = fromA > toA ? 1 : 0
+    const largeArc = Math.abs(fromA - toA) > Math.PI ? 1 : 0
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${largeArc} ${sweep} ${x2.toFixed(2)} ${y2.toFixed(2)}`
+  }
+
+  const ZONE_COLORS = [
+    { pct: 0.25, col: '#9CA3AF' }, { pct: 0.50, col: '#3b82f6' },
+    { pct: 0.70, col: '#22c55e' }, { pct: 0.85, col: '#eab308' },
+    { pct: 0.95, col: '#f97316' }, { pct: 1.00, col: '#ef4444' },
+  ]
+
+  const nx = CX + (R - 6) * Math.cos(currentAngle)
+  const ny = CY - (R - 6) * Math.sin(currentAngle)
+
+  return (
+    <div style={{ textAlign:'center' }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display:'block', margin:'0 auto' }}>
+        <path d={arcPath(Math.PI, 0.001)} fill="none" stroke="#F3F4F6" strokeWidth={STROKE} strokeLinecap="round"/>
+        {ZONE_COLORS.map(({ pct: zp, col }, i, arr) => {
+          const prev = i === 0 ? 0 : arr[i-1].pct
+          return <path key={i} d={arcPath(Math.PI - prev*Math.PI, Math.PI - zp*Math.PI)} fill="none" stroke={col} strokeWidth={STROKE} strokeLinecap="butt" opacity="0.22"/>
+        })}
+        {pct > 0.005 && <path d={arcPath(Math.PI, currentAngle)} fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round"/>}
+        {pct > 0.005 && <line x1={CX} y1={CY} x2={nx.toFixed(2)} y2={ny.toFixed(2)} stroke={color} strokeWidth={2.5} strokeLinecap="round"/>}
+        <circle cx={CX} cy={CY} r={5} fill="var(--bg-card)" stroke={color} strokeWidth={2}/>
+      </svg>
+      <p style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:700, color, margin:'-4px 0 4px', lineHeight:1 }}>{display}</p>
+      <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:`${color}20`, color, fontWeight:600 }}>{levelLabel}</span>
+      <p style={{ fontSize:10, color:'#9CA3AF', margin:'6px 0 0', textTransform:'uppercase' as const, letterSpacing:'0.05em' }}>{label}</p>
+    </div>
+  )
+}
+
+// ── Mini radar compact ────────────────────────────────────────────
+function MiniRadar({ scores, labels, color }: { scores: number[]; labels: string[]; color: string }) {
+  const CX = 60, CY = 60, R = 44, N = scores.length
+  function pt(i: number, pct: number): [number, number] {
+    const a = (i / N) * Math.PI * 2 - Math.PI / 2
+    return [CX + R * pct * Math.cos(a), CY + R * pct * Math.sin(a)]
+  }
+  const poly = scores.map((s, i) => pt(i, Math.max(0.1, s / 100))).map(([x,y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  return (
+    <svg width={120} height={120} viewBox="0 0 120 120">
+      {[0.25, 0.5, 0.75, 1].map(f => (
+        <polygon key={f} points={Array.from({length:N},(_,i)=>pt(i,f)).map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}
+          fill="none" stroke="#F3F4F6" strokeWidth="1"/>
+      ))}
+      {Array.from({length:N},(_,i) => { const [x,y] = pt(i,1); return <line key={i} x1={CX} y1={CY} x2={x.toFixed(1)} y2={y.toFixed(1)} stroke="#F3F4F6" strokeWidth="1"/> })}
+      <polygon points={poly} fill={`${color}25`} stroke={color} strokeWidth="1.5"/>
+      {scores.map((s, i) => {
+        const [x, y] = pt(i, Math.max(0.1, s / 100))
+        return <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" fill={color}/>
+      })}
+      {labels.map((l, i) => {
+        const [x, y] = pt(i, 1.25)
+        return <text key={i} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" style={{ fontSize:8, fill:'#9CA3AF', fontWeight:'500' }}>{l}</text>
+      })}
+    </svg>
+  )
+}
+
 // ════════════════════════════════════════════════
 // ONGLET PROFIL
 // ════════════════════════════════════════════════
@@ -464,14 +570,14 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           </div>
         ) : (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="md:grid-cols-4">
-            <StatBox label="FTP"          value={p.ftp}            unit="W"        sub={`${wkg} W/kg`} color="#00c8e0" onSelect={() => onSelect('FTP', `${p.ftp} W`)} selected={isSel('FTP', p.ftp, 'W')}/>
-            <StatBox label="Allure seuil" value={p.thresholdPace}  unit="/km"      color="#22c55e"     onSelect={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)} selected={selectedDatum?.label==='Allure seuil'}/>
-            <StatBox label="VMA"          value={p.vma}            unit="km/h"     color="#22c55e"     onSelect={() => onSelect('VMA', `${p.vma} km/h`)} selected={isSel('VMA', p.vma, 'km/h')}/>
-            <StatBox label="CSS"          value={p.css}            unit="/100m"    color="#38bdf8"     onSelect={() => onSelect('CSS', `${p.css}/100m`)} selected={selectedDatum?.label==='CSS'}/>
-            <StatBox label="FC max"       value={p.hrMax}          unit="bpm"      color="#ef4444"     onSelect={() => onSelect('FC max', `${p.hrMax} bpm`)} selected={isSel('FC max', p.hrMax, 'bpm')}/>
-            <StatBox label="FC repos"     value={p.hrRest}         unit="bpm"      color="#22c55e"     onSelect={() => onSelect('FC repos', `${p.hrRest} bpm`)} selected={isSel('FC repos', p.hrRest, 'bpm')}/>
-            <StatBox label="LTHR"         value={p.lthr}           unit="bpm"      color="#f97316"     onSelect={() => onSelect('LTHR', `${p.lthr} bpm`)} selected={isSel('LTHR', p.lthr, 'bpm')}/>
-            <StatBox label="VO2max"       value={p.vo2max}         unit="ml/kg/min" color="#a855f7"   onSelect={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)} selected={isSel('VO2max', p.vo2max, 'ml/kg/min')}/>
+            <PremiumStatCard label="FTP"          value={p.ftp}           unit="W"         sub={`${wkg} W/kg`}  color="#3B82F6" onSelect={() => onSelect('FTP', `${p.ftp} W`)}                   selected={isSel('FTP', p.ftp, 'W')}                         onAnalyze={() => onSelect('FTP', `${p.ftp} W`)}/>
+            <PremiumStatCard label="Allure seuil" value={p.thresholdPace} unit="/km"                            color="#10B981" onSelect={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)} selected={selectedDatum?.label==='Allure seuil'}             onAnalyze={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)}/>
+            <PremiumStatCard label="VMA"           value={p.vma}           unit="km/h"                           color="#8B5CF6" onSelect={() => onSelect('VMA', `${p.vma} km/h`)}                 selected={isSel('VMA', p.vma, 'km/h')}                      onAnalyze={() => onSelect('VMA', `${p.vma} km/h`)}/>
+            <PremiumStatCard label="CSS"           value={p.css}           unit="/100m"                          color="#06B6D4" onSelect={() => onSelect('CSS', `${p.css}/100m`)}                 selected={selectedDatum?.label==='CSS'}                      onAnalyze={() => onSelect('CSS', `${p.css}/100m`)}/>
+            <PremiumStatCard label="FC max"        value={p.hrMax}         unit="bpm"                            color="#EF4444" onSelect={() => onSelect('FC max', `${p.hrMax} bpm`)}             selected={isSel('FC max', p.hrMax, 'bpm')}                  onAnalyze={() => onSelect('FC max', `${p.hrMax} bpm`)}/>
+            <PremiumStatCard label="FC repos"      value={p.hrRest}        unit="bpm"                            color="#F59E0B" onSelect={() => onSelect('FC repos', `${p.hrRest} bpm`)}          selected={isSel('FC repos', p.hrRest, 'bpm')}               onAnalyze={() => onSelect('FC repos', `${p.hrRest} bpm`)}/>
+            <PremiumStatCard label="LTHR"          value={p.lthr}          unit="bpm"                            color="#F97316" onSelect={() => onSelect('LTHR', `${p.lthr} bpm`)}               selected={isSel('LTHR', p.lthr, 'bpm')}                     onAnalyze={() => onSelect('LTHR', `${p.lthr} bpm`)}/>
+            <PremiumStatCard label="VO2max"        value={p.vo2max}        unit="ml/kg/min"                      color="#EC4899" onSelect={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}      selected={isSel('VO2max', p.vo2max, 'ml/kg/min')}           onAnalyze={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}/>
           </div>
         )}
       </Card>
@@ -485,8 +591,9 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           </div>
           <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0 11px' }}>Benchmarks personnels par discipline — références de forme actuelles</p>
         </div>
+
         {/* Sport tabs */}
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap' as const, marginBottom:14 }}>
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' as const, marginBottom:16 }}>
           {SPORT_SPEC_TABS.map(t => (
             <button key={t.id} onClick={() => setSpecSport(t.id)} style={{
               padding:'5px 13px', borderRadius:8, border:'1px solid',
@@ -497,23 +604,165 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
             }}>{t.label}</button>
           ))}
         </div>
-        {/* Fields grid */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:9 }} className="md:grid-cols-3">
-          {SPORT_SPEC_FIELDS[specSport].map(f => (
-            <div key={f.key} style={{ display:'flex', flexDirection:'column', gap:4 }}>
-              <label style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)' }}>
-                {f.label}{f.unit && <span style={{ fontWeight:400, marginLeft:3, textTransform:'none' as const }}>({f.unit})</span>}
-              </label>
-              <input
-                type="text"
-                value={specParams[specSport][f.key] ?? ''}
-                onChange={e => setSpecField(f.key, e.target.value)}
-                placeholder={f.placeholder ?? (f.unit ? `En ${f.unit}` : '—')}
-                style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}
-              />
+
+        {/* ── Profil en un coup d'œil ── */}
+        {(() => {
+          const st = SPORT_SPEC_TABS.find(t => t.id === specSport)!
+          const params = specParams[specSport]
+
+          // Mini radar scores per sport (0-100)
+          const radarData: Record<SportSpecId, { labels: string[]; scores: () => number[] }> = {
+            running: {
+              labels: ['VMA', 'Seuil', 'Endurance'],
+              scores: () => [
+                Math.min(100, ((p.vma - 10) / 12) * 100),
+                Math.min(100, ((p.vma > 0 && p.thresholdPace ? (p.vma * 0.80) / (p.vma) : 0.75) * 100)),
+                Math.min(100, ((p.vo2max - 30) / 40) * 100),
+              ],
+            },
+            cycling: {
+              labels: ['FTP', 'W/kg', 'Endurance'],
+              scores: () => [
+                Math.min(100, ((p.ftp - 100) / 300) * 100),
+                Math.min(100, ((parseFloat(wkg) - 1) / 5) * 100),
+                Math.min(100, ((p.vo2max - 30) / 40) * 100),
+              ],
+            },
+            swimming: {
+              labels: ['CSS', 'Vitesse', 'Endurance'],
+              scores: () => {
+                const cssParts = p.css.split(':').map(Number)
+                const cssSec = cssParts.length === 2 ? cssParts[0] * 60 + (cssParts[1] || 0) : 90
+                return [
+                  Math.min(100, Math.max(0, ((120 - cssSec) / 50) * 100)),
+                  Math.min(100, ((p.vma - 10) / 10) * 100),
+                  Math.min(100, ((p.vo2max - 30) / 40) * 100),
+                ]
+              },
+            },
+            hyrox: {
+              labels: ['Force', 'Cardio', 'Run'],
+              scores: () => {
+                const wallBall = parseFloat(params['wall_ball_max'] ?? '0')
+                return [
+                  Math.min(100, (wallBall / 50) * 100),
+                  Math.min(100, ((p.hrMax - p.hrRest) / 80) * 100),
+                  Math.min(100, ((p.vma - 10) / 12) * 100),
+                ]
+              },
+            },
+          }
+          const rd = radarData[specSport]
+          const scores = rd.scores()
+          const hasScores = scores.some(s => s > 0)
+
+          // Zones d'intensité Karvonen (FC de réserve)
+          const fcReserve = p.hrMax - p.hrRest
+          const zones = [
+            { z: 'Z1', label: 'Récupération', pct: [0.50, 0.60], color: '#22c55e' },
+            { z: 'Z2', label: 'Endurance',     pct: [0.60, 0.70], color: '#3b82f6' },
+            { z: 'Z3', label: 'Tempo',         pct: [0.70, 0.80], color: '#eab308' },
+            { z: 'Z4', label: 'Seuil',         pct: [0.80, 0.90], color: '#f97316' },
+            { z: 'Z5', label: 'VO2max',        pct: [0.90, 1.00], color: '#ef4444' },
+          ].map(z => ({
+            ...z,
+            low:  Math.round(p.hrRest + fcReserve * z.pct[0]),
+            high: Math.round(p.hrRest + fcReserve * z.pct[1]),
+          }))
+
+          // Benchmarks clés par sport
+          type BenchItem = { label: string; value: string | number; unit: string; color: string }
+          const benchmarks: Record<SportSpecId, BenchItem[]> = {
+            running: [
+              { label: 'VMA', value: p.vma, unit: 'km/h', color: '#22c55e' },
+              { label: 'LTHR', value: p.lthr, unit: 'bpm', color: '#f97316' },
+              { label: 'VO2max', value: p.vo2max, unit: 'ml/kg/min', color: '#8B5CF6' },
+            ],
+            cycling: [
+              { label: 'FTP', value: p.ftp, unit: 'W', color: '#3B82F6' },
+              { label: 'W/kg', value: wkg, unit: 'W/kg', color: '#06B6D4' },
+              { label: 'LTHR vélo', value: p.lthr, unit: 'bpm', color: '#f97316' },
+            ],
+            swimming: [
+              { label: 'CSS', value: p.css, unit: '/100m', color: '#06B6D4' },
+              { label: 'FC max', value: p.hrMax, unit: 'bpm', color: '#EF4444' },
+              { label: 'VO2max', value: p.vo2max, unit: 'ml/kg/min', color: '#8B5CF6' },
+            ],
+            hyrox: [
+              { label: 'Wall Ball max', value: params['wall_ball_max'] || '—', unit: 'reps', color: '#ef4444' },
+              { label: 'Run compromised', value: params['run_compromised'] || '—', unit: '/km', color: '#f97316' },
+              { label: 'Farmer max', value: params['farmer_max_m'] ? `${params['farmer_max_m']}` : '—', unit: 'm', color: '#eab308' },
+            ],
+          }
+
+          return (
+            <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:20, marginBottom:16, alignItems:'start' }} className="sm:grid-cols-1">
+              {/* Left: radar + label */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, padding:'12px 16px', background:'var(--bg-card2)', borderRadius:12, border:'1px solid var(--border)' }}>
+                <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.08em', color:'#9CA3AF', margin:0 }}>En un coup d&apos;œil</p>
+                {hasScores
+                  ? <MiniRadar scores={scores} labels={rd.labels} color={st.color}/>
+                  : <div style={{ width:120, height:120, display:'flex', alignItems:'center', justifyContent:'center', color:'#D1D5DB', fontSize:10, textAlign:'center' }}>Renseigne ton profil pour voir le radar</div>
+                }
+              </div>
+
+              {/* Right: zones + benchmarks */}
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {/* Zones d'intensité */}
+                <div style={{ padding:'12px 14px', background:'var(--bg-card2)', borderRadius:12, border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 10px' }}>Zones d&apos;intensité FC</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                    {zones.map(z => (
+                      <div key={z.z} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:9, fontWeight:700, color:z.color, width:18, flexShrink:0 }}>{z.z}</span>
+                        <div style={{ flex:1, height:6, borderRadius:3, background:'var(--border)', overflow:'hidden' }}>
+                          <div style={{ height:'100%', width:`${(z.pct[1] - z.pct[0]) * 200}%`, background:z.color, borderRadius:3, opacity:0.75 }}/>
+                        </div>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:9, color:'var(--text-mid)', width:70, textAlign:'right' as const, flexShrink:0 }}>
+                          {p.hrMax > 0 ? `${z.low}–${z.high} bpm` : '—'}
+                        </span>
+                        <span style={{ fontSize:9, color:'#9CA3AF', width:60, flexShrink:0 }}>{z.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Benchmarks clés */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:7 }}>
+                  {benchmarks[specSport].map(b => (
+                    <div key={b.label} style={{ padding:'10px 12px', background:'var(--bg-card2)', borderRadius:10, border:'1px solid var(--border)', textAlign:'center' as const }}>
+                      <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.05em', color:'#9CA3AF', margin:'0 0 4px' }}>{b.label}</p>
+                      <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:b.color, margin:'0 0 1px' }}>{b.value}</p>
+                      <p style={{ fontSize:9, color:'#9CA3AF', margin:0 }}>{b.unit}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          ))}
+          )
+        })()}
+
+        {/* Fields grid */}
+        <div style={{ borderTop:'1px solid var(--border)', paddingTop:14, marginBottom:4 }}>
+          <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 10px' }}>Renseigner les benchmarks</p>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:9 }} className="md:grid-cols-3">
+            {SPORT_SPEC_FIELDS[specSport].map(f => (
+              <div key={f.key} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                <label style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)' }}>
+                  {f.label}{f.unit && <span style={{ fontWeight:400, marginLeft:3, textTransform:'none' as const }}>({f.unit})</span>}
+                </label>
+                <input
+                  type="text"
+                  value={specParams[specSport][f.key] ?? ''}
+                  onChange={e => setSpecField(f.key, e.target.value)}
+                  placeholder={f.placeholder ?? (f.unit ? `En ${f.unit}` : '—')}
+                  style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}
+                />
+              </div>
+            ))}
+          </div>
         </div>
+
         <button
           onClick={() => { void handleSaveSpec() }}
           disabled={specSaving}
@@ -525,29 +774,43 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
 
       {/* ── Niveau estimé ── */}
       <Card>
-        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:'0 0 14px' }}>Niveau estimé</h2>
-        {[
-          { label:'W/kg',    val:parseFloat(wkg), max:6,  display:`${wkg} W/kg`,           color:'#00c8e0', desc:parseFloat(wkg)>=4.5?'Expert':parseFloat(wkg)>=3.5?'Avancé':'Intermédiaire' },
-          { label:'VO2max',  val:p.vo2max,        max:80, display:`${p.vo2max} ml/kg/min`,  color:'#a855f7', desc:p.vo2max>=65?'Élite':p.vo2max>=55?'Élevé':'Moyen' },
-          { label:'FC repos',val:80-p.hrRest,     max:50, display:`${p.hrRest} bpm`,        color:'#22c55e', desc:p.hrRest<=40?'Élite':p.hrRest<=50?'Élevé':'Moyen' },
-        ].map(item => {
-          const sel = selectedDatum?.label === item.label
-          return (
-            <div key={item.label} onClick={() => onSelect(item.label, item.display)}
-              style={{ marginBottom:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', background:sel?`${item.color}10`:undefined, border:`1px solid ${sel?item.color+'55':'transparent'}`, transition:'background 0.15s, border-color 0.15s' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ fontSize:12, color:'var(--text-mid)' }}>{item.label}</span>
-                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                  <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:`${item.color}22`, color:item.color, fontWeight:600 }}>{item.desc}</span>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, color:item.color }}>{item.display}</span>
-                </div>
-              </div>
-              <div style={{ height:7, borderRadius:999, overflow:'hidden', background:'var(--border)' }}>
-                <div style={{ height:'100%', width:`${Math.min(Math.abs(item.val)/item.max*100,100)}%`, background:`linear-gradient(90deg,${item.color}88,${item.color})`, borderRadius:999 }}/>
-              </div>
-            </div>
-          )
-        })}
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+          <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#8B5CF6,#EC4899)' }}/>
+          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Niveau estimé</h2>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+          <div
+            onClick={() => onSelect('W/kg', `${wkg} W/kg`)}
+            style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'W/kg' ? '#3B82F610' : undefined, border:`1px solid ${ selectedDatum?.label === 'W/kg' ? '#3B82F655' : 'transparent'}`, transition:'all 0.15s' }}
+          >
+            <SemiGauge
+              value={parseFloat(wkg)} max={6}
+              label="W/kg" display={`${wkg}`} color="#3B82F6"
+              levelLabel={parseFloat(wkg) >= 4.5 ? 'Expert' : parseFloat(wkg) >= 3.5 ? 'Avancé' : parseFloat(wkg) >= 2.5 ? 'Intermédiaire' : 'Débutant'}
+            />
+          </div>
+          <div
+            onClick={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}
+            style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'VO2max' ? '#EC489910' : undefined, border:`1px solid ${ selectedDatum?.label === 'VO2max' ? '#EC489955' : 'transparent'}`, transition:'all 0.15s' }}
+          >
+            <SemiGauge
+              value={p.vo2max} max={80}
+              label="VO2max" display={`${p.vo2max}`} color="#EC4899"
+              levelLabel={p.vo2max >= 65 ? 'Élite' : p.vo2max >= 55 ? 'Élevé' : p.vo2max >= 45 ? 'Bon' : 'Moyen'}
+            />
+          </div>
+          <div
+            onClick={() => onSelect('FC repos', `${p.hrRest} bpm`)}
+            style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'FC repos' ? '#22c55e10' : undefined, border:`1px solid ${ selectedDatum?.label === 'FC repos' ? '#22c55e55' : 'transparent'}`, transition:'all 0.15s' }}
+          >
+            <SemiGauge
+              value={Math.max(0, 80 - p.hrRest)} max={50}
+              label="FC repos" display={`${p.hrRest}`} color="#22c55e"
+              levelLabel={p.hrRest <= 40 ? 'Élite' : p.hrRest <= 50 ? 'Élevé' : p.hrRest <= 60 ? 'Bon' : 'Moyen'}
+            />
+          </div>
+        </div>
+        <p style={{ fontSize:10, color:'#9CA3AF', textAlign:'center' as const, margin:'10px 0 0' }}>Estimations basées sur les données de ton profil — mets à jour régulièrement pour un suivi précis.</p>
       </Card>
     </div>
   )

@@ -217,8 +217,12 @@ const DUR_SECS: Record<string, number> = {
   '4h':14400, '5h':18000, '6h':21600,
 }
 
-const RUN_DISTS = ['400m','1km','5km','10km','Semi','Marathon','50km','100km']
-const RUN_KM: Record<string,number> = { '400m':0.4,'1km':1,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
+const RUN_DISTS = ['100m','200m','400m','1km','1 mile','2 miles','5km','10km','15km','10 miles','Semi','20km','15 miles','Marathon','50km','100km']
+const RUN_KM: Record<string,number> = {
+  '100m':0.1,'200m':0.2,'400m':0.4,'1km':1,'1 mile':1.60934,'2 miles':3.21869,
+  '5km':5,'10km':10,'15km':15,'10 miles':16.0934,'Semi':21.0975,'20km':20,
+  '15 miles':24.1402,'Marathon':42.195,'50km':50,'100km':100,
+}
 
 const SWIM_DISTS = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
@@ -273,11 +277,19 @@ interface SpRecord {
   performance: string
   performance_unit: string
   achieved_at: string
+  // triathlon splits
   split_swim?: string | null
   split_t1?:   string | null
   split_bike?: string | null
   split_t2?:   string | null
   split_run?:  string | null
+  // running extras
+  event_type?:      string | null   // 'competition' | 'training'
+  race_name?:       string | null
+  rpe?:             number | null
+  elevation_gain_m?: number | null
+  terrain_type?:    string | null   // 'flat' | 'hilly' | 'mountain'
+  surface?:         string | null   // 'route' | 'piste' | 'trail'
 }
 
 interface HyroxRace {
@@ -298,6 +310,186 @@ const HYROX_FORMAT_LABELS: Record<string, string> = {
   solo_pro:  'Solo Pro',
   duo_open:  'Duo Open',
   duo_pro:   'Duo Pro',
+}
+
+// ── RunGaugeChart — jauges running pleine largeur ────────────────
+// Hauteur ∝ temps (lent = haut, rapide = bas). Ordre chronologique.
+const RUN_REF_SECS: Record<string, number[]> = {
+  '100m':     [10,12,15,20],
+  '200m':     [20,25,30,40],
+  '400m':     [45,60,75,90],
+  '1km':      [150,180,210,240],
+  '1 mile':   [240,300,360,420],
+  '2 miles':  [510,600,720,840],
+  '5km':      [840,1020,1200,1500,1800],
+  '10km':     [1800,2100,2400,2700,3000],
+  '15km':     [3000,3600,4200,4800],
+  '10 miles': [3300,3900,4500,5400],
+  'Semi':     [3900,4500,5100,6000,7200],
+  '20km':     [4200,4800,5400,6300],
+  '15 miles': [5400,6300,7200,8100],
+  'Marathon': [9000,10800,12600,14400,16200],
+  '50km':     [12600,16200,19800,23400],
+  '100km':    [25200,32400,39600,50400],
+}
+
+function secToLabel(s: number): string {
+  if (s < 60) return `${s}s`
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  if (h > 0) return `${h}h${String(m).padStart(2,'0')}`
+  return sec > 0 ? `${m}:${String(sec).padStart(2,'0')}` : `${m}min`
+}
+
+function RunGaugeChart({ records, dist, recordYear }: {
+  records: SpRecord[]   // already filtered to sport='run' and distance_label=dist
+  dist: string
+  recordYear: string
+}) {
+  const [count, setCount] = useState(10)
+  const [tip, setTip] = useState<{ r: SpRecord; cx: number; cy: number } | null>(null)
+  const MAX_H = 160, MIN_H = 20
+
+  const filtered = records.filter(r => {
+    if (toSec(r.performance) <= 0) return false
+    if (recordYear !== 'All Time') return r.achieved_at.slice(0,4) === recordYear
+    return true
+  })
+  const sorted = [...filtered]
+    .sort((a, b) => a.achieved_at.localeCompare(b.achieved_at))
+    .slice(-count)
+
+  const allSecs = sorted.map(r => toSec(r.performance))
+  const maxSec  = allSecs.length > 0 ? Math.max(...allSecs) : 0
+  const minSec  = allSecs.length > 0 ? Math.min(...allSecs) : 0
+  const topSec  = maxSec > 0 ? maxSec * 1.12 : 3600
+
+  function barH(s: number): number {
+    return Math.max(MIN_H, (s / topSec) * MAX_H)
+  }
+
+  const refs = (RUN_REF_SECS[dist] ?? []).filter(s => s <= topSec && s > 0)
+  const allYrs = [...new Set(sorted.map(r => r.achieved_at.slice(0,4)))].sort((a,b) => b.localeCompare(a))
+
+  if (records.length === 0) {
+    return (
+      <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-dim)', fontSize:12 }}>
+        Aucun record enregistré — clique sur "+ Ajouter" pour saisir ton premier temps.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      {/* Count selector */}
+      <div style={{ display:'flex', gap:4, marginBottom:12 }}>
+        {[5,10,20].map(n => (
+          <button key={n} onClick={() => setCount(n)} style={{
+            padding:'4px 12px', borderRadius:8, border:'none', cursor:'pointer',
+            fontSize:11, fontWeight: count===n ? 700 : 400,
+            background: count===n ? '#22c55e' : 'var(--bg-card2)',
+            color: count===n ? '#000' : 'var(--text-dim)',
+          }}>{n} derniers</button>
+        ))}
+        <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)', alignSelf:'center' }}>
+          {sorted.length} / {filtered.length} affichés
+        </span>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'16px 0', fontSize:11, color:'var(--text-dim)' }}>
+          Aucun record{recordYear !== 'All Time' ? ` pour ${recordYear}` : ''} sur {dist}
+        </div>
+      ) : (
+        <div style={{ position:'relative', paddingLeft:40, paddingBottom:20 }}>
+          {/* Y-axis reference lines */}
+          <div style={{ position:'absolute', left:40, right:0, top:0, height:MAX_H, pointerEvents:'none' }}>
+            {refs.map(s => {
+              const pct = s / topSec  // 0=bottom, 1=top
+              const top = MAX_H * (1 - pct)  // px from top
+              return (
+                <div key={s} style={{ position:'absolute', left:0, right:0, top, display:'flex', alignItems:'center' }}>
+                  <div style={{ flex:1, borderTop:'1px dashed rgba(120,120,120,0.25)' }} />
+                  <span style={{ position:'absolute', left:-40, fontSize:8, color:'var(--text-dim)', whiteSpace:'nowrap', width:38, textAlign:'right' }}>
+                    {secToLabel(s)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Bars — full width, flex */}
+          <div style={{ display:'flex', gap:4, height:MAX_H, alignItems:'flex-end', position:'relative' }}>
+            {sorted.map((r) => {
+              const secs   = toSec(r.performance)
+              const h      = barH(secs)
+              const yr     = r.achieved_at.slice(0,4)
+              const col    = getPCColor(yr, allYrs)
+              const isBest = secs === minSec
+              const isComp = r.event_type === 'competition'
+              return (
+                <div key={r.id} style={{
+                  flex:1, height:h, minWidth:0,
+                  background: col, opacity: isBest ? 1 : 0.78,
+                  borderRadius:'4px 4px 0 0',
+                  border: isBest ? '2px solid #f59e0b' : isComp ? `1px solid ${col}` : 'none',
+                  position:'relative', cursor:'default', overflow:'hidden',
+                  display:'flex', flexDirection:'column', alignItems:'center', paddingTop:2,
+                }}
+                  onMouseEnter={e => setTip({ r, cx:e.clientX, cy:e.clientY })}
+                  onMouseMove={e  => setTip({ r, cx:e.clientX, cy:e.clientY })}
+                  onMouseLeave={() => setTip(null)}>
+                  {isBest && (
+                    <div style={{ position:'absolute', top:-18, left:'50%', transform:'translateX(-50%)', fontSize:13, color:'#f59e0b', lineHeight:1 }}>★</div>
+                  )}
+                  <span style={{ fontSize:8, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%', padding:'0 2px', lineHeight:1.3 }}>
+                    {r.performance}
+                  </span>
+                  {h >= 32 && <span style={{ fontSize:7, color:'rgba(255,255,255,0.75)', whiteSpace:'nowrap' }}>{yr}</span>}
+                </div>
+              )
+            })}
+          </div>
+          {/* X labels — dates */}
+          <div style={{ display:'flex', gap:4, paddingLeft:0, marginTop:3 }}>
+            {sorted.map(r => (
+              <div key={r.id} style={{ flex:1, textAlign:'center', fontSize:7, color:'var(--text-dim)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                {r.achieved_at.slice(0,7)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tooltip */}
+      {tip && createPortal(
+        <div style={{
+          position:'fixed', left:tip.cx+14, top:tip.cy-130,
+          background:'var(--bg-card)', border:'1px solid var(--border)',
+          borderRadius:10, padding:'10px 14px',
+          boxShadow:'0 4px 20px rgba(0,0,0,0.24)', zIndex:9999, pointerEvents:'none', minWidth:170,
+        }}>
+          <div style={{ fontWeight:700, fontSize:16, fontFamily:'DM Mono,monospace', color:'var(--text)', marginBottom:4 }}>{tip.r.performance}</div>
+          {RUN_KM[dist] && <div style={{ fontSize:12, color:'#22c55e', marginBottom:4, fontWeight:600 }}>{calcPacePerKm(RUN_KM[dist], tip.r.performance)}</div>}
+          <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>
+            {(() => { try { return new Date(tip.r.achieved_at).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'}) } catch { return tip.r.achieved_at } })()}
+          </div>
+          {tip.r.event_type && (
+            <div style={{ fontSize:10, fontWeight:600, color:tip.r.event_type==='competition'?'#f59e0b':'var(--text-dim)', marginBottom:2 }}>
+              {tip.r.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
+              {tip.r.race_name ? ` — ${tip.r.race_name}` : ''}
+            </div>
+          )}
+          {tip.r.rpe != null && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:2 }}>RPE {tip.r.rpe}/10</div>}
+          {tip.r.elevation_gain_m != null && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:2 }}>D+ {tip.r.elevation_gain_m} m</div>}
+          {tip.r.surface && <div style={{ fontSize:10, color:'var(--text-dim)' }}>Surface : {tip.r.surface}</div>}
+          {tip.r.terrain_type && <div style={{ fontSize:10, color:'var(--text-dim)' }}>Relief : {tip.r.terrain_type==='flat'?'Plat':tip.r.terrain_type==='hilly'?'Vallonné':'Montagneux'}</div>}
+        </div>,
+        document.body
+      )}
+    </div>
+  )
 }
 
 // ── ChartEntry — type unifié pour RecordChart ────────────────────
@@ -1278,6 +1470,14 @@ function SectionHeader({ label, gradient }: { label: string; gradient: string })
 }
 
 // ── RecordDrawer — Wingate-style fullscreen record entry ─────────
+interface RunExtras {
+  raceType: 'training' | 'competition'
+  raceName: string
+  rpe: number | null
+  terrain: 'flat' | 'hilly' | 'mountain'
+  surface: 'route' | 'piste' | 'trail'
+  dplus: string
+}
 interface RecordDrawerProps {
   sport: RecordSport
   distLabel: string
@@ -1286,7 +1486,7 @@ interface RecordDrawerProps {
   date: string
   setDate: (v: string) => void
   saving: boolean
-  onConfirm: () => Promise<void>
+  onConfirm: (extras?: RunExtras) => Promise<void>
   onClose: () => void
   profile: Props['profile']
 }
@@ -1295,9 +1495,13 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   const [mounted, setMounted] = useState(false)
   const [np,      setNp]      = useState('')
   const [dur,     setDur]     = useState('')
-  const [surface, setSurface] = useState<'route'|'piste'|'trail'>('route')
-  const [dplus,   setDplus]   = useState('')
-  const [pool,    setPool]    = useState<'25m'|'50m'|'open'>('25m')
+  const [surface,   setSurface]   = useState<'route'|'piste'|'trail'>('route')
+  const [dplus,     setDplus]     = useState('')
+  const [raceType,  setRaceType]  = useState<'training'|'competition'>('training')
+  const [raceName,  setRaceName]  = useState('')
+  const [rpe,       setRpe]       = useState<number|null>(null)
+  const [terrain,   setTerrain]   = useState<'flat'|'hilly'|'mountain'>('flat')
+  const [pool,      setPool]      = useState<'25m'|'50m'|'open'>('25m')
   const [combi,   setCombi]   = useState(false)
   const [ergo,    setErgo]    = useState(true)
   const [damper,  setDamper]  = useState('')
@@ -1391,13 +1595,14 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   const sumItems: { label: string; value: string; hi?: boolean }[] = []
 
   if (sport === 'run') {
+    const RPE_LABELS: Record<number,string> = { 1:'très facile',3:'facile',5:'modéré',7:'dur',9:'très dur',10:'maximal' }
     perfSec = (
       <div style={secBox(bg)}>
         <div style={secHdr}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={secLbl}>Performance</span>
         </div>
-        <p style={lbl10}>Temps (hh:mm:ss)</p>
+        <p style={lbl10}>Temps (hh:mm:ss ou mm:ss)</p>
         <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 0:45:30" autoFocus />
         {timeSec > 0 && runKm > 0 && <div style={{ display:'flex', flexWrap:'wrap' }}>
           {runPaceStr  && calc(runPaceStr)}
@@ -1405,6 +1610,32 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           {runVmaStr   && calc(runVmaStr)}
         </div>}
         {profile.vma <= 0 && <p style={{ fontSize:10, color:'var(--text-dim)', marginTop:6 }}>Renseignez votre VMA dans le profil pour voir le % VMA.</p>}
+        {/* Type de performance */}
+        <p style={{ ...lbl10, marginTop:14 }}>Type</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          {(['training','competition'] as const).map(t => (
+            <button key={t} style={tog(raceType===t)} onClick={() => setRaceType(t)}>
+              {t === 'training' ? 'Entraînement' : 'Compétition'}
+            </button>
+          ))}
+        </div>
+        {raceType === 'competition' && <>
+          <p style={lbl10}>Nom de la course</p>
+          <input style={{ ...inp, marginBottom:12 }} value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="ex : Semi de Paris 2025" />
+        </>}
+        {/* RPE */}
+        <p style={lbl10}>RPE — Ressenti d'effort (1-10)</p>
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:6 }}>
+          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+            <button key={n} onClick={() => setRpe(rpe===n ? null : n)} style={{
+              width:30, height:30, borderRadius:6, border:`1px solid ${rpe===n ? color : 'var(--border)'}`,
+              background: rpe===n ? color : 'var(--bg-card2)',
+              color: rpe===n ? '#000' : 'var(--text-dim)',
+              fontSize:12, fontWeight: rpe===n ? 700 : 400, cursor:'pointer',
+            }}>{n}</button>
+          ))}
+        </div>
+        {rpe !== null && <p style={{ fontSize:10, color, marginTop:2, marginBottom:4 }}>{RPE_LABELS[rpe] ?? ''}</p>}
       </div>
     )
     condSec = (
@@ -1421,10 +1652,16 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
             </button>
           ))}
         </div>
-        {surface==='trail' && <>
-          <p style={lbl10}>Dénivelé positif (m)</p>
-          <input style={{ ...inp, maxWidth:160 }} type="number" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="ex : 450" />
-        </>}
+        <p style={lbl10}>Relief</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          {(['flat','hilly','mountain'] as const).map(t => (
+            <button key={t} style={tog(terrain===t)} onClick={() => setTerrain(t)}>
+              {t==='flat' ? 'Plat' : t==='hilly' ? 'Vallonné' : 'Montagneux'}
+            </button>
+          ))}
+        </div>
+        <p style={lbl10}>Dénivelé positif D+ (m, optionnel)</p>
+        <input style={{ ...inp, maxWidth:160 }} type="number" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="ex : 450" />
       </div>
     )
     if (draft)        sumItems.push({ label:'Distance', value:distLabel })
@@ -1432,8 +1669,12 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (runPaceStr)   sumItems.push({ label:'Allure', value:runPaceStr, hi:true })
     if (runSpeedStr)  sumItems.push({ label:'Vitesse', value:runSpeedStr, hi:true })
     if (runVmaStr)    sumItems.push({ label:'% VMA', value:runVmaStr, hi:true })
+    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Compétition' : 'Entraînement' })
+    if (raceName)     sumItems.push({ label:'Course', value:raceName })
+    if (rpe !== null) sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Surface', value:surface })
-    if (surface==='trail' && dplus) sumItems.push({ label:'D+', value:`${dplus} m` })
+    sumItems.push({ label:'Relief', value:terrain==='flat'?'Plat':terrain==='hilly'?'Vallonné':'Montagneux' })
+    if (dplus)        sumItems.push({ label:'D+', value:`${dplus} m` })
   }
 
   if (sport === 'swim') {
@@ -1640,7 +1881,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         {/* Fixed save */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${color}20` }}>
           <button
-            onClick={() => void onConfirm()}
+            onClick={() => void onConfirm(sport === 'run' ? { raceType, raceName, rpe, terrain, surface, dplus } : undefined)}
             disabled={!canSave || saving}
             style={{
               width:'100%', padding:'14px',
@@ -3071,6 +3312,12 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     cancelEdit()
   }
 
+  async function deleteSpRecord(id: string) {
+    const supabase = createClient()
+    await supabase.from('personal_records').delete().eq('id', id)
+    setAllSpRecords(prev => prev.filter(r => r.id !== id))
+  }
+
   // ── Triathlon drawer ───────────────────────────────────────────────
   const [trDrawerFmt, setTriDrawerFmt] = useState<string | null>(null)
 
@@ -3124,7 +3371,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       if (!user) return
       const { data } = await supabase
         .from('personal_records')
-        .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run')
+        .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run, event_type, race_name, rpe, elevation_gain_m, terrain_type, surface')
         .eq('user_id', user.id)
         .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
         .order('achieved_at', { ascending: false })
@@ -3288,23 +3535,32 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     return [...s].sort((a, b) => b.localeCompare(a))
   })()
 
-  async function confirmSpRecord(sp: string, dist: string, unit: string) {
+  async function confirmSpRecord(sp: string, dist: string, unit: string, runExtras?: RunExtras) {
     setRecordSaving(true)
     if (editDraft) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const achievedAt = editDate || new Date().toISOString().slice(0, 10)
+        const extraFields = sp === 'run' && runExtras ? {
+          event_type:       runExtras.raceType,
+          race_name:        runExtras.raceName || null,
+          rpe:              runExtras.rpe,
+          elevation_gain_m: runExtras.dplus ? parseInt(runExtras.dplus) : null,
+          terrain_type:     runExtras.terrain,
+          surface:          runExtras.surface,
+        } : {}
         if (editingRecordId) {
           // UPDATE du record existant
           await supabase.from('personal_records').update({
             performance:      editDraft,
             performance_unit: unit,
             achieved_at:      achievedAt,
+            ...extraFields,
           }).eq('id', editingRecordId)
           setAllSpRecords(prev => prev.map(r =>
             r.id === editingRecordId
-              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt }
+              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt, ...extraFields }
               : r
           ))
         } else {
@@ -3315,17 +3571,20 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             distance_label:   dist,
             performance:      editDraft,
             performance_unit: unit,
-            event_type:       'training',
+            event_type:       runExtras?.raceType ?? 'training',
             achieved_at:      achievedAt,
-            race_name:        null,
+            race_name:        runExtras?.raceName || null,
+            rpe:              runExtras?.rpe ?? null,
+            elevation_gain_m: runExtras?.dplus ? parseInt(runExtras.dplus) : null,
+            terrain_type:     runExtras?.terrain ?? null,
+            surface:          runExtras?.surface ?? null,
             pace_s_km:        null,
-            elevation_gain_m: null,
             split_swim:       null,
             split_bike:       null,
             split_run:        null,
             station_times:    null,
             notes:            null,
-          }).select('id, sport, distance_label, performance, performance_unit, achieved_at').single()
+          }).select('id, sport, distance_label, performance, performance_unit, achieved_at, event_type, race_name, rpe, elevation_gain_m, terrain_type, surface').single()
           if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
         }
       }
@@ -3429,12 +3688,12 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           date={editDate}
           setDate={setEditDate}
           saving={recordSaving}
-          onConfirm={async () => {
+          onConfirm={async (runExtras) => {
             if (drawerSpec.sport === 'bike') {
               await confirmBikeRecord(drawerSpec.distLabel)
             } else {
               const unit = drawerSpec.sport === 'gym' ? 'kg' : 'time'
-              await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit)
+              await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit, runExtras)
             }
             setDrawerSpec(null)
           }}
@@ -3589,72 +3848,134 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <RunningRadar profile={profile} />
-          {/* Year pills — run */}
+
+          {/* Year pills */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(['All Time', ...allRecordYears] as string[]).map(yr => {
               const active = recordYear === yr
-              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+              const col = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
               return (
                 <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: 'none',
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  transition: 'background 0.15s, color 0.15s',
-                  background: active ? color : 'var(--bg-card2)',
-                  color: active ? '#ffffff' : 'var(--text-dim)',
+                  padding:'5px 12px', borderRadius:20, border:'none', cursor:'pointer',
+                  whiteSpace:'nowrap', flexShrink:0, fontSize:12, fontWeight:active?700:500,
+                  background:active?col:'var(--bg-card2)', color:active?'#fff':'var(--text-dim)',
                 }}>{yr}</button>
               )
             })}
           </div>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
-            </div>
-            {/* Sélecteur distance + graphique */}
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-              {RUN_DISTS.map(d => (
-                <button key={d} onClick={() => setSelRunDist(d)} style={{
-                  padding: '3px 9px', borderRadius: 6,
-                  background: selRunDist === d ? 'rgba(34,197,94,0.15)' : 'var(--bg-card2)',
-                  border: `1px solid ${selRunDist === d ? '#22c55e' : 'var(--border)'}`,
-                  color: selRunDist === d ? '#22c55e' : 'var(--text-dim)',
-                  fontSize: 10, fontWeight: selRunDist === d ? 700 : 400, cursor: 'pointer',
-                }}>{d}</button>
-              ))}
-            </div>
-            {(() => {
-              const runEntries: ChartEntry[] = allSpRecords
-                .filter(r => r.sport === 'run' && r.distance_label === selRunDist && toSec(r.performance) > 0)
-                .map(r => ({
-                  id: r.id,
-                  val: toSec(r.performance),
-                  display: r.performance,
-                  date: r.achieved_at.slice(0, 10),
-                  sub: RUN_KM[selRunDist] ? calcPacePerKm(RUN_KM[selRunDist], r.performance) : undefined,
-                }))
-              return <RecordChart title={selRunDist} entries={runEntries} recordYear={recordYear} color="#22c55e" lowerIsBetter={true} />
-            })()}
-            {RUN_DISTS.map(d => {
-              const spBest  = getSpBest('run', d, recordYear)
-              const prevRec = getSpPrev('run', d)
-              const pace = spBest ? calcPacePerKm(RUN_KM[d] ?? 0, spBest.perf) : '—'
-              const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              return (
-                <RecordRow key={d} label={d}
-                  rec24={spBest?.perf ?? '—'}
-                  rec23={prevRec?.perf ?? '—'}
-                  sub={pace !== '—' ? pace : undefined}
-                  onSelect={() => spBest ? onSelect(`Course ${d}`, spBest.perf) : undefined}
-                  selected={sel}
-                  actions={
-                    <button onClick={() => openDrawer('run', d, spBest?.id ?? null, spBest?.perf ?? '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      Modifier
-                    </button>
-                  } />
-              )
-            })}
-          </Card>
+
+          {/* Distance selector */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            {RUN_DISTS.map(d => (
+              <button key={d} onClick={() => setSelRunDist(d)} style={{
+                padding:'4px 11px', borderRadius:8,
+                background: selRunDist===d ? 'rgba(34,197,94,0.18)' : 'var(--bg-card2)',
+                border:`1px solid ${selRunDist===d ? '#22c55e' : 'var(--border)'}`,
+                color: selRunDist===d ? '#22c55e' : 'var(--text-dim)',
+                fontSize:11, fontWeight:selRunDist===d?700:400, cursor:'pointer',
+              }}>{d}</button>
+            ))}
+          </div>
+
+          {/* Per-distance card */}
+          {(() => {
+            const distRecs = allSpRecords
+              .filter(r => r.sport === 'run' && r.distance_label === selRunDist && toSec(r.performance) > 0)
+            const yearRecs = recordYear === 'All Time'
+              ? distRecs
+              : distRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
+            const bestRec = [...distRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
+            const km = RUN_KM[selRunDist] ?? 0
+
+            return (
+              <Card>
+                {/* Best time header */}
+                {bestRec ? (
+                  <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#22c55e', lineHeight:1 }}>{bestRec.performance}</span>
+                          {km > 0 && <span style={{ fontSize:14, color:'#22c55e', fontWeight:600 }}>{calcPacePerKm(km, bestRec.performance)}</span>}
+                        </div>
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
+                          {bestRec.event_type && (
+                            <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
+                              background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
+                              color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
+                            }}>
+                              {bestRec.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
+                            </span>
+                          )}
+                          {bestRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestRec.race_name}</span>}
+                        </div>
+                      </div>
+                      <button onClick={() => openDrawer('run', selRunDist, null, '')} style={{
+                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                        background:'#22c55e', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
+                      }}>+ Ajouter</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                    <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Records {selRunDist}</h2>
+                    <button onClick={() => openDrawer('run', selRunDist, null, '')} style={{
+                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                      background:'#22c55e', color:'#000', fontSize:11, fontWeight:700,
+                    }}>+ Ajouter</button>
+                  </div>
+                )}
+
+                {/* Gauge chart */}
+                <RunGaugeChart records={yearRecs} dist={selRunDist} recordYear={recordYear} />
+
+                {/* History table */}
+                {distRecs.length > 0 && (
+                  <div style={{ marginTop:16 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
+                    <div style={{ overflowX:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                        <thead>
+                          <tr>
+                            {['Date','Temps','Allure','Type','Course','RPE','D+',''].map(h => (
+                              <th key={h} style={{ textAlign:'left', padding:'4px 6px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at)).map(r => (
+                            <tr key={r.id} style={{ borderBottom:'1px solid rgba(120,120,120,0.08)' }}>
+                              <td style={{ padding:'5px 6px', color:'var(--text-mid)', whiteSpace:'nowrap' }}>
+                                {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+                              </td>
+                              <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', fontWeight:700, color:'#22c55e' }}>{r.performance}</td>
+                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{km > 0 ? calcPacePerKm(km, r.performance) : '—'}</td>
+                              <td style={{ padding:'5px 6px', whiteSpace:'nowrap' }}>
+                                <span style={{ fontSize:10, color:r.event_type==='competition'?'#f59e0b':'var(--text-dim)' }}>
+                                  {r.event_type==='competition' ? '🏅 Compét.' : '🏃 Entraîn.'}
+                                </span>
+                              </td>
+                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.race_name ?? '—'}</td>
+                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', textAlign:'center' }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
+                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', textAlign:'center' }}>{r.elevation_gain_m != null ? `${r.elevation_gain_m}m` : '—'}</td>
+                              <td style={{ padding:'5px 6px', whiteSpace:'nowrap' }}>
+                                <div style={{ display:'flex', gap:4 }}>
+                                  <button onClick={() => openDrawer('run', selRunDist, r.id, r.performance)} style={{ padding:'2px 7px', borderRadius:5, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', fontSize:9, cursor:'pointer' }}>Modifier</button>
+                                  <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} style={{ padding:'2px 7px', borderRadius:5, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.06)', color:'#ef4444', fontSize:9, cursor:'pointer' }}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )
+          })()}
         </div>
       )}
 

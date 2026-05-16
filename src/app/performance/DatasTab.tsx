@@ -5323,6 +5323,10 @@ function YearDatasSubTab() {
   const [weeklyStats, setWeeklyStats] = useState<
     Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>>
   >({})
+  // dailyMap : date(YYYY-MM-DD) → {h, tss, sports}
+  const [dailyMap, setDailyMap] = useState<Record<string, { h: number; tss: number; sports: string[] }>>({})
+  // Heatmap tooltip
+  const [hmTip, setHmTip] = useState<{ date: string; h: number; sports: string[]; clientX: number; clientY: number } | null>(null)
 
   // Edit state (manual mode)
   const [editYear,  setEditYear]  = useState<string | null>(null)
@@ -5460,6 +5464,23 @@ function YearDatasSubTab() {
     Object.keys(auto).forEach(y => yearsSet.add(y))
     Object.values(manual).forEach(m => Object.keys(m).forEach(y => yearsSet.add(y)))
     const years = Array.from(yearsSet).sort((a, b) => b.localeCompare(a))
+
+    // Daily map
+    const daily: Record<string, { h: number; tss: number; sports: string[] }> = {}
+    for (const act of acts) {
+      if (!act.started_at || !act.sport_type) continue
+      const day = act.started_at.slice(0, 10)
+      const lower = act.sport_type.toLowerCase()
+      for (const sp of YD_SPORTS) {
+        if (!sp.keys.includes(lower)) continue
+        if (!daily[day]) daily[day] = { h: 0, tss: 0, sports: [] }
+        daily[day].h += (act.moving_time_s ?? 0) / 3600
+        daily[day].tss += (act.tss ?? 0)
+        if (!daily[day].sports.includes(sp.id)) daily[day].sports.push(sp.id)
+        break
+      }
+    }
+    setDailyMap(daily)
 
     setAutoStats(auto)
     setManualMap(manual)
@@ -6293,33 +6314,160 @@ function YearDatasSubTab() {
         }}
       />
 
-      {/* ── KPI cards ── */}
-      {hasDisplay ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
-          {sportMetrics.map(mk => {
-            const m = YD_METRICS[mk]; if (!m) return null
-            const val = mode === 'auto'
-              ? (displayAuto   ? m.fromAuto(displayAuto)            : 0)
-              : (displayManual ? (m.fromManual(displayManual) ?? 0) : 0)
-            return (
-              <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
-                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{m.label}</p>
-                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: sportDef.color, margin: 0 }}>
-                  {val > 0 ? m.fmt(val) : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
+      {/* ── Premium KPI cards ── */}
+      {(() => {
+        const kpiYear = chart1Year || currentYear
+        // All-sports totals for selected year
+        const kpiKm = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[kpiYear]?.[sp.id]; if (a) return acc + a.km
+          return acc + (manualMap[sp.id]?.[kpiYear]?.km ?? 0)
+        }, 0)
+        const kpiH = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[kpiYear]?.[sp.id]; if (a) return acc + a.heures
+          return acc + (manualMap[sp.id]?.[kpiYear]?.heures ?? 0)
+        }, 0)
+        const kpiSorties = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[kpiYear]?.[sp.id]; if (a) return acc + a.nb_sorties
+          return acc + (manualMap[sp.id]?.[kpiYear]?.nb_sorties ?? 0)
+        }, 0)
+        const kpiDeniv = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[kpiYear]?.[sp.id]; return a ? acc + a.denivele : acc
+        }, 0)
+        // Previous year for comparison
+        const prevYear = String(parseInt(kpiYear) - 1)
+        const prevKm = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[prevYear]?.[sp.id]; if (a) return acc + a.km
+          return acc + (manualMap[sp.id]?.[prevYear]?.km ?? 0)
+        }, 0)
+        const prevH = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[prevYear]?.[sp.id]; if (a) return acc + a.heures
+          return acc + (manualMap[sp.id]?.[prevYear]?.heures ?? 0)
+        }, 0)
+        const prevSorties = YD_SPORTS.reduce((acc, sp) => {
+          const a = autoStats[prevYear]?.[sp.id]; if (a) return acc + a.nb_sorties
+          return acc + (manualMap[sp.id]?.[prevYear]?.nb_sorties ?? 0)
+        }, 0)
+
+        // Sparkline: last 6 months (all sports)
+        const sparkMonths = Array.from({ length: 6 }, (_, i) => {
+          const now = new Date()
+          const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+          const yr = String(d.getFullYear())
+          const mo = d.getMonth()
+          return {
+            km: YD_SPORTS.reduce((acc, sp) => acc + (monthlyStats[yr]?.[mo]?.[sp.id]?.km ?? 0), 0),
+            heures: YD_SPORTS.reduce((acc, sp) => acc + (monthlyStats[yr]?.[mo]?.[sp.id]?.heures ?? 0), 0),
+            sorties: YD_SPORTS.reduce((acc, sp) => acc + (monthlyStats[yr]?.[mo]?.[sp.id]?.nb_sorties ?? 0), 0),
+          }
+        })
+
+        function Sparkline({ vals, color }: { vals: number[]; color: string }) {
+          const W = 60, H = 24
+          const max = Math.max(...vals, 0.01)
+          const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * W},${H - (v / max) * (H - 2)}`)
+          return (
+            <svg width={W} height={H} style={{ display: 'block' }}>
+              <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+            </svg>
+          )
+        }
+
+        function pctDiff(curr: number, prev: number): number | null {
+          if (!prev || !curr) return null
+          return Math.round((curr - prev) / prev * 100)
+        }
+
+        const kpiCards = [
+          {
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12h18M3 6l9-3 9 3M3 18l9 3 9-3"/>
+              </svg>
+            ),
+            label: 'Distance totale',
+            value: kpiKm > 0 ? `${Math.round(kpiKm).toLocaleString('fr-FR')} km` : '— km',
+            diff: pctDiff(kpiKm, prevKm),
+            sparkVals: sparkMonths.map(m => m.km),
+            color: sportDef.color,
+            sub: kpiKm > 0 && prevKm > 0 ? `${(pctDiff(kpiKm, prevKm) ?? 0) >= 0 ? '+' : ''}${pctDiff(kpiKm, prevKm)}% vs ${prevYear}` : `vs ${prevYear}`,
+          },
+          {
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            ),
+            label: "Heures d'entraînement",
+            value: kpiH > 0 ? `${Math.floor(kpiH)}h ${String(Math.round((kpiH % 1) * 60)).padStart(2,'0')}` : '— h',
+            diff: pctDiff(kpiH, prevH),
+            sparkVals: sparkMonths.map(m => m.heures),
+            color: '#3b82f6',
+            sub: kpiH > 0 && prevH > 0 ? `${(pctDiff(kpiH, prevH) ?? 0) >= 0 ? '+' : ''}${pctDiff(kpiH, prevH)}% vs ${prevYear}` : `vs ${prevYear}`,
+          },
+          {
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            ),
+            label: 'Sorties',
+            value: kpiSorties > 0 ? String(Math.round(kpiSorties)) : '—',
+            diff: pctDiff(kpiSorties, prevSorties),
+            sparkVals: sparkMonths.map(m => m.sorties),
+            color: '#f97316',
+            sub: kpiSorties > 0 ? `${(kpiSorties / 52).toFixed(1)} sorties/semaine` : `vs ${prevYear}`,
+          },
+          {
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/>
+              </svg>
+            ),
+            label: 'Dénivelé positif',
+            value: kpiDeniv > 0 ? `${Math.round(kpiDeniv).toLocaleString('fr-FR')} m` : '— m',
+            diff: null,
+            sparkVals: sparkMonths.map(m => m.heures),
+            color: '#10b981',
+            sub: kpiDeniv > 0 ? `${(kpiDeniv / 8848).toFixed(1)}× l'Everest` : '—',
+          },
+        ]
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 12 }}>
+            {kpiCards.map((card, i) => (
+              <div key={i} style={{
+                background: 'var(--bg-card)', borderRadius: 16, padding: '16px 16px 12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+                border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: `${card.color}18`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: card.color,
+                  }}>
+                    {card.icon}
+                  </div>
+                  <Sparkline vals={card.sparkVals} color={card.color} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0, lineHeight: 1.1, fontFamily: 'DM Mono,monospace' }}>
+                    {card.value}
+                  </p>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>{card.label}</p>
+                </div>
+                <p style={{
+                  fontSize: 11, margin: 0, fontWeight: 500,
+                  color: card.diff != null ? (card.diff >= 0 ? '#10b981' : '#ef4444') : 'var(--text-dim)',
+                }}>
+                  {card.sub}
                 </p>
               </div>
-            )
-          })}
-        </div>
-      ) : (
-        <Card>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '10px 0' }}>
-            {mode === 'manual'
-              ? 'Aucune donnée. Clique sur "+ Saisir" pour ajouter une année.'
-              : 'Aucune activité Strava pour ce sport / cette période.'}
-          </p>
-        </Card>
-      )}
+            ))}
+          </div>
+        )
+      })()}
 
       {/* ════ Chart 1 — Volume par sport (mois / semaine) ════ */}
       <Card style={{ position: 'relative' }}>
@@ -6595,6 +6743,16 @@ function YearDatasSubTab() {
                 if (c1HoveredInjury) { router.push('/injuries') }
               }}
             >
+              {/* Gradient defs */}
+              <defs>
+                {!c1CompareMode && c1Sports.map(sp => (
+                  <linearGradient key={sp.id} id={`yd-grad-${sp.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={sp.color} stopOpacity="0.15" />
+                    <stop offset="100%" stopColor={sp.color} stopOpacity="0" />
+                  </linearGradient>
+                ))}
+              </defs>
+
               {/* Grid */}
               {(() => {
                 const ticks = chart1Metric === 'heures'
@@ -6604,8 +6762,8 @@ function YearDatasSubTab() {
                   const y = c1Y(v)
                   return (
                     <g key={v}>
-                      <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
-                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="#F3F4F6" strokeWidth="1" />
+                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                         {chart1Metric === 'heures' ? `${v}h` : `${Math.round(v)}`}
                       </text>
                     </g>
@@ -6641,9 +6799,9 @@ function YearDatasSubTab() {
                 const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
                 return (
                   <g key={yr}>
-                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, i) => v > 0 && hoveredPoint === i ? (
-                      <circle key={i} cx={c1X(i)} cy={c1Y(v)} r={3} fill={color} stroke={color} strokeWidth="1.5" />
+                      <circle key={i} cx={c1X(i)} cy={c1Y(v)} r={5} fill={color} stroke="white" strokeWidth="2" />
                     ) : null)}
                   </g>
                 )
@@ -6653,14 +6811,19 @@ function YearDatasSubTab() {
               {!c1CompareMode && c1Sports.map(sp => {
                 const vals  = c1PointVals(sp.id)
                 const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
+                const fillPts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)])
+                const lastX = c1X(vals.length - 1)
+                const baseY = C1_PT + c1PlotH
+                const fillD = `M ${fillPts[0]?.[0] ?? 0} ${baseY} ${monotonePath(fillPts).slice(1)} L ${lastX} ${baseY} Z`
                 return (
                   <g key={sp.id}>
-                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={fillD} fill={`url(#yd-grad-${sp.id})`} pointerEvents="none" />
+                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, i) => v > 0 ? (
                       <circle key={i}
                         cx={c1X(i)} cy={c1Y(v)}
-                        r={hoveredPoint === i ? 3 : 0}
-                        fill={sp.color} stroke={sp.color} strokeWidth="1.5"
+                        r={hoveredPoint === i ? 5 : 0}
+                        fill={sp.color} stroke="white" strokeWidth="2"
                         opacity={hoveredPoint === i ? 1 : 0}
                       />
                     ) : null)}
@@ -6697,13 +6860,13 @@ function YearDatasSubTab() {
               {chart1Period === 'mois'
                 ? MONTHS.map((m, i) => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      style={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                       {m}
                     </text>
                   ))
                 : Array.from({ length: 52 }, (_, i) => i).filter(i => i % 8 === 0).map(i => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      style={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                       S{i + 1}
                     </text>
                   ))
@@ -6840,6 +7003,260 @@ function YearDatasSubTab() {
         )}
       </Card>
 
+      {/* ════ Heatmap des sorties ════ */}
+      {Object.keys(dailyMap).length > 0 && (() => {
+        const hmYear = chart1Year || currentYear
+        const startOfYear = new Date(parseInt(hmYear), 0, 1)
+        const startDow = startOfYear.getDay()
+        const isLeap = (parseInt(hmYear) % 4 === 0 && parseInt(hmYear) % 100 !== 0) || parseInt(hmYear) % 400 === 0
+        const totalDays = isLeap ? 366 : 365
+        const cells: { date: string; h: number; sports: string[]; week: number; dow: number }[] = []
+        for (let d = 0; d < totalDays; d++) {
+          const dt = new Date(parseInt(hmYear), 0, d + 1)
+          if (dt.getFullYear() > parseInt(hmYear)) break
+          const dateStr = dt.toISOString().slice(0, 10)
+          const dow = dt.getDay()
+          const week = Math.floor((d + startDow) / 7)
+          const info = dailyMap[dateStr] ?? { h: 0, tss: 0, sports: [] }
+          cells.push({ date: dateStr, h: info.h, sports: info.sports, week, dow })
+        }
+
+        const CELL = 11, GAP = 2, STEP = CELL + GAP
+        const COLS = Math.max(...cells.map(c => c.week)) + 1
+        const DOW_LABELS = ['D','L','M','M','J','V','S']
+
+        function cellColor(cell: { h: number; sports: string[] }): string {
+          if (cell.h === 0) return '#F3F4F6'
+          const sp = cell.sports[0] ? YD_SPORTS.find(s => s.id === cell.sports[0]) : null
+          const col = sp?.color ?? sportDef.color
+          if (cell.h < 1) return col + '55'
+          if (cell.h < 2) return col + 'AA'
+          return col
+        }
+
+        return (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: 0 }}>
+                Heatmap des sorties
+              </h3>
+              <span style={{ fontSize: 12, color: '#6B7280' }}>{hmYear}</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                {/* Month labels */}
+                <div style={{ display: 'flex', gap: 0, paddingLeft: 24, marginBottom: 4, height: 14, position: 'relative' }}>
+                  {['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'].map((m, mi) => {
+                    const firstDayOfMonth = new Date(parseInt(hmYear), mi, 1)
+                    const dayIdx = Math.floor((firstDayOfMonth.getTime() - startOfYear.getTime()) / 86400000)
+                    const col = Math.floor((dayIdx + startDow) / 7)
+                    return (
+                      <span key={m} style={{
+                        position: 'absolute', left: 24 + col * STEP,
+                        fontSize: 9, color: '#9CA3AF', fontWeight: 500, whiteSpace: 'nowrap',
+                      }}>{m}</span>
+                    )
+                  })}
+                </div>
+                {/* Grid */}
+                <div style={{ display: 'flex', gap: 0 }}>
+                  {/* Day labels */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: 4, paddingTop: 0 }}>
+                    {DOW_LABELS.map((d, i) => (
+                      <div key={i} style={{ height: CELL, fontSize: 8, color: '#9CA3AF', display: 'flex', alignItems: 'center', lineHeight: 1 }}>
+                        {i % 2 === 1 ? d : ''}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Weeks */}
+                  <div style={{ display: 'flex', gap: GAP }}>
+                    {Array.from({ length: COLS }, (_, wi) => (
+                      <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
+                        {Array.from({ length: 7 }, (_, di) => {
+                          const cell = cells.find(c => c.week === wi && c.dow === di)
+                          if (!cell) return <div key={di} style={{ width: CELL, height: CELL }} />
+                          return (
+                            <div key={di}
+                              onMouseEnter={e => {
+                                setHmTip({ date: cell.date, h: cell.h, sports: cell.sports, clientX: e.clientX, clientY: e.clientY })
+                              }}
+                              onMouseLeave={() => setHmTip(null)}
+                              style={{
+                                width: CELL, height: CELL, borderRadius: 2,
+                                background: cellColor(cell),
+                                cursor: cell.h > 0 ? 'pointer' : 'default',
+                                transition: 'opacity 0.1s',
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Legend */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
+                  <span style={{ fontSize: 9, color: '#9CA3AF' }}>Moins</span>
+                  {(['#F3F4F6', sportDef.color + '55', sportDef.color + 'AA', sportDef.color] as string[]).map((c, i) => (
+                    <div key={i} style={{ width: CELL, height: CELL, borderRadius: 2, background: c }} />
+                  ))}
+                  <span style={{ fontSize: 9, color: '#9CA3AF' }}>Plus</span>
+                </div>
+              </div>
+            </div>
+            {/* Tooltip */}
+            {hmTip && createPortal(
+              <div style={{
+                position: 'fixed', left: hmTip.clientX + 14, top: hmTip.clientY - 60,
+                background: 'white', border: '1px solid #E5E7EB', borderRadius: 8,
+                padding: '8px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 9999, pointerEvents: 'none', fontSize: 11,
+              }}>
+                <p style={{ margin: '0 0 4px', fontWeight: 600, color: '#111827' }}>
+                  {(() => { try { return new Date(hmTip.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) } catch { return hmTip.date } })()}
+                </p>
+                {hmTip.h > 0 ? (
+                  <>
+                    <p style={{ margin: '0 0 2px', color: '#6B7280' }}>
+                      {hmTip.h.toFixed(1)}h d&apos;entraînement
+                    </p>
+                    <p style={{ margin: 0, color: '#6B7280' }}>
+                      {hmTip.sports.map(s => YD_SPORTS.find(sp => sp.id === s)?.label ?? s).join(', ')}
+                    </p>
+                  </>
+                ) : (
+                  <p style={{ margin: 0, color: '#9CA3AF' }}>Repos</p>
+                )}
+              </div>,
+              document.body
+            )}
+          </Card>
+        )
+      })()}
+
+      {/* ════ Radar de consistance ════ */}
+      {Object.keys(dailyMap).length > 0 && (() => {
+        const rYear = chart1Year || currentYear
+        const prevRYear = String(parseInt(rYear) - 1)
+
+        function consistencyData(year: string): number[] {
+          const DOW_ORDER = [1,2,3,4,5,6,0]
+          const weekDays: Record<number, Set<number>> = {}
+          Object.entries(dailyMap).forEach(([date, info]) => {
+            if (!date.startsWith(year) || info.h === 0) return
+            const dow = new Date(date).getDay()
+            const d = new Date(date)
+            const startYr = new Date(parseInt(year), 0, 1)
+            const week = Math.floor((d.getTime() - startYr.getTime()) / (7 * 86400000))
+            if (!weekDays[week]) weekDays[week] = new Set()
+            weekDays[week].add(dow)
+          })
+          const totalWeeks = Math.max(1, Object.keys(weekDays).length)
+          return DOW_ORDER.map(dow => {
+            const count = Object.values(weekDays).filter(s => s.has(dow)).length
+            return Math.round(count / totalWeeks * 100)
+          })
+        }
+
+        const currData = consistencyData(rYear)
+        const prevData = consistencyData(prevRYear)
+        const DAY_LABELS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+
+        const CX = 120, CY = 110, R = 85
+        const N = 7
+        function radarPt(i: number, pct: number): [number, number] {
+          const angle = (i / N) * Math.PI * 2 - Math.PI / 2
+          const r = (pct / 100) * R
+          return [CX + Math.cos(angle) * r, CY + Math.sin(angle) * r]
+        }
+        function labelPt(i: number): [number, number] {
+          const angle = (i / N) * Math.PI * 2 - Math.PI / 2
+          return [CX + Math.cos(angle) * (R + 16), CY + Math.sin(angle) * (R + 16)]
+        }
+
+        const currPts = currData.map((v, i) => radarPt(i, v))
+        const prevPts = prevData.map((v, i) => radarPt(i, v))
+
+        function pathStr(pts: [number,number][]): string {
+          return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ') + ' Z'
+        }
+        function gridPathStr(pct: number): string {
+          const gridPts = Array.from({ length: N }, (_, i) => radarPt(i, pct))
+          return pathStr(gridPts)
+        }
+
+        return (
+          <Card>
+            <div style={{ marginBottom: 12 }}>
+              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
+                Répartition hebdomadaire des entraînements
+              </h3>
+              <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
+                % de semaines avec au moins une sortie
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+              <svg width={240} height={220} viewBox={`0 0 ${CX * 2} ${CY * 2}`} style={{ flexShrink: 0 }}>
+                {/* Grid rings */}
+                {[25, 50, 75, 100].map(pct => (
+                  <path key={pct} d={gridPathStr(pct)} fill="none" stroke="#F3F4F6" strokeWidth="1" />
+                ))}
+                {/* Axes */}
+                {Array.from({ length: N }, (_, i) => {
+                  const [x, y] = radarPt(i, 100)
+                  return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="#F3F4F6" strokeWidth="1" />
+                })}
+                {/* Previous year polygon */}
+                {prevData.some(v => v > 0) && (
+                  <path d={pathStr(prevPts)} fill={`${sportDef.color}22`} stroke={`${sportDef.color}66`} strokeWidth="1.5" strokeDasharray="4 2" />
+                )}
+                {/* Current year polygon */}
+                <path d={pathStr(currPts)} fill={`${sportDef.color}33`} stroke={sportDef.color} strokeWidth="2" />
+                {/* Labels */}
+                {DAY_LABELS.map((label, i) => {
+                  const [lx, ly] = labelPt(i)
+                  return (
+                    <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
+                      style={{ fontSize: 10, fontWeight: 600, fill: '#6B7280' }}>
+                      {label}
+                    </text>
+                  )
+                })}
+                {/* Data points */}
+                {currPts.map(([x, y], i) => (
+                  <circle key={i} cx={x} cy={y} r={3} fill={sportDef.color} />
+                ))}
+              </svg>
+              {/* Stats list */}
+              <div style={{ flex: 1, minWidth: 140 }}>
+                {DAY_LABELS.map((label, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: '#6B7280', width: 30 }}>{label}</span>
+                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: '#F3F4F6', overflow: 'hidden' }}>
+                      <div style={{ width: `${currData[i]}%`, height: '100%', background: sportDef.color, borderRadius: 3, transition: 'width 0.4s' }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: sportDef.color, width: 32, textAlign: 'right' }}>{currData[i]}%</span>
+                  </div>
+                ))}
+                {/* Legend */}
+                <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 14, height: 2, background: sportDef.color, borderRadius: 1 }} />
+                    <span style={{ fontSize: 10, color: '#6B7280' }}>{rYear}</span>
+                  </div>
+                  {prevData.some(v => v > 0) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 14, height: 2, background: `${sportDef.color}66`, borderRadius: 1 }} />
+                      <span style={{ fontSize: 10, color: '#6B7280' }}>{prevRYear}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )
+      })()}
+
       {/* ════ Chart 2 — Comparaison inter-années par sport ════ */}
       {(chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
@@ -6884,17 +7301,44 @@ function YearDatasSubTab() {
                     const cx = bx + barW / 2
                     const col = SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR
                     const sel = selectedYear === yr, hov = hoveredBar?.year === yr
+                    const isCurrentYear = yr === currentYear
+                    const prevIdx = i - 1
+                    const prevVal = prevIdx >= 0 ? chartVals[prevIdx] : null
+                    const pctChange = prevVal && prevVal > 0 ? Math.round((val - prevVal) / prevVal * 100) : null
                     return (
                       <g key={yr} style={{ cursor: 'pointer' }}
                         onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
                         onClick={() => setSelectedYear(yr)}>
-                        <rect
-                          x={bx} y={by} width={barW} height={bh} rx={4}
-                          fill={col} opacity={hov || sel ? 1.0 : 0.75}
+                        <defs>
+                          <linearGradient id={`c2g-${yr}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={lightenHex(col, 0.35)} />
+                            <stop offset="100%" stopColor={col} />
+                          </linearGradient>
+                        </defs>
+                        <rect x={bx} y={by} width={barW} height={bh}
+                          rx={6} ry={6}
+                          fill={`url(#c2g-${yr})`}
+                          opacity={hov || sel ? 1.0 : 0.82}
                           className="yd-bar"
                           style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
                         />
-                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={4} fill="none" stroke={col} strokeWidth="1.5" />}
+                        {/* Clip bottom corners overlay */}
+                        <rect x={bx} y={by + 6} width={barW} height={Math.max(0, bh - 6)} fill={`url(#c2g-${yr})`} opacity={hov || sel ? 1.0 : 0.82} />
+                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={6} fill="none" stroke={col} strokeWidth="1.5" />}
+                        {/* Value label above bar */}
+                        {val > 0 && bh > 0 && (
+                          <text x={cx} y={by - 4} textAnchor="middle"
+                            style={{ fontSize: isMobile ? 7 : 9, fontFamily: 'DM Mono,monospace', fill: col, fontWeight: '700' }}>
+                            {metricDef.fmt(val)}
+                          </text>
+                        )}
+                        {/* Progress badge for current year */}
+                        {isCurrentYear && pctChange !== null && (
+                          <text x={cx} y={by - (val > 0 ? 14 : 4)} textAnchor="middle"
+                            style={{ fontSize: 8, fill: pctChange >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+                            {pctChange >= 0 ? '▲' : '▼'} {Math.abs(pctChange)}%
+                          </text>
+                        )}
                         {(!isMobile || barW >= 18) && (
                           <text x={cx} y={svgH - 5} textAnchor="middle"
                             style={{ fontSize: isMobile ? 8 : 9, fontFamily: 'DM Mono,monospace', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
@@ -6904,6 +7348,17 @@ function YearDatasSubTab() {
                       </g>
                     )
                   })}
+                  {/* Trend line connecting bar tops */}
+                  {chartYears.length > 1 && (() => {
+                    const pts = chartYears.map((yr, i) => {
+                      const val = chartVals[i], bh = Math.max(0, (val / yMax) * plotH)
+                      const bx = lPad + i * (barW + gap) + gap / 2
+                      const cx = bx + barW / 2
+                      const by = tPad + plotH - bh
+                      return `${cx},${by}`
+                    }).join(' ')
+                    return <polyline points={pts} fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 3" strokeLinecap="round" opacity="0.7" />
+                  })()}
                 </svg>
                 {hoveredBar && (
                   <div style={{
@@ -6979,6 +7434,132 @@ function YearDatasSubTab() {
           </div>
         </Card>
       )}
+
+      {/* ════ Charge d'entraînement CTL/ATL/TSB ════ */}
+      {(() => {
+        const loadYear = chart1Year || currentYear
+        const yearDays = Array.from({ length: 365 }, (_, d) => {
+          const dt = new Date(parseInt(loadYear), 0, d + 1)
+          if (dt.getFullYear() > parseInt(loadYear)) return null
+          const date = dt.toISOString().slice(0, 10)
+          return { date, tss: dailyMap[date]?.tss ?? 0 }
+        }).filter((x): x is { date: string; tss: number } => x !== null)
+
+        const hasTSS = yearDays.some(d => d.tss > 0)
+
+        if (!hasTSS) {
+          return (
+            <Card>
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>⚡</div>
+                <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>
+                  Charge d&apos;entraînement
+                </h3>
+                <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
+                  Connectez un capteur de puissance ou de fréquence cardiaque pour voir votre charge (CTL/ATL/TSB).
+                </p>
+              </div>
+            </Card>
+          )
+        }
+
+        type LoadPoint = { date: string; ctl: number; atl: number; tsb: number }
+        let ctl = 0, atl = 0
+        const loadData: LoadPoint[] = yearDays.map(({ date, tss }) => {
+          ctl = ctl + (tss - ctl) / 42
+          atl = atl + (tss - atl) / 7
+          return { date, ctl: Math.round(ctl * 10) / 10, atl: Math.round(atl * 10) / 10, tsb: Math.round((ctl - atl) * 10) / 10 }
+        })
+
+        const maxLoad = Math.max(...loadData.map(d => Math.max(d.ctl, d.atl)), 1)
+        const minTsb  = Math.min(...loadData.map(d => d.tsb), 0)
+        const maxTsb  = Math.max(...loadData.map(d => d.tsb), 0)
+
+        const LW = 500, LH = 120, LPL = 36, LPR = 8, LPT = 12, LPB = 20
+        const LplotW = LW - LPL - LPR
+        const LplotH = LH - LPT - LPB
+
+        const lX = (i: number) => LPL + (i / Math.max(1, loadData.length - 1)) * LplotW
+        const lY = (v: number, mn: number, mx: number) => LPT + LplotH - ((v - mn) / Math.max(0.01, mx - mn)) * LplotH
+
+        const ctlPts = loadData.map((d, i) => `${lX(i)},${lY(d.ctl, 0, maxLoad)}`).join(' ')
+        const atlPts = loadData.map((d, i) => `${lX(i)},${lY(d.atl, 0, maxLoad)}`).join(' ')
+
+        const TSB_H = 60, TSB_PT = 8, TSB_PB = 16
+        const tsbPlotH = TSB_H - TSB_PT - TSB_PB
+        const tsbMid = TSB_PT + tsbPlotH * (maxTsb / Math.max(0.01, maxTsb - minTsb))
+        const tY = (v: number) => TSB_PT + tsbPlotH - ((v - minTsb) / Math.max(0.01, maxTsb - minTsb)) * tsbPlotH
+
+        return (
+          <Card>
+            <div style={{ marginBottom: 12 }}>
+              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
+                Charge d&apos;entraînement
+              </h3>
+              <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>CTL (forme) · ATL (fatigue) · TSB (fraîcheur)</p>
+            </div>
+
+            {/* CTL/ATL chart */}
+            <svg viewBox={`0 0 ${LW} ${LH}`} style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}>
+              <defs>
+                <linearGradient id="yd-ctl-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {/* Grid */}
+              {[0, 0.5, 1].map(f => {
+                const v = maxLoad * f
+                const y = lY(v, 0, maxLoad)
+                return (
+                  <g key={f}>
+                    <line x1={LPL} y1={y} x2={LW - LPR} y2={y} stroke="#F3F4F6" strokeWidth="1" />
+                    <text x={LPL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: '#9CA3AF', fontFamily: 'DM Mono,monospace' }}>
+                      {Math.round(v)}
+                    </text>
+                  </g>
+                )
+              })}
+              {/* ATL (fatigue) - orange */}
+              <polyline points={atlPts} fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+              {/* CTL (forme) - blue */}
+              <polyline points={ctlPts} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+
+            {/* TSB chart */}
+            <svg viewBox={`0 0 ${LW} ${TSB_H}`} style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block', marginTop: 4 }}>
+              <line x1={LPL} y1={tsbMid} x2={LW - LPR} y2={tsbMid} stroke="#E5E7EB" strokeWidth="1" />
+              {loadData.map((d, i) => {
+                const x1 = lX(i), x2 = lX(Math.min(i + 1, loadData.length - 1))
+                const y1 = tY(d.tsb), ym = tsbMid
+                const isPos = d.tsb >= 0
+                return (
+                  <rect key={i}
+                    x={Math.min(x1, x2) - 0.5} y={isPos ? y1 : ym}
+                    width={Math.max(1, Math.abs(x2 - x1) + 1)} height={Math.max(0.5, Math.abs(y1 - ym))}
+                    fill={isPos ? '#10b981' : '#ef4444'} opacity="0.6"
+                  />
+                )
+              })}
+              <text x={LPL - 3} y={TSB_PT + 8} textAnchor="end" style={{ fontSize: 9, fill: '#9CA3AF' }}>TSB</text>
+            </svg>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+              {[
+                { color: '#3b82f6', label: 'CTL — Forme (42j)' },
+                { color: '#f97316', label: 'ATL — Fatigue (7j)' },
+                { color: '#10b981', label: 'TSB — Fraîcheur' },
+              ].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 14, height: 3, background: color, borderRadius: 2 }} />
+                  <span style={{ fontSize: 10, color: '#6B7280' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* ── Manual entry list ── */}
       {mode === 'manual' && (

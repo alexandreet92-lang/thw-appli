@@ -5369,6 +5369,19 @@ function YearDatasSubTab() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Heatmap container width for dynamic cell sizing
+  const hmContainerRef = useRef<HTMLDivElement>(null)
+  const [hmContainerW, setHmContainerW] = useState(0)
+  useEffect(() => {
+    const el = hmContainerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(entries => {
+      setHmContainerW(entries[0]?.contentRect.width ?? 0)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // Scroll reveal §12 — déclenché quand les charts passent dans le viewport
   useEffect(() => {
     const els = document.querySelectorAll('.yd-reveal')
@@ -6317,47 +6330,31 @@ function YearDatasSubTab() {
       {/* ── Premium KPI cards ── */}
       {(() => {
         const kpiYear = chart1Year || currentYear
-        // All-sports totals for selected year
-        const kpiKm = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[kpiYear]?.[sp.id]; if (a) return acc + a.km
-          return acc + (manualMap[sp.id]?.[kpiYear]?.km ?? 0)
-        }, 0)
-        const kpiH = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[kpiYear]?.[sp.id]; if (a) return acc + a.heures
-          return acc + (manualMap[sp.id]?.[kpiYear]?.heures ?? 0)
-        }, 0)
-        const kpiSorties = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[kpiYear]?.[sp.id]; if (a) return acc + a.nb_sorties
-          return acc + (manualMap[sp.id]?.[kpiYear]?.nb_sorties ?? 0)
-        }, 0)
-        const kpiDeniv = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[kpiYear]?.[sp.id]; return a ? acc + a.denivele : acc
-        }, 0)
-        // Previous year for comparison
-        const prevYear = String(parseInt(kpiYear) - 1)
-        const prevKm = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[prevYear]?.[sp.id]; if (a) return acc + a.km
-          return acc + (manualMap[sp.id]?.[prevYear]?.km ?? 0)
-        }, 0)
-        const prevH = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[prevYear]?.[sp.id]; if (a) return acc + a.heures
-          return acc + (manualMap[sp.id]?.[prevYear]?.heures ?? 0)
-        }, 0)
-        const prevSorties = YD_SPORTS.reduce((acc, sp) => {
-          const a = autoStats[prevYear]?.[sp.id]; if (a) return acc + a.nb_sorties
-          return acc + (manualMap[sp.id]?.[prevYear]?.nb_sorties ?? 0)
-        }, 0)
+        // Sport-specific totals for selected year
+        const kpiAuto    = autoStats[kpiYear]?.[activeSport]
+        const kpiManual  = manualMap[activeSport]?.[kpiYear]
+        const kpiKm      = kpiAuto?.km      ?? kpiManual?.km      ?? 0
+        const kpiH       = kpiAuto?.heures  ?? kpiManual?.heures  ?? 0
+        const kpiSorties = kpiAuto?.nb_sorties ?? kpiManual?.nb_sorties ?? 0
+        const kpiDeniv   = kpiAuto?.denivele   ?? kpiManual?.denivele   ?? 0
+        // Previous year comparison (same sport)
+        const prevYear   = String(parseInt(kpiYear) - 1)
+        const prevAuto   = autoStats[prevYear]?.[activeSport]
+        const prevManual = manualMap[activeSport]?.[prevYear]
+        const prevKm      = prevAuto?.km      ?? prevManual?.km      ?? 0
+        const prevH       = prevAuto?.heures  ?? prevManual?.heures  ?? 0
+        const prevSorties = prevAuto?.nb_sorties ?? prevManual?.nb_sorties ?? 0
 
-        // Sparkline: last 6 months (all sports)
+        // Sparkline: last 6 months (active sport only)
         const sparkMonths = Array.from({ length: 6 }, (_, i) => {
           const now = new Date()
           const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
           const yr = String(d.getFullYear())
           const mo = d.getMonth()
           return {
-            km: YD_SPORTS.reduce((acc, sp) => acc + (monthlyStats[yr]?.[mo]?.[sp.id]?.km ?? 0), 0),
-            heures: YD_SPORTS.reduce((acc, sp) => acc + (monthlyStats[yr]?.[mo]?.[sp.id]?.heures ?? 0), 0),
-            sorties: YD_SPORTS.reduce((acc, sp) => acc + (monthlyStats[yr]?.[mo]?.[sp.id]?.nb_sorties ?? 0), 0),
+            km:      monthlyStats[yr]?.[mo]?.[activeSport]?.km ?? 0,
+            heures:  monthlyStats[yr]?.[mo]?.[activeSport]?.heures ?? 0,
+            sorties: monthlyStats[yr]?.[mo]?.[activeSport]?.nb_sorties ?? 0,
           }
         })
 
@@ -6384,12 +6381,12 @@ function YearDatasSubTab() {
                 <path d="M3 12h18M3 6l9-3 9 3M3 18l9 3 9-3"/>
               </svg>
             ),
-            label: 'Distance totale',
+            label: `Distance ${sportDef.label} ${kpiYear}`,
             value: kpiKm > 0 ? `${Math.round(kpiKm).toLocaleString('fr-FR')} km` : '— km',
             diff: pctDiff(kpiKm, prevKm),
             sparkVals: sparkMonths.map(m => m.km),
             color: sportDef.color,
-            sub: kpiKm > 0 && prevKm > 0 ? `${(pctDiff(kpiKm, prevKm) ?? 0) >= 0 ? '+' : ''}${pctDiff(kpiKm, prevKm)}% vs ${prevYear}` : `vs ${prevYear}`,
+            sub: pctDiff(kpiKm, prevKm) != null ? `${(pctDiff(kpiKm, prevKm) ?? 0) >= 0 ? '▲ +' : '▼ '}${Math.abs(pctDiff(kpiKm, prevKm) ?? 0)}% vs ${prevYear}` : `vs ${prevYear}`,
           },
           {
             icon: (
@@ -6397,12 +6394,12 @@ function YearDatasSubTab() {
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
             ),
-            label: "Heures d'entraînement",
+            label: `Temps ${sportDef.label} ${kpiYear}`,
             value: kpiH > 0 ? `${Math.floor(kpiH)}h ${String(Math.round((kpiH % 1) * 60)).padStart(2,'0')}` : '— h',
             diff: pctDiff(kpiH, prevH),
             sparkVals: sparkMonths.map(m => m.heures),
             color: '#3b82f6',
-            sub: kpiH > 0 && prevH > 0 ? `${(pctDiff(kpiH, prevH) ?? 0) >= 0 ? '+' : ''}${pctDiff(kpiH, prevH)}% vs ${prevYear}` : `vs ${prevYear}`,
+            sub: pctDiff(kpiH, prevH) != null ? `${(pctDiff(kpiH, prevH) ?? 0) >= 0 ? '▲ +' : '▼ '}${Math.abs(pctDiff(kpiH, prevH) ?? 0)}% vs ${prevYear}` : `vs ${prevYear}`,
           },
           {
             icon: (
@@ -6410,12 +6407,12 @@ function YearDatasSubTab() {
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
             ),
-            label: 'Sorties',
+            label: `Sorties ${sportDef.label} ${kpiYear}`,
             value: kpiSorties > 0 ? String(Math.round(kpiSorties)) : '—',
             diff: pctDiff(kpiSorties, prevSorties),
             sparkVals: sparkMonths.map(m => m.sorties),
             color: '#f97316',
-            sub: kpiSorties > 0 ? `${(kpiSorties / 52).toFixed(1)} sorties/semaine` : `vs ${prevYear}`,
+            sub: pctDiff(kpiSorties, prevSorties) != null ? `${(pctDiff(kpiSorties, prevSorties) ?? 0) >= 0 ? '▲ +' : '▼ '}${Math.abs(pctDiff(kpiSorties, prevSorties) ?? 0)}% vs ${prevYear}` : (kpiSorties > 0 ? `${(kpiSorties / 52).toFixed(1)}/sem` : `—`),
           },
           {
             icon: (
@@ -6423,12 +6420,12 @@ function YearDatasSubTab() {
                 <polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/>
               </svg>
             ),
-            label: 'Dénivelé positif',
+            label: `Dénivelé ${sportDef.label} ${kpiYear}`,
             value: kpiDeniv > 0 ? `${Math.round(kpiDeniv).toLocaleString('fr-FR')} m` : '— m',
             diff: null,
             sparkVals: sparkMonths.map(m => m.heures),
             color: '#10b981',
-            sub: kpiDeniv > 0 ? `${(kpiDeniv / 8848).toFixed(1)}× l'Everest` : '—',
+            sub: kpiDeniv > 0 ? `${(kpiDeniv / 8848).toFixed(1)}× Everest` : `—`,
           },
         ]
 
@@ -6747,7 +6744,7 @@ function YearDatasSubTab() {
               <defs>
                 {!c1CompareMode && c1Sports.map(sp => (
                   <linearGradient key={sp.id} id={`yd-grad-${sp.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={sp.color} stopOpacity="0.15" />
+                    <stop offset="0%" stopColor={sp.color} stopOpacity="0.12" />
                     <stop offset="100%" stopColor={sp.color} stopOpacity="0" />
                   </linearGradient>
                 ))}
@@ -6763,7 +6760,7 @@ function YearDatasSubTab() {
                   return (
                     <g key={v}>
                       <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="#F3F4F6" strokeWidth="1" />
-                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'sans-serif', fontWeight: 400 }}>
                         {chart1Metric === 'heures' ? `${v}h` : `${Math.round(v)}`}
                       </text>
                     </g>
@@ -6799,7 +6796,7 @@ function YearDatasSubTab() {
                 const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
                 return (
                   <g key={yr}>
-                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, i) => v > 0 && hoveredPoint === i ? (
                       <circle key={i} cx={c1X(i)} cy={c1Y(v)} r={5} fill={color} stroke="white" strokeWidth="2" />
                     ) : null)}
@@ -6817,8 +6814,8 @@ function YearDatasSubTab() {
                 const fillD = `M ${fillPts[0]?.[0] ?? 0} ${baseY} ${monotonePath(fillPts).slice(1)} L ${lastX} ${baseY} Z`
                 return (
                   <g key={sp.id}>
-                    <path d={fillD} fill={`url(#yd-grad-${sp.id})`} pointerEvents="none" />
-                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    {sp.id === activeSport && <path d={fillD} fill={`url(#yd-grad-${sp.id})`} pointerEvents="none" />}
+                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, i) => v > 0 ? (
                       <circle key={i}
                         cx={c1X(i)} cy={c1Y(v)}
@@ -6851,7 +6848,7 @@ function YearDatasSubTab() {
                 <line
                   x1={c1X(hoveredPoint)} y1={C1_PT}
                   x2={c1X(hoveredPoint)} y2={C1_PT + c1PlotH}
-                  stroke="var(--border)" strokeWidth="1" strokeOpacity="0.6"
+                  stroke="#E5E7EB" strokeWidth="1"
                   pointerEvents="none"
                 />
               )}
@@ -6860,13 +6857,13 @@ function YearDatasSubTab() {
               {chart1Period === 'mois'
                 ? MONTHS.map((m, i) => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      style={{ fontSize: 11, fill: '#6B7280', fontFamily: 'sans-serif', fontWeight: 500 }}>
                       {m}
                     </text>
                   ))
                 : Array.from({ length: 52 }, (_, i) => i).filter(i => i % 8 === 0).map(i => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      style={{ fontSize: 11, fill: '#6B7280', fontFamily: 'sans-serif', fontWeight: 500 }}>
                       S{i + 1}
                     </text>
                   ))
@@ -7021,8 +7018,13 @@ function YearDatasSubTab() {
           cells.push({ date: dateStr, h: info.h, sports: info.sports, week, dow })
         }
 
-        const CELL = 11, GAP = 2, STEP = CELL + GAP
-        const COLS = Math.max(...cells.map(c => c.week)) + 1
+        const GAP = 2
+        const HM_DAY_LBL_W = 20
+        const hmCols = Math.max(...cells.map(c => c.week)) + 1
+        const availW = hmContainerW > 0 ? hmContainerW - HM_DAY_LBL_W - 8 : 0
+        const CELL = availW > 0 ? Math.max(9, Math.floor((availW - (hmCols - 1) * GAP) / hmCols)) : 11
+        const STEP = CELL + GAP
+        const COLS = hmCols
         const DOW_LABELS = ['D','L','M','M','J','V','S']
 
         function cellColor(cell: { h: number; sports: string[] }): string {
@@ -7042,18 +7044,18 @@ function YearDatasSubTab() {
               </h3>
               <span style={{ fontSize: 12, color: '#6B7280' }}>{hmYear}</span>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div ref={hmContainerRef} style={{ width: '100%', overflowX: 'hidden' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
                 {/* Month labels */}
-                <div style={{ display: 'flex', gap: 0, paddingLeft: 24, marginBottom: 4, height: 14, position: 'relative' }}>
+                <div style={{ display: 'flex', gap: 0, paddingLeft: HM_DAY_LBL_W, marginBottom: 4, height: 14, position: 'relative' }}>
                   {['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'].map((m, mi) => {
                     const firstDayOfMonth = new Date(parseInt(hmYear), mi, 1)
                     const dayIdx = Math.floor((firstDayOfMonth.getTime() - startOfYear.getTime()) / 86400000)
                     const col = Math.floor((dayIdx + startDow) / 7)
                     return (
                       <span key={m} style={{
-                        position: 'absolute', left: 24 + col * STEP,
-                        fontSize: 9, color: '#9CA3AF', fontWeight: 500, whiteSpace: 'nowrap',
+                        position: 'absolute', left: HM_DAY_LBL_W + col * STEP,
+                        fontSize: 10, color: '#6B7280', fontWeight: 500, whiteSpace: 'nowrap',
                       }}>{m}</span>
                     )
                   })}
@@ -7061,9 +7063,9 @@ function YearDatasSubTab() {
                 {/* Grid */}
                 <div style={{ display: 'flex', gap: 0 }}>
                   {/* Day labels */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: 4, paddingTop: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: 4, paddingTop: 0, width: HM_DAY_LBL_W - 4, flexShrink: 0 }}>
                     {DOW_LABELS.map((d, i) => (
-                      <div key={i} style={{ height: CELL, fontSize: 8, color: '#9CA3AF', display: 'flex', alignItems: 'center', lineHeight: 1 }}>
+                      <div key={i} style={{ height: CELL, fontSize: 10, color: '#9CA3AF', display: 'flex', alignItems: 'center', lineHeight: 1 }}>
                         {i % 2 === 1 ? d : ''}
                       </div>
                     ))}
@@ -7463,12 +7465,28 @@ function YearDatasSubTab() {
           )
         }
 
-        type LoadPoint = { date: string; ctl: number; atl: number; tsb: number }
+        // Warm-up: include previous year data for meaningful initial CTL/ATL
+        const loadYearNum = parseInt(loadYear)
+        const K_CTL = Math.exp(-1 / 42), K_ATL = Math.exp(-1 / 7)
+        type LoadPoint = { date: string; ctl: number; atl: number; tsb: number; tss: number }
         let ctl = 0, atl = 0
+        // Pre-warm from Jan 1 of previous year
+        const warmDays = Array.from({ length: 365 }, (_, d) => {
+          const dt = new Date(loadYearNum - 1, 0, d + 1)
+          if (dt.getFullYear() >= loadYearNum) return null
+          const date = dt.toISOString().slice(0, 10)
+          return { date, tss: dailyMap[date]?.tss ?? 0 }
+        }).filter((x): x is { date: string; tss: number } => x !== null)
+        for (const { tss } of warmDays) {
+          ctl = ctl * K_CTL + tss * (1 - K_CTL)
+          atl = atl * K_ATL + tss * (1 - K_ATL)
+        }
         const loadData: LoadPoint[] = yearDays.map(({ date, tss }) => {
-          ctl = ctl + (tss - ctl) / 42
-          atl = atl + (tss - atl) / 7
-          return { date, ctl: Math.round(ctl * 10) / 10, atl: Math.round(atl * 10) / 10, tsb: Math.round((ctl - atl) * 10) / 10 }
+          const prevCtl = ctl, prevAtl = atl
+          ctl = prevCtl * K_CTL + tss * (1 - K_CTL)
+          atl = prevAtl * K_ATL + tss * (1 - K_ATL)
+          const tsb = Math.round((prevCtl - prevAtl) * 10) / 10
+          return { date, ctl: Math.round(ctl * 10) / 10, atl: Math.round(atl * 10) / 10, tsb, tss }
         })
 
         const maxLoad = Math.max(...loadData.map(d => Math.max(d.ctl, d.atl)), 1)
@@ -7481,9 +7499,6 @@ function YearDatasSubTab() {
 
         const lX = (i: number) => LPL + (i / Math.max(1, loadData.length - 1)) * LplotW
         const lY = (v: number, mn: number, mx: number) => LPT + LplotH - ((v - mn) / Math.max(0.01, mx - mn)) * LplotH
-
-        const ctlPts = loadData.map((d, i) => `${lX(i)},${lY(d.ctl, 0, maxLoad)}`).join(' ')
-        const atlPts = loadData.map((d, i) => `${lX(i)},${lY(d.atl, 0, maxLoad)}`).join(' ')
 
         const TSB_H = 60, TSB_PT = 8, TSB_PB = 16
         const tsbPlotH = TSB_H - TSB_PT - TSB_PB
@@ -7521,23 +7536,36 @@ function YearDatasSubTab() {
                 )
               })}
               {/* ATL (fatigue) - orange */}
-              <polyline points={atlPts} fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+              <path d={monotonePath(loadData.map((d, i) => [lX(i), lY(d.atl, 0, maxLoad)] as [number, number]))} fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               {/* CTL (forme) - blue */}
-              <polyline points={ctlPts} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={monotonePath(loadData.map((d, i) => [lX(i), lY(d.ctl, 0, maxLoad)] as [number, number]))} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
 
             {/* TSB chart */}
             <svg viewBox={`0 0 ${LW} ${TSB_H}`} style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block', marginTop: 4 }}>
-              <line x1={LPL} y1={tsbMid} x2={LW - LPR} y2={tsbMid} stroke="#E5E7EB" strokeWidth="1" />
+              {/* Reference lines */}
+              {[{v:25,c:'#86EFAC',l:'Pic fraîcheur'},{v:0,c:'#D1D5DB',l:''},{v:-10,c:'#93C5FD',l:'Zone productive'},{v:-30,c:'#FCA5A5',l:'Surcharge'}].map(({v,c,l}) => {
+                const y = tY(v)
+                if (y < TSB_PT - 2 || y > TSB_H - TSB_PB + 2) return null
+                return (
+                  <g key={v}>
+                    <line x1={LPL} y1={y} x2={LW - LPR} y2={y} stroke={c} strokeWidth="1" strokeDasharray={v !== 0 ? '4 3' : undefined} opacity="0.8" />
+                    {l && <text x={LW - LPR - 2} y={y - 2} textAnchor="end" style={{ fontSize: 8, fill: c, fontWeight: 600 }}>{l}</text>}
+                  </g>
+                )
+              })}
+              {/* Baseline */}
+              <line x1={LPL} y1={tsbMid} x2={LW - LPR} y2={tsbMid} stroke="#D1D5DB" strokeWidth="1" />
+              {/* Stem bars — 2px thin */}
               {loadData.map((d, i) => {
-                const x1 = lX(i), x2 = lX(Math.min(i + 1, loadData.length - 1))
-                const y1 = tY(d.tsb), ym = tsbMid
+                const x = lX(i), y1 = tY(d.tsb), ym = tsbMid
                 const isPos = d.tsb >= 0
                 return (
-                  <rect key={i}
-                    x={Math.min(x1, x2) - 0.5} y={isPos ? y1 : ym}
-                    width={Math.max(1, Math.abs(x2 - x1) + 1)} height={Math.max(0.5, Math.abs(y1 - ym))}
-                    fill={isPos ? '#10b981' : '#ef4444'} opacity="0.6"
+                  <line key={i}
+                    x1={x} y1={isPos ? y1 : ym}
+                    x2={x} y2={isPos ? ym : y1}
+                    stroke={isPos ? '#10b981' : '#ef4444'} strokeWidth="2" opacity="0.65"
+                    aria-label={`TSB ${d.tsb}`}
                   />
                 )
               })}

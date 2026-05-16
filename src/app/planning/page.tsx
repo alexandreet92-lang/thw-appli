@@ -398,6 +398,37 @@ function calcTSS(blocks:Block[], sport:SportType, totalMin?:number, rpe?:number)
   return 0
 }
 
+// ── computeSessionStats : source unique TSS + zones ──────────────────
+// Remplace computeTSSRange + calcTSS séparés. Utilisé par le drawer ET
+// le BlockBuilder pour garantir des chiffres cohérents.
+function computeSessionStats(
+  blocks: Block[],
+  sport: SportType,
+  durationMin: number,
+  rpe: number,
+  athlete: { ftp: number | null; runThresholdPaceSec: number | null; cssSecPer100m: number | null; rowThresholdSecPer500m: number | null; ctl: number | null } | null,
+): { tssLow: number; tssHigh: number; zoneDist: number[] } {
+  const r = computeTSSRange(blocks, sport, durationMin, rpe, athlete)
+  const zd = computeZoneDistributionSafe(blocks)
+  return { tssLow: r.low, tssHigh: r.high, zoneDist: zd }
+}
+function computeZoneDistributionSafe(blocks: Block[]): number[] {
+  const ZONE_COUNT = 7
+  const mins = new Array<number>(ZONE_COUNT).fill(0)
+  for (const b of blocks) {
+    const zi = Math.max(0, Math.min(ZONE_COUNT - 1, b.zone - 1))
+    if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
+      mins[zi] += b.reps * b.effortMin
+      const rzi = Math.max(0, Math.min(ZONE_COUNT - 1, (b.recoveryZone ?? 1) - 1))
+      mins[rzi] += b.reps * b.recoveryMin
+    } else {
+      mins[zi] += b.durationMin
+    }
+  }
+  const total = mins.reduce((a, b) => a + b, 0) || 1
+  return mins.map(m => Math.round((m / total) * 100))
+}
+
 function computeTSSRange(
   blocks: Block[],
   sport: SportType,
@@ -1765,7 +1796,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory }: {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: 0 }}>
-              TSS estimé : <span style={{ color: SPORT_BORDER[sport] }}>{calcTSS(blocks, sport)} pts</span>
+              TSS estimé : <span style={{ color: SPORT_BORDER[sport] }}>{computeTSSRange(blocks, sport, totalBlocks, 5, null).high} pts</span>
               <span style={{ marginLeft: 10, fontWeight: 400 }}>· {formatHM(Math.round(totalBlocks))}</span>
             </p>
           </div>
@@ -4592,23 +4623,16 @@ function IntervalPanel({
   value, onChange, onClose,
 }: {
   blockDurationMin: number; defaultWatts: number; ftp: number
-  value: { effortSec: number; effortWatts: number; recoverySec: number; recoveryWatts: number; reps: number; withRecovery: boolean } | null
-  onChange: (v: { effortSec: number; effortWatts: number; recoverySec: number; recoveryWatts: number; reps: number; withRecovery: boolean } | null) => void
+  value: { blocks: { type: 'effort' | 'recovery'; sec: number; watts: number }[]; reps: number } | null
+  onChange: (v: { blocks: { type: 'effort' | 'recovery'; sec: number; watts: number }[]; reps: number } | null) => void
   onClose: () => void
 }) {
-  const [effortSec, setEffortSec]     = useState(value?.effortSec     ?? 30)
-  const [effortWatts, setEffortWatts] = useState(value?.effortWatts   ?? defaultWatts)
-  const [withRec, setWithRec]         = useState(value?.withRecovery  ?? true)
-  const [recSec, setRecSec]           = useState(value?.recoverySec   ?? 15)
-  const [recWatts, setRecWatts]       = useState(value?.recoveryWatts ?? Math.round(ftp * 0.50))
-  const [reps, setReps]               = useState(value?.reps          ?? 8)
-
-  const perRepSec  = effortSec + (withRec ? recSec : 0)
-  const totSec     = perRepSec * reps
-  const totMin     = totSec / 60
-  const blockSec   = blockDurationMin * 60
-  const overflow   = totSec > blockSec + 30
-  const remainSec  = blockSec - totSec
+  const initBlocks = value?.blocks ?? [
+    { type: 'effort' as const, sec: 30, watts: defaultWatts },
+    { type: 'recovery' as const, sec: 15, watts: Math.round(ftp * 0.50) },
+  ]
+  const [iBlocks, setIBlocks] = useState<{ type: 'effort' | 'recovery'; sec: number; watts: number }[]>(initBlocks)
+  const [reps, setReps]       = useState(value?.reps ?? 8)
 
   function wattsZone(w: number): string {
     const r = w / ftp
@@ -4616,17 +4640,41 @@ function IntervalPanel({
   }
   function wattsColor(w: number): string {
     const r = w / ftp
-    return r > 1.50 ? '#6B21A8' : r > 1.20 ? '#991B1B' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#9ca3af'
+    return r > 1.50 ? '#1D4ED8' : r > 1.20 ? '#8B5CF6' : r > 1.05 ? '#EF4444' : r > 0.87 ? '#F97316' : r > 0.75 ? '#FBBF24' : r > 0.55 ? '#10B981' : '#9CA3AF'
   }
   function toMmSs(s: number): string { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` }
   function parseMmSs(str: string): number { const p=str.split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0) }
   function fmtSec(s: number): string { const m=Math.floor(s/60),sc=s%60; return m>0?`${m}′${sc>0?String(sc).padStart(2,'0')+'″':''}`:`${sc}″` }
 
-  const efCol = wattsColor(effortWatts), rcCol = wattsColor(recWatts)
-  const PRESETS = [
-    {l:'30/15',eS:30,rS:15},{l:'30/30',eS:30,rS:30},{l:'45/45',eS:45,rS:45},
-    {l:'1′/1′',eS:60,rS:60},{l:'1′30/30',eS:90,rS:30},{l:'2′/1′',eS:120,rS:60},{l:'4′/1′',eS:240,rS:60},
+  const perRepSec = iBlocks.reduce((a, b) => a + b.sec, 0)
+  const totSec    = perRepSec * reps
+  const totMin    = totSec / 60
+  const blockSec  = blockDurationMin * 60
+  const overflow  = totSec > blockSec + 30
+  const remainSec = blockSec - totSec
+
+  type Preset = { l: string; blocks: { type: 'effort' | 'recovery'; sec: number; watts: number }[] }
+  const efW = iBlocks.find(b => b.type === 'effort')?.watts ?? defaultWatts
+  const rcW = iBlocks.find(b => b.type === 'recovery')?.watts ?? Math.round(ftp * 0.50)
+  const PRESETS: Preset[] = [
+    { l:'30/15', blocks:[{type:'effort',sec:30,watts:efW},{type:'recovery',sec:15,watts:rcW}] },
+    { l:'30/30', blocks:[{type:'effort',sec:30,watts:efW},{type:'recovery',sec:30,watts:rcW}] },
+    { l:'45/45', blocks:[{type:'effort',sec:45,watts:efW},{type:'recovery',sec:45,watts:rcW}] },
+    { l:'1′/1′', blocks:[{type:'effort',sec:60,watts:efW},{type:'recovery',sec:60,watts:rcW}] },
+    { l:'1′30/30', blocks:[{type:'effort',sec:90,watts:efW},{type:'recovery',sec:30,watts:rcW}] },
+    { l:'2′/1′', blocks:[{type:'effort',sec:120,watts:efW},{type:'recovery',sec:60,watts:rcW}] },
+    { l:'4′/1′', blocks:[{type:'effort',sec:240,watts:efW},{type:'recovery',sec:60,watts:rcW}] },
   ]
+
+  function addBlock(type: 'effort' | 'recovery') {
+    setIBlocks(prev => [...prev, { type, sec: type === 'effort' ? 30 : 15, watts: type === 'effort' ? defaultWatts : Math.round(ftp * 0.50) }])
+  }
+  function removeBlock(idx: number) {
+    setIBlocks(prev => prev.filter((_, i) => i !== idx))
+  }
+  function updateBlock(idx: number, field: 'type' | 'sec' | 'watts', val: string | number) {
+    setIBlocks(prev => prev.map((b, i) => i === idx ? { ...b, [field]: val } : b))
+  }
 
   return (
     <div style={{ padding:'12px 14px', background:'var(--bg-card2)', borderTop:'1px solid var(--border)' }}>
@@ -4634,57 +4682,56 @@ function IntervalPanel({
       <div style={{ marginBottom:10 }}>
         <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 6px' }}>Presets</p>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' as const }}>
-          {PRESETS.map(p => (
-            <button key={p.l} onClick={() => { setEffortSec(p.eS); setRecSec(p.rS); setWithRec(true); setReps(Math.max(1,Math.floor(blockSec/(p.eS+p.rS)))) }}
-              style={{ padding:'3px 8px', borderRadius:5, border:'1px solid var(--border)', fontSize:9, fontWeight:600, cursor:'pointer', fontFamily:'DM Mono,monospace',
-                background: effortSec===p.eS&&recSec===p.rS ? `${efCol}22` : 'var(--bg-card)', color: effortSec===p.eS&&recSec===p.rS ? efCol : 'var(--text-mid)' }}>{p.l}</button>
-          ))}
+          {PRESETS.map(p => {
+            const active = p.blocks.length === iBlocks.length && p.blocks.every((pb, i) => pb.type === iBlocks[i]?.type && pb.sec === iBlocks[i]?.sec)
+            const pCol = wattsColor(p.blocks.find(b=>b.type==='effort')?.watts ?? defaultWatts)
+            return (
+              <button key={p.l} onClick={() => { setIBlocks(p.blocks); setReps(Math.max(1, perRepSec > 0 ? Math.floor(blockSec / p.blocks.reduce((a,b) => a+b.sec,0)) : 8)) }}
+                style={{ padding:'3px 8px', borderRadius:5, border:'1px solid var(--border)', fontSize:9, fontWeight:600, cursor:'pointer', fontFamily:'DM Mono,monospace',
+                  background: active ? `${pCol}22` : 'var(--bg-card)', color: active ? pCol : 'var(--text-mid)' }}>{p.l}</button>
+            )
+          })}
           <button onClick={() => onChange(null)} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#ef4444', fontSize:9, fontWeight:600, cursor:'pointer', marginLeft:'auto' }}>✕ Supprimer</button>
         </div>
       </div>
-      {/* Effort + Récup */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
-        <div style={{ padding:'8px 10px', borderRadius:7, border:`1px solid ${efCol}40`, background:`${efCol}07` }}>
-          <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, color:efCol, margin:'0 0 6px' }}>Effort</p>
-          <div style={{ display:'flex', flexDirection:'column' as const, gap:5 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-              <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Durée</span>
-              <input type="text" defaultValue={toMmSs(effortSec)} onBlur={e => setEffortSec(Math.max(5,parseMmSs(e.target.value)))}
-                style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${efCol}50`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
-              <span style={{ fontSize:8, color:'var(--text-dim)' }}>mm:ss</span>
+      {/* Blocks list */}
+      <div style={{ display:'flex', flexDirection:'column' as const, gap:5, marginBottom:8 }}>
+        {iBlocks.map((ib, idx) => {
+          const col = wattsColor(ib.watts)
+          const isEf = ib.type === 'effort'
+          return (
+            <div key={idx} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 9px', borderRadius:7,
+              border:`1px solid ${col}40`, background:`${col}07` }}>
+              {/* Type toggle */}
+              <button onClick={() => updateBlock(idx, 'type', isEf ? 'recovery' : 'effort')}
+                style={{ padding:'2px 7px', borderRadius:4, border:`1px solid ${col}60`, background:`${col}20`, color:col, fontSize:8, fontWeight:700, cursor:'pointer', minWidth:46, flexShrink:0 }}>
+                {isEf ? 'EFFORT' : 'RÉCUP'}
+              </button>
+              {/* Duration */}
+              <input type="text" defaultValue={toMmSs(ib.sec)} key={`sec_${idx}_${ib.sec}`}
+                onBlur={e => updateBlock(idx, 'sec', Math.max(5, parseMmSs(e.target.value)))}
+                style={{ width:44, padding:'2px 4px', borderRadius:4, border:`1px solid ${col}40`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
+              <span style={{ fontSize:8, color:'var(--text-dim)', flexShrink:0 }}>mm:ss</span>
+              {/* Watts */}
+              <input type="number" value={ib.watts} onChange={e => updateBlock(idx, 'watts', Math.max(50, Math.min(600, parseInt(e.target.value)||0)))}
+                style={{ width:44, padding:'2px 4px', borderRadius:4, border:`1px solid ${col}40`, background:'var(--bg-card)', color:col, fontSize:10, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
+              <span style={{ fontSize:8, color:'var(--text-dim)', flexShrink:0 }}>W</span>
+              <span style={{ fontSize:9, fontWeight:700, color:col, flexShrink:0 }}>{wattsZone(ib.watts)}</span>
+              <div style={{ flex:1 }}/>
+              {iBlocks.length > 1 && (
+                <button onClick={() => removeBlock(idx)}
+                  style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:13, padding:'0 2px', lineHeight:1, flexShrink:0 }}>×</button>
+              )}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-              <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Watts</span>
-              <input type="number" value={effortWatts} onChange={e => setEffortWatts(Math.max(50,Math.min(600,parseInt(e.target.value)||0)))}
-                style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${efCol}50`, background:'var(--bg-card)', color:efCol, fontSize:10, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
-              <span style={{ fontSize:9, fontWeight:700, color:efCol }}>{wattsZone(effortWatts)}</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ padding:'8px 10px', borderRadius:7, border:`1px solid ${withRec?rcCol+'40':'var(--border)'}`, background:withRec?`${rcCol}07`:'var(--bg-card)', opacity:withRec?1:0.55 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:6 }}>
-            <button onClick={() => setWithRec(v=>!v)} style={{ width:12,height:12, borderRadius:2, border:`2px solid ${withRec?rcCol:'var(--border)'}`, background:withRec?rcCol:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, flexShrink:0 }}>
-              {withRec && <span style={{ fontSize:7, color:'#fff' }}>✓</span>}
-            </button>
-            <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, color:withRec?rcCol:'var(--text-dim)', margin:0 }}>Récup</p>
-          </div>
-          {withRec && (
-            <div style={{ display:'flex', flexDirection:'column' as const, gap:5 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Durée</span>
-                <input type="text" defaultValue={toMmSs(recSec)} onBlur={e => setRecSec(Math.max(5,parseMmSs(e.target.value)))}
-                  style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${rcCol}50`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
-                <span style={{ fontSize:8, color:'var(--text-dim)' }}>mm:ss</span>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Watts</span>
-                <input type="number" value={recWatts} onChange={e => setRecWatts(Math.max(50,Math.min(600,parseInt(e.target.value)||0)))}
-                  style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${rcCol}50`, background:'var(--bg-card)', color:rcCol, fontSize:10, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
-                <span style={{ fontSize:9, fontWeight:700, color:rcCol }}>{wattsZone(recWatts)}</span>
-              </div>
-            </div>
-          )}
-        </div>
+          )
+        })}
+      </div>
+      {/* Add block buttons */}
+      <div style={{ display:'flex', gap:5, marginBottom:8 }}>
+        <button onClick={() => addBlock('effort')}
+          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#EF4444', fontSize:9, fontWeight:600, cursor:'pointer' }}>+ Effort</button>
+        <button onClick={() => addBlock('recovery')}
+          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(16,185,129,0.35)', background:'rgba(16,185,129,0.07)', color:'#10B981', fontSize:9, fontWeight:600, cursor:'pointer' }}>+ Récup</button>
       </div>
       {/* Reps row */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
@@ -4699,24 +4746,23 @@ function IntervalPanel({
         {overflow && <span style={{ fontSize:9, color:'#ef4444', background:'rgba(239,68,68,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ +{Math.round((totSec-blockSec)/60)}min</span>}
         {!overflow && remainSec > 30 && <span style={{ fontSize:9, color:'#eab308', background:'rgba(234,179,8,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ {Math.round(remainSec/60)}min non couverts</span>}
       </div>
-      {/* Summary */}
+      {/* Summary formula */}
       <div style={{ padding:'6px 9px', borderRadius:5, background:'var(--bg-card)', border:'1px solid var(--border)', fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-mid)', marginBottom:8 }}>
-        {reps} × ({fmtSec(effortSec)} @{effortWatts}W{withRec?` + ${fmtSec(recSec)} @${recWatts}W`:''}){' '}
-        = <strong style={{ color:overflow?'#ef4444':'var(--text)' }}>{Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}</strong>
+        {reps} × ({iBlocks.map(b => `${fmtSec(b.sec)} @${b.watts}W`).join(' + ')})
+        {' '}= <strong style={{ color:overflow?'#ef4444':'var(--text)' }}>{Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}</strong>
       </div>
       {/* Mini viz */}
-      <div style={{ display:'flex', height:24, borderRadius:4, overflow:'hidden', marginBottom:8 }}>
-        {Array.from({length:Math.min(reps,24)},(_,ri) => (
-          <>
-            <div key={`e${ri}`} style={{ flex:effortSec, background:efCol, opacity:0.85, borderRight:'1px solid var(--bg-card2)' }}/>
-            {withRec && <div key={`r${ri}`} style={{ flex:recSec, background:'#9CA3AF', opacity:0.4, borderRight:'1px solid var(--bg-card2)' }}/>}
-          </>
-        ))}
+      <div style={{ display:'flex', height:20, borderRadius:4, overflow:'hidden', marginBottom:8 }}>
+        {Array.from({length:Math.min(reps, 20)}, (_, ri) =>
+          iBlocks.map((ib, bi) => (
+            <div key={`${ri}_${bi}`} style={{ flex:ib.sec, background:wattsColor(ib.watts), opacity:ib.type==='effort'?0.85:0.35, borderRight:'1px solid var(--bg-card2)' }}/>
+          ))
+        )}
       </div>
       {/* Apply */}
       <button
-        onClick={() => { onChange({ effortSec, effortWatts, recoverySec:withRec?recSec:0, recoveryWatts:withRec?recWatts:0, reps, withRecovery:withRec }); onClose() }}
-        style={{ width:'100%', padding:'7px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${efCol},${efCol}bb)`, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+        onClick={() => { onChange({ blocks: iBlocks, reps }); onClose() }}
+        style={{ width:'100%', padding:'7px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${wattsColor(efW)},${wattsColor(efW)}bb)`, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
         ⚡ Appliquer ces intervalles
       </button>
     </div>
@@ -6258,9 +6304,8 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   type AIFlowStep = 'ask' | 'parcours' | 'free'
   const [aiFlowStep, setAiFlowStep] = useState<AIFlowStep>('ask')
   interface BlockIntervalsCfg {
-    effortSec: number; effortWatts: number
-    recoverySec: number; recoveryWatts: number
-    reps: number; withRecovery: boolean
+    blocks: { type: 'effort' | 'recovery'; sec: number; watts: number }[]
+    reps: number
   }
   const [climbConfigs, setClimbConfigs] = useState<Array<{
     segIdx: number; selected: boolean; watts: number; hrAvg?: number; estimatedMin: number
@@ -6593,28 +6638,25 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
       ]
     : []
 
-  // TSS range — block-based with athlete fitness factor
-  const tssRange = computeTSSRange(blocks, sport, dur, rpe, athleteData)
+  // ── Source unique TSS + zones (computeSessionStats) ──────────────
+  const sessionStats = computeSessionStats(blocks, sport, dur, rpe, athleteData)
   const sessionAvg = computeSessionAverages(blocks, sport)
-  const tssDisplay = tssRange.low === 0 && tssRange.high === 0
+  const tssDisplay = sessionStats.tssLow === 0 && sessionStats.tssHigh === 0
     ? '—'
-    : tssRange.low === tssRange.high
-      ? String(tssRange.low)
-      : `${tssRange.low}–${tssRange.high}`
-  const tssLabel = tssRange.high < 50 ? 'Très facile' : tssRange.high < 100 ? 'Modérée' : tssRange.high < 150 ? 'Difficile' : tssRange.high < 200 ? 'Très difficile' : 'Extrême'
+    : sessionStats.tssLow === sessionStats.tssHigh
+      ? String(sessionStats.tssLow)
+      : `${sessionStats.tssLow}–${sessionStats.tssHigh}`
+  const tssLabel = sessionStats.tssHigh < 50 ? 'Très facile' : sessionStats.tssHigh < 100 ? 'Modérée' : sessionStats.tssHigh < 150 ? 'Difficile' : sessionStats.tssHigh < 200 ? 'Très difficile' : 'Extrême'
 
   // RPE color
   const rpeCol = rpe <= 3 ? '#4ade80' : rpe <= 6 ? '#facc15' : rpe <= 8 ? '#fb923c' : '#f87171'
 
-  // Donut derived values (Change 5)
+  // Donut derived values — zones from computeSessionStats (source unique)
   const showDonuts = ['run', 'bike', 'swim', 'rowing'].includes(sport) && blocks.length > 0
-  const ZONE_COUNT = sport === 'bike' ? 7 : 5
-  const ZONE_COLORS_7 = ['#6b7280', '#4ade80', '#facc15', '#fb923c', '#f87171', '#c084fc', '#f472b6']
-  const activeZoneColors = sport === 'bike' ? ZONE_COLORS_7 : ZONE_COLORS.slice(0, 5)
-  const activeZoneLabels = sport === 'bike'
-    ? ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7']
-    : ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
-  const zoneDist = computeZoneDistribution(blocks, ZONE_COUNT)
+  // 7-zone colors for donuts (design system colors)
+  const DONUT_ZONE_COLORS = ['#9CA3AF', '#10B981', '#FBBF24', '#F97316', '#EF4444', '#8B5CF6', '#1D4ED8']
+  const DONUT_ZONE_LABELS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7']
+  const zoneDist = sessionStats.zoneDist  // 7-element array, always
   const hrDist = computeHRDistribution(blocks, fcZones.length > 0 ? fcZones : undefined)
 
   // Duration gauge is set only by user input — do not auto-compute from blocks
@@ -6751,7 +6793,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const parcoursMin = parseDurationToMin(totalDuration)
     const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : dur || 60
     const parcoursFlowTss = computeParcoursFlowTSS()
-    const finalTss = (aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : tssRange.high) || undefined
+    const finalTss = (aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : sessionStats.tssHigh) || undefined
     const finalBlocks = isStrength && exercises.length > 0
       ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
       : aiFlowStep === 'parcours' && parcoursData
@@ -7539,83 +7581,138 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
             {/* Donut + TSS — only for endurance with blocks */}
             {showDonuts ? (
-              <div style={{ display: 'flex', gap: mobile ? 10 : 16, alignItems: 'center', flexWrap: 'wrap' as const }}>
-                {/* Donut Zones */}
-                <div style={{ flexShrink: 0 }}>
+              <div>
+                {/* ── Donuts row ── */}
+                <div style={{ display: 'flex', gap: mobile ? 12 : 20, alignItems: 'flex-start', flexWrap: 'wrap' as const }}>
+                  {/* Donut Zones — 160×160px, 20px ring */}
                   {(() => {
-                    const cx = 44, cy = 44, rOut = 38, rIn = 25
+                    const SIZE = 160, CX = 80, CY = 80, R_OUT = 70, R_IN = 50
+                    const GAP_RAD = 0.025
                     let angle = -Math.PI / 2
-                    const total = zoneDist.reduce((a, b) => a + b, 0) || 1
                     const arcs = zoneDist.map((v, i) => {
                       if (v === 0) return null
-                      const pct = v / total
+                      const pct = v / 100
                       const sweep = pct * 2 * Math.PI
-                      const startA = angle
-                      const endA = angle + sweep - 0.02
+                      const startA = angle + GAP_RAD / 2
+                      const endA   = angle + sweep - GAP_RAD / 2
                       angle += sweep
-                      const lg = sweep > Math.PI ? 1 : 0
-                      const p = (r: number, a: number) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
-                      const os = p(rOut, startA), oe = p(rOut, endA), is = p(rIn, startA), ie = p(rIn, endA)
-                      return <path key={i} d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`} fill={activeZoneColors[i]} opacity={0.85} />
+                      if (endA <= startA) return null
+                      const lg = endA - startA > Math.PI ? 1 : 0
+                      const p = (r: number, a: number) => ({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) })
+                      const os = p(R_OUT, startA), oe = p(R_OUT, endA)
+                      const is = p(R_IN, startA),  ie = p(R_IN, endA)
+                      return (
+                        <path key={i}
+                          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${R_OUT} ${R_OUT} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${R_IN} ${R_IN} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
+                          fill={DONUT_ZONE_COLORS[i]} opacity={0.9}
+                          style={{ transition: 'opacity 0.2s' }}
+                        />
+                      )
                     })
+                    // Compute dominant zone avg watts
+                    const avgW = sessionAvg.avgWatts
+                    const avgHR = hrDist.length > 0 ? (() => {
+                      const lthr = lthrForSport ?? 170
+                      const zoneHRs = [lthr * 0.60, lthr * 0.84, lthr * 0.91, lthr * 0.98, lthr * 1.04, lthr * 1.09, lthr * 1.15]
+                      let sum = 0, tot = 0
+                      hrDist.forEach(h => { sum += h.pct * (zoneHRs[0] ?? 130); tot += h.pct })
+                      return tot > 0 ? Math.round(sum / tot) : null
+                    })() : null
+                    // Glucides g/h estimate: ~60g/h per 100 TSS/h, scaled
+                    const tssPerH = dur > 0 ? sessionStats.tssHigh / (dur / 60) : 0
+                    const glucGph = Math.round(Math.min(90, Math.max(20, tssPerH * 0.55)))
                     return (
-                      <svg width={80} height={80} viewBox="0 0 88 88">
-                        {arcs}
-                        <text x={44} y={48} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono, monospace">{fmtDurLocal(dur)}</text>
-                      </svg>
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
+                        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+                          {/* Background ring */}
+                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="#374151" strokeWidth={R_OUT - R_IN} opacity={0.25} />
+                          {arcs}
+                          {/* Center text: duration */}
+                          <text x={CX} y={CY - 8} textAnchor="middle" fontSize={13} fill="var(--text)" fontWeight={800} fontFamily="DM Mono,monospace">{fmtDurLocal(dur)}</text>
+                          <text x={CX} y={CY + 10} textAnchor="middle" fontSize={9} fill="var(--text-dim)" fontFamily="DM Mono,monospace">Zones</text>
+                          <text x={CX} y={CY + 23} textAnchor="middle" fontSize={11} fill={accent} fontWeight={700} fontFamily="DM Mono,monospace">{tssDisplay} TSS</text>
+                        </svg>
+                        {/* Compact legend */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto)', gap: '3px 8px', justifyContent: 'center' }}>
+                          {zoneDist.map((v, i) => v > 0 && (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: DONUT_ZONE_COLORS[i], flexShrink: 0, display: 'inline-block' }} />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{DONUT_ZONE_LABELS[i]} <strong style={{ color: 'var(--text-mid)' }}>{v}%</strong></span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* 3 key metrics */}
+                        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                          <div style={{ textAlign: 'center' as const }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#FBBF24' }}>{glucGph}</div>
+                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>g gluc/h</div>
+                          </div>
+                          {avgW && (
+                            <div style={{ textAlign: 'center' as const }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{avgW}W</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>Moy W</div>
+                            </div>
+                          )}
+                          {avgHR && (
+                            <div style={{ textAlign: 'center' as const }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#EF4444' }}>{avgHR}</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>FC Moy</div>
+                            </div>
+                          )}
+                          <div style={{ textAlign: 'center' as const }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'center' }}>
+                              <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{tssDisplay}</span>
+                              <button onClick={() => setTssInfo(true)} style={{ width: 12, height: 12, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
+                            </div>
+                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>TSS</div>
+                          </div>
+                        </div>
+                      </div>
                     )
                   })()}
-                  <p style={{ fontSize: 8, color: 'var(--text-dim)', textAlign: 'center' as const, margin: '2px 0 0' }}>Zones</p>
-                </div>
 
-                {/* Donut FC */}
-                {hrDist.length > 0 && (
-                  <div style={{ flexShrink: 0 }}>
-                    {(() => {
-                      const cx = 44, cy = 44, rOut = 38, rIn = 25
-                      let angle = -Math.PI / 2
-                      const total = hrDist.reduce((a, b) => a + b.pct, 0) || 1
-                      const arcs = hrDist.map((h, i) => {
-                        const pct = h.pct / total
-                        const sweep = pct * 2 * Math.PI
-                        const startA = angle
-                        const endA = angle + sweep - 0.02
-                        angle += sweep
-                        const lg = sweep > Math.PI ? 1 : 0
-                        const p = (r: number, a: number) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
-                        const os = p(rOut, startA), oe = p(rOut, endA), is = p(rIn, startA), ie = p(rIn, endA)
-                        return <path key={i} d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`} fill={h.color} opacity={0.85} />
-                      })
+                  {/* Donut FC */}
+                  {hrDist.length > 0 && (() => {
+                    const SIZE = 120, CX = 60, CY = 60, R_OUT = 52, R_IN = 36
+                    const GAP_RAD = 0.025
+                    let angle = -Math.PI / 2
+                    const total = hrDist.reduce((a, b) => a + b.pct, 0) || 1
+                    const arcs = hrDist.map((h, i) => {
+                      const pct = h.pct / total
+                      const sweep = pct * 2 * Math.PI
+                      const startA = angle + GAP_RAD / 2
+                      const endA   = angle + sweep - GAP_RAD / 2
+                      angle += sweep
+                      if (endA <= startA) return null
+                      const lg = endA - startA > Math.PI ? 1 : 0
+                      const p = (r: number, a: number) => ({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) })
+                      const os = p(R_OUT, startA), oe = p(R_OUT, endA)
+                      const is = p(R_IN, startA),  ie = p(R_IN, endA)
                       return (
-                        <svg width={80} height={80} viewBox="0 0 88 88">
-                          {arcs}
-                          <text x={44} y={48} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono, monospace">FC</text>
-                        </svg>
+                        <path key={i}
+                          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${R_OUT} ${R_OUT} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${R_IN} ${R_IN} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
+                          fill={h.color} opacity={0.88}
+                        />
                       )
-                    })()}
-                    <p style={{ fontSize: 8, color: 'var(--text-dim)', textAlign: 'center' as const, margin: '2px 0 0' }}>Fréq. Card.</p>
-                  </div>
-                )}
-
-                {/* Legend */}
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, flex: 1, minWidth: 60 }}>
-                  {zoneDist.map((v, i) => v > 0 && (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: 1, background: activeZoneColors[i], flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontSize: 9, color: 'var(--text-dim)', flex: 1 }}>{activeZoneLabels[i]}</span>
-                      <span style={{ fontSize: 9, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{v}%</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* TSS */}
-                <div style={{ textAlign: 'center' as const, flexShrink: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', marginBottom: 3 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>TSS</span>
-                    <button onClick={() => setTssInfo(true)} style={{ width: 13, height: 13, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 7, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
-                  </div>
-                  <span style={{ fontSize: tssDisplay.length > 6 ? 18 : 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{tssDisplay}</span>
-                  <p style={{ fontSize: 8, color: 'var(--text-dim)', margin: '3px 0 0' }}>{tssLabel}</p>
+                    })
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
+                        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="#374151" strokeWidth={R_OUT - R_IN} opacity={0.25} />
+                          {arcs}
+                          <text x={CX} y={CY + 4} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono,monospace">FC</text>
+                        </svg>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                          {hrDist.map((h, i) => h.pct > 0 && (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: h.color, flexShrink: 0, display: 'inline-block' }} />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{h.label} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(h.pct)}%</strong></span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             ) : (
@@ -8672,7 +8769,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               onClick={() => setOpenIntervals(prev => ({ ...prev, [`c_${ci}`]: !prev[`c_${ci}`] }))}
                               style={{ margin:'6px 12px 0', padding:'4px 10px', borderRadius:6, border:`1px solid ${zc}40`, background:openIntervals[`c_${ci}`]?`${zc}20`:`${zc}08`, color:zc, fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
                               <span>⚡</span>
-                              <span>{cfg.intervals ? `Intervalles configurés (${cfg.intervals.reps}×)` : 'Intervalles'}</span>
+                              <span>{cfg.intervals ? `${cfg.intervals.reps}×(${cfg.intervals.blocks.length} blocs)` : 'Intervalles'}</span>
                               <span style={{ opacity:0.6 }}>{openIntervals[`c_${ci}`] ? '▲' : '▼'}</span>
                             </button>
                           )}
@@ -8846,7 +8943,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 onClick={() => setOpenIntervals(prev => ({ ...prev, [sb.id]: !prev[sb.id] }))}
                                 style={{ margin:'2px 0 0', padding:'3px 9px', borderRadius:5, border:`1px solid ${zoneColor(sb.watts)}40`, background:openIntervals[sb.id]?`${zoneColor(sb.watts)}20`:`${zoneColor(sb.watts)}08`, color:zoneColor(sb.watts), fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4, alignSelf:'flex-start' as const }}>
                                 <span>⚡</span>
-                                <span>{sb.intervals ? `Intervalles (${sb.intervals.reps}×)` : 'Intervalles'}</span>
+                                <span>{sb.intervals ? `${sb.intervals.reps}×(${sb.intervals.blocks.length} blocs)` : 'Intervalles'}</span>
                                 <span style={{ opacity:0.6 }}>{openIntervals[sb.id]?'▲':'▼'}</span>
                               </button>
                               {openIntervals[sb.id] && (
@@ -9401,162 +9498,153 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           </div>
         )}
 
-        {/* SÉPARATEUR — avant Plan A/B */}
-        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '0 16px 12px' : '0 24px 14px', opacity: 0.5 }} />
+        {/* SÉPARATEUR — avant barre d'actions */}
+        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '0 16px 10px' : '0 24px 12px', opacity: 0.5 }} />
 
-        {/* PLAN A/B */}
-        <div style={{ padding: mobile ? '0 16px 12px' : '0 24px 14px' }}>
-          <span style={lbl}>Plan</span>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {(['A', 'B'] as PlanVariant[]).map(p => (
-              <button key={p} onClick={() => setSelPlan(p)} style={{
-                padding: '6px 14px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                background: selPlan === p ? (p === 'A' ? 'rgba(0,200,224,0.10)' : 'rgba(167,139,250,0.10)') : 'var(--bg-card)',
-                border: selPlan === p ? `1px solid ${p === 'A' ? '#00c8e0' : '#a78bfa'}` : '1px solid var(--border)',
-                color: selPlan === p ? (p === 'A' ? '#00c8e0' : '#a78bfa') : 'var(--text-dim)',
-              }}>Plan {p}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* ACTIONS */}
+        {/* ACTIONS + PLAN A/B — barre unifiée */}
         <div style={{ padding: mobile ? '0 16px 28px' : '0 24px 32px' }}>
           {isEdit ? (
-            <>
-              {/* Ligne 1 : Supprimer + Valider + (Réinitialiser IA si dispo) */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' as const }}>
-                {onDelete && session && (
-                  <button onClick={() => { if (confirm('Supprimer cette séance ?')) { onDelete(session.id); onClose() } }} style={{
-                    padding: '8px 14px', borderRadius: 8,
-                    background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
-                    color: '#ef4444', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  }}>Supprimer</button>
-                )}
-                {session?.status !== 'done' && onValidate && session && (
-                  <button onClick={() => onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })} style={{
-                    padding: '8px 14px', borderRadius: 8,
-                    background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
-                    color: '#22c55e', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  }}>Valider</button>
-                )}
-                {session?.originalContent && (
-                  <button onClick={() => {
-                    const o = session.originalContent as Record<string, unknown>
-                    if (typeof o.titre === 'string') setTitle(o.titre)
-                    if (typeof o.duration_min === 'number') setDur(o.duration_min)
-                    if (typeof o.notes === 'string') setDesc(o.notes)
-                    if (typeof o.rpe === 'number') setRpe(o.rpe)
-                  }} style={{
-                    padding: '8px 14px', borderRadius: 8,
-                    background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.15)',
-                    color: '#f97316', fontSize: 11, cursor: 'pointer', fontWeight: 600,
-                  }}>Réinitialiser IA</button>
-                )}
-                {onDuplicate && session && (
-                  <button onClick={() => setShowDuplicateMenu(true)} style={{
-                    padding: '8px 14px', borderRadius: 8,
-                    border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  }}>Dupliquer</button>
-                )}
-              </div>
-              {/* Ligne 2 : PDF + Parcours + Favori + Fermer */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
-                <button onClick={handleExportPDF} title="Exporter en PDF" style={{
-                  padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                  border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', gap: 5,
-                }}>
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/><rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/></svg>
-                  PDF
-                </button>
-                <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML" style={{
-                  padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                  border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', gap: 5,
-                }}>
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/></svg>
-                  {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
-                </button>
-                <button onClick={async () => {
-                  const name = prompt('Nom du favori :', title || `${SPORT_LABEL[sport]}`)
-                  if (!name) return
-                  try {
-                    const { createClient } = await import('@/lib/supabase/client')
-                    const sb = createClient()
-                    const { data: { user } } = await sb.auth.getUser()
-                    if (!user) return
-                    await sb.from('session_favorites').insert({
-                      user_id: user.id, name, sport,
-                      training_type: trainingTypes.join('+') || null, blocks_data: blocks,
-                      nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
-                    })
-                    alert('✓ Favori sauvegardé')
-                  } catch (e) { console.error('[Fav]', e) }
-                }} style={{
-                  padding: '8px 14px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--bg-card2)',
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
+              {/* ── Gauche : actions secondaires (text-only, no bg) ── */}
+              <button onClick={handleExportPDF} title="Exporter en PDF" style={{
+                padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/><rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/></svg>
+                PDF
+              </button>
+              <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML" style={{
+                padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/></svg>
+                {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
+              </button>
+              <button onClick={async () => {
+                const name = prompt('Nom du favori :', title || `${SPORT_LABEL[sport]}`)
+                if (!name) return
+                try {
+                  const { createClient } = await import('@/lib/supabase/client')
+                  const sb = createClient()
+                  const { data: { user } } = await sb.auth.getUser()
+                  if (!user) return
+                  await sb.from('session_favorites').insert({
+                    user_id: user.id, name, sport,
+                    training_type: trainingTypes.join('+') || null, blocks_data: blocks,
+                    nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
+                  })
+                  alert('✓ Favori sauvegardé')
+                } catch (e) { console.error('[Fav]', e) }
+              }} style={{
+                padding: '8px 12px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              }}>★ Favori</button>
+              {onDuplicate && session && (
+                <button onClick={() => setShowDuplicateMenu(true)} style={{
+                  padding: '8px 12px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'transparent',
                   color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                }}>★ Favori</button>
-                <div style={{ flex: 1 }} />
-                <button onClick={async () => {
-                  if (!session?.id || saving) return
-                  setSaving(true)
-                  try {
-                    const { createClient: cc } = await import('@/lib/supabase/client')
-                    const sb = cc()
-                    const _parcoursMin = parseDurationToMin(totalDuration)
-                    const _saveDur = aiFlowStep === 'parcours' && _parcoursMin > 0 ? _parcoursMin : dur
-                    const _pTss = computeParcoursFlowTSS()
-                    const _saveTss = (aiFlowStep === 'parcours' && _pTss ? _pTss.tss : tssRange.high) || session.tss || null
-                    const _savedBlocks = isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
-                      ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
-                      : aiFlowStep === 'parcours' && parcoursData
-                        ? buildParcoursBlocks()
-                        : blocks ?? []
-                    const _savedParcours = parcoursDataWithConfig()
-                    await sb.from('planned_sessions').update({
-                      sport, title, time,
-                      duration_min: _saveDur,
-                      rpe: rpe ?? null,
-                      notes: desc ?? null,
-                      blocks: _savedBlocks,
-                      tss: _saveTss,
-                      parcours_data: _savedParcours ?? null,
-                      nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
-                      updated_at: new Date().toISOString(),
-                    }).eq('id', session.id)
-                    // Sync parent state so re-opening the modal shows updated data
-                    onAutoSave?.({
-                      ...session,
-                      sport, title, time,
-                      durationMin: _saveDur,
-                      tss: _saveTss ?? undefined,
-                      notes: desc || undefined,
-                      rpe,
-                      blocks: _savedBlocks,
-                      parcoursData: _savedParcours ?? undefined,
-                      nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
-                    })
-                    setSaved(true)
-                    setTimeout(() => setSaved(false), 2000)
-                  } catch (e) { console.error('[Save]', e) }
-                  finally { setSaving(false) }
-                }} style={{
-                  padding: '8px 20px', borderRadius: 8,
-                  border: 'none', background: saved ? '#22c55e' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
-                  transition: 'background 0.3s',
-                }}>{saving ? '…' : saved ? '✓ Enregistré' : 'Enregistrer'}</button>
-                <button onClick={onClose} style={{
-                  padding: '8px 16px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                }}>Fermer</button>
+                }}>Dupliquer</button>
+              )}
+
+              <div style={{ flex: 1 }} />
+
+              {/* ── Centre : Plan A/B tabs ── */}
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                {(['A', 'B'] as PlanVariant[]).map(p => (
+                  <button key={p} onClick={() => setSelPlan(p)} style={{
+                    padding: '6px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    background: selPlan === p ? (p === 'A' ? 'rgba(0,200,224,0.10)' : 'rgba(167,139,250,0.10)') : 'transparent',
+                    border: selPlan === p ? `1px solid ${p === 'A' ? '#00c8e0' : '#a78bfa'}` : '1px solid var(--border)',
+                    color: selPlan === p ? (p === 'A' ? '#00c8e0' : '#a78bfa') : 'var(--text-dim)',
+                  }}>Plan {p}</button>
+                ))}
               </div>
-            </>
+
+              <div style={{ flex: 1 }} />
+
+              {/* ── Droite : actions principales ── */}
+              {onDelete && session && (
+                <button onClick={() => { if (confirm('Supprimer cette séance ?')) { onDelete(session.id); onClose() } }} style={{
+                  padding: '8px 12px', borderRadius: 8,
+                  background: 'transparent', border: 'none',
+                  color: '#ef4444', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                }}>Supprimer</button>
+              )}
+              {session?.originalContent && (
+                <button onClick={() => {
+                  const o = session.originalContent as Record<string, unknown>
+                  if (typeof o.titre === 'string') setTitle(o.titre)
+                  if (typeof o.duration_min === 'number') setDur(o.duration_min)
+                  if (typeof o.notes === 'string') setDesc(o.notes)
+                  if (typeof o.rpe === 'number') setRpe(o.rpe)
+                }} style={{
+                  padding: '8px 12px', borderRadius: 8,
+                  background: 'transparent', border: 'none',
+                  color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+                }}>Réinitialiser IA</button>
+              )}
+              {session?.status !== 'done' && onValidate && session && (
+                <button onClick={() => onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })} style={{
+                  padding: '8px 14px', borderRadius: 8,
+                  background: 'transparent', border: '1px solid rgba(34,197,94,0.5)',
+                  color: '#22c55e', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                }}>Valider</button>
+              )}
+              <button onClick={async () => {
+                if (!session?.id || saving) return
+                setSaving(true)
+                try {
+                  const { createClient: cc } = await import('@/lib/supabase/client')
+                  const sb = cc()
+                  const _parcoursMin = parseDurationToMin(totalDuration)
+                  const _saveDur = aiFlowStep === 'parcours' && _parcoursMin > 0 ? _parcoursMin : dur
+                  const _pTss = computeParcoursFlowTSS()
+                  const _saveTss = (aiFlowStep === 'parcours' && _pTss ? _pTss.tss : sessionStats.tssHigh) || session.tss || null
+                  const _savedBlocks = isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
+                    ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
+                    : aiFlowStep === 'parcours' && parcoursData
+                      ? buildParcoursBlocks()
+                      : blocks ?? []
+                  const _savedParcours = parcoursDataWithConfig()
+                  await sb.from('planned_sessions').update({
+                    sport, title, time,
+                    duration_min: _saveDur,
+                    rpe: rpe ?? null,
+                    notes: desc ?? null,
+                    blocks: _savedBlocks,
+                    tss: _saveTss,
+                    parcours_data: _savedParcours ?? null,
+                    nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', session.id)
+                  onAutoSave?.({
+                    ...session,
+                    sport, title, time,
+                    durationMin: _saveDur,
+                    tss: _saveTss ?? undefined,
+                    notes: desc || undefined,
+                    rpe,
+                    blocks: _savedBlocks,
+                    parcoursData: _savedParcours ?? undefined,
+                    nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
+                  })
+                  setSaved(true)
+                  setTimeout(() => setSaved(false), 2000)
+                } catch (e) { console.error('[Save]', e) }
+                finally { setSaving(false) }
+              }} style={{
+                padding: '8px 18px', borderRadius: 8,
+                border: 'none', background: saved ? '#22c55e' : '#111827',
+                color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
+                transition: 'background 0.3s',
+              }}>{saving ? '…' : saved ? '✓ Enregistré' : 'Enregistrer →'}</button>
+            </div>
           ) : (
             /* Mode create */
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

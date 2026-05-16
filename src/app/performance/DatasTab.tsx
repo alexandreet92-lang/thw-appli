@@ -540,6 +540,225 @@ function RunGaugeChart({ records, dist, recordYear }: {
   )
 }
 
+// ── GaugeEntry — type pour UniversalGaugeChart ───────────────────
+interface GaugeEntry {
+  id: string
+  val: number          // seconds for time sports; watts for bike
+  display: string      // formatted: "1:23:45" or "285W"
+  date: string         // "YYYY-MM-DD"
+  metric?: string | null  // "/100m", "/500m", "W/kg", etc.
+  event_type?: string | null
+  race_name?: string | null
+  rpe?: number | null
+}
+
+// ── Reference values for gauge charts ────────────────────────────
+const SWIM_REF_SECS: Record<string, number[]> = {
+  '100m': [60,75,90,120], '200m': [130,155,185,240],
+  '400m': [270,315,375,480], '1000m': [750,900,1050,1200],
+  '1500m': [1170,1380,1590,1800], '2000m': [1620,1920,2220,2700],
+  '5000m': [4200,4800,5700,6600], '10000m': [8400,9600,11400,14400],
+}
+const ROW_REF_SECS: Record<string, number[]> = {
+  '500m': [90,105,120,135], '1000m': [195,225,255,285],
+  '2000m': [390,450,510,570], '5000m': [1080,1260,1440,1620],
+  '10000m': [2280,2640,3000,3600], 'Semi': [5400,6300,7200,8400],
+  'Marathon': [10800,12600,14400,18000],
+}
+const BIKE_REF_WATTS: Record<string, number[]> = {
+  'Pmax': [800,1000,1200,1500], '10s': [600,800,1000,1300],
+  '30s': [450,600,800,1000], '1min': [350,450,550,700],
+  '3min': [280,360,440,550], '5min': [240,310,380,480],
+  '8min': [220,290,360,440], '10min': [210,280,350,430],
+  '12min': [205,270,340,420], '15min': [200,260,330,410],
+  '20min': [190,250,310,400], '30min': [180,240,300,380],
+  '1h': [170,225,280,360], '90min': [160,210,265,340],
+  '2h': [155,200,255,320], '3h': [145,190,240,300],
+  '4h': [135,180,225,280], '5h': [125,165,210,260], '6h': [115,155,195,245],
+}
+
+// ── UniversalGaugeChart — identical design to RunGaugeChart for all sports ──
+function UniversalGaugeChart({ entries, distLabel, recordYear, lowerIsBetter = true, refVals }: {
+  entries: GaugeEntry[]
+  distLabel: string
+  recordYear: string
+  lowerIsBetter?: boolean
+  refVals?: number[]
+}) {
+  const [count, setCount] = useState(10)
+  const [tip, setTip] = useState<{ e: GaugeEntry; cx: number; cy: number } | null>(null)
+  const [hoveredBar, setHoveredBar] = useState<string | null>(null)
+  const MAX_H = 200, MIN_H = 24
+
+  const sorted = [...entries]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-count)
+
+  const allVals = sorted.map(e => e.val)
+  const maxVal  = allVals.length > 0 ? Math.max(...allVals) : 0
+  const minVal  = allVals.length > 0 ? Math.min(...allVals) : 0
+  const topVal  = maxVal > 0 ? maxVal * 1.12 : 3600
+
+  function barH(v: number): number {
+    return Math.max(MIN_H, (v / topVal) * MAX_H)
+  }
+
+  function fmtBarDate(dateStr: string): string {
+    try { return new Date(dateStr).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) }
+    catch { return dateStr.slice(0,7) }
+  }
+
+  const refs = (refVals ?? []).filter(s => s <= topVal && s > 0)
+  const allYrs = [...new Set(sorted.map(e => e.date.slice(0,4)))].sort((a,b) => b.localeCompare(a))
+
+  if (entries.length === 0) {
+    return (
+      <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-dim)', fontSize:12 }}>
+        Aucun record enregistré — clique sur &quot;+ Ajouter&quot; pour saisir ton premier temps.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      {/* Count selector — pills */}
+      <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+        {[5,10,20].map(n => (
+          <button key={n} onClick={() => setCount(n)} style={{
+            padding:'4px 14px', borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:600,
+            border: count===n ? 'none' : '1px solid #D1D5DB',
+            background: count===n ? '#111827' : 'transparent',
+            color: count===n ? '#fff' : '#6B7280',
+            transition:'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='#F3F4F6' }}
+          onMouseLeave={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='transparent' }}
+          >{n} derniers</button>
+        ))}
+        <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)', alignSelf:'center' }}>
+          {sorted.length} / {entries.length} affichés
+        </span>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'16px 0', fontSize:11, color:'var(--text-dim)' }}>
+          Aucun record{recordYear !== 'All Time' ? ` pour ${recordYear}` : ''} sur {distLabel}
+        </div>
+      ) : (
+        <div style={{
+          position:'relative',
+          background:'#F9FAFB',
+          borderRadius:12,
+          padding:'16px 16px 48px 52px',
+          minHeight:240,
+          boxSizing:'border-box',
+        }}>
+          {/* Y-axis reference lines */}
+          <div style={{ position:'absolute', left:52, right:16, top:16, height:MAX_H, pointerEvents:'none' }}>
+            {refs.map(s => {
+              const pct = s / topVal
+              const top = MAX_H * (1 - pct)
+              return (
+                <div key={s} style={{ position:'absolute', left:0, right:0, top, display:'flex', alignItems:'center' }}>
+                  <div style={{ flex:1, borderTop:'1px dashed #E5E7EB' }} />
+                  <span style={{ position:'absolute', left:-48, fontSize:13, color:'#374151', fontWeight:500, whiteSpace:'nowrap', width:44, textAlign:'right', lineHeight:1 }}>
+                    {lowerIsBetter ? secToLabel(s) : `${s}W`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Bars */}
+          <div style={{ display:'flex', gap:12, height:MAX_H, alignItems:'flex-end', justifyContent:'center', position:'relative' }}>
+            {sorted.map((e) => {
+              const h        = barH(e.val)
+              const yr       = e.date.slice(0,4)
+              const col      = getPCColor(yr, allYrs)
+              const colLight = lightenHex(col)
+              const isBest   = lowerIsBetter ? e.val === minVal : e.val === maxVal
+              const isHov    = hoveredBar === e.id
+              return (
+                <div key={e.id} style={{
+                  flex:'1 0 0',
+                  maxWidth:'calc(20% - 9.6px)',
+                  height: h,
+                  background: `linear-gradient(to top, ${col}, ${colLight})`,
+                  borderTopLeftRadius: 6,
+                  borderTopRightRadius: 6,
+                  border: isBest ? '2px solid #F59E0B' : 'none',
+                  boxShadow:'0 2px 8px rgba(0,0,0,0.12)',
+                  position:'relative',
+                  cursor:'pointer',
+                  display:'flex',
+                  flexDirection:'column',
+                  alignItems:'center',
+                  paddingTop:3,
+                  transition:'filter 150ms ease',
+                  filter: isHov ? 'brightness(1.1)' : 'none',
+                }}
+                onMouseEnter={ev => { setHoveredBar(e.id); setTip({ e, cx:ev.clientX, cy:ev.clientY }) }}
+                onMouseMove={ev  => { setTip({ e, cx:ev.clientX, cy:ev.clientY }) }}
+                onMouseLeave={() => { setHoveredBar(null); setTip(null) }}>
+                  {/* Gold star above best */}
+                  {isBest && (
+                    <div style={{ position:'absolute', top:-20, left:'50%', transform:'translateX(-50%)', fontSize:14, color:'#F59E0B', lineHeight:1, pointerEvents:'none' }}>★</div>
+                  )}
+                  {/* Value label */}
+                  {h >= 40 && (
+                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'90%', padding:'0 2px', lineHeight:1.3, userSelect:'none' }}>
+                      {e.display}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* X labels — dates under bars */}
+          <div style={{ position:'absolute', left:52, right:16, top:16+MAX_H+6, display:'flex', gap:12, justifyContent:'center' }}>
+            {sorted.map(e => (
+              <div key={e.id} style={{
+                flex:'1 0 0',
+                maxWidth:'calc(20% - 9.6px)',
+                textAlign:'center', fontSize:11, color:'#6B7280',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                transform:'rotate(-30deg)', transformOrigin:'center top',
+              }}>
+                {fmtBarDate(e.date)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tooltip portal */}
+      {tip && createPortal(
+        <div style={{
+          position:'fixed', left:tip.cx+14, top:tip.cy-130,
+          background:'var(--bg-card)', border:'1px solid var(--border)',
+          borderRadius:10, padding:'10px 14px',
+          boxShadow:'0 4px 20px rgba(0,0,0,0.24)', zIndex:9999, pointerEvents:'none', minWidth:170,
+        }}>
+          <div style={{ fontWeight:700, fontSize:16, fontFamily:'DM Mono,monospace', color:'var(--text)', marginBottom:4 }}>{tip.e.display}</div>
+          {tip.e.metric && <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:4, fontWeight:600 }}>{tip.e.metric}</div>}
+          <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>
+            {(() => { try { return new Date(tip.e.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'}) } catch { return tip.e.date } })()}
+          </div>
+          {tip.e.event_type && (
+            <div style={{ fontSize:10, fontWeight:600, color:tip.e.event_type==='competition'?'#F59E0B':'var(--text-dim)', marginBottom:2 }}>
+              {tip.e.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
+              {tip.e.race_name ? ` — ${tip.e.race_name}` : ''}
+            </div>
+          )}
+          {tip.e.rpe != null && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:2 }}>RPE {tip.e.rpe}/10</div>}
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 // ── ChartEntry — type unifié pour RecordChart ────────────────────
 type ChartEntry = {
   id: string
@@ -1735,6 +1954,21 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         <p style={lbl10}>Temps (mm:ss)</p>
         <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 5:20" autoFocus />
         {swimSplitStr && <div>{calc(`Allure : ${swimSplitStr}`)}</div>}
+        <p style={{ ...lbl10, marginTop:12 }}>Type</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          <button style={tog(raceType==='training')} onClick={() => setRaceType('training')}>Entraînement</button>
+          <button style={tog(raceType==='competition')} onClick={() => setRaceType('competition')}>Compétition</button>
+        </div>
+        {raceType === 'competition' && <>
+          <p style={lbl10}>Nom de la course</p>
+          <input style={{ ...inp, marginBottom:12 }} value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="ex : Open de Paris" />
+        </>}
+        <p style={lbl10}>RPE (effort perçu)</p>
+        <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
+          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+            <button key={n} style={tog(rpe===n)} onClick={() => setRpe(rpe===n?null:n)}>{n}</button>
+          ))}
+        </div>
       </div>
     )
     condSec = (
@@ -1761,6 +1995,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (draft)          sumItems.push({ label:'Distance', value:distLabel })
     if (draft)          sumItems.push({ label:'Temps', value:draft })
     if (swimSplitStr)   sumItems.push({ label:'Allure', value:swimSplitStr, hi:true })
+    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Compétition' : 'Entraînement' })
+    if (raceName && raceType === 'competition') sumItems.push({ label:'Course', value:raceName })
+    if (rpe !== null)   sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Bassin', value:pool==='open'?'Open water':`Bassin ${pool}` })
     sumItems.push({ label:'Combi', value:combi?'Oui':'Non' })
   }
@@ -1778,6 +2015,21 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           {rowSplStr && calc(`Split : ${rowSplStr}`)}
           {rowPower  && calc(`~${rowPower} W (Concept2)`)}
         </div>}
+        <p style={{ ...lbl10, marginTop:12 }}>Type</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          <button style={tog(raceType==='training')} onClick={() => setRaceType('training')}>Entraînement</button>
+          <button style={tog(raceType==='competition')} onClick={() => setRaceType('competition')}>Compétition</button>
+        </div>
+        {raceType === 'competition' && <>
+          <p style={lbl10}>Nom de la course</p>
+          <input style={{ ...inp, marginBottom:12 }} value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="ex : Head de la Marne" />
+        </>}
+        <p style={lbl10}>RPE (effort perçu)</p>
+        <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
+          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+            <button key={n} style={tog(rpe===n)} onClick={() => setRpe(rpe===n?null:n)}>{n}</button>
+          ))}
+        </div>
       </div>
     )
     condSec = (
@@ -1801,6 +2053,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (draft)    sumItems.push({ label:'Temps', value:draft })
     if (rowSplStr) sumItems.push({ label:'Split /500m', value:rowSplStr, hi:true })
     if (rowPower)  sumItems.push({ label:'Puissance est.', value:`~${rowPower} W`, hi:true })
+    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Compétition' : 'Entraînement' })
+    if (raceName && raceType === 'competition') sumItems.push({ label:'Course', value:raceName })
+    if (rpe !== null)   sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Support', value:ergo?'Ergomètre':'Sur l\'eau' })
     if (ergo && damper) sumItems.push({ label:'Damper', value:damper })
   }
@@ -1837,6 +2092,11 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-10h4l4 10M9 7h6"/></svg>
           <span style={secLbl}>Conditions</span>
         </div>
+        <p style={lbl10}>Type</p>
+        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+          <button style={tog(raceType==='training')} onClick={() => setRaceType('training')}>Entraînement</button>
+          <button style={tog(raceType==='competition')} onClick={() => setRaceType('competition')}>Course</button>
+        </div>
         <p style={lbl10}>Environnement</p>
         <div style={{ display:'flex', gap:6, marginBottom:12 }}>
           <button style={tog(ergo)}  onClick={() => setErgo(true)}>Home trainer</button>
@@ -1849,6 +2109,12 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
             <span style={{ fontSize:12, color:'var(--text-dim)' }}>m</span>
           </div>
         </>}
+        <p style={{ ...lbl10, marginTop:12 }}>RPE (effort perçu)</p>
+        <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
+          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+            <button key={n} style={tog(rpe===n)} onClick={() => setRpe(rpe===n?null:n)}>{n}</button>
+          ))}
+        </div>
       </div>
     )
     if (draft)   sumItems.push({ label:'Format', value:distLabel })
@@ -1857,6 +2123,8 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (np)      sumItems.push({ label:'NP', value:`${np} W` })
     if (npWkg)   sumItems.push({ label:'NP W/kg', value:`${npWkg} W/kg`, hi:true })
     if (dur)     sumItems.push({ label:'Durée', value:dur })
+    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Course' : 'Entraînement' })
+    if (rpe !== null) sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Environnement', value:ergo?'Home trainer':'Extérieur' })
     if (!ergo && dplus) sumItems.push({ label:'D+', value:`${dplus} m` })
   }
@@ -1929,7 +2197,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         {/* Fixed save */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${color}20` }}>
           <button
-            onClick={() => void onConfirm(sport === 'run' ? { raceType, raceName, rpe, terrain, surface, dplus } : undefined)}
+            onClick={() => void onConfirm({ raceType, raceName, rpe, terrain, surface, dplus })}
             disabled={!canSave || saving}
             style={{
               width:'100%', padding:'14px',
@@ -3388,30 +3656,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     cancelEdit()
   }
 
-  // Tous les records vélo depuis Supabase (toutes années)
-  const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
-
-  // All personal records for run/swim/rowing/gym from Supabase
+  // All personal records for all sports from Supabase
   const [allSpRecords, setAllSpRecords] = useState<SpRecord[]>([])
 
-  // Load all bike records from Supabase on mount (toutes années)
-  useEffect(() => {
-    const load = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase
-        .from('personal_records')
-        .select('id, distance_label, performance, achieved_at')
-        .eq('user_id', user.id)
-        .eq('sport', 'bike')
-        .order('achieved_at', { ascending: false })
-      if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
-    }
-    void load()
-  }, [])
+  // Derived: bike records from allSpRecords
+  const bikeAllRecords = allSpRecords.filter(r => r.sport === 'bike')
 
-  // Load run/swim/rowing/gym/triathlon records from Supabase
+  // Load run/swim/rowing/gym/triathlon/bike records from Supabase
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
@@ -3421,7 +3672,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         .from('personal_records')
         .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run, event_type, race_name, rpe, elevation_gain_m, terrain_type, surface')
         .eq('user_id', user.id)
-        .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
+        .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon', 'bike'])
         .order('achieved_at', { ascending: false })
       if (data) setAllSpRecords(data as SpRecord[])
     }
@@ -3578,7 +3829,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   // Toutes les années disponibles (vélo + tous sports) pour les pills
   const allRecordYears: string[] = (() => {
     const s = new Set<string>()
-    bikeAllRecords.forEach(r => s.add(r.achieved_at.slice(0, 4)))
     allSpRecords.forEach(r => s.add(r.achieved_at.slice(0, 4)))
     return [...s].sort((a, b) => b.localeCompare(a))
   })()
@@ -3590,13 +3840,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const achievedAt = editDate || new Date().toISOString().slice(0, 10)
-        const extraFields = sp === 'run' && runExtras ? {
+        const extraFields = ['run', 'swim', 'rowing', 'bike'].includes(sp) && runExtras ? {
           event_type:       runExtras.raceType,
           race_name:        runExtras.raceName || null,
           rpe:              runExtras.rpe,
-          elevation_gain_m: runExtras.dplus ? parseInt(runExtras.dplus) : null,
-          terrain_type:     runExtras.terrain,
-          surface:          runExtras.surface,
+          elevation_gain_m: sp === 'run' && runExtras.dplus ? parseInt(runExtras.dplus) : null,
+          terrain_type:     sp === 'run' ? runExtras.terrain : null,
+          surface:          sp === 'run' ? runExtras.surface : null,
         } : {}
         if (editingRecordId) {
           // UPDATE du record existant
@@ -3634,54 +3884,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             notes:            null,
           }).select('id, sport, distance_label, performance, performance_unit, achieved_at, event_type, race_name, rpe, elevation_gain_m, terrain_type, surface').single()
           if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
-        }
-      }
-    }
-    setRecordSaving(false)
-    setActiveEdit(null)
-    setEditingRecordId(null)
-    setEditDraft('')
-  }
-
-  async function confirmBikeRecord(dur: string) {
-    setRecordSaving(true)
-    const watts = parseInt(editDraft) || 0
-    if (watts > 0) {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const achievedAt = editDate || new Date().toISOString().split('T')[0]
-        if (editingRecordId) {
-          // UPDATE du record existant
-          await supabase.from('personal_records').update({
-            performance: String(watts),
-            achieved_at: achievedAt,
-          }).eq('id', editingRecordId)
-          setBikeAllRecords(prev => prev.map(r =>
-            r.id === editingRecordId
-              ? { ...r, performance: String(watts), achieved_at: achievedAt }
-              : r
-          ))
-        } else {
-          // INSERT nouveau record
-          const { data: inserted } = await supabase.from('personal_records').insert({
-            user_id:          user.id,
-            sport:            'bike',
-            distance_label:   dur,
-            performance:      String(watts),
-            performance_unit: 'watts',
-            event_type:       'training',
-            achieved_at:      achievedAt,
-            race_name:        null,
-            pace_s_km:        null,
-            elevation_gain_m: null,
-            split_swim:       null,
-            split_bike:       null,
-            split_run:        null,
-            station_times:    null,
-            notes:            null,
-          }).select('id, distance_label, performance, achieved_at').single()
-          if (inserted) setBikeAllRecords(prev => [...prev, inserted as typeof bikeAllRecords[0]])
         }
       }
     }
@@ -3736,13 +3938,9 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           date={editDate}
           setDate={setEditDate}
           saving={recordSaving}
-          onConfirm={async (runExtras) => {
-            if (drawerSpec.sport === 'bike') {
-              await confirmBikeRecord(drawerSpec.distLabel)
-            } else {
-              const unit = drawerSpec.sport === 'gym' ? 'kg' : 'time'
-              await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit, runExtras)
-            }
+          onConfirm={async (extras) => {
+            const unit = drawerSpec.sport === 'bike' ? 'watts' : drawerSpec.sport === 'gym' ? 'kg' : 'time'
+            await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit, extras)
             setDrawerSpec(null)
           }}
           onClose={closeDrawer}
@@ -3839,7 +4037,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           </div>
           <Card>
             <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Records de puissance</h2>
-            {/* Sélecteur de durée + graphique */}
+            {/* Sélecteur de durée */}
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 10, paddingBottom: 2 }}>
               {BIKE_DURS.map(d => (
                 <button key={d} onClick={() => setSelBikeDur(d)} style={{
@@ -3852,39 +4050,133 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
               ))}
             </div>
             {(() => {
-              const bikeEntries: ChartEntry[] = bikeAllRecords
-                .filter(r => r.distance_label === selBikeDur && parseInt(r.performance) > 0)
-                .map(r => ({
-                  id: r.id,
-                  val: parseInt(r.performance) || 0,
-                  display: `${r.performance}W`,
-                  date: r.achieved_at.slice(0, 10),
-                  sub: profile.weight > 0 ? `${((parseInt(r.performance) || 0) / profile.weight).toFixed(2)} W/kg` : undefined,
-                }))
-              return <RecordChart title={selBikeDur} entries={bikeEntries} recordYear={recordYear} color="#5b6fff" lowerIsBetter={false} />
-            })()}
-            {BIKE_DURS.map(d => {
-              const eff = getEffectiveRec(d)
-              const prev = getPrevRec(d)
-              const sel = selectedDatum?.label === `Vélo ${d}` && selectedDatum?.value === `${eff.w}W`
+              const durRecs = allSpRecords.filter(r => r.sport === 'bike' && r.distance_label === selBikeDur && parseInt(r.performance) > 0)
+              const yearRecs = recordYear === 'All Time' ? durRecs : durRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
+              const bestRec = [...durRecs].sort((a,b) => parseInt(b.performance) - parseInt(a.performance))[0] ?? null
+              const wkg = (w: string) => profile.weight > 0 ? `${(parseInt(w)/profile.weight).toFixed(2)} W/kg` : null
+              const bikeGaugeEntries: GaugeEntry[] = yearRecs.map(r => ({
+                id: r.id, val: parseInt(r.performance) || 0, display: `${r.performance}W`,
+                date: r.achieved_at.slice(0,10),
+                metric: wkg(r.performance),
+                event_type: r.event_type, race_name: r.race_name, rpe: r.rpe,
+              }))
               return (
-                <RecordRow key={d} label={d}
-                  rec24={eff.w > 0 ? `${eff.w}W` : '—'}
-                  rec23={prev && prev.w > 0 ? `${prev.w}W` : '—'}
-                  sub={eff.w > 0 ? `${(eff.w / profile.weight).toFixed(2)} W/kg` : undefined}
-                  onSelect={() => eff.w > 0 ? onSelect(`Vélo ${d}`, `${eff.w}W`) : undefined}
-                  selected={sel}
-                  actions={
-                    <button
-                      onClick={() => openDrawer('bike', d, eff.id, eff.w > 0 ? String(eff.w) : '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                    >
-                      Modifier
-                    </button>
-                  }
-                />
+                <>
+                  {/* Best power header */}
+                  {bestRec ? (
+                    <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
+                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                        <div>
+                          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                            <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#5b6fff', lineHeight:1 }}>{bestRec.performance}W</span>
+                            {wkg(bestRec.performance) && <span style={{ fontSize:14, color:'#5b6fff', fontWeight:600 }}>{wkg(bestRec.performance)}</span>}
+                          </div>
+                          <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                            <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
+                            <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
+                            {bestRec.event_type && (
+                              <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
+                                background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
+                                color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
+                              }}>
+                                {bestRec.event_type==='competition' ? '🏆 Course' : '🚴 Entraînement'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button onClick={() => openDrawer('bike', selBikeDur, null, '')} style={{
+                          padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                          background:'#5b6fff', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0,
+                        }}>+ Ajouter</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-mid)' }}>Records {selBikeDur}</span>
+                      <button onClick={() => openDrawer('bike', selBikeDur, null, '')} style={{
+                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                        background:'#5b6fff', color:'#fff', fontSize:11, fontWeight:700,
+                      }}>+ Ajouter</button>
+                    </div>
+                  )}
+
+                  {/* Gauge chart — inverted for bike: more watts = taller */}
+                  <UniversalGaugeChart entries={bikeGaugeEntries} distLabel={selBikeDur} recordYear={recordYear} lowerIsBetter={false} refVals={BIKE_REF_WATTS[selBikeDur]} />
+
+                  {/* History table */}
+                  {durRecs.length > 0 && (() => {
+                    const sortedHistory = [...durRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
+                    const bestW = durRecs.reduce((m, r) => Math.max(m, parseInt(r.performance)||0), 0)
+                    return (
+                      <div style={{ marginTop:16 }}>
+                        <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
+                        <div style={{ overflowX:'auto', minHeight:200 }}>
+                          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                            <thead>
+                              <tr>
+                                {['Date','Watts','W/kg','Type','RPE',''].map(h => (
+                                  <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sortedHistory.map((r, idx) => {
+                                const isRecord = (parseInt(r.performance)||0) === bestW
+                                const wColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#5b6fff'
+                                const isComp = r.event_type === 'competition'
+                                return (
+                                  <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
+                                    <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
+                                      {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+                                    </td>
+                                    <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: wColor, fontSize:12 }}>{r.performance}W</td>
+                                    <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>
+                                      {profile.weight > 0 ? `${((parseInt(r.performance)||0)/profile.weight).toFixed(2)} W/kg` : '—'}
+                                    </td>
+                                    <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                      {r.event_type ? (
+                                        <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
+                                          background: isComp ? '#FEF3C7' : '#EFF6FF', color: isComp ? '#D97706' : '#3B82F6',
+                                        }}>{isComp ? 'Course' : 'Entraîn.'}</span>
+                                      ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
+                                    </td>
+                                    <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
+                                    <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                      <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                        <button onClick={() => openDrawer('bike', selBikeDur, r.id, r.performance)} title="Modifier"
+                                          style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
+                                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                          </svg>
+                                        </button>
+                                        <button onClick={() => { if (confirm('Supprimer ?')) void deleteSpRecord(r.id) }} title="Supprimer"
+                                          style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
+                                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6"/>
+                                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                            <path d="M10 11v6M14 11v6"/>
+                                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </>
               )
-            })}
+            })()}
           </Card>
 
           <ClimbsSection profile={profile} />
@@ -4086,57 +4378,149 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
               )
             })}
           </div>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
-            </div>
-            {/* Sélecteur distance + graphique */}
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-              {SWIM_DISTS.map(d => (
-                <button key={d} onClick={() => setSelSwimDist(d)} style={{
-                  padding: '3px 9px', borderRadius: 6,
-                  background: selSwimDist === d ? 'rgba(56,189,248,0.15)' : 'var(--bg-card2)',
-                  border: `1px solid ${selSwimDist === d ? '#38bdf8' : 'var(--border)'}`,
-                  color: selSwimDist === d ? '#38bdf8' : 'var(--text-dim)',
-                  fontSize: 10, fontWeight: selSwimDist === d ? 700 : 400, cursor: 'pointer',
-                }}>{d}</button>
-              ))}
-            </div>
-            {(() => {
-              const swimEntries: ChartEntry[] = allSpRecords
-                .filter(r => r.sport === 'swim' && r.distance_label === selSwimDist && toSec(r.performance) > 0)
-                .map(r => ({
-                  id: r.id,
-                  val: toSec(r.performance),
-                  display: r.performance,
-                  date: r.achieved_at.slice(0, 10),
-                  sub: SWIM_M[selSwimDist]
-                    ? calcSplit500m(SWIM_M[selSwimDist], r.performance).replace('/500m', '/100m')
-                    : undefined,
-                }))
-              return <RecordChart title={selSwimDist} entries={swimEntries} recordYear={recordYear} color="#38bdf8" lowerIsBetter={true} />
-            })()}
-            {SWIM_DISTS.map(d => {
-              const spBest  = getSpBest('swim', d, recordYear)
-              const prevRec = getSpPrev('swim', d)
-              const split   = spBest ? calcSplit500m(SWIM_M[d] ?? 0, spBest.perf).replace('/500m', '/100m') : '—'
-              const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              return (
-                <RecordRow key={d} label={d}
-                  rec24={spBest?.perf ?? '—'}
-                  rec23={prevRec?.perf ?? '—'}
-                  sub={split !== '—' ? split : undefined}
-                  onSelect={() => spBest ? onSelect(`Natation ${d}`, spBest.perf) : undefined}
-                  selected={sel}
-                  actions={
-                    <button onClick={() => openDrawer('swim', d, spBest?.id ?? null, spBest?.perf ?? '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      Modifier
-                    </button>
-                  } />
-              )
-            })}
-          </Card>
+          {/* Distance selector */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            {SWIM_DISTS.map(d => (
+              <button key={d} onClick={() => setSelSwimDist(d)} style={{
+                padding:'4px 11px', borderRadius:8,
+                background: selSwimDist===d ? 'rgba(56,189,248,0.18)' : 'var(--bg-card2)',
+                border:`1px solid ${selSwimDist===d ? '#38bdf8' : 'var(--border)'}`,
+                color: selSwimDist===d ? '#38bdf8' : 'var(--text-dim)',
+                fontSize:11, fontWeight:selSwimDist===d?700:400, cursor:'pointer',
+              }}>{d}</button>
+            ))}
+          </div>
+          {/* Per-distance card */}
+          {(() => {
+            const distRecs = allSpRecords.filter(r => r.sport === 'swim' && r.distance_label === selSwimDist && toSec(r.performance) > 0)
+            const yearRecs = recordYear === 'All Time' ? distRecs : distRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
+            const bestRec = [...distRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
+            const swimM = SWIM_M[selSwimDist] ?? 0
+            const swimGaugeEntries: GaugeEntry[] = yearRecs.map(r => ({
+              id: r.id, val: toSec(r.performance), display: r.performance,
+              date: r.achieved_at.slice(0,10),
+              metric: swimM > 0 ? calcSplit500m(swimM, r.performance).replace('/500m', '/100m') : null,
+              event_type: r.event_type, race_name: r.race_name, rpe: r.rpe,
+            }))
+            return (
+              <Card>
+                {/* Best time header */}
+                {bestRec ? (
+                  <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#38bdf8', lineHeight:1 }}>{bestRec.performance}</span>
+                          {swimM > 0 && <span style={{ fontSize:14, color:'#38bdf8', fontWeight:600 }}>{calcSplit500m(swimM, bestRec.performance).replace('/500m', '/100m')}</span>}
+                        </div>
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
+                          {bestRec.event_type && (
+                            <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
+                              background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
+                              color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
+                            }}>
+                              {bestRec.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
+                            </span>
+                          )}
+                          {bestRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestRec.race_name}</span>}
+                        </div>
+                      </div>
+                      <button onClick={() => openDrawer('swim', selSwimDist, null, '')} style={{
+                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                        background:'#38bdf8', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
+                      }}>+ Ajouter</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                    <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Records {selSwimDist}</h2>
+                    <button onClick={() => openDrawer('swim', selSwimDist, null, '')} style={{
+                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                      background:'#38bdf8', color:'#000', fontSize:11, fontWeight:700,
+                    }}>+ Ajouter</button>
+                  </div>
+                )}
+
+                {/* Gauge chart */}
+                <UniversalGaugeChart entries={swimGaugeEntries} distLabel={selSwimDist} recordYear={recordYear} lowerIsBetter={true} refVals={SWIM_REF_SECS[selSwimDist]} />
+
+                {/* History table */}
+                {distRecs.length > 0 && (() => {
+                  const sortedHistory = [...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
+                  const bestSecs = distRecs.reduce((m, r) => Math.min(m, toSec(r.performance)), Infinity)
+                  return (
+                    <div style={{ marginTop:16 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
+                      <div style={{ overflowX:'auto', minHeight:200 }}>
+                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                          <thead>
+                            <tr>
+                              {['Date','Temps','/100m','Type','Course','RPE',''].map(h => (
+                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedHistory.map((r, idx) => {
+                              const isRecord = toSec(r.performance) === bestSecs
+                              const timeColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#38bdf8'
+                              const isComp = r.event_type === 'competition'
+                              return (
+                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
+                                    {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>
+                                    {swimM > 0 ? calcSplit500m(swimM, r.performance).replace('/500m', '/100m') : '—'}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    {r.event_type ? (
+                                      <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
+                                        background: isComp ? '#FEF3C7' : '#EFF6FF', color: isComp ? '#D97706' : '#3B82F6',
+                                      }}>{isComp ? 'Compét.' : 'Entraîn.'}</span>
+                                    ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>{r.race_name ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                      <button onClick={() => openDrawer('swim', selSwimDist, r.id, r.performance)} title="Modifier"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                      </button>
+                                      <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} title="Supprimer"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6"/>
+                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                          <path d="M10 11v6M14 11v6"/>
+                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </Card>
+            )
+          })()}
         </div>
       )}
 
@@ -4160,63 +4544,149 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
               )
             })}
           </div>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
-            </div>
-            {/* Sélecteur distance + graphique */}
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-              {ROW_DISTS.map(d => (
-                <button key={d} onClick={() => setSelRowDist(d)} style={{
-                  padding: '3px 9px', borderRadius: 6,
-                  background: selRowDist === d ? 'rgba(20,184,166,0.15)' : 'var(--bg-card2)',
-                  border: `1px solid ${selRowDist === d ? '#14b8a6' : 'var(--border)'}`,
-                  color: selRowDist === d ? '#14b8a6' : 'var(--text-dim)',
-                  fontSize: 10, fontWeight: selRowDist === d ? 700 : 400, cursor: 'pointer',
-                }}>{d}</button>
-              ))}
-            </div>
-            {(() => {
-              const rowEntries: ChartEntry[] = allSpRecords
-                .filter(r => r.sport === 'rowing' && r.distance_label === selRowDist && toSec(r.performance) > 0)
-                .map(r => ({
-                  id: r.id,
-                  val: toSec(r.performance),
-                  display: r.performance,
-                  date: r.achieved_at.slice(0, 10),
-                  sub: ROW_M[selRowDist] ? calcSplit500m(ROW_M[selRowDist], r.performance) : undefined,
-                }))
-              return <RecordChart title={selRowDist} entries={rowEntries} recordYear={recordYear} color="#14b8a6" lowerIsBetter={true} />
-            })()}
-            {ROW_DISTS.map(d => {
-              const spBest  = getSpBest('rowing', d, recordYear)
-              const prevRec = getSpPrev('rowing', d)
-              const split   = spBest ? calcSplit500m(ROW_M[d] ?? 0, spBest.perf) : '—'
-              const wStr = (() => {
-                if (split === '—') return '—'
-                const pp = split.split('/')[0].split(':').map(Number)
-                const ss = (pp[0] ?? 0) * 60 + (pp[1] ?? 0)
-                return ss > 0 ? `~${Math.round(2.80 / (ss / 500) ** 3)}W` : '—'
-              })()
-              const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
-              const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              return (
-                <RecordRow key={d} label={lbl}
-                  rec24={spBest?.perf ?? '—'}
-                  rec23={prevRec?.perf ?? '—'}
-                  sub={split !== '—' ? `${split} · ${wStr}` : undefined}
-                  onSelect={() => spBest ? onSelect(`Aviron ${d}`, spBest.perf) : undefined}
-                  selected={sel}
-                  actions={
-                    <button onClick={() => openDrawer('rowing', d, spBest?.id ?? null, spBest?.perf ?? '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      Modifier
-                    </button>
-                  } />
-              )
-            })}
-            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>Puissance via formule Concept2 : P = 2.80 / (split/500)³</p>
-          </Card>
+          {/* Distance selector */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            {ROW_DISTS.map(d => (
+              <button key={d} onClick={() => setSelRowDist(d)} style={{
+                padding:'4px 11px', borderRadius:8,
+                background: selRowDist===d ? 'rgba(20,184,166,0.18)' : 'var(--bg-card2)',
+                border:`1px solid ${selRowDist===d ? '#14b8a6' : 'var(--border)'}`,
+                color: selRowDist===d ? '#14b8a6' : 'var(--text-dim)',
+                fontSize:11, fontWeight:selRowDist===d?700:400, cursor:'pointer',
+              }}>{d}</button>
+            ))}
+          </div>
+          {/* Per-distance card */}
+          {(() => {
+            const distRecs = allSpRecords.filter(r => r.sport === 'rowing' && r.distance_label === selRowDist && toSec(r.performance) > 0)
+            const yearRecs = recordYear === 'All Time' ? distRecs : distRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
+            const bestRec = [...distRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
+            const rowM = ROW_M[selRowDist] ?? 0
+            const rowGaugeEntries: GaugeEntry[] = yearRecs.map(r => ({
+              id: r.id, val: toSec(r.performance), display: r.performance,
+              date: r.achieved_at.slice(0,10),
+              metric: rowM > 0 ? calcSplit500m(rowM, r.performance) : null,
+              event_type: r.event_type, race_name: r.race_name, rpe: r.rpe,
+            }))
+            return (
+              <Card>
+                {/* Best time header */}
+                {bestRec ? (
+                  <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#14b8a6', lineHeight:1 }}>{bestRec.performance}</span>
+                          {rowM > 0 && <span style={{ fontSize:14, color:'#14b8a6', fontWeight:600 }}>{calcSplit500m(rowM, bestRec.performance)}</span>}
+                        </div>
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
+                          {bestRec.event_type && (
+                            <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
+                              background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
+                              color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
+                            }}>
+                              {bestRec.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
+                            </span>
+                          )}
+                          {bestRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestRec.race_name}</span>}
+                        </div>
+                      </div>
+                      <button onClick={() => openDrawer('rowing', selRowDist, null, '')} style={{
+                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                        background:'#14b8a6', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
+                      }}>+ Ajouter</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                    <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Records {selRowDist}</h2>
+                    <button onClick={() => openDrawer('rowing', selRowDist, null, '')} style={{
+                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                      background:'#14b8a6', color:'#000', fontSize:11, fontWeight:700,
+                    }}>+ Ajouter</button>
+                  </div>
+                )}
+
+                {/* Gauge chart */}
+                <UniversalGaugeChart entries={rowGaugeEntries} distLabel={selRowDist} recordYear={recordYear} lowerIsBetter={true} refVals={ROW_REF_SECS[selRowDist]} />
+
+                {/* History table */}
+                {distRecs.length > 0 && (() => {
+                  const sortedHistory = [...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
+                  const bestSecs = distRecs.reduce((m, r) => Math.min(m, toSec(r.performance)), Infinity)
+                  return (
+                    <div style={{ marginTop:16 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
+                      <div style={{ overflowX:'auto', minHeight:200 }}>
+                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                          <thead>
+                            <tr>
+                              {['Date','Temps','/500m','Type','Course','RPE',''].map(h => (
+                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedHistory.map((r, idx) => {
+                              const isRecord = toSec(r.performance) === bestSecs
+                              const timeColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#14b8a6'
+                              const isComp = r.event_type === 'competition'
+                              return (
+                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
+                                    {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>
+                                    {rowM > 0 ? calcSplit500m(rowM, r.performance) : '—'}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    {r.event_type ? (
+                                      <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
+                                        background: isComp ? '#FEF3C7' : '#EFF6FF', color: isComp ? '#D97706' : '#3B82F6',
+                                      }}>{isComp ? 'Compét.' : 'Entraîn.'}</span>
+                                    ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>{r.race_name ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                      <button onClick={() => openDrawer('rowing', selRowDist, r.id, r.performance)} title="Modifier"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                      </button>
+                                      <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} title="Supprimer"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6"/>
+                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                          <path d="M10 11v6M14 11v6"/>
+                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </Card>
+            )
+          })()}
         </div>
       )}
 

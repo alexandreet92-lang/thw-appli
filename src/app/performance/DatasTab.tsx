@@ -1221,6 +1221,19 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
   }
   const selectedRace = races.find(r => r.id === c2Id) ?? races[0] ?? null
 
+  const hyroxGaugeEntries: GaugeEntry[] = c1Races
+    .filter(r => toSec(r.temps_final) > 0)
+    .map(r => ({
+      id: r.id,
+      val: toSec(r.temps_final),
+      display: r.temps_final,
+      date: r.date,
+      metric: null,
+      event_type: 'competition',
+      race_name: r.partenaire ? `Avec ${r.partenaire}` : (HYROX_FORMAT_LABELS[r.format] ?? r.format),
+      rpe: null,
+    }))
+
   if (loading) {
     return <Card><p style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center', padding: '20px 0' }}>Chargement…</p></Card>
   }
@@ -1269,14 +1282,77 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
               </p>
             ) : (
               <>
-                <HyroxTotalChart races={c1Races} bestId={bestId} bestByYear={bestByYear} />
-                <div style={{ display:'flex', gap:12, alignItems:'center', justifyContent:'flex-end', marginTop:4 }}>
-                  <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
-                    <span style={{ color:'#ef4444', fontWeight:700 }}>★</span> Meilleur global
-                  </span>
-                  <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
-                    <span style={{ color:'#ef4444aa', fontWeight:700 }}>✦</span> Meilleur annuel
-                  </span>
+                {/* Best time header */}
+                {bestId && (() => {
+                  const best = c1Races.find(r => r.id === bestId)!
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.2)', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Meilleur temps</p>
+                        <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 20, fontWeight: 800, color: '#10B981', margin: 0, lineHeight: 1 }}>{best.temps_final}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Format</p>
+                        <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{HYROX_FORMAT_LABELS[best.format] ?? best.format}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Date</p>
+                        <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{(() => { try { return new Date(best.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return best.date } })()}</p>
+                      </div>
+                      {best.partenaire && (
+                        <div>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Partenaire</p>
+                          <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{best.partenaire}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+                {/* Gauge chart */}
+                {hyroxGaugeEntries.length > 0 && (
+                  <UniversalGaugeChart
+                    entries={hyroxGaugeEntries}
+                    distLabel={c1Format === 'all' ? 'Tous formats' : (HYROX_FORMAT_LABELS[c1Format] ?? c1Format)}
+                    recordYear={recordYear}
+                    lowerIsBetter={true}
+                  />
+                )}
+                {/* History table */}
+                <div style={{ marginTop: 16, minHeight: 200 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #F3F4F6' }}>
+                        {['Date', 'Format', 'Temps', 'Partenaire', ''].map((h, i) => (
+                          <th key={i} style={{ textAlign: i === 4 ? 'right' : 'left', padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {c1Races.map((r, i) => {
+                        const isBest = r.id === bestId
+                        return (
+                          <tr key={r.id} style={{ background: i % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom: '1px solid #F3F4F6' }}>
+                            <td style={{ padding: '7px 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                              {(() => { try { return new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return r.date } })()}
+                            </td>
+                            <td style={{ padding: '7px 8px', fontSize: 11 }}>{HYROX_FORMAT_LABELS[r.format] ?? r.format}</td>
+                            <td style={{ padding: '7px 8px', fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 700, color: isBest ? '#10B981' : 'var(--text)' }}>
+                              {r.temps_final}{isBest && <span style={{ marginLeft: 5, fontSize: 10, color: '#10B981' }}>★</span>}
+                            </td>
+                            <td style={{ padding: '7px 8px', fontSize: 11, color: 'var(--text-dim)' }}>{r.partenaire ?? '—'}</td>
+                            <td style={{ padding: '7px 8px', textAlign: 'right' }}>
+                              <button onClick={() => setC2Id(r.id)} title="Voir détail" style={{
+                                padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)',
+                                background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
+                              }}>
+                                Détail
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </>
             )}
@@ -1302,16 +1378,16 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
           </div>
 
           {hyroxView === 'total' && (() => {
-            const totalEntries: ChartEntry[] = c1Races
+            const totalEntries: GaugeEntry[] = c1Races
               .filter(r => toSec(r.temps_final) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.temps_final), display: r.temps_final, date: r.date }))
-            return <RecordChart title="Temps total Hyrox" entries={totalEntries} recordYear={recordYear} color="#ef4444" lowerIsBetter={true} />
+              .map(r => ({ id: r.id, val: toSec(r.temps_final), display: r.temps_final, date: r.date, metric: null, event_type: 'competition', race_name: HYROX_FORMAT_LABELS[r.format] ?? r.format, rpe: null }))
+            return <UniversalGaugeChart entries={totalEntries} distLabel="Temps total Hyrox" recordYear={recordYear} lowerIsBetter={true} />
           })()}
 
           {hyroxView === 'station' && (() => {
-            const stationEntries: ChartEntry[] = c1Races
+            const stationEntries: GaugeEntry[] = c1Races
               .filter(r => r.stations[selStation] && toSec(r.stations[selStation]) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.stations[selStation]), display: r.stations[selStation], date: r.date }))
+              .map(r => ({ id: r.id, val: toSec(r.stations[selStation]), display: r.stations[selStation], date: r.date, metric: null, event_type: null, race_name: null, rpe: null }))
             return (
               <>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -1325,22 +1401,22 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
                     }}>{s}</button>
                   ))}
                 </div>
-                <RecordChart title={selStation} entries={stationEntries} recordYear={recordYear} color="#ef4444" lowerIsBetter={true} />
+                <UniversalGaugeChart entries={stationEntries} distLabel={selStation} recordYear={recordYear} lowerIsBetter={true} />
               </>
             )
           })()}
 
           {hyroxView === 'run' && (() => {
-            const runTotalEntries: ChartEntry[] = c1Races
+            const runTotalEntries: GaugeEntry[] = c1Races
               .filter(r => r.temps_run_total && toSec(r.temps_run_total) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.temps_run_total!), display: r.temps_run_total!, date: r.date }))
-            const runEntries: ChartEntry[] = c1Races
+              .map(r => ({ id: r.id, val: toSec(r.temps_run_total!), display: r.temps_run_total!, date: r.date, metric: null, event_type: null, race_name: null, rpe: null }))
+            const runEntries: GaugeEntry[] = c1Races
               .filter(r => r.runs[selRunIdx] && toSec(r.runs[selRunIdx]) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.runs[selRunIdx]), display: r.runs[selRunIdx], date: r.date }))
+              .map(r => ({ id: r.id, val: toSec(r.runs[selRunIdx]), display: r.runs[selRunIdx], date: r.date, metric: null, event_type: null, race_name: null, rpe: null }))
             return (
               <>
                 {runTotalEntries.length > 0 && (
-                  <RecordChart title="Run total" entries={runTotalEntries} recordYear={recordYear} color="#ef4444" lowerIsBetter={true} />
+                  <UniversalGaugeChart entries={runTotalEntries} distLabel="Run total" recordYear={recordYear} lowerIsBetter={true} />
                 )}
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -1353,7 +1429,7 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
                     }}>Run {i + 1}</button>
                   ))}
                 </div>
-                <RecordChart title={`Run ${selRunIdx + 1}`} entries={runEntries} recordYear={recordYear} color="#ef4444" lowerIsBetter={true} />
+                <UniversalGaugeChart entries={runEntries} distLabel={`Run ${selRunIdx + 1}`} recordYear={recordYear} lowerIsBetter={true} />
               </>
             )
           })()}
@@ -4725,43 +4801,86 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             const fmtLabel  = TRIATHLON_FORMATS.find(f => f.id === selTriFmt)?.label ?? selTriFmt
             const fmtObj    = TRIATHLON_FORMATS.find(f => f.id === selTriFmt)
 
-            const triEntries: ChartEntry[] = allSpRecords
-              .filter(r => r.sport === 'triathlon' && r.distance_label === selTriFmt)
-              .flatMap(r => {
-                const entry = (() => {
-                  if (selTriDisc === 'total') {
-                    const v = toSec(r.performance); if (!v) return null
-                    return { id: r.id, val: v, display: r.performance, date: r.achieved_at.slice(0, 10) }
-                  }
-                  if (selTriDisc === 'natation') {
-                    const v = toSec(r.split_swim ?? ''); if (!v) return null
-                    return { id: r.id, val: v, display: r.split_swim ?? '—', date: r.achieved_at.slice(0, 10) }
-                  }
-                  if (selTriDisc === 'vélo') {
-                    const v = toSec(r.split_bike ?? ''); if (!v) return null
-                    return { id: r.id, val: v, display: r.split_bike ?? '—', date: r.achieved_at.slice(0, 10) }
-                  }
-                  if (selTriDisc === 'run') {
-                    const v = toSec(r.split_run ?? ''); if (!v) return null
-                    const runKmDisc = fmtObj ? TRI_DIST[fmtObj.id]?.runKm ?? 0 : 0
-                    const sub = runKmDisc > 0 ? calcPacePerKm(runKmDisc, r.split_run ?? '') : undefined
-                    return { id: r.id, val: v, display: r.split_run ?? '—', date: r.achieved_at.slice(0, 10), sub }
-                  }
-                  if (selTriDisc === 't1') {
-                    const v = toSec(r.split_t1 ?? ''); if (!v) return null
-                    return { id: r.id, val: v, display: r.split_t1 ?? '—', date: r.achieved_at.slice(0, 10) }
-                  }
-                  if (selTriDisc === 't2') {
-                    const v = toSec(r.split_t2 ?? ''); if (!v) return null
-                    return { id: r.id, val: v, display: r.split_t2 ?? '—', date: r.achieved_at.slice(0, 10) }
-                  }
-                  return null
-                })()
-                return entry ? [entry] : []
-              })
+            const fmtRecs = allSpRecords.filter(r => r.sport === 'triathlon' && r.distance_label === selTriFmt)
+            const triGaugeEntries: GaugeEntry[] = fmtRecs.flatMap(r => {
+              const entry = (() => {
+                if (selTriDisc === 'total') {
+                  const v = toSec(r.performance); if (!v) return null
+                  return { id: r.id, val: v, display: r.performance, date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
+                }
+                if (selTriDisc === 'natation') {
+                  const v = toSec(r.split_swim ?? ''); if (!v) return null
+                  const swimMDisc = fmtObj ? ({ XS:400,S:750,M:1500,'70.3':1900,Ironman:3800 } as Record<string,number>)[fmtObj.id] ?? 0 : 0
+                  const metric = swimMDisc > 0 ? calcSplit500m(swimMDisc, r.split_swim ?? '').replace('/500m', '/100m') : null
+                  return { id: r.id, val: v, display: r.split_swim ?? '—', date: r.achieved_at.slice(0, 10), metric, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
+                }
+                if (selTriDisc === 'vélo') {
+                  const v = toSec(r.split_bike ?? ''); if (!v) return null
+                  return { id: r.id, val: v, display: r.split_bike ?? '—', date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
+                }
+                if (selTriDisc === 'run') {
+                  const v = toSec(r.split_run ?? ''); if (!v) return null
+                  const runKmDisc = fmtObj ? TRI_DIST[fmtObj.id]?.runKm ?? 0 : 0
+                  const metric = runKmDisc > 0 ? calcPacePerKm(runKmDisc, r.split_run ?? '') : null
+                  return { id: r.id, val: v, display: r.split_run ?? '—', date: r.achieved_at.slice(0, 10), metric, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
+                }
+                if (selTriDisc === 't1') {
+                  const v = toSec(r.split_t1 ?? ''); if (!v) return null
+                  return { id: r.id, val: v, display: r.split_t1 ?? '—', date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
+                }
+                if (selTriDisc === 't2') {
+                  const v = toSec(r.split_t2 ?? ''); if (!v) return null
+                  return { id: r.id, val: v, display: r.split_t2 ?? '—', date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
+                }
+                return null
+              })()
+              return entry ? [entry as GaugeEntry] : []
+            })
+
+            const bestFmtRec = [...fmtRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
 
             return (
-              <div style={{ marginBottom: 10 }}>
+              <Card style={{ marginBottom: 10 }}>
+                {/* Best time header for selected format */}
+                {bestFmtRec ? (
+                  <div style={{ marginBottom:14, paddingBottom:12, borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                          <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'#f59e0b' }}>{fmtLabel}</span>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:22, fontWeight:700, color:'#f59e0b', lineHeight:1 }}>{bestFmtRec.performance}</span>
+                        </div>
+                        {(bestFmtRec.split_swim || bestFmtRec.split_bike || bestFmtRec.split_run) && (
+                          <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:10, fontFamily:'DM Mono,monospace', color:'var(--text-dim)', marginBottom:4 }}>
+                            {bestFmtRec.split_swim && <span>🏊 {bestFmtRec.split_swim}</span>}
+                            {bestFmtRec.split_t1   && <span>T1 {bestFmtRec.split_t1}</span>}
+                            {bestFmtRec.split_bike && <span>🚴 {bestFmtRec.split_bike}</span>}
+                            {bestFmtRec.split_t2   && <span>T2 {bestFmtRec.split_t2}</span>}
+                            {bestFmtRec.split_run  && <span>🏃 {bestFmtRec.split_run}</span>}
+                          </div>
+                        )}
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestFmtRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
+                          {bestFmtRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestFmtRec.race_name}</span>}
+                        </div>
+                      </div>
+                      <button onClick={() => openTriDrawer(selTriFmt, null)} style={{
+                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                        background:'#f59e0b', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
+                      }}>+ Ajouter</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                    <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700 }}>Records {fmtLabel}</span>
+                    <button onClick={() => openTriDrawer(selTriFmt, null)} style={{
+                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
+                      background:'#f59e0b', color:'#000', fontSize:11, fontWeight:700,
+                    }}>+ Ajouter</button>
+                  </div>
+                )}
+
                 {/* Sélecteur format */}
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
                   {TRIATHLON_FORMATS.map(f => (
@@ -4786,14 +4905,73 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                     }}>{d.label}</button>
                   ))}
                 </div>
-                <RecordChart
-                  title={`${fmtLabel} — ${selTriDisc}`}
-                  entries={triEntries}
-                  recordYear={recordYear}
-                  color={discColor}
-                  lowerIsBetter={true}
-                />
-              </div>
+
+                {/* UniversalGaugeChart */}
+                <UniversalGaugeChart entries={triGaugeEntries} distLabel={`${fmtLabel} — ${selTriDisc}`} recordYear={recordYear} lowerIsBetter={true} />
+
+                {/* History table for selected format */}
+                {fmtRecs.length > 0 && (() => {
+                  const sortedHistory = [...fmtRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
+                  const bestSecs = fmtRecs.reduce((m,r) => Math.min(m, toSec(r.performance)), Infinity)
+                  return (
+                    <div style={{ marginTop:16 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique {fmtLabel}</div>
+                      <div style={{ overflowX:'auto', minHeight:120 }}>
+                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                          <thead>
+                            <tr>
+                              {['Date','Total','🏊','🚴','🏃','T1','T2',''].map(h => (
+                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedHistory.map((r, idx) => {
+                              const isRecord = toSec(r.performance) === bestSecs
+                              const timeColor = isRecord ? '#10B981' : '#F59E0B'
+                              return (
+                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>{new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}</td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_swim ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_bike ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_run ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_t1 ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_t2 ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                      <button onClick={() => openTriDrawer(selTriFmt, r)} title="Modifier"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                      </button>
+                                      <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} title="Supprimer"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6"/>
+                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                          <path d="M10 11v6M14 11v6"/>
+                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </Card>
             )
           })()}
 

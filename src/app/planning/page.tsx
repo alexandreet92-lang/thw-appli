@@ -4726,7 +4726,7 @@ function IntervalPanel({
 // ── ElevationChart ────────────────────────────────
 type TerrainBlockOverlay = { label: string; startKm: number; endKm: number; zone: number; value: string; blockIdx: number; color?: string }
 
-function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag, onBlockClick, powerGauges, onGaugeWattsChange, onGaugeEdgeChange, drawModeActive, onBlockDraw }: {
+function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBlockEdgeDrag, onBlockClick, powerGauges, onGaugeWattsChange, onGaugeEdgeChange, drawModeActive, onBlockDraw, onGaugeAction }: {
   profile: Array<{ distKm: number; ele: number }>
   totalKm: number
   accent: string
@@ -4734,11 +4734,12 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   terrainBlocks?: TerrainBlockOverlay[]
   onBlockEdgeDrag?: (blockIdx: number, edge: 'start' | 'end', newKm: number) => void
   onBlockClick?: (blockIdx: number) => void
-  powerGauges?: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }>
+  powerGauges?: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; name?: string; estimatedMin: number; hrAvg?: number }>
   onGaugeWattsChange?: (blockIdx: number, newWatts: number) => void
   onGaugeEdgeChange?: (blockIdx: number, edge: 'start' | 'end', newKm: number) => void
   drawModeActive?: boolean
   onBlockDraw?: (startKm: number, endKm: number, anchorPct: number) => void
+  onGaugeAction?: (blockIdx: number, action: 'modify' | 'intervals') => void
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
@@ -4747,6 +4748,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   const [gaugeEdgeDrag, setGaugeEdgeDrag] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
   const [hoveredGauge, setHoveredGauge] = useState<number | null>(null)
   const [drawDrag, setDrawDrag] = useState<{ startKm: number; currentKm: number } | null>(null)
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   if (profile.length < 2) return null
 
@@ -4849,7 +4851,11 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
     setDragging(null); setGaugeDrag(null); setGaugeEdgeDrag(null)
   }
   function handleMouseLeave() {
-    if (!dragging && !gaugeDrag && !gaugeEdgeDrag && !drawDrag) { setCursor(null); if (onHover) onHover(null) }
+    if (!dragging && !gaugeDrag && !gaugeEdgeDrag && !drawDrag) {
+      setCursor(null); if (onHover) onHover(null)
+      if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current)
+      leaveTimerRef.current = setTimeout(() => setHoveredGauge(null), 150)
+    }
   }
 
   // Zone colors: Z1→Z5
@@ -4990,8 +4996,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                 <path d={gaugePath}
                   fill={`url(#${gradId})`} opacity={fillOpacity * 0.6}
                   style={{ cursor: onGaugeWattsChange ? 'ns-resize' : 'default' }}
-                  onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
-                  onMouseLeave={() => setHoveredGauge(null)}
+                  onMouseEnter={() => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current); setHoveredGauge(pg.blockIdx) }}
+                  onMouseLeave={() => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current); leaveTimerRef.current = setTimeout(() => setHoveredGauge(null), 150) }}
                   onMouseDown={onGaugeWattsChange ? e => {
                     e.stopPropagation()
                     const svg2 = svgRef.current; if (!svg2) return
@@ -5004,8 +5010,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                 <path d={gaugePath}
                   fill={`url(#${gradId})`} opacity={fillOpacity}
                   style={{ cursor: onGaugeWattsChange ? 'ns-resize' : 'default' }}
-                  onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
-                  onMouseLeave={() => setHoveredGauge(null)}
+                  onMouseEnter={() => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current); setHoveredGauge(pg.blockIdx) }}
+                  onMouseLeave={() => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current); leaveTimerRef.current = setTimeout(() => setHoveredGauge(null), 150) }}
                   onMouseDown={onGaugeWattsChange ? e => {
                     e.stopPropagation()
                     const svg2 = svgRef.current; if (!svg2) return
@@ -5082,29 +5088,6 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                     onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}/>
                 </>
               )}
-              {/* Premium tooltip on hover */}
-              {isHovered && !isDragging && (() => {
-                const bw = 140, tx = Math.min(Math.max((x1+x2)/2 - bw/2, PL), W-PR-bw)
-                const estKm = (pg.endKm - pg.startKm).toFixed(1)
-                const lines = [
-                  `km ${pg.startKm.toFixed(1)} → ${pg.endKm.toFixed(1)} (${estKm}km)`,
-                  `${pg.watts}W · ${zLbl} · ${pg.estimatedMin.toFixed(0)} min`,
-                  `IF: ${(pg.watts/pg.ftpRef).toFixed(2)} · ref FTP ${pg.ftpRef}W`,
-                  ...(pg.hrAvg ? [`FC cible ~${pg.hrAvg} bpm`] : []),
-                  ...(hasIntervals ? [`${pg.label}`] : []),
-                ]
-                const bh = lines.length * 13 + 12
-                const by = Math.max(yTop - bh - 6, PT + 2)
-                return (
-                  <>
-                    <rect x={tx} y={by} width={bw} height={bh} rx={6} fill="var(--bg-card)" stroke={gradTop} strokeWidth={1.5} opacity={0.97}/>
-                    {lines.map((ln, li) => (
-                      <text key={li} x={tx+8} y={by+12+li*13} fontSize={8} fill={li===1?gradTop:'var(--text)'}
-                        fontFamily='"DM Mono",monospace' fontWeight={li===1?700:400}>{ln}</text>
-                    ))}
-                  </>
-                )
-              })()}
             </g>
           )
         })}
@@ -5135,6 +5118,108 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           </g>
         )}
       </svg>
+      {/* HTML tooltip flottante au-dessus des jauges */}
+      {hoveredGauge !== null && !gaugeDrag && (() => {
+        const pg = powerGauges?.find(g => g.blockIdx === hoveredGauge)
+        if (!pg) return null
+        const x1t = PL + (pg.startKm / totalKm) * pW
+        const x2t = PL + (pg.endKm   / totalKm) * pW
+        const gaugeHt = Math.min((pg.watts / (pg.ftpRef * 1.5)) * pH, pH * 0.98)
+        const yTopt = PT + pH - gaugeHt
+        const xCenterPct = (x1t + x2t) / 2 / W * 100
+        const yTopPct    = yTopt / H * 100
+
+        // Zone
+        const zoneRatioT = pg.watts / pg.ftpRef
+        const GRAD_COLORS_T: Record<string,[string,string]> = {
+          Z1:['#9CA3AF','#D1D5DB'],Z2:['#16A34A','#4ADE80'],Z3:['#CA8A04','#FDE047'],
+          Z4:['#EA580C','#FB923C'],Z5:['#DC2626','#F87171'],Z6:['#9333EA','#C084FC'],Z7:['#1D4ED8','#60A5FA'],
+        }
+        const ZONE_NAMES: Record<string,string> = {
+          Z1:'Z1 — Récup',Z2:'Z2 — EF',Z3:'Z3 — Tempo',Z4:'Z4 — Seuil',
+          Z5:'Z5 — VO2max',Z6:'Z6 — Anaérobie',Z7:'Z7 — Sprint',
+        }
+        const zLblT = zoneRatioT>1.50?'Z7':zoneRatioT>1.20?'Z6':zoneRatioT>1.05?'Z5':zoneRatioT>0.87?'Z4':zoneRatioT>0.75?'Z3':zoneRatioT>0.55?'Z2':'Z1'
+        const [,gradTopT] = GRAD_COLORS_T[zLblT] ?? [pg.color, pg.color]
+
+        // Avg slope & D+
+        const startPt = profile.find(p => p.distKm >= pg.startKm) ?? profile[0]
+        const endPt   = [...profile].reverse().find(p => p.distKm <= pg.endKm) ?? profile[profile.length - 1]
+        const distT   = Math.max(0.01, pg.endKm - pg.startKm)
+        const slopeT  = Math.round(((endPt.ele - startPt.ele) / (distT * 1000)) * 1000) / 10
+        let dPlusT = 0
+        for (let ii = 1; ii < profile.length; ii++) {
+          if (profile[ii].distKm > pg.endKm) break
+          if (profile[ii].distKm >= pg.startKm) {
+            const delta = profile[ii].ele - profile[ii - 1].ele
+            if (delta > 0) dPlusT += delta
+          }
+        }
+
+        const tooltipTitle = pg.name ?? pg.label
+        const rows: [string,string,string][] = [
+          ['⚡','Watts',`${pg.watts}W`],
+          ['🏷','Zone', ZONE_NAMES[zLblT] ?? zLblT],
+          ['⏱','Durée',`${pg.estimatedMin.toFixed(0)} min`],
+          ['📍','km',`${pg.startKm.toFixed(1)} → ${pg.endKm.toFixed(1)}`],
+          ['📈','Pente',`${slopeT > 0 ? '+' : ''}${slopeT}%`],
+          ['🏔','D+',`${Math.round(dPlusT)}m`],
+          ...(pg.hrAvg ? [['❤️','FC cible',`~${pg.hrAvg} bpm`] as [string,string,string]] : []),
+        ]
+
+        return (
+          <div
+            key={`tooltip-${pg.blockIdx}`}
+            onMouseEnter={() => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current) }}
+            onMouseLeave={() => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current); leaveTimerRef.current = setTimeout(() => setHoveredGauge(null), 150) }}
+            style={{
+              position: 'absolute',
+              left: `${xCenterPct}%`,
+              top: `${yTopPct}%`,
+              transform: 'translateX(-50%) translateY(calc(-100% - 10px))',
+              background: 'var(--bg-card)',
+              borderRadius: 10,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              border: `1.5px solid ${gradTopT}50`,
+              padding: '10px 14px',
+              minWidth: 210,
+              zIndex: 50,
+              pointerEvents: 'auto',
+              userSelect: 'none',
+            }}
+          >
+            {/* Title */}
+            <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 7, borderBottom: '1px solid var(--border)', paddingBottom: 6, color: gradTopT }}>
+              {tooltipTitle}
+            </div>
+            {/* Data rows */}
+            {rows.map(([icon, label, val], ri) => (
+              <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, marginBottom: 4 }}>
+                <span style={{ width: 18, textAlign: 'center' }}>{icon}</span>
+                <span style={{ color: 'var(--text-dim)', flex: 1 }}>{label}</span>
+                <span style={{ fontWeight: 700, fontFamily: '"DM Mono",monospace', color: ri === 0 ? gradTopT : 'var(--text)' }}>{val}</span>
+              </div>
+            ))}
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); setHoveredGauge(null); onGaugeAction?.(pg.blockIdx, 'modify') }}
+                style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: 'var(--text)' }}
+              >
+                Modifier
+              </button>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); setHoveredGauge(null); onGaugeAction?.(pg.blockIdx, 'intervals') }}
+                style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${gradTopT}60`, background: `${gradTopT}15`, fontSize: 10, fontWeight: 700, cursor: 'pointer', color: gradTopT }}
+              >
+                ⚡ Intervalles
+              </button>
+            </div>
+          </div>
+        )
+      })()}
       {/* Tooltip sous le SVG */}
       {cursor && !dragging && (
         <div style={{
@@ -7878,12 +7963,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               .filter(c => c.selected)
                               .sort((a, b) => segments[a.segIdx].startKm - segments[b.segIdx].startKm)
 
-                            const gauges: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; estimatedMin: number; hrAvg?: number }> = []
+                            const gauges: Array<{ blockIdx: number; startKm: number; endKm: number; watts: number; ftpRef: number; color: string; label: string; name?: string; estimatedMin: number; hrAvg?: number }> = []
                             let efIdx = 0
 
                             const pushEF = (s: number, e: number) => {
                               if (e - s < 0.05) return
                               const distKm = Math.round((e - s) * 10) / 10
+                              const efNum = efIdx + 1
                               gauges.push({
                                 blockIdx: -(efIdx++ + 1000),
                                 startKm: Math.round(s * 10) / 10,
@@ -7891,7 +7977,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 watts: efWatts,
                                 ftpRef: ftp2,
                                 color: wColor(efWatts),
-                                label: `EF km${Math.round(s * 10) / 10}→${Math.round(e * 10) / 10}`,
+                                label: `EF${efNum}`,
+                                name: `Endurance fondamentale ${efNum}`,
                                 estimatedMin: estimateTimeOnSegment(distKm, 0, efWatts, athleteWeight, bikeWeight),
                               })
                             }
@@ -7906,6 +7993,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               for (let i = 0; i < selectedClimbs.length; i++) {
                                 const cc = selectedClimbs[i]
                                 const seg = segments[cc.segIdx]
+                                const climbNum = i + 1
                                 // Climb gauge
                                 gauges.push({
                                   blockIdx: cc.segIdx,
@@ -7914,7 +8002,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   watts: cc.watts,
                                   ftpRef: ftp2,
                                   color: wColor(cc.watts),
-                                  label: `km${seg.startKm}→${seg.endKm}`,
+                                  label: `Côte ${climbNum}`,
+                                  name: `Côte ${climbNum} — km ${seg.startKm} → ${seg.endKm}`,
                                   estimatedMin: estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, cc.watts, athleteWeight, bikeWeight),
                                 })
                                 // EF gap until next climb (or end)
@@ -7951,7 +8040,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 watts: sb.watts,
                                 ftpRef: ftp2,
                                 color: wColor(sb.watts),
-                                label: `Bloc km${sb.startKm}→${sb.endKm}`,
+                                label: `Bloc ${si + 1}`,
+                                name: `Bloc spécifique ${si + 1} — km ${sb.startKm} → ${sb.endKm}`,
                                 estimatedMin: sb.estimatedMin,
                                 hrAvg: sb.hrAvg,
                               })
@@ -8014,6 +8104,21 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             return { ...sb, startKm: newStart, endKm: newEnd, estimatedMin: mins }
                           }))
                         }
+                      }}
+                      onGaugeAction={(bidx, action) => {
+                        if (action === 'intervals') {
+                          if (bidx >= 0) {
+                            // Climb — find ci by segIdx
+                            const ci = climbConfigs.findIndex(c => c.segIdx === bidx)
+                            if (ci >= 0) setOpenIntervals(prev => ({ ...prev, [`c_${ci}`]: true }))
+                          } else if (bidx <= -2000) {
+                            // Specific block
+                            const si = -(bidx + 2000)
+                            const sb = specificBlocks[si]
+                            if (sb) setOpenIntervals(prev => ({ ...prev, [sb.id]: true }))
+                          }
+                        }
+                        // 'modify' — just close tooltip (already handled in ElevationChart)
                       }}
                       onBlockEdgeDrag={aiFlowStep === 'parcours' ? undefined : (blockIdx, edge, newKm) => {
                         setBlocks(prev => prev.map((b, i) => {

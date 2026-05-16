@@ -312,6 +312,15 @@ const HYROX_FORMAT_LABELS: Record<string, string> = {
   duo_pro:   'Duo Pro',
 }
 
+// ── RunGaugeChart — helpers ──────────────────────────────────────
+function lightenHex(hex: string, factor = 0.5): string {
+  if (hex.length !== 7 || hex[0] !== '#') return hex
+  const r = parseInt(hex.slice(1,3), 16)
+  const g = parseInt(hex.slice(3,5), 16)
+  const b = parseInt(hex.slice(5,7), 16)
+  return '#' + [r, g, b].map(c => Math.min(255, Math.round(c + (255-c)*factor)).toString(16).padStart(2,'0')).join('')
+}
+
 // ── RunGaugeChart — jauges running pleine largeur ────────────────
 // Hauteur ∝ temps (lent = haut, rapide = bas). Ordre chronologique.
 const RUN_REF_SECS: Record<string, number[]> = {
@@ -349,7 +358,8 @@ function RunGaugeChart({ records, dist, recordYear }: {
 }) {
   const [count, setCount] = useState(10)
   const [tip, setTip] = useState<{ r: SpRecord; cx: number; cy: number } | null>(null)
-  const MAX_H = 160, MIN_H = 20
+  const [hoveredBar, setHoveredBar] = useState<string | null>(null)
+  const MAX_H = 200, MIN_H = 24
 
   const filtered = records.filter(r => {
     if (toSec(r.performance) <= 0) return false
@@ -369,6 +379,11 @@ function RunGaugeChart({ records, dist, recordYear }: {
     return Math.max(MIN_H, (s / topSec) * MAX_H)
   }
 
+  function fmtBarDate(dateStr: string): string {
+    try { return new Date(dateStr).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) }
+    catch { return dateStr.slice(0,7) }
+  }
+
   const refs = (RUN_REF_SECS[dist] ?? []).filter(s => s <= topSec && s > 0)
   const allYrs = [...new Set(sorted.map(r => r.achieved_at.slice(0,4)))].sort((a,b) => b.localeCompare(a))
 
@@ -382,15 +397,19 @@ function RunGaugeChart({ records, dist, recordYear }: {
 
   return (
     <div style={{ marginBottom: 8 }}>
-      {/* Count selector */}
-      <div style={{ display:'flex', gap:4, marginBottom:12 }}>
+      {/* Count selector — pills */}
+      <div style={{ display:'flex', gap:6, marginBottom:12 }}>
         {[5,10,20].map(n => (
           <button key={n} onClick={() => setCount(n)} style={{
-            padding:'4px 12px', borderRadius:8, border:'none', cursor:'pointer',
-            fontSize:11, fontWeight: count===n ? 700 : 400,
-            background: count===n ? '#22c55e' : 'var(--bg-card2)',
-            color: count===n ? '#000' : 'var(--text-dim)',
-          }}>{n} derniers</button>
+            padding:'4px 14px', borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:600,
+            border: count===n ? 'none' : '1px solid #D1D5DB',
+            background: count===n ? '#111827' : 'transparent',
+            color: count===n ? '#fff' : '#6B7280',
+            transition:'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='#F3F4F6' }}
+          onMouseLeave={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='transparent' }}
+          >{n} derniers</button>
         ))}
         <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)', alignSelf:'center' }}>
           {sorted.length} / {filtered.length} affichés
@@ -402,16 +421,24 @@ function RunGaugeChart({ records, dist, recordYear }: {
           Aucun record{recordYear !== 'All Time' ? ` pour ${recordYear}` : ''} sur {dist}
         </div>
       ) : (
-        <div style={{ position:'relative', paddingLeft:40, paddingBottom:20 }}>
+        /* Graph zone */
+        <div style={{
+          position:'relative',
+          background:'#F9FAFB',
+          borderRadius:12,
+          padding:'16px 16px 48px 52px',
+          minHeight:240,
+          boxSizing:'border-box',
+        }}>
           {/* Y-axis reference lines */}
-          <div style={{ position:'absolute', left:40, right:0, top:0, height:MAX_H, pointerEvents:'none' }}>
+          <div style={{ position:'absolute', left:52, right:16, top:16, height:MAX_H, pointerEvents:'none' }}>
             {refs.map(s => {
-              const pct = s / topSec  // 0=bottom, 1=top
-              const top = MAX_H * (1 - pct)  // px from top
+              const pct = s / topSec
+              const top = MAX_H * (1 - pct)
               return (
                 <div key={s} style={{ position:'absolute', left:0, right:0, top, display:'flex', alignItems:'center' }}>
-                  <div style={{ flex:1, borderTop:'1px dashed rgba(120,120,120,0.25)' }} />
-                  <span style={{ position:'absolute', left:-40, fontSize:8, color:'var(--text-dim)', whiteSpace:'nowrap', width:38, textAlign:'right' }}>
+                  <div style={{ flex:1, borderTop:'1px dashed #E5E7EB' }} />
+                  <span style={{ position:'absolute', left:-48, fontSize:13, color:'#374151', fontWeight:500, whiteSpace:'nowrap', width:44, textAlign:'right', lineHeight:1 }}>
                     {secToLabel(s)}
                   </span>
                 </div>
@@ -419,50 +446,71 @@ function RunGaugeChart({ records, dist, recordYear }: {
             })}
           </div>
 
-          {/* Bars — full width, flex */}
-          <div style={{ display:'flex', gap:4, height:MAX_H, alignItems:'flex-end', position:'relative' }}>
+          {/* Bars — capped at 1/5 container width, centered */}
+          <div style={{ display:'flex', gap:12, height:MAX_H, alignItems:'flex-end', justifyContent:'center', position:'relative' }}>
             {sorted.map((r) => {
-              const secs   = toSec(r.performance)
-              const h      = barH(secs)
-              const yr     = r.achieved_at.slice(0,4)
-              const col    = getPCColor(yr, allYrs)
-              const isBest = secs === minSec
-              const isComp = r.event_type === 'competition'
+              const secs     = toSec(r.performance)
+              const h        = barH(secs)
+              const yr       = r.achieved_at.slice(0,4)
+              const col      = getPCColor(yr, allYrs)
+              const colLight = lightenHex(col)
+              const isBest   = secs === minSec
+              const isHov    = hoveredBar === r.id
               return (
                 <div key={r.id} style={{
-                  flex:1, height:h, minWidth:0,
-                  background: col, opacity: isBest ? 1 : 0.78,
-                  borderRadius:'4px 4px 0 0',
-                  border: isBest ? '2px solid #f59e0b' : isComp ? `1px solid ${col}` : 'none',
-                  position:'relative', cursor:'default', overflow:'hidden',
-                  display:'flex', flexDirection:'column', alignItems:'center', paddingTop:2,
+                  flex:'1 0 0',
+                  maxWidth:'calc(20% - 9.6px)',
+                  height: h,
+                  background: `linear-gradient(to top, ${col}, ${colLight})`,
+                  borderTopLeftRadius: 6,
+                  borderTopRightRadius: 6,
+                  border: isBest ? '2px solid #F59E0B' : 'none',
+                  boxShadow:'0 2px 8px rgba(0,0,0,0.12)',
+                  position:'relative',
+                  cursor:'pointer',
+                  display:'flex',
+                  flexDirection:'column',
+                  alignItems:'center',
+                  paddingTop:3,
+                  transition:'filter 150ms ease',
+                  filter: isHov ? 'brightness(1.1)' : 'none',
                 }}
-                  onMouseEnter={e => setTip({ r, cx:e.clientX, cy:e.clientY })}
-                  onMouseMove={e  => setTip({ r, cx:e.clientX, cy:e.clientY })}
-                  onMouseLeave={() => setTip(null)}>
+                onMouseEnter={e => { setHoveredBar(r.id); setTip({ r, cx:e.clientX, cy:e.clientY }) }}
+                onMouseMove={e  => { setTip({ r, cx:e.clientX, cy:e.clientY }) }}
+                onMouseLeave={() => { setHoveredBar(null); setTip(null) }}>
+                  {/* Gold star above best */}
                   {isBest && (
-                    <div style={{ position:'absolute', top:-18, left:'50%', transform:'translateX(-50%)', fontSize:13, color:'#f59e0b', lineHeight:1 }}>★</div>
+                    <div style={{ position:'absolute', top:-20, left:'50%', transform:'translateX(-50%)', fontSize:14, color:'#F59E0B', lineHeight:1, pointerEvents:'none' }}>★</div>
                   )}
-                  <span style={{ fontSize:8, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%', padding:'0 2px', lineHeight:1.3 }}>
-                    {r.performance}
-                  </span>
-                  {h >= 32 && <span style={{ fontSize:7, color:'rgba(255,255,255,0.75)', whiteSpace:'nowrap' }}>{yr}</span>}
+                  {/* Time label — hidden if bar too short */}
+                  {h >= 40 && (
+                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'90%', padding:'0 2px', lineHeight:1.3, userSelect:'none' }}>
+                      {r.performance}
+                    </span>
+                  )}
                 </div>
               )
             })}
           </div>
-          {/* X labels — dates */}
-          <div style={{ display:'flex', gap:4, paddingLeft:0, marginTop:3 }}>
+
+          {/* X labels — dates under bars */}
+          <div style={{ position:'absolute', left:52, right:16, top:16+MAX_H+6, display:'flex', gap:12, justifyContent:'center' }}>
             {sorted.map(r => (
-              <div key={r.id} style={{ flex:1, textAlign:'center', fontSize:7, color:'var(--text-dim)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                {r.achieved_at.slice(0,7)}
+              <div key={r.id} style={{
+                flex:'1 0 0',
+                maxWidth:'calc(20% - 9.6px)',
+                textAlign:'center', fontSize:11, color:'#6B7280',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                transform:'rotate(-30deg)', transformOrigin:'center top',
+              }}>
+                {fmtBarDate(r.achieved_at)}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Tooltip */}
+      {/* Tooltip portal */}
       {tip && createPortal(
         <div style={{
           position:'fixed', left:tip.cx+14, top:tip.cy-130,
@@ -476,7 +524,7 @@ function RunGaugeChart({ records, dist, recordYear }: {
             {(() => { try { return new Date(tip.r.achieved_at).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'}) } catch { return tip.r.achieved_at } })()}
           </div>
           {tip.r.event_type && (
-            <div style={{ fontSize:10, fontWeight:600, color:tip.r.event_type==='competition'?'#f59e0b':'var(--text-dim)', marginBottom:2 }}>
+            <div style={{ fontSize:10, fontWeight:600, color:tip.r.event_type==='competition'?'#F59E0B':'var(--text-dim)', marginBottom:2 }}>
               {tip.r.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
               {tip.r.race_name ? ` — ${tip.r.race_name}` : ''}
             </div>
@@ -3932,47 +3980,86 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                 <RunGaugeChart records={yearRecs} dist={selRunDist} recordYear={recordYear} />
 
                 {/* History table */}
-                {distRecs.length > 0 && (
-                  <div style={{ marginTop:16 }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
-                    <div style={{ overflowX:'auto' }}>
-                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                        <thead>
-                          <tr>
-                            {['Date','Temps','Allure','Type','Course','RPE','D+',''].map(h => (
-                              <th key={h} style={{ textAlign:'left', padding:'4px 6px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at)).map(r => (
-                            <tr key={r.id} style={{ borderBottom:'1px solid rgba(120,120,120,0.08)' }}>
-                              <td style={{ padding:'5px 6px', color:'var(--text-mid)', whiteSpace:'nowrap' }}>
-                                {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
-                              </td>
-                              <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', fontWeight:700, color:'#22c55e' }}>{r.performance}</td>
-                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{km > 0 ? calcPacePerKm(km, r.performance) : '—'}</td>
-                              <td style={{ padding:'5px 6px', whiteSpace:'nowrap' }}>
-                                <span style={{ fontSize:10, color:r.event_type==='competition'?'#f59e0b':'var(--text-dim)' }}>
-                                  {r.event_type==='competition' ? '🏅 Compét.' : '🏃 Entraîn.'}
-                                </span>
-                              </td>
-                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.race_name ?? '—'}</td>
-                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', textAlign:'center' }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
-                              <td style={{ padding:'5px 6px', color:'var(--text-dim)', textAlign:'center' }}>{r.elevation_gain_m != null ? `${r.elevation_gain_m}m` : '—'}</td>
-                              <td style={{ padding:'5px 6px', whiteSpace:'nowrap' }}>
-                                <div style={{ display:'flex', gap:4 }}>
-                                  <button onClick={() => openDrawer('run', selRunDist, r.id, r.performance)} style={{ padding:'2px 7px', borderRadius:5, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', fontSize:9, cursor:'pointer' }}>Modifier</button>
-                                  <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} style={{ padding:'2px 7px', borderRadius:5, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.06)', color:'#ef4444', fontSize:9, cursor:'pointer' }}>✕</button>
-                                </div>
-                              </td>
+                {distRecs.length > 0 && (() => {
+                  const sortedHistory = [...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
+                  const bestSecs = distRecs.reduce((m, r) => Math.min(m, toSec(r.performance)), Infinity)
+                  return (
+                    <div style={{ marginTop:16 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
+                      <div style={{ overflowX:'auto', minHeight:200 }}>
+                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                          <thead>
+                            <tr>
+                              {['Date','Temps','Allure','Type','Course','RPE','D+',''].map(h => (
+                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
+                              ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {sortedHistory.map((r, idx) => {
+                              const isRecord = toSec(r.performance) === bestSecs
+                              const timeColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#3B82F6'
+                              const isComp = r.event_type === 'competition'
+                              return (
+                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
+                                    {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>{km > 0 ? calcPacePerKm(km, r.performance) : '—'}</td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    {r.event_type ? (
+                                      <span style={{
+                                        display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
+                                        background: isComp ? '#FEF3C7' : '#EFF6FF',
+                                        color: isComp ? '#D97706' : '#3B82F6',
+                                      }}>
+                                        {isComp ? 'Compét.' : 'Entraîn.'}
+                                      </span>
+                                    ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
+                                  </td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>{r.race_name ?? '—'}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
+                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.elevation_gain_m != null ? `${r.elevation_gain_m}m` : '—'}</td>
+                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
+                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                      <button
+                                        onClick={() => openDrawer('run', selRunDist, r.id, r.performance)}
+                                        title="Modifier"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center', transition:'color 0.15s' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}
+                                      >
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                      </button>
+                                      <button
+                                        onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }}
+                                        title="Supprimer"
+                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center', transition:'color 0.15s' }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}
+                                      >
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6"/>
+                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                          <path d="M10 11v6M14 11v6"/>
+                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
               </Card>
             )
           })()}

@@ -4586,6 +4586,143 @@ function LocalInput({ value, onCommit, min, max, style, placeholder, step }: {
   )
 }
 
+// ── IntervalPanel ────────────────────────────────────────────────────
+function IntervalPanel({
+  blockDurationMin, defaultWatts, ftp,
+  value, onChange, onClose,
+}: {
+  blockDurationMin: number; defaultWatts: number; ftp: number
+  value: { effortSec: number; effortWatts: number; recoverySec: number; recoveryWatts: number; reps: number; withRecovery: boolean } | null
+  onChange: (v: { effortSec: number; effortWatts: number; recoverySec: number; recoveryWatts: number; reps: number; withRecovery: boolean } | null) => void
+  onClose: () => void
+}) {
+  const [effortSec, setEffortSec]     = useState(value?.effortSec     ?? 30)
+  const [effortWatts, setEffortWatts] = useState(value?.effortWatts   ?? defaultWatts)
+  const [withRec, setWithRec]         = useState(value?.withRecovery  ?? true)
+  const [recSec, setRecSec]           = useState(value?.recoverySec   ?? 15)
+  const [recWatts, setRecWatts]       = useState(value?.recoveryWatts ?? Math.round(ftp * 0.50))
+  const [reps, setReps]               = useState(value?.reps          ?? 8)
+
+  const perRepSec  = effortSec + (withRec ? recSec : 0)
+  const totSec     = perRepSec * reps
+  const totMin     = totSec / 60
+  const blockSec   = blockDurationMin * 60
+  const overflow   = totSec > blockSec + 30
+  const remainSec  = blockSec - totSec
+
+  function wattsZone(w: number): string {
+    const r = w / ftp
+    return r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1'
+  }
+  function wattsColor(w: number): string {
+    const r = w / ftp
+    return r > 1.50 ? '#6B21A8' : r > 1.20 ? '#991B1B' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#9ca3af'
+  }
+  function toMmSs(s: number): string { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` }
+  function parseMmSs(str: string): number { const p=str.split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0) }
+  function fmtSec(s: number): string { const m=Math.floor(s/60),sc=s%60; return m>0?`${m}′${sc>0?String(sc).padStart(2,'0')+'″':''}`:`${sc}″` }
+
+  const efCol = wattsColor(effortWatts), rcCol = wattsColor(recWatts)
+  const PRESETS = [
+    {l:'30/15',eS:30,rS:15},{l:'30/30',eS:30,rS:30},{l:'45/45',eS:45,rS:45},
+    {l:'1′/1′',eS:60,rS:60},{l:'1′30/30',eS:90,rS:30},{l:'2′/1′',eS:120,rS:60},{l:'4′/1′',eS:240,rS:60},
+  ]
+
+  return (
+    <div style={{ padding:'12px 14px', background:'var(--bg-card2)', borderTop:'1px solid var(--border)' }}>
+      {/* Presets */}
+      <div style={{ marginBottom:10 }}>
+        <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 6px' }}>Presets</p>
+        <div style={{ display:'flex', gap:4, flexWrap:'wrap' as const }}>
+          {PRESETS.map(p => (
+            <button key={p.l} onClick={() => { setEffortSec(p.eS); setRecSec(p.rS); setWithRec(true); setReps(Math.max(1,Math.floor(blockSec/(p.eS+p.rS)))) }}
+              style={{ padding:'3px 8px', borderRadius:5, border:'1px solid var(--border)', fontSize:9, fontWeight:600, cursor:'pointer', fontFamily:'DM Mono,monospace',
+                background: effortSec===p.eS&&recSec===p.rS ? `${efCol}22` : 'var(--bg-card)', color: effortSec===p.eS&&recSec===p.rS ? efCol : 'var(--text-mid)' }}>{p.l}</button>
+          ))}
+          <button onClick={() => onChange(null)} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#ef4444', fontSize:9, fontWeight:600, cursor:'pointer', marginLeft:'auto' }}>✕ Supprimer</button>
+        </div>
+      </div>
+      {/* Effort + Récup */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
+        <div style={{ padding:'8px 10px', borderRadius:7, border:`1px solid ${efCol}40`, background:`${efCol}07` }}>
+          <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, color:efCol, margin:'0 0 6px' }}>Effort</p>
+          <div style={{ display:'flex', flexDirection:'column' as const, gap:5 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Durée</span>
+              <input type="text" defaultValue={toMmSs(effortSec)} onBlur={e => setEffortSec(Math.max(5,parseMmSs(e.target.value)))}
+                style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${efCol}50`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
+              <span style={{ fontSize:8, color:'var(--text-dim)' }}>mm:ss</span>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Watts</span>
+              <input type="number" value={effortWatts} onChange={e => setEffortWatts(Math.max(50,Math.min(600,parseInt(e.target.value)||0)))}
+                style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${efCol}50`, background:'var(--bg-card)', color:efCol, fontSize:10, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
+              <span style={{ fontSize:9, fontWeight:700, color:efCol }}>{wattsZone(effortWatts)}</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ padding:'8px 10px', borderRadius:7, border:`1px solid ${withRec?rcCol+'40':'var(--border)'}`, background:withRec?`${rcCol}07`:'var(--bg-card)', opacity:withRec?1:0.55 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:6 }}>
+            <button onClick={() => setWithRec(v=>!v)} style={{ width:12,height:12, borderRadius:2, border:`2px solid ${withRec?rcCol:'var(--border)'}`, background:withRec?rcCol:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, flexShrink:0 }}>
+              {withRec && <span style={{ fontSize:7, color:'#fff' }}>✓</span>}
+            </button>
+            <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, color:withRec?rcCol:'var(--text-dim)', margin:0 }}>Récup</p>
+          </div>
+          {withRec && (
+            <div style={{ display:'flex', flexDirection:'column' as const, gap:5 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Durée</span>
+                <input type="text" defaultValue={toMmSs(recSec)} onBlur={e => setRecSec(Math.max(5,parseMmSs(e.target.value)))}
+                  style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${rcCol}50`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
+                <span style={{ fontSize:8, color:'var(--text-dim)' }}>mm:ss</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <span style={{ fontSize:9, color:'var(--text-dim)', width:36 }}>Watts</span>
+                <input type="number" value={recWatts} onChange={e => setRecWatts(Math.max(50,Math.min(600,parseInt(e.target.value)||0)))}
+                  style={{ width:48, padding:'2px 5px', borderRadius:4, border:`1px solid ${rcCol}50`, background:'var(--bg-card)', color:rcCol, fontSize:10, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'right' as const, outline:'none' }}/>
+                <span style={{ fontSize:9, fontWeight:700, color:rcCol }}>{wattsZone(recWatts)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Reps row */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+        <span style={{ fontSize:9, color:'var(--text-dim)', whiteSpace:'nowrap' as const }}>Répétitions</span>
+        <input type="number" value={reps} min={1} max={99} onChange={e => setReps(Math.max(1,parseInt(e.target.value)||1))}
+          style={{ width:40, padding:'2px 5px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:11, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
+        <button onClick={() => { if(perRepSec>0) setReps(Math.max(1,Math.floor(blockSec/perRepSec))) }}
+          style={{ padding:'2px 8px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-mid)', fontSize:9, fontWeight:600, cursor:'pointer' }}>Auto</button>
+        <span style={{ fontSize:10, color:'var(--text)', fontFamily:'DM Mono,monospace' }}>
+          = {Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}
+        </span>
+        {overflow && <span style={{ fontSize:9, color:'#ef4444', background:'rgba(239,68,68,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ +{Math.round((totSec-blockSec)/60)}min</span>}
+        {!overflow && remainSec > 30 && <span style={{ fontSize:9, color:'#eab308', background:'rgba(234,179,8,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ {Math.round(remainSec/60)}min non couverts</span>}
+      </div>
+      {/* Summary */}
+      <div style={{ padding:'6px 9px', borderRadius:5, background:'var(--bg-card)', border:'1px solid var(--border)', fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-mid)', marginBottom:8 }}>
+        {reps} × ({fmtSec(effortSec)} @{effortWatts}W{withRec?` + ${fmtSec(recSec)} @${recWatts}W`:''}){' '}
+        = <strong style={{ color:overflow?'#ef4444':'var(--text)' }}>{Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}</strong>
+      </div>
+      {/* Mini viz */}
+      <div style={{ display:'flex', height:24, borderRadius:4, overflow:'hidden', marginBottom:8 }}>
+        {Array.from({length:Math.min(reps,24)},(_,ri) => (
+          <>
+            <div key={`e${ri}`} style={{ flex:effortSec, background:efCol, opacity:0.85, borderRight:'1px solid var(--bg-card2)' }}/>
+            {withRec && <div key={`r${ri}`} style={{ flex:recSec, background:'#9CA3AF', opacity:0.4, borderRight:'1px solid var(--bg-card2)' }}/>}
+          </>
+        ))}
+      </div>
+      {/* Apply */}
+      <button
+        onClick={() => { onChange({ effortSec, effortWatts, recoverySec:withRec?recSec:0, recoveryWatts:withRec?recWatts:0, reps, withRecovery:withRec }); onClose() }}
+        style={{ width:'100%', padding:'7px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${efCol},${efCol}bb)`, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+        ⚡ Appliquer ces intervalles
+      </button>
+    </div>
+  )
+}
+
 // ── ElevationChart ────────────────────────────────
 type TerrainBlockOverlay = { label: string; startKm: number; endKm: number; zone: number; value: string; blockIdx: number; color?: string }
 
@@ -4807,8 +4944,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
             </g>
           )
         })}
-        {/* Power gauges — proportional height, draggable top edge */}
-        {(powerGauges ?? []).map((pg) => {
+        {/* Power gauges — premium design */}
+        {(powerGauges ?? []).map((pg, _pgIdx) => {
           const x1 = PL + (pg.startKm / totalKm) * pW
           const x2 = PL + (pg.endKm   / totalKm) * pW
           const w  = Math.max(x2 - x1, 3)
@@ -4817,106 +4954,157 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           const yBot   = PT + pH
           const isHovered = hoveredGauge === pg.blockIdx
           const isDragging = gaugeDrag?.blockIdx === pg.blockIdx
-          const r4 = Math.min(4, w / 2, gaugeH / 2)
-          // Path avec coins supérieurs arrondis uniquement (bas plat, ancré sur l'axe)
+          const r4 = Math.min(6, w / 2, gaugeH / 2)
+
+          // Zone-based gradient colors
+          const zoneRatio = pg.watts / pg.ftpRef
+          const GRAD_COLORS: Record<string,[string,string]> = {
+            Z1: ['#9CA3AF','#D1D5DB'], Z2: ['#16A34A','#4ADE80'],
+            Z3: ['#CA8A04','#FDE047'], Z4: ['#EA580C','#FB923C'],
+            Z5: ['#DC2626','#F87171'], Z6: ['#9333EA','#C084FC'],
+            Z7: ['#1D4ED8','#60A5FA'],
+          }
+          const zLbl = zoneRatio>1.50?'Z7':zoneRatio>1.20?'Z6':zoneRatio>1.05?'Z5':zoneRatio>0.87?'Z4':zoneRatio>0.75?'Z3':zoneRatio>0.55?'Z2':'Z1'
+          const [gradBot, gradTop] = GRAD_COLORS[zLbl] ?? [pg.color, pg.color]
+          const gradId = `g_${pg.blockIdx}`
+
+          // Opacity per type
+          const baseOpacity = pg.blockIdx <= -2000 ? 0.95 : pg.blockIdx <= -1000 ? 0.90 : 0.70
+          const fillOpacity = isHovered || isDragging ? 1.0 : baseOpacity
+
+          const hasIntervals = pg.label.startsWith('⚡')
+
+          // Path with top-rounded corners only
           const gaugePath = `M${x1+r4},${yTop} H${x2-r4} Q${x2},${yTop} ${x2},${yTop+r4} V${yBot} H${x1} V${yTop+r4} Q${x1},${yTop} ${x1+r4},${yTop} Z`
+
           return (
-            <g key={`pg${pg.blockIdx}`}>
-              {/* Gauge fill */}
-              <path
-                d={gaugePath}
-                fill={pg.color} opacity={isHovered || isDragging ? 0.55 : 0.38}
-                style={{ cursor: onGaugeWattsChange ? 'ns-resize' : 'default' }}
-                onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
-                onMouseLeave={() => setHoveredGauge(null)}
-                onMouseDown={onGaugeWattsChange ? e => {
-                  e.stopPropagation()
-                  const svg2 = svgRef.current
-                  if (!svg2) return
-                  const r = svg2.getBoundingClientRect()
-                  const svgY = ((e.clientY - r.top) / r.height) * H
-                  setGaugeDrag({ blockIdx: pg.blockIdx, startY: svgY, startWatts: pg.watts })
-                } : undefined}
-              />
-              {/* Gauge border */}
-              <path d={gaugePath} fill="none" stroke={pg.color} strokeWidth={2} opacity={0.9} />
-              {/* Watts label + zone */}
-              {w > 18 && gaugeH > 20 && (
-                <>
-                  <text x={(x1 + x2) / 2} y={yTop + 12} textAnchor="middle" fontSize={9} fill={pg.color} fontWeight={900} fontFamily='"DM Mono",monospace' opacity={0.95}>{pg.watts}W</text>
-                  {gaugeH > 32 && <text x={(x1 + x2) / 2} y={yTop + 23} textAnchor="middle" fontSize={7} fill={pg.color} fontWeight={600} fontFamily='"DM Mono",monospace' opacity={0.7}>{(() => { const r = pg.watts / pg.ftpRef; return r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1' })()}</text>}
-                </>
+            <g key={`pg${pg.blockIdx}`} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))' }}>
+              <defs>
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={gradTop} stopOpacity="1"/>
+                  <stop offset="100%" stopColor={gradBot} stopOpacity="0.85"/>
+                </linearGradient>
+              </defs>
+              {/* Gauge fill — gradient */}
+              {hasIntervals ? (
+                <path d={gaugePath}
+                  fill={`url(#${gradId})`} opacity={fillOpacity * 0.6}
+                  style={{ cursor: onGaugeWattsChange ? 'ns-resize' : 'default' }}
+                  onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
+                  onMouseLeave={() => setHoveredGauge(null)}
+                  onMouseDown={onGaugeWattsChange ? e => {
+                    e.stopPropagation()
+                    const svg2 = svgRef.current; if (!svg2) return
+                    const r = svg2.getBoundingClientRect()
+                    const svgY = ((e.clientY - r.top) / r.height) * H
+                    setGaugeDrag({ blockIdx: pg.blockIdx, startY: svgY, startWatts: pg.watts })
+                  } : undefined}
+                />
+              ) : (
+                <path d={gaugePath}
+                  fill={`url(#${gradId})`} opacity={fillOpacity}
+                  style={{ cursor: onGaugeWattsChange ? 'ns-resize' : 'default' }}
+                  onMouseEnter={() => setHoveredGauge(pg.blockIdx)}
+                  onMouseLeave={() => setHoveredGauge(null)}
+                  onMouseDown={onGaugeWattsChange ? e => {
+                    e.stopPropagation()
+                    const svg2 = svgRef.current; if (!svg2) return
+                    const r = svg2.getBoundingClientRect()
+                    const svgY = ((e.clientY - r.top) / r.height) * H
+                    setGaugeDrag({ blockIdx: pg.blockIdx, startY: svgY, startWatts: pg.watts })
+                  } : undefined}
+                />
               )}
-              {/* Draggable top edge — thicker, more visible */}
-              <line
-                x1={x1 + 2} y1={yTop} x2={x2 - 2} y2={yTop}
-                stroke={pg.color} strokeWidth={5} strokeLinecap="round" opacity={1}
-                style={{ cursor: 'ns-resize' }}
+              {/* Interval stripe overlay */}
+              {hasIntervals && (() => {
+                const stripeCount = Math.floor(w / 8)
+                return (
+                  <g clipPath={`url(#clip_${pg.blockIdx})`} opacity={fillOpacity * 0.7}>
+                    <clipPath id={`clip_${pg.blockIdx}`}>
+                      <path d={gaugePath}/>
+                    </clipPath>
+                    {Array.from({length: stripeCount + 1}, (_, si) => {
+                      const sx = x1 + si * 8
+                      return <line key={si} x1={sx} y1={yTop} x2={sx} y2={yBot} stroke={gradTop} strokeWidth={3} opacity={0.6}/>
+                    })}
+                  </g>
+                )
+              })()}
+              {/* Top border — vivid zone color, 2px */}
+              <line x1={x1+r4} y1={yTop} x2={x2-r4} y2={yTop} stroke={gradTop} strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
+              {/* Hover elevation border */}
+              {(isHovered || isDragging) && (
+                <path d={gaugePath} fill="none" stroke={gradTop} strokeWidth={1.5} opacity={0.8}/>
+              )}
+              {/* Watts label — white bold, centered */}
+              {w > 20 && gaugeH > 28 && (
+                <text x={(x1+x2)/2} y={yTop+14} textAnchor="middle" fontSize={hasIntervals?9:10}
+                  fill="#fff" fontWeight={900} fontFamily='"DM Mono",monospace' opacity={0.95}
+                  style={{ pointerEvents:'none' }}>
+                  {hasIntervals ? `⚡ ${pg.label.replace('⚡','').trim()}` : `${pg.watts}W`}
+                </text>
+              )}
+              {w > 20 && gaugeH > 44 && !hasIntervals && (
+                <text x={(x1+x2)/2} y={yTop+26} textAnchor="middle" fontSize={8}
+                  fill="#fff" fontWeight={600} fontFamily='"DM Mono",monospace' opacity={0.7}
+                  style={{ pointerEvents:'none' }}>
+                  {zLbl}
+                </text>
+              )}
+              {/* Draggable top edge */}
+              <line x1={x1+2} y1={yTop} x2={x2-2} y2={yTop}
+                stroke={gradTop} strokeWidth={6} strokeLinecap="round" opacity={1}
+                style={{ cursor:'ns-resize' }}
                 onMouseDown={e => {
                   e.stopPropagation()
-                  const svg2 = svgRef.current
-                  if (!svg2) return
+                  const svg2 = svgRef.current; if (!svg2) return
                   const r = svg2.getBoundingClientRect()
                   const svgY = ((e.clientY - r.top) / r.height) * H
                   setGaugeDrag({ blockIdx: pg.blockIdx, startY: svgY, startWatts: pg.watts })
                 }}
               />
-              {/* Left/Right edge handles (width resize) — only for specificBlocks (blockIdx <= -2000) */}
+              {/* Left/Right edge handles — only for specificBlocks */}
               {onGaugeEdgeChange && pg.blockIdx <= -2000 && (
                 <>
-                  {/* Left handle */}
-                  <rect
-                    x={x1 - 4} y={yTop + (gaugeH - 20) / 2} width={8} height={20}
-                    rx={3} fill={pg.color} opacity={0.85}
-                    style={{ cursor: 'ew-resize' }}
-                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'start' }) }}
-                  />
-                  <line x1={x1} y1={yTop + gaugeH * 0.3} x2={x1} y2={yBot} stroke={pg.color} strokeWidth={2.5} opacity={0.7}
-                    style={{ cursor: 'ew-resize' }}
-                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'start' }) }}
-                  />
-                  {/* Right handle */}
-                  <rect
-                    x={x2 - 4} y={yTop + (gaugeH - 20) / 2} width={8} height={20}
-                    rx={3} fill={pg.color} opacity={0.85}
-                    style={{ cursor: 'ew-resize' }}
-                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}
-                  />
-                  <line x1={x2} y1={yTop + gaugeH * 0.3} x2={x2} y2={yBot} stroke={pg.color} strokeWidth={2.5} opacity={0.7}
-                    style={{ cursor: 'ew-resize' }}
-                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}
-                  />
+                  <rect x={x1-4} y={yTop+(gaugeH-20)/2} width={8} height={20}
+                    rx={3} fill={gradTop} opacity={0.85}
+                    style={{ cursor:'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'start' }) }}/>
+                  <line x1={x1} y1={yTop+gaugeH*0.3} x2={x1} y2={yBot} stroke={gradTop} strokeWidth={2.5} opacity={0.7}
+                    style={{ cursor:'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'start' }) }}/>
+                  <rect x={x2-4} y={yTop+(gaugeH-20)/2} width={8} height={20}
+                    rx={3} fill={gradTop} opacity={0.85}
+                    style={{ cursor:'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}/>
+                  <line x1={x2} y1={yTop+gaugeH*0.3} x2={x2} y2={yBot} stroke={gradTop} strokeWidth={2.5} opacity={0.7}
+                    style={{ cursor:'ew-resize' }}
+                    onMouseDown={e => { e.stopPropagation(); setGaugeEdgeDrag({ blockIdx: pg.blockIdx, edge: 'end' }) }}/>
                 </>
               )}
-              {/* Tooltip on hover */}
-              {isHovered && !isDragging && (
-                <g>
-                  {(() => {
-                    const tx = Math.min(x1, W - PL - 120)
-                    const ty = yTop - 6
-                    const zoneStr = (() => {
-                      const r = pg.watts / pg.ftpRef
-                      return r > 1.50 ? 'Z7' : r > 1.20 ? 'Z6' : r > 1.05 ? 'Z5' : r > 0.87 ? 'Z4' : r > 0.75 ? 'Z3' : r > 0.55 ? 'Z2' : 'Z1'
-                    })()
-                    const lines = [
-                      `km ${pg.startKm} → ${pg.endKm}`,
-                      `${pg.watts}W · ${zoneStr} · ${pg.estimatedMin.toFixed(0)} min`,
-                      ...(pg.hrAvg ? [`FC ~${pg.hrAvg} bpm`] : []),
-                    ]
-                    const bw = 118, bh = lines.length * 13 + 10
-                    const bx = Math.min(Math.max(tx - 4, PL), W - PR - bw)
-                    const by = Math.max(ty - bh, PT + 2)
-                    return (
-                      <>
-                        <rect x={bx} y={by} width={bw} height={bh} rx={5} fill="var(--bg-card)" stroke={pg.color} strokeWidth={1} opacity={0.97} />
-                        {lines.map((ln, li) => (
-                          <text key={li} x={bx + 7} y={by + 11 + li * 13} fontSize={8} fill="var(--text)" fontFamily='"DM Mono",monospace'>{ln}</text>
-                        ))}
-                      </>
-                    )
-                  })()}
-                </g>
-              )}
+              {/* Premium tooltip on hover */}
+              {isHovered && !isDragging && (() => {
+                const bw = 140, tx = Math.min(Math.max((x1+x2)/2 - bw/2, PL), W-PR-bw)
+                const estKm = (pg.endKm - pg.startKm).toFixed(1)
+                const lines = [
+                  `km ${pg.startKm.toFixed(1)} → ${pg.endKm.toFixed(1)} (${estKm}km)`,
+                  `${pg.watts}W · ${zLbl} · ${pg.estimatedMin.toFixed(0)} min`,
+                  `IF: ${(pg.watts/pg.ftpRef).toFixed(2)} · ref FTP ${pg.ftpRef}W`,
+                  ...(pg.hrAvg ? [`FC cible ~${pg.hrAvg} bpm`] : []),
+                  ...(hasIntervals ? [`${pg.label}`] : []),
+                ]
+                const bh = lines.length * 13 + 12
+                const by = Math.max(yTop - bh - 6, PT + 2)
+                return (
+                  <>
+                    <rect x={tx} y={by} width={bw} height={bh} rx={6} fill="var(--bg-card)" stroke={gradTop} strokeWidth={1.5} opacity={0.97}/>
+                    {lines.map((ln, li) => (
+                      <text key={li} x={tx+8} y={by+12+li*13} fontSize={8} fill={li===1?gradTop:'var(--text)'}
+                        fontFamily='"DM Mono",monospace' fontWeight={li===1?700:400}>{ln}</text>
+                    ))}
+                  </>
+                )
+              })()}
             </g>
           )
         })}
@@ -5984,15 +6172,23 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   // Parcours AI flow
   type AIFlowStep = 'ask' | 'parcours' | 'free'
   const [aiFlowStep, setAiFlowStep] = useState<AIFlowStep>('ask')
+  interface BlockIntervalsCfg {
+    effortSec: number; effortWatts: number
+    recoverySec: number; recoveryWatts: number
+    reps: number; withRecovery: boolean
+  }
   const [climbConfigs, setClimbConfigs] = useState<Array<{
     segIdx: number; selected: boolean; watts: number; hrAvg?: number; estimatedMin: number
+    intervals?: BlockIntervalsCfg
   }>>([])
+  const [openIntervals, setOpenIntervals] = useState<Record<string, boolean>>({})
   const [efWatts, setEfWatts] = useState(160)
   const [efHr, setEfHr] = useState(0)
   const [totalDuration, setTotalDuration] = useState('')  // format 'h:mm'
   interface SpecificBlock {
     id: string; startKm: number; endKm: number; watts: number
     hrAvg?: number; estimatedMin: number
+    intervals?: BlockIntervalsCfg
   }
   const [specificBlocks, setSpecificBlocks] = useState<SpecificBlock[]>([])
   const [bulkWatts, setBulkWatts] = useState(250)
@@ -6336,15 +6532,7 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const zoneDist = computeZoneDistribution(blocks, ZONE_COUNT)
   const hrDist = computeHRDistribution(blocks, fcZones.length > 0 ? fcZones : undefined)
 
-  useEffect(() => {
-    if (blocks.length === 0) return
-    const totalBlocksMin = Math.round(blocks.reduce((s, b) => {
-      if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin)
-        return s + b.reps * (b.effortMin + b.recoveryMin)
-      return s + b.durationMin
-    }, 0))
-    if (totalBlocksMin > 0) setDur(totalBlocksMin)
-  }, [blocks])
+  // Duration gauge is set only by user input — do not auto-compute from blocks
 
   // Auto-save intentionally removed — save on close instead to avoid infinite re-render loop
 
@@ -8373,6 +8561,26 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               )
                             })()}
                           </div>
+                          {/* Intervalles button */}
+                          {cfg.selected && !overrideBlock && (
+                            <button
+                              onClick={() => setOpenIntervals(prev => ({ ...prev, [`c_${ci}`]: !prev[`c_${ci}`] }))}
+                              style={{ margin:'6px 12px 0', padding:'4px 10px', borderRadius:6, border:`1px solid ${zc}40`, background:openIntervals[`c_${ci}`]?`${zc}20`:`${zc}08`, color:zc, fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                              <span>⚡</span>
+                              <span>{cfg.intervals ? `Intervalles configurés (${cfg.intervals.reps}×)` : 'Intervalles'}</span>
+                              <span style={{ opacity:0.6 }}>{openIntervals[`c_${ci}`] ? '▲' : '▼'}</span>
+                            </button>
+                          )}
+                          {openIntervals[`c_${ci}`] && cfg.selected && !overrideBlock && (
+                            <IntervalPanel
+                              blockDurationMin={cfg.estimatedMin}
+                              defaultWatts={cfg.watts}
+                              ftp={trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250}
+                              value={cfg.intervals ?? null}
+                              onChange={iv => setClimbConfigs(prev => prev.map((c,i) => i===ci ? {...c, intervals: iv ?? undefined} : c))}
+                              onClose={() => setOpenIntervals(prev => ({...prev,[`c_${ci}`]:false}))}
+                            />
+                          )}
                           {/* FTP warning */}
                           {warnOverFtp && !overrideBlock && (
                             <div style={{ padding: '5px 12px', background: 'rgba(234,179,8,0.10)', borderTop: '1px solid rgba(234,179,8,0.25)', fontSize: 10, color: '#ca8a04', display: 'flex', gap: 5, alignItems: 'center' }}>
@@ -8528,6 +8736,24 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 <button onClick={() => setSpecificBlocks(prev => prev.filter(x => x.id !== sb.id))}
                                   style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>×</button>
                               </div>
+                              {/* Intervalles button for specific block */}
+                              <button
+                                onClick={() => setOpenIntervals(prev => ({ ...prev, [sb.id]: !prev[sb.id] }))}
+                                style={{ margin:'2px 0 0', padding:'3px 9px', borderRadius:5, border:`1px solid ${zoneColor(sb.watts)}40`, background:openIntervals[sb.id]?`${zoneColor(sb.watts)}20`:`${zoneColor(sb.watts)}08`, color:zoneColor(sb.watts), fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4, alignSelf:'flex-start' as const }}>
+                                <span>⚡</span>
+                                <span>{sb.intervals ? `Intervalles (${sb.intervals.reps}×)` : 'Intervalles'}</span>
+                                <span style={{ opacity:0.6 }}>{openIntervals[sb.id]?'▲':'▼'}</span>
+                              </button>
+                              {openIntervals[sb.id] && (
+                                <IntervalPanel
+                                  blockDurationMin={sb.estimatedMin}
+                                  defaultWatts={sb.watts}
+                                  ftp={trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250}
+                                  value={sb.intervals ?? null}
+                                  onChange={iv => setSpecificBlocks(prev => prev.map(x => x.id===sb.id ? {...x, intervals: iv ?? undefined} : x))}
+                                  onClose={() => setOpenIntervals(prev => ({...prev,[sb.id]:false}))}
+                                />
+                              )}
                               {/* Durée estimée NR */}
                               <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 28 }}>
                                 ⏱ ~<strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{sb.estimatedMin.toFixed(0)}</strong> min estimées

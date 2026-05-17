@@ -11,7 +11,7 @@ import AnnualView from './components/AnnualView'
 import MonthlyView from './components/MonthlyView'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
-import type { RaceStage } from './components/types'
+import type { RaceStage, NutritionItem } from './components/types'
 
 // ── Types ─────────────────────────────────────────
 type CalTab        = 'race' | 'pro' | 'perso' | 'all'
@@ -32,7 +32,7 @@ interface Race {
   status?: 'upcoming' | 'completed'
   distance?: string
   performanceData?: Record<string, unknown>
-  nutritionStrategy?: Record<string, unknown>[]
+  nutritionStrategy?: NutritionItem[]
   notes?: string
 }
 

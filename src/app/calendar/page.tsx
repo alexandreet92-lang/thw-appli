@@ -12,6 +12,7 @@ import MonthlyView from './components/MonthlyView'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
 import type { RaceStage, NutritionItem } from './components/types'
+import ClockView, { type ClockEvent } from './components/ClockView'
 
 // ── Types ─────────────────────────────────────────
 type CalTab        = 'race' | 'pro' | 'perso' | 'all'
@@ -588,13 +589,25 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
   markCompleted: (id: string) => void
   addRaceStage: (s: Omit<RaceStage, 'id'>, files: File[]) => Promise<void>
 }) {
-  const [calView,    setCalView]    = useState<CalView>('year')
+  const [calView,      setCalView]      = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
-  const [showRaceModal, setShowRaceModal] = useState(false)
+  const [showRaceModal,  setShowRaceModal]  = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
-  const [editRace, setEditRace]     = useState<Race | null>(null)
+  const [editRace,    setEditRace]    = useState<Race | null>(null)
+  const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined)
   const year = new Date().getFullYear()
   const gty  = races.find(r => r.level === 'gty' && new Date(r.date).getFullYear() === year)
+
+  function openNewRace(date?: string) {
+    setEditRace(null)
+    setPrefillDate(date)
+    setShowRaceModal(true)
+  }
+  function closeRaceModal() {
+    setShowRaceModal(false)
+    setEditRace(null)
+    setPrefillDate(undefined)
+  }
 
   async function handleSaveRace(
     r: Omit<Race, 'id' | 'validated' | 'validationData'>,
@@ -605,13 +618,12 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
     } else {
       await addRaceWithFiles(r, files, filesBike, filesRun)
     }
-    setShowRaceModal(false)
-    setEditRace(null)
+    closeRaceModal()
   }
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      <GoalBanner gty={gty} />
+      <GoalBanner gty={gty} races={races} />
 
       {/* Controls */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:8 }}>
@@ -634,7 +646,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           }}>
             Événement
           </button>
-          <button onClick={() => { setEditRace(null); setShowRaceModal(true) }} style={{
+          <button onClick={() => openNewRace()} style={{
             padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
             border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',
           }}>
@@ -656,7 +668,8 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
         <MonthlyView
           races={races} stages={raceStages} year={year}
           initialMonth={currentMonth}
-          onRaceClick={r => { setEditRace(r); setShowRaceModal(true) }}
+          onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
+          onDayClick={date => openNewRace(date)}
         />
       )}
 
@@ -667,7 +680,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
       {races.length === 0 && raceStages.length === 0 && (
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée</p>
-          <button onClick={() => setShowRaceModal(true)} style={{
+          <button onClick={() => openNewRace()} style={{
             padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
             border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',
           }}>
@@ -679,7 +692,8 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
       {showRaceModal && (
         <RaceModal
           race={editRace ?? undefined}
-          onClose={() => { setShowRaceModal(false); setEditRace(null) }}
+          initialDate={prefillDate}
+          onClose={closeRaceModal}
           onSave={handleSaveRace}
         />
       )}
@@ -994,182 +1008,30 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
 }
 
 // ════════════════════════════════════════════════
-// ALL TAB — TIMELINE
+// ALL TAB — VUE CIRCULAIRE
 // ════════════════════════════════════════════════
 function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalEventType[]; events: CalEvent[] }) {
-  const [mode, setMode] = useState<TimelineMode>('vertical')
   const year = new Date().getFullYear()
 
-  // Build unified events list
-  const allEvents: AnyEvent[] = [
-    ...races.map(r => {
-      const cfg = RACE_CONFIG[r.level]
-      return {
-        id: r.id, date: r.date, title: r.name, category: 'race' as const,
-        color: r.level === 'gty' ? '#9ca3af' : cfg.color,
-        label: cfg.label, subLabel: r.sport.toUpperCase().slice(0, 3),
-      }
-    }),
+  const clockEvents: ClockEvent[] = [
+    ...races.map(r => ({
+      id: r.id, date: r.date, title: r.name,
+      color: r.level === 'gty' ? '#ffffff' : RACE_CONFIG[r.level].color,
+      isGty: r.level === 'gty',
+      categoryLabel: 'RACE',
+    })),
     ...events.map(e => {
       const t = eventTypes.find(t => t.id === e.typeId)
-      const col = e.color ?? t?.color ?? CATEGORY_CONFIG[e.category as 'pro'|'perso']?.color ?? '#6b7280'
-      const catCfg = CATEGORY_CONFIG[e.category as 'race'|'pro'|'perso']
       return {
-        id: e.id, date: e.date, title: e.title, category: e.category,
-        color: col, label: t?.name ?? catCfg?.label ?? e.category,
-        subLabel: catCfg?.label,
+        id: e.id, date: e.date, title: e.title,
+        color: e.color ?? t?.color ?? CATEGORY_CONFIG[e.category as 'pro'|'perso']?.color ?? '#6b7280',
+        isGty: false,
+        categoryLabel: e.category.toUpperCase(),
       }
     }),
-  ].sort((a, b) => a.date.localeCompare(b.date))
+  ]
 
-  const today = new Date().toISOString().split('T')[0]
-
-  // Group by month
-  const byMonth: Record<number, AnyEvent[]> = {}
-  allEvents.forEach(e => {
-    const m = new Date(e.date).getMonth()
-    if (!byMonth[m]) byMonth[m] = []
-    byMonth[m].push(e)
-  })
-
-  return (
-    <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* Toggle horizontal/vertical — desktop only */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
-        <div>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:0 }}>Vue globale {year}</p>
-          <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>{allEvents.length} événement(s) — Race · Pro · Perso</p>
-        </div>
-        <div id="all-toggle-desktop" style={{ display:'flex',gap:5 }}>
-          {(['vertical','horizontal'] as TimelineMode[]).map(m => (
-            <button key={m} onClick={() => setMode(m)}
-              style={{ padding:'6px 12px',borderRadius:9,border:'1px solid',borderColor:mode===m?'#00c8e0':'var(--border)',background:mode===m?'rgba(0,200,224,0.10)':'var(--bg-card)',color:mode===m?'#00c8e0':'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:mode===m?600:400 }}>
-              {m === 'vertical' ? '↕ Vertical' : '↔ Horizontal'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {allEvents.length === 0 && (
-        <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontSize:32,marginBottom:8 }}>🗓</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 6px' }}>Aucun événement</p>
-          <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>Ajoutez des courses, événements pro ou perso</p>
-        </div>
-      )}
-
-      {/* Vertical timeline */}
-      {(mode === 'vertical') && allEvents.length > 0 && (
-        <div style={{ display:'flex',flexDirection:'column',gap:0 }}>
-          {MONTHS.map((monthName, mi) => {
-            const mEvents = byMonth[mi] ?? []
-            if (mEvents.length === 0) return null
-            return (
-              <div key={mi} style={{ display:'flex',gap:0 }}>
-                {/* Month column */}
-                <div style={{ width:52,flexShrink:0,paddingTop:6,display:'flex',flexDirection:'column',alignItems:'center' }}>
-                  <div style={{ width:1,flex:1,background:'var(--border)',marginTop:4 }}/>
-                  <div style={{ width:8,height:8,borderRadius:'50%',background:'var(--border)',margin:'-4px 0',zIndex:1,flexShrink:0 }}/>
-                  <div style={{ width:1,flex:1,background:'var(--border)' }}/>
-                </div>
-                <div style={{ flex:1,paddingBottom:16 }}>
-                  <p style={{ fontFamily:'Syne,sans-serif',fontSize:11,fontWeight:700,color:'var(--text-dim)',margin:'0 0 8px',textTransform:'uppercase',letterSpacing:'0.08em' }}>{MONTH_SHORT[mi]}</p>
-                  <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-                    {mEvents.map(ev => {
-                      const isPast = ev.date < today
-                      const catCfg = CATEGORY_CONFIG[ev.category]
-                      return (
-                        <div key={ev.id}
-                          style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:isPast?'var(--bg-card2)':`${ev.color}12`,border:`1px solid ${isPast?'var(--border)':ev.color+'33'}`,opacity:isPast?0.65:1 }}>
-                          {/* Category badge */}
-                          <div style={{ width:6,height:6,borderRadius:'50%',background:ev.color,flexShrink:0 }}/>
-                          <div style={{ flex:1,minWidth:0 }}>
-                            <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:1 }}>
-                              <span style={{ fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:catCfg?.color??'var(--text-dim)',padding:'1px 5px',borderRadius:4,background:`${catCfg?.color ?? '#6b7280'}18` }}>
-                                {catCfg?.label}
-                              </span>
-                              <span style={{ fontSize:9,color:'var(--text-dim)' }}>{ev.label}</span>
-                              {ev.subLabel && <span style={{ fontSize:10 }}>{ev.subLabel}</span>}
-                            </div>
-                            <p style={{ fontSize:13,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{ev.title}</p>
-                          </div>
-                          <div style={{ textAlign:'right',flexShrink:0 }}>
-                            <p style={{ fontFamily:'Syne,sans-serif',fontSize:isPast?11:18,fontWeight:700,color:isPast?'var(--text-dim)':ev.color,margin:0,lineHeight:1 }}>
-                              {isPast ? '✓' : daysUntil(ev.date)}
-                            </p>
-                            <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>
-                              {isPast ? 'Passé' : 'jours'}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Horizontal timeline — desktop only */}
-      {mode === 'horizontal' && allEvents.length > 0 && (
-        <div id="all-horizontal" style={{ overflowX:'auto',paddingBottom:12 }}>
-          <div style={{ minWidth: Math.max(900, allEvents.length * 80), position:'relative',paddingTop:50,paddingBottom:20 }}>
-            {/* Month axis */}
-            <div style={{ display:'flex',position:'relative',marginBottom:32 }}>
-              {MONTHS.map((_, mi) => {
-                const hasEvents = (byMonth[mi] ?? []).length > 0
-                const xPct = (mi / 12) * 100
-                return (
-                  <div key={mi} style={{ flex:1,textAlign:'center',position:'relative' }}>
-                    <div style={{ position:'absolute',top:14,left:0,right:0,height:1,background:'var(--border)',zIndex:0 }}/>
-                    <div style={{ position:'relative',zIndex:1 }}>
-                      <div style={{ width:hasEvents?10:6,height:hasEvents?10:6,borderRadius:'50%',background:hasEvents?'#00c8e0':'var(--border)',margin:'0 auto 4px' }}/>
-                      <p style={{ fontSize:9,fontWeight:hasEvents?700:400,color:hasEvents?'var(--text)':'var(--text-dim)',margin:0 }}>{MONTH_SHORT[mi]}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Events stacked by lane */}
-            {MONTHS.map((_, mi) => {
-              const mEvents = byMonth[mi] ?? []
-              if (mEvents.length === 0) return null
-              return (
-                <div key={mi} style={{ position:'absolute', left:`${(mi / 12) * 100}%`, top:60, transform:'translateX(-50%)', display:'flex', flexDirection:'column', gap:5, width:140, zIndex:2 }}>
-                  {mEvents.map(ev => {
-                    const isPast = ev.date < today
-                    const catCfg = CATEGORY_CONFIG[ev.category]
-                    const day = new Date(ev.date).getDate()
-                    return (
-                      <div key={ev.id}
-                        style={{ padding:'8px 10px',borderRadius:9,background:isPast?'var(--bg-card2)':`${ev.color}15`,border:`1px solid ${isPast?'var(--border)':ev.color+'44'}`,opacity:isPast?0.6:1 }}>
-                        <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:3 }}>
-                          <div style={{ width:6,height:6,borderRadius:'50%',background:ev.color,flexShrink:0 }}/>
-                          <span style={{ fontSize:8,color:catCfg?.color??'var(--text-dim)',fontWeight:700 }}>{catCfg?.label}</span>
-                          <span style={{ fontSize:8,color:'var(--text-dim)',marginLeft:'auto' }}>{day} {MONTH_SHORT[mi]}</span>
-                        </div>
-                        <p style={{ fontSize:11,fontWeight:600,margin:0,color:ev.color,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{ev.title}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @media (max-width: 767px) {
-          #all-toggle-desktop { display: none !important; }
-          #all-horizontal     { display: none !important; }
-        }
-      `}</style>
-    </div>
-  )
+  return <ClockView events={clockEvents} year={year} />
 }
 
 // ════════════════════════════════════════════════

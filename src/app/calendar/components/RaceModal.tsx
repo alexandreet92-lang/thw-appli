@@ -6,6 +6,7 @@ import SportFields from './SportFields'
 
 interface Props {
   race?: Race
+  initialDate?: string
   onClose: () => void
   onSave: (r: Omit<Race, 'id'>, files: File[], filesBike?: File[], filesRun?: File[]) => Promise<void>
 }
@@ -16,12 +17,12 @@ const LEVELS: RaceLevel[] = ['gty','main','important','secondary']
 const INP = { width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }
 const LBL = { fontSize:10,fontWeight:600 as const,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4,display:'block' as const }
 
-export default function RaceModal({ race, onClose, onSave }: Props) {
+export default function RaceModal({ race, initialDate, onClose, onSave }: Props) {
   const isEdit = !!race
   const [sport,   setSport]   = useState<RaceSport>(race?.sport ?? 'run')
   const [level,   setLevel]   = useState<RaceLevel>(race?.level ?? 'important')
   const [name,    setName]    = useState(race?.name ?? '')
-  const [date,    setDate]    = useState(race?.date ?? new Date().toISOString().split('T')[0])
+  const [date,    setDate]    = useState(race?.date ?? initialDate ?? new Date().toISOString().split('T')[0])
   const [notes,   setNotes]   = useState(race?.notes ?? '')
   const [pd,      setPd]      = useState<Record<string,unknown>>(race?.performanceData ?? {})
   const [saving,  setSaving]  = useState(false)

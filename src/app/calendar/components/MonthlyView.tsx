@@ -8,9 +8,10 @@ interface Props {
   year: number
   initialMonth?: number
   onRaceClick: (race: Race) => void
+  onDayClick?: (date: string) => void
 }
 
-export default function MonthlyView({ races, stages, year, initialMonth, onRaceClick }: Props) {
+export default function MonthlyView({ races, stages, year, initialMonth, onRaceClick, onDayClick }: Props) {
   const [month, setMonth] = useState(initialMonth ?? new Date().getMonth())
 
   const daysInMonth  = getDaysInMonth(year, month)
@@ -96,10 +97,12 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
           return (
             <div
               key={day}
+              onClick={() => onDayClick?.(ds)}
               style={{
                 minHeight: 62, borderRadius: 7, background: 'var(--bg-card2)',
                 border: `1px solid ${isToday ? '#00c8e0' : 'var(--border)'}`,
                 padding: '3px 4px', display: 'flex', flexDirection: 'column' as const, gap: 1,
+                cursor: onDayClick ? 'pointer' : 'default',
               }}
             >
               <p style={{
@@ -115,7 +118,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                 return (
                   <div
                     key={r.id}
-                    onClick={() => onRaceClick(r)}
+                    onClick={e => { e.stopPropagation(); onRaceClick(r) }}
                     style={{
                       borderRadius: 3, padding: '1px 3px', cursor: 'pointer',
                       background: r.status === 'completed' ? 'var(--bg-card)' : cfg.bg,

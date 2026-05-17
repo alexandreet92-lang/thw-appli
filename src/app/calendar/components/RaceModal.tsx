@@ -58,7 +58,7 @@ export default function RaceModal({ race, onClose, onSave }: Props) {
 
   function DropZone({ label, list, setter, ref: fRef }: {
     label?: string; list: File[]; setter: (f: File[]) => void
-    ref: React.RefObject<HTMLInputElement>
+    ref: React.RefObject<HTMLInputElement | null>
   }) {
     return (
       <div>

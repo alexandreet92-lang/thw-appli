@@ -373,10 +373,20 @@ function useCalendar() {
     setEvents(p => p.filter(x => x.id !== id))
   }
 
+  function patchStageDayLocal(stageId: string, date: string, content: string) {
+    setRaceStages(prev => prev.map(s => {
+      if (s.id !== stageId) return s
+      const dp = s.dailyProgram.some(p => p.date === date)
+        ? s.dailyProgram.map(p => p.date === date ? { ...p, content } : p)
+        : [...s.dailyProgram, { date, content }]
+      return { ...s, dailyProgram: dp }
+    }))
+  }
+
   return {
     races, raceStages, eventTypes, events, loading,
     addRace, addRaceWithFiles, updateRace, deleteRace, markCompleted,
-    addRaceStage, updateRaceStage, saveStageDayContent,
+    addRaceStage, updateRaceStage, saveStageDayContent, patchStageDayLocal,
     addEventType, updateEventType, deleteEventType,
     addEvent, updateEvent, deleteEvent,
   }
@@ -652,14 +662,14 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, saveStageDayContent }: {
+function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal }: {
   races: Race[]; raceStages: RaceStage[]
   addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
   markCompleted: (id: string) => void
   addRaceStage: (s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) => Promise<void>
   updateRaceStage: (s: RaceStage, dayFiles: { date: string; file: File }[]) => Promise<void>
-  saveStageDayContent: (stageId: string, date: string, content: string, file?: File) => Promise<void>
+  patchStageDayLocal: (stageId: string, date: string, content: string) => void
 }) {
   const [calView,      setCalView]      = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -795,10 +805,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           stage={dayModal.stage}
           date={dayModal.date}
           onClose={() => setDayModal(null)}
-          onSave={async (date, content, file) => {
-            await saveStageDayContent(dayModal.stage.id, date, content, file)
-            setDayModal(null)
-          }}
+          onSaved={(date, content) => patchStageDayLocal(dayModal.stage.id, date, content)}
         />
       )}
     </div>
@@ -1300,7 +1307,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
   const [tab, setTab] = useState<CalTab>('race')
-  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, saveStageDayContent, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
 
   const TABS: { id: CalTab; label: string; short: string; color: string; bg: string }[] = [
     { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
@@ -1352,7 +1359,7 @@ export default function CalendarPage() {
 
       {!loading && (
         <>
-          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} saveStageDayContent={saveStageDayContent}/>}
+          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} patchStageDayLocal={patchStageDayLocal}/>}
           {tab === 'pro'   && <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'perso' && <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'all'   && <AllTab races={races} eventTypes={eventTypes} events={events}/>}

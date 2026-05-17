@@ -6,11 +6,12 @@ interface Props {
   stages: RaceStage[]
   year: number
   onRaceClick: (race: Race) => void
+  onStageClick?: (stage: RaceStage) => void
   onMonthClick: (month: number) => void
   onMarkComplete: (id: string) => void
 }
 
-export default function AnnualView({ races, stages, year, onRaceClick, onMonthClick, onMarkComplete }: Props) {
+export default function AnnualView({ races, stages, year, onRaceClick, onStageClick, onMonthClick, onMarkComplete }: Props) {
   function racesForMonth(mi: number) {
     return races.filter(r => {
       const d = new Date(r.date)
@@ -113,11 +114,14 @@ export default function AnnualView({ races, stages, year, onRaceClick, onMonthCl
 
               {/* Stages */}
               {ms.map(s => (
-                <div key={s.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '4px 6px', borderRadius: 7, marginBottom: 4,
-                  background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.3)',
-                }}>
+                <div key={s.id}
+                  onClick={e => { e.stopPropagation(); onStageClick?.(s) }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 6px', borderRadius: 7, marginBottom: 4,
+                    background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.3)',
+                    cursor: onStageClick ? 'pointer' : 'default',
+                  }}>
                   <span style={{ fontSize: 10 }}>🏕</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{

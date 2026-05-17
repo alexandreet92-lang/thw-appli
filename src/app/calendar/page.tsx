@@ -220,7 +220,7 @@ function useCalendar() {
   }
 
   // ── RaceStage CRUD ─────────────────────────────
-  async function addRaceStage(s: Omit<RaceStage, 'id'>, files: File[]) {
+  async function addRaceStage(s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) {
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
     const { data, error } = await supabase.from('race_events').insert({
       user_id: user.id, name: s.name, start_date: s.startDate, end_date: s.endDate,
@@ -229,20 +229,42 @@ function useCalendar() {
     if (!error && data) {
       const row = data as Record<string, unknown>
       const stageId = row.id as string
-      for (const file of files) {
+      for (const { date, file } of dayFiles) {
         try {
-          const path = `${user.id}/events/${stageId}/${file.name}`
+          const path = `${user.id}/events/${stageId}/${date}/${file.name}`
           const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
           if (upData) {
             const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
             await supabase.from('race_event_files').insert({
-              event_id: stageId, file_url: urlData.publicUrl, file_name: file.name,
+              event_id: stageId, file_url: urlData.publicUrl, file_name: file.name, event_date: date,
             })
           }
         } catch (e) { console.error('[event file upload]', e) }
       }
       setRaceStages(p => [...p, { ...s, id: stageId }])
     }
+  }
+
+  async function updateRaceStage(s: RaceStage, dayFiles: { date: string; file: File }[]) {
+    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    await supabase.from('race_events').update({
+      name: s.name, start_date: s.startDate, end_date: s.endDate,
+      description: s.description ?? null, daily_program: s.dailyProgram,
+      updated_at: new Date().toISOString(),
+    }).eq('id', s.id)
+    for (const { date, file } of dayFiles) {
+      try {
+        const path = `${user.id}/events/${s.id}/${date}/${file.name}`
+        const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
+        if (upData) {
+          const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
+          await supabase.from('race_event_files').insert({
+            event_id: s.id, file_url: urlData.publicUrl, file_name: file.name, event_date: date,
+          })
+        }
+      } catch (e) { console.error('[event file update]', e) }
+    }
+    setRaceStages(p => p.map(x => x.id === s.id ? s : x))
   }
 
   async function updateRace(r: Race) {
@@ -306,7 +328,7 @@ function useCalendar() {
   return {
     races, raceStages, eventTypes, events, loading,
     addRace, addRaceWithFiles, updateRace, deleteRace, markCompleted,
-    addRaceStage,
+    addRaceStage, updateRaceStage,
     addEventType, updateEventType, deleteEventType,
     addEvent, updateEvent, deleteEvent,
   }
@@ -582,19 +604,21 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage }: {
+function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage }: {
   races: Race[]; raceStages: RaceStage[]
   addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
   markCompleted: (id: string) => void
-  addRaceStage: (s: Omit<RaceStage, 'id'>, files: File[]) => Promise<void>
+  addRaceStage: (s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) => Promise<void>
+  updateRaceStage: (s: RaceStage, dayFiles: { date: string; file: File }[]) => Promise<void>
 }) {
   const [calView,      setCalView]      = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [showRaceModal,  setShowRaceModal]  = useState(false)
-  const [showEventModal, setShowEventModal] = useState(false)
   const [editRace,    setEditRace]    = useState<Race | null>(null)
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined)
+  // EventModal: null = closed, {mode,stage?} = open
+  const [eventModal, setEventModal] = useState<{ mode: 'create' | 'edit'; stage?: RaceStage } | null>(null)
   const year = new Date().getFullYear()
   const gty  = races.find(r => r.level === 'gty' && new Date(r.date).getFullYear() === year)
 
@@ -640,7 +664,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           ))}
         </div>
         <div style={{ display:'flex',gap:6 }}>
-          <button onClick={() => setShowEventModal(true)} style={{
+          <button onClick={() => setEventModal({ mode: 'create' })} style={{
             padding:'6px 12px',borderRadius:9,fontSize:11,fontWeight:600,cursor:'pointer',
             background:'rgba(59,130,246,0.10)',border:'1px solid rgba(59,130,246,0.3)',color:'#3b82f6',
           }}>
@@ -659,7 +683,8 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
       {calView === 'year' && (
         <AnnualView
           races={races} stages={raceStages} year={year}
-          onRaceClick={r => { setEditRace(r); setShowRaceModal(true) }}
+          onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
+          onStageClick={s => setEventModal({ mode: 'edit', stage: s })}
           onMonthClick={m => { setCurrentMonth(m); setCalView('month') }}
           onMarkComplete={markCompleted}
         />
@@ -669,6 +694,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           races={races} stages={raceStages} year={year}
           initialMonth={currentMonth}
           onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
+          onStageClick={s => setEventModal({ mode: 'edit', stage: s })}
           onDayClick={date => openNewRace(date)}
         />
       )}
@@ -697,10 +723,19 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           onSave={handleSaveRace}
         />
       )}
-      {showEventModal && (
+      {eventModal && (
         <EventModal
-          onClose={() => setShowEventModal(false)}
-          onSave={async (s, files) => { await addRaceStage(s, files); setShowEventModal(false) }}
+          mode={eventModal.mode}
+          initialData={eventModal.stage}
+          onClose={() => setEventModal(null)}
+          onSave={async (s, dayFiles) => {
+            if (eventModal.mode === 'edit' && eventModal.stage) {
+              await updateRaceStage({ ...eventModal.stage, ...s }, dayFiles)
+            } else {
+              await addRaceStage(s, dayFiles)
+            }
+            setEventModal(null)
+          }}
         />
       )}
     </div>
@@ -1202,7 +1237,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
   const [tab, setTab] = useState<CalTab>('race')
-  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
 
   const TABS: { id: CalTab; label: string; short: string; color: string; bg: string }[] = [
     { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
@@ -1254,7 +1289,7 @@ export default function CalendarPage() {
 
       {!loading && (
         <>
-          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage}/>}
+          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage}/>}
           {tab === 'pro'   && <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'perso' && <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'all'   && <AllTab races={races} eventTypes={eventTypes} events={events}/>}

@@ -8,10 +8,11 @@ interface Props {
   year: number
   initialMonth?: number
   onRaceClick: (race: Race) => void
+  onStageClick?: (stage: RaceStage) => void
   onDayClick?: (date: string) => void
 }
 
-export default function MonthlyView({ races, stages, year, initialMonth, onRaceClick, onDayClick }: Props) {
+export default function MonthlyView({ races, stages, year, initialMonth, onRaceClick, onStageClick, onDayClick }: Props) {
   const [month, setMonth] = useState(initialMonth ?? new Date().getMonth())
 
   const daysInMonth  = getDaysInMonth(year, month)
@@ -138,10 +139,13 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
               })}
 
               {ds2.map(s => (
-                <div key={s.id} style={{
-                  borderRadius: 3, padding: '1px 3px',
-                  background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)',
-                }}>
+                <div key={s.id}
+                  onClick={e => { e.stopPropagation(); onStageClick?.(s) }}
+                  style={{
+                    borderRadius: 3, padding: '1px 3px',
+                    background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)',
+                    cursor: onStageClick ? 'pointer' : 'default',
+                  }}>
                   <p style={{
                     fontSize: 7, fontWeight: 500, margin: 0, color: '#3b82f6',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,

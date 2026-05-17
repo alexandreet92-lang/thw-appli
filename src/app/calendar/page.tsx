@@ -5,6 +5,13 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
+import GoalBanner from './components/GoalBanner'
+import NextRaceBar from './components/NextRaceBar'
+import AnnualView from './components/AnnualView'
+import MonthlyView from './components/MonthlyView'
+import RaceModal from './components/RaceModal'
+import EventModal from './components/EventModal'
+import type { RaceStage } from './components/types'
 
 // ── Types ─────────────────────────────────────────
 type CalTab        = 'race' | 'pro' | 'perso' | 'all'
@@ -20,7 +27,13 @@ interface Race {
   runDistance?: string; triDistance?: string
   hyroxCategory?: string; hyroxLevel?: string; hyroxGender?: string
   goalTime?: string; goalSwimTime?: string; goalBikeTime?: string; goalRunTime?: string
-  validated?: boolean; validationData?: Record<string, any>
+  validated?: boolean; validationData?: Record<string, unknown>
+  // Extended fields
+  status?: 'upcoming' | 'completed'
+  distance?: string
+  performanceData?: Record<string, unknown>
+  nutritionStrategy?: Record<string, unknown>[]
+  notes?: string
 }
 
 interface CalEventType {
@@ -85,39 +98,63 @@ function getFirstDay(y: number, m: number)    { return new Date(y, m, 1).getDay(
 // ── Supabase hook ─────────────────────────────────
 function useCalendar() {
   const supabase = createClient()
-  const [races,      setRaces]      = useState<Race[]>([])
-  const [eventTypes, setEventTypes] = useState<CalEventType[]>([])
-  const [events,     setEvents]     = useState<CalEvent[]>([])
-  const [loading,    setLoading]    = useState(true)
+  const [races,       setRaces]       = useState<Race[]>([])
+  const [raceStages,  setRaceStages]  = useState<RaceStage[]>([])
+  const [eventTypes,  setEventTypes]  = useState<CalEventType[]>([])
+  const [events,      setEvents]      = useState<CalEvent[]>([])
+  const [loading,     setLoading]     = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    const [r, et, ev] = await Promise.all([
+    const [r, rs, et, ev] = await Promise.all([
       supabase.from('planned_races').select('*').eq('user_id', user.id).order('date'),
+      supabase.from('race_events').select('*').eq('user_id', user.id).order('start_date'),
       supabase.from('calendar_event_types').select('*').eq('user_id', user.id).order('name'),
       supabase.from('calendar_events').select('*').eq('user_id', user.id).order('date'),
     ])
 
-    setRaces((r.data ?? []).map((x: any): Race => ({
-      id: x.id, name: x.name, sport: x.sport, date: x.date, level: x.level,
-      goal: x.goal, strategy: x.strategy, runDistance: x.run_distance,
-      triDistance: x.tri_distance, hyroxCategory: x.hyrox_category,
-      hyroxLevel: x.hyrox_level, hyroxGender: x.hyrox_gender,
-      goalTime: x.goal_time, goalSwimTime: x.goal_swim_time,
-      goalBikeTime: x.goal_bike_time, goalRunTime: x.goal_run_time,
-      validated: x.validated ?? false, validationData: x.validation_data ?? {},
+    setRaces((r.data ?? []).map((x: Record<string, unknown>): Race => ({
+      id: x.id as string, name: x.name as string,
+      sport: x.sport as RaceSport, date: x.date as string, level: x.level as RaceLevel,
+      goal: x.goal as string | undefined, strategy: x.strategy as string | undefined,
+      runDistance: x.run_distance as string | undefined,
+      triDistance: x.tri_distance as string | undefined,
+      hyroxCategory: x.hyrox_category as string | undefined,
+      hyroxLevel: x.hyrox_level as string | undefined,
+      hyroxGender: x.hyrox_gender as string | undefined,
+      goalTime: x.goal_time as string | undefined,
+      goalSwimTime: x.goal_swim_time as string | undefined,
+      goalBikeTime: x.goal_bike_time as string | undefined,
+      goalRunTime: x.goal_run_time as string | undefined,
+      validated: (x.validated as boolean | undefined) ?? false,
+      validationData: (x.validation_data as Record<string, unknown> | undefined) ?? {},
+      status: (x.status as 'upcoming' | 'completed' | undefined) ?? 'upcoming',
+      distance: x.distance as string | undefined,
+      performanceData: (x.performance_data as Record<string, unknown> | undefined) ?? {},
+      notes: x.notes as string | undefined,
     })))
 
-    setEventTypes((et.data ?? []).map((x: any): CalEventType => ({
-      id: x.id, name: x.name, color: x.color, category: x.category,
+    setRaceStages((rs.data ?? []).map((x: Record<string, unknown>): RaceStage => ({
+      id: x.id as string, name: x.name as string,
+      startDate: x.start_date as string, endDate: x.end_date as string,
+      description: x.description as string | undefined,
+      dailyProgram: (x.daily_program as { date: string; content: string }[]) ?? [],
     })))
 
-    setEvents((ev.data ?? []).map((x: any): CalEvent => ({
-      id: x.id, category: x.category, typeId: x.type_id,
-      date: x.date, title: x.title, description: x.description, color: x.color,
+    setEventTypes((et.data ?? []).map((x: Record<string, unknown>): CalEventType => ({
+      id: x.id as string, name: x.name as string, color: x.color as string,
+      category: x.category as 'pro' | 'perso',
+    })))
+
+    setEvents((ev.data ?? []).map((x: Record<string, unknown>): CalEvent => ({
+      id: x.id as string, category: x.category as 'race' | 'pro' | 'perso',
+      typeId: x.type_id as string | undefined,
+      date: x.date as string, title: x.title as string,
+      description: x.description as string | undefined,
+      color: x.color as string | undefined,
     })))
 
     setLoading(false)
@@ -126,8 +163,8 @@ function useCalendar() {
   useEffect(() => { load() }, [load])
 
   // ── Race CRUD ──────────────────────────────────
-  async function addRace(r: Omit<Race, 'id' | 'validated' | 'validationData'>) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+  async function addRace(r: Omit<Race, 'id' | 'validated' | 'validationData'>): Promise<string | null> {
+    const { data: { user } } = await supabase.auth.getUser(); if (!user) return null
     const { data, error } = await supabase.from('planned_races').insert({
       user_id: user.id, name: r.name, sport: r.sport, date: r.date, level: r.level,
       goal: r.goal ?? null, strategy: r.strategy ?? null,
@@ -136,8 +173,75 @@ function useCalendar() {
       hyrox_gender: r.hyroxGender ?? null, goal_time: r.goalTime ?? null,
       goal_swim_time: r.goalSwimTime ?? null, goal_bike_time: r.goalBikeTime ?? null,
       goal_run_time: r.goalRunTime ?? null, validated: false, validation_data: {},
+      status: r.status ?? 'upcoming', distance: r.distance ?? null,
+      performance_data: r.performanceData ?? {}, notes: r.notes ?? null,
     }).select().single()
-    if (!error && data) setRaces(p => [...p, { ...r, id: data.id, validated: false, validationData: {} }])
+    if (!error && data) {
+      const row = data as Record<string, unknown>
+      setRaces(p => [...p, { ...r, id: row.id as string, validated: false, validationData: {} }])
+      return row.id as string
+    }
+    return null
+  }
+
+  async function addRaceWithFiles(
+    r: Omit<Race, 'id' | 'validated' | 'validationData'>,
+    files: File[], filesBike?: File[], filesRun?: File[],
+  ) {
+    const raceId = await addRace(r)
+    if (!raceId) return
+    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const allFiles: { file: File; label?: string }[] = [
+      ...files.map(f => ({ file: f })),
+      ...(filesBike ?? []).map(f => ({ file: f, label: 'Parcours vélo' })),
+      ...(filesRun  ?? []).map(f => ({ file: f, label: 'Parcours run' })),
+    ]
+    for (const { file, label } of allFiles) {
+      try {
+        const path = `${user.id}/${raceId}/${file.name}`
+        const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
+        if (upData) {
+          const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
+          await supabase.from('race_files').insert({
+            race_id: raceId, file_url: urlData.publicUrl,
+            file_name: file.name, file_type: file.type, label: label ?? null,
+          })
+        }
+      } catch (e) { console.error('[file upload]', e) }
+    }
+  }
+
+  async function markCompleted(id: string) {
+    await supabase.from('planned_races').update({
+      status: 'completed', updated_at: new Date().toISOString(),
+    }).eq('id', id)
+    setRaces(p => p.map(x => x.id === id ? { ...x, status: 'completed' as const } : x))
+  }
+
+  // ── RaceStage CRUD ─────────────────────────────
+  async function addRaceStage(s: Omit<RaceStage, 'id'>, files: File[]) {
+    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const { data, error } = await supabase.from('race_events').insert({
+      user_id: user.id, name: s.name, start_date: s.startDate, end_date: s.endDate,
+      description: s.description ?? null, daily_program: s.dailyProgram,
+    }).select().single()
+    if (!error && data) {
+      const row = data as Record<string, unknown>
+      const stageId = row.id as string
+      for (const file of files) {
+        try {
+          const path = `${user.id}/events/${stageId}/${file.name}`
+          const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
+          if (upData) {
+            const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
+            await supabase.from('race_event_files').insert({
+              event_id: stageId, file_url: urlData.publicUrl, file_name: file.name,
+            })
+          }
+        } catch (e) { console.error('[event file upload]', e) }
+      }
+      setRaceStages(p => [...p, { ...s, id: stageId }])
+    }
   }
 
   async function updateRace(r: Race) {
@@ -198,11 +302,17 @@ function useCalendar() {
     setEvents(p => p.filter(x => x.id !== id))
   }
 
-  return { races, eventTypes, events, loading, addRace, updateRace, deleteRace, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent }
+  return {
+    races, raceStages, eventTypes, events, loading,
+    addRace, addRaceWithFiles, updateRace, deleteRace, markCompleted,
+    addRaceStage,
+    addEventType, updateEventType, deleteEventType,
+    addEvent, updateEvent, deleteEvent,
+  }
 }
 
 // ════════════════════════════════════════════════
-// RACE MODALS
+// RACE MODALS (legacy — kept for reference, not used)
 // ════════════════════════════════════════════════
 function RaceAddModal({ month, day, year, onClose, onSave }: {
   month: number; day?: number; year: number; onClose: () => void
@@ -469,218 +579,116 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 }
 
 // ════════════════════════════════════════════════
-// RACE TAB
+// RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, events, addRace, updateRace, deleteRace, addEvent, deleteEvent }: {
-  races: Race[]; events: CalEvent[]
-  addRace: (r: Omit<Race, 'id' | 'validated' | 'validationData'>) => void
+function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage }: {
+  races: Race[]; raceStages: RaceStage[]
+  addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
-  addEvent: (e: Omit<CalEvent, 'id'>) => void; deleteEvent: (id: string) => void
+  markCompleted: (id: string) => void
+  addRaceStage: (s: Omit<RaceStage, 'id'>, files: File[]) => Promise<void>
 }) {
-  const [calView, setCalView]           = useState<CalView>('year')
+  const [calView,    setCalView]    = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
-  const [addMode, setAddMode]           = useState<{ month: number; day?: number } | null>(null)
-  const [addEventMode, setAddEventMode] = useState<{ month: number; day?: number } | null>(null)
-  const [detailModal, setDetailModal]   = useState<Race | null>(null)
-  const [editModal, setEditModal]       = useState<Race | null>(null)
+  const [showRaceModal, setShowRaceModal] = useState(false)
+  const [showEventModal, setShowEventModal] = useState(false)
+  const [editRace, setEditRace]     = useState<Race | null>(null)
   const year = new Date().getFullYear()
+  const gty  = races.find(r => r.level === 'gty' && new Date(r.date).getFullYear() === year)
 
-  const gty      = races.find(r => r.level === 'gty')
-  const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0]
-  const raceEvents = events.filter(e => e.category === 'race')
-
-  function getRacesForMonth(m: number) {
-    return races.filter(r => { const d = new Date(r.date); return d.getFullYear() === year && d.getMonth() === m })
-  }
-  function getEventsForMonth(m: number) {
-    return raceEvents.filter(e => { const d = new Date(e.date); return d.getFullYear() === year && d.getMonth() === m })
-  }
-  function getEventsForDay(ds: string) {
-    return raceEvents.filter(e => e.date === ds)
+  async function handleSaveRace(
+    r: Omit<Race, 'id' | 'validated' | 'validationData'>,
+    files: File[], filesBike?: File[], filesRun?: File[],
+  ) {
+    if (editRace) {
+      updateRace({ ...editRace, ...r })
+    } else {
+      await addRaceWithFiles(r, files, filesBike, filesRun)
+    }
+    setShowRaceModal(false)
+    setEditRace(null)
   }
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* GTY Banner */}
-      {gty && (
-        <div style={{ padding:'14px 18px',borderRadius:14,background:'var(--gty-bg)',border:'2px solid var(--gty-border)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' }}>
-          <span style={{ width:10,height:10,borderRadius:'50%',background:'var(--gty-text)',display:'inline-block',flexShrink:0,opacity:0.7 }} />
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:11,fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--gty-text)',opacity:0.6,margin:'0 0 2px' }}>Goal of the Year</p>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800,color:'var(--gty-text)',margin:'0 0 2px' }}>{gty.name}</p>
-            {gty.goal && <p style={{ fontSize:12,color:'var(--gty-text)',opacity:0.7,margin:0 }}>{gty.goal}</p>}
-          </div>
-          <div style={{ textAlign:'center' }}>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,color:'var(--gty-text)',margin:0,lineHeight:1 }}>{Math.max(0, daysUntil(gty.date))}</p>
-            <p style={{ fontSize:10,color:'var(--gty-text)',opacity:0.6,margin:0 }}>jours restants</p>
-          </div>
-        </div>
-      )}
+      <GoalBanner gty={gty} />
 
       {/* Controls */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:8 }}>
         <div style={{ display:'flex',gap:5 }}>
-          {([['year','Vue annuelle'],['month','Vue mensuelle']] as [CalView,string][]).map(([v, l]) => (
-            <button key={v} onClick={() => setCalView(v)}
-              style={{ padding:'6px 12px',borderRadius:9,border:'1px solid',borderColor:calView===v?'#00c8e0':'var(--border)',background:calView===v?'rgba(0,200,224,0.10)':'var(--bg-card)',color:calView===v?'#00c8e0':'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400 }}>
-              {l}
+          {(['year','month'] as CalView[]).map(v => (
+            <button key={v} onClick={() => setCalView(v)} style={{
+              padding:'6px 12px',borderRadius:9,border:'1px solid',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400,
+              borderColor:calView===v?'#00c8e0':'var(--border)',
+              background:calView===v?'rgba(0,200,224,0.10)':'var(--bg-card)',
+              color:calView===v?'#00c8e0':'var(--text-mid)',
+            }}>
+              {v === 'year' ? 'Vue annuelle' : 'Vue mensuelle'}
             </button>
           ))}
         </div>
         <div style={{ display:'flex',gap:6 }}>
-          <button onClick={() => setAddEventMode({ month: currentMonth })}
-            style={{ padding:'6px 12px',borderRadius:9,background:'rgba(156,163,175,0.15)',border:'1px solid rgba(156,163,175,0.3)',color:'#9ca3af',fontSize:11,fontWeight:600,cursor:'pointer' }}>
+          <button onClick={() => setShowEventModal(true)} style={{
+            padding:'6px 12px',borderRadius:9,fontSize:11,fontWeight:600,cursor:'pointer',
+            background:'rgba(59,130,246,0.10)',border:'1px solid rgba(59,130,246,0.3)',color:'#3b82f6',
+          }}>
             Événement
           </button>
-          <button onClick={() => setAddMode({ month: currentMonth })}
-            style={{ padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer' }}>
+          <button onClick={() => { setEditRace(null); setShowRaceModal(true) }} style={{
+            padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',
+          }}>
             + Course
           </button>
         </div>
       </div>
 
-      {/* Year view */}
+      {/* Views */}
       {calView === 'year' && (
-        <div style={{ overflowX:'auto' }}>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(4,minmax(150px,1fr))',gap:10,minWidth:580 }}>
-            {MONTHS.map((_, mi) => {
-              const mr = getRacesForMonth(mi)
-              const me = getEventsForMonth(mi)
-              const all = [
-                ...mr.map(r => ({ key:r.id, date:new Date(r.date).getDate(), isRace:true as const, race:r })),
-                ...me.map(e => ({ key:e.id, date:new Date(e.date).getDate(), isRace:false as const, event:e })),
-              ].sort((a, b) => a.date - b.date)
-              return (
-                <div key={mi} onClick={() => { setCurrentMonth(mi); setCalView('month') }}
-                  style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:12,padding:12,boxShadow:'var(--shadow-card)',cursor:'pointer' }}>
-                  <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 7px',color:all.length>0?'var(--text)':'var(--text-dim)' }}>{MONTH_SHORT[mi]}</p>
-                  {all.length > 0 ? all.map(item => {
-                    if (item.isRace) {
-                      const cfg = RACE_CONFIG[item.race.level]
-                      return (
-                        <div key={item.key} onClick={e => { e.stopPropagation(); setDetailModal(item.race) }}
-                          style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer',marginBottom:4 }}>
-                          <span style={{ width:6,height:6,borderRadius:'50%',background:item.race.level==='gty'?'var(--gty-text)':cfg.color,display:'inline-block',flexShrink:0 }} />
-                          <div style={{ flex:1,minWidth:0 }}>
-                            <p style={{ fontSize:10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:item.race.level==='gty'?'var(--gty-text)':cfg.color }}>{item.race.name}</p>
-                            <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{item.date} {MONTH_SHORT[mi]}</p>
-                          </div>
-                        </div>
-                      )
-                    } else {
-                      return (
-                        <div key={item.key}
-                          style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:EVENT_CONFIG.bg,border:`1px solid ${EVENT_CONFIG.border}44`,marginBottom:4 }}>
-                          <span style={{ width:6,height:6,borderRadius:'50%',background:EVENT_CONFIG.color,display:'inline-block',flexShrink:0 }} />
-                          <div style={{ flex:1,minWidth:0 }}>
-                            <p style={{ fontSize:10,fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:EVENT_CONFIG.color }}>{item.event.title}</p>
-                            <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{item.date} {MONTH_SHORT[mi]}</p>
-                          </div>
-                        </div>
-                      )
-                    }
-                  }) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' }}>Aucun</p>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        <AnnualView
+          races={races} stages={raceStages} year={year}
+          onRaceClick={r => { setEditRace(r); setShowRaceModal(true) }}
+          onMonthClick={m => { setCurrentMonth(m); setCalView('month') }}
+          onMarkComplete={markCompleted}
+        />
       )}
-
-      {/* Month view */}
       {calView === 'month' && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:9 }}>
-              <button onClick={() => setCurrentMonth(m => Math.max(0, m - 1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
-              <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{MONTHS[currentMonth]} {year}</h2>
-              <button onClick={() => setCurrentMonth(m => Math.min(11, m + 1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
-            </div>
-            <div style={{ display:'flex',gap:6 }}>
-              <button onClick={() => setAddEventMode({ month: currentMonth })}
-                style={{ padding:'5px 10px',borderRadius:8,background:'rgba(156,163,175,0.12)',border:'1px solid rgba(156,163,175,0.25)',color:'#9ca3af',fontSize:10,cursor:'pointer' }}>
-                Événement
-              </button>
-              <button onClick={() => setAddMode({ month: currentMonth })}
-                style={{ padding:'5px 10px',borderRadius:8,background:'rgba(0,200,224,0.10)',border:'1px solid rgba(0,200,224,0.25)',color:'#00c8e0',fontSize:10,cursor:'pointer' }}>
-                + Course
-              </button>
-            </div>
-          </div>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:5 }}>
-            {['L','M','M','J','V','S','D'].map((d, i) => (
-              <div key={i} style={{ textAlign:'center',fontSize:9,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2 }}>
-            {Array.from({ length: getFirstDay(year, currentMonth) - 1 }, (_, i) => (
-              <div key={`e${i}`} style={{ minHeight:60,borderRadius:7,background:'var(--bg-card2)',opacity:0.3 }}/>
-            ))}
-            {Array.from({ length: getDaysInMonth(year, currentMonth) }, (_, i) => {
-              const day = i + 1
-              const ds  = `${year}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const dr  = races.filter(r => r.date === ds)
-              const de  = getEventsForDay(ds)
-              const isToday = new Date().toDateString() === new Date(ds).toDateString()
-              return (
-                <div key={day} onClick={() => setAddMode({ month: currentMonth, day })}
-                  style={{ minHeight:60,borderRadius:7,background:'var(--bg-card2)',border:`1px solid ${isToday?'#00c8e0':'var(--border)'}`,padding:'3px 4px',cursor:'pointer',display:'flex',flexDirection:'column',gap:1 }}>
-                  <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?'#00c8e0':'var(--text-mid)',margin:0,textAlign:'right' }}>{day}</p>
-                  {dr.map(r => { const cfg = RACE_CONFIG[r.level]; return (
-                    <div key={r.id} onClick={e => { e.stopPropagation(); setDetailModal(r) }}
-                      style={{ borderRadius:3,padding:'1px 3px',background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer' }}>
-                      <p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:r.level==='gty'?'var(--gty-text)':cfg.color }}>{r.name}</p>
-                    </div>
-                  )})}
-                  {de.map(ev => (
-                    <div key={ev.id} style={{ borderRadius:3,padding:'1px 3px',background:EVENT_CONFIG.bg,border:`1px solid ${EVENT_CONFIG.border}44` }}>
-                      <p style={{ fontSize:7,fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:EVENT_CONFIG.color }}>{ev.title}</p>
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        <MonthlyView
+          races={races} stages={raceStages} year={year}
+          initialMonth={currentMonth}
+          onRaceClick={r => { setEditRace(r); setShowRaceModal(true) }}
+        />
       )}
 
-      {/* Next race */}
-      {nextRace && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:13,padding:14,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 9px' }}>Prochaine course</p>
-          <div style={{ display:'flex',alignItems:'center',gap:12,flexWrap:'wrap' }}>
-            <div style={{ width:52,height:52,borderRadius:11,background:RACE_CONFIG[nextRace.level].bg,border:`2px solid ${RACE_CONFIG[nextRace.level].border}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <span style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800,color:nextRace.level==='gty'?'var(--gty-text)':RACE_CONFIG[nextRace.level].color,lineHeight:1 }}>{daysUntil(nextRace.date)}</span>
-              <span style={{ fontSize:7,color:'var(--text-dim)' }}>jours</span>
-            </div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{nextRace.name}</p>
-              <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 4px' }}>{new Date(nextRace.date).toLocaleDateString('fr-FR',{ weekday:'long',day:'numeric',month:'long' })}</p>
-              {nextRace.goal && <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{nextRace.goal}</p>}
-            </div>
-            <button onClick={() => setEditModal(nextRace)}
-              style={{ padding:'5px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
-              Modifier
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Next race bar */}
+      <NextRaceBar races={races} onEdit={r => { setEditRace(r); setShowRaceModal(true) }} />
 
-      {/* All races list */}
-      {races.length === 0 && events.filter(e => e.category === 'race').length === 0 && (
+      {/* Empty state */}
+      {races.length === 0 && raceStages.length === 0 && (
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée</p>
-          <button onClick={() => setAddMode({ month: currentMonth })}
-            style={{ padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>
+          <button onClick={() => setShowRaceModal(true)} style={{
+            padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',
+          }}>
             + Ajouter une course
           </button>
         </div>
       )}
 
-      {addMode      && <RaceAddModal month={addMode.month} day={addMode.day} year={year} onClose={() => setAddMode(null)} onSave={r => { addRace(r); setAddMode(null) }}/>}
-      {addEventMode && <RaceEventModal month={addEventMode.month} day={addEventMode.day} year={year} onClose={() => setAddEventMode(null)} onSave={e => { addEvent(e); setAddEventMode(null) }}/>}
-      {detailModal  && <RaceDetailModal race={detailModal} onClose={() => setDetailModal(null)} onDelete={id => { deleteRace(id); setDetailModal(null) }} onEdit={() => { setEditModal(detailModal); setDetailModal(null) }}/>}
-      {editModal    && <RaceEditModal race={editModal} onClose={() => setEditModal(null)} onSave={r => { updateRace(r); setEditModal(null) }}/>}
+      {showRaceModal && (
+        <RaceModal
+          race={editRace ?? undefined}
+          onClose={() => { setShowRaceModal(false); setEditRace(null) }}
+          onSave={handleSaveRace}
+        />
+      )}
+      {showEventModal && (
+        <EventModal
+          onClose={() => setShowEventModal(false)}
+          onSave={async (s, files) => { await addRaceStage(s, files); setShowEventModal(false) }}
+        />
+      )}
     </div>
   )
 }
@@ -1169,7 +1177,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
   const [tab, setTab] = useState<CalTab>('race')
-  const { races, eventTypes, events, loading, addRace, updateRace, deleteRace, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
 
   const TABS: { id: CalTab; label: string; short: string; color: string; bg: string }[] = [
     { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
@@ -1221,7 +1229,7 @@ export default function CalendarPage() {
 
       {!loading && (
         <>
-          {tab === 'race'  && <RaceTab races={races} events={events} addRace={addRace} updateRace={updateRace} deleteRace={deleteRace} addEvent={addEvent} deleteEvent={deleteEvent}/>}
+          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage}/>}
           {tab === 'pro'   && <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'perso' && <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'all'   && <AllTab races={races} eventTypes={eventTypes} events={events}/>}

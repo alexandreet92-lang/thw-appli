@@ -6259,6 +6259,10 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
   const [athleteWeight, setAthleteWeight] = useState<number>(75)
   const [bikeWeight, setBikeWeight] = useState<number>(8)
   const [terrainLoading, setTerrainLoading] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [showCloseModal, setShowCloseModal] = useState(false)
+  // Snapshot des valeurs initiales pour détecter les modifs
+  const initialSnapshotRef = useRef<string>('')
 
   /** Piecewise linear W → FC estimation (IF → %LTHR) */
   function wattToFc(watts: number, ftpVal: number, lthrVal: number): number {
@@ -6304,6 +6308,20 @@ function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelet
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  // Initialise le snapshot à l'ouverture (après le premier rendu)
+  useEffect(() => {
+    initialSnapshotRef.current = JSON.stringify({ sport, title, desc, dur, rpe, blocks, nutritionItems })
+    setIsDirty(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Détecte les modifications par rapport au snapshot initial
+  useEffect(() => {
+    if (!initialSnapshotRef.current) return
+    const current = JSON.stringify({ sport, title, desc, dur, rpe, blocks, nutritionItems })
+    setIsDirty(current !== initialSnapshotRef.current)
+  }, [sport, title, desc, dur, rpe, blocks, nutritionItems])
 
   useEffect(() => {
     let cancelled = false
@@ -9392,6 +9410,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         <div style={{ padding: mobile ? '0 16px 28px' : '0 24px 32px' }}>
           {isEdit ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
+              {/* ── Tout à gauche : Fermer ── */}
+              <button
+                onClick={() => { if (isDirty) { setShowCloseModal(true) } else { onClose() } }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#111827' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6B7280' }}
+                style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Fermer
+              </button>
               {/* ── Gauche : actions secondaires (text-only, no bg) ── */}
               <button onClick={handleExportPDF} title="Exporter en PDF" style={{
                 padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
@@ -9522,6 +9550,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
                   })
                   setSaved(true)
+                  setIsDirty(false)
+                  initialSnapshotRef.current = JSON.stringify({ sport, title, desc, dur, rpe, blocks, nutritionItems })
                   setTimeout(() => setSaved(false), 2000)
                 } catch (e) { console.error('[Save]', e) }
                 finally { setSaving(false) }
@@ -9571,6 +9601,98 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         </div>
 
         {/* Duplicate day menu */}
+        {/* ── Modal : modifications non enregistrées ── */}
+        {showCloseModal && (
+          <div style={{
+            position: 'fixed' as const, inset: 0, zIndex: 1200,
+            background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }} onClick={() => setShowCloseModal(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: 'var(--bg-card)', borderRadius: 16, padding: 32,
+              maxWidth: 400, width: '100%', border: '1px solid var(--border)',
+              display: 'flex', flexDirection: 'column' as const, gap: 0,
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12, lineHeight: 1 }}>⚠</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: '#111827', fontFamily: 'Syne, sans-serif', marginBottom: 8 }}>
+                Modifications non enregistrées
+              </div>
+              <div style={{ fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 1.5 }}>
+                Vous avez des modifications non enregistrées sur cette séance. Voulez-vous les enregistrer avant de quitter ?
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                {/* Enregistrer et quitter */}
+                <button onClick={async () => {
+                  if (!session?.id || saving) return
+                  setSaving(true)
+                  try {
+                    const { createClient: cc } = await import('@/lib/supabase/client')
+                    const sb = cc()
+                    const _parcoursMin = parseDurationToMin(totalDuration)
+                    const _saveDur = aiFlowStep === 'parcours' && _parcoursMin > 0 ? _parcoursMin : dur
+                    const _pTss = computeParcoursFlowTSS()
+                    const _saveTss = (aiFlowStep === 'parcours' && _pTss ? _pTss.tss : sessionStats.tssHigh) || session.tss || null
+                    const _savedBlocks = isStrength && exercises.length > 0 && gymCircuitsRef.current.length > 0
+                      ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
+                      : aiFlowStep === 'parcours' && parcoursData
+                        ? buildParcoursBlocks()
+                        : blocks ?? []
+                    const _savedParcours = parcoursDataWithConfig()
+                    await sb.from('planned_sessions').update({
+                      sport, title, time,
+                      duration_min: _saveDur,
+                      rpe: rpe ?? null,
+                      notes: desc ?? null,
+                      blocks: _savedBlocks,
+                      tss: _saveTss,
+                      parcours_data: _savedParcours ?? null,
+                      nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
+                      updated_at: new Date().toISOString(),
+                    }).eq('id', session.id)
+                    onAutoSave?.({
+                      ...session,
+                      sport, title, time,
+                      durationMin: _saveDur,
+                      tss: _saveTss ?? undefined,
+                      notes: desc || undefined,
+                      rpe,
+                      blocks: _savedBlocks,
+                      parcoursData: _savedParcours ?? undefined,
+                      nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
+                    })
+                    setIsDirty(false)
+                    setShowCloseModal(false)
+                    onClose()
+                  } catch (e) { console.error('[Save+Close]', e) }
+                  finally { setSaving(false) }
+                }} style={{
+                  width: '100%', padding: '12px 16px', borderRadius: 8,
+                  background: '#111827', border: 'none',
+                  color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  {saving ? '…' : 'Enregistrer et quitter'}
+                </button>
+                {/* Quitter sans enregistrer */}
+                <button onClick={() => { setShowCloseModal(false); onClose() }} style={{
+                  width: '100%', padding: '12px 16px', borderRadius: 8,
+                  background: 'transparent', border: '1px solid #EF4444',
+                  color: '#EF4444', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  Quitter sans enregistrer
+                </button>
+                {/* Annuler */}
+                <button onClick={() => setShowCloseModal(false)} style={{
+                  width: '100%', padding: '12px 16px', borderRadius: 8,
+                  background: 'transparent', border: 'none',
+                  color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+                }}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showDuplicateMenu && onDuplicate && session && (
           <div style={{
             position: 'fixed' as const, inset: 0, zIndex: 1100,

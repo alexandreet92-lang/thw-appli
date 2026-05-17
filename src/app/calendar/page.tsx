@@ -1089,7 +1089,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 
       {/* Vertical view */}
       {view === 'vertical' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {unified.length === 0 && (
             <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14 }}>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic' }}>Aucun événement pour {year}</p>
@@ -1098,21 +1098,16 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           {Object.entries(byMonth)
             .sort(([a], [b]) => Number(a) - Number(b))
             .map(([mi, monthEvents]) => (
-              <div key={mi}>
+              <div key={mi} style={{ paddingTop: 24 }}>
                 {/* Month header */}
-                <div style={{
-                  padding: '8px 0 6px', display: 'flex', alignItems: 'center', gap: 10,
-                  position: 'sticky', top: 0, zIndex: 2,
-                  background: 'var(--bg)', borderBottom: '1px solid var(--border)',
-                  marginBottom: 2,
-                }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 8 }}>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-                    textTransform: 'uppercase' as const, color: 'var(--text-dim)',
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.10em',
+                    textTransform: 'uppercase' as const, color: 'var(--text-mid)',
                   }}>
                     {MONTH_SHORT[Number(mi)]}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', opacity: 0.5 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                     {monthEvents.length} événement{monthEvents.length > 1 ? 's' : ''}
                   </span>
                 </div>
@@ -1121,63 +1116,56 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                 {monthEvents.map(ev => {
                   const isPast = ev.date < today
                   const days   = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
-                  const catCfg = CATEGORY_CONFIG[ev.category === 'race' ? 'race' : ev.category as 'pro'|'perso']
                   const lvlCfg = ev.level ? RACE_CONFIG[ev.level] : null
-
-                  let countdownColor = '#22c55e'
-                  if (!isPast && days < 7)  countdownColor = '#ef4444'
-                  else if (!isPast && days < 30) countdownColor = '#f97316'
+                  const dotColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
 
                   return (
                     <div key={ev.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '9px 12px', borderRadius: 9, marginBottom: 3,
-                      background: `${catCfg.color}0d`,
-                      border: `1px solid ${catCfg.color}22`,
-                      opacity: isPast ? 0.55 : 1,
+                      display: 'flex', alignItems: 'center', gap: 11,
+                      padding: '10px 4px',
+                      borderBottom: '1px solid var(--border)',
+                      opacity: isPast ? 0.45 : 1,
                     }}>
-                      {/* Color dot */}
+                      {/* Dot — seul élément coloré */}
                       <div style={{
                         width: 8, height: 8, borderRadius: '50%',
-                        background: ev.color, flexShrink: 0,
-                        boxShadow: ev.level === 'gty' ? `0 0 6px ${ev.color}` : undefined,
+                        background: dotColor, flexShrink: 0,
                       }} />
 
-                      {/* Date */}
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', flexShrink: 0, minWidth: 22 }}>
+                      {/* Day number */}
+                      <span style={{
+                        fontSize: 11, color: 'var(--text-dim)',
+                        fontFamily: 'DM Mono, monospace',
+                        flexShrink: 0, minWidth: 18,
+                      }}>
                         {new Date(ev.date + 'T12:00:00').getDate()}
                       </span>
 
-                      {/* Category badge */}
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-                        background: `${catCfg.color}22`, color: catCfg.color,
-                        border: `1px solid ${catCfg.color}44`, flexShrink: 0,
-                      }}>
-                        {ev.category === 'race' ? 'RACE' : ev.category === 'pro' ? 'PRO' : 'PERSO'}
-                      </span>
-
-                      {/* Level badge (races only) */}
+                      {/* Level badge — outline only, no color fill */}
                       {lvlCfg && (
                         <span style={{
-                          fontSize: 9, fontWeight: 600, padding: '1px 6px', borderRadius: 20,
-                          background: lvlCfg.bg, color: ev.level === 'gty' ? 'var(--gty-text)' : lvlCfg.color,
-                          border: `1px solid ${lvlCfg.border}55`, flexShrink: 0,
+                          fontSize: 10, padding: '1px 7px', borderRadius: 20,
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-mid)',
+                          flexShrink: 0, whiteSpace: 'nowrap' as const,
                         }}>
                           {lvlCfg.label}
                         </span>
                       )}
 
-                      {/* Sport abbr (races only) */}
+                      {/* Sport abbr */}
                       {ev.sport && (
-                        <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', flexShrink: 0 }}>
+                        <span style={{
+                          fontSize: 10, color: 'var(--text-dim)',
+                          fontFamily: 'DM Mono, monospace', flexShrink: 0,
+                        }}>
                           {SPORT_ABBR[ev.sport]}
                         </span>
                       )}
 
                       {/* Title */}
                       <span style={{
-                        flex: 1, fontSize: 12, fontWeight: 500,
+                        flex: 1, fontSize: 13, fontWeight: 500,
                         color: 'var(--text)', overflow: 'hidden',
                         textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
                       }}>
@@ -1186,15 +1174,16 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 
                       {/* Countdown / past */}
                       {isPast ? (
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span>✓</span> Passé
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
+                          ✓ Passé
                         </span>
                       ) : (
                         <span style={{
-                          fontSize: 11, fontWeight: 600, color: countdownColor,
+                          fontSize: 13, fontWeight: 500,
+                          color: 'var(--text-mid)',
                           fontFamily: 'DM Mono, monospace', flexShrink: 0,
                         }}>
-                          {days === 0 ? "Auj." : `J-${days}`}
+                          {days === 0 ? 'Auj.' : `J-${days}`}
                         </span>
                       )}
                     </div>

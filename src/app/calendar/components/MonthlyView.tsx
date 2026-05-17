@@ -2,19 +2,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Race, RaceStage, RACE_CFG, MONTHS, getDaysInMonth, getFirstDayISO } from './types'
-import GpxRouteSvg, { parseGpxText } from '@/components/gpx/GpxRouteSvg'
+import GpxRouteMap from '@/components/gpx/GpxRouteMap'
 
 // ── Stage day popover ─────────────────────────────────────────
 interface PopoverState { stage: RaceStage; date: string; x: number; y: number }
 
-function StageDayPopover({ stage, date, x, y, onClose }: PopoverState & { onClose: () => void }) {
+function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeave }: PopoverState & { onClose: () => void; onMouseEnter: () => void; onMouseLeave: () => void }) {
   const supabase = createClient()
-  const [gpxTrace, setGpxTrace]   = useState<{ lat: number; lon: number }[] | null>(null)
-  const [fileName, setFileName]   = useState<string | null>(null)
-  const [fileUrl,  setFileUrl]    = useState<string | null>(null)
-  const [fetched,  setFetched]    = useState(false)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [fileUrl,  setFileUrl]  = useState<string | null>(null)
+  const [fetched,  setFetched]  = useState(false)
 
-  const program = stage.dailyProgram.find(p => p.date === date)?.content ?? ''
+  const program  = stage.dailyProgram.find(p => p.date === date)?.content ?? ''
   const dayLabel = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
   useEffect(() => {
@@ -24,38 +23,38 @@ function StageDayPopover({ stage, date, x, y, onClose }: PopoverState & { onClos
       .eq('event_id', stage.id)
       .eq('event_date', date)
       .maybeSingle()
-      .then(async ({ data }) => {
+      .then(({ data }) => {
         if (data) {
           const d = data as { file_url: string; file_name: string }
           setFileName(d.file_name)
           setFileUrl(d.file_url)
-          if (d.file_name.toLowerCase().endsWith('.gpx')) {
-            try {
-              const text = await fetch(d.file_url).then(r => r.text())
-              setGpxTrace(parseGpxText(text))
-            } catch { /* ignore */ }
-          }
         }
         setFetched(true)
       })
   }, [stage.id, date]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Position near cursor, stay inside viewport
-  const W = 220, H = 260
-  const left = Math.min(x + 12, (typeof window !== 'undefined' ? window.innerWidth : 800) - W - 8)
-  const top  = Math.min(y - 10, (typeof window !== 'undefined' ? window.innerHeight : 600) - H - 8)
+  // Position near cursor, prefer above if in bottom half of screen
+  const W = 320
+  const vw = typeof window !== 'undefined' ? window.innerWidth  : 800
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 600
+  const above = y > vh * 0.55
+  const left  = Math.min(x + 12, vw - W - 8)
+  const top   = above ? Math.max(y - 280, 8) : Math.min(y + 10, vh - 280)
+
+  const isGpx = !!fileName?.toLowerCase().endsWith('.gpx')
 
   return (
     <>
-      {/* Backdrop to catch outside click */}
       <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:490 }} />
       <div
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         style={{
           position:'fixed', left, top, zIndex:491,
           width:W, background:'var(--bg-card)',
           border:'1px solid var(--border)', borderRadius:12,
           padding:12, boxShadow:'0 8px 32px rgba(0,0,0,0.45)',
-          pointerEvents:'none',
+          pointerEvents:'auto',
         }}
       >
         <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#3b82f6',margin:'0 0 2px' }}>
@@ -65,13 +64,13 @@ function StageDayPopover({ stage, date, x, y, onClose }: PopoverState & { onClos
           {dayLabel}
         </p>
 
-        {gpxTrace && gpxTrace.length >= 2 && (
+        {fetched && fileUrl && isGpx && (
           <div style={{ marginBottom:8 }}>
-            <GpxRouteSvg trace={gpxTrace} width={196} height={110} />
+            <GpxRouteMap fileUrl={fileUrl} height={150} />
           </div>
         )}
 
-        {fetched && fileName && !fileName.toLowerCase().endsWith('.gpx') && fileUrl && (
+        {fetched && fileName && !isGpx && fileUrl && (
           <div style={{ display:'flex',alignItems:'center',gap:6,padding:'4px 8px',borderRadius:6,background:'var(--bg-card2)',marginBottom:8 }}>
             <span style={{ fontSize:12 }}>📄</span>
             <span style={{ fontSize:10,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{fileName}</span>
@@ -79,7 +78,7 @@ function StageDayPopover({ stage, date, x, y, onClose }: PopoverState & { onClos
         )}
 
         {program ? (
-          <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap',maxHeight:70,overflow:'hidden' }}>
+          <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap',maxHeight:80,overflow:'hidden' }}>
             {program}
           </p>
         ) : (
@@ -250,6 +249,8 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
         <StageDayPopover
           {...popover}
           onClose={() => { cancelHide(); setPopover(null) }}
+          onMouseEnter={cancelHide}
+          onMouseLeave={scheduleHide}
         />
       )}
     </>

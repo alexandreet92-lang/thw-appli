@@ -223,27 +223,34 @@ function useCalendar() {
   // ── RaceStage CRUD ─────────────────────────────
   async function addRaceStage(s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) {
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    console.log('[addRaceStage] inserting event', s.name, 'dayFiles:', dayFiles.length)
     const { data, error } = await supabase.from('race_events').insert({
       user_id: user.id, name: s.name, start_date: s.startDate, end_date: s.endDate,
       description: s.description ?? null, daily_program: s.dailyProgram,
     }).select().single()
-    if (!error && data) {
-      const row = data as Record<string, unknown>
-      const stageId = row.id as string
-      for (const { date, file } of dayFiles) {
-        try {
-          const path = `${user.id}/events/${stageId}/${date}/${file.name}`
-          const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
-          if (upData) {
-            const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
-            await supabase.from('race_event_files').insert({
-              event_id: stageId, file_url: urlData.publicUrl, file_name: file.name, event_date: date,
-            })
-          }
-        } catch (e) { console.error('[event file upload]', e) }
-      }
-      setRaceStages(p => [...p, { ...s, id: stageId }])
+    if (error) { console.error('[addRaceStage] insert error', error); return }
+    if (!data) { console.error('[addRaceStage] no data returned'); return }
+    const row = data as Record<string, unknown>
+    const stageId = row.id as string
+    console.log('[addRaceStage] event created, stageId:', stageId)
+    for (const { date, file } of dayFiles) {
+      try {
+        console.log('[addRaceStage] uploading file for', date, file.name)
+        const path = `${user.id}/events/${stageId}/${date}/${file.name}`
+        const { data: upData, error: upErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
+        if (upErr) { console.error('[addRaceStage] storage upload error', upErr); continue }
+        if (!upData) { console.error('[addRaceStage] storage upload returned no data'); continue }
+        const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
+        console.log('[addRaceStage] file uploaded, url:', urlData.publicUrl)
+        const { error: insErr } = await supabase.from('race_event_files').insert({
+          event_id: stageId, file_url: urlData.publicUrl, file_name: file.name, event_date: date,
+        })
+        if (insErr) console.error('[addRaceStage] race_event_files insert error', insErr)
+        else console.log('[addRaceStage] race_event_files row inserted for', date)
+      } catch (e) { console.error('[addRaceStage] file upload exception', e) }
     }
+    setRaceStages(p => [...p, { ...s, id: stageId }])
+    console.log('[addRaceStage] done')
   }
 
   async function saveStageDayContent(stageId: string, date: string, content: string, file?: File) {
@@ -279,24 +286,33 @@ function useCalendar() {
 
   async function updateRaceStage(s: RaceStage, dayFiles: { date: string; file: File }[]) {
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
-    await supabase.from('race_events').update({
+    console.log('[updateRaceStage] updating event', s.id, s.name, 'dayFiles:', dayFiles.length)
+    const { error: upErr } = await supabase.from('race_events').update({
       name: s.name, start_date: s.startDate, end_date: s.endDate,
       description: s.description ?? null, daily_program: s.dailyProgram,
       updated_at: new Date().toISOString(),
     }).eq('id', s.id)
+    if (upErr) console.error('[updateRaceStage] update error', upErr)
     for (const { date, file } of dayFiles) {
       try {
+        console.log('[updateRaceStage] uploading file for', date, file.name, '(event_id:', s.id, ')')
         const path = `${user.id}/events/${s.id}/${date}/${file.name}`
-        const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
-        if (upData) {
-          const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
-          await supabase.from('race_event_files').insert({
-            event_id: s.id, file_url: urlData.publicUrl, file_name: file.name, event_date: date,
-          })
-        }
-      } catch (e) { console.error('[event file update]', e) }
+        const { data: storData, error: storErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
+        if (storErr) { console.error('[updateRaceStage] storage upload error', storErr); continue }
+        if (!storData) { console.error('[updateRaceStage] storage upload returned no data'); continue }
+        const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
+        console.log('[updateRaceStage] file uploaded, url:', urlData.publicUrl)
+        // Upsert: delete old record for this date first
+        await supabase.from('race_event_files').delete().eq('event_id', s.id).eq('event_date', date)
+        const { error: insErr } = await supabase.from('race_event_files').insert({
+          event_id: s.id, file_url: urlData.publicUrl, file_name: file.name, event_date: date,
+        })
+        if (insErr) console.error('[updateRaceStage] race_event_files insert error', insErr)
+        else console.log('[updateRaceStage] race_event_files row upserted for', date)
+      } catch (e) { console.error('[updateRaceStage] file upload exception', e) }
     }
     setRaceStages(p => p.map(x => x.id === s.id ? s : x))
+    console.log('[updateRaceStage] done')
   }
 
   async function updateRace(r: Race) {

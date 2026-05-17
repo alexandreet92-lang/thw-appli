@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RaceStage } from './types'
-import GpxRouteMap from '@/components/gpx/GpxRouteMap'
+import GpxFullView from '@/components/gpx/GpxFullView'
 
 interface DayFile { id: string; file_url: string; file_name: string }
 
@@ -49,7 +49,6 @@ export default function DayModal({ stage, date, onClose, onSave }: Props) {
     finally { setSaving(false) }
   }
 
-  // Resolve what to display: new file (local) takes priority over existing remote
   const displayFile = newFile
     ? { url: URL.createObjectURL(newFile), name: newFile.name, isLocal: true }
     : dayFile
@@ -58,7 +57,7 @@ export default function DayModal({ stage, date, onClose, onSave }: Props) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:520,width:'100%',maxHeight:'90vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16 }}>
 
         {/* Header */}
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12 }}>
@@ -73,9 +72,9 @@ export default function DayModal({ stage, date, onClose, onSave }: Props) {
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
         </div>
 
-        {/* GPX map */}
+        {/* GPX full view (map + elevation + cursor) */}
         {!loadFile && displayFile && isGpxName(displayFile.name) && (
-          <GpxRouteMap fileUrl={displayFile.url} height={200} />
+          <GpxFullView fileUrl={displayFile.url} height={300} />
         )}
 
         {/* Other file */}

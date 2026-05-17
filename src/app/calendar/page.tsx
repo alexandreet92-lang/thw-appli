@@ -1008,30 +1008,204 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
 }
 
 // ════════════════════════════════════════════════
-// ALL TAB — VUE CIRCULAIRE
+// ALL TAB — VERTICALE + CIRCULAIRE
 // ════════════════════════════════════════════════
-function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalEventType[]; events: CalEvent[] }) {
-  const year = new Date().getFullYear()
+type AllView = 'vertical' | 'circular'
 
-  const clockEvents: ClockEvent[] = [
-    ...races.map(r => ({
+const SPORT_ABBR: Record<RaceSport, string> = {
+  run: 'RUN', bike: 'BIK', swim: 'SWI',
+  hyrox: 'HYR', triathlon: 'TRI', rowing: 'ROW',
+}
+
+function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalEventType[]; events: CalEvent[] }) {
+  const [view, setView] = useState<AllView>('vertical')
+  const year = new Date().getFullYear()
+  const today = new Date().toISOString().split('T')[0]
+
+  // Build unified event list for current year
+  interface UnifiedEvent {
+    id: string; date: string; title: string
+    category: 'race' | 'pro' | 'perso'
+    color: string
+    level?: RaceLevel
+    sport?: RaceSport
+  }
+
+  const yearRaces = races
+    .filter(r => r.date.startsWith(String(year)))
+    .map((r): UnifiedEvent => ({
       id: r.id, date: r.date, title: r.name,
-      color: r.level === 'gty' ? '#ffffff' : RACE_CONFIG[r.level].color,
-      isGty: r.level === 'gty',
-      categoryLabel: 'RACE',
-    })),
-    ...events.map(e => {
+      category: 'race', color: r.level === 'gty' ? '#ffffff' : RACE_CONFIG[r.level].color,
+      level: r.level, sport: r.sport,
+    }))
+
+  const yearEvents = events
+    .filter(e => e.date.startsWith(String(year)) && (e.category === 'pro' || e.category === 'perso'))
+    .map((e): UnifiedEvent => {
       const t = eventTypes.find(t => t.id === e.typeId)
       return {
         id: e.id, date: e.date, title: e.title,
+        category: e.category as 'pro' | 'perso',
         color: e.color ?? t?.color ?? CATEGORY_CONFIG[e.category as 'pro'|'perso']?.color ?? '#6b7280',
-        isGty: false,
-        categoryLabel: e.category.toUpperCase(),
       }
-    }),
-  ]
+    })
 
-  return <ClockView events={clockEvents} year={year} />
+  const unified = [...yearRaces, ...yearEvents].sort((a, b) => a.date.localeCompare(b.date))
+
+  // Group by month
+  const byMonth: Record<number, UnifiedEvent[]> = {}
+  for (const ev of unified) {
+    const m = new Date(ev.date + 'T12:00:00').getMonth()
+    if (!byMonth[m]) byMonth[m] = []
+    byMonth[m].push(ev)
+  }
+
+  // ClockView data
+  const clockEvents: ClockEvent[] = unified.map(ev => ({
+    id: ev.id, date: ev.date, title: ev.title,
+    color: ev.color, isGty: ev.level === 'gty',
+    categoryLabel: ev.category.toUpperCase(),
+  }))
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Toggle */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+        {([['vertical', '↕ Vertical'], ['circular', '◎ Circulaire']] as [AllView, string][]).map(([v, l]) => (
+          <button key={v} onClick={() => setView(v)} style={{
+            padding: '6px 13px', borderRadius: 9, border: '1px solid', fontSize: 11, cursor: 'pointer',
+            fontWeight: view === v ? 600 : 400,
+            borderColor: view === v ? '#00c8e0' : 'var(--border)',
+            background: view === v ? 'rgba(0,200,224,0.10)' : 'var(--bg-card)',
+            color: view === v ? '#00c8e0' : 'var(--text-mid)',
+          }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* Circular view */}
+      {view === 'circular' && <ClockView events={clockEvents} year={year} />}
+
+      {/* Vertical view */}
+      {view === 'vertical' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {unified.length === 0 && (
+            <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic' }}>Aucun événement pour {year}</p>
+            </div>
+          )}
+          {Object.entries(byMonth)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([mi, monthEvents]) => (
+              <div key={mi}>
+                {/* Month header */}
+                <div style={{
+                  padding: '8px 0 6px', display: 'flex', alignItems: 'center', gap: 10,
+                  position: 'sticky', top: 0, zIndex: 2,
+                  background: 'var(--bg)', borderBottom: '1px solid var(--border)',
+                  marginBottom: 2,
+                }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                    textTransform: 'uppercase' as const, color: 'var(--text-dim)',
+                  }}>
+                    {MONTH_SHORT[Number(mi)]}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', opacity: 0.5 }}>
+                    {monthEvents.length} événement{monthEvents.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                {/* Events */}
+                {monthEvents.map(ev => {
+                  const isPast = ev.date < today
+                  const days   = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
+                  const catCfg = CATEGORY_CONFIG[ev.category === 'race' ? 'race' : ev.category as 'pro'|'perso']
+                  const lvlCfg = ev.level ? RACE_CONFIG[ev.level] : null
+
+                  let countdownColor = '#22c55e'
+                  if (!isPast && days < 7)  countdownColor = '#ef4444'
+                  else if (!isPast && days < 30) countdownColor = '#f97316'
+
+                  return (
+                    <div key={ev.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 12px', borderRadius: 9, marginBottom: 3,
+                      background: `${catCfg.color}0d`,
+                      border: `1px solid ${catCfg.color}22`,
+                      opacity: isPast ? 0.55 : 1,
+                    }}>
+                      {/* Color dot */}
+                      <div style={{
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: ev.color, flexShrink: 0,
+                        boxShadow: ev.level === 'gty' ? `0 0 6px ${ev.color}` : undefined,
+                      }} />
+
+                      {/* Date */}
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', flexShrink: 0, minWidth: 22 }}>
+                        {new Date(ev.date + 'T12:00:00').getDate()}
+                      </span>
+
+                      {/* Category badge */}
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+                        background: `${catCfg.color}22`, color: catCfg.color,
+                        border: `1px solid ${catCfg.color}44`, flexShrink: 0,
+                      }}>
+                        {ev.category === 'race' ? 'RACE' : ev.category === 'pro' ? 'PRO' : 'PERSO'}
+                      </span>
+
+                      {/* Level badge (races only) */}
+                      {lvlCfg && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 600, padding: '1px 6px', borderRadius: 20,
+                          background: lvlCfg.bg, color: ev.level === 'gty' ? 'var(--gty-text)' : lvlCfg.color,
+                          border: `1px solid ${lvlCfg.border}55`, flexShrink: 0,
+                        }}>
+                          {lvlCfg.label}
+                        </span>
+                      )}
+
+                      {/* Sport abbr (races only) */}
+                      {ev.sport && (
+                        <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', flexShrink: 0 }}>
+                          {SPORT_ABBR[ev.sport]}
+                        </span>
+                      )}
+
+                      {/* Title */}
+                      <span style={{
+                        flex: 1, fontSize: 12, fontWeight: 500,
+                        color: 'var(--text)', overflow: 'hidden',
+                        textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+                      }}>
+                        {ev.title}
+                      </span>
+
+                      {/* Countdown / past */}
+                      {isPast ? (
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span>✓</span> Passé
+                        </span>
+                      ) : (
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, color: countdownColor,
+                          fontFamily: 'DM Mono, monospace', flexShrink: 0,
+                        }}>
+                          {days === 0 ? "Auj." : `J-${days}`}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ════════════════════════════════════════════════

@@ -131,24 +131,27 @@ export async function POST() {
 
     const { data: saved, error: saveError } = await supabase
       .from("instagram_insights_snapshots")
-      .insert({
-        user_id:            user!.id,
-        snapshot_date:      today,
-        period_start:       null,
-        period_end:         null,
-        reach_total:        accountInsights?.reach     ?? null,
-        impressions_total:  accountInsights?.impressions ?? null,
-        followers_count:    followerCount,
-        followers_delta_7d: null,           // Graph API doesn't expose this directly
-        top_posts:          topPosts,
-        audience_demographics: null,
-        insights_summary:   summary || null,
-        best_format:        bestFormat,
-        best_posting_times: null,
-        raw_extracted_text: null,
-        screenshot_count:   null,
-        source:             "api",
-      })
+      .upsert(
+        {
+          user_id:            user!.id,
+          snapshot_date:      today,
+          period_start:       null,
+          period_end:         null,
+          reach_total:        accountInsights?.reach     ?? null,
+          impressions_total:  accountInsights?.impressions ?? null,
+          followers_count:    followerCount,
+          followers_delta_7d: null,           // Graph API doesn't expose this directly
+          top_posts:          topPosts,
+          audience_demographics: null,
+          insights_summary:   summary || null,
+          best_format:        bestFormat,
+          best_posting_times: null,
+          raw_extracted_text: null,
+          screenshot_count:   null,
+          source:             "api",
+        },
+        { onConflict: "user_id,snapshot_date" }
+      )
       .select()
       .single();
 

@@ -108,7 +108,7 @@ interface TrainingActivity {
 }
 interface Block {
   id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
-  reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number
+  reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number; recoveryValue?:string
   // Terrain planning — km sur le parcours (overlay ElevationChart)
   _startKm?: number; _endKm?: number
 }
@@ -200,7 +200,7 @@ function normalizeBlock(raw:unknown):Block|null {
 
   // Shape agent (training-plan)
   const dureeMin    = typeof r.duree_min    === 'number' ? r.duree_min    : 0
-  const zone        = typeof r.zone         === 'number' ? Math.max(1, Math.min(5, r.zone)) : 1
+  const zone        = typeof r.zone         === 'number' ? Math.max(1, Math.min(7, r.zone)) : 1
   const repetitions = typeof r.repetitions  === 'number' ? r.repetitions  : 0
   const recupMin    = typeof r.recup_min    === 'number' ? r.recup_min    : 0
   const watts       = typeof r.watts        === 'number' ? r.watts        : null
@@ -237,7 +237,8 @@ function normalizeBlock(raw:unknown):Block|null {
   // ID synthétique stable pour React keys (basé sur nom + zone + duree)
   const id = `b_${nom.replace(/\s+/g,'_').slice(0,16)}_${zone}_${dureeMin}_${repetitions}_${Math.random().toString(36).slice(2,6)}`
 
-  return { id, mode, type, durationMin, zone, value, hrAvg:'', label, reps, effortMin, recoveryMin, recoveryZone }
+  const recoveryValue = typeof r.watts_recup === 'number' && r.watts_recup > 0 ? String(r.watts_recup) : undefined
+  return { id, mode, type, durationMin, zone, value, hrAvg:'', label, reps, effortMin, recoveryMin, recoveryZone, recoveryValue }
 }
 
 function normalizeBlocks(raw:unknown):Block[] {
@@ -300,16 +301,18 @@ const SPORT_TO_BUILDER: Record<SportType, string> = {
   hyrox: 'hyrox', gym: 'gym', rowing: 'rowing', elliptique: 'cycling',
 }
 
-// Convertit une zone string (Z1-Z5, SL1, SL2, EF, VMA, PMA…) → numéro 1-5
+// Convertit une zone string (Z1-Z7, SL1, SL2, EF, VMA, PMA…) → numéro 1-7
 function parseZoneStr(s: string): number {
   const z = s.toUpperCase().trim()
-  if (['EF','Z1','RECOVERY'].includes(z))               return 1
-  if (['Z2'].includes(z))                               return 2
-  if (['SL1','Z3','TEMPO'].includes(z))                 return 3
-  if (['SL2','Z4','SEUIL','THRESHOLD'].includes(z))     return 4
-  if (['VMA','PMA','Z5','VO2MAX','MAX'].includes(z))    return 5
+  if (['EF','Z1','RECOVERY'].includes(z))                          return 1
+  if (['Z2'].includes(z))                                          return 2
+  if (['SL1','Z3','TEMPO'].includes(z))                           return 3
+  if (['SL2','Z4','SEUIL','THRESHOLD'].includes(z))               return 4
+  if (['VMA','PMA','Z5','VO2MAX','MAX'].includes(z))              return 5
+  if (['Z6','ANAEROBIE','ANAEROBIC','ANAÉ','ANAE'].includes(z))   return 6
+  if (['Z7','SPRINT','NEURO','NEUROMUSCULAR'].includes(z))        return 7
   const n = parseInt(z.replace(/\D/g,''))
-  return isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
+  return isNaN(n) ? 3 : Math.max(1, Math.min(7, n))
 }
 
 // Convertit un bloc /api/session-builder → Block utilisé dans le constructeur
@@ -321,6 +324,7 @@ function sessionBuilderBlocToBlock(b: {
   zone_effort: string[]
   zone_recup: string[]
   watts: number | null
+  watts_recup?: number | null
   allure_cible: string | null
   fc_cible: number | null
   consigne: string
@@ -335,6 +339,7 @@ function sessionBuilderBlocToBlock(b: {
   else if (zone <= 1 && /récup/.test(nom)) type = 'recovery'
   const label = b.consigne ? `${b.nom} — ${b.consigne.slice(0, 60)}` : b.nom
   const id = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+  const recoveryValue = b.watts_recup != null && b.watts_recup > 0 ? String(b.watts_recup) : undefined
   if (b.repetitions > 1) {
     return {
       id, mode: 'interval', type, zone, value,
@@ -345,6 +350,7 @@ function sessionBuilderBlocToBlock(b: {
       effortMin: b.duree_effort,
       recoveryMin: b.recup > 0 ? b.recup : 1,
       recoveryZone: recZone,
+      recoveryValue,
     }
   }
   return {
@@ -358,13 +364,13 @@ function getTodayIdx():number { const d=new Date().getDay(); return d===0?6:d-1 
 const ATHLETE = { ftp:301, thresholdPace:248, css:88 }
 function getZone(sport:SportType,v:string):number {
   if(!v)return 1
-  if(sport==='bike'){ const w=parseInt(v)||0,f=ATHLETE.ftp; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;return 5 }
+  if(sport==='bike'){ const w=parseInt(v)||0,f=ATHLETE.ftp; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;if(w<f*1.20)return 5;if(w<f*1.50)return 6;return 7 }
   if(sport==='run'){ const s=parsePace(v),t=ATHLETE.thresholdPace; if(s>t*1.25)return 1;if(s>t*1.10)return 2;if(s>t*1.00)return 3;if(s>t*0.90)return 4;return 5 }
   return 3
 }
 
 function calcTSS(blocks:Block[], sport:SportType, totalMin?:number, rpe?:number):number {
-  const IF_BY_ZONE = [0.55,0.70,0.83,0.95,1.10]
+  const IF_BY_ZONE = [0.55,0.70,0.83,0.95,1.10,1.25,1.45]
   const SPORT_FACTOR: Partial<Record<SportType,number>> = {
     bike:1.0, run:0.9, swim:0.85, rowing:0.95, hyrox:1.05, gym:0.7, elliptique:0.85
   }
@@ -451,16 +457,24 @@ function computeTSSRange(
   const IF_BY_ZONE = [0.55, 0.70, 0.83, 0.95, 1.10, 1.20, 1.35]
 
   let baseTSS = 0
+  const ftpForCalc = athlete?.ftp ?? null
   for (const b of blocks) {
     const zoneIdx = Math.max(0, Math.min(6, b.zone - 1))
     const ifVal = IF_BY_ZONE[zoneIdx] ?? 0.70
     if (b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin) {
       const recZoneIdx = Math.max(0, Math.min(6, (b.recoveryZone ?? 1) - 1))
       const ifRec = IF_BY_ZONE[recZoneIdx] ?? 0.55
-      baseTSS += b.reps * (b.effortMin / 60) * ifVal * ifVal * 100 * sf
-      baseTSS += b.reps * (b.recoveryMin / 60) * ifRec * ifRec * 100 * sf
+      // Fix #3: use exact watts when available (bike + FTP known)
+      const wattsE = sport === 'bike' && ftpForCalc && ftpForCalc > 0 ? (parseInt(b.value || '0') || 0) : 0
+      const wattsR = sport === 'bike' && ftpForCalc && ftpForCalc > 0 ? (parseInt(b.recoveryValue || '0') || 0) : 0
+      const ifE = (wattsE > 0 && ftpForCalc) ? wattsE / ftpForCalc : ifVal
+      const ifR = (wattsR > 0 && ftpForCalc) ? wattsR / ftpForCalc : ifRec
+      baseTSS += b.reps * (b.effortMin / 60) * ifE * ifE * 100 * sf
+      baseTSS += b.reps * (b.recoveryMin / 60) * ifR * ifR * 100 * sf
     } else {
-      baseTSS += (b.durationMin / 60) * ifVal * ifVal * 100 * sf
+      const wattsB = sport === 'bike' && ftpForCalc && ftpForCalc > 0 ? (parseInt(b.value || '0') || 0) : 0
+      const ifB = (wattsB > 0 && ftpForCalc) ? wattsB / ftpForCalc : ifVal
+      baseTSS += (b.durationMin / 60) * ifB * ifB * 100 * sf
     }
   }
 
@@ -1770,7 +1784,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
       if (b.id !== id) return b
       const u: Block = { ...b, [field]: val }
       if (field === 'value') u.zone = getZone(sport, String(val))
-      if (u.mode === 'interval' && u.reps && u.effortMin && u.recoveryMin)
+      if (u.mode === 'interval' && u.reps && u.effortMin != null && u.recoveryMin != null)
         u.durationMin = u.reps * (u.effortMin + u.recoveryMin)
       return u
     }))
@@ -2056,7 +2070,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                     </div>
                     <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
                       <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#9CA3AF', margin: '0 0 6px' }}>Récupération</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: sport==='bike' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8 }}>
                         <div>
                           <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée (min)</p>
                           <input type="number" min={0} step={0.5} value={b.recoveryMin??1} onChange={e=>upd(b.id,'recoveryMin',parseFloat(e.target.value)||0)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
@@ -2065,6 +2079,13 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                           <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone récup</p>
                           <input type="number" min={1} max={7} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
                         </div>
+                        {sport==='bike' && (
+                          <div>
+                            <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Watts récup</p>
+                            <input type="number" min={0} step={5} value={b.recoveryValue??''} placeholder="180" onChange={e=>upd(b.id,'recoveryValue',e.target.value)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'#F9FAFB', color:'#6B7280', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:600 }}/>
+                            {ftp && parseInt(b.recoveryValue||'0')>0 && <p style={{ fontSize:9, color:'#9CA3AF', margin:'2px 0 0' }}>{Math.round(parseInt(b.recoveryValue||'0')/ftp*100)}% FTP · {zc(getZone('bike',b.recoveryValue??''))}</p>}
+                          </div>
+                        )}
                       </div>
                       <p style={{ fontSize:9, color:'var(--text-dim)', margin:'5px 0 0', fontFamily:'DM Mono,monospace' }}>{recovFmt} en Z{b.recoveryZone??1}{(b.recoveryZone??1)<=1?' — marche/footing très lent':(b.recoveryZone??1)===2?' — footing lent':''}</p>
                     </div>
@@ -3723,8 +3744,9 @@ function TrainingTab() {
     )
   }
 
-  // Ne pas masquer les modales pendant un rechargement (ex: auto-save silencieux)
-  if (loading && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
+  // Fix #7: Only show skeleton on first load (no data yet) — avoids flash when navigating back
+  // If data already exists, show it immediately while the background reload completes.
+  if (loading && sessions.length === 0 && tasks.length === 0 && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
@@ -7087,6 +7109,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         })
         if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
         setBlocks(newBlocks)
+        // Fix #5: sync dur to computed block total so TSS header stays accurate
+        setDur(Math.round(newBlocks.reduce((s, bl) => s + bl.durationMin, 0)) || dur)
         setBuilderTab('manual')
         setAiPrompt('')
       } else {
@@ -7111,7 +7135,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             label = `${distM}m — ${f(lo)} à ${f(hi)}`
           }
           const rawZone = typeof b.zone === 'number' ? b.zone : 3
-          const zone = Math.max(1, Math.min(5, rawZone))
+          const zone = Math.max(1, Math.min(7, rawZone))
           return {
             id: `ai_${Date.now()}_${i}`,
             mode: (typeof b.mode === 'string' ? b.mode : 'single') as 'single' | 'interval',
@@ -7126,6 +7150,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         })
         if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
         setBlocks(newBlocks)
+        // Fix #5: sync dur to computed block total so TSS header stays accurate
+        setDur(Math.round(newBlocks.reduce((s, bl) => s + bl.durationMin, 0)) || dur)
         // En mode parcours, on reste dans la vue parcours — les blocs sont
         // stockés pour la sauvegarde et le TSS, mais affichés uniquement
         // via les jauges SVG sur le graphique altimétrique.

@@ -26,6 +26,7 @@ interface GeneratedBloc {
   zone_effort: string[]
   zone_recup: string[]
   watts: number | null
+  watts_recup: number | null
   fc_cible: number | null
   fc_max: number | null
   cadence: number | null
@@ -52,7 +53,13 @@ Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.
 Si une valeur n'est pas applicable, utilise null.
 
 Avant de générer ta réponse, calcule mentalement la somme exacte des durées de tous les blocs (en tenant compte des répétitions et des récupérations) et vérifie qu'elle correspond à duree_estimee.
-Ne jamais fusionner des répétitions en un seul bloc — chaque répétition doit rester distincte avec son effort et sa récupération. Si une séance contient 3×8min, le bloc doit avoir repetitions=3 et duree_effort=8, jamais repetitions=1 et duree_effort=24.`
+Ne jamais fusionner des répétitions en un seul bloc — chaque répétition doit rester distincte avec son effort et sa récupération. Si une séance contient 3×8min, le bloc doit avoir repetitions=3 et duree_effort=8, jamais repetitions=1 et duree_effort=24.
+
+RÈGLE ABSOLUE — Valeurs précises de l'athlète :
+Quand l'utilisateur spécifie des valeurs précises (durée, watts, allure, FC, zone, récupération), les utiliser exactement telles quelles dans la séance générée. Ne pas arrondir, ne pas modifier, ne pas interpréter. L'athlète sait ce qu'il veut. Ex : "sprints à 800w" → watts=800 exactement ; "4'40 de récup" → recup=4.67 (4min40s) exactement.
+
+RÈGLE ABSOLUE — Pas de récupération finale :
+Ne jamais ajouter de bloc de récupération / retour au calme / cool-down à la fin de la séance. L'athlète structure sa propre séance. L'IA génère uniquement les blocs demandés, sans rien rajouter avant ou après.`
 
 function buildJsonSchema(sport: string): string { return `{
   "nom": "string — nom court et précis de la séance",
@@ -72,7 +79,8 @@ function buildJsonSchema(sport: string): string { return `{
       "recup": "number — durée de récupération en minutes (0 si aucune)",
       "zone_effort": ["string[] — ex: ['Z4','Z5'] ou ['SL2']"],
       "zone_recup": ["string[] — ex: ['Z1','Z2']"],
-      "watts": "number | null",
+      "watts": "number | null — watts effort (utiliser EXACTEMENT la valeur demandée)",
+      "watts_recup": "number | null — watts récupération (utiliser EXACTEMENT la valeur demandée)",
       "fc_cible": "number | null — FC cible bpm",
       "fc_max": "number | null — FC max bpm",
       "cadence": "number | null — RPM ou SPM",
@@ -196,7 +204,7 @@ ${buildProfilContext(sport, profil)}
 
 Règles prioritaires :
 1. Adapte la séance au profil de l'athlète (pas de données génériques)
-2. Inclure systématiquement un bloc échauffement et un retour au calme
+2. Génère UNIQUEMENT les blocs demandés — ne jamais ajouter de retour au calme, récupération finale, ou cool-down non demandé
 3. Les intensités doivent être précises :
    - Running : allure_cible en min/km, zone_effort basées sur SL1/SL2
    - Cycling : watts cibles basés sur FTP, zone_effort en % FTP

@@ -221,7 +221,7 @@ export default function MarketingAdminPage() {
         Brief quotidien généré à partir de tes activités, commits, et idées brutes.
       </p>
 
-      {/* ── Générer ────────────────────────────────────────────────── */}
+      {/* ── Actions principales ────────────────────────────────────── */}
       <div style={{ marginBottom: 32, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={generateBrief}
@@ -240,6 +240,45 @@ export default function MarketingAdminPage() {
         >
           {loading ? "Génération en cours..." : "Générer le brief du jour"}
         </button>
+
+        {/* ── Bouton sync Instagram ───────────────────────────────── */}
+        <button
+          onClick={syncInstaApi}
+          disabled={instaApiSyncing}
+          style={{
+            background: instaApiSyncing
+              ? "#e5e7eb"
+              : "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)",
+            color: instaApiSyncing ? "#9ca3af" : "white",
+            border: "none",
+            padding: "12px 20px",
+            borderRadius: 12,
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: instaApiSyncing ? "wait" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 17 }}>📸</span>
+          {instaApiSyncing ? "Connexion Instagram…" : "Synchroniser Instagram"}
+        </button>
+
+        {instaApiSnapshot?.snapshot_date && !instaApiSyncing && (
+          <span style={{ fontSize: 12, color: "#9ca3af" }}>
+            Dernier sync : {instaApiSnapshot.snapshot_date}
+            {instaApiSnapshot.followers_count != null && (
+              <> · {instaApiSnapshot.followers_count.toLocaleString("fr-FR")} abonnés</>
+            )}
+          </span>
+        )}
+
+        {instaApiError && (
+          <span style={{ fontSize: 12, color: "#ef4444", maxWidth: 300 }}>
+            ⚠ {instaApiError}
+          </span>
+        )}
 
         {contextSummary && (
           <div style={{ fontSize: 13, color: "#666" }}>
@@ -293,48 +332,22 @@ export default function MarketingAdminPage() {
         </section>
       )}
 
-      {/* ── Stats Instagram (API) ──────────────────────────────────── */}
-      <section style={{ marginBottom: 48 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-          <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, margin: 0 }}>
-            Stats Instagram
-          </h2>
-          {instaApiSnapshot?.source && (
+      {/* ── Stats Instagram (API) — s'affiche après le 1er sync ────── */}
+      {instaApiSnapshot && (
+        <section style={{ marginBottom: 48 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, margin: 0 }}>
+              Stats Instagram
+            </h2>
             <span style={{
               fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
-              background: instaApiSnapshot.source === "api" ? "#00c8e0" : "#6B7280",
+              background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)",
               color: "white", letterSpacing: 0.5,
             }}>
-              {instaApiSnapshot.source === "api" ? "API" : "Manuel"}
+              API connectée
             </span>
-          )}
-        </div>
-        <p style={{ color: "#666", fontSize: 14, marginBottom: 14 }}>
-          Synchronise directement depuis l&apos;API Instagram Graph.
-        </p>
-
-        <button
-          onClick={syncInstaApi}
-          disabled={instaApiSyncing}
-          style={{
-            background: instaApiSyncing ? "#e5e7eb" : "linear-gradient(135deg, #00c8e0 0%, #5b6fff 100%)",
-            color: instaApiSyncing ? "#9ca3af" : "white",
-            border: "none", padding: "10px 20px", borderRadius: 10,
-            fontSize: 14, fontWeight: 600,
-            cursor: instaApiSyncing ? "wait" : "pointer",
-            marginBottom: 16, transition: "all 0.15s",
-          }}
-        >
-          {instaApiSyncing ? "Synchronisation…" : "Synchroniser maintenant"}
-        </button>
-
-        {instaApiError && (
-          <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 8, marginBottom: 12, color: "#c33", fontSize: 13 }}>
-            {instaApiError}
           </div>
-        )}
 
-        {instaApiSnapshot ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* KPI cards */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -373,7 +386,7 @@ export default function MarketingAdminPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {(instaApiSnapshot.top_posts ?? []).slice(0, 3).map((p, i) => (
                     <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 10, background: "white", border: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "#00c8e0", color: "#fff", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "#fd1d1d", color: "#fff", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
                         {p.format}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -392,17 +405,9 @@ export default function MarketingAdminPage() {
                 </div>
               </div>
             )}
-
-            <div style={{ fontSize: 11, color: "#9ca3af" }}>
-              Dernier sync : {instaApiSnapshot.snapshot_date}
-            </div>
           </div>
-        ) : !instaApiSyncing && (
-          <p style={{ fontSize: 13, color: "#999", fontStyle: "italic" }}>
-            Aucune donnée API. Clique sur &quot;Synchroniser maintenant&quot;.
-          </p>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* ── Banque d'idées ─────────────────────────────────────────── */}
       <section style={{ marginBottom: 48 }}>

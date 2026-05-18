@@ -3746,7 +3746,7 @@ function TrainingTab() {
 
   // Fix #7: Only show skeleton on first load (no data yet) — avoids flash when navigating back
   // If data already exists, show it immediately while the background reload completes.
-  if (loading && sessions.length === 0 && tasks.length === 0 && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
+  if (loading && sessions.length === 0 && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>

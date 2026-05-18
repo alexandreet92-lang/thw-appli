@@ -2614,9 +2614,321 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CALENDAR GRID
+// MOBILE CALENDAR — Apple Calendar style (< 768px)
+// ─────────────────────────────────────────────────────────────
+
+const MCAL_MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+const MCAL_DAYS   = ['L','M','M','J','V','S','D']
+
+type MK = { year: number; month: number }
+
+function mkKey(m: MK)                   { return `${m.year}-${m.month}` }
+function addMK(m: MK, delta: number): MK {
+  let mo = m.month + delta
+  const yr = m.year + Math.floor(mo / 12)
+  mo = ((mo % 12) + 12) % 12
+  return { year: yr, month: mo }
+}
+function daysInMK(m: MK): number         { return new Date(m.year, m.month + 1, 0).getDate() }
+function firstDowMK(m: MK): number       { return (new Date(m.year, m.month, 1).getDay() + 6) % 7 } // Mon=0
+function toDS(y: number, m: number, d: number): string {
+  return `${y}-${String(m + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+}
+
+// ── Month grid (days only, no header) ────────────────────────
+function MobileMonthGrid({ mk, actMap, todayStr, onDayTap }: {
+  mk: MK
+  actMap: Map<string, Activity[]>
+  todayStr: string
+  onDayTap: (d: string) => void
+}) {
+  const firstDow = firstDowMK(mk)
+  const days     = daysInMK(mk)
+  const cells: (number | null)[] = [
+    ...Array.from<null>({ length: firstDow }).fill(null),
+    ...Array.from({ length: days }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const rows: (number | null)[][] = []
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7))
+
+  return (
+    <div>
+      {rows.map((row, ri) => (
+        <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderTop: `0.5px solid ${T.border}` }}>
+          {row.map((day, di) => {
+            if (day === null) return <div key={di} style={{ minHeight: 70 }} />
+
+            const dateStr  = toDS(mk.year, mk.month, day)
+            const acts     = actMap.get(dateStr) ?? []
+            const isToday  = dateStr === todayStr
+            const isWeekend = di >= 5
+
+            return (
+              <div
+                key={di}
+                onClick={() => acts.length > 0 ? onDayTap(dateStr) : undefined}
+                style={{
+                  minHeight: 70, padding: '6px 2px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  cursor: acts.length > 0 ? 'pointer' : 'default',
+                }}
+              >
+                {/* Day number */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: isToday ? '#EF4444' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18, fontWeight: isToday ? 700 : 500,
+                  color: isToday ? '#fff' : isWeekend ? T.textMuted : T.text,
+                  flexShrink: 0,
+                }}>
+                  {day}
+                </div>
+
+                {/* Activity dots */}
+                {acts.length > 0 && (
+                  <div style={{ display: 'flex', gap: 3, alignItems: 'center', justifyContent: 'center', maxWidth: 36, flexWrap: 'wrap' }}>
+                    {acts.slice(0, 3).map((a, ai) => (
+                      <div key={ai} style={{ width: 6, height: 6, borderRadius: '50%', background: SPORT_COLOR[a.sport_type] ?? '#94a3b8', flexShrink: 0 }} />
+                    ))}
+                    {acts.length > 3 && (
+                      <span style={{ fontSize: 10, color: T.textMuted, lineHeight: 1 }}>+</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Day bottom sheet ──────────────────────────────────────────
+function MobileDaySheet({ date, acts, onClose, onSelect }: {
+  date: string
+  acts: Activity[]
+  onClose: () => void
+  onSelect: (a: Activity) => void
+}) {
+  const d     = new Date(date + 'T00:00:00')
+  const label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const cap   = label.charAt(0).toUpperCase() + label.slice(1)
+
+  return (
+    <>
+      <style>{`@keyframes mcal_up{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200 }} />
+      {/* Sheet */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: T.surface, borderRadius: '18px 18px 0 0',
+        padding: '14px 16px 40px', zIndex: 201,
+        maxHeight: '60vh', overflowY: 'auto',
+        boxShadow: '0 -6px 32px rgba(0,0,0,0.22)',
+        animation: 'mcal_up 0.22s ease',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border, margin: '0 auto 16px' }} />
+        <p style={{ fontSize: 15, fontWeight: 700, color: T.text, margin: '0 0 14px', fontFamily: T.fontDisplay }}>{cap}</p>
+
+        {acts.length === 0 ? (
+          <p style={{ fontSize: 13, color: T.textMuted, margin: 0 }}>Aucune activité ce jour</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {acts.map(a => {
+              const col = SPORT_COLOR[a.sport_type] ?? '#888'
+              return (
+                <div
+                  key={a.id}
+                  onClick={() => { onSelect(a); onClose() }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 12px',
+                    background: T.bg, borderRadius: 10,
+                    border: `1px solid ${T.border}`, cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: T.text, margin: 0, lineHeight: 1.3 }}>
+                      {a.title || SPORT_LABEL[a.sport_type]}
+                    </p>
+                    <p style={{ fontSize: 11, color: T.textMuted, margin: '2px 0 0' }}>
+                      {SPORT_LABEL[a.sport_type]}
+                      {a.moving_time_s ? ` · ${fmtDur(a.moving_time_s)}` : ''}
+                      {a.distance_m    ? ` · ${fmtDist(a.distance_m)}`   : ''}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 18, color: T.textMuted }}>›</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ── Main mobile calendar component ───────────────────────────
+function MobileCalendarView({ activities, onSelect }: { activities: Activity[]; onSelect: (a: Activity) => void }) {
+  const now      = new Date()
+  const todayStr = toDS(now.getFullYear(), now.getMonth(), now.getDate())
+  const curMK: MK = { year: now.getFullYear(), month: now.getMonth() }
+
+  const [months, setMonths] = useState<MK[]>(() => {
+    const arr: MK[] = []
+    for (let i = -3; i <= 3; i++) arr.push(addMK(curMK, i))
+    return arr
+  })
+
+  const actMap = useMemo(() => {
+    const map = new Map<string, Activity[]>()
+    for (const a of activities) {
+      const d   = new Date(a.started_at)
+      const key = toDS(d.getFullYear(), d.getMonth(), d.getDate())
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(a)
+    }
+    return map
+  }, [activities])
+
+  const [sheetDate, setSheetDate]   = useState<string | null>(null)
+  const sheetActs = sheetDate ? (actMap.get(sheetDate) ?? []) : []
+
+  const scrollRef    = useRef<HTMLDivElement>(null)
+  const monthRefs    = useRef<Map<string, HTMLDivElement>>(new Map())
+  const topSentinel  = useRef<HTMLDivElement>(null)
+  const botSentinel  = useRef<HTMLDivElement>(null)
+  const didScroll    = useRef(false)
+
+  // Scroll to current month on first render
+  useEffect(() => {
+    if (didScroll.current) return
+    requestAnimationFrame(() => {
+      const el  = monthRefs.current.get(mkKey(curMK))
+      const con = scrollRef.current
+      if (el && con) { con.scrollTop = el.offsetTop; didScroll.current = true }
+    })
+  })
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const con = scrollRef.current
+    if (!con) return
+    const obs = new IntersectionObserver(entries => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        if (e.target === topSentinel.current) {
+          setMonths(prev => {
+            const added: MK[] = []
+            for (let i = 3; i >= 1; i--) added.push(addMK(prev[0], -i))
+            return [...added, ...prev]
+          })
+        } else if (e.target === botSentinel.current) {
+          setMonths(prev => {
+            const last  = prev[prev.length - 1]
+            const added: MK[] = []
+            for (let i = 1; i <= 3; i++) added.push(addMK(last, i))
+            return [...prev, ...added]
+          })
+        }
+      }
+    }, { root: con, rootMargin: '400px 0px' })
+    if (topSentinel.current) obs.observe(topSentinel.current)
+    if (botSentinel.current) obs.observe(botSentinel.current)
+    return () => obs.disconnect()
+  }, []) // intentionally empty — uses functional setMonths updater
+
+  const handleDayTap = useCallback((d: string) => setSheetDate(d), [])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Fixed weekday header */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7,1fr)',
+        background: T.surface, borderBottom: `1px solid ${T.border}`,
+        flexShrink: 0,
+      }}>
+        {MCAL_DAYS.map((d, i) => (
+          <div key={i} style={{
+            padding: '7px 0', textAlign: 'center',
+            fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
+            color: i >= 5 ? T.textMuted : T.textSub,
+          }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Scrollable months */}
+      <div
+        ref={scrollRef}
+        style={{
+          overflowY: 'auto',
+          height: 'calc(100svh - 52px - 14px - 50px - 50px)',
+          // fallback for browsers without svh support
+          maxHeight: 'calc(100vh - 170px)',
+          overscrollBehavior: 'contain',
+        }}
+      >
+        <div ref={topSentinel} style={{ height: 1 }} />
+
+        {months.map(mk => (
+          <div key={mkKey(mk)} ref={el => { if (el) monthRefs.current.set(mkKey(mk), el) }}>
+            {/* Sticky month name within scroll container */}
+            <div style={{
+              position: 'sticky', top: 0, zIndex: 10,
+              background: T.surface,
+              padding: '12px 16px 6px',
+              borderBottom: `0.5px solid ${T.border}`,
+            }}>
+              <span style={{
+                fontSize: 28, fontWeight: 800,
+                color: T.text, fontFamily: T.fontDisplay, letterSpacing: -0.5,
+              }}>
+                {MCAL_MONTHS[mk.month]}
+              </span>
+              {' '}
+              <span style={{ fontSize: 15, fontWeight: 400, color: T.textMuted }}>
+                {mk.year !== now.getFullYear() ? mk.year : ''}
+              </span>
+            </div>
+
+            <MobileMonthGrid mk={mk} actMap={actMap} todayStr={todayStr} onDayTap={handleDayTap} />
+          </div>
+        ))}
+
+        <div ref={botSentinel} style={{ height: 1 }} />
+      </div>
+
+      {sheetDate && (
+        <MobileDaySheet
+          date={sheetDate}
+          acts={sheetActs}
+          onClose={() => setSheetDate(null)}
+          onSelect={onSelect}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// CALENDAR GRID — switcher (mobile / desktop)
 // ─────────────────────────────────────────────────────────────
 function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSelect: (a: Activity) => void }) {
+  const isMobile = useWindowWidth() < 768
+  return isMobile
+    ? <MobileCalendarView activities={activities} onSelect={onSelect} />
+    : <DesktopCalendarGrid activities={activities} onSelect={onSelect} />
+}
+
+function DesktopCalendarGrid({ activities, onSelect }: { activities: Activity[]; onSelect: (a: Activity) => void }) {
   const [offset, setOffset] = useState(0)
   const [weeks, setWeeksCount] = useState<5|10>(5)
 

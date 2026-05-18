@@ -189,7 +189,36 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
     // Hidden metadata tag (e.g. sport:running) — skip rendering
     if (/^sport:[a-z_]+$/.test(line.trim())) { i++; continue }
 
-    // ── Tableau Markdown — groupe les lignes | ... | consécutives ──
+    // ── E2: Fenced code block ``` ─────────────────────────────────
+    if (line.trim().startsWith('```')) {
+      const lang = line.trim().slice(3).trim()
+      const codeLines: string[] = []
+      i++
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i])
+        i++
+      }
+      i++ // skip closing ```
+      blocks.push(<CodeBlock key={`code-${i}`} lang={lang} code={codeLines.join('\n')} />)
+      continue
+    }
+
+    // ── E5: Blockquote > ──────────────────────────────────────────
+    if (line.trim().startsWith('> ')) {
+      const quoteLines: string[] = []
+      while (i < lines.length && lines[i].trim().startsWith('> ')) {
+        quoteLines.push(lines[i].trim().slice(2))
+        i++
+      }
+      blocks.push(
+        <div key={`bq-${i}`} style={{ borderLeft: '3px solid #D1D5DB', paddingLeft: 16, margin: '8px 0', color: '#6B7280', fontStyle: 'italic' }}>
+          {quoteLines.map((q, qi) => <p key={qi} style={{ margin: qi > 0 ? '4px 0 0' : 0, fontSize: 14, lineHeight: 1.6 }}>{parseBold(q)}</p>)}
+        </div>
+      )
+      continue
+    }
+
+    // ── E1: Tableau Markdown — groupe les lignes | ... | consécutives ──
     if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
       const tableLines: string[] = []
       while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
@@ -205,11 +234,11 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         const dataRows = rows.slice(1)
         blocks.push(
           <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '10px 0' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif', border: '1px solid #E5E7EB' }}>
               <thead>
-                <tr>
+                <tr style={{ background: '#F9FAFB' }}>
                   {headers.map((h, hi) => (
-                    <th key={hi} style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--ai-text)', borderBottom: '2px solid var(--ai-border)', whiteSpace: 'nowrap' as const }}>
+                    <th key={hi} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--ai-text)', border: '1px solid #E5E7EB', whiteSpace: 'nowrap' as const }}>
                       {parseBold(h)}
                     </th>
                   ))}
@@ -217,9 +246,9 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
               </thead>
               <tbody>
                 {dataRows.map((row, ri) => (
-                  <tr key={ri} style={{ background: ri % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
+                  <tr key={ri}>
                     {row.map((cell, ci) => (
-                      <td key={ci} style={{ padding: '6px 10px', fontSize: 12, color: 'var(--ai-mid)', borderBottom: '1px solid var(--ai-border)' }}>
+                      <td key={ci} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ai-mid)', border: '1px solid #E5E7EB' }}>
                         {parseBold(cell)}
                       </td>
                     ))}
@@ -261,12 +290,14 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
       i++; continue
     }
 
-    const bMatch = line.match(/^[-•*]\s+(.+)/)
+    const bMatch = raw.match(/^(\s*)[-•*]\s+(.+)/)
     if (bMatch) {
+      const indent = bMatch[1].length
+      const level = Math.floor(indent / 2)
       blocks.push(
-        <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 5 }}>
-          <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: 8, marginTop: 6, lineHeight: 1 }}>●</span>
-          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(bMatch[1])}</span>
+        <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 4, paddingLeft: level * 16 }}>
+          <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: level > 0 ? 6 : 8, marginTop: level > 0 ? 7 : 6, lineHeight: 1 }}>{level > 0 ? '○' : '●'}</span>
+          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(bMatch[2])}</span>
         </div>
       )
       i++; continue
@@ -347,12 +378,59 @@ function TypedText({ text, isStreaming, fontFamily }: { text: string; isStreamin
 }
 
 function parseBold(text: string): React.ReactNode {
-  const parts = text.split(/\*\*([^*]+)\*\*/g)
+  // Support **bold** and `inline code` in text segments
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
   if (parts.length === 1) return text
-  return <>{parts.map((p, j) => j % 2 === 1
-    ? <strong key={j} style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{p}</strong>
-    : <span key={j}>{p}</span>
-  )}</>
+  return <>{parts.map((p, j) => {
+    if (p.startsWith('**') && p.endsWith('**')) return <strong key={j} style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{p.slice(2, -2)}</strong>
+    if (p.startsWith('`') && p.endsWith('`')) return <code key={j} style={{ background: '#F3F4F6', padding: '2px 6px', borderRadius: 4, fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', fontSize: 13, color: '#d63384' }}>{p.slice(1, -1)}</code>
+    return <span key={j}>{p}</span>
+  })}</>
+}
+
+// CodeBlock — E2: fenced code block with language label and copy button
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const [copied, setCopied] = useState(false)
+  const [showBtn, setShowBtn] = useState(false)
+  return (
+    <div
+      style={{ position: 'relative', margin: '10px 0' }}
+      onMouseEnter={() => setShowBtn(true)}
+      onMouseLeave={() => setShowBtn(false)}
+    >
+      {lang && (
+        <div style={{ background: '#E9EBF0', padding: '3px 12px', borderRadius: '8px 8px 0 0', fontSize: 11, color: '#6B7280', fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', borderBottom: '1px solid #E5E7EB' }}>
+          {lang}
+        </div>
+      )}
+      <pre style={{
+        background: '#F6F8FA', borderRadius: lang ? '0 0 8px 8px' : 8,
+        padding: '12px 16px', margin: 0, overflowX: 'auto',
+        fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', fontSize: 13, lineHeight: 1.55,
+        border: '1px solid #E5E7EB', borderTop: lang ? 'none' : undefined,
+      }}>
+        <code style={{ color: '#24292e' }}>{code}</code>
+      </pre>
+      {showBtn && (
+        <button
+          onClick={() => { void navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
+          style={{
+            position: 'absolute', top: lang ? 28 : 6, right: 8,
+            background: 'white', border: '1px solid #E5E7EB', borderRadius: 6,
+            padding: '3px 7px', cursor: 'pointer', fontSize: 11, color: '#6B7280',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          {copied ? (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          )}
+          {copied ? 'Copié' : 'Copier'}
+        </button>
+      )}
+    </div>
+  )
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -18159,6 +18237,24 @@ export default function AIPanel({
     if (activeId === id) setActiveId(null)
   }
 
+  // G2 — Export conversation as Markdown
+  const exportMarkdown = () => {
+    if (!active) return
+    const modelNames: Record<THWModel, string> = { hermes: 'Hermès', athena: 'Athèna', zeus: 'Zeus' }
+    const lines: string[] = [`# ${active.title}`, '', `_Exporté le ${new Date().toLocaleDateString('fr-FR')}_`, '']
+    for (const m of active.msgs) {
+      const role = m.role === 'user' ? '## Vous' : `## ${modelNames[m.modelId ?? 'athena']}`
+      lines.push(role, '', m.content, '')
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${active.title.replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-').toLowerCase()}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ── Swipe (mobile) ────────────────────────────────────────
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isDesktop) return
@@ -18996,6 +19092,20 @@ export default function AIPanel({
               }} />
             )}
           </button>
+
+          {/* Export (G2) */}
+          {active && (
+            <button
+              onClick={exportMarkdown}
+              title="Exporter en Markdown"
+              className="aip-icon-btn"
+              style={{ width: 32, height: 32, borderRadius: 6, color: 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+            </button>
+          )}
 
           {/* Fullscreen */}
           <button

@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { requireAdmin } from "@/lib/marketing/auth";
-import { getAnthropicClient, MODELS, parseJsonResponse } from "@/lib/agents/base";
+import { getAnthropicClient, MODELS } from "@/lib/agents/base";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -58,7 +58,55 @@ export interface PerformanceAnalysis {
 
 const SYSTEM = `Tu es un expert en marketing Instagram et analyse de données sociales.
 Tu réponds UNIQUEMENT avec un objet JSON valide. Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.
-Sois précis, direct et brutal dans ton analyse. Pas de compliments gratuits.`;
+Sois précis, direct et brutal dans ton analyse. Pas de compliments gratuits.
+IMPORTANT : limite chaque section (what_works, what_doesnt_work, recommendations) à MAXIMUM 3 éléments. Sois concis dans les descriptions (max 2 phrases par champ). Le JSON total ne doit pas dépasser 3000 tokens.`;
+
+// ── JSON repair utility ────────────────────────────────────────
+function repairJSON(raw: string): PerformanceAnalysis {
+  // 1. Try as-is
+  try { return JSON.parse(raw) as PerformanceAnalysis; } catch {}
+
+  // 2. Strip markdown fences
+  let cleaned = raw.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+  try { return JSON.parse(cleaned) as PerformanceAnalysis; } catch {}
+
+  // 3. Attempt to close truncated JSON
+  let attempt = cleaned;
+
+  // Close unclosed string if last quote is not a closing one
+  const lastQuote = attempt.lastIndexOf('"');
+  const lastColon = attempt.lastIndexOf('":');
+  if (lastQuote > lastColon) {
+    // Remove the trailing partial value up to the last complete key-value separator
+    attempt = attempt.replace(/,?\s*"[^"]*$/, '');
+  }
+
+  // Close open arrays and objects
+  const openBraces    = (attempt.match(/{/g)  || []).length;
+  const closeBraces   = (attempt.match(/}/g)  || []).length;
+  const openBrackets  = (attempt.match(/\[/g) || []).length;
+  const closeBrackets = (attempt.match(/\]/g) || []).length;
+
+  // Remove trailing comma before closing
+  attempt = attempt.replace(/,\s*$/, '');
+
+  for (let i = 0; i < openBrackets - closeBrackets; i++) attempt += ']';
+  for (let i = 0; i < openBraces   - closeBraces;   i++) attempt += '}';
+
+  try { return JSON.parse(attempt) as PerformanceAnalysis; } catch {}
+
+  // 4. Last resort — partial object
+  return {
+    overall_score: "?",
+    engagement_rate: "N/A",
+    follower_trend: "stable",
+    what_works: [],
+    what_doesnt_work: [],
+    recommendations: [],
+    growth_projection: null as unknown as PerformanceAnalysis['growth_projection'],
+    summary: "L'analyse a été partiellement générée (réponse tronquée). Réessaie ou vérifie les données disponibles. Extrait : " + cleaned.substring(0, 400),
+  } as PerformanceAnalysis;
+}
 
 export async function POST() {
   const t0 = Date.now();
@@ -159,7 +207,7 @@ Réponds en JSON avec exactement ce schéma :
     const client = getAnthropicClient();
     const resp = await client.messages.create({
       model: MODELS.balanced,
-      max_tokens: 2000,
+      max_tokens: 8000,
       system: SYSTEM,
       messages: [{ role: "user", content: userPrompt }],
     });
@@ -169,7 +217,7 @@ Réponds en JSON avec exactement ce schéma :
       return NextResponse.json({ error: "Pas de réponse du modèle" }, { status: 500 });
     }
 
-    const analysis = parseJsonResponse<PerformanceAnalysis>(text.text);
+    const analysis = repairJSON(text.text);
     const generationMs = Date.now() - t0;
     const tokensIn = resp.usage.input_tokens;
     const tokensOut = resp.usage.output_tokens;

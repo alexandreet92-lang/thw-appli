@@ -489,10 +489,10 @@ export default function HybridNetworksPanel() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 12, padding: '14px 16px' }}>
               <div style={{
                 width: 52, height: 52, borderRadius: 12, flexShrink: 0,
-                background: SCORE_COLORS[analysis.overall_score] + '18',
+                background: (SCORE_COLORS[analysis.overall_score] ?? '#888') + '18',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 28, fontWeight: 700, color: SCORE_COLORS[analysis.overall_score] }}>
+                <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 28, fontWeight: 700, color: SCORE_COLORS[analysis.overall_score] ?? '#888' }}>
                   {analysis.overall_score}
                 </span>
               </div>
@@ -513,11 +513,11 @@ export default function HybridNetworksPanel() {
             </div>
 
             {/* B — Ce qui marche */}
-            {analysis.what_works.length > 0 && (
+            {(analysis.what_works?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#22c55e', margin: '0 0 7px' }}>Ce qui marche</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {analysis.what_works.map((item, i) => (
+                  {(analysis.what_works ?? []).map((item, i) => (
                     <div key={i} style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '9px 12px' }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 3px' }}>{item.insight}</p>
                       <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 3px' }}>{item.evidence}</p>
@@ -529,11 +529,11 @@ export default function HybridNetworksPanel() {
             )}
 
             {/* C — Ce qui ne marche pas */}
-            {analysis.what_doesnt_work.length > 0 && (
+            {(analysis.what_doesnt_work?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#ef4444', margin: '0 0 7px' }}>Ce qui ne marche pas</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {analysis.what_doesnt_work.map((item, i) => (
+                  {(analysis.what_doesnt_work ?? []).map((item, i) => (
                     <div key={i} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '9px 12px' }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 3px' }}>{item.insight}</p>
                       <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 3px' }}>{item.evidence}</p>
@@ -545,11 +545,11 @@ export default function HybridNetworksPanel() {
             )}
 
             {/* D — Recommandations */}
-            {analysis.recommendations.length > 0 && (
+            {(analysis.recommendations?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 7px' }}>Recommandations</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {analysis.recommendations.map((rec, i) => (
+                  {(analysis.recommendations ?? []).map((rec, i) => (
                     <div key={i} style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 8, padding: '9px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: '#5b6fff', flexShrink: 0, width: 16, textAlign: 'center' }}>{rec.priority}</span>
                       <div style={{ flex: 1 }}>

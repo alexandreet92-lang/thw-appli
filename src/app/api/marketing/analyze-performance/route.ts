@@ -27,14 +27,12 @@ function makeSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
 
 interface WhatWorksItem {
   insight: string;
-  evidence: string;
   action: string;
 }
 
 interface Recommendation {
   priority: number;
   action: string;
-  expected_impact: string;
   effort: "low" | "medium" | "high";
 }
 
@@ -49,63 +47,63 @@ export interface PerformanceAnalysis {
   overall_score: "A" | "B" | "C" | "D" | "F";
   engagement_rate: string;
   follower_trend: "growing" | "stable" | "declining";
+  summary: string;
   what_works: WhatWorksItem[];
   what_doesnt_work: WhatWorksItem[];
   recommendations: Recommendation[];
   growth_projection: GrowthProjection;
-  summary: string;
 }
 
-const SYSTEM = `Tu es un expert en marketing Instagram et analyse de données sociales.
-Tu réponds UNIQUEMENT avec un objet JSON valide. Aucun texte avant ni après, aucun commentaire, aucun bloc markdown.
-Sois précis, direct et brutal dans ton analyse. Pas de compliments gratuits.
-IMPORTANT : limite chaque section (what_works, what_doesnt_work, recommendations) à MAXIMUM 3 éléments. Sois concis dans les descriptions (max 2 phrases par champ). Le JSON total ne doit pas dépasser 3000 tokens.`;
+// ── System prompt (court et ferme) ────────────────────────────
+const SYSTEM = `Tu es un expert en marketing Instagram.
+Réponds UNIQUEMENT en JSON valide. Sois CONCIS : max 2 phrases par champ.
+Max 3 items par tableau. Pas de markdown autour.`;
 
 // ── JSON repair utility ────────────────────────────────────────
 function repairJSON(raw: string): PerformanceAnalysis {
   // 1. Try as-is
-  try { return JSON.parse(raw) as PerformanceAnalysis; } catch {}
+  try { return JSON.parse(raw) as PerformanceAnalysis; } catch { /* continue */ }
 
   // 2. Strip markdown fences
-  let cleaned = raw.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-  try { return JSON.parse(cleaned) as PerformanceAnalysis; } catch {}
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+  try { return JSON.parse(cleaned) as PerformanceAnalysis; } catch { /* continue */ }
 
-  // 3. Attempt to close truncated JSON
+  // 3. Try to close a truncated JSON string
   let attempt = cleaned;
 
-  // Close unclosed string if last quote is not a closing one
-  const lastQuote = attempt.lastIndexOf('"');
-  const lastColon = attempt.lastIndexOf('":');
-  if (lastQuote > lastColon) {
-    // Remove the trailing partial value up to the last complete key-value separator
-    attempt = attempt.replace(/,?\s*"[^"]*$/, '');
-  }
+  // Remove any trailing incomplete key or value (last unclosed string)
+  attempt = attempt.replace(/,?\s*"[^"]*$/s, '');
 
-  // Close open arrays and objects
-  const openBraces    = (attempt.match(/{/g)  || []).length;
-  const closeBraces   = (attempt.match(/}/g)  || []).length;
-  const openBrackets  = (attempt.match(/\[/g) || []).length;
-  const closeBrackets = (attempt.match(/\]/g) || []).length;
-
-  // Remove trailing comma before closing
+  // Remove trailing comma
   attempt = attempt.replace(/,\s*$/, '');
 
-  for (let i = 0; i < openBrackets - closeBrackets; i++) attempt += ']';
-  for (let i = 0; i < openBraces   - closeBraces;   i++) attempt += '}';
+  // Count and close open brackets/braces
+  const opens   = (attempt.match(/{/g)  || []).length - (attempt.match(/}/g)  || []).length;
+  const arrs    = (attempt.match(/\[/g) || []).length - (attempt.match(/\]/g) || []).length;
+  for (let i = 0; i < arrs;  i++) attempt += ']';
+  for (let i = 0; i < opens; i++) attempt += '}';
 
-  try { return JSON.parse(attempt) as PerformanceAnalysis; } catch {}
+  try { return JSON.parse(attempt) as PerformanceAnalysis; } catch { /* continue */ }
 
-  // 4. Last resort — partial object
+  // 4. Last resort — safe partial object
   return {
-    overall_score: "?",
+    overall_score: "C" as const,
     engagement_rate: "N/A",
-    follower_trend: "stable",
+    follower_trend: "stable" as const,
+    summary: "L'analyse a été partiellement générée. Réessaie dans quelques instants.",
     what_works: [],
     what_doesnt_work: [],
     recommendations: [],
-    growth_projection: null as unknown as PerformanceAnalysis['growth_projection'],
-    summary: "L'analyse a été partiellement générée (réponse tronquée). Réessaie ou vérifie les données disponibles. Extrait : " + cleaned.substring(0, 400),
-  } as PerformanceAnalysis;
+    growth_projection: {
+      current_followers: 0,
+      projected_dec_2026: 0,
+      on_track: false,
+      acceleration_needed: "Données insuffisantes — relance l'analyse.",
+    },
+  };
 }
 
 export async function POST() {
@@ -120,7 +118,7 @@ export async function POST() {
     const { data: { user } } = await supabase.auth.getUser();
     console.log(`[analyze-performance] Démarrage pour ${user!.email}`);
 
-    // ── 1. Récupère le snapshot le plus récent ─────────────────
+    // ── 1. Récupère les snapshots ─────────────────────────────
     const { data: snapshots, error: snapErr } = await supabase
       .from("instagram_insights_snapshots")
       .select("*")
@@ -143,88 +141,62 @@ export async function POST() {
     const latestSnapshot = snapshots[0];
     const previousSnapshots = snapshots.slice(1);
 
-    // ── 2. Appel Claude ────────────────────────────────────────
-    const userPrompt = `Analyse les performances Instagram avec ces données.
+    // ── 2. Prompt court + schema strict ──────────────────────
+    const userPrompt = `Données Instagram (snapshot récent) :
+${JSON.stringify(latestSnapshot)}
 
-DONNÉES DU COMPTE (snapshot le plus récent) :
-${JSON.stringify(latestSnapshot, null, 2)}
+Historique (${previousSnapshots.length} snapshots précédents) :
+${JSON.stringify(previousSnapshots)}
 
-HISTORIQUE DES SNAPSHOTS (évolution) :
-${JSON.stringify(previousSnapshots, null, 2)}
+Cible : atteindre 5000-10000 followers fin 2026.
 
-ANALYSE DEMANDÉE — Sois PRÉCIS et ACTIONNABLE :
-
-1. PERFORMANCE GLOBALE
-   - Taux d'engagement moyen
-   - Reach par rapport au nombre de followers (bon/moyen/faible)
-   - Tendance followers (croissance, stagnation, perte)
-
-2. CE QUI MARCHE
-   - Les posts qui performent le mieux et POURQUOI
-   - Le format gagnant (Reel vs Carrousel vs Photo) avec chiffres
-   - Les sujets/thèmes qui engagent le plus
-
-3. CE QUI NE MARCHE PAS
-   - Les posts qui sous-performent et POURQUOI
-   - Les formats à éviter ou améliorer
-   - Les erreurs récurrentes détectées
-
-4. RECOMMANDATIONS CONCRÈTES
-   - Top 3 actions à faire cette semaine
-   - Format prioritaire à utiliser
-   - Fréquence recommandée
-   - Type de contenu à tester
-
-5. OBJECTIFS
-   - Situation actuelle : ${latestSnapshot.followers_count ?? "?"} followers
-   - Cible : 5000-10000 followers fin 2026
-   - Estimation de la croissance au rythme actuel
-   - Ce qu'il faut changer pour accélérer
-
-Réponds en JSON avec exactement ce schéma :
+Réponds UNIQUEMENT avec ce JSON (max 3 items par tableau, 1-2 phrases par champ) :
 {
-  "overall_score": "A" | "B" | "C" | "D" | "F",
+  "overall_score": "A|B|C|D|F",
   "engagement_rate": "X.X%",
-  "follower_trend": "growing" | "stable" | "declining",
+  "follower_trend": "growing|stable|declining",
+  "summary": "2 phrases max, brutal et honnête",
   "what_works": [
-    { "insight": "...", "evidence": "...", "action": "..." }
+    { "insight": "1 phrase", "action": "1 phrase" }
   ],
   "what_doesnt_work": [
-    { "insight": "...", "evidence": "...", "action": "..." }
+    { "insight": "1 phrase", "action": "1 phrase" }
   ],
   "recommendations": [
-    { "priority": 1, "action": "...", "expected_impact": "...", "effort": "low|medium|high" }
+    { "priority": 1, "action": "1 phrase", "effort": "low|medium|high" }
   ],
   "growth_projection": {
     "current_followers": ${latestSnapshot.followers_count ?? 0},
     "projected_dec_2026": 0,
     "on_track": true,
-    "acceleration_needed": "..."
-  },
-  "summary": "2-3 phrases résumé brutal et honnête"
+    "acceleration_needed": "1 phrase"
+  }
 }`;
 
+    // ── 3. Appel Claude ───────────────────────────────────────
     const client = getAnthropicClient();
     const resp = await client.messages.create({
       model: MODELS.balanced,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: SYSTEM,
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const text = resp.content.find(b => b.type === "text");
-    if (!text || text.type !== "text") {
+    const textBlock = resp.content.find(b => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
       return NextResponse.json({ error: "Pas de réponse du modèle" }, { status: 500 });
     }
 
-    const analysis = repairJSON(text.text);
+    console.log(`[analyze-performance] raw length: ${textBlock.text.length} chars, stop_reason: ${resp.stop_reason}`);
+
+    const analysis = repairJSON(textBlock.text);
     const generationMs = Date.now() - t0;
-    const tokensIn = resp.usage.input_tokens;
+    const tokensIn  = resp.usage.input_tokens;
     const tokensOut = resp.usage.output_tokens;
 
-    console.log(`[analyze-performance] Analyse générée en ${generationMs}ms — score: ${analysis.overall_score}`);
+    console.log(`[analyze-performance] Analyse générée en ${generationMs}ms — score: ${analysis.overall_score}, tokens_out: ${tokensOut}`);
 
-    // ── 3. Sauvegarde ──────────────────────────────────────────
+    // ── 4. Sauvegarde ─────────────────────────────────────────
     const { data: saved, error: saveErr } = await supabase
       .from("marketing_performance_analyses")
       .insert({
@@ -252,6 +224,7 @@ Réponds en JSON avec exactement ce schéma :
         tokens_in: tokensIn,
         tokens_out: tokensOut,
         snapshot_date: latestSnapshot.snapshot_date,
+        stop_reason: resp.stop_reason,
       },
     });
 

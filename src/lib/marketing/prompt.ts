@@ -17,6 +17,46 @@ CONTEXTE FONDATEUR (Alex)
 - Cible visée : athlètes endurance amateurs sérieux (running, vélo, tri, Hyrox) qui veulent comprendre leurs données sans payer 200€/an TrainingPeaks
 
 ═══════════════════════════════════════════
+OBJECTIFS 2026 (à garder en tête pour CHAQUE brief)
+═══════════════════════════════════════════
+
+OBJECTIF REVENUE
+- Cible : 5000€ de CA en décembre 2026 (coaching + app)
+- Stratégie : construire une audience qualifiée maintenant pour
+  convertir au lancement payant (prévu ~septembre-octobre 2026)
+- Chaque post doit contribuer à AU MOINS un de ces sous-objectifs :
+  * Crédibilité (prouver qu'Alex sait de quoi il parle)
+  * Communauté (créer du lien, des réponses, des DMs)
+  * Curiosité pour l'app (sans vendre directement)
+  * Liste d'attente / early adopters (quand le moment sera venu)
+
+OBJECTIF AUDIENCE
+- Situation actuelle : ~269 followers Instagram
+- Cible : 5000 à 10000 followers fin 2026
+- Croissance nécessaire : ~600-1200 nouveaux followers/mois
+- Stratégie : contenu à fort potentiel de partage (saves + shares),
+  collaborations, hashtags ciblés, régularité absolue
+- Prioriser les formats qui génèrent du reach : Reels > Carrousels > Photos
+  et les hooks qui provoquent le save/share
+
+OBJECTIF RÉGULARITÉ
+- Minimum vital : 7 posts/semaine (1 par jour), dont 4 essentiels
+- Mode optimiste : 14 posts/semaine (2 par jour)
+- Toujours proposer 3 niveaux (Express/Standard/Deep) pour que
+  même les jours chargés aient un post faisable en 5 min
+- Si Alex n'a pas publié depuis 2+ jours : urgence maximale,
+  proposer uniquement du Express ultra-faisable pour réamorcer
+
+COMMENT CES OBJECTIFS IMPACTENT LE BRIEF
+- Chaque idée de post doit mentionner dans "why_it_works" QUEL
+  objectif elle sert (crédibilité / communauté / curiosité_app / reach)
+- Le weekly_analysis doit tracker la progression vers les objectifs :
+  * posts_this_week : nombre de posts publiés vs objectif 7-14
+  * estimated_follower_growth : estimation basée sur le reach récent
+  * conversion_readiness : "early" | "building" | "ready" selon
+    la maturité de l'audience pour un lancement payant
+
+═══════════════════════════════════════════
 LES 3 PILIERS DE CONTENU (équilibre obligatoire)
 ═══════════════════════════════════════════
 
@@ -91,7 +131,7 @@ Pour chaque niveau, fournis :
 - caption (rédigée prête à coller, max 200 mots, emojis OK ici)
 - hashtags (3 à 5, mix gros volume + niche pointue)
 - production_minutes (estimation)
-- why_it_works (1 phrase de raisonnement stratégique)
+- why_it_works (1 phrase mentionnant QUEL objectif 2026 est servi : crédibilité / communauté / curiosité_app / reach)
 
 ═══════════════════════════════════════════
 RÈGLES STRICTES
@@ -113,7 +153,10 @@ ANALYSE FINALE
 
 Termine par un objet "weekly_analysis" :
 - pillar_balance : { athlete: int, expert: int, builder: int } sur les 7 derniers posts
-- recommendation : 1 phrase de reco stratégique
+- posts_this_week : nombre de posts publiés cette semaine (basé sur recentPosts)
+- estimated_follower_growth : estimation du gain followers sur 7 jours (int, basé sur reach/impressions si dispo)
+- conversion_readiness : "early" (< 1000 followers ou < 3 mois réguliers) | "building" (audience engagée, régularité OK) | "ready" (> 3000 followers, forte rétention)
+- recommendation : 1 phrase de reco stratégique tenant compte des objectifs 2026
 - urgency : "low" | "medium" | "high" (high si 2+ jours sans post)
 
 ═══════════════════════════════════════════
@@ -139,6 +182,9 @@ Réponds UNIQUEMENT en JSON valide, sans markdown autour, structure exacte :
   ],
   "weekly_analysis": {
     "pillar_balance": { "athlete": 0, "expert": 0, "builder": 0 },
+    "posts_this_week": 0,
+    "estimated_follower_growth": 0,
+    "conversion_readiness": "early",
     "recommendation": "...",
     "urgency": "low"
   }

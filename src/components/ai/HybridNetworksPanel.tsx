@@ -6,10 +6,73 @@
  * Admin-only (NEXT_PUBLIC_ADMIN_EMAIL). Non-admin → placeholder.
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { InstaSnapshot, DailyBrief, BriefIdea } from '@/lib/marketing/types'
 import type { PerformanceAnalysis } from '@/app/api/marketing/analyze-performance/route'
+
+// ── Shared types (mirror AIPanel's AIConv / AIMsg) ─────────────
+// Must be structurally assignable to AIConv / AIMsg in AIPanel.tsx
+export interface HNMsg {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  ts: number
+  modelId?: 'hermes' | 'athena' | 'zeus'
+}
+export interface HNConv {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  msgs: HNMsg[]
+  agent?: 'training' | 'networks'
+  isPinned?: boolean
+}
+
+export interface HybridNetworksPanelProps {
+  convs: HNConv[]
+  activeId: string | null
+  onConvsChange: (updater: (prev: HNConv[]) => HNConv[]) => void
+  onActiveIdChange: (id: string | null) => void
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
+
+// ── Simple markdown renderer ───────────────────────────────────
+function renderMD(text: string): ReactNode {
+  const lines = text.split('\n')
+  const nodes: ReactNode[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.startsWith('## ')) {
+      nodes.push(<p key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '10px 0 4px', fontFamily: 'Syne,sans-serif' }}>{line.slice(3)}</p>)
+    } else if (line.startsWith('### ')) {
+      nodes.push(<p key={i} style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '8px 0 3px' }}>{line.slice(4)}</p>)
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      nodes.push(<p key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '2px 0 2px 10px', lineHeight: 1.55 }}>{'· '}{inlineMD(line.slice(2))}</p>)
+    } else if (/^\d+\. /.test(line)) {
+      nodes.push(<p key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '2px 0 2px 10px', lineHeight: 1.55 }}>{inlineMD(line)}</p>)
+    } else if (line.trim() === '') {
+      nodes.push(<div key={i} style={{ height: 6 }} />)
+    } else {
+      nodes.push(<p key={i} style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '2px 0', lineHeight: 1.6 }}>{inlineMD(line)}</p>)
+    }
+    i++
+  }
+  return <>{nodes}</>
+}
+
+function inlineMD(text: string): ReactNode {
+  // bold **...**
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((p, i) =>
+    p.startsWith('**') && p.endsWith('**')
+      ? <strong key={i} style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{p.slice(2, -2)}</strong>
+      : p
+  )
+}
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -200,7 +263,12 @@ function QuickActionCard({
 
 // ── Main component ─────────────────────────────────────────────
 
-export default function HybridNetworksPanel() {
+export default function HybridNetworksPanel({
+  convs,
+  activeId,
+  onConvsChange,
+  onActiveIdChange,
+}: HybridNetworksPanelProps) {
   const [isAdmin,  setIsAdmin]  = useState(false)
   const [checking, setChecking] = useState(true)
 
@@ -218,6 +286,13 @@ export default function HybridNetworksPanel() {
   const [analysis,        setAnalysis]        = useState<PerformanceAnalysis | null>(null)
   const [analyzeLoading,  setAnalyzeLoading]  = useState(false)
   const [analyzeError,    setAnalyzeError]    = useState<string | null>(null)
+
+  // Chat
+  const [chatInput,   setChatInput]   = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const abortRef   = useRef<AbortController | null>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+  const chatAreaRef = useRef<HTMLTextAreaElement>(null)
 
   // ── Admin check + load snapshot ──────────────────────────────
   useEffect(() => {
@@ -299,6 +374,132 @@ export default function HybridNetworksPanel() {
     }
   }, [snapshot])
 
+  // ── Chat — active conv ───────────────────────────────────────
+  const activeConv = convs.find(c => c.id === activeId) ?? null
+
+  // ── Chat — auto-scroll ───────────────────────────────────────
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [activeConv?.msgs.length])
+
+  // ── Chat — send message ──────────────────────────────────────
+  const sendMessage = useCallback(async () => {
+    const txt = chatInput.trim()
+    if (!txt || chatLoading) return
+
+    setChatInput('')
+    if (chatAreaRef.current) {
+      chatAreaRef.current.style.height = 'auto'
+      chatAreaRef.current.focus()
+    }
+    setChatLoading(true)
+
+    const userMsg: HNMsg = { id: genId(), role: 'user', content: txt, ts: Date.now() }
+    const prevMsgs = activeConv?.msgs ?? []   // msgs BEFORE userMsg
+
+    let convId: string
+
+    if (!activeConv) {
+      const newConv: HNConv = {
+        id: genId(),
+        title: txt.slice(0, 46) + (txt.length > 46 ? '…' : ''),
+        createdAt: Date.now(), updatedAt: Date.now(),
+        msgs: [userMsg],
+        agent: 'networks',
+      }
+      onConvsChange(prev => [newConv, ...prev.slice(0, 29)])
+      onActiveIdChange(newConv.id)
+      convId = newConv.id
+    } else {
+      convId = activeConv.id
+      onConvsChange(prev => prev.map(c =>
+        c.id === convId
+          ? { ...c, msgs: [...c.msgs, userMsg], updatedAt: Date.now() }
+          : c
+      ))
+    }
+
+    // Build API messages (prevMsgs + new userMsg — no duplication)
+    const apiMsgs = [...prevMsgs, userMsg].map(m => ({ role: m.role, content: m.content }))
+
+    // Inject snapshot context
+    const snapshotCtx = snapshot
+      ? { instagram_snapshot: snapshot }
+      : {}
+
+    try {
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          agentId: 'hybrid_networks',
+          messages: apiMsgs,
+          context: snapshotCtx,
+        }),
+      })
+
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+
+      const aiMsgId = genId()
+      onConvsChange(prev => prev.map(c =>
+        c.id === convId
+          ? { ...c, msgs: [...c.msgs, { id: aiMsgId, role: 'assistant' as const, content: '', ts: Date.now() }], updatedAt: Date.now() }
+          : c
+      ))
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      let sseBuffer = ''
+
+      const processBuf = () => {
+        const parts = sseBuffer.split('\n\n')
+        sseBuffer = parts.pop() ?? ''
+        for (const rawEvent of parts) {
+          if (!rawEvent.trim()) continue
+          let eventType = 'text', data = ''
+          for (const line of rawEvent.split('\n')) {
+            if (line.startsWith('event: ')) eventType = line.slice(7).trim()
+            else if (line.startsWith('data: ')) data = line.slice(6)
+          }
+          if (eventType === 'text') {
+            try { accumulated += JSON.parse(data) as string } catch { accumulated += data }
+            onConvsChange(prev => prev.map(c =>
+              c.id === convId
+                ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: accumulated } : m), updatedAt: Date.now() }
+                : c
+            ))
+          }
+        }
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        sseBuffer += decoder.decode(value, { stream: true })
+        processBuf()
+      }
+      processBuf()
+
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        const errMsg = err instanceof Error ? err.message : 'Erreur inconnue'
+        onConvsChange(prev => prev.map(c =>
+          c.id === convId
+            ? { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content: `❌ ${errMsg}`, ts: Date.now() }], updatedAt: Date.now() }
+            : c
+        ))
+      }
+    } finally {
+      setChatLoading(false)
+      abortRef.current = null
+    }
+  }, [chatInput, chatLoading, activeConv, snapshot, onConvsChange, onActiveIdChange])
+
   // ── Loading / non-admin ──────────────────────────────────────
   if (checking) {
     return (
@@ -325,14 +526,17 @@ export default function HybridNetworksPanel() {
 
   // ── Admin view ───────────────────────────────────────────────
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
       <style>{`
         @keyframes hn_spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         .hn-qa:hover { border-color: rgba(91,111,255,0.4) !important; background: rgba(91,111,255,0.06) !important; }
         .hn-qa:hover .hn-qa-icon { color: #5b6fff !important; }
+        .hn-send:hover:not(:disabled) { background: #4a5df0 !important; }
+        .hn-input-wrap:focus-within { border-color: rgba(91,111,255,0.5) !important; box-shadow: 0 0 0 3px rgba(91,111,255,0.08) !important; }
       `}</style>
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '20px 16px', gap: 0 }}>
+      {/* ── SCROLL AREA : widgets + messages ── */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '20px 16px 0', gap: 0 }}>
 
         {/* ── HEADER ─────────────────────────────────────────── */}
         <div style={{ marginBottom: 20, animation: 'ai_slidein 0.2s ease' }}>
@@ -587,9 +791,119 @@ export default function HybridNetworksPanel() {
           </div>
         )}
 
+        {/* ── MESSAGES ─────────────────────────────────────── */}
+        {activeConv && activeConv.msgs.length > 0 && (
+          <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>
+              Conversation
+            </p>
+            {activeConv.msgs.map(msg => (
+              <div key={msg.id} style={{
+                display: 'flex',
+                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                gap: 8, alignItems: 'flex-start',
+              }}>
+                {msg.role === 'assistant' && (
+                  <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(91,111,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    <IconGlobe size={13} />
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: '80%',
+                  background: msg.role === 'user' ? 'rgba(91,111,255,0.12)' : 'var(--ai-bg2)',
+                  border: '1px solid',
+                  borderColor: msg.role === 'user' ? 'rgba(91,111,255,0.25)' : 'var(--ai-border)',
+                  borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                  padding: '9px 13px',
+                }}>
+                  {msg.role === 'assistant' && msg.content === '' ? (
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {[0,1,2].map(i => (
+                        <span key={i} style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--ai-dim)', animation: `ai_dot_pulse 1.4s ease infinite ${i * 0.2}s` }} />
+                      ))}
+                    </div>
+                  ) : msg.role === 'assistant' ? (
+                    <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--ai-mid)' }}>{renderMD(msg.content)}</div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+        )}
+
         {/* Padding bottom */}
-        <div style={{ height: 20, flexShrink: 0 }} />
+        <div style={{ height: 16, flexShrink: 0 }} />
+      </div>{/* /scroll area */}
+
+      {/* ── INPUT BAR ─────────────────────────────────────────── */}
+      <div style={{
+        padding: '10px 16px 14px',
+        borderTop: '1px solid var(--ai-border)',
+        flexShrink: 0,
+        background: 'var(--ai-bg)',
+      }}>
+        <div
+          className="hn-input-wrap"
+          style={{
+            display: 'flex', alignItems: 'flex-end', gap: 8,
+            background: 'var(--ai-bg)',
+            border: '1px solid var(--ai-border)',
+            borderRadius: 16,
+            padding: '8px 8px 8px 14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            transition: 'border-color 0.15s, box-shadow 0.15s',
+          }}
+        >
+          <textarea
+            ref={chatAreaRef}
+            value={chatInput}
+            onChange={e => {
+              setChatInput(e.target.value)
+              const el = e.target
+              el.style.height = 'auto'
+              el.style.height = Math.min(el.scrollHeight, 130) + 'px'
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage() }
+            }}
+            placeholder="Demande une stratégie, un hook, une analyse..."
+            rows={1}
+            style={{
+              flex: 1, resize: 'none', border: 'none', outline: 'none',
+              background: 'transparent',
+              fontSize: 13, lineHeight: 1.5, color: 'var(--ai-text)',
+              fontFamily: 'inherit', padding: 0, minHeight: 22, maxHeight: 130,
+              overflowY: 'auto',
+            }}
+          />
+          <button
+            className="hn-send"
+            onClick={() => void sendMessage()}
+            disabled={!chatInput.trim() || chatLoading}
+            style={{
+              width: 34, height: 34, borderRadius: 10, border: 'none',
+              background: (!chatInput.trim() || chatLoading) ? 'var(--ai-border)' : '#5b6fff',
+              color: '#fff', cursor: (!chatInput.trim() || chatLoading) ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, transition: 'background 0.15s',
+            }}
+          >
+            {chatLoading
+              ? <Spinner />
+              : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              )
+            }
+          </button>
+        </div>
       </div>
-    </>
+
+    </div>
   )
 }

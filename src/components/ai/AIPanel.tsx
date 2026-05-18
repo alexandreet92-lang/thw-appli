@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
-import HybridNetworksPanel from './HybridNetworksPanel'
+import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -58,6 +58,7 @@ interface AIConv {
   updatedAt: number
   msgs: AIMsg[]
   isPinned?: boolean
+  agent?: 'training' | 'networks'
 }
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
@@ -18627,6 +18628,7 @@ export default function AIPanel({
         id: genId(),
         title: displayText.slice(0, 46) + (displayText.length > 46 ? '…' : ''),
         createdAt: Date.now(), updatedAt: Date.now(), msgs: [],
+        agent: activeAgent,
       }
       isNew = true
     }
@@ -18710,7 +18712,7 @@ export default function AIPanel({
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          agentId:  isPlanChat ? 'plan_coach' : 'central',
+          agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
           modelId:  snapshot,
           messages: apiMsgs,
           aiRules:  aiRules.length > 0 ? aiRules : undefined,
@@ -19297,7 +19299,7 @@ export default function AIPanel({
           {isDesktop && (
             <HistoryDrawer
               persistent
-              convs={convs}
+              convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
               onDelete={deleteConv}
@@ -19310,7 +19312,7 @@ export default function AIPanel({
           {/* ── Sidebar mobile (overlay) ── */}
           {!isDesktop && histOpen && (
             <HistoryDrawer
-              convs={convs}
+              convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
               onDelete={deleteConv}
@@ -19328,7 +19330,14 @@ export default function AIPanel({
           >
 
           {/* ── Hybrid Networks ──────────────────────────── */}
-          {activeAgent === 'networks' && <HybridNetworksPanel />}
+          {activeAgent === 'networks' && (
+            <HybridNetworksPanel
+              convs={convs.filter(c => (c.agent ?? 'training') === 'networks') as unknown as HNConv[]}
+              activeId={activeId}
+              onConvsChange={(updater) => setConvs(prev => updater(prev as unknown as HNConv[]) as unknown as AIConv[])}
+              onActiveIdChange={setActiveId}
+            />
+          )}
 
           {/* ── MESSAGES ───────────────────────────────────── */}
           {activeAgent === 'training' && <div

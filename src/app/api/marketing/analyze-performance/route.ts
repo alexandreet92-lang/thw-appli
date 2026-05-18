@@ -75,7 +75,7 @@ function repairJSON(raw: string): PerformanceAnalysis {
   let attempt = cleaned;
 
   // Remove any trailing incomplete key or value (last unclosed string)
-  attempt = attempt.replace(/,?\s*"[^"]*$/s, '');
+  attempt = attempt.replace(/,?\s*"[^"]*$/, '');
 
   // Remove trailing comma
   attempt = attempt.replace(/,\s*$/, '');

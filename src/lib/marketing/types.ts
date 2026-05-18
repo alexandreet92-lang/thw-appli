@@ -106,6 +106,8 @@ export interface InstaSnapshot {
   best_posting_times: Record<string, number> | null;
   raw_extracted_text?: string | null;
   screenshot_count?: number | null;
+  /** 'api' = Graph API direct sync | 'screenshots' = Claude Vision analysis */
+  source?: "api" | "screenshots" | null;
 }
 
 // Retour de Claude Vision avant sauvegarde en base

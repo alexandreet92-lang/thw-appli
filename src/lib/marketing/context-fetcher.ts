@@ -144,16 +144,21 @@ export async function fetchRecentPosts(
 }
 
 /**
- * Récupère le dernier snapshot Instagram Insights.
+ * Récupère le dernier snapshot Instagram Insights (14 derniers jours).
+ * Retourne null si aucun snapshot récent.
  */
 export async function fetchLatestInstaSnapshot(
   supabase: SupabaseClient,
   userId: string
 ): Promise<InstaSnapshot | null> {
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
   const { data, error } = await supabase
     .from("instagram_insights_snapshots")
     .select("*")
     .eq("user_id", userId)
+    .gte("snapshot_date", fourteenDaysAgo.toISOString().split("T")[0])
     .order("snapshot_date", { ascending: false })
     .limit(1)
     .maybeSingle();

@@ -68,7 +68,12 @@ export default function MarketingAdminPage() {
 
   const [history, setHistory] = useState<BriefHistoryItem[]>([]);
 
-  // ── Instagram Insights state ────────────────────────────────
+  // ── Instagram API sync state ────────────────────────────────
+  const [instaApiSyncing,  setInstaApiSyncing]  = useState(false);
+  const [instaApiSnapshot, setInstaApiSnapshot] = useState<InstaSnapshot | null>(null);
+  const [instaApiError,    setInstaApiError]    = useState<string | null>(null);
+
+  // ── Instagram screenshot upload state ───────────────────────
   const [instaSnapshots,   setInstaSnapshots]   = useState<InstaSnapshot[]>([]);
   const [instaUploading,   setInstaUploading]   = useState(false);
   const [instaError,       setInstaError]       = useState<string | null>(null);
@@ -80,6 +85,7 @@ export default function MarketingAdminPage() {
     void loadHistory();
     void loadIdeas();
     void loadInstaSnapshots();
+    void loadInstaApiSnapshot();
   }, [authChecked]);
 
   async function loadHistory() {
@@ -147,6 +153,29 @@ export default function MarketingAdminPage() {
   async function deleteIdea(id: string) {
     await fetch(`/api/marketing/ideas?id=${id}`, { method: "DELETE" });
     void loadIdeas();
+  }
+
+  async function loadInstaApiSnapshot() {
+    const res = await fetch("/api/marketing/insta-sync");
+    if (res.ok) {
+      const json = await res.json() as { snapshot: InstaSnapshot | null };
+      setInstaApiSnapshot(json.snapshot ?? null);
+    }
+  }
+
+  async function syncInstaApi() {
+    setInstaApiSyncing(true);
+    setInstaApiError(null);
+    try {
+      const res = await fetch("/api/marketing/insta-sync", { method: "POST" });
+      const json = await res.json() as { snapshot?: InstaSnapshot; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Erreur sync");
+      setInstaApiSnapshot(json.snapshot ?? null);
+    } catch (err) {
+      setInstaApiError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setInstaApiSyncing(false);
+    }
   }
 
   async function loadInstaSnapshots() {
@@ -264,6 +293,117 @@ export default function MarketingAdminPage() {
         </section>
       )}
 
+      {/* ── Stats Instagram (API) ──────────────────────────────────── */}
+      <section style={{ marginBottom: 48 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
+          <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, margin: 0 }}>
+            Stats Instagram
+          </h2>
+          {instaApiSnapshot?.source && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
+              background: instaApiSnapshot.source === "api" ? "#00c8e0" : "#6B7280",
+              color: "white", letterSpacing: 0.5,
+            }}>
+              {instaApiSnapshot.source === "api" ? "API" : "Manuel"}
+            </span>
+          )}
+        </div>
+        <p style={{ color: "#666", fontSize: 14, marginBottom: 14 }}>
+          Synchronise directement depuis l&apos;API Instagram Graph.
+        </p>
+
+        <button
+          onClick={syncInstaApi}
+          disabled={instaApiSyncing}
+          style={{
+            background: instaApiSyncing ? "#e5e7eb" : "linear-gradient(135deg, #00c8e0 0%, #5b6fff 100%)",
+            color: instaApiSyncing ? "#9ca3af" : "white",
+            border: "none", padding: "10px 20px", borderRadius: 10,
+            fontSize: 14, fontWeight: 600,
+            cursor: instaApiSyncing ? "wait" : "pointer",
+            marginBottom: 16, transition: "all 0.15s",
+          }}
+        >
+          {instaApiSyncing ? "Synchronisation…" : "Synchroniser maintenant"}
+        </button>
+
+        {instaApiError && (
+          <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 8, marginBottom: 12, color: "#c33", fontSize: 13 }}>
+            {instaApiError}
+          </div>
+        )}
+
+        {instaApiSnapshot ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* KPI cards */}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {instaApiSnapshot.followers_count != null && (
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Followers</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.followers_count.toLocaleString("fr-FR")}</div>
+                </div>
+              )}
+              {instaApiSnapshot.reach_total != null && (
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Reach 28j</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.reach_total.toLocaleString("fr-FR")}</div>
+                </div>
+              )}
+              {instaApiSnapshot.impressions_total != null && (
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Impressions 28j</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.impressions_total.toLocaleString("fr-FR")}</div>
+                </div>
+              )}
+              {instaApiSnapshot.best_format && (
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Meilleur format</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, textTransform: "capitalize" }}>{instaApiSnapshot.best_format}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Top 3 posts */}
+            {(instaApiSnapshot.top_posts ?? []).slice(0, 3).length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#666", marginBottom: 8 }}>
+                  Top 3 posts
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(instaApiSnapshot.top_posts ?? []).slice(0, 3).map((p, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 10, background: "white", border: "1px solid #e5e7eb" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "#00c8e0", color: "#fff", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
+                        {p.format}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: "#333", fontStyle: "italic", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.caption_excerpt || "(sans légende)"}
+                        </div>
+                        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
+                          <span>❤ {p.likes.toLocaleString("fr-FR")}</span>
+                          <span>🔖 {p.saves.toLocaleString("fr-FR")}</span>
+                          <span>👁 {p.reach.toLocaleString("fr-FR")}</span>
+                          {p.comments != null && <span>💬 {p.comments}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: 11, color: "#9ca3af" }}>
+              Dernier sync : {instaApiSnapshot.snapshot_date}
+            </div>
+          </div>
+        ) : !instaApiSyncing && (
+          <p style={{ fontSize: 13, color: "#999", fontStyle: "italic" }}>
+            Aucune donnée API. Clique sur &quot;Synchroniser maintenant&quot;.
+          </p>
+        )}
+      </section>
+
       {/* ── Banque d'idées ─────────────────────────────────────────── */}
       <section style={{ marginBottom: 48 }}>
         <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
@@ -373,82 +513,93 @@ export default function MarketingAdminPage() {
         </div>
       </section>
 
-      {/* ── Instagram Insights ─────────────────────────────────────── */}
+      {/* ── Upload manuel (backup) ─────────────────────────────────── */}
       <section style={{ marginBottom: 48 }}>
-        <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 8 }}>
-          Instagram Insights
-        </h2>
-        <p style={{ color: "#666", fontSize: 14, marginBottom: 14 }}>
-          Dépose tes screenshots Insights pour que Claude Vision les analyse et enrichisse le prochain brief.
-        </p>
+        <details>
+          <summary style={{
+            cursor: "pointer", fontSize: 15, fontWeight: 600,
+            color: "#6B7280", userSelect: "none",
+            listStyle: "none", display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 0",
+          }}>
+            <span style={{ fontSize: 12 }}>▶</span>
+            Upload manuel (backup)
+          </summary>
 
-        {/* Drop zone */}
-        <div
-          onDragOver={e => { e.preventDefault(); setInstaDragOver(true); }}
-          onDragLeave={() => setInstaDragOver(false)}
-          onDrop={e => {
-            e.preventDefault(); setInstaDragOver(false);
-            void uploadInstaScreenshots(e.dataTransfer.files);
-          }}
-          onClick={() => {
-            const inp = document.createElement("input");
-            inp.type = "file"; inp.multiple = true; inp.accept = "image/*";
-            inp.onchange = () => { if (inp.files) void uploadInstaScreenshots(inp.files); };
-            inp.click();
-          }}
-          style={{
-            border: `2px dashed ${instaDragOver ? "#5b6fff" : "#ddd"}`,
-            borderRadius: 12,
-            padding: "32px 24px",
-            textAlign: "center",
-            cursor: instaUploading ? "wait" : "pointer",
-            background: instaDragOver ? "rgba(91,111,255,0.04)" : "#fafafa",
-            transition: "all 0.15s",
-            marginBottom: 12,
-            userSelect: "none",
-          }}
-        >
-          {instaUploading ? (
-            <p style={{ margin: 0, fontSize: 14, color: "#5b6fff" }}>Analyse en cours par Claude Vision…</p>
-          ) : (
-            <>
-              <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: "#333" }}>
-                Dépose tes screenshots ici
+          <div style={{ marginTop: 12 }}>
+            <p style={{ color: "#666", fontSize: 14, marginBottom: 14 }}>
+              Dépose tes screenshots Insights pour que Claude Vision les analyse et enrichisse le prochain brief.
+            </p>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setInstaDragOver(true); }}
+              onDragLeave={() => setInstaDragOver(false)}
+              onDrop={e => {
+                e.preventDefault(); setInstaDragOver(false);
+                void uploadInstaScreenshots(e.dataTransfer.files);
+              }}
+              onClick={() => {
+                const inp = document.createElement("input");
+                inp.type = "file"; inp.multiple = true; inp.accept = "image/*";
+                inp.onchange = () => { if (inp.files) void uploadInstaScreenshots(inp.files); };
+                inp.click();
+              }}
+              style={{
+                border: `2px dashed ${instaDragOver ? "#5b6fff" : "#ddd"}`,
+                borderRadius: 12,
+                padding: "32px 24px",
+                textAlign: "center",
+                cursor: instaUploading ? "wait" : "pointer",
+                background: instaDragOver ? "rgba(91,111,255,0.04)" : "#fafafa",
+                transition: "all 0.15s",
+                marginBottom: 12,
+                userSelect: "none",
+              }}
+            >
+              {instaUploading ? (
+                <p style={{ margin: 0, fontSize: 14, color: "#5b6fff" }}>Analyse en cours par Claude Vision…</p>
+              ) : (
+                <>
+                  <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: "#333" }}>
+                    Dépose tes screenshots ici
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#999" }}>
+                    ou clique pour choisir des fichiers · max 10 images
+                  </p>
+                </>
+              )}
+            </div>
+
+            {instaError && (
+              <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 8, marginBottom: 12, color: "#c33", fontSize: 13 }}>
+                {instaError}
+              </div>
+            )}
+            {instaAmbiguities.length > 0 && (
+              <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#92400e" }}>
+                <strong>Ambiguïtés détectées :</strong>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 16 }}>
+                  {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {/* Snapshots */}
+            {instaSnapshots.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {instaSnapshots.map((s, i) => (
+                  <AdminInstaCard key={s.id} snapshot={s} defaultOpen={i === 0} />
+                ))}
+              </div>
+            )}
+            {instaSnapshots.length === 0 && !instaUploading && (
+              <p style={{ fontSize: 13, color: "#999", fontStyle: "italic" }}>
+                Aucun snapshot encore. Upload tes premiers screenshots !
               </p>
-              <p style={{ margin: 0, fontSize: 13, color: "#999" }}>
-                ou clique pour choisir des fichiers · max 10 images
-              </p>
-            </>
-          )}
-        </div>
-
-        {instaError && (
-          <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 8, marginBottom: 12, color: "#c33", fontSize: 13 }}>
-            {instaError}
+            )}
           </div>
-        )}
-        {instaAmbiguities.length > 0 && (
-          <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#92400e" }}>
-            <strong>Ambiguïtés détectées :</strong>
-            <ul style={{ margin: "6px 0 0", paddingLeft: 16 }}>
-              {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
-            </ul>
-          </div>
-        )}
-
-        {/* Snapshots */}
-        {instaSnapshots.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {instaSnapshots.map((s, i) => (
-              <AdminInstaCard key={s.id} snapshot={s} defaultOpen={i === 0} />
-            ))}
-          </div>
-        )}
-        {instaSnapshots.length === 0 && !instaUploading && (
-          <p style={{ fontSize: 13, color: "#999", fontStyle: "italic" }}>
-            Aucun snapshot encore. Upload tes premiers screenshots !
-          </p>
-        )}
+        </details>
       </section>
 
       {/* ── Historique ─────────────────────────────────────────────── */}

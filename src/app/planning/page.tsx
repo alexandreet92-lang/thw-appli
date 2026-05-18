@@ -133,6 +133,10 @@ interface WeekTask {
   startHour:number; startMin:number; durationMin:number
   description?:string; priority?:boolean; fromTraining?:boolean; color?:string
   isMain?:boolean; sport?:SportType
+  sectionId?:string
+  subtasks?:{label:string;done:boolean}[]
+  isRecurring?:boolean
+  recurrenceDays?:number[]
 }
 interface Race {
   id:string; name:string; sport:RaceSport; date:string; level:RaceLevel
@@ -617,6 +621,10 @@ function usePlanning(weekStartParam?:string) {
       id:r.id, title:r.title, type:r.type, dayIndex:r.day_index,
       startHour:r.start_hour, startMin:r.start_min??0, durationMin:r.duration_min,
       description:r.description, priority:r.priority??false, isMain:r.is_main??false,
+      sectionId:r.section_id??undefined,
+      subtasks:(r.subtasks??[]) as {label:string;done:boolean}[],
+      isRecurring:r.is_recurring??false,
+      recurrenceDays:(r.recurrence_days??[]) as number[],
     })))
     const mappedActs:TrainingActivity[]=(acts.data??[]).map((a:any)=>{
       const d=new Date(a.started_at); const dow=d.getDay()===0?6:d.getDay()-1
@@ -716,14 +724,23 @@ function usePlanning(weekStartParam?:string) {
       day_index:t.dayIndex, start_hour:t.startHour, start_min:t.startMin,
       duration_min:t.durationMin, description:t.description??null,
       priority:t.priority??false, is_main:t.isMain??false,
+      section_id:t.sectionId??null,
+      subtasks:t.subtasks??[],
+      is_recurring:t.isRecurring??false,
+      recurrence_days:t.recurrenceDays??[],
     }).select().single()
     if(!error&&data) setTasks(p=>[...p,{...t,id:data.id}])
   }
 
   async function updateTask(t:WeekTask) {
     await supabase.from('week_tasks').update({
-      title:t.title, start_hour:t.startHour, start_min:t.startMin,
+      title:t.title, type:t.type, start_hour:t.startHour, start_min:t.startMin,
       duration_min:t.durationMin, priority:t.priority, is_main:t.isMain??false,
+      description:t.description??null,
+      section_id:t.sectionId??null,
+      subtasks:t.subtasks??[],
+      is_recurring:t.isRecurring??false,
+      recurrence_days:t.recurrenceDays??[],
     }).eq('id',t.id)
     setTasks(p=>p.map(x=>x.id===t.id?t:x))
   }
@@ -10155,6 +10172,22 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     return 'work'
   }
 
+  function getTaskColor(t:WeekTask):string {
+    if (t.sectionId) {
+      const sec = sections.find(s=>s.id===t.sectionId)
+      if (sec) return sec.color
+    }
+    // fallback: type → sortOrder mapping
+    const sec = sections.find(s=>{
+      if (t.type==='sport')    return s.isSportDefault
+      if (t.type==='work')     return !s.isSportDefault && s.sortOrder===1
+      if (t.type==='personal') return !s.isSportDefault && s.sortOrder===2
+      if (t.type==='recovery') return !s.isSportDefault && s.sortOrder===3
+      return false
+    })
+    return sec?.color ?? TASK_CONFIG[t.type].color
+  }
+
   function openNewTask(dayIndex:number, startHour:number, startMin=0) {
     const firstSec = sections.find(s=>!s.isSportDefault)
     setNewTaskDefaults({dayIndex, startHour, startMin})
@@ -10167,12 +10200,16 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     await handleAddTask({
       title: newTask.text.trim() || 'Tâche',
       type: sec ? sectionToType(sec) : 'work',
+      sectionId: newTask.sectionId ?? undefined,
       dayIndex: newTaskDefaults.dayIndex,
       startHour: newTask.startHour,
       startMin: newTask.startMin,
       durationMin: newTask.durationMin || 60,
       description: newTask.description || undefined,
       priority: newTask.priority !== 'low',
+      subtasks: newTask.subtasks.map(label=>({label,done:false})),
+      isRecurring: newTask.isRecurring,
+      recurrenceDays: newTask.recurrenceDays,
     })
     setShowNewTask(false)
     setNewTask({...BLANK_NEW_TASK, sectionId:newTask.sectionId})
@@ -10183,12 +10220,12 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const dayLabels = DAY_NAMES.map((d,i)=>`${d} ${dates[i]}`)
 
   const taskCell = (t:WeekTask) => {
-    const cfg = TASK_CONFIG[t.type]; const border = t.fromTraining?(t.color||cfg.color):cfg.color
+    const col = t.fromTraining ? (t.color||TASK_CONFIG[t.type].color) : getTaskColor(t)
     return (
       <div key={t.id} onClick={e=>{e.stopPropagation();if(!t.fromTraining)setEditModal(t)}}
-        style={{ borderRadius:5,padding:'3px 5px',background:t.fromTraining?`${border}22`:cfg.bg,borderLeft:`2px solid ${border}`,cursor:t.fromTraining?'default':'pointer',position:'relative',marginBottom:2 }}>
+        style={{ borderRadius:5,padding:'3px 5px',background:`${col}18`,borderLeft:`2px solid ${col}`,cursor:t.fromTraining?'default':'pointer',position:'relative',marginBottom:2 }}>
         {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
-        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:t.fromTraining?border:'var(--text)',paddingRight:t.priority?10:0 }}>{t.title}</p>
+        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:t.priority?10:0 }}>{t.title}</p>
         <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatHM(t.durationMin)}</p>
       </div>
     )
@@ -10351,16 +10388,14 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 })}
                 {/* Regular week tasks — couleur de leur section */}
                 {getTasksForDay(d).filter(t=>!t.fromTraining&&!t.isMain).map(t=>{
-                  const taskSec = sections.find(s=>{
-                    if (t.type==='sport') return s.isSportDefault
-                    if (t.type==='work') return !s.isSportDefault && s.sortOrder===1
-                    if (t.type==='personal') return !s.isSportDefault && s.sortOrder===2
-                    if (t.type==='recovery') return !s.isSportDefault && s.sortOrder===3
-                    return false
-                  })
-                  const col = taskSec?.color ?? TASK_CONFIG[t.type].color
+                  const col = getTaskColor(t)
                   const topPx=Math.max(0,(t.startHour-5+t.startMin/60)*CELL_H)
                   const heightPx=Math.max(t.durationMin/60*CELL_H,28)
+                  const endTotalMin=(t.startHour*60+t.startMin+t.durationMin)%(24*60)
+                  const endH=Math.floor(endTotalMin/60); const endM=endTotalMin%60
+                  const timeLabel=`${t.startHour}h${t.startMin>0?String(t.startMin).padStart(2,'0'):''}–${endH}h${endM>0?String(endM).padStart(2,'0'):''}`
+                  const doneCount=(t.subtasks??[]).filter(s=>s.done).length
+                  const totalCount=(t.subtasks??[]).length
                   return (
                     <div key={t.id}
                       data-task-id={t.id}
@@ -10371,11 +10406,18 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       onTouchEnd={onTaskTouchEnd}
                       onClick={e=>{e.stopPropagation();setEditModal(t)}}
                       style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
-                        padding:'3px 5px',background:`${col}18`,borderLeft:`2px solid ${col}`,
+                        padding:'3px 6px',background:`${col}18`,borderLeft:`3px solid ${col}`,
                         cursor:'pointer',zIndex:1,overflow:'hidden' as const }}>
                       {t.priority&&<span style={{ position:'absolute' as const,top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
-                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:t.priority?10:0 }}>{t.title}</p>
-                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatDur(t.durationMin)}</p>}
+                      {/* Ligne 1 : titre + horaire */}
+                      <div style={{ display:'flex',alignItems:'baseline',gap:4,overflow:'hidden' as const }}>
+                        <p style={{ fontSize:9,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:t.priority?10:0,flexShrink:1,minWidth:0 }}>{t.title}</p>
+                        {heightPx>=28&&<span style={{ fontSize:7,color:col,opacity:0.75,whiteSpace:'nowrap' as const,flexShrink:0 }}>{timeLabel}</span>}
+                      </div>
+                      {/* Ligne 2 : description tronquée */}
+                      {heightPx>=40&&t.description&&<p style={{ fontSize:7.5,color:'var(--text-dim)',margin:'1px 0 0',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,lineHeight:1.3 }}>{t.description}</p>}
+                      {/* Ligne 3 : sous-tâches */}
+                      {heightPx>=52&&totalCount>0&&<p style={{ fontSize:7,color:'var(--text-dim)',margin:'1px 0 0',opacity:0.8 }}>{doneCount}/{totalCount} sous-tâches</p>}
                     </div>
                   )
                 })}
@@ -10524,7 +10566,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
         }
       `}</style>
 
-      {editModal && <TaskEditModal task={editModal} onClose={()=>setEditModal(null)} onSave={handleUpdateTask} onDelete={handleDeleteTask}/>}
+      {editModal && <TaskEditModal task={editModal} sections={sections} onClose={()=>setEditModal(null)} onSave={handleUpdateTask} onDelete={handleDeleteTask}/>}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
       {/* ── Modal Nouvelle tâche (grille) ── */}
@@ -10700,28 +10742,179 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   )
 }
 
-function TaskEditModal({ task, onClose, onSave, onDelete }:{ task:WeekTask; onClose:()=>void; onSave:(t:WeekTask)=>void; onDelete:(id:string)=>void }) {
-  const [form,setForm]=useState<WeekTask>({...task})
+function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
+  task:WeekTask; sections:{id:string;name:string;color:string;isSportDefault:boolean;sortOrder:number}[];
+  onClose:()=>void; onSave:(t:WeekTask)=>void; onDelete:(id:string)=>void
+}) {
+  const [form, setForm] = useState<WeekTask>({
+    ...task,
+    subtasks: task.subtasks ?? [],
+    isRecurring: task.isRecurring ?? false,
+    recurrenceDays: task.recurrenceDays ?? [],
+  })
+
+  const nonSportSections = sections.filter(s=>!s.isSportDefault)
+  const activeSec = form.sectionId ? sections.find(s=>s.id===form.sectionId) : null
+
+  // end time
+  const endTotalMin = (form.startHour*60 + form.startMin + form.durationMin) % (24*60)
+  const endH = Math.floor(endTotalMin/60); const endM = endTotalMin%60
+
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:400,width:'100%' }}>
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'85vh',overflowY:'auto' as const }}>
+
+        {/* Header */}
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Modifier la tâche</h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
-        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:12 }}>
-          <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Heure</p><input type="number" value={form.startHour} onChange={e=>setForm({...form,startHour:parseInt(e.target.value)})} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-          <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Durée (min)</p><input type="number" value={form.durationMin} onChange={e=>setForm({...form,durationMin:parseInt(e.target.value)})} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+
+        {/* 1. Catégorie */}
+        {nonSportSections.length>0&&(
+          <div style={{ marginBottom:14 }}>
+            <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Catégorie</p>
+            <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
+              {nonSportSections.map(s=>(
+                <button key={s.id} onClick={()=>setForm(f=>({...f,sectionId:s.id}))} style={{
+                  padding:'5px 12px',borderRadius:7,fontSize:11,fontWeight:600,cursor:'pointer',
+                  background:form.sectionId===s.id?`${s.color}20`:'transparent',
+                  border:form.sectionId===s.id?`1.5px solid ${s.color}`:'1px solid var(--border)',
+                  color:form.sectionId===s.id?s.color:'var(--text-dim)',
+                  display:'flex',alignItems:'center',gap:5,
+                }}>
+                  <span style={{ width:6,height:6,borderRadius:'50%',background:s.color,display:'inline-block' }}/>
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 2. Titre */}
+        <div style={{ marginBottom:14 }}>
+          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Titre</p>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
+            style={{ width:'100%',padding:'10px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box' as const }}/>
         </div>
-        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:14,cursor:'pointer' }} onClick={()=>setForm({...form,priority:!form.priority})}>
-          <div style={{ width:20,height:20,borderRadius:5,border:`2px solid ${form.priority?'#ffb340':'var(--border)'}`,background:form.priority?'#ffb340':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>{form.priority&&<span style={{ color:'#fff',fontSize:12 }}>✓</span>}</div>
-          <p style={{ fontSize:13,margin:0,color:form.priority?'#ffb340':'var(--text-mid)' }}>Prioritaire</p>
+
+        {/* 3. Description */}
+        <div style={{ marginBottom:14 }}>
+          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Description</p>
+          <textarea value={form.description??''} onChange={e=>setForm(f=>({...f,description:e.target.value}))}
+            placeholder="Détails, notes, liens..." rows={3}
+            style={{ width:'100%',padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
         </div>
+
+        {/* 4. Horaire */}
+        <div style={{ marginBottom:14 }}>
+          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Horaire</p>
+          <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' as const }}>
+            <div style={{ display:'flex',alignItems:'center',gap:4 }}>
+              <span style={{ fontSize:10,color:'var(--text-dim)' }}>Début</span>
+              <input type="number" min={0} max={23} value={form.startHour}
+                onChange={e=>setForm(f=>({...f,startHour:parseInt(e.target.value)||0}))}
+                style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+              <span style={{ color:'var(--text-dim)' }}>:</span>
+              <input type="number" min={0} max={59} step={5} value={form.startMin}
+                onChange={e=>setForm(f=>({...f,startMin:parseInt(e.target.value)||0}))}
+                style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+            </div>
+            <div style={{ display:'flex',alignItems:'center',gap:4 }}>
+              <span style={{ fontSize:10,color:'var(--text-dim)' }}>Durée</span>
+              <input type="number" min={0} max={12} value={Math.floor(form.durationMin/60)}
+                onChange={e=>{ const h=parseInt(e.target.value)||0; const m=form.durationMin%60; setForm(f=>({...f,durationMin:h*60+m})) }}
+                style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+              <span style={{ fontSize:10,color:'var(--text-dim)' }}>h</span>
+              <input type="number" min={0} max={59} step={5} value={form.durationMin%60}
+                onChange={e=>{ const h=Math.floor(form.durationMin/60); const m=parseInt(e.target.value)||0; setForm(f=>({...f,durationMin:h*60+m})) }}
+                style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+              <span style={{ fontSize:10,color:'var(--text-dim)' }}>min</span>
+            </div>
+            {form.durationMin>0&&(
+              <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'"DM Mono",monospace' }}>
+                → {String(endH).padStart(2,'0')}:{String(endM).padStart(2,'0')}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 5. Priorité */}
+        <div style={{ marginBottom:14 }}>
+          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Priorité</p>
+          <div style={{ display:'flex',gap:5 }}>
+            {([['low','Basse','#6b7280'],['medium','Moyenne','#f97316'],['high','Haute','#ef4444']] as ['low'|'medium'|'high',string,string][]).map(([id,label,color])=>{
+              // priority is boolean: true = haute, false = basse
+              const isSelected = id==='high'?!!form.priority:id==='low'?!form.priority:false
+              return (
+                <button key={id} onClick={()=>setForm(f=>({...f,priority:id!=='low'}))} style={{
+                  padding:'5px 12px',borderRadius:7,fontSize:10,fontWeight:600,cursor:'pointer',
+                  background:isSelected?`${color}15`:'transparent',
+                  border:isSelected?`1.5px solid ${color}`:'1px solid var(--border)',
+                  color:isSelected?color:'var(--text-dim)',
+                }}>{label}</button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* 6. Sous-tâches */}
+        <div style={{ marginBottom:14 }}>
+          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>Sous-tâches</p>
+          {(form.subtasks??[]).map((st,i)=>(
+            <div key={i} style={{ display:'flex',gap:6,alignItems:'center',marginBottom:5 }}>
+              <button onClick={()=>setForm(f=>({...f,subtasks:(f.subtasks??[]).map((x,j)=>j===i?{...x,done:!x.done}:x)}))} style={{
+                width:18,height:18,borderRadius:4,border:`1.5px solid ${st.done?'#00c8e0':'var(--border)'}`,
+                background:st.done?'#00c8e0':'transparent',cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0,
+              }}>{st.done&&<span style={{ color:'#fff',fontSize:10 }}>✓</span>}</button>
+              <input value={st.label}
+                onChange={e=>{ const upd=[...(form.subtasks??[])]; upd[i]={...upd[i],label:e.target.value}; setForm(f=>({...f,subtasks:upd})) }}
+                style={{ flex:1,padding:'5px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:st.done?'var(--text-dim)':'var(--text)',fontSize:11,outline:'none',textDecoration:st.done?'line-through':'none' }}/>
+              <button onClick={()=>setForm(f=>({...f,subtasks:(f.subtasks??[]).filter((_,j)=>j!==i)}))}
+                style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:14,opacity:0.5 }}>×</button>
+            </div>
+          ))}
+          <button onClick={()=>setForm(f=>({...f,subtasks:[...(f.subtasks??[]),{label:'',done:false}]}))} style={{
+            padding:'5px 10px',borderRadius:6,border:'1px dashed var(--border)',
+            background:'transparent',color:'var(--text-dim)',fontSize:10,cursor:'pointer',
+          }}>+ Sous-tâche</button>
+        </div>
+
+        {/* 7. Récurrence */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
+            <button onClick={()=>setForm(f=>({...f,isRecurring:!f.isRecurring}))} style={{
+              width:18,height:18,borderRadius:4,cursor:'pointer',
+              border:form.isRecurring?'1.5px solid #00c8e0':'1.5px solid var(--border)',
+              background:form.isRecurring?'#00c8e0':'transparent',
+              display:'flex',alignItems:'center',justifyContent:'center',padding:0,
+            }}>{form.isRecurring&&<span style={{ color:'#fff',fontSize:10 }}>✓</span>}</button>
+            <span style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)' }}>Tâche récurrente</span>
+          </div>
+          {form.isRecurring&&(
+            <div style={{ display:'flex',gap:4,flexWrap:'wrap' as const }}>
+              {(['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'] as string[]).map((day,i)=>(
+                <button key={i} onClick={()=>setForm(f=>({
+                  ...f,recurrenceDays:(f.recurrenceDays??[]).includes(i)?(f.recurrenceDays??[]).filter(d=>d!==i):[...(f.recurrenceDays??[]),i],
+                }))} style={{
+                  width:32,height:32,borderRadius:6,fontSize:9,fontWeight:600,cursor:'pointer',
+                  background:(form.recurrenceDays??[]).includes(i)?'#00c8e0':'var(--bg-card2)',
+                  border:(form.recurrenceDays??[]).includes(i)?'none':'1px solid var(--border)',
+                  color:(form.recurrenceDays??[]).includes(i)?'#fff':'var(--text-dim)',
+                }}>{day}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={()=>onDelete(task.id)} style={{ padding:'9px 12px',borderRadius:10,background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:12,cursor:'pointer' }}>Supprimer</button>
-          <button onClick={()=>onSave(form)} style={{ flex:1,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>Sauvegarder</button>
+          <button onClick={()=>onDelete(task.id)} style={{ padding:'9px 12px',borderRadius:10,background:'transparent',border:'none',color:'#ff5f5f',fontSize:12,cursor:'pointer',fontWeight:600 }}>Supprimer</button>
+          <button onClick={onClose} style={{ padding:'9px 14px',borderRadius:10,border:'1px solid var(--border)',background:'transparent',color:'var(--text-dim)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={()=>onSave(form)} style={{ flex:1,padding:10,borderRadius:10,background:activeSec?activeSec.color:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>Sauvegarder</button>
         </div>
+
       </div>
     </div>
   )

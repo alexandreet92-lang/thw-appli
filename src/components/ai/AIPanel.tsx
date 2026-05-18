@@ -18681,6 +18681,17 @@ export default function AIPanel({
           from { opacity: 0; transform: translateY(6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        /* ── Logo rotation with pause ────────────────────────── */
+        /* 2s rotation (57%) + 1.5s pause (43%) = 3.5s total     */
+        @keyframes ai_spin_pause {
+          0%   { transform: rotate(0deg); }
+          57%  { transform: rotate(720deg); }
+          100% { transform: rotate(720deg); }
+        }
+        .ai-logo-spinning {
+          animation: ai_spin_pause 3.5s ease-in-out infinite;
+          transform-origin: center center;
+        }
 
         /* CSS variables */
         .aip-root {
@@ -19384,20 +19395,19 @@ export default function AIPanel({
                       justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       alignItems: 'flex-start', gap: 10,
                     }}>
-                      {/* Avatar IA — neutre */}
+                      {/* Avatar IA — logo modèle */}
                       {msg.role === 'assistant' && (() => {
                         const m = msg.modelId ?? 'athena'
                         const isStreaming = loading && idx === active.msgs.length - 1
+                        const logoSrc = m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'
                         return (
-                          <div style={{
-                            width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                            background: 'var(--ai-bg2)',
-                            border: '1px solid var(--ai-border)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            marginTop: 2,
-                          }}>
-                            <ModelEffigy model={m} isAnimating={isStreaming} size={15} color="var(--ai-mid)" />
-                          </div>
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={logoSrc}
+                            alt={m}
+                            className={isStreaming ? 'ai-logo-spinning' : undefined}
+                            style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, marginTop: 2 }}
+                          />
                         )
                       })()}
 
@@ -19494,14 +19504,13 @@ export default function AIPanel({
                 {/* Thinking indicator */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, animation: 'ai_msg_in 0.18s ease both' }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                      background: 'var(--ai-accent-dim)',
-                      border: '1px solid var(--ai-accent-line)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <ModelEffigy model={model} isAnimating={true} size={15} color="var(--ai-accent)" />
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                      alt={model}
+                      className="ai-logo-spinning"
+                      style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, marginTop: 1 }}
+                    />
                     <div style={{
                       padding: '8px 14px',
                       background: 'var(--ai-bg2)',

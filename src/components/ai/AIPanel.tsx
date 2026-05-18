@@ -262,7 +262,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
     }
 
     blocks.push(
-      <p key={i} style={{ fontSize: 13.5, lineHeight: 1.75, margin: '0 0 6px 0', color: 'var(--ai-text)' }}>
+      <p key={i} style={{ fontSize: 15, lineHeight: 1.65, margin: '0 0 8px 0', color: 'var(--ai-text)' }}>
         {parseBold(line)}
       </p>
     )
@@ -11478,25 +11478,26 @@ function HistoryDrawer({
               <div
                 onClick={() => { onSelect(conv); if (!persistent) onClose() }}
                 style={{
-                  padding: '6px 4px 6px 8px', borderRadius: 6, cursor: 'pointer',
-                  background: conv.id === activeId ? 'rgba(91,111,255,0.11)' : 'transparent',
-                  border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.25)' : 'transparent'}`,
-                  display: 'flex', alignItems: 'center', gap: 3,
+                  padding: '7px 8px 7px 10px', borderRadius: 8, cursor: 'pointer',
+                  background: conv.id === activeId ? 'rgba(0,0,0,0.06)' : 'transparent',
+                  border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 6,
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.04)' }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = '#F5F5F5' }}
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <div style={{
-                    fontSize: 11, fontWeight: conv.id === activeId ? 600 : 400,
+                    flex: 1, minWidth: 0,
+                    fontSize: 13, fontWeight: conv.id === activeId ? 600 : 400,
                     color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     lineHeight: 1.3,
                   }}>
                     {conv.title}
                   </div>
-                  <div style={{ fontSize: 9, color: 'var(--ai-dim)', marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                     {mounted ? fmtDate(conv.updatedAt) : ''}
                   </div>
                 </div>
@@ -11595,8 +11596,8 @@ function HistoryDrawer({
     return (
       <div style={{
         width: 190, flexShrink: 0,
-        borderRight: '1px solid var(--ai-border)',
-        background: 'var(--ai-bg2)',
+        borderRight: '0.5px solid var(--ai-border)',
+        background: 'var(--ai-bg)',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}>
@@ -18662,10 +18663,15 @@ export default function AIPanel({
     <>
       {/* ── CSS global ─────────────────────────────────────── */}
       <style>{`
-        /* ── Thinking dots — organic spring bounce ───────────── */
+        /* ── Thinking dots — organic spring bounce (used in flows) ── */
         @keyframes ai_dot {
           0%, 70%, 100% { opacity: 0.22; transform: scale(0.75) translateY(0); }
           35%            { opacity: 1;    transform: scale(1.18) translateY(-4px); }
+        }
+        /* ── Bare dots for thinking indicator ────────────────── */
+        @keyframes ai_dot_pulse {
+          0%, 60%, 100% { opacity: 0.3; }
+          30%            { opacity: 1; }
         }
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
@@ -18696,29 +18702,29 @@ export default function AIPanel({
         /* CSS variables */
         .aip-root {
           --ai-bg:          #ffffff;
-          --ai-bg2:         #f6f8fc;
-          --ai-border:      rgba(0,0,0,0.08);
+          --ai-bg2:         #f9fafb;
+          --ai-border:      rgba(0,0,0,0.07);
           --ai-text:        #0d1117;
-          --ai-mid:         rgba(13,17,23,0.58);
-          --ai-dim:         rgba(13,17,23,0.36);
-          --ai-accent:      #8b5cf6;
-          --ai-accent-dim:  rgba(139,92,246,0.12);
-          --ai-accent-soft: rgba(139,92,246,0.06);
-          --ai-accent-line: rgba(139,92,246,0.48);
-          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
+          --ai-mid:         rgba(13,17,23,0.55);
+          --ai-dim:         rgba(13,17,23,0.35);
+          --ai-accent:      #00c8e0;
+          --ai-accent-dim:  rgba(0,200,224,0.10);
+          --ai-accent-soft: rgba(0,200,224,0.05);
+          --ai-accent-line: rgba(0,200,224,0.40);
+          --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
         }
         html.dark .aip-root {
           --ai-bg:          #13161e;
           --ai-bg2:         #0f121a;
-          --ai-border:      rgba(255,255,255,0.09);
+          --ai-border:      rgba(255,255,255,0.08);
           --ai-text:        #eef2f7;
-          --ai-mid:         rgba(238,242,247,0.60);
-          --ai-dim:         rgba(238,242,247,0.35);
-          --ai-accent:      #8b5cf6;
-          --ai-accent-dim:  rgba(139,92,246,0.15);
-          --ai-accent-soft: rgba(139,92,246,0.08);
-          --ai-accent-line: rgba(139,92,246,0.55);
-          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
+          --ai-mid:         rgba(238,242,247,0.58);
+          --ai-dim:         rgba(238,242,247,0.33);
+          --ai-accent:      #00c8e0;
+          --ai-accent-dim:  rgba(0,200,224,0.12);
+          --ai-accent-soft: rgba(0,200,224,0.07);
+          --ai-accent-line: rgba(0,200,224,0.45);
+          --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
         }
 
         /* Panneau */
@@ -18768,11 +18774,22 @@ export default function AIPanel({
 
         /* Focus : bordure du conteneur input */
         .aip-input-wrap:focus-within {
-          border-color: rgba(0,0,0,0.18) !important;
+          border-color: rgba(0,200,224,0.45) !important;
+          box-shadow: 0 0 0 3px rgba(0,200,224,0.08) !important;
         }
         html.dark .aip-input-wrap:focus-within {
-          border-color: rgba(255,255,255,0.18) !important;
+          border-color: rgba(0,200,224,0.5) !important;
+          box-shadow: 0 0 0 3px rgba(0,200,224,0.1) !important;
         }
+        /* Icon buttons in header — hover effect */
+        .aip-icon-btn {
+          background: transparent !important;
+          border: none !important;
+          cursor: pointer;
+          transition: background 0.12s !important;
+        }
+        .aip-icon-btn:hover { background: rgba(0,0,0,0.06) !important; }
+        html.dark .aip-icon-btn:hover { background: rgba(255,255,255,0.08) !important; }
 
         /* Messages scroll */
         .aip-messages {
@@ -18838,37 +18855,39 @@ export default function AIPanel({
         }}>
           {/* Title */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)', lineHeight: 1.2 }}>
+            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 500, fontSize: 15, color: 'var(--ai-text)', lineHeight: 1.2 }}>
               THW Coach
             </div>
             {active && (
-              <div style={{ fontSize: 10, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+              <div style={{ fontSize: 12, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
                 {active.title}
               </div>
             )}
           </div>
 
+          {/* Spacer between title and actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+
           {/* History button */}
           <button
             onClick={() => setHistOpen(h => !h)}
             title="Conversations"
+            className="aip-icon-btn"
             style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: `1px solid ${histOpen ? 'rgba(91,111,255,0.4)' : 'var(--ai-border)'}`,
-              background: histOpen ? 'rgba(91,111,255,0.1)' : 'transparent',
-              cursor: 'pointer', color: histOpen ? '#5b6fff' : 'var(--ai-dim)',
+              width: 32, height: 32, borderRadius: 6,
+              color: histOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, position: 'relative',
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
             {convs.length > 0 && (
               <div style={{
-                position: 'absolute', top: 3, right: 3,
-                width: 6, height: 6, borderRadius: '50%',
-                background: '#5b6fff',
+                position: 'absolute', top: 5, right: 5,
+                width: 5, height: 5, borderRadius: '50%',
+                background: '#00c8e0',
               }} />
             )}
           </button>
@@ -18877,16 +18896,15 @@ export default function AIPanel({
           <button
             onClick={newConv}
             title="Nouvelle conversation"
+            className="aip-icon-btn"
             style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: 'none',
-              background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
-              cursor: 'pointer', color: '#fff',
+              width: 32, height: 32, borderRadius: 6,
+              color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, boxShadow: '0 2px 8px rgba(0,200,224,0.3)',
+              flexShrink: 0,
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
@@ -18895,19 +18913,19 @@ export default function AIPanel({
           <button
             onClick={() => setFullscr(f => !f)}
             title={fullscr ? 'Réduire' : 'Plein écran'}
+            className="aip-icon-btn"
             style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: '1px solid var(--ai-border)', background: 'transparent',
-              cursor: 'pointer', color: 'var(--ai-dim)',
+              width: 32, height: 32, borderRadius: 6,
+              color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
             {fullscr ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
               </svg>
             ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
               </svg>
             )}
@@ -18916,17 +18934,18 @@ export default function AIPanel({
           {/* Close */}
           <button
             onClick={onClose}
+            className="aip-icon-btn"
             style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: '1px solid var(--ai-border)', background: 'transparent',
-              cursor: 'pointer', color: 'var(--ai-dim)',
+              width: 32, height: 32, borderRadius: 6,
+              color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
+          </div>{/* /actions flex */}
         </div>
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
@@ -18965,7 +18984,7 @@ export default function AIPanel({
           >
 
           {/* ── MESSAGES ───────────────────────────────────── */}
-          <div className="aip-messages" style={{ padding: '16px 16px 0' }} onMouseUp={handleMsgMouseUp}>
+          <div className="aip-messages" style={{ padding: '24px 20px 0' }} onMouseUp={handleMsgMouseUp}>
 
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
@@ -19385,7 +19404,7 @@ export default function AIPanel({
                 flow a créé une conv via onRecordConv. Le flow reprend la
                 main tout seul. */}
             {active && active.msgs.length > 0 && !activeFlow && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24 }}>
                 {active.msgs.map((msg, idx) => (
                   <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
 
@@ -19415,12 +19434,12 @@ export default function AIPanel({
                       {msg.role === 'user' ? (
                         <div style={{
                           maxWidth: '78%',
-                          padding: '9px 14px',
-                          borderRadius: '18px 18px 4px 18px',
-                          background: '#1B6EF3',
+                          padding: '10px 16px',
+                          borderRadius: 18,
+                          background: '#2563EB',
                           color: '#fff',
                         }}>
-                          <span style={{ fontSize: 13.5, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
+                          <span style={{ fontSize: 15, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
                         </div>
                       ) : (() => {
                         const isStreamingMsg = loading && idx === active.msgs.length - 1
@@ -19503,22 +19522,23 @@ export default function AIPanel({
 
                 {/* Thinking indicator */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, animation: 'ai_msg_in 0.18s ease both' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'ai_msg_in 0.18s ease both', padding: '4px 0' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
                       alt={model}
                       className="ai-logo-spinning"
-                      style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, marginTop: 1 }}
+                      style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }}
                     />
-                    <div style={{
-                      padding: '8px 14px',
-                      background: 'var(--ai-bg2)',
-                      border: '1px solid var(--ai-border)',
-                      borderRadius: '4px 18px 18px 18px',
-                      display: 'flex', alignItems: 'center',
-                    }}>
-                      <Dots />
+                    {/* Bare dots — no pill wrapper */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {[0, 1, 2].map(i => (
+                        <span key={i} style={{
+                          display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
+                          background: 'var(--ai-dim)',
+                          animation: `ai_dot_pulse 1.4s ease infinite ${i * 0.2}s`,
+                        }} />
+                      ))}
                     </div>
                   </div>
                 )}
@@ -19539,7 +19559,7 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           <div style={{
-            padding: '8px 12px 12px',
+            padding: '10px 16px 14px',
             borderTop: '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
@@ -19564,10 +19584,11 @@ export default function AIPanel({
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
-              background: 'var(--ai-bg2)',
-              border: '1px solid var(--ai-border)',
-              borderRadius: 18,
-              transition: 'border-color 0.15s',
+              background: 'var(--ai-bg)',
+              border: '1px solid #E5E7EB',
+              borderRadius: 16,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              transition: 'border-color 0.15s, box-shadow 0.15s',
             }}>
 
               {/* Citation de texte sélectionné */}
@@ -19693,13 +19714,11 @@ export default function AIPanel({
                 <button
                   onClick={() => setPlusOpen(p => !p)}
                   title="Actions"
+                  className="aip-icon-btn"
                   style={{
-                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    border: `1px solid ${plusOpen ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
-                    background: plusOpen ? 'var(--ai-bg)' : 'transparent',
-                    cursor: 'pointer', color: 'var(--ai-dim)',
+                    width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                    color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.12s',
                   }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -19741,14 +19760,15 @@ export default function AIPanel({
                     style={{
                       width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
-                      background: (input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-text)' : 'var(--ai-border)',
+                      background: '#00c8e0',
+                      opacity: (input.trim() || attachment || activeQA || quotedText) ? 1 : 0.35,
                       cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 0.15s',
+                      transition: 'opacity 0.15s',
                     }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                      stroke={(input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-bg)' : 'var(--ai-dim)'}
+                      stroke="#fff"
                       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
                     </svg>

@@ -378,12 +378,39 @@ export default function BriefingPage() {
   const [instaDragOver,    setInstaDragOver]    = useState(false)
   const [instaAmbiguities, setInstaAmbiguities] = useState<string[]>([])
 
+  // ── Instagram API sync state ────────────────────────────────
+  const [instaApiSyncing,  setInstaApiSyncing]  = useState(false)
+  const [instaApiSnapshot, setInstaApiSnapshot] = useState<InstaSnapshot | null>(null)
+  const [instaApiError,    setInstaApiError]    = useState<string | null>(null)
+
   const loadInstaSnapshots = useCallback(async () => {
     const res = await fetch('/api/marketing/insta-upload')
     if (!res.ok) return
     const json = await res.json() as { snapshots: InstaSnapshot[] }
     setInstaSnapshots(json.snapshots ?? [])
   }, [])
+
+  const loadInstaApiSnapshot = useCallback(async () => {
+    const res = await fetch('/api/marketing/insta-sync')
+    if (!res.ok) return
+    const json = await res.json() as { snapshot: InstaSnapshot | null }
+    setInstaApiSnapshot(json.snapshot ?? null)
+  }, [])
+
+  async function syncInstaApi() {
+    setInstaApiSyncing(true)
+    setInstaApiError(null)
+    try {
+      const res  = await fetch('/api/marketing/insta-sync', { method: 'POST' })
+      const json = await res.json() as { snapshot?: InstaSnapshot; error?: string }
+      if (!res.ok) throw new Error(json.error ?? 'Erreur sync Instagram')
+      setInstaApiSnapshot(json.snapshot ?? null)
+    } catch (err) {
+      setInstaApiError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setInstaApiSyncing(false)
+    }
+  }
 
   async function uploadInstaScreenshots(files: FileList | File[]) {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
@@ -431,7 +458,8 @@ export default function BriefingPage() {
     void loadMktHistory()
     void loadMktIdeas()
     void loadInstaSnapshots()
-  }, [isCreator, loadMktHistory, loadMktIdeas, loadInstaSnapshots])
+    void loadInstaApiSnapshot()
+  }, [isCreator, loadMktHistory, loadMktIdeas, loadInstaSnapshots, loadInstaApiSnapshot])
 
   async function generateMktBrief() {
     setMktLoading(true); setMktError(null)
@@ -1038,8 +1066,8 @@ export default function BriefingPage() {
             <div style={{ flex: 1, height: 1, background: 'var(--border, rgba(0,0,0,0.08))' }} />
           </div>
 
-          {/* Bouton générer + résumé contexte */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+          {/* Bouton générer + sync Instagram + résumé contexte */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
             <button
               onClick={() => { void generateMktBrief() }}
               disabled={mktLoading}
@@ -1055,9 +1083,43 @@ export default function BriefingPage() {
             >
               {mktLoading ? 'Génération…' : 'Générer le brief du jour'}
             </button>
+
+            <button
+              onClick={() => { void syncInstaApi() }}
+              disabled={instaApiSyncing}
+              style={{
+                background: 'transparent',
+                color: instaApiSyncing ? 'var(--text-dim)' : 'var(--text)',
+                border: '1px solid var(--border, rgba(0,0,0,0.15))',
+                padding: '10px 20px', borderRadius: 10,
+                fontSize: 14, fontWeight: 600,
+                cursor: instaApiSyncing ? 'wait' : 'pointer',
+                fontFamily: 'DM Sans, sans-serif',
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>📡</span>
+              {instaApiSyncing ? 'Synchronisation…' : 'Synchroniser Instagram'}
+            </button>
+
             {mktCtxSum && (
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                 {mktCtxSum.activities_count} activités · {mktCtxSum.commits_count} commits · {mktCtxSum.raw_ideas_count} idées · {mktCtxSum.recent_posts_count} posts
+              </span>
+            )}
+          </div>
+
+          {/* Statut / erreur Instagram */}
+          <div style={{ marginBottom: 20, minHeight: 18 }}>
+            {instaApiError && (
+              <span style={{ fontSize: 12, color: '#ef4444' }}>⚠ {instaApiError}</span>
+            )}
+            {!instaApiError && instaApiSnapshot?.snapshot_date && (
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                Instagram · dernier sync : {instaApiSnapshot.snapshot_date}
+                {instaApiSnapshot.followers_count != null && (
+                  <> · {instaApiSnapshot.followers_count.toLocaleString('fr-FR')} abonnés</>
+                )}
               </span>
             )}
           </div>

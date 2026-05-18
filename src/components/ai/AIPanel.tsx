@@ -17991,6 +17991,10 @@ export default function AIPanel({
   const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
 
+  // ── Agent selector ────────────────────────────────────────────
+  const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks'>('training')
+  const [agentDropOpen, setAgentDropOpen] = useState(false)
+
   const areaRef            = useRef<HTMLTextAreaElement>(null)
   const endRef             = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -18006,10 +18010,24 @@ export default function AIPanel({
   const filesRef   = useRef<HTMLInputElement>(null)
   // AbortController pour annuler la requête en cours
   const abortRef   = useRef<AbortController | null>(null)
+  // Agent selector dropdown
+  const agentDropRef = useRef<HTMLDivElement>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
 
   // ── Effects ────────────────────────────────────────────────
+
+  // Ferme le dropdown agent au clic extérieur
+  useEffect(() => {
+    if (!agentDropOpen) return
+    function handleOut(e: MouseEvent) {
+      if (agentDropRef.current && !agentDropRef.current.contains(e.target as Node)) {
+        setAgentDropOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOut)
+    return () => document.removeEventListener('mousedown', handleOut)
+  }, [agentDropOpen])
 
   useEffect(() => {
     setMounted(true)
@@ -19078,14 +19096,115 @@ export default function AIPanel({
           display: 'flex', alignItems: 'center', gap: 10,
           flexShrink: 0, background: 'var(--ai-bg)',
         }}>
-          {/* Title */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 500, fontSize: 15, color: 'var(--ai-text)', lineHeight: 1.2 }}>
-              THW Coach
-            </div>
-            {active && (
+          {/* ── Agent Selector ──────────────────────────────── */}
+          <div ref={agentDropRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <button
+              onClick={() => setAgentDropOpen(o => !o)}
+              aria-label="Sélectionner un agent IA"
+              aria-haspopup="menu"
+              aria-expanded={agentDropOpen}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'none', border: 'none', padding: 0,
+                cursor: 'pointer', maxWidth: '100%',
+              }}
+            >
+              <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--ai-text)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                {activeAgent === 'training' ? 'Hybrid Training' : 'Hybrid Networks'}
+              </span>
+              <svg
+                width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="var(--ai-dim)" strokeWidth="2.5" strokeLinecap="round"
+                style={{ flexShrink: 0, transition: 'transform 0.15s', transform: agentDropOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+
+            {!agentDropOpen && active && (
               <div style={{ fontSize: 12, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, maxWidth: '220px' }}>
                 {active.title}
+              </div>
+            )}
+
+            {/* Dropdown menu */}
+            {agentDropOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', left: 0,
+                  background: 'var(--ai-bg)',
+                  border: '1px solid var(--ai-border)',
+                  borderRadius: 12,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
+                  minWidth: 240, zIndex: 9999,
+                  overflow: 'hidden',
+                  animation: 'ai_slidein 0.15s ease',
+                }}
+              >
+                {/* Hybrid Training */}
+                <button
+                  role="menuitem"
+                  onClick={() => { setActiveAgent('training'); setAgentDropOpen(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 11,
+                    width: '100%', padding: '12px 14px',
+                    background: activeAgent === 'training' ? 'rgba(0,200,224,0.06)' : 'none',
+                    border: 'none', borderBottom: '1px solid var(--ai-border)',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'rgba(0,200,224,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                    {/* Zap icon */}
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00c8e0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)' }}>Hybrid Training</span>
+                      {activeAgent === 'training' && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 2 }}>Entraînement · Nutrition</div>
+                  </div>
+                </button>
+
+                {/* Hybrid Networks */}
+                <button
+                  role="menuitem"
+                  onClick={() => { setActiveAgent('networks'); setAgentDropOpen(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 11,
+                    width: '100%', padding: '12px 14px',
+                    background: activeAgent === 'networks' ? 'rgba(91,111,255,0.06)' : 'none',
+                    border: 'none',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                    {/* Globe icon */}
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="2" y1="12" x2="22" y2="12"/>
+                      <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)' }}>Hybrid Networks</span>
+                      {activeAgent === 'networks' && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 2 }}>Instagram · Marketing</div>
+                  </div>
+                </button>
               </div>
             )}
           </div>
@@ -19207,8 +19326,32 @@ export default function AIPanel({
             onTouchEnd={handleTouchEnd}
           >
 
+          {/* ── Hybrid Networks placeholder ──────────────── */}
+          {activeAgent === 'networks' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 28px', gap: 18, animation: 'ai_slidein 0.2s ease' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="1.8" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+                </svg>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--ai-text)', margin: '0 0 8px' }}>
+                  Hybrid Networks
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>
+                  Analyse Instagram · Brief marketing · Stratégie de contenu
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>
+                  Cet agent arrive bientôt.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── MESSAGES ───────────────────────────────────── */}
-          <div
+          {activeAgent === 'training' && <div
             ref={scrollContainerRef}
             className="aip-messages"
             style={{ padding: '24px 20px 0' }}
@@ -19890,9 +20033,10 @@ export default function AIPanel({
                 <div ref={endRef} />
               </div>
             )}
-          </div>
+          </div>}
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
+          {activeAgent === 'training' && <>
           <div style={{
             padding: '10px 16px 14px',
             borderTop: '1px solid var(--ai-border)',
@@ -20116,6 +20260,7 @@ export default function AIPanel({
               Entrée · Shift+Entrée pour nouvelle ligne
             </div>
           </div>
+          </>}
           {/* /chat-col */}
           </div>
         {/* /body */}

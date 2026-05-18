@@ -154,6 +154,17 @@ function fmtDate(ts: number) {
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+/** Format timestamp for message hover (C4) */
+function fmtMsgTime(ts: number): string {
+  const now = new Date()
+  const d = new Date(ts)
+  const hhmm = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000)
+  if (diffDays === 0) return hhmm
+  if (diffDays === 1) return `Hier ${hhmm}`
+  return `${d.getDate()} ${d.toLocaleString('fr-FR', { month: 'short' })} ${hhmm}`
+}
+
 // ── Markdown renderer ──────────────────────────────────────────
 
 const HEADING_STYLES: Record<number, React.CSSProperties> = {
@@ -319,15 +330,12 @@ function TypedText({ text, isStreaming, fontFamily }: { text: string; isStreamin
 
   const cursor = isStreaming
     ? <span style={{
-        display:         'inline-block',
-        width:           2,
-        height:          13,
-        marginLeft:      2,
-        verticalAlign:   'middle',
-        background:      'var(--ai-accent)',
-        borderRadius:    1,
-        animation:       'ai_cursor 0.65s ease-in-out infinite',
-      }} />
+        display:         'inline',
+        marginLeft:      1,
+        color:           'var(--ai-accent)',
+        animation:       'ai_cursor 1s step-start infinite',
+        userSelect:      'none',
+      }}>▍</span>
     : null
 
   return (
@@ -11399,6 +11407,7 @@ function HistoryDrawer({
   const [renId,    setRenId]    = useState<string | null>(null)
   const [renVal,   setRenVal]   = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [searchQ, setSearchQ]     = useState('')
   // Gate SSR-safety pour fmtDate() qui utilise Date.now() au render.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -11431,16 +11440,42 @@ function HistoryDrawer({
           onClick={onNew}
           title="Nouvelle conversation"
           style={{
-            width: 24, height: 24, borderRadius: 6, border: 'none',
-            background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            width: 28, height: 28, borderRadius: 8, border: 'none',
+            background: 'var(--ai-accent)',
+            opacity: 0.85,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,200,224,0.3)',
+            transition: 'opacity 0.15s',
           }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
+      </div>
+
+      {/* Search input (F1) */}
+      <div style={{ padding: '6px 8px', flexShrink: 0 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
+            style={{ position: 'absolute', left: 8, pointerEvents: 'none', flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+          </svg>
+          <input
+            id="aip-conv-search"
+            type="text"
+            placeholder="Rechercher..."
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            style={{
+              width: '100%', padding: '5px 8px 5px 26px', borderRadius: 6,
+              border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+              color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 11,
+              outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
       </div>
 
       {/* Conversation list */}
@@ -11449,7 +11484,7 @@ function HistoryDrawer({
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
           </div>
-        ) : convs.map(conv => (
+        ) : convs.filter(c => !searchQ.trim() || c.title.toLowerCase().includes(searchQ.toLowerCase())).map(conv => (
           <div key={conv.id} className="aip-hist-item" style={{ position: 'relative', marginBottom: 1 }}>
             {renId === conv.id ? (
               <div style={{ padding: '3px 4px' }}>
@@ -11568,20 +11603,20 @@ function HistoryDrawer({
       </div>
 
       {/* ── Settings ── */}
-      <div style={{ borderTop: '1px solid var(--ai-border)', padding: '7px 6px 8px', flexShrink: 0 }}>
+      <div style={{ borderTop: '1px solid var(--ai-border)', padding: '6px 8px 8px', flexShrink: 0 }}>
         <a
           href="/profile"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '7px 9px', borderRadius: 7,
-            color: 'var(--ai-mid)', textDecoration: 'none',
-            fontFamily: 'DM Sans,sans-serif', fontSize: 11,
-            transition: 'background 0.1s',
+            padding: '12px 16px', borderRadius: 8,
+            color: '#374151', textDecoration: 'none',
+            fontFamily: 'DM Sans,sans-serif', fontSize: 13,
+            transition: 'background 0.12s',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(0,0,0,0.04)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#F5F5F5' }}
           onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
           </svg>
@@ -17854,10 +17889,15 @@ export default function AIPanel({
   const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
   const [showQuickActions, setShowQuickActions] = useState(true)
+  const [userInitials,     setUserInitials]     = useState<string>('')
+  const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
+  const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
 
-  const areaRef    = useRef<HTMLTextAreaElement>(null)
-  const endRef     = useRef<HTMLDivElement>(null)
-  const initMsgRef = useRef<string | undefined>(undefined)
+  const areaRef            = useRef<HTMLTextAreaElement>(null)
+  const endRef             = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const autoScrollRef      = useRef<boolean>(true)
+  const initMsgRef         = useRef<string | undefined>(undefined)
   // Swipe tracking (mobile)
   const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
@@ -17930,9 +17970,53 @@ export default function AIPanel({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (mounted) saveConvs(convs) }, [convs, mounted])
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, convs])
+
+  // Fetch user initials for avatar (D2)
+  useEffect(() => {
+    if (!mounted) return
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const name = user.user_metadata?.full_name ?? user.email ?? ''
+        const parts = name.trim().split(/\s+/)
+        if (parts.length >= 2) setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
+        else if (parts[0]) setUserInitials(parts[0][0].toUpperCase())
+      } catch { /* silent */ }
+    })()
+  }, [mounted])
+  // Re-enable auto-scroll when conversation changes or loading starts
+  useEffect(() => { autoScrollRef.current = true }, [activeId, loading])
+  // Auto-scroll during streaming — only if user hasn't manually scrolled up
+  useEffect(() => {
+    if (!autoScrollRef.current) return
+    endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' })
+  }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
+
+  // ── Keyboard shortcuts (F2) ───────────────────────────────────
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      // Cmd/Ctrl+K → nouvelle conversation
+      if (mod && e.key === 'k') { e.preventDefault(); newConv(); return }
+      // Cmd/Ctrl+Enter → send message
+      if (mod && e.key === 'Enter') { e.preventDefault(); void send(); return }
+      // Cmd/Ctrl+F → focus search in sidebar
+      if (mod && e.key === 'f') {
+        e.preventDefault()
+        const searchEl = document.getElementById('aip-conv-search')
+        if (searchEl) { (searchEl as HTMLInputElement).focus() }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   // Déclenche le flow initial si fourni (ex: depuis la page Nutrition)
   const initialFlowSetRef = useRef<boolean>(false)
@@ -18618,7 +18702,20 @@ export default function AIPanel({
         setLoading(false)
         return
       }
-      const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
+      // G1 — Error message based on error type
+      const msg429 = 'Trop de requêtes. Patiente quelques secondes.'
+      const msgTimeout = 'La réponse prend trop de temps. Réessaie.'
+      const msgNetwork = 'Problème de connexion. Vérifie ta connexion internet.'
+      const msgDefault = 'Une erreur est survenue. Réessaie.'
+      let errText = msgDefault
+      if (e instanceof Error) {
+        const s = e.message.toLowerCase()
+        if (s.includes('429') || s.includes('rate limit')) errText = msg429
+        else if (s.includes('timeout') || s.includes('timed out') || s.includes('signal')) errText = msgTimeout
+        else if (s.includes('network') || s.includes('fetch') || s.includes('failed to fetch')) errText = msgNetwork
+      }
+      const errContent = `⚠️ ${errText}`
+      const err: AIMsg = { id: genId(), role: 'assistant', content: errContent, ts: Date.now() }
       setConvs(prev => prev.map(c =>
         c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
       ))
@@ -18676,6 +18773,14 @@ export default function AIPanel({
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }
+        }
+        @keyframes ai_empty_logo {
+          from { opacity:0; transform:scale(0.9); }
+          to   { opacity:1; transform:scale(1); }
+        }
+        @keyframes ai_actions_in {
+          from { opacity:0; }
+          to   { opacity:1; }
         }
         /* ── Typing cursor blink ──────────────────────────────── */
         @keyframes ai_cursor {
@@ -18859,7 +18964,7 @@ export default function AIPanel({
               THW Coach
             </div>
             {active && (
-              <div style={{ fontSize: 12, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, maxWidth: '220px' }}>
                 {active.title}
               </div>
             )}
@@ -18890,23 +18995,6 @@ export default function AIPanel({
                 background: '#00c8e0',
               }} />
             )}
-          </button>
-
-          {/* New conv */}
-          <button
-            onClick={newConv}
-            title="Nouvelle conversation"
-            className="aip-icon-btn"
-            style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
           </button>
 
           {/* Fullscreen */}
@@ -18984,20 +19072,41 @@ export default function AIPanel({
           >
 
           {/* ── MESSAGES ───────────────────────────────────── */}
-          <div className="aip-messages" style={{ padding: '24px 20px 0' }} onMouseUp={handleMsgMouseUp}>
+          <div
+            ref={scrollContainerRef}
+            className="aip-messages"
+            style={{ padding: '24px 20px 0' }}
+            onMouseUp={handleMsgMouseUp}
+            onScroll={() => {
+              const el = scrollContainerRef.current
+              if (!el) return
+              const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+              autoScrollRef.current = atBottom
+            }}
+          >
 
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
-              <div style={{ animation: 'ai_slidein 0.25s ease' }}>
+              <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                  alt="THW Coach"
+                  style={{
+                    width: 48, height: 48, objectFit: 'contain',
+                    animation: 'ai_empty_logo 0.4s ease both',
+                    marginBottom: 16,
+                  }}
+                />
                 <p style={{
-                  textAlign: 'center', margin: '16px 0 6px',
+                  textAlign: 'center', margin: '0 0 6px',
                   fontSize: 16, fontWeight: 700, color: 'var(--ai-text)',
                   fontFamily: 'Syne,sans-serif', lineHeight: 1.3,
                 }}>
                   Bonjour, bon {mounted ? getGreeting() : 'matin'} !
                 </p>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 22px' }}>
-                  Comment puis-je t'aider ?
+                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 28px' }}>
+                  Comment puis-je t'aider aujourd'hui ?
                 </p>
 
                 <button
@@ -19406,13 +19515,18 @@ export default function AIPanel({
             {active && active.msgs.length > 0 && !activeFlow && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24 }}>
                 {active.msgs.map((msg, idx) => (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div
+                    key={msg.id}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                    onMouseEnter={() => setHoveredMsgId(msg.id)}
+                    onMouseLeave={() => setHoveredMsgId(null)}
+                  >
 
                     {/* Message row */}
                     <div style={{
                       display: 'flex',
                       justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start', gap: 10,
+                      alignItems: 'flex-start', gap: 12,
                     }}>
                       {/* Avatar IA — logo modèle */}
                       {msg.role === 'assistant' && (() => {
@@ -19425,22 +19539,37 @@ export default function AIPanel({
                             src={logoSrc}
                             alt={m}
                             className={isStreaming ? 'ai-logo-spinning' : undefined}
-                            style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, marginTop: 2 }}
+                            style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, marginTop: 0 }}
                           />
                         )
                       })()}
 
                       {/* Bulle user / texte IA libre */}
                       {msg.role === 'user' ? (
-                        <div style={{
-                          maxWidth: '78%',
-                          padding: '10px 16px',
-                          borderRadius: 18,
-                          background: '#2563EB',
-                          color: '#fff',
-                        }}>
-                          <span style={{ fontSize: 15, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
-                        </div>
+                        <>
+                          <div style={{
+                            maxWidth: '78%',
+                            padding: '10px 16px',
+                            borderRadius: 18,
+                            background: '#3B8FD4',
+                            color: '#fff',
+                          }}>
+                            <span style={{ fontSize: 15, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
+                          </div>
+                          {/* User avatar (D2) */}
+                          <div style={{
+                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                            background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {userInitials ? (
+                              <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', fontFamily: 'DM Sans,sans-serif', userSelect: 'none' }}>{userInitials}</span>
+                            ) : (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round">
+                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
+                              </svg>
+                            )}
+                          </div>
+                        </>
                       ) : (() => {
                         const isStreamingMsg = loading && idx === active.msgs.length - 1
                         return (
@@ -19517,18 +19646,88 @@ export default function AIPanel({
                         isStreaming={loading && idx === active.msgs.length - 1}
                       />
                     )}
+
+                    {/* ── Message actions + timestamp (C1, C4) ─── */}
+                    {hoveredMsgId === msg.id && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                        gap: 4, paddingLeft: msg.role === 'assistant' ? 32 : 0,
+                        opacity: 0, animation: 'ai_actions_in 0.15s ease forwards',
+                      }}>
+                        {/* Timestamp (C4) */}
+                        <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.7, userSelect: 'none', marginRight: 4 }}>
+                          {fmtMsgTime(msg.ts)}
+                        </span>
+                        {/* AI message actions (C1) */}
+                        {msg.role === 'assistant' && (
+                          <>
+                            {/* Copy */}
+                            <button
+                              title="Copier"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(msg.content)
+                                setCopiedMsgId(msg.id)
+                                setTimeout(() => setCopiedMsgId(null), 1500)
+                              }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              {copiedMsgId === msg.id ? (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                              ) : (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                              )}
+                            </button>
+                            {/* Regenerate */}
+                            <button
+                              title="Régénérer la réponse"
+                              onClick={() => {
+                                // Find last user message before this AI message and resend
+                                const prevUser = active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')
+                                if (prevUser) void send(prevUser.content)
+                              }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                            </button>
+                            {/* Thumbs up */}
+                            <button
+                              title="Bonne réponse"
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+                            </button>
+                            {/* Thumbs down */}
+                            <button
+                              title="Mauvaise réponse"
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zM17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
 
                 {/* Thinking indicator */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'ai_msg_in 0.18s ease both', padding: '4px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, animation: 'ai_msg_in 0.18s ease both', padding: '4px 0' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
                       alt={model}
                       className="ai-logo-spinning"
-                      style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }}
+                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
                     />
                     {/* Bare dots — no pill wrapper */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -19743,7 +19942,7 @@ export default function AIPanel({
                     style={{
                       width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
-                      background: '#ef4444',
+                      background: '#374151',
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'background 0.15s',

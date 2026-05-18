@@ -658,19 +658,22 @@ const MODEL_META = {
     desc:"Conçu pour répondre immédiatement, de manière simple et efficace. Il va droit au but et évite toute complexité inutile.",
     uses:['Une question simple','Un besoin rapide','Une décision immédiate'],
     levels:['Rapide','Clair','Direct'],
-    effigy:<svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M8.5 6.5 Q12 4 15.5 6.5"/><path d="M9.5 10 Q10.5 13.5 12 11.5 Q13.5 9.5 14.5 13 Q13 16 12 14 Q10.5 12 9.5 10"/></svg>,
+    // eslint-disable-next-line @next/next/no-img-element
+    effigy:<img src="/logos/logo_3bras.png" width={22} height={22} alt="Hermès" style={{objectFit:'contain',flexShrink:0}} />,
   },
   athena:{ color:'#5b6fff', tagline:'Le modèle principal de coaching intelligent.', cost:3,
     desc:"Elle analyse en profondeur, comprend le contexte de l'athlète et croise les données disponibles. Elle ne se contente pas de répondre : elle explique, enseigne et propose des améliorations concrètes.",
     uses:['Analyser une situation','Comprendre un problème','Optimiser un entraînement','Obtenir des conseils précis'],
     levels:['Structuré','Pédagogique','Intelligent'],
-    effigy:<svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="9" r="3.5"/><path d="M6.5 8.5 Q4.5 6 5.5 3.5 Q8.5 2 12 4.5"/><path d="M17.5 8.5 Q19.5 6 18.5 3.5 Q15.5 2 12 4.5"/><path d="M9 12.5 Q8.5 16.5 10.5 18.5 Q12 20 13.5 18.5 Q15.5 16.5 15 12.5"/></svg>,
+    // eslint-disable-next-line @next/next/no-img-element
+    effigy:<img src="/logos/logo_4bras.png" width={22} height={22} alt="Athéna" style={{objectFit:'contain',flexShrink:0}} />,
   },
   zeus:{ color:'#8b5cf6', tagline:'Le modèle le plus avancé.', cost:8,
     desc:"Il produit les réponses les plus complètes, les plus précises et les plus stratégiques. Il ne fait pas qu'expliquer : il démontre, structure et approfondit au maximum.",
     uses:['Une analyse très poussée','Une réflexion stratégique','Une vision globale','Une réponse complète et détaillée'],
     levels:['Très approfondi','Stratégique','Structuré','Premium'],
-    effigy:<svg width={22} height={22} viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.9"/></svg>,
+    // eslint-disable-next-line @next/next/no-img-element
+    effigy:<img src="/logos/logo_6bras.png" width={22} height={22} alt="Zeus" style={{objectFit:'contain',flexShrink:0}} />,
   },
 } satisfies Record<THWModel, { color:string; tagline:string; cost:number; desc:string; uses:string[]; levels:string[]; effigy:React.ReactNode }>
 

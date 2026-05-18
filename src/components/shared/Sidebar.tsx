@@ -5,6 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useProfile } from '@/hooks/useProfile'
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
+
+const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ── Briefing hook inline (compte d'articles non lus) ───────────
 
@@ -291,7 +294,7 @@ function NavItem({
 
 // ── Sidebar content (shared desktop + mobile drawer) ───────────
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?: () => void }) {
   const pathname = usePathname()
   const { mode, toggleTheme, label } = useTheme()
   const { profile } = useProfile()
@@ -478,6 +481,37 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           )}
         </Link>
 
+        {/* ── Bouton Assistant IA ── */}
+        {onOpenAI && (
+          <button
+            onClick={() => { onOpenAI(); onClose?.() }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 12px', borderRadius: 10,
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              width: '100%', textAlign: 'left',
+              transition: 'background 0.14s, opacity 0.15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/logo_4bras.png"
+              alt="Assistant IA"
+              style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0, opacity: 0.75 }}
+            />
+            <span style={{
+              fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400,
+              background: 'linear-gradient(90deg,#00c8e0,#5b6fff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              Assistant IA
+            </span>
+          </button>
+        )}
+
         <button
           onClick={toggleTheme}
           style={{
@@ -520,6 +554,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
@@ -574,7 +609,7 @@ export function Sidebar() {
           zIndex: 20,
         }}
       >
-        <SidebarContent />
+        <SidebarContent onOpenAI={() => setAiOpen(o => !o)} />
       </aside>
 
       {/* ════════════════════════════════════════════════════
@@ -637,8 +672,29 @@ export function Sidebar() {
           </span>
         </Link>
 
-        {/* Espace droit */}
-        <div style={{ width: 36 }} />
+        {/* Logo IA — mobile top bar droit */}
+        <button
+          onClick={() => setAiOpen(o => !o)}
+          aria-label="Assistant IA"
+          style={{
+            width: 36, height: 36, borderRadius: 9,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: aiOpen ? 'rgba(0,200,224,0.12)' : 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'opacity 0.15s, background 0.15s',
+            padding: 0,
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/logo_4bras.png"
+            alt="Assistant IA"
+            style={{ width: 26, height: 26, objectFit: 'contain' }}
+          />
+        </button>
       </div>
 
       {/* Overlay sombre derrière le drawer */}
@@ -669,8 +725,15 @@ export function Sidebar() {
           transition: 'transform 0.26s cubic-bezier(0.32,1.06,0.64,1)',
         }}
       >
-        <SidebarContent onClose={() => setMobileOpen(false)} />
+        <SidebarContent onClose={() => setMobileOpen(false)} onOpenAI={() => { setAiOpen(o => !o); setMobileOpen(false) }} />
       </div>
+
+      {/* ── AIPanel global ── */}
+      <AIPanel
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialAgent="planning"
+      />
     </>
   )
 }

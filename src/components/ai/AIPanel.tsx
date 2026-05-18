@@ -1191,7 +1191,12 @@ function ModelPicker({ model, onChange }: {
           transition: 'all 0.12s',
         }}
       >
-        <ModelEffigy model={model} isAnimating={false} size={14} color="var(--ai-mid)" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+          alt={cfg.name}
+          style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.75 }}
+        />
       </button>
 
       {/* Dropdown */}
@@ -1236,8 +1241,11 @@ function ModelPicker({ model, onChange }: {
                 onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                 onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
               >
-                <ModelEffigy model={m} isAnimating={false} size={15}
-                  color={isA ? 'var(--ai-text)' : 'var(--ai-dim)'}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                  alt={mc.name}
+                  style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
@@ -11424,9 +11432,9 @@ function HistoryDrawer({
           title="Nouvelle conversation"
           style={{
             width: 24, height: 24, borderRadius: 6, border: 'none',
-            background: 'var(--ai-gradient)',
+            background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(91,111,255,0.3)',
+            boxShadow: '0 2px 6px rgba(0,200,224,0.3)',
           }}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
@@ -18817,10 +18825,6 @@ export default function AIPanel({
           display: 'flex', alignItems: 'center', gap: 10,
           flexShrink: 0, background: 'var(--ai-bg)',
         }}>
-          {/* Logo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="THW" style={{ height: 24, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
-
           {/* Title */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)', lineHeight: 1.2 }}>
@@ -18865,10 +18869,10 @@ export default function AIPanel({
             style={{
               width: 30, height: 30, borderRadius: 8,
               border: 'none',
-              background: 'var(--ai-gradient)',
+              background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
               cursor: 'pointer', color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, boxShadow: '0 2px 8px rgba(91,111,255,0.3)',
+              flexShrink: 0, boxShadow: '0 2px 8px rgba(0,200,224,0.3)',
             }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
@@ -19044,7 +19048,12 @@ export default function AIPanel({
                             </div>
                             {/* Modèle recommandé */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                              <ModelEffigy model={qa.model} isAnimating={false} size={10} />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={qa.model === 'hermes' ? '/logos/logo_3bras.png' : qa.model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                                alt={mcfg.name}
+                                style={{ width: 12, height: 12, objectFit: 'contain', flexShrink: 0 }}
+                              />
                               <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
                                 {mcfg.name}
                               </span>

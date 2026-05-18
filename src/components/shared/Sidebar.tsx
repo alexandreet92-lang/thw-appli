@@ -499,7 +499,7 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
             <img
               src="/logos/logo_4bras.png"
               alt="Assistant IA"
-              style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0, opacity: 0.75 }}
+              style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0, opacity: 0.85 }}
             />
             <span style={{
               fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400,
@@ -677,7 +677,7 @@ export function Sidebar() {
           onClick={() => setAiOpen(o => !o)}
           aria-label="Assistant IA"
           style={{
-            width: 36, height: 36, borderRadius: 9,
+            width: 44, height: 44, borderRadius: 9,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: aiOpen ? 'rgba(0,200,224,0.12)' : 'transparent',
             border: 'none',
@@ -692,7 +692,7 @@ export function Sidebar() {
           <img
             src="/logos/logo_4bras.png"
             alt="Assistant IA"
-            style={{ width: 26, height: 26, objectFit: 'contain' }}
+            style={{ width: 44, height: 44, objectFit: 'contain' }}
           />
         </button>
       </div>

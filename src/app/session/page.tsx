@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 // import { createClient } from '@/lib/supabase/client'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
@@ -2134,30 +2133,6 @@ export default function SessionPage() {
               ← Bibliotheque
             </button>
           )}
-          <AIAssistantButton
-            agent="sessionBuilder"
-            context={{
-              page: 'session',
-              mode,
-              currentTemplate: editTarget ? {
-                sport:        editTarget.sport,
-                name:         editTarget.name,
-                duration_min: editTarget.durationMin,
-              } : null,
-              zones: {
-                run:  zones.run,
-                bike: zones.bike,
-                swim: zones.swim,
-              },
-              races: races.slice(0, 3).map(r => ({
-                name:      r.name,
-                sport:     r.sport,
-                date:      r.date,
-                level:     r.level,
-                goal_time: r.goal_time,
-              })),
-            }}
-          />
         </div>
       </div>
 

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { CountUp } from '@/components/ui/AnimatedBar'
 import DatasTab from './DatasTab'
 import { createClient } from '@/lib/supabase/client'
@@ -2444,7 +2443,6 @@ export default function PerformancePage() {
           <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
           <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records · Tests</p>
         </div>
-        <AIAssistantButton agent="performance" context={{ page:'performance' }}/>
       </div>
 
       {/* ── Tab bar ── */}

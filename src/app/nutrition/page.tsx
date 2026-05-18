@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
@@ -1047,7 +1046,6 @@ export default function NutritionPage() {
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 0' }}>
         <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 24, margin: 0 }}>Nutrition</h1>
-        <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>

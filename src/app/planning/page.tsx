@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
@@ -11138,7 +11137,6 @@ export default function PlanningPage() {
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
         </div>
-        <AIAssistantButton agent="planning" context={aiContext} />
       </div>
 
       <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' as const }}>

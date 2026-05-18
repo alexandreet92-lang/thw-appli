@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
-import GlobalAIButton from '@/components/ai/GlobalAIButton'
 import { PageTransition } from '@/components/ui/PageTransition'
 
 export const dynamic = 'force-dynamic'
@@ -69,7 +68,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
         </div>
 
-        <GlobalAIButton />
       </body>
     </html>
   )

@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import GoalBanner from './components/GoalBanner'
 import NextRaceBar from './components/NextRaceBar'
 import AnnualView from './components/AnnualView'
@@ -1342,7 +1341,6 @@ export default function CalendarPage() {
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
         </div>
-        <AIAssistantButton agent="strategy" context={aiContext} />
       </div>
 
       {/* Tab pills */}

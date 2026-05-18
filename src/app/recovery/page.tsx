@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
 
 // ── Types pour l'analyse IA ───────────────────────────────────
@@ -727,22 +726,6 @@ export default function RecoveryPage() {
             {new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
           </p>
         </div>
-        <AIAssistantButton
-          agent="readiness"
-          context={{
-            page:        'recovery',
-            readiness:   todayData.readiness,
-            hrv:         todayData.hrv,
-            restingHr:   todayData.restingHr,
-            fatigue:     todayData.fatigue,
-            energy:      todayData.energy,
-            stress:      todayData.stress,
-            motivation:  todayData.motivation,
-            pain:        todayData.pain,
-            sleep:       todayData.sleep,
-            trends:      todayData.trends,
-          }}
-        />
       </div>
 
       <SectionToday    data={todayData} onCheckIn={() => setShowCheckIn(true)} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>

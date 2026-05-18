@@ -65,3 +65,16 @@ export function getReadinessLabel(score: number): string {
   if (score >= 35) return 'Fatigué'
   return 'Repos conseillé'
 }
+
+/**
+ * Sanitize a filename for Supabase Storage paths.
+ * Removes accents, replaces spaces and special chars with underscores.
+ * Returns the safe name to use in the storage path (keep original for display).
+ */
+export function sanitizeFileName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')             // strip all combining marks (accents)
+    .replace(/[^a-zA-Z0-9.\-_]/g, '_') // spaces & special chars → _
+    .replace(/_+/g, '_')                // collapse consecutive underscores
+}

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RaceStage } from './types'
 import GpxFullView from '@/components/gpx/GpxFullView'
+import { sanitizeFileName } from '@/lib/utils'
 
 interface DayFile { id: string; file_url: string; file_name: string }
 
@@ -121,7 +122,8 @@ export default function DayModal({ stage, date, onClose, onSaved }: Props) {
         if (!user) throw new Error('Utilisateur non authentifié.')
 
         console.log('[DayModal save] step 2 — uploading file', newFile.name)
-        const path = `${user.id}/events/${stageId}/${date}/${newFile.name}`
+        const safeName = sanitizeFileName(newFile.name)
+        const path = `${user.id}/events/${stageId}/${date}/${safeName}`
         const { data: storData, error: storErr } = await supabase.storage
           .from('race-files').upload(path, newFile, { upsert: true })
 

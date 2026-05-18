@@ -12,6 +12,7 @@ import MonthlyView from './components/MonthlyView'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
 import type { RaceStage, NutritionItem } from './components/types'
+import { sanitizeFileName } from '@/lib/utils'
 import ClockView, { type ClockEvent } from './components/ClockView'
 import DayModal from './components/DayModal'
 
@@ -200,7 +201,8 @@ function useCalendar() {
     ]
     for (const { file, label } of allFiles) {
       try {
-        const path = `${user.id}/${raceId}/${file.name}`
+        const safeName = sanitizeFileName(file.name)
+        const path = `${user.id}/${raceId}/${safeName}`
         const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (upData) {
           const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
@@ -236,7 +238,7 @@ function useCalendar() {
     for (const { date, file } of dayFiles) {
       try {
         console.log('[addRaceStage] uploading file for', date, file.name)
-        const path = `${user.id}/events/${stageId}/${date}/${file.name}`
+        const path = `${user.id}/events/${stageId}/${date}/${sanitizeFileName(file.name)}`
         const { data: upData, error: upErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (upErr) { console.error('[addRaceStage] storage upload error', upErr); continue }
         if (!upData) { console.error('[addRaceStage] storage upload returned no data'); continue }
@@ -269,7 +271,7 @@ function useCalendar() {
 
     if (file) {
       try {
-        const path = `${user.id}/events/${stageId}/${date}/${file.name}`
+        const path = `${user.id}/events/${stageId}/${date}/${sanitizeFileName(file.name)}`
         const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (upData) {
           const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
@@ -296,7 +298,7 @@ function useCalendar() {
     for (const { date, file } of dayFiles) {
       try {
         console.log('[updateRaceStage] uploading file for', date, file.name, '(event_id:', s.id, ')')
-        const path = `${user.id}/events/${s.id}/${date}/${file.name}`
+        const path = `${user.id}/events/${s.id}/${date}/${sanitizeFileName(file.name)}`
         const { data: storData, error: storErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (storErr) { console.error('[updateRaceStage] storage upload error', storErr); continue }
         if (!storData) { console.error('[updateRaceStage] storage upload returned no data'); continue }

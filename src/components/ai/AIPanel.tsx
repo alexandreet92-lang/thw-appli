@@ -56,6 +56,7 @@ interface AIConv {
   createdAt: number
   updatedAt: number
   msgs: AIMsg[]
+  isPinned?: boolean
 }
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
@@ -11470,6 +11471,7 @@ function HistoryDrawer({
   onSelect,
   onDelete,
   onNew,
+  onPin,
   onClose,
   persistent = false,
 }: {
@@ -11478,6 +11480,7 @@ function HistoryDrawer({
   onSelect: (c: AIConv) => void
   onDelete: (id: string) => void
   onNew: () => void
+  onPin: (id: string) => void
   onClose: () => void
   persistent?: boolean
 }) {
@@ -11562,7 +11565,10 @@ function HistoryDrawer({
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
           </div>
-        ) : convs.filter(c => !searchQ.trim() || c.title.toLowerCase().includes(searchQ.toLowerCase())).map(conv => (
+        ) : [...convs]
+            .filter(c => !searchQ.trim() || c.title.toLowerCase().includes(searchQ.toLowerCase()))
+            .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0))
+            .map(conv => (
           <div key={conv.id} className="aip-hist-item" style={{ position: 'relative', marginBottom: 1 }}>
             {renId === conv.id ? (
               <div style={{ padding: '3px 4px' }}>
@@ -11601,6 +11607,11 @@ function HistoryDrawer({
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  {conv.isPinned && (
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="var(--ai-accent)" stroke="none" style={{ flexShrink: 0, marginBottom: 1 }}>
+                      <path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/>
+                    </svg>
+                  )}
                   <div style={{
                     flex: 1, minWidth: 0,
                     fontSize: 13, fontWeight: conv.id === activeId ? 600 : 400,
@@ -11643,8 +11654,17 @@ function HistoryDrawer({
                       borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                       overflow: 'hidden', minWidth: 148,
                     }}>
+                      {/* Pin (G3) */}
+                      <button onClick={() => { onPin(conv.id); setMenuId(null) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill={conv.isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/></svg>
+                        {conv.isPinned ? 'Désépingler' : 'Épingler'}
+                      </button>
                       <button onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
-                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >Renommer</button>
@@ -18237,6 +18257,10 @@ export default function AIPanel({
     if (activeId === id) setActiveId(null)
   }
 
+  const pinConv = (id: string) => {
+    setConvs(prev => prev.map(c => c.id === id ? { ...c, isPinned: !c.isPinned } : c))
+  }
+
   // G2 — Export conversation as Markdown
   const exportMarkdown = () => {
     if (!active) return
@@ -19158,6 +19182,7 @@ export default function AIPanel({
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
+              onPin={pinConv}
               onClose={() => setHistOpen(false)}
             />
           )}
@@ -19170,6 +19195,7 @@ export default function AIPanel({
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
+              onPin={pinConv}
               onClose={() => setHistOpen(false)}
             />
           )}

@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
+import HybridNetworksPanel from './HybridNetworksPanel'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -19326,29 +19327,8 @@ export default function AIPanel({
             onTouchEnd={handleTouchEnd}
           >
 
-          {/* ── Hybrid Networks placeholder ──────────────── */}
-          {activeAgent === 'networks' && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 28px', gap: 18, animation: 'ai_slidein 0.2s ease' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="1.8" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="2" y1="12" x2="22" y2="12"/>
-                  <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-                </svg>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--ai-text)', margin: '0 0 8px' }}>
-                  Hybrid Networks
-                </p>
-                <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>
-                  Analyse Instagram · Brief marketing · Stratégie de contenu
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>
-                  Cet agent arrive bientôt.
-                </p>
-              </div>
-            </div>
-          )}
+          {/* ── Hybrid Networks ──────────────────────────── */}
+          {activeAgent === 'networks' && <HybridNetworksPanel />}
 
           {/* ── MESSAGES ───────────────────────────────────── */}
           {activeAgent === 'training' && <div

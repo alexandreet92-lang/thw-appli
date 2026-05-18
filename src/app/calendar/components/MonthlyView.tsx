@@ -123,7 +123,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
   }
 
   function scheduleHide() {
-    hideTimer.current = setTimeout(() => setPopover(null), 150)
+    hideTimer.current = setTimeout(() => setPopover(null), 300)
   }
   function cancelHide() {
     if (hideTimer.current) clearTimeout(hideTimer.current)
@@ -160,7 +160,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
         <div style={{ display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:2 }}>
           {/* Leading empty cells */}
           {Array.from({ length: firstDayISO - 1 }, (_, i) => (
-            <div key={`e${i}`} style={{ minHeight:62,borderRadius:7,background:'var(--bg-card2)',opacity:0.3 }} />
+            <div key={`e${i}`} style={{ minHeight:72,borderRadius:7,background:'var(--bg-card2)',opacity:0.3 }} />
           ))}
 
           {/* Day cells */}
@@ -176,7 +176,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                 key={day}
                 onClick={() => onDayClick?.(ds)}
                 style={{
-                  minHeight:62,borderRadius:7,background:'var(--bg-card2)',
+                  minHeight:72,borderRadius:7,background:'var(--bg-card2)',
                   border:`1px solid ${isToday ? '#00c8e0' : 'var(--border)'}`,
                   padding:'3px 4px',display:'flex',flexDirection:'column' as const,gap:1,
                   cursor: onDayClick ? 'pointer' : 'default',
@@ -194,14 +194,18 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                       key={r.id}
                       onClick={e => { e.stopPropagation(); onRaceClick(r) }}
                       style={{
-                        borderRadius:3,padding:'1px 3px',cursor:'pointer',
-                        background:r.status==='completed'?'var(--bg-card)':cfg.bg,
-                        border:`1px solid ${r.status==='completed'?'var(--border)':cfg.border+'55'}`,
-                        opacity:r.status==='completed'?0.6:1,
+                        height: 24, borderRadius: 6, padding: '0 8px',
+                        display: 'flex', alignItems: 'center',
+                        cursor: 'pointer',
+                        background: r.status === 'completed' ? 'var(--bg-card)' : `${cfg.color}26`,
+                        borderLeft: `3px solid ${r.status === 'completed' ? 'var(--text-dim)' : cfg.color}`,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        opacity: r.status === 'completed' ? 0.6 : 1,
+                        overflow: 'hidden', minWidth: 0,
                       }}
                     >
-                      <p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:r.level==='gty'?'#fff':cfg.color }}>
-                        {r.status==='completed'?'✓ ':''}{r.name}
+                      <p style={{ fontSize:11, fontWeight:500, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const, color: r.status === 'completed' ? 'var(--text-dim)' : (r.level === 'gty' ? 'var(--gty-text)' : cfg.color) }}>
+                        {r.status === 'completed' ? '✓ ' : ''}{r.name}
                       </p>
                     </div>
                   )
@@ -227,13 +231,16 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                     }}
                     onMouseLeave={() => scheduleHide()}
                     style={{
-                      borderRadius:3,padding:'1px 3px',
-                      background:'rgba(59,130,246,0.12)',
-                      border:'1px solid rgba(59,130,246,0.3)',
-                      cursor:'pointer',
+                      height: 24, borderRadius: 6, padding: '0 8px',
+                      display: 'flex', alignItems: 'center',
+                      background: 'rgba(59,130,246,0.12)',
+                      borderLeft: '3px solid #3b82f6',
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      overflow: 'hidden', minWidth: 0,
                     }}
                   >
-                    <p style={{ fontSize:7,fontWeight:500,margin:0,color:'#3b82f6',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>
+                    <p style={{ fontSize:11, fontWeight:500, margin:0, color:'#3b82f6', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>
                       {s.name}
                     </p>
                   </div>

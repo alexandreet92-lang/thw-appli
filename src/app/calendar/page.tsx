@@ -384,10 +384,17 @@ function useCalendar() {
     }))
   }
 
+  function deleteStageDayLocal(stageId: string, date: string) {
+    setRaceStages(prev => prev.map(s => {
+      if (s.id !== stageId) return s
+      return { ...s, dailyProgram: s.dailyProgram.filter(p => p.date !== date) }
+    }))
+  }
+
   return {
     races, raceStages, eventTypes, events, loading,
     addRace, addRaceWithFiles, updateRace, deleteRace, markCompleted,
-    addRaceStage, updateRaceStage, saveStageDayContent, patchStageDayLocal,
+    addRaceStage, updateRaceStage, saveStageDayContent, patchStageDayLocal, deleteStageDayLocal,
     addEventType, updateEventType, deleteEventType,
     addEvent, updateEvent, deleteEvent,
   }
@@ -663,7 +670,7 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal }: {
+function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
   races: Race[]; raceStages: RaceStage[]
   addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
@@ -671,6 +678,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
   addRaceStage: (s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) => Promise<void>
   updateRaceStage: (s: RaceStage, dayFiles: { date: string; file: File }[]) => Promise<void>
   patchStageDayLocal: (stageId: string, date: string, content: string) => void
+  deleteStageDayLocal: (stageId: string, date: string) => void
 }) {
   const [calView,      setCalView]      = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -807,6 +815,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           date={dayModal.date}
           onClose={() => setDayModal(null)}
           onSaved={(date, content) => patchStageDayLocal(dayModal.stage.id, date, content)}
+          onDeleted={(date) => { deleteStageDayLocal(dayModal.stage.id, date); setDayModal(null) }}
         />
       )}
     </div>
@@ -1124,10 +1133,6 @@ const SPORT_ABBR: Record<RaceSport, string> = {
 }
 
 function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalEventType[]; events: CalEvent[] }) {
-  const [view, setView] = useState<AllView>('vertical')
-  const year = new Date().getFullYear()
-  const today = new Date().toISOString().split('T')[0]
-
   // Build unified event list for current year
   interface UnifiedEvent {
     id: string; date: string; title: string
@@ -1136,6 +1141,12 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
     level?: RaceLevel
     sport?: RaceSport
   }
+
+  const [view, setView] = useState<AllView>('vertical')
+  const [detail, setDetail] = useState<UnifiedEvent | null>(null)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const year = new Date().getFullYear()
+  const today = new Date().toISOString().split('T')[0]
 
   const yearRaces = races
     .filter(r => r.date.startsWith(String(year)))
@@ -1204,94 +1215,73 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           {Object.entries(byMonth)
             .sort(([a], [b]) => Number(a) - Number(b))
             .map(([mi, monthEvents]) => (
-              <div key={mi} style={{ paddingTop: 24 }}>
+              <div key={mi}>
                 {/* Month header */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 8 }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.10em',
-                    textTransform: 'uppercase' as const, color: 'var(--text-mid)',
-                  }}>
+                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginTop: mi === Object.keys(byMonth).sort((a,b)=>Number(a)-Number(b))[0] ? 0 : 20, marginBottom: 8 }}>
+                  <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.10em', textTransform:'uppercase' as const, color:'var(--text-mid)' }}>
                     {MONTH_SHORT[Number(mi)]}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>
                     {monthEvents.length} événement{monthEvents.length > 1 ? 's' : ''}
                   </span>
                 </div>
 
-                {/* Events */}
+                {/* Event cards */}
                 {monthEvents.map(ev => {
                   const isPast = ev.date < today
-                  const days   = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
+                  const days = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
                   const lvlCfg = ev.level ? RACE_CONFIG[ev.level] : null
-                  const dotColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
+                  const borderColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
+                  const cdColor = isPast ? 'var(--text-dim)' : days < 7 ? '#ef4444' : days < 30 ? '#f97316' : 'var(--text-mid)'
+                  const isHovered = hoveredId === ev.id
+                  const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })
 
                   return (
-                    <div key={ev.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 11,
-                      padding: '10px 4px',
-                      borderBottom: '1px solid var(--border)',
-                      opacity: isPast ? 0.45 : 1,
-                    }}>
-                      {/* Dot — seul élément coloré */}
-                      <div style={{
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: dotColor, flexShrink: 0,
-                      }} />
-
-                      {/* Day number */}
-                      <span style={{
-                        fontSize: 11, color: 'var(--text-dim)',
-                        fontFamily: 'DM Mono, monospace',
-                        flexShrink: 0, minWidth: 18,
-                      }}>
-                        {new Date(ev.date + 'T12:00:00').getDate()}
-                      </span>
-
-                      {/* Level badge — outline only, no color fill */}
-                      {lvlCfg && (
-                        <span style={{
-                          fontSize: 10, padding: '1px 7px', borderRadius: 20,
-                          border: '1px solid var(--border)',
-                          color: 'var(--text-mid)',
-                          flexShrink: 0, whiteSpace: 'nowrap' as const,
-                        }}>
-                          {lvlCfg.label}
+                    <div
+                      key={ev.id}
+                      onClick={() => setDetail(ev)}
+                      onMouseEnter={() => setHoveredId(ev.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      style={{
+                        background: 'var(--bg-card)',
+                        borderRadius: 8,
+                        borderLeft: `3px solid ${borderColor}`,
+                        padding: '12px 16px',
+                        marginBottom: 6,
+                        boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
+                        transform: isHovered ? 'translateY(-1px)' : 'none',
+                        transition: 'box-shadow 150ms, transform 150ms',
+                        cursor: 'pointer',
+                        opacity: isPast ? 0.55 : 1,
+                      }}
+                    >
+                      {/* Main line */}
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+                          <span style={{ fontSize:14, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>
+                            {ev.title}
+                          </span>
+                          {ev.sport && (
+                            <span style={{ fontSize:10, color:'var(--text-dim)', background:'var(--bg-card2)', borderRadius:4, padding:'2px 6px', flexShrink:0 }}>
+                              {SPORT_ABBR[ev.sport]}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize:15, fontWeight:700, color:cdColor, flexShrink:0, fontFamily:'DM Mono,monospace' }}>
+                          {isPast ? '✓' : days === 0 ? 'Auj.' : `J-${days}`}
                         </span>
-                      )}
-
-                      {/* Sport abbr */}
-                      {ev.sport && (
-                        <span style={{
-                          fontSize: 10, color: 'var(--text-dim)',
-                          fontFamily: 'DM Mono, monospace', flexShrink: 0,
-                        }}>
-                          {SPORT_ABBR[ev.sport]}
+                      </div>
+                      {/* Secondary line */}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+                        <span style={{ fontSize:12, color:'var(--text-dim)', textTransform:'capitalize' as const }}>
+                          {dateLabel}
                         </span>
-                      )}
-
-                      {/* Title */}
-                      <span style={{
-                        flex: 1, fontSize: 13, fontWeight: 500,
-                        color: 'var(--text)', overflow: 'hidden',
-                        textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
-                      }}>
-                        {ev.title}
-                      </span>
-
-                      {/* Countdown / past */}
-                      {isPast ? (
-                        <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
-                          ✓ Passé
-                        </span>
-                      ) : (
-                        <span style={{
-                          fontSize: 13, fontWeight: 500,
-                          color: 'var(--text-mid)',
-                          fontFamily: 'DM Mono, monospace', flexShrink: 0,
-                        }}>
-                          {days === 0 ? 'Auj.' : `J-${days}`}
-                        </span>
-                      )}
+                        {lvlCfg && (
+                          <span style={{ fontSize:10, color:'var(--text-dim)', border:'1px solid var(--border)', borderRadius:4, padding:'1px 6px', flexShrink:0 }}>
+                            {lvlCfg.label}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -1299,8 +1289,91 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
             ))}
         </div>
       )}
+
+      {detail && <EventDetail ev={detail} onClose={() => setDetail(null)} />}
     </div>
   )
+
+  function EventDetail({ ev, onClose }: { ev: UnifiedEvent; onClose: () => void }) {
+    const race = ev.category === 'race' ? races.find(r => r.id === ev.id) : undefined
+    const calEv = ev.category !== 'race' ? events.find(e => e.id === ev.id) : undefined
+    const borderColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
+    const catLabel = ev.category === 'race' ? 'Race' : ev.category === 'pro' ? 'Pro' : 'Perso'
+    const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    const days = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
+    const isPast = ev.date < today
+
+    return (
+      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
+        <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,borderLeft:`4px solid ${borderColor}`,border:`1px solid var(--border-mid)`,padding:24,maxWidth:480,width:'100%',maxHeight:'88vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:14 }}>
+          {/* Header */}
+          <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12 }}>
+            <div>
+              <span style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:borderColor }}>{catLabel}</span>
+              <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'4px 0 0' }}>{ev.title}</h3>
+            </div>
+            <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
+          </div>
+          {/* Date + countdown */}
+          <div style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px',textTransform:'capitalize' as const }}>{dateLabel}</p>
+            </div>
+            <span style={{ fontSize:20,fontWeight:800,color:isPast?'var(--text-dim)':days<7?'#ef4444':days<30?'#f97316':'var(--text)',fontFamily:'DM Mono,monospace' }}>
+              {isPast ? '✓ Passé' : days === 0 ? 'Aujourd\'hui' : `J-${days}`}
+            </span>
+          </div>
+          {/* Race details */}
+          {race && (
+            <>
+              {(race.sport || race.level) && (
+                <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const }}>
+                  {race.sport && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.sport}</span>}
+                  {race.level && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:`${RACE_CONFIG[race.level].color}18`,border:`1px solid ${RACE_CONFIG[race.level].color}44`,color:RACE_CONFIG[race.level].color }}>{RACE_CONFIG[race.level].label}</span>}
+                  {race.runDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.runDistance}</span>}
+                  {race.triDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.triDistance}</span>}
+                </div>
+              )}
+              {(race.goalTime || race.goalSwimTime || race.goalBikeTime || race.goalRunTime) && (
+                <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Objectif</p>
+                  <div style={{ display:'flex',gap:16,flexWrap:'wrap' as const }}>
+                    {race.goalTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Temps</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalTime}</p></div>}
+                    {race.goalSwimTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Natation</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalSwimTime}</p></div>}
+                    {race.goalBikeTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Vélo</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalBikeTime}</p></div>}
+                    {race.goalRunTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Run</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalRunTime}</p></div>}
+                  </div>
+                </div>
+              )}
+              {race.strategy && (
+                <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Stratégie</p>
+                  <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{race.strategy}</p>
+                </div>
+              )}
+              {race.notes && (
+                <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Notes</p>
+                  <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{race.notes}</p>
+                </div>
+              )}
+            </>
+          )}
+          {/* Pro/Perso event details */}
+          {calEv?.description && (
+            <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+              <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Description</p>
+              <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{calEv.description}</p>
+            </div>
+          )}
+          {/* Close */}
+          <button onClick={onClose} style={{ padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:4 }}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    )
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -1308,7 +1381,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
   const [tab, setTab] = useState<CalTab>('race')
-  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
 
   const TABS: { id: CalTab; label: string; short: string; color: string; bg: string }[] = [
     { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
@@ -1359,7 +1432,7 @@ export default function CalendarPage() {
 
       {!loading && (
         <>
-          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} patchStageDayLocal={patchStageDayLocal}/>}
+          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/>}
           {tab === 'pro'   && <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'perso' && <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
           {tab === 'all'   && <AllTab races={races} eventTypes={eventTypes} events={events}/>}

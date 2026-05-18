@@ -12,6 +12,7 @@ interface Props {
   date: string  // YYYY-MM-DD
   onClose: () => void
   onSaved?: (date: string, content: string) => void  // notify parent of local state refresh
+  onDeleted?: (date: string) => void
 }
 
 const INP = { width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }
@@ -25,7 +26,7 @@ function labelDay(d: string) {
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error'
 
-export default function DayModal({ stage, date, onClose, onSaved }: Props) {
+export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient()
   const stageId  = stage.id
 
@@ -38,6 +39,8 @@ export default function DayModal({ stage, date, onClose, onSaved }: Props) {
   const [loadFile,  setLoadFile]  = useState(true)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveMsg,   setSaveMsg]   = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Load from DB on mount: daily_program entry + file
@@ -188,6 +191,56 @@ export default function DayModal({ stage, date, onClose, onSaved }: Props) {
     }
   }
 
+  async function handleDelete() {
+    if (!hasId) return
+    setDeleting(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      // 1. Remove day entry from daily_program
+      const { data: evData, error: fetchErr } = await supabase
+        .from('race_events').select('daily_program').eq('id', stageId).single()
+      if (fetchErr || !evData) throw new Error('Événement introuvable')
+      const dp = (evData as { daily_program: { date: string; content: string }[] }).daily_program ?? []
+      const updatedDp = dp.filter(p => p.date !== date)
+      const { error: updErr } = await supabase
+        .from('race_events').update({ daily_program: updatedDp }).eq('id', stageId)
+      if (updErr) throw new Error(`Mise à jour daily_program : ${updErr.message}`)
+      console.log('[DayModal delete] daily_program updated')
+
+      // 2. Delete from race_event_files & Storage
+      const { data: fileRow } = await supabase
+        .from('race_event_files').select('file_url')
+        .eq('event_id', stageId).eq('event_date', date).maybeSingle()
+      if (fileRow) {
+        const fileData = fileRow as { file_url: string }
+        // Delete DB row
+        await supabase.from('race_event_files')
+          .delete().eq('event_id', stageId).eq('event_date', date)
+        console.log('[DayModal delete] race_event_files deleted')
+        // Delete from Storage
+        const bucketMarker = '/object/public/race-files/'
+        const pathInBucket = fileData.file_url.split(bucketMarker)[1]
+        if (pathInBucket) {
+          await supabase.storage.from('race-files').remove([pathInBucket])
+          console.log('[DayModal delete] storage file deleted:', pathInBucket)
+        }
+      }
+
+      onDeleted?.(date)
+      onClose()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[DayModal delete] error:', msg)
+      setSaveStatus('error')
+      setSaveMsg(`Suppression échouée : ${msg}`)
+      setConfirmDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const displayFile = newFile
     ? { url: URL.createObjectURL(newFile), name: newFile.name, isLocal: true }
     : dayFile
@@ -282,6 +335,26 @@ export default function DayModal({ stage, date, onClose, onSaved }: Props) {
 
         {/* Buttons */}
         <div style={{ display:'flex',gap:8 }}>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              disabled={deleting || !hasId}
+              style={{ padding:'10px 14px',borderRadius:10,background:'transparent',border:'1px solid rgba(239,68,68,0.4)',color:'#ef4444',fontSize:12,cursor:'pointer',flexShrink:0 }}>
+              Supprimer
+            </button>
+          ) : (
+            <div style={{ display:'flex',gap:4,alignItems:'center' }}>
+              <span style={{ fontSize:11,color:'var(--text-dim)',whiteSpace:'nowrap' }}>Confirmer ?</span>
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.4)',color:'#ef4444',fontSize:11,cursor:'pointer' }}>
+                {deleting ? '…' : 'Oui'}
+              </button>
+              <button onClick={() => setConfirmDelete(false)}
+                style={{ padding:'6px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
+                Non
+              </button>
+            </div>
+          )}
           <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>
             Fermer
           </button>

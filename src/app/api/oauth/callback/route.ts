@@ -15,24 +15,24 @@ export async function GET(req: NextRequest) {
   const [provider, state] = rawState.split(':') as [OAuthProvider, string]
 
   if (error) {
-    return NextResponse.redirect(`${BASE_URL}/profile?oauth=denied&provider=${provider}`)
+    return NextResponse.redirect(`${BASE_URL}/connections?oauth=denied&provider=${provider}`)
   }
 
   if (!code || !provider || !OAUTH_CONFIG[provider]) {
-    return NextResponse.redirect(`${BASE_URL}/profile?oauth=error&provider=${provider}`)
+    return NextResponse.redirect(`${BASE_URL}/connections?oauth=error&provider=${provider}`)
   }
 
   const cookieStore = await cookies()
   const savedState  = cookieStore.get(`oauth_state_${provider}`)?.value
   if (!savedState || savedState !== state) {
-    return NextResponse.redirect(`${BASE_URL}/profile?oauth=invalid_state&provider=${provider}`)
+    return NextResponse.redirect(`${BASE_URL}/connections?oauth=invalid_state&provider=${provider}`)
   }
   cookieStore.delete(`oauth_state_${provider}`)
 
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) {
-    return NextResponse.redirect(`${BASE_URL}/profile?oauth=no_session`)
+    return NextResponse.redirect(`${BASE_URL}/connections?oauth=no_session`)
   }
 
   try {
@@ -45,10 +45,10 @@ export async function GET(req: NextRequest) {
       headers: { 'x-user-id': user.id },
     }).catch(() => {})
 
-    return NextResponse.redirect(`${BASE_URL}/profile?oauth=connected&provider=${provider}`)
+    return NextResponse.redirect(`${BASE_URL}/connections?oauth=connected&provider=${provider}`)
   } catch (err) {
     console.error(`OAuth callback error [${provider}]:`, err)
-    return NextResponse.redirect(`${BASE_URL}/profile?oauth=error&provider=${provider}`)
+    return NextResponse.redirect(`${BASE_URL}/connections?oauth=error&provider=${provider}`)
   }
 }
 

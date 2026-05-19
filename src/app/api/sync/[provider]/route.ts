@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
+import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
 
 export async function POST(
   req: NextRequest,
@@ -57,6 +58,14 @@ export async function POST(
       case 'wahoo':
         count = await syncWahooWorkouts(userId)
         break
+      case 'withings': {
+        const [n1, n2] = await Promise.all([
+          syncWithingsBodyMetrics(userId),
+          syncWithingsSleep(userId),
+        ])
+        count = n1 + n2
+        break
+      }
       default:
         return NextResponse.json({ error: `Provider ${provider} not supported yet` }, { status: 400 })
     }

@@ -7,16 +7,20 @@ import { createClient } from '@/lib/supabase/client'
 import { localToday } from './components/types'
 import type { CheckInRow, ActivityRow } from './components/types'
 
-import CheckInModal   from '@/components/recovery/CheckInModal'
-import RecoveryBanner from './components/RecoveryBanner'
-import DailyScore     from './components/DailyScore'
-import WeeklySummary  from './components/WeeklySummary'
-import TrainingLoad   from './components/TrainingLoad'
-import SleepSection   from './components/SleepSection'
-import RecoveryTrends from './components/RecoveryTrends'
-
-import PhysioSection  from './components/PhysioSection'
-import DataSources    from './components/DataSources'
+import CheckInModal        from '@/components/recovery/CheckInModal'
+import RecoveryBanner      from './components/RecoveryBanner'
+import DailyScore          from './components/DailyScore'
+import WeeklySummary       from './components/WeeklySummary'
+import TrainingLoad        from './components/TrainingLoad'
+import SleepSection        from './components/SleepSection'
+import RecoveryTrends      from './components/RecoveryTrends'
+import PhysioSection       from './components/PhysioSection'
+import DataSources         from './components/DataSources'
+import RecoveryWaterfall   from './components/RecoveryWaterfall'
+import RecoveryTimeline    from './components/RecoveryTimeline'
+import HrvSection          from './components/hrv/HrvSection'
+import BreathingCircle     from './components/BreathingCircle'
+import { calcScore }       from './components/types'
 
 // ── Helpers ────────────────────────────────────────────────────
 function computeStreak(history: CheckInRow[]): number {
@@ -91,6 +95,7 @@ export default function RecoveryPage() {
   }
 
   const streak = computeStreak(history)
+  const recoveryScore = checkin ? calcScore(checkin) : 50
 
   if (loading) {
     return (
@@ -122,28 +127,42 @@ export default function RecoveryPage() {
       {/* 1. Banner */}
       <RecoveryBanner sourcesRef={sourcesRef} />
 
-      {/* 2+3. Score + Weekly — desktop side by side */}
+      {/* 2. Score + Weekly */}
       <div style={{ display:'grid',gridTemplateColumns:'minmax(0,3fr) minmax(0,2fr)',gap:16,alignItems:'start' }} className="rc-2col">
         <DailyScore checkin={checkin} history={history} streak={streak} onCheckIn={()=>setShowModal(true)} />
         <WeeklySummary history={history} prevHistory={prevHistory} activities={activities} prevActivities={prevActs} />
       </div>
 
-      {/* 4. Training load */}
+      {/* 3. Cascade de récupération */}
+      <RecoveryWaterfall checkin={checkin} activities={activities} />
+
+      {/* 4. Timeline récupération */}
+      <RecoveryTimeline activities={activities} recoveryScore={recoveryScore} />
+
+      {/* 5. Charge d'entraînement */}
       <section>
         <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 10px' }}>Charge d'entraînement</p>
         <TrainingLoad activities={activities} />
       </section>
 
-      {/* 5. Sleep */}
+      {/* 6. Sommeil */}
       <SleepSection checkin={checkin} history={history} />
 
-      {/* 6. Trends */}
+      {/* 7. HRV */}
+      <HrvSection />
+
+      {/* 8. Tendances check-in */}
       <RecoveryTrends history={history} activities={activities} />
 
-      {/* 8. Physio */}
+      {/* 9. Physio */}
       <PhysioSection />
 
-      {/* 9. Sources */}
+      {/* 10. Cercle de respiration */}
+      <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, boxShadow:'var(--shadow-card)' }}>
+        <BreathingCircle />
+      </div>
+
+      {/* 11. Sources */}
       <DataSources sourcesRef={sourcesRef} />
 
       {/* Modal */}

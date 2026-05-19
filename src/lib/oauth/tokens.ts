@@ -3,8 +3,8 @@ import { OAUTH_CONFIG, OAuthProvider } from './config'
 
 export interface TokenData {
   access_token:      string
-  refresh_token?:    string
-  expires_at?:       number
+  refresh_token?:    string | null
+  expires_at?:       number | null
   provider_user_id?: string
   scope?:            string
   provider_data?:    Record<string, unknown>

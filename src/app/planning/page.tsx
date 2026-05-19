@@ -29,7 +29,7 @@ type TaskType      = 'sport' | 'work' | 'personal' | 'recovery'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
 type CalView       = 'year' | 'month'
 type TrainingView  = 'horizontal' | 'vertical'
-type RaceSport     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
+type RaceSport     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 type CyclingSub    = 'velo' | 'vtt' | 'ht'
 
 // ── Constants ─────────────────────────────────────
@@ -65,6 +65,7 @@ const RACE_CONFIG: Record<RaceLevel,{label:string;color:string;bg:string;border:
 }
 const RACE_SPORT_COLOR: Record<RaceSport,{border:string;bg:string}> = {
   run:     { border:'#f97316', bg:'rgba(249,115,22,0.13)'  },
+  trail:   { border:'#84cc16', bg:'rgba(132,204,22,0.13)'  },
   bike:    { border:'#3b82f6', bg:'rgba(59,130,246,0.13)'  },
   swim:    { border:'#06b6d4', bg:'rgba(6,182,212,0.13)'   },
   hyrox:   { border:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
@@ -11120,8 +11121,8 @@ function RaceYearTab() {
 function RaceAddModal({ month, day, year, onClose, onSave }:{ month:number; day?:number; year:number; onClose:()=>void; onSave:(r:Omit<Race,'id'|'validated'|'validationData'>)=>void }) {
   const dd = `${year}-${String(month+1).padStart(2,'0')}-${String(day||1).padStart(2,'0')}`
   const [sport,setSport]=useState<RaceSport>('run'); const [name,setName]=useState(''); const [date,setDate]=useState(dd); const [level,setLevel]=useState<RaceLevel>('important'); const [runDist,setRunDist]=useState(RUN_DISTANCES[2]); const [triDist,setTriDist]=useState(TRI_DISTANCES[1]); const [hyroxCat,setHyroxCat]=useState(''); const [hyroxLvl,setHyroxLvl]=useState(''); const [hyroxGen,setHyroxGen]=useState(''); const [goalTime,setGoalTime]=useState(''); const [goalSwim,setGoalSwim]=useState(''); const [goalBike,setGoalBike]=useState(''); const [goalRun,setGoalRun]=useState('')
-  const RACE_SPORTS: RaceSport[] = ['run','bike','swim','hyrox','triathlon','rowing']
-  const RSL: Record<RaceSport,string> = {run:'Course à pied',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron'}
+  const RACE_SPORTS: RaceSport[] = ['run','trail','bike','swim','hyrox','triathlon','rowing']
+  const RSL: Record<RaceSport,string> = {run:'Course à pied',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron'}
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>

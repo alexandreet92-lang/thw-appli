@@ -11,7 +11,7 @@ interface Props {
   onSave: (r: Omit<Race, 'id'>, files: File[], filesBike?: File[], filesRun?: File[]) => Promise<void>
 }
 
-const SPORTS: RaceSport[] = ['run','bike','swim','hyrox','triathlon','rowing']
+const SPORTS: RaceSport[] = ['run','trail','bike','swim','hyrox','triathlon','rowing']
 const LEVELS: RaceLevel[] = ['gty','main','important','secondary']
 
 const INP = { width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }

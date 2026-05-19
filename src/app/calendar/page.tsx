@@ -20,8 +20,8 @@ type CalTab        = 'race' | 'pro' | 'perso' | 'all'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
-type RaceSport     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
-type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing' | 'gym'
+type RaceSport     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
+type SportType     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing' | 'gym'
 
 interface Race {
   id: string; name: string; sport: RaceSport; date: string; level: RaceLevel
@@ -59,12 +59,12 @@ const MONTHS      = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet',
 const MONTH_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
 const SPORT_BG: Record<SportType, string> = {
-  swim:'rgba(56,189,248,0.13)', run:'rgba(34,197,94,0.13)', bike:'rgba(59,130,246,0.13)',
+  swim:'rgba(56,189,248,0.13)', run:'rgba(34,197,94,0.13)', trail:'rgba(132,204,22,0.13)', bike:'rgba(59,130,246,0.13)',
   hyrox:'rgba(239,68,68,0.13)', gym:'rgba(249,115,22,0.13)',
   triathlon:'rgba(168,85,247,0.13)', rowing:'rgba(20,184,166,0.13)',
 }
 const SPORT_BORDER: Record<SportType, string> = {
-  swim:'#38bdf8', run:'#22c55e', bike:'#3b82f6',
+  swim:'#38bdf8', run:'#22c55e', trail:'#84cc16', bike:'#3b82f6',
   hyrox:'#ef4444', gym:'#f97316', triathlon:'#a855f7', rowing:'#14b8a6',
 }
 
@@ -421,8 +421,8 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
   const [goalSwim, setGoalSwim] = useState('')
   const [goalBike, setGoalBike] = useState('')
   const [goalRun,  setGoalRun]  = useState('')
-  const RACE_SPORTS: RaceSport[] = ['run','bike','swim','hyrox','triathlon','rowing']
-  const RSL: Record<RaceSport, string> = { run:'Course à pied',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron' }
+  const RACE_SPORTS: RaceSport[] = ['run','trail','bike','swim','hyrox','triathlon','rowing']
+  const RSL: Record<RaceSport, string> = { run:'Course à pied',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron' }
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
@@ -1187,7 +1187,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
 type AllView = 'vertical' | 'circular'
 
 const SPORT_ABBR: Record<RaceSport, string> = {
-  run: 'RUN', bike: 'BIK', swim: 'SWI',
+  run: 'RUN', trail: 'TRL', bike: 'BIK', swim: 'SWI',
   hyrox: 'HYR', triathlon: 'TRI', rowing: 'ROW',
 }
 

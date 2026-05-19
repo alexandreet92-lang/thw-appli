@@ -1,5 +1,5 @@
 export type RaceLevel = 'secondary' | 'important' | 'main' | 'gty'
-export type RaceSport = 'run' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
+export type RaceSport = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 
 export interface Race {
   id: string; name: string; sport: RaceSport; date: string; level: RaceLevel
@@ -38,15 +38,15 @@ export const RACE_CFG: Record<RaceLevel, { label: string; color: string; bg: str
 }
 
 export const SPORT_LABEL: Record<RaceSport, string> = {
-  run:'Course à pied', bike:'Cyclisme', swim:'Natation',
+  run:'Course à pied', trail:'Trail', bike:'Cyclisme', swim:'Natation',
   hyrox:'Hyrox', triathlon:'Triathlon', rowing:'Aviron',
 }
 export const SPORT_COLOR: Record<RaceSport, string> = {
-  run:'#22c55e', bike:'#3b82f6', swim:'#38bdf8',
+  run:'#22c55e', trail:'#84cc16', bike:'#3b82f6', swim:'#38bdf8',
   hyrox:'#ef4444', triathlon:'#a855f7', rowing:'#14b8a6',
 }
 export const SPORT_BG: Record<RaceSport, string> = {
-  run:'rgba(34,197,94,0.12)', bike:'rgba(59,130,246,0.12)', swim:'rgba(56,189,248,0.12)',
+  run:'rgba(34,197,94,0.12)', trail:'rgba(132,204,22,0.12)', bike:'rgba(59,130,246,0.12)', swim:'rgba(56,189,248,0.12)',
   hyrox:'rgba(239,68,68,0.12)', triathlon:'rgba(168,85,247,0.12)', rowing:'rgba(20,184,166,0.12)',
 }
 

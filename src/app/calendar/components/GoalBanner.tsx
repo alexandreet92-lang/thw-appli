@@ -2,7 +2,7 @@
 import { Race, RaceSport, daysUntil } from './types'
 
 const SPORT_DISPLAY: Record<RaceSport, string> = {
-  run: 'Running', bike: 'Cyclisme', triathlon: 'Triathlon',
+  run: 'Running', trail: 'Trail', bike: 'Cyclisme', triathlon: 'Triathlon',
   hyrox: 'Hyrox', swim: 'Natation', rowing: 'Aviron',
 }
 

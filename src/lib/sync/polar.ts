@@ -169,17 +169,24 @@ export async function syncPolarSleep(userId: string): Promise<number> {
   const supabase = createServiceClient()
 
   const today = new Date().toISOString().split('T')[0]
-  const from  = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const from  = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
+  console.log(`[syncPolarSleep] fetching ${from} → ${today} for polarUser=${polarUserId}`)
   const res = await fetch(
     `${POLAR_API}/users/${polarUserId}/sleep?from=${from}&to=${today}`,
     { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
   )
 
-  if (!res.ok) return 0
+  console.log(`[syncPolarSleep] status=${res.status}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    console.error(`[syncPolarSleep] error body: ${body.slice(0, 300)}`)
+    return 0
+  }
 
   const data  = await res.json()
   const nights = (data['nights'] as Record<string, unknown>[] | undefined) ?? []
+  console.log(`[syncPolarSleep] nights received: ${nights.length}`)
   if (!nights.length) return 0
 
   const rows = nights.map(n => ({
@@ -209,5 +216,61 @@ export async function syncPolarSleep(userId: string): Promise<number> {
     .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
 
   if (error) throw new Error(`health_data upsert: ${error.message}`)
+  console.log(`[syncPolarSleep] upserted ${rows.length} rows`)
   return rows.length
+}
+
+// ── Physical information (resting HR, max HR, weight) ──────────
+
+export async function syncPolarPhysical(userId: string): Promise<number> {
+  const token = await getValidToken(userId, 'polar')
+  if (!token) throw new Error('No valid Polar token')
+
+  const polarUserId = await getPolarUserId(userId)
+  if (!polarUserId) throw new Error('Polar user ID not found')
+
+  const supabase = createServiceClient()
+  const today = new Date().toISOString().split('T')[0]
+
+  console.log(`[syncPolarPhysical] fetching physical info for polarUser=${polarUserId}`)
+
+  const res = await fetch(
+    `${POLAR_API}/users/${polarUserId}/physical-information`,
+    { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+  )
+
+  console.log(`[syncPolarPhysical] status=${res.status}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    console.error(`[syncPolarPhysical] error body: ${body.slice(0, 300)}`)
+    return 0
+  }
+
+  const phys = await res.json() as Record<string, unknown>
+  console.log(`[syncPolarPhysical] resting-heart-rate=${phys['resting-heart-rate']}, weight=${phys['weight']}`)
+
+  const row = {
+    user_id:   userId,
+    provider:  'polar',
+    provider_id: `physical_${today}`,
+    date:      today,
+    data_type: 'physical',
+    raw_data:  {
+      resting_hr: phys['resting-heart-rate'] ?? null,
+      max_hr:     phys['maximum-heart-rate']  ?? null,
+      weight_kg:  phys['weight']              ?? null,
+      height_cm:  phys['height']              ?? null,
+      vo2max:     phys['vo2-max']             ?? null,
+    },
+  }
+
+  const { error } = await supabase
+    .from('health_data')
+    .upsert([row], { onConflict: 'user_id,provider,date,data_type' })
+
+  if (error) {
+    console.error(`[syncPolarPhysical] upsert error: ${error.message}`)
+    return 0
+  }
+  return 1
 }

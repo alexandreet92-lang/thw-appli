@@ -1,5 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
 // SVG icons monochromes
 const IcoPulse = () => (
   <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -22,21 +25,77 @@ const IcoTherm = () => (
   </svg>
 )
 
-const CARDS = [
-  { id:'hrv',  Icon: IcoPulse, label:'HRV',         sub:'Variabilité cardiaque',           device:'Garmin, Whoop ou Oura' },
-  { id:'rhr',  Icon: IcoHeart, label:'FC repos',    sub:'Fréquence cardiaque au repos',    device:'Garmin, Polar ou Whoop' },
-  { id:'spo2', Icon: IcoDrop,  label:'SpO2',        sub:'Saturation en oxygène',           device:'Garmin ou Oura' },
-  { id:'temp', Icon: IcoTherm, label:'Température', sub:'Température corporelle nocturne', device:'Oura' },
-]
+interface PhysicalData {
+  resting_hr: number | null
+  max_hr:     number | null
+  weight_kg:  number | null
+  date:       string | null
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
 
 export default function PhysioSection() {
+  const [physical, setPhysical] = useState<PhysicalData | null>(null)
+
+  useEffect(() => {
+    const sb = createClient()
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      sb.from('health_data')
+        .select('date, raw_data')
+        .eq('user_id', user.id)
+        .eq('data_type', 'physical')
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data) return
+          const rd = data.raw_data as Record<string, unknown> | null
+          setPhysical({
+            resting_hr: rd?.['resting_hr'] != null ? Number(rd['resting_hr']) : null,
+            max_hr:     rd?.['max_hr']     != null ? Number(rd['max_hr'])     : null,
+            weight_kg:  rd?.['weight_kg']  != null ? Number(rd['weight_kg'])  : null,
+            date:       (data.date as string | null) ?? null,
+          })
+        })
+    })
+  }, [])
+
+  const CARDS = [
+    {
+      id: 'rhr', Icon: IcoHeart, label: 'FC repos', sub: 'Fréquence cardiaque au repos',
+      value: physical?.resting_hr != null ? `${physical.resting_hr}` : null,
+      unit: 'bpm', device: 'Polar, Garmin ou Whoop',
+      date: physical?.date ?? null,
+    },
+    {
+      id: 'hrv', Icon: IcoPulse, label: 'HRV', sub: 'Variabilité cardiaque',
+      value: null, unit: 'ms', device: 'Garmin, Whoop ou Oura',
+      date: null,
+    },
+    {
+      id: 'spo2', Icon: IcoDrop, label: 'SpO2', sub: 'Saturation en oxygène',
+      value: null, unit: '%', device: 'Garmin ou Oura',
+      date: null,
+    },
+    {
+      id: 'temp', Icon: IcoTherm, label: 'Température', sub: 'Température corporelle nocturne',
+      value: null, unit: '°C', device: 'Oura',
+      date: null,
+    },
+  ]
+
   return (
     <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
       <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Physiologie</p>
       <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>Données physiologiques</h2>
 
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12 }}>
-        {CARDS.map(({ id, Icon, label, sub, device }) => (
+        {CARDS.map(({ id, Icon, label, sub, value, unit, device, date }) => (
           <div key={id} style={{
             padding:'20px 16px', borderRadius:12,
             background:'var(--bg-card2)', border:'1px solid #E5E7EB',
@@ -47,13 +106,31 @@ export default function PhysioSection() {
             onMouseEnter={e => (e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)')}
             onMouseLeave={e => (e.currentTarget.style.boxShadow='none')}
           >
-            <div style={{ color:'#9CA3AF' }}><Icon /></div>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color:'var(--text-dim)' }}>{label}</p>
+            <div style={{ color: value ? '#8B5CF6' : '#9CA3AF' }}><Icon /></div>
+            <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color: value ? 'var(--text)' : 'var(--text-dim)' }}>{label}</p>
             <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4 }}>{sub}</p>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,margin:0,color:'var(--text-dim)' }}>—</p>
-            <span style={{ padding:'3px 9px',borderRadius:20,background:'var(--bg-card)',border:'1px solid var(--border)',fontSize:9,color:'var(--text-dim)',lineHeight:1.5 }}>
-              Bientôt — {device}
-            </span>
+
+            {value ? (
+              <>
+                <p style={{ fontFamily:'Syne,sans-serif',fontSize:28,fontWeight:800,margin:0,color:'#8B5CF6',lineHeight:1 }}>
+                  {value}
+                  <span style={{ fontSize:13,fontWeight:600,marginLeft:3 }}>{unit}</span>
+                </p>
+                {date && (
+                  <span style={{ fontSize:9,color:'var(--text-dim)',fontStyle:'italic' }}>{fmtDate(date)}</span>
+                )}
+                <span style={{ padding:'3px 9px',borderRadius:20,background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.25)',fontSize:9,color:'#8B5CF6',lineHeight:1.5 }}>
+                  Polar
+                </span>
+              </>
+            ) : (
+              <>
+                <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,margin:0,color:'var(--text-dim)' }}>—</p>
+                <span style={{ padding:'3px 9px',borderRadius:20,background:'var(--bg-card)',border:'1px solid var(--border)',fontSize:9,color:'var(--text-dim)',lineHeight:1.5 }}>
+                  Bientôt — {device}
+                </span>
+              </>
+            )}
           </div>
         ))}
       </div>

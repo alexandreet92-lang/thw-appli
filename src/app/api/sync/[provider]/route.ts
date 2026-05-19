@@ -8,7 +8,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
-import { registerPolarUser, syncPolarActivities, syncPolarSleep } from '@/lib/sync/polar'
+import { registerPolarUser, syncPolarActivities, syncPolarSleep, syncPolarPhysical } from '@/lib/sync/polar'
 
 export async function POST(
   req: NextRequest,
@@ -62,11 +62,13 @@ export async function POST(
       case 'polar': {
         // Ensure user is registered with Polar AccessLink (idempotent, 409 = already done)
         try { await registerPolarUser(userId) } catch { /* 409 ignored */ }
-        const [pActs, pSleep] = await Promise.all([
-          syncPolarActivities(userId).catch(() => 0),
-          syncPolarSleep(userId).catch(() => 0),
+        const [pActs, pSleep, pPhys] = await Promise.all([
+          syncPolarActivities(userId).catch((e) => { console.error('[polar] activities:', e); return 0 }),
+          syncPolarSleep(userId).catch((e) => { console.error('[polar] sleep:', e); return 0 }),
+          syncPolarPhysical(userId).catch((e) => { console.error('[polar] physical:', e); return 0 }),
         ])
-        count = pActs + pSleep
+        count = pActs + pSleep + pPhys
+        console.log(`[sync/polar] activities=${pActs} sleep=${pSleep} physical=${pPhys}`)
         break
       }
       case 'withings': {

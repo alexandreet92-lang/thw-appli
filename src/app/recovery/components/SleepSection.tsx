@@ -77,14 +77,15 @@ function fmtTimestamp(ts: string | null | undefined): string {
 }
 
 export default function SleepSection({ checkin, history }: Props) {
-  const [polarSleepData, setPolarSleepData] = useState<SleepDataProp | null>(null)
+  const [polarSleepData,    setPolarSleepData]    = useState<SleepDataProp | null>(null)
+  const [polarSleepDate,    setPolarSleepDate]    = useState<string | null>(null)
 
   useEffect(() => {
     const sb = createClient()
     sb.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
       sb.from('health_data')
-        .select('sleep_duration_min,sleep_score,rem_duration_min,deep_duration_min,light_duration_min,awake_duration_min,sleep_start,sleep_end')
+        .select('date,sleep_duration_min,sleep_score,rem_duration_min,deep_duration_min,light_duration_min,awake_duration_min,sleep_start,sleep_end')
         .eq('user_id', user.id)
         .eq('data_type', 'sleep')
         .order('date', { ascending: false })
@@ -93,6 +94,7 @@ export default function SleepSection({ checkin, history }: Props) {
         .then(({ data }) => {
           if (!data) return
           const d = data as {
+            date: string | null
             sleep_duration_min: number | null
             sleep_score: number | null
             rem_duration_min: number | null
@@ -112,6 +114,7 @@ export default function SleepSection({ checkin, history }: Props) {
           const sleepEnd   = fmtTimestamp(d.sleep_end)
           if (totalMin > 0) {
             setPolarSleepData({ score, totalMin, remMin, deepMin, lightMin, wakeMin, sleepStart, sleepEnd })
+            setPolarSleepDate(d.date ?? null)
           }
         })
     })
@@ -133,8 +136,18 @@ export default function SleepSection({ checkin, history }: Props) {
 
   return (
     <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
-      <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Sommeil</p>
-      <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>Analyse du sommeil</h2>
+      <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16 }}>
+        <div>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Sommeil</p>
+          <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:0 }}>Analyse du sommeil</h2>
+        </div>
+        {polarSleepDate && (
+          <span style={{ fontSize:10,color:'var(--text-dim)',fontStyle:'italic',paddingTop:4 }}>
+            Dernière nuit&nbsp;:{' '}
+            {new Date(polarSleepDate + 'T12:00:00').toLocaleDateString('fr-FR',{ day:'numeric', month:'long' })}
+          </span>
+        )}
+      </div>
 
       {/* Cards row */}
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20 }}>

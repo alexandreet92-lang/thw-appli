@@ -8,6 +8,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
+import { registerPolarUser, syncPolarActivities, syncPolarSleep } from '@/lib/sync/polar'
 
 export async function POST(
   req: NextRequest,
@@ -58,6 +59,16 @@ export async function POST(
       case 'wahoo':
         count = await syncWahooWorkouts(userId)
         break
+      case 'polar': {
+        // Ensure user is registered with Polar AccessLink (idempotent, 409 = already done)
+        try { await registerPolarUser(userId) } catch { /* 409 ignored */ }
+        const [pActs, pSleep] = await Promise.all([
+          syncPolarActivities(userId).catch(() => 0),
+          syncPolarSleep(userId).catch(() => 0),
+        ])
+        count = pActs + pSleep
+        break
+      }
       case 'withings': {
         const [n1, n2] = await Promise.all([
           syncWithingsBodyMetrics(userId),

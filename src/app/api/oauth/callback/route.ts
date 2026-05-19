@@ -40,6 +40,16 @@ export async function GET(req: NextRequest) {
     const tokens = await exchangeCode(provider, cfg, code)
     await saveTokens(user.id, provider, tokens)
 
+    // Polar: register user with AccessLink immediately (required before any data call)
+    if (provider === 'polar') {
+      try {
+        const { registerPolarUser } = await import('@/lib/sync/polar')
+        await registerPolarUser(user.id)
+      } catch {
+        // 409 = already registered — not an error
+      }
+    }
+
     fetch(`${BASE_URL}/api/sync/${provider}`, {
       method:  'POST',
       headers: { 'x-user-id': user.id },
@@ -99,10 +109,15 @@ async function exchangeCode(
     provider === 'strava' ? json.athlete :
     provider === 'wahoo'  ? json.user    : {}
 
+  // Polar tokens do not expire — store null to prevent spurious refresh attempts
+  const expiresAt = provider === 'polar'
+    ? null
+    : (json.expires_at ?? Math.floor(Date.now() / 1000) + (json.expires_in ?? 3600))
+
   return {
     access_token:     json.access_token,
-    refresh_token:    json.refresh_token,
-    expires_at:       json.expires_at ?? Math.floor(Date.now() / 1000) + (json.expires_in ?? 3600),
+    refresh_token:    json.refresh_token ?? null,
+    expires_at:       expiresAt,
     provider_user_id: providerUserId,
     scope:            json.scope,
     provider_data:    providerData,

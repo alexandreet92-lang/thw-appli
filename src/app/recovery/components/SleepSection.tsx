@@ -3,7 +3,8 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { CheckInRow } from './types'
 import { fmtHours } from './types'
-import SleepHypnogram from './SleepHypnogram'
+import SleepHypnogram, { type SleepDataProp } from './SleepHypnogram'
+import { createClient } from '@/lib/supabase/client'
 
 const TREND_DAYS = 14
 
@@ -65,7 +66,57 @@ function SleepTrend({ data }: { data: { date: string; quality: number; hours: nu
   )
 }
 
+function fmtTimestamp(ts: string | null | undefined): string {
+  if (!ts) return '00:00'
+  try {
+    const d = new Date(ts)
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  } catch {
+    return '00:00'
+  }
+}
+
 export default function SleepSection({ checkin, history }: Props) {
+  const [polarSleepData, setPolarSleepData] = useState<SleepDataProp | null>(null)
+
+  useEffect(() => {
+    const sb = createClient()
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      sb.from('health_data')
+        .select('sleep_duration_min,sleep_score,rem_duration_min,deep_duration_min,light_duration_min,awake_duration_min,sleep_start,sleep_end')
+        .eq('user_id', user.id)
+        .eq('data_type', 'sleep')
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data) return
+          const d = data as {
+            sleep_duration_min: number | null
+            sleep_score: number | null
+            rem_duration_min: number | null
+            deep_duration_min: number | null
+            light_duration_min: number | null
+            awake_duration_min: number | null
+            sleep_start: string | null
+            sleep_end: string | null
+          }
+          const totalMin   = d.sleep_duration_min ?? 0
+          const remMin     = d.rem_duration_min   ?? 0
+          const deepMin    = d.deep_duration_min  ?? 0
+          const lightMin   = d.light_duration_min ?? Math.max(0, totalMin - remMin - deepMin)
+          const wakeMin    = d.awake_duration_min ?? 0
+          const score      = d.sleep_score        ?? 0
+          const sleepStart = fmtTimestamp(d.sleep_start)
+          const sleepEnd   = fmtTimestamp(d.sleep_end)
+          if (totalMin > 0) {
+            setPolarSleepData({ score, totalMin, remMin, deepMin, lightMin, wakeMin, sleepStart, sleepEnd })
+          }
+        })
+    })
+  }, [])
+
   const trend = useMemo(() => {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - TREND_DAYS)
     const cs = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`
@@ -124,7 +175,7 @@ export default function SleepSection({ checkin, history }: Props) {
       {/* Hypnogram */}
       <div style={{ marginBottom:4 }}>
         <p style={{ fontSize:11,fontWeight:600,color:'var(--text-dim)',margin:'0 0 8px' }}>Hypnogramme</p>
-        <SleepHypnogram />
+        <SleepHypnogram sleepData={polarSleepData} />
       </div>
     </div>
   )

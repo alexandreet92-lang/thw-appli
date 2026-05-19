@@ -26,7 +26,8 @@ interface AppDef {
   provider: string | null
   color: string
   logoInitial: string
-  simpleIconSlug?: string
+  /** filename in /public/logos/apps/ (without .png), null = use initials */
+  logo: string | null
   description: string
 }
 
@@ -72,56 +73,56 @@ const CATEGORIES: Category[] = [
 
 const APPS: AppDef[] = [
   // Entraînement
-  { id: 'strava',       name: 'Strava',               category: 'training',   provider: 'strava',    color: '#FC4C02', logoInitial: 'ST', simpleIconSlug: 'strava',      description: 'Suivi GPS running & cycling' },
-  { id: 'garmin',       name: 'Garmin Connect',        category: 'training',   provider: null,        color: '#007CC3', logoInitial: 'GC', simpleIconSlug: 'garmin',      description: 'Montres et capteurs Garmin' },
-  { id: 'wahoo',        name: 'Wahoo',                 category: 'training',   provider: 'wahoo',     color: '#E8002D', logoInitial: 'WH', simpleIconSlug: 'wahoo',       description: 'Capteurs & home trainers' },
-  { id: 'polar',        name: 'Polar',                 category: 'training',   provider: 'polar',     color: '#D9001B', logoInitial: 'PO', simpleIconSlug: 'polar',       description: 'Montres sport & cardiaque' },
-  { id: 'suunto',       name: 'Suunto',                category: 'training',   provider: null,        color: '#E8002D', logoInitial: 'SU', simpleIconSlug: 'suunto',      description: 'Montres outdoor & navigation' },
-  { id: 'coros',        name: 'Coros',                 category: 'training',   provider: null,        color: '#1A1A1A', logoInitial: 'CO',                               description: 'Montres GPS performance' },
-  { id: 'zwift',        name: 'Zwift',                 category: 'training',   provider: null,        color: '#F05C2B', logoInitial: 'ZW', simpleIconSlug: 'zwift',       description: 'Cyclisme & course virtuelle' },
-  { id: 'rouvy',        name: 'Rouvy',                 category: 'training',   provider: null,        color: '#00A651', logoInitial: 'RV',                               description: 'Simulation de routes réelles' },
-  { id: 'mywhoosh',     name: 'MyWhoosh',              category: 'training',   provider: null,        color: '#FF6B00', logoInitial: 'MW',                               description: 'Cyclisme virtuel compétitif' },
+  { id: 'strava',       name: 'Strava',               category: 'training',   provider: 'strava',    color: '#FC4C02', logoInitial: 'ST', logo: 'strava',        description: 'Suivi GPS running & cycling' },
+  { id: 'garmin',       name: 'Garmin Connect',        category: 'training',   provider: null,        color: '#007CC3', logoInitial: 'GC', logo: null,            description: 'Montres et capteurs Garmin' },
+  { id: 'wahoo',        name: 'Wahoo',                 category: 'training',   provider: 'wahoo',     color: '#E8002D', logoInitial: 'WH', logo: 'wahoo',         description: 'Capteurs & home trainers' },
+  { id: 'polar',        name: 'Polar',                 category: 'training',   provider: 'polar',     color: '#D9001B', logoInitial: 'PO', logo: 'polar',         description: 'Montres sport & cardiaque' },
+  { id: 'suunto',       name: 'Suunto',                category: 'training',   provider: null,        color: '#E8002D', logoInitial: 'SU', logo: 'suunto',        description: 'Montres outdoor & navigation' },
+  { id: 'coros',        name: 'Coros',                 category: 'training',   provider: null,        color: '#1A1A1A', logoInitial: 'CO', logo: 'coros',         description: 'Montres GPS performance' },
+  { id: 'zwift',        name: 'Zwift',                 category: 'training',   provider: null,        color: '#F05C2B', logoInitial: 'ZW', logo: 'zwift',         description: 'Cyclisme & course virtuelle' },
+  { id: 'rouvy',        name: 'Rouvy',                 category: 'training',   provider: null,        color: '#00A651', logoInitial: 'RV', logo: 'rouvy',         description: 'Simulation de routes réelles' },
+  { id: 'mywhoosh',     name: 'MyWhoosh',              category: 'training',   provider: null,        color: '#FF6B00', logoInitial: 'MW', logo: 'mywhoosh',      description: 'Cyclisme virtuel compétitif' },
 
   // Récupération & Santé
-  { id: 'whoop',        name: 'Whoop',                 category: 'recovery',   provider: null,        color: '#00C8A0', logoInitial: 'WP', simpleIconSlug: 'whoop',       description: 'Récupération & strain quotidien' },
-  { id: 'oura',         name: 'Oura',                  category: 'recovery',   provider: null,        color: '#B8A882', logoInitial: 'OR', simpleIconSlug: 'ouraring',    description: 'Bague connectée & sommeil' },
-  { id: 'hrv4training', name: 'HRV4Training',          category: 'recovery',   provider: null,        color: '#FF3366', logoInitial: 'H4',                               description: 'Suivi HRV via smartphone' },
-  { id: 'elitehrv',     name: 'Elite HRV',             category: 'recovery',   provider: null,        color: '#4A90D9', logoInitial: 'EH',                               description: 'Analyse variabilité cardiaque' },
-  { id: 'welltory',     name: 'Welltory',              category: 'recovery',   provider: null,        color: '#7C5CBF', logoInitial: 'WT',                               description: 'Stress & énergie quotidiens' },
-  { id: 'apple-health', name: 'Apple Health',          category: 'recovery',   provider: null,        color: '#FF2D55', logoInitial: 'AH', simpleIconSlug: 'apple',       description: 'Hub santé iOS centralisé' },
-  { id: 'google-fit',   name: 'Google Fit',            category: 'recovery',   provider: null,        color: '#4285F4', logoInitial: 'GF', simpleIconSlug: 'googlefit',   description: 'Hub santé Android' },
-  { id: 'samsung',      name: 'Samsung Health',        category: 'recovery',   provider: null,        color: '#1428A0', logoInitial: 'SH', simpleIconSlug: 'samsung',     description: 'Écosystème Galaxy' },
+  { id: 'whoop',        name: 'Whoop',                 category: 'recovery',   provider: null,        color: '#00C8A0', logoInitial: 'WP', logo: 'whoop',         description: 'Récupération & strain quotidien' },
+  { id: 'oura',         name: 'Oura',                  category: 'recovery',   provider: null,        color: '#B8A882', logoInitial: 'OR', logo: 'oura',          description: 'Bague connectée & sommeil' },
+  { id: 'hrv4training', name: 'HRV4Training',          category: 'recovery',   provider: null,        color: '#FF3366', logoInitial: 'H4', logo: 'hrv4training',  description: 'Suivi HRV via smartphone' },
+  { id: 'elitehrv',     name: 'Elite HRV',             category: 'recovery',   provider: null,        color: '#4A90D9', logoInitial: 'EH', logo: 'elitehrv',      description: 'Analyse variabilité cardiaque' },
+  { id: 'welltory',     name: 'Welltory',              category: 'recovery',   provider: null,        color: '#7C5CBF', logoInitial: 'WT', logo: 'welltory',      description: 'Stress & énergie quotidiens' },
+  { id: 'apple-health', name: 'Apple Health',          category: 'recovery',   provider: null,        color: '#FF2D55', logoInitial: 'AH', logo: 'applehealth',   description: 'Hub santé iOS centralisé' },
+  { id: 'google-fit',   name: 'Google Fit',            category: 'recovery',   provider: null,        color: '#4285F4', logoInitial: 'GF', logo: 'googlefit',     description: 'Hub santé Android' },
+  { id: 'samsung',      name: 'Samsung Health',        category: 'recovery',   provider: null,        color: '#1428A0', logoInitial: 'SH', logo: 'samsunghealth', description: 'Écosystème Galaxy' },
 
   // Balance & Corps
-  { id: 'withings',     name: 'Withings',              category: 'body',       provider: 'withings',  color: '#FF6600', logoInitial: 'WI', simpleIconSlug: 'withings',    description: 'Balance, composition corporelle & sommeil' },
-  { id: 'fitbit',       name: 'Fitbit',                category: 'body',       provider: null,        color: '#00B0B9', logoInitial: 'FB', simpleIconSlug: 'fitbit',      description: 'Bracelets & composition' },
-  { id: 'garmin-h',     name: 'Garmin Health',         category: 'body',       provider: null,        color: '#007CC3', logoInitial: 'GH', simpleIconSlug: 'garmin',      description: 'Données santé Garmin' },
-  { id: 'zepp',         name: 'Zepp / Mi Fit',         category: 'body',       provider: null,        color: '#FF6900', logoInitial: 'ZP', simpleIconSlug: 'zepp',        description: 'Wearables Amazfit & Xiaomi' },
-  { id: 'renpho',       name: 'Renpho',                category: 'body',       provider: null,        color: '#00A8FF', logoInitial: 'RP',                               description: 'Balances connectées abordables' },
-  { id: 'eufy',         name: 'Eufy Smart Scale',      category: 'body',       provider: null,        color: '#2C7BE5', logoInitial: 'EU',                               description: 'Balances Eufy intelligentes' },
-  { id: 'tanita',       name: 'Tanita',                category: 'body',       provider: null,        color: '#003087', logoInitial: 'TN',                               description: 'Analyseurs corporels pro' },
-  { id: 'omron',        name: 'Omron',                 category: 'body',       provider: null,        color: '#C40000', logoInitial: 'OM',                               description: 'Tensiomètres & cardio' },
+  { id: 'withings',     name: 'Withings',              category: 'body',       provider: 'withings',  color: '#FF6600', logoInitial: 'WI', logo: 'withings',      description: 'Balance, composition corporelle & sommeil' },
+  { id: 'fitbit',       name: 'Fitbit',                category: 'body',       provider: null,        color: '#00B0B9', logoInitial: 'FB', logo: 'fitbit',        description: 'Bracelets & composition' },
+  { id: 'garmin-h',     name: 'Garmin Health',         category: 'body',       provider: null,        color: '#007CC3', logoInitial: 'GH', logo: null,            description: 'Données santé Garmin' },
+  { id: 'zepp',         name: 'Zepp / Mi Fit',         category: 'body',       provider: null,        color: '#FF6900', logoInitial: 'ZP', logo: 'zepp',          description: 'Wearables Amazfit & Xiaomi' },
+  { id: 'renpho',       name: 'Renpho',                category: 'body',       provider: null,        color: '#00A8FF', logoInitial: 'RP', logo: 'renpho',        description: 'Balances connectées abordables' },
+  { id: 'eufy',         name: 'Eufy Smart Scale',      category: 'body',       provider: null,        color: '#2C7BE5', logoInitial: 'EU', logo: 'eufy',          description: 'Balances Eufy intelligentes' },
+  { id: 'tanita',       name: 'Tanita',                category: 'body',       provider: null,        color: '#003087', logoInitial: 'TN', logo: 'tanita',        description: 'Analyseurs corporels pro' },
+  { id: 'omron',        name: 'Omron',                 category: 'body',       provider: null,        color: '#C40000', logoInitial: 'OM', logo: 'omron',         description: 'Tensiomètres & cardio' },
 
   // Nutrition
-  { id: 'myfitnesspal', name: 'MyFitnessPal',          category: 'nutrition',  provider: null,        color: '#005594', logoInitial: 'MF', simpleIconSlug: 'myfitnesspal', description: 'Suivi calorique & macro' },
-  { id: 'cronometer',   name: 'Cronometer',            category: 'nutrition',  provider: null,        color: '#F29200', logoInitial: 'CR', simpleIconSlug: 'cronometer',  description: 'Micronutriments précis' },
-  { id: 'yazio',        name: 'Yazio',                 category: 'nutrition',  provider: null,        color: '#EC6F1A', logoInitial: 'YZ',                               description: 'Calories & recettes saines' },
-  { id: 'lifesum',      name: 'Lifesum',               category: 'nutrition',  provider: null,        color: '#8CC63F', logoInitial: 'LS',                               description: 'Plans nutritionnels guidés' },
-  { id: 'macrofactor',  name: 'Macrofactor',           category: 'nutrition',  provider: null,        color: '#6366F1', logoInitial: 'MC',                               description: 'Macros adaptatifs intelligents' },
-  { id: 'carbon',       name: 'Carbon Diet Coach',     category: 'nutrition',  provider: null,        color: '#1C1C1E', logoInitial: 'CD',                               description: 'Coaching nutritionnel IA' },
+  { id: 'myfitnesspal', name: 'MyFitnessPal',          category: 'nutrition',  provider: null,        color: '#005594', logoInitial: 'MF', logo: 'myfitnesspal',  description: 'Suivi calorique & macro' },
+  { id: 'cronometer',   name: 'Cronometer',            category: 'nutrition',  provider: null,        color: '#F29200', logoInitial: 'CR', logo: 'cronometer',    description: 'Micronutriments précis' },
+  { id: 'yazio',        name: 'Yazio',                 category: 'nutrition',  provider: null,        color: '#EC6F1A', logoInitial: 'YZ', logo: 'yazio',         description: 'Calories & recettes saines' },
+  { id: 'lifesum',      name: 'Lifesum',               category: 'nutrition',  provider: null,        color: '#8CC63F', logoInitial: 'LS', logo: 'lifesum',       description: 'Plans nutritionnels guidés' },
+  { id: 'macrofactor',  name: 'Macrofactor',           category: 'nutrition',  provider: null,        color: '#6366F1', logoInitial: 'MC', logo: 'macrofactor',   description: 'Macros adaptatifs intelligents' },
+  { id: 'carbon',       name: 'Carbon Diet Coach',     category: 'nutrition',  provider: null,        color: '#1C1C1E', logoInitial: 'CD', logo: null,            description: 'Coaching nutritionnel IA' },
 
   // Biométrie & Capteurs
-  { id: 'stryd',        name: 'Stryd',                 category: 'biometrics', provider: null,        color: '#FF5722', logoInitial: 'SY',                               description: 'Puissance de course running' },
-  { id: 'core',         name: 'Core',                  category: 'biometrics', provider: null,        color: '#00C8E0', logoInitial: 'CR',                               description: 'Température corporelle core' },
-  { id: 'supersapiens', name: 'Supersapiens',          category: 'biometrics', provider: null,        color: '#00E5B4', logoInitial: 'SS',                               description: 'Glucose sanguin en continu' },
-  { id: 'levels',       name: 'Levels',                category: 'biometrics', provider: null,        color: '#111827', logoInitial: 'LV',                               description: 'Métabolisme & énergie' },
-  { id: 'dexcom',       name: 'Dexcom',                category: 'biometrics', provider: null,        color: '#00A4E0', logoInitial: 'DX', simpleIconSlug: 'dexcom',      description: 'Capteur glucose G7' },
-  { id: 'abbott',       name: 'Abbott Freestyle Libre',category: 'biometrics', provider: null,        color: '#E31837', logoInitial: 'AB',                               description: 'Libre 3 MCG' },
+  { id: 'stryd',        name: 'Stryd',                 category: 'biometrics', provider: null,        color: '#FF5722', logoInitial: 'SY', logo: 'stryd',         description: 'Puissance de course running' },
+  { id: 'core',         name: 'Core',                  category: 'biometrics', provider: null,        color: '#00C8E0', logoInitial: 'CR', logo: 'core',          description: 'Température corporelle core' },
+  { id: 'supersapiens', name: 'Supersapiens',          category: 'biometrics', provider: null,        color: '#00E5B4', logoInitial: 'SS', logo: 'supersapiens',  description: 'Glucose sanguin en continu' },
+  { id: 'levels',       name: 'Levels',                category: 'biometrics', provider: null,        color: '#111827', logoInitial: 'LV', logo: 'levels',        description: 'Métabolisme & énergie' },
+  { id: 'dexcom',       name: 'Dexcom',                category: 'biometrics', provider: null,        color: '#00A4E0', logoInitial: 'DX', logo: 'dexcom',        description: 'Capteur glucose G7' },
+  { id: 'abbott',       name: 'Abbott Freestyle Libre',category: 'biometrics', provider: null,        color: '#E31837', logoInitial: 'AB', logo: 'abbott',        description: 'Libre 3 MCG' },
 
   // Sommeil
-  { id: 'sleepcycle',   name: 'Sleep Cycle',           category: 'sleep',      provider: null,        color: '#5B4FCF', logoInitial: 'SC',                               description: 'Réveil intelligent & cycles' },
-  { id: 'pillow',       name: 'Pillow',                category: 'sleep',      provider: null,        color: '#FF9500', logoInitial: 'PI',                               description: 'Analyse sommeil Apple Watch' },
-  { id: 'autosleep',    name: 'AutoSleep',             category: 'sleep',      provider: null,        color: '#FF2D55', logoInitial: 'AS',                               description: 'Suivi automatique sommeil' },
+  { id: 'sleepcycle',   name: 'Sleep Cycle',           category: 'sleep',      provider: null,        color: '#5B4FCF', logoInitial: 'SC', logo: 'sleepcycle',    description: 'Réveil intelligent & cycles' },
+  { id: 'pillow',       name: 'Pillow',                category: 'sleep',      provider: null,        color: '#FF9500', logoInitial: 'PI', logo: null,            description: 'Analyse sommeil Apple Watch' },
+  { id: 'autosleep',    name: 'AutoSleep',             category: 'sleep',      provider: null,        color: '#FF2D55', logoInitial: 'AS', logo: null,            description: 'Suivi automatique sommeil' },
 ]
 
 // Providers with working OAuth flow
@@ -146,16 +147,21 @@ function AppLogo({ app, size = 48, logoErrors, onError }: {
   app: AppDef; size?: number; logoErrors: Set<string>; onError: (id: string) => void
 }) {
   const hasError = logoErrors.has(app.id)
-  const showIcon = app.simpleIconSlug && !hasError
+  const showLogo = app.logo !== null && !hasError
   const radius = size <= 48 ? 12 : 14
+  const imgSize = Math.round(size * 0.75)
   return (
-    <div style={{ width: size, height: size, borderRadius: radius, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-      {showIcon ? (
-        <img src={`https://cdn.simpleicons.org/${app.simpleIconSlug}/${app.color.replace('#', '')}`}
-          width={Math.round(size * 0.54)} height={Math.round(size * 0.54)} alt={app.name}
-          onError={() => onError(app.id)} style={{ objectFit: 'contain', display: 'block' }} />
+    <div style={{ width: size, height: size, borderRadius: radius, background: showLogo ? '#fff' : app.color, border: showLogo ? '1px solid rgba(0,0,0,0.08)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+      {showLogo ? (
+        <img
+          src={`/logos/apps/${app.logo}.png`}
+          width={imgSize} height={imgSize}
+          alt={app.name}
+          onError={() => onError(app.id)}
+          style={{ objectFit: 'contain', display: 'block', imageRendering: 'auto' }}
+        />
       ) : (
-        <div style={{ width: size, height: size, background: app.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: Math.round(size * 0.27), color: '#fff', letterSpacing: '0.02em' }}>
+        <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: Math.round(size * 0.27), color: '#fff', letterSpacing: '0.02em' }}>
           {app.logoInitial}
         </div>
       )}

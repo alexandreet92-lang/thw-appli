@@ -654,16 +654,12 @@ export function Sidebar() {
 
         {/* Logo centré */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
-            fontSize: 10, color: '#fff',
-            boxShadow: '0 0 10px rgba(0,200,224,0.3)',
-          }}>
-            THW
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/logo_app.png"
+            alt="THW Coaching"
+            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }}
+          />
           <span style={{
             fontFamily: 'Syne, sans-serif', fontWeight: 700,
             fontSize: 15, color: 'var(--text)',

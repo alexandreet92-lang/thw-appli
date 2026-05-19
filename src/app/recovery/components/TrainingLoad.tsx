@@ -4,7 +4,6 @@ import { useMemo, useEffect, useState } from 'react'
 import type { ActivityRow } from './types'
 import { estimateTss, fmtSec } from './types'
 import PmcChart from './PmcChart'
-import VolumeChart from './VolumeChart'
 
 const ACWR_ZONES = [
   { max:0.8,  color:'#3B8FD4', label:'Sous-entraîn.' },
@@ -127,9 +126,6 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
           </div>
         </div>
       </div>
-
-      {/* Volume chart */}
-      <VolumeChart activities={activities} />
 
       {/* Zones */}
       {zoneSecs.length > 0 && (

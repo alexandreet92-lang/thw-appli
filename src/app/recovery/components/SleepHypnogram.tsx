@@ -211,10 +211,11 @@ function ScoreCircle({ score }: { score: number }) {
 // ── Main component ─────────────────────────────────────────────
 
 interface Props {
-  sleepData?: SleepDataProp | null
+  sleepData?:      SleepDataProp | null
+  polarConnected?: boolean
 }
 
-export default function SleepHypnogram({ sleepData }: Props) {
+export default function SleepHypnogram({ sleepData, polarConnected = false }: Props) {
   const hasDeviceSleepData = !!sleepData
 
   const phases     = hasDeviceSleepData ? buildPhasesFromTotals(sleepData!) : DEMO_PHASES
@@ -257,12 +258,23 @@ export default function SleepHypnogram({ sleepData }: Props) {
         </div>
       </div>
 
-      {/* "Aperçu" overlay — only when no real device data */}
-      {!hasDeviceSleepData && (
+      {/* Overlay — état selon connexion device */}
+      {!hasDeviceSleepData && !polarConnected && (
         <div style={{ position:'absolute' as const,inset:0,borderRadius:14,background:'rgba(var(--bg-card-rgb,255,255,255),0.55)',backdropFilter:'blur(2px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:10,pointerEvents:'none' as const }}>
           <div style={{ padding:'8px 16px',borderRadius:20,background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.35)',textAlign:'center' as const }}>
             <p style={{ fontSize:12,fontWeight:700,color:'#8B5CF6',margin:'0 0 3px' }}>Aperçu</p>
             <p style={{ fontSize:10,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>Connecte Polar, Garmin ou Oura<br/>pour voir tes données réelles</p>
+          </div>
+        </div>
+      )}
+      {!hasDeviceSleepData && polarConnected && (
+        <div style={{ position:'absolute' as const,inset:0,borderRadius:14,background:'rgba(var(--bg-card-rgb,255,255,255),0.45)',backdropFilter:'blur(1px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:8,pointerEvents:'none' as const }}>
+          <div style={{ padding:'8px 16px',borderRadius:20,background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.25)',textAlign:'center' as const }}>
+            <p style={{ fontSize:11,fontWeight:600,color:'#8B5CF6',margin:'0 0 3px',display:'flex',alignItems:'center',gap:6,justifyContent:'center' }}>
+              <span style={{ width:6,height:6,borderRadius:'50%',background:'#8B5CF6',display:'inline-block',animation:'pulse 1.5s ease-in-out infinite' }} />
+              En attente de données
+            </p>
+            <p style={{ fontSize:9,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>Lance une synchronisation Polar<br/>pour charger tes nuits</p>
           </div>
         </div>
       )}

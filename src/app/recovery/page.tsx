@@ -14,7 +14,7 @@ import WeeklySummary  from './components/WeeklySummary'
 import TrainingLoad   from './components/TrainingLoad'
 import SleepSection   from './components/SleepSection'
 import RecoveryTrends from './components/RecoveryTrends'
-import BodyTracking   from './components/BodyTracking'
+
 import PhysioSection  from './components/PhysioSection'
 import DataSources    from './components/DataSources'
 
@@ -68,8 +68,8 @@ export default function RecoveryPage() {
       sb.from('daily_checkin').select('*').eq('user_id',user.id).eq('date',today).maybeSingle(),
       sb.from('daily_checkin').select('*').eq('user_id',user.id).gte('date',d90).order('date',{ascending:false}),
       sb.from('daily_checkin').select('*').eq('user_id',user.id).gte('date',d60).lt('date',d30).order('date',{ascending:false}),
-      sb.from('activities').select('id,sport_type,started_at,moving_time_s,elapsed_time_s,load').eq('user_id',user.id).gte('started_at',d180+'T00:00:00').order('started_at',{ascending:true}),
-      sb.from('activities').select('id,sport_type,started_at,moving_time_s,elapsed_time_s,load').eq('user_id',user.id).gte('started_at',d60+'T00:00:00').lt('started_at',d30+'T00:00:00'),
+      sb.from('activities').select('id,sport_type,started_at,moving_time_s,elapsed_time_s,tss').eq('user_id',user.id).gte('started_at',d180+'T00:00:00').order('started_at',{ascending:true}),
+      sb.from('activities').select('id,sport_type,started_at,moving_time_s,elapsed_time_s,tss').eq('user_id',user.id).gte('started_at',d60+'T00:00:00').lt('started_at',d30+'T00:00:00'),
     ])
 
     setCheckin((ci.data as CheckInRow | null) ?? null)
@@ -134,11 +134,8 @@ export default function RecoveryPage() {
         <TrainingLoad activities={activities} />
       </section>
 
-      {/* 5+7. Sleep + BodyTracking — desktop side by side */}
-      <div style={{ display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)',gap:16,alignItems:'start' }} className="rc-2col">
-        <SleepSection checkin={checkin} history={history} />
-        <BodyTracking />
-      </div>
+      {/* 5. Sleep */}
+      <SleepSection checkin={checkin} history={history} />
 
       {/* 6. Trends */}
       <RecoveryTrends history={history} activities={activities} />

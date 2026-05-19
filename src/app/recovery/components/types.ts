@@ -13,7 +13,7 @@ export interface ActivityRow {
   id: string; sport_type: string | null
   started_at: string
   moving_time_s: number | null; elapsed_time_s: number | null
-  load?: number | null
+  tss?: number | null
 }
 
 export interface PmcPoint {
@@ -89,12 +89,12 @@ export function metricDotColor(v: number, inverted = false): string {
 
 /** TSS approximé depuis une activité Strava */
 export function estimateTss(row: ActivityRow): number {
-  if (row.load != null && row.load > 0) return row.load
+  if (row.tss != null && row.tss > 0) return row.tss
   const secs = row.moving_time_s ?? row.elapsed_time_s ?? 0
   const hours = secs / 3600
   const sport = (row.sport_type ?? '').toLowerCase()
-  const IF = sport.includes('run') ? 0.85
-    : sport.includes('rid') || sport.includes('cycl') ? 0.80
+  const IF = sport.includes('run') || sport.includes('trail') ? 0.85
+    : sport.includes('rid') || sport.includes('cycl') || sport.includes('bike') ? 0.80
     : sport.includes('swim') ? 0.90
     : sport.includes('hyrox') ? 1.0
     : 0.70
@@ -104,17 +104,23 @@ export function estimateTss(row: ActivityRow): number {
 /** Sport color */
 export const SPORT_COLORS: Record<string, string> = {
   run:'#f97316', running:'#f97316',
-  bike:'#3b82f6', cycling:'#3b82f6', ride:'#3b82f6', virtualride:'#3b82f6',
-  swim:'#06b6d4', swimming:'#06b6d4',
-  gym:'#8b5cf6', weighttraining:'#8b5cf6', workout:'#8b5cf6',
+  trail_run:'#84cc16', trail:'#84cc16',
+  bike:'#3b82f6', cycling:'#3b82f6', ride:'#3b82f6', virtualride:'#3b82f6', virtual_bike:'#60a5fa',
+  swim:'#06b6d4', swimming:'#06b6d4', open_water_swim:'#0891b2',
+  gym:'#8b5cf6', weighttraining:'#8b5cf6', workout:'#8b5cf6', crossfit:'#a855f7', hiit:'#c084fc', yoga:'#d8b4fe',
   hyrox:'#ef4444', rowing:'#14b8a6',
+  ski:'#93c5fd', other:'#6b7280',
 }
 export function sportColor(s: string): string { return SPORT_COLORS[s.toLowerCase()] ?? '#6b7280' }
 export function sportLabel(s: string): string {
   const m: Record<string,string> = {
-    run:'Course', running:'Course', ride:'Vélo', virtualride:'Vélo',
-    cycling:'Vélo', bike:'Vélo', swim:'Natation', swimming:'Natation',
-    gym:'Gym', weighttraining:'Gym', hyrox:'Hyrox', rowing:'Aviron',
+    run:'Course', running:'Course',
+    trail_run:'Trail', trail:'Trail',
+    ride:'Vélo', virtualride:'Vélo', bike:'Vélo', cycling:'Vélo', virtual_bike:'Vélo virtuel',
+    swim:'Natation', swimming:'Natation', open_water_swim:'Nage OW',
+    gym:'Gym', weighttraining:'Gym', workout:'Gym', crossfit:'CrossFit', hiit:'HIIT', yoga:'Yoga',
+    hyrox:'Hyrox', rowing:'Aviron',
+    ski:'Ski',
   }
   return m[s.toLowerCase()] ?? s
 }

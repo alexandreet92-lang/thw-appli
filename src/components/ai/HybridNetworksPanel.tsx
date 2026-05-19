@@ -817,9 +817,9 @@ export default function HybridNetworksPanel({
                   padding: '9px 13px',
                 }}>
                   {msg.role === 'assistant' && msg.content === '' ? (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {[0,1,2].map(i => (
-                        <span key={i} style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--ai-dim)', animation: `ai_dot_pulse 1.4s ease infinite ${i * 0.2}s` }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {(['aip-dot-1','aip-dot-2','aip-dot-3'] as const).map(cls => (
+                        <span key={cls} className={cls} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--ai-dim)' }} />
                       ))}
                     </div>
                   ) : msg.role === 'assistant' ? (
@@ -839,23 +839,10 @@ export default function HybridNetworksPanel({
       </div>{/* /scroll area */}
 
       {/* ── INPUT BAR ─────────────────────────────────────────── */}
-      <div style={{
-        padding: '10px 16px 14px',
-        borderTop: '1px solid var(--ai-border)',
-        flexShrink: 0,
-        background: 'var(--ai-bg)',
-      }}>
+      <div className="aip-input-footer">
         <div
-          className="hn-input-wrap"
-          style={{
-            display: 'flex', alignItems: 'flex-end', gap: 8,
-            background: 'var(--ai-bg)',
-            border: '1px solid var(--ai-border)',
-            borderRadius: 16,
-            padding: '8px 8px 8px 14px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            transition: 'border-color 0.15s, box-shadow 0.15s',
-          }}
+          className="aip-input-wrap"
+          style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 8px 8px 14px', transition: 'border-color 0.15s' }}
         >
           <textarea
             ref={chatAreaRef}
@@ -864,7 +851,7 @@ export default function HybridNetworksPanel({
               setChatInput(e.target.value)
               const el = e.target
               el.style.height = 'auto'
-              el.style.height = Math.min(el.scrollHeight, 130) + 'px'
+              el.style.height = Math.min(el.scrollHeight, 200) + 'px'
             }}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage() }
@@ -874,8 +861,8 @@ export default function HybridNetworksPanel({
             style={{
               flex: 1, resize: 'none', border: 'none', outline: 'none',
               background: 'transparent',
-              fontSize: 13, lineHeight: 1.5, color: 'var(--ai-text)',
-              fontFamily: 'inherit', padding: 0, minHeight: 22, maxHeight: 130,
+              fontSize: 16, lineHeight: 1.5, color: 'var(--ai-text)',
+              fontFamily: 'inherit', padding: 0, minHeight: 52, maxHeight: 200,
               overflowY: 'auto',
             }}
           />

@@ -401,11 +401,13 @@ export default function SleepSection({ checkin, history }: Props) {
         </p>
       )}
 
-      {/* Hypnogram */}
-      <div style={{ marginBottom: polarScoreNights.length >= 2 ? 20 : 4 }}>
-        <p style={{ fontSize:11,fontWeight:600,color:'var(--text-dim)',margin:'0 0 8px' }}>Hypnogramme</p>
-        <SleepHypnogram sleepData={polarSleepData} polarConnected={polarConnected} />
-      </div>
+      {/* Hypnogram — uniquement si des données Polar existent */}
+      {polarSleepData && (
+        <div style={{ marginBottom: polarScoreNights.length >= 2 ? 20 : 4 }}>
+          <p style={{ fontSize:11,fontWeight:600,color:'var(--text-dim)',margin:'0 0 8px' }}>Hypnogramme</p>
+          <SleepHypnogram sleepData={polarSleepData} polarConnected={polarConnected} />
+        </div>
+      )}
 
       {/* Sleep score trend — only when Polar data */}
       {polarScoreNights.length >= 2 && (

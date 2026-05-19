@@ -218,6 +218,11 @@ interface Props {
 export default function SleepHypnogram({ sleepData, polarConnected = false }: Props) {
   const hasDeviceSleepData = !!sleepData
 
+  // DEBUG — à retirer une fois les données confirmées
+  console.log('sleep_data:', sleepData)
+  console.log('hasDeviceSleepData:', hasDeviceSleepData)
+  console.log('polar connected:', polarConnected)
+
   const phases     = hasDeviceSleepData ? buildPhasesFromTotals(sleepData!) : DEMO_PHASES
   const score      = hasDeviceSleepData ? sleepData!.score      : DEMO_SCORE
   const sleepStart = hasDeviceSleepData ? sleepData!.sleepStart : DEMO_SLEEP_START

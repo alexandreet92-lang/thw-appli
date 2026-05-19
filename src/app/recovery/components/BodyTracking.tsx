@@ -6,25 +6,28 @@ import { localToday } from './types'
 import type { BodyWeightRow, HydrationRow, PainLogRow } from './types'
 
 const HYDRATION_OPTS = [0.5, 1, 1.5, 2, 2.5, 3]
-const BODY_ZONES: { id: string; label: string; cx: number; cy: number; r: number }[] = [
-  { id:'head',     label:'Tête',        cx:50, cy:18,  r:12 },
-  { id:'neck',     label:'Cou',         cx:50, cy:34,  r:5  },
-  { id:'chest',    label:'Thorax',      cx:50, cy:52,  r:14 },
-  { id:'belly',    label:'Abdomen',     cx:50, cy:72,  r:11 },
-  { id:'lshoulder',label:'Épaule G',   cx:25, cy:46,  r:8  },
-  { id:'rshoulder',label:'Épaule D',   cx:75, cy:46,  r:8  },
-  { id:'larm',     label:'Bras G',     cx:18, cy:62,  r:7  },
-  { id:'rarm',     label:'Bras D',     cx:82, cy:62,  r:7  },
-  { id:'lhip',     label:'Hanche G',   cx:38, cy:88,  r:8  },
-  { id:'rhip',     label:'Hanche D',   cx:62, cy:88,  r:8  },
-  { id:'lthigh',   label:'Cuisse G',   cx:35, cy:108, r:9  },
-  { id:'rthigh',   label:'Cuisse D',   cx:65, cy:108, r:9  },
-  { id:'lknee',    label:'Genou G',    cx:33, cy:128, r:7  },
-  { id:'rknee',    label:'Genou D',    cx:67, cy:128, r:7  },
-  { id:'lcalf',    label:'Mollet G',   cx:31, cy:148, r:7  },
-  { id:'rcalf',    label:'Mollet D',   cx:69, cy:148, r:7  },
-  { id:'lfoot',    label:'Pied G',     cx:29, cy:164, r:6  },
-  { id:'rfoot',    label:'Pied D',     cx:71, cy:164, r:6  },
+
+const BODY_ZONES: { id: string; label: string }[] = [
+  { id:'head',      label:'Tête'      },
+  { id:'neck',      label:'Cou'       },
+  { id:'lshoulder', label:'Épaule G'  },
+  { id:'rshoulder', label:'Épaule D'  },
+  { id:'larm',      label:'Bras G'    },
+  { id:'rarm',      label:'Bras D'    },
+  { id:'upperback', label:'Dos haut'  },
+  { id:'chest',     label:'Poitrine'  },
+  { id:'lowerback', label:'Dos bas'   },
+  { id:'belly',     label:'Abdomen'   },
+  { id:'lhip',      label:'Hanche G'  },
+  { id:'rhip',      label:'Hanche D'  },
+  { id:'lthigh',    label:'Cuisse G'  },
+  { id:'rthigh',    label:'Cuisse D'  },
+  { id:'lknee',     label:'Genou G'   },
+  { id:'rknee',     label:'Genou D'   },
+  { id:'lcalf',     label:'Mollet G'  },
+  { id:'rcalf',     label:'Mollet D'  },
+  { id:'lfoot',     label:'Pied G'    },
+  { id:'rfoot',     label:'Pied D'    },
 ]
 
 export default function BodyTracking() {
@@ -91,10 +94,9 @@ export default function BodyTracking() {
     void load()
   }
 
-  // Heatmap: count per zone over 30 days
+  // Count per zone over 30 days
   const zoneCount: Record<string,number> = {}
   for (const p of painLog) zoneCount[p.body_zone] = (zoneCount[p.body_zone]??0)+1
-  const maxCount = Math.max(...Object.values(zoneCount), 1)
 
   // Weight chart
   const W=260, H=50
@@ -164,57 +166,55 @@ export default function BodyTracking() {
         </div>
       </div>
 
-      {/* Body map */}
+      {/* Pain zones — pill grid */}
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
         <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>Zones de douleur</p>
-        <div style={{ display:'flex',gap:20,flexWrap:'wrap' as const,alignItems:'flex-start' }}>
-          <svg viewBox="0 0 100 180" style={{ width:120,flexShrink:0 }}>
-            {/* Body outline */}
-            <ellipse cx={50} cy={18} rx={11} ry={12} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={37} y={30} width={26} height={8} rx={4} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={28} y={38} width={44} height={34} rx={6} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={30} y={72} width={40} height={20} rx={4} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={27} y={88} width={16} height={40} rx={5} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={57} y={88} width={16} height={40} rx={5} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={29} y={128} width={14} height={30} rx={5} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            <rect x={57} y={128} width={14} height={30} rx={5} fill="var(--bg-card2)" stroke="var(--border)" strokeWidth={1} />
-            {BODY_ZONES.map(z => {
-              const isToday = painZones.includes(z.id)
-              const cnt = zoneCount[z.id] ?? 0
-              const heatOpacity = isToday ? 0.9 : Math.min(cnt/maxCount*0.7, 0.5)
-              return (
-                <circle key={z.id} cx={z.cx} cy={z.cy} r={z.r} fill={isToday?'#ef4444':`rgba(239,68,68,${heatOpacity})`}
-                  stroke={isToday?'#ef4444':'transparent'} strokeWidth={1} style={{ cursor:'pointer',transition:'fill 0.2s' }}
-                  onClick={()=>togglePainZone(z.id)}>
-                  <title>{z.label}{cnt>0?` (${cnt}×/30j)`:''}</title>
-                </circle>
-              )
-            })}
-          </svg>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:11,color:'var(--text-mid)',margin:'0 0 8px',lineHeight:1.5 }}>Tape sur une zone pour marquer une douleur aujourd'hui.</p>
-            {painZones.length > 0 ? (
-              <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6 }}>
-                {painZones.map(z=>{
-                  const info = BODY_ZONES.find(bz=>bz.id===z)
-                  return <span key={z} style={{ padding:'3px 10px',borderRadius:20,background:'rgba(239,68,68,0.12)',color:'#ef4444',fontSize:11,fontWeight:600 }}>{info?.label??z}</span>
-                })}
-              </div>
-            ) : <p style={{ fontSize:11,color:'var(--text-dim)',fontStyle:'italic' }}>Aucune douleur aujourd'hui ✓</p>}
-            {Object.keys(zoneCount).length > 0 && (
-              <div style={{ marginTop:12 }}>
-                <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 6px',fontWeight:600 }}>Zones fréquentes (30j) :</p>
-                {Object.entries(zoneCount).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([z,c])=>{
-                  const info = BODY_ZONES.find(bz=>bz.id===z)
-                  return <div key={z} style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>
-                    <span style={{ fontSize:11,color:'var(--text-mid)' }}>{info?.label??z}</span>
-                    <span style={{ fontSize:11,color:'#ef4444',fontWeight:600 }}>{c}× / 30j</span>
-                  </div>
-                })}
-              </div>
-            )}
-          </div>
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14 }}>
+          {BODY_ZONES.map(z => {
+            const selected = painZones.includes(z.id)
+            const cnt = zoneCount[z.id] ?? 0
+            return (
+              <button key={z.id} onClick={()=>togglePainZone(z.id)}
+                title={cnt > 0 ? `${cnt}× / 30j` : undefined}
+                style={{
+                  padding:'6px 4px',
+                  borderRadius:8,
+                  border:`1px solid ${selected?'#ef4444':'var(--border)'}`,
+                  background:selected?'rgba(239,68,68,0.10)':'var(--bg-card2)',
+                  color:selected?'#ef4444':'var(--text-dim)',
+                  fontSize:10,
+                  fontWeight:selected?600:400,
+                  cursor:'pointer',
+                  textAlign:'center' as const,
+                  lineHeight:1.3,
+                  transition:'all 0.15s',
+                  position:'relative' as const,
+                }}>
+                {z.label}
+                {cnt > 0 && !selected && (
+                  <span style={{ display:'block',fontSize:8,color:'rgba(239,68,68,0.6)',marginTop:1 }}>{cnt}×</span>
+                )}
+              </button>
+            )
+          })}
         </div>
+        <p style={{ fontSize:11,color:painZones.length>0?'#ef4444':'var(--text-dim)',fontWeight:painZones.length>0?600:400,margin:0 }}>
+          {painZones.length > 0
+            ? `${painZones.length} zone${painZones.length>1?'s':''} signalée${painZones.length>1?'s':''} aujourd'hui`
+            : 'Aucune douleur aujourd\'hui'}
+        </p>
+        {Object.keys(zoneCount).length > 0 && (
+          <div style={{ marginTop:12 }}>
+            <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 6px',fontWeight:600 }}>Zones fréquentes (30j) :</p>
+            {Object.entries(zoneCount).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([z,c])=>{
+              const info = BODY_ZONES.find(bz=>bz.id===z)
+              return <div key={z} style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>
+                <span style={{ fontSize:11,color:'var(--text-mid)' }}>{info?.label??z}</span>
+                <span style={{ fontSize:11,color:'#ef4444',fontWeight:600 }}>{c}× / 30j</span>
+              </div>
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

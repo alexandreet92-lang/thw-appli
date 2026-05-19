@@ -58,7 +58,7 @@ export default function WeeklySummary({ history, prevHistory, activities, prevAc
   const METRICS = [
     { label:'Score moyen', value: avgScore != null ? `${avgScore}/100` : '—', color:'#3B8FD4' },
     { label:'Meilleur jour', value: bestDayLabel, color:'#10B981' },
-    { label:'Volume', value: fmtSec(weekSecs), color:'#f97316' },
+    { label:'Volume', value: weekSecs > 0 ? fmtSec(weekSecs) : '—', color:'#f97316' },
     { label:'Séances', value: weekActs.length > 0 ? `${weekActs.length} séance${weekActs.length>1?'s':''}` : '—', color:'var(--text)' },
   ]
 
@@ -94,7 +94,7 @@ export default function WeeklySummary({ history, prevHistory, activities, prevAc
         )}
         {deltaScore == null && weekCheckins.length === 0 && (
           <p style={{ fontSize:11,color:'var(--text-dim)',margin:0,fontStyle:'italic' }}>
-            Commence tes check-ins pour voir tes stats de semaine ✨
+            Commence tes check-ins pour voir tes stats de semaine
           </p>
         )}
       </div>

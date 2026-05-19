@@ -5,6 +5,7 @@ import type { ActivityRow } from './types'
 import { fmtSec, sportColor, sportLabel } from './types'
 
 const PERIODS = [{ label:'8 sem', weeks:8 }, { label:'16 sem', weeks:16 }]
+const BAR_H = 90
 
 function getWeekStart(d: Date): string {
   const dow = d.getDay() === 0 ? 6 : d.getDay() - 1
@@ -34,20 +35,21 @@ function buildWeeks(activities: ActivityRow[], weeks: number): WeekData[] {
   return result
 }
 
-interface TooltipState { weekIdx: number; x: number }
-
 export default function VolumeChart({ activities }: { activities: ActivityRow[] }) {
   const [period, setPeriod] = useState(0)
   const [mounted, setMounted] = useState(false)
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [hovered, setHovered] = useState<number | null>(null)
 
   useEffect(() => { const id = setTimeout(() => setMounted(true), 80); return () => clearTimeout(id) }, [])
 
   const weeks = useMemo(() => buildWeeks(activities, PERIODS[period].weeks), [activities, period])
   const maxTotal = Math.max(...weeks.map(w => w.total), 1)
   const currentWeekStart = getWeekStart(new Date())
-
   const allSports = [...new Set(weeks.flatMap(w => w.sports.map(s => s.sport)))]
+
+  const nWeeks = weeks.length
+  const svgW = Math.max(nWeeks * 28, 280)
+  const barW = Math.max(Math.floor(svgW / nWeeks) - 4, 8)
 
   return (
     <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
@@ -64,39 +66,59 @@ export default function VolumeChart({ activities }: { activities: ActivityRow[] 
       </div>
 
       {/* Legend */}
-      <div style={{ display:'flex',gap:12,flexWrap:'wrap' as const,marginBottom:12 }}>
-        {allSports.slice(0,5).map(s=>(
-          <div key={s} style={{ display:'flex',alignItems:'center',gap:4 }}>
-            <div style={{ width:8,height:8,borderRadius:2,background:sportColor(s) }} />
-            <span style={{ fontSize:10,color:'var(--text-dim)' }}>{sportLabel(s)}</span>
-          </div>
-        ))}
-      </div>
+      {allSports.length > 0 && (
+        <div style={{ display:'flex',gap:12,flexWrap:'wrap' as const,marginBottom:12 }}>
+          {allSports.slice(0,5).map(s=>(
+            <div key={s} style={{ display:'flex',alignItems:'center',gap:4 }}>
+              <div style={{ width:8,height:8,borderRadius:2,background:sportColor(s) }} />
+              <span style={{ fontSize:10,color:'var(--text-dim)' }}>{sportLabel(s)}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ overflowX:'auto' as const }}>
-        <div style={{ display:'flex',alignItems:'flex-end',gap:4,height:100,minWidth:300,position:'relative' as const }}>
+        <svg viewBox={`0 0 ${svgW} ${BAR_H + 18}`} style={{ width:'100%',minWidth:280,height:'auto',display:'block' }}>
           {weeks.map((w, wi) => {
             const isCurrent = w.weekStart === currentWeekStart
+            const x = wi * (svgW / nWeeks) + (svgW / nWeeks - barW) / 2
+            let stackY = BAR_H // start from bottom
+
             return (
-              <div key={w.weekStart} style={{ flex:1,display:'flex',flexDirection:'column' as const,alignItems:'center',gap:2,minWidth:0,position:'relative' as const }}
-                onMouseEnter={()=>setTooltip({weekIdx:wi,x:0})} onMouseLeave={()=>setTooltip(null)}>
-                <div style={{ width:'100%',display:'flex',flexDirection:'column' as const,justifyContent:'flex-end',height:90,gap:0,border:isCurrent?'2px solid rgba(249,115,22,0.5)':'none',borderRadius:4,overflow:'hidden' }}>
-                  {w.sports.map((s,si)=>{
-                    const pct = mounted ? (s.secs / maxTotal) * 90 : 0
-                    return (
-                      <div key={s.sport} style={{ width:'100%',height:pct,background:sportColor(s.sport),transition:`height 0.8s ease-out ${si*80}ms`,minHeight:w.total>0&&mounted?1:0,flexShrink:0 }} />
-                    )
-                  })}
-                </div>
-                <span style={{ fontSize:7,color:isCurrent?'#f97316':'var(--text-dim)',fontWeight:isCurrent?700:400,whiteSpace:'nowrap' as const }}>{w.weekStart.slice(5)}</span>
-              </div>
+              <g key={w.weekStart}
+                onMouseEnter={() => setHovered(wi)}
+                onMouseLeave={() => setHovered(null)}
+                style={{ cursor:'default' }}>
+                {/* Current week highlight */}
+                {isCurrent && (
+                  <rect x={x - 2} y={0} width={barW + 4} height={BAR_H}
+                    fill="rgba(249,115,22,0.07)" rx={3} />
+                )}
+                {/* Stacked sport bars (bottom-up) */}
+                {w.sports.map((s) => {
+                  const h = mounted ? Math.max(Math.round((s.secs / maxTotal) * BAR_H), w.total > 0 ? 2 : 0) : 0
+                  stackY -= h
+                  return (
+                    <rect key={s.sport} x={x} y={stackY} width={barW} height={h}
+                      fill={sportColor(s.sport)} rx={2}
+                      style={{ transition:`y 0.8s ease-out, height 0.8s ease-out` }} />
+                  )
+                })}
+                {/* Week label */}
+                <text x={x + barW / 2} y={BAR_H + 13}
+                  textAnchor="middle" fill={isCurrent ? '#f97316' : 'var(--text-dim)'}
+                  fontSize={7} fontWeight={isCurrent ? 700 : 400}>
+                  {w.weekStart.slice(5)}
+                </text>
+              </g>
             )
           })}
-        </div>
+        </svg>
       </div>
 
-      {tooltip && weeks[tooltip.weekIdx] && (() => {
-        const w = weeks[tooltip.weekIdx]
+      {/* Tooltip panel */}
+      {hovered !== null && weeks[hovered] && (() => {
+        const w = weeks[hovered]
         return (
           <div style={{ marginTop:8,padding:'8px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',gap:12,flexWrap:'wrap' as const }}>
             <span style={{ fontSize:11,fontWeight:600 }}>Semaine du {w.weekStart}</span>
@@ -105,7 +127,10 @@ export default function VolumeChart({ activities }: { activities: ActivityRow[] 
                 {sportLabel(s.sport)}: <strong>{fmtSec(s.secs)}</strong>
               </span>
             ))}
-            <span style={{ fontSize:10,color:'var(--text-mid)' }}>Total: <strong>{fmtSec(w.total)}</strong></span>
+            {w.total > 0
+              ? <span style={{ fontSize:10,color:'var(--text-mid)' }}>Total: <strong>{fmtSec(w.total)}</strong></span>
+              : <span style={{ fontSize:10,color:'var(--text-dim)',fontStyle:'italic' }}>Aucune activité</span>
+            }
           </div>
         )
       })()}

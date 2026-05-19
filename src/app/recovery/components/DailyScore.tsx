@@ -67,7 +67,9 @@ export default function DailyScore({ checkin, history, streak, onCheckIn }: Prop
   if (!checkin) {
     return (
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:28,boxShadow:'var(--shadow-card)',textAlign:'center' as const }}>
-        <p style={{ fontSize:36,margin:'0 0 8px' }}>😴</p>
+        <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom:8 }}>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
         <p style={{ fontFamily:'Syne,sans-serif',fontSize:17,fontWeight:700,margin:'0 0 6px' }}>Pas encore de check-in aujourd'hui</p>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 18px' }}>Fais ton check-in matinal pour voir ton score de récupération.</p>
         <button onClick={onCheckIn} style={{ padding:'11px 28px',borderRadius:12,background:'linear-gradient(135deg,#3B8FD4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,cursor:'pointer' }}>
@@ -95,7 +97,7 @@ export default function DailyScore({ checkin, history, streak, onCheckIn }: Prop
         </div>
         <span style={{ padding:'3px 10px',borderRadius:20,background:st.bg,color:st.color,fontSize:11,fontWeight:700 }}>{st.label}</span>
         <p style={{ fontSize:10,color:'var(--text-dim)',textAlign:'center' as const,margin:0,maxWidth:120,lineHeight:1.4 }}>{st.desc}</p>
-        {streak >= 2 && <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>🔥 {streak} jours consécutifs</p>}
+        {streak >= 2 && <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{streak} jours consécutifs</p>}
       </div>
 
       {/* Right: cards + bars */}

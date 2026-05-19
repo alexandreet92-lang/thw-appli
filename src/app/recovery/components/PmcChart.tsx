@@ -145,7 +145,7 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
       <style>{`@keyframes pmcDraw { from { stroke-dashoffset: ${totalLen}px; } to { stroke-dashoffset: 0; } }`}</style>
       {pts.length < 14 && (
         <p style={{ fontSize:10,color:'var(--text-dim)',textAlign:'center' as const,margin:'8px 0 0',fontStyle:'italic' }}>
-          Plus de données d'entraînement = courbe plus fiable ✨
+          Plus de données d'entraînement = courbe plus fiable
         </p>
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { CheckInRow } from './types'
 import { fmtHours } from './types'
+import SleepHypnogram from './SleepHypnogram'
 
 const TREND_DAYS = 14
 
@@ -86,8 +87,8 @@ export default function SleepSection({ checkin, history }: Props) {
 
       {/* Cards row */}
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20 }}>
-        <div style={{ padding:'14px',borderRadius:14,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',alignItems:'center',gap:12 }}>
-          <span style={{ fontSize:24 }}>🌙</span>
+        <div style={{ padding:'14px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid #E5E7EB',display:'flex',alignItems:'center',gap:12 }}>
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <div>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:800,margin:0,color:'#8B5CF6' }}>
               {checkin?.sleep_hours ? fmtHours(checkin.sleep_hours) : avgHours ? fmtHours(avgHours) : '—'}
@@ -96,7 +97,7 @@ export default function SleepSection({ checkin, history }: Props) {
             {!checkin?.sleep_hours && avgHours && <p style={{ fontSize:9,color:'var(--text-dim)',margin:'1px 0 0',fontStyle:'italic' }}>moyenne {TREND_DAYS}j</p>}
           </div>
         </div>
-        <div style={{ padding:'14px',borderRadius:14,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',alignItems:'center',gap:12 }}>
+        <div style={{ padding:'14px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid #E5E7EB',display:'flex',alignItems:'center',gap:12 }}>
           <MiniDonut value={checkin?.sleep_quality ?? avgQuality ?? 0} color="#8B5CF6" />
           <div>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:800,margin:0,color:'#8B5CF6' }}>
@@ -116,16 +117,14 @@ export default function SleepSection({ checkin, history }: Props) {
         </div>
       ) : (
         <p style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,margin:'0 0 16px',fontStyle:'italic' }}>
-          Continue tes check-ins pour voir ta tendance sommeil ✨
+          Continue tes check-ins pour voir ta tendance sommeil
         </p>
       )}
 
-      {/* Device CTA */}
-      <div style={{ padding:'10px 14px',borderRadius:10,background:'rgba(139,92,246,0.07)',border:'1px solid rgba(139,92,246,0.2)',display:'flex',alignItems:'center',gap:10 }}>
-        <span style={{ fontSize:16 }}>💤</span>
-        <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>
-          Connecte <strong style={{ color:'#8B5CF6' }}>Garmin ou Oura</strong> pour voir tes phases de sommeil, latence et hypnogramme.
-        </p>
+      {/* Hypnogram */}
+      <div style={{ marginBottom:4 }}>
+        <p style={{ fontSize:11,fontWeight:600,color:'var(--text-dim)',margin:'0 0 8px' }}>Hypnogramme</p>
+        <SleepHypnogram />
       </div>
     </div>
   )

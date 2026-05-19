@@ -74,10 +74,12 @@ export default function RecoveryTrends({ history, activities }: { history: Check
   if (history.length < 3) {
     return (
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:36,textAlign:'center' as const,boxShadow:'var(--shadow-card)' }}>
-        <p style={{ fontSize:28,margin:'0 0 8px' }}>✨</p>
-        <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Tendances à débloquer</p>
+        <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.5} strokeLinecap="round" style={{ marginBottom:8 }}>
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Tendances</p>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>
-          Continue tes check-ins quotidiens pour voir tes tendances apparaître ici ({history.length}/3 enregistrés)
+          Continue tes check-ins quotidiens pour voir tes tendances ({history.length}/3 enregistrés)
         </p>
       </div>
     )

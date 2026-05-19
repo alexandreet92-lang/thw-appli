@@ -65,7 +65,7 @@ export default function DataSources({ sourcesRef }: Props) {
                   </button>
                   {tooltip === s.id && (
                     <div style={{ position:'absolute' as const,right:0,top:'calc(100% + 6px)',zIndex:50,minWidth:170,padding:'8px 12px',borderRadius:9,background:'var(--bg-card)',border:'1px solid var(--border)',boxShadow:'0 4px 14px rgba(0,0,0,0.12)' }}>
-                      <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5 }}>🔜 Bientôt disponible</p>
+                      <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5 }}>Bientôt disponible</p>
                     </div>
                   )}
                 </div>

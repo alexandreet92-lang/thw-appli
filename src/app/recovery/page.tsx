@@ -95,7 +95,10 @@ export default function RecoveryPage() {
   if (loading) {
     return (
       <div style={{ padding:'60px 28px',textAlign:'center' as const,color:'var(--text-dim)',fontSize:13 }}>
-        <p style={{ fontSize:24,margin:'0 0 12px' }}>⏳</p>
+        <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" style={{ marginBottom:12 }}>
+          <circle cx={12} cy={12} r={10} />
+          <path d="M12 6v6l4 2" />
+        </svg>
         Chargement de tes données…
       </div>
     )
@@ -112,7 +115,7 @@ export default function RecoveryPage() {
           </p>
         </div>
         <button onClick={()=>setShowModal(true)} style={{ padding:'9px 18px',borderRadius:11,background:'linear-gradient(135deg,#3B8FD4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
-          {checkin ? '✏️ Modifier' : '✦ Check-in'}
+          {checkin ? 'Modifier' : '✦ Check-in'}
         </button>
       </div>
 

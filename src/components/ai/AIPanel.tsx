@@ -287,7 +287,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
           <span style={{ color: 'var(--ai-dim)', minWidth: 18, fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3, fontFamily: 'DM Mono,monospace' }}>
             {nMatch[1]}.
           </span>
-          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
+          <span style={{ fontSize: 15, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
         </div>
       )
       i++; continue
@@ -300,14 +300,14 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
       blocks.push(
         <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 4, paddingLeft: level * 16 }}>
           <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: level > 0 ? 6 : 8, marginTop: level > 0 ? 7 : 6, lineHeight: 1 }}>{level > 0 ? '○' : '●'}</span>
-          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(bMatch[2])}</span>
+          <span style={{ fontSize: 15, lineHeight: 1.72 }}>{parseBold(bMatch[2])}</span>
         </div>
       )
       i++; continue
     }
 
     blocks.push(
-      <p key={i} style={{ fontSize: 15, lineHeight: 1.65, margin: '0 0 8px 0', color: 'var(--ai-text)' }}>
+      <p key={i} style={{ fontSize: 16, lineHeight: 1.65, margin: '0 0 8px 0', color: 'var(--ai-text)' }}>
         {parseBold(line)}
       </p>
     )
@@ -18006,10 +18006,7 @@ export default function AIPanel({
   const speechRef      = useRef<any>(null)
   const [speechSupported, setSpeechSupported] = useState(false)
 
-  // ── Thinking text cycle (B4) ─────────────────────────────────
-  const THINK_TEXTS = ['Analyse en cours…', 'Croisement de tes données…', 'Construction de la réponse…']
-  const [thinkIdx,  setThinkIdx]  = useState(0)
-  const [thinkFade, setThinkFade] = useState(true)
+  // (B4 thinking animation now uses pure CSS 3-dot bounce — no state needed)
 
   const areaRef            = useRef<HTMLTextAreaElement>(null)
   const endRef             = useRef<HTMLDivElement>(null)
@@ -18135,19 +18132,6 @@ export default function AIPanel({
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     setSpeechSupported(!!SR)
   }, [])
-
-  // ── Thinking text cycle (B4) ─────────────────────────────────
-  useEffect(() => {
-    if (!loading) { setThinkIdx(0); setThinkFade(true); return }
-    const cycle = setInterval(() => {
-      setThinkFade(false)
-      setTimeout(() => {
-        setThinkIdx(i => (i + 1) % THINK_TEXTS.length)
-        setThinkFade(true)
-      }, 300)
-    }, 2200)
-    return () => clearInterval(cycle)
-  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Voice recording timer cleanup ────────────────────────────
   useEffect(() => () => {
@@ -18292,7 +18276,7 @@ export default function AIPanel({
     setInput(e.target.value)
     const el = e.target
     el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 130) + 'px'
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
@@ -19092,9 +19076,8 @@ export default function AIPanel({
         .aip-hist-list::-webkit-scrollbar { width: 3px; }
         .aip-hist-list::-webkit-scrollbar-thumb { background: var(--ai-border); border-radius: 2px; }
 
-        /* Textarea font — 16px min pour éviter zoom Safari */
+        /* Textarea font — 16px toujours (évite zoom Safari sur iOS) */
         .aip-textarea { font-size: 16px !important; }
-        @media (min-width: 768px) { .aip-textarea { font-size: 14px !important; } }
 
         /* Focus : bordure du conteneur input */
         .aip-input-wrap:focus-within {
@@ -19166,42 +19149,45 @@ export default function AIPanel({
         /* Model picker pill hover */
         .aip-model-pill:hover { background: var(--pill-hover) !important; }
 
-        /* B2 — Desktop: floating input, no separator */
-        @media (min-width: 768px) {
-          .aip-input-footer {
-            border-top: none !important;
-            background: transparent !important;
-            padding-bottom: 18px !important;
-          }
-          .aip-input-wrap {
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
-          }
+        /* B2 — Floating input: no border-top, transparent outer bg */
+        .aip-input-footer {
+          border-top: none !important;
+          background: transparent !important;
+          padding: 0 16px 16px !important;
         }
 
-        /* B4 — Thinking animation */
-        @keyframes ai_think_pulse {
-          0%,100% { transform: scale(0.98); opacity: 0.9; }
-          50% { transform: scale(1.02); opacity: 1; }
+        /* B2 — Input wrap: Claude-style rounded box */
+        .aip-input-wrap {
+          border-radius: 24px !important;
+          background: #F4F4F5 !important;
+          border: 1px solid transparent !important;
+          box-shadow: none !important;
         }
-        @keyframes ai_think_fade_in {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
+        html.dark .aip-input-wrap {
+          background: #2A2A2E !important;
         }
-        .aip-thinking { animation: ai_think_pulse 2s ease-in-out infinite; }
-        .aip-think-text { transition: opacity 0.3s ease, transform 0.3s ease; }
-        .aip-think-text.visible { opacity: 1; transform: translateY(0); }
-        .aip-think-text.hidden  { opacity: 0; transform: translateY(3px); }
+        .aip-input-wrap:focus-within {
+          border-color: #D1D5DB !important;
+          box-shadow: none !important;
+        }
+        html.dark .aip-input-wrap:focus-within {
+          border-color: #4A4A4E !important;
+          box-shadow: none !important;
+        }
 
-        /* B3 — Voice recording animation */
-        @keyframes ai_voice_dot {
-          0%,80%,100% { transform: scaleY(0.4); opacity: 0.5; }
-          40% { transform: scaleY(1); opacity: 1; }
+        /* B4 — 3-dot bounce thinking animation */
+        @keyframes ai_bounce_dot {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-8px); }
         }
+        .aip-dot-1 { animation: ai_bounce_dot 1.4s ease infinite 0s; }
+        .aip-dot-2 { animation: ai_bounce_dot 1.4s ease infinite 0.2s; }
+        .aip-dot-3 { animation: ai_bounce_dot 1.4s ease infinite 0.4s; }
 
-        /* B4 — shimmer bar */
-        @keyframes ai_shimmer {
-          0%   { transform: translateX(-200%); }
-          100% { transform: translateX(300%); }
+        /* B3 — Voice recording bar animation */
+        @keyframes ai_voice_bar {
+          0%, 100% { transform: scaleY(0.3); }
+          50% { transform: scaleY(1); }
         }
       `}</style>
 
@@ -19938,7 +19924,7 @@ export default function AIPanel({
                             background: '#3B8FD4',
                             color: '#fff',
                           }}>
-                            <span style={{ fontSize: 15, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
+                            <span style={{ fontSize: 16, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
                           </div>
                           {/* User avatar (D2) */}
                           <div style={{
@@ -20103,30 +20089,22 @@ export default function AIPanel({
                   </div>
                 ))}
 
-                {/* Thinking indicator — B4 */}
+                {/* Thinking indicator — 3-dot bounce (Claude style) */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div className="aip-thinking" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, animation: 'ai_msg_in 0.18s ease both', padding: '8px 0 4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                        alt={model}
-                        style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }}
-                      />
-                      <span
-                        className={`aip-think-text ${thinkFade ? 'visible' : 'hidden'}`}
-                        style={{ fontSize: 13, color: 'var(--ai-dim)', fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic' }}
-                      >
-                        {THINK_TEXTS[thinkIdx]}
-                      </span>
-                    </div>
-                    {/* Shimmer bar */}
-                    <div style={{ width: 120, height: 3, borderRadius: 2, background: 'var(--ai-border)', overflow: 'hidden', marginLeft: 34 }}>
-                      <div style={{
-                        height: '100%', width: '40%', borderRadius: 2,
-                        background: 'linear-gradient(90deg, transparent, var(--ai-accent), transparent)',
-                        animation: 'ai_shimmer 1.4s ease-in-out infinite',
-                      }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'ai_msg_in 0.18s ease both', padding: '6px 0' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                      alt={model}
+                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {(['aip-dot-1','aip-dot-2','aip-dot-3'] as const).map(cls => (
+                        <span key={cls} className={cls} style={{
+                          display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                          background: 'var(--ai-dim)',
+                        }} />
+                      ))}
                     </div>
                   </div>
                 )}
@@ -20173,11 +20151,7 @@ export default function AIPanel({
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
-              background: 'var(--ai-bg)',
-              border: '1px solid #E5E7EB',
-              borderRadius: 16,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
+              transition: 'border-color 0.15s',
             }}>
 
               {/* Citation de texte sélectionné */}
@@ -20270,48 +20244,55 @@ export default function AIPanel({
                 </div>
               )}
 
-              {/* Textarea */}
-              <textarea
-                ref={areaRef}
-                className="aip-textarea"
-                value={input}
-                onChange={handleInput}
-                onKeyDown={handleKey}
-                placeholder={activeQA
-                  ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
-                  : 'Pose ta question…'}
-                rows={1}
-                style={{
-                  display: 'block', width: '100%',
-                  background: 'transparent',
-                  border: 'none', outline: 'none', resize: 'none',
-                  fontFamily: 'DM Sans, sans-serif',
-                  lineHeight: 1.55, color: 'var(--ai-text)',
-                  padding: '14px 16px 6px',
-                  minHeight: 26, maxHeight: 130,
-                  overflowY: 'auto',
-                  boxSizing: 'border-box',
-                }}
-              />
+              {/* Textarea — hidden during recording */}
+              {!recording && (
+                <textarea
+                  ref={areaRef}
+                  className="aip-textarea"
+                  value={input}
+                  onChange={handleInput}
+                  onKeyDown={handleKey}
+                  placeholder={activeQA
+                    ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
+                    : 'Écrire un message…'}
+                  rows={1}
+                  style={{
+                    display: 'block', width: '100%',
+                    background: 'transparent',
+                    border: 'none', outline: 'none', resize: 'none',
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 16, lineHeight: 1.5, color: 'var(--ai-text)',
+                    padding: '14px 16px 6px',
+                    minHeight: 52, maxHeight: 200,
+                    overflowY: 'auto',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              )}
 
-              {/* Recording bar — B3 */}
+              {/* Recording overlay — B3 */}
               {recording && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 0' }}>
-                  {/* Cancel */}
-                  <button onClick={cancelVoice} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>✕</button>
-                  {/* Wave bars */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {[0,1,2,3,4].map(i => (
-                      <span key={i} style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 2, background: '#00c8e0', animation: `ai_voice_dot 1s ease infinite ${i*0.12}s` }} />
+                <div style={{ padding: '14px 16px 6px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 52 }}>
+                  {/* Cancel X */}
+                  <button onClick={cancelVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#374151', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>✕</button>
+                  {/* Sound wave — 20 bars */}
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, height: 28, overflow: 'hidden' }}>
+                    {Array.from({ length: 20 }, (_, i) => (
+                      <span key={i} style={{
+                        display: 'inline-block', width: '4%', maxWidth: 4, height: '100%',
+                        borderRadius: 2, background: 'var(--ai-dim)', flexShrink: 0,
+                        animation: `ai_voice_bar ${0.6 + (i % 5) * 0.1}s ease-in-out infinite alternate`,
+                        animationDelay: `${(i * 0.05) % 0.5}s`,
+                        transformOrigin: 'bottom',
+                      }} />
                     ))}
                   </div>
-                  {/* Timer */}
-                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00c8e0', minWidth: 36 }}>
+                  {/* Timer + confirm */}
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--ai-dim)', flexShrink: 0 }}>
                     {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--ai-dim)', flex: 1 }}>Parle, valide pour insérer</span>
-                  {/* Confirm — stop recognition → onresult fires with final transcript */}
-                  <button onClick={() => { try { speechRef.current?.stop() } catch { stopVoice('') } }} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12 }}>✓</button>
+                  {/* Confirm ✓ */}
+                  <button onClick={() => { try { speechRef.current?.stop() } catch { stopVoice('') } }} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
                 </div>
               )}
 

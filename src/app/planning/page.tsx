@@ -297,7 +297,13 @@ function parseGymExercise(b:Block): {
 }
 function calcPaceStr(km:string,t:string):string { const d=parseFloat(km),m=parseFloat(t); if(!d||!m)return '—'; const s=m*60/d; return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}/km` }
 function parsePace(s:string):number { const p=s.replace(',',':').split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0) }
-function getWeekStart():string { const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1; const m=new Date(now); m.setDate(now.getDate()-dow); return m.toISOString().split('T')[0] }
+// Formate une date en "YYYY-MM-DD" en utilisant l'heure LOCALE (pas UTC).
+// toISOString() retourne UTC — en UTC+1/+2 (France), entre minuit et 2h du matin
+// la date UTC est encore celle du jour précédent → mauvaise semaine chargée.
+function localDateStr(d:Date):string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+function getWeekStart():string { const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1; const m=new Date(now); m.setDate(now.getDate()-dow); return localDateStr(m) }
 
 // Mappe le sport interne → nom attendu par /api/session-builder
 const SPORT_TO_BUILDER: Record<SportType, string> = {
@@ -499,7 +505,7 @@ function getWeekDates():string[] {
 function getWeekStartFromOffset(offset:number):string {
   const d=new Date(); d.setDate(d.getDate()+offset*7)
   const dow=d.getDay()===0?6:d.getDay()-1; const m=new Date(d); m.setDate(d.getDate()-dow)
-  return m.toISOString().split('T')[0]
+  return localDateStr(m)
 }
 function getWeekDatesFromStart(ws:string):string[] {
   return DAY_NAMES.map((_,i)=>{ const d=new Date(ws); d.setDate(d.getDate()+i); return String(d.getDate()) })
@@ -10071,15 +10077,25 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const sessionMouseDragRef = useRef<{realId:string;fromDay:number}|null>(null)
   const sessionTouchDragRef = useRef<{realId:string;fromDay:number;el:HTMLElement;startX:number;startY:number}|null>(null)
 
-  const trainingTasks: WeekTask[] = trainingWeek.map(s=>{
-    const sp = normalizeSportType(s.sport as string)
-    return {
-      id:`tr_${s.id}`, title:s.title, type:'sport' as TaskType,
-      dayIndex:s.dayIndex, startHour:parseInt(s.time.split(':')[0])||6, startMin:parseInt(s.time.split(':')[1])||0,
-      durationMin:s.durationMin, fromTraining:true, color:SPORT_BORDER[sp]||'#6b7280',
-      sport:sp,
-    }
-  })
+  const trainingTasks: WeekTask[] = trainingWeek
+    .filter(s => {
+      // Exclure les séances "Repos" générées par l'IA — elles ne doivent pas apparaître
+      // dans la vue Week sous forme de blocs [RUN] Repos.
+      // isRestSession couvre durationMin===0 ; on ajoute un test sur le titre exact
+      // pour les séances repos dont l'IA aurait mis une durée > 0.
+      if (isRestSession(s)) return false
+      if (/^\s*(repos|rest day|jour\s+(de\s+)?repos|off)\s*$/i.test(s.title ?? '')) return false
+      return true
+    })
+    .map(s=>{
+      const sp = normalizeSportType(s.sport as string)
+      return {
+        id:`tr_${s.id}`, title:s.title, type:'sport' as TaskType,
+        dayIndex:s.dayIndex, startHour:parseInt(s.time.split(':')[0])||6, startMin:parseInt(s.time.split(':')[1])||0,
+        durationMin:s.durationMin, fromTraining:true, color:SPORT_BORDER[sp]||'#6b7280',
+        sport:sp,
+      }
+    })
 
   const allTasks = [...trainingTasks, ...tasks]
   function getTasksForDay(d:number) { return allTasks.filter(t=>t.dayIndex===d) }

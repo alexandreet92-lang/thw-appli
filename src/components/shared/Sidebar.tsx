@@ -557,6 +557,7 @@ export function Sidebar() {
   const [aiOpen, setAiOpen] = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
+  const { profile } = useProfile()
 
   // Swipe to open/close on mobile
   useEffect(() => {
@@ -623,74 +624,83 @@ export function Sidebar() {
           position: 'fixed', top: 0, left: 0, right: 0,
           height: 56, zIndex: 50,
           display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 14px',
+          justifyContent: 'flex-start',
+          gap: 8,
+          padding: '0 10px',
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
           boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
         }}
       >
-        {/* Burger */}
+        {/* Burger — no bubble */}
         <button
           onClick={() => setMobileOpen(v => !v)}
           style={{
-            width: 36, height: 36, borderRadius: 9,
+            width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
+            background: 'transparent',
+            border: 'none',
             cursor: 'pointer', color: 'var(--text)',
+            flexShrink: 0,
+            padding: 0,
           }}
         >
           {mobileOpen ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
               <path d="M3 6h18M3 12h18M3 18h18"/>
             </svg>
           )}
         </button>
 
-        {/* Logo centré */}
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        {/* Logo app — right of burger, clickable → home */}
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo_app.png"
             alt="THW Coaching"
-            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }}
+            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain' }}
           />
-          <span style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            fontSize: 15, color: 'var(--text)',
-          }}>
-            THW Coaching
-          </span>
         </Link>
 
-        {/* Logo IA — mobile top bar droit */}
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Logo IA — 36×36 */}
         <button
           onClick={() => setAiOpen(o => !o)}
           aria-label="Assistant IA"
           style={{
-            width: 44, height: 44, borderRadius: 9,
+            width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: aiOpen ? 'rgba(0,200,224,0.12)' : 'transparent',
             border: 'none',
+            borderRadius: 9,
             cursor: 'pointer',
             transition: 'opacity 0.15s, background 0.15s',
             padding: 0,
+            flexShrink: 0,
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo_4bras.png"
             alt="Assistant IA"
-            style={{ width: 44, height: 44, objectFit: 'contain' }}
+            style={{ width: 36, height: 36, objectFit: 'contain' }}
           />
         </button>
+
+        {/* Avatar — 32×32, lien vers profil */}
+        <Link href="/profile" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
+          <Avatar
+            url={profile?.avatar_url ?? null}
+            name={profile?.full_name ?? null}
+            size={32}
+          />
+        </Link>
       </div>
 
       {/* Overlay sombre derrière le drawer */}

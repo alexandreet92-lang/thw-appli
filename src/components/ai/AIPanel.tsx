@@ -17997,6 +17997,20 @@ export default function AIPanel({
   const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks'>('training')
   const [agentDropOpen, setAgentDropOpen] = useState(false)
 
+  // ── Voice recording (B3) ─────────────────────────────────────
+  const [recording,    setRecording]    = useState(false)
+  const [recSecs,      setRecSecs]      = useState(0)
+  const recIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const speechRef      = useRef<any>(null)
+  const [speechSupported, setSpeechSupported] = useState(false)
+
+  // ── Thinking text cycle (B4) ─────────────────────────────────
+  const THINK_TEXTS = ['Analyse en cours…', 'Croisement de tes données…', 'Construction de la réponse…']
+  const [thinkIdx,  setThinkIdx]  = useState(0)
+  const [thinkFade, setThinkFade] = useState(true)
+
   const areaRef            = useRef<HTMLTextAreaElement>(null)
   const endRef             = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -18114,6 +18128,32 @@ export default function AIPanel({
   }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
+
+  // ── Speech API support detection (B3) ────────────────────────
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    setSpeechSupported(!!SR)
+  }, [])
+
+  // ── Thinking text cycle (B4) ─────────────────────────────────
+  useEffect(() => {
+    if (!loading) { setThinkIdx(0); setThinkFade(true); return }
+    const cycle = setInterval(() => {
+      setThinkFade(false)
+      setTimeout(() => {
+        setThinkIdx(i => (i + 1) % THINK_TEXTS.length)
+        setThinkFade(true)
+      }, 300)
+    }, 2200)
+    return () => clearInterval(cycle)
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Voice recording timer cleanup ────────────────────────────
+  useEffect(() => () => {
+    if (recIntervalRef.current) clearInterval(recIntervalRef.current)
+    if (recRef.current) clearTimeout(recRef.current)
+  }, [])
 
   // ── Keyboard shortcuts (F2) ───────────────────────────────────
   useEffect(() => {
@@ -18597,6 +18637,44 @@ export default function AIPanel({
       setTimeout(() => setAttachErr(null), 4000)
     }
   }, [])
+
+  // ── Voice recording (B3) ─────────────────────────────────────
+  const stopVoice = useCallback((transcript = '') => {
+    if (recIntervalRef.current) { clearInterval(recIntervalRef.current); recIntervalRef.current = null }
+    try { speechRef.current?.stop() } catch { /* ignore */ }
+    speechRef.current = null
+    setRecording(false)
+    setRecSecs(0)
+    if (transcript) {
+      setInput(prev => (prev ? prev + ' ' : '') + transcript.trim())
+      setTimeout(() => areaRef.current?.focus(), 80)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cancelVoice = useCallback(() => stopVoice(''), [stopVoice])
+
+  const startVoice = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) return
+    setRecording(true)
+    setRecSecs(0)
+    recIntervalRef.current = setInterval(() => setRecSecs(s => s + 1), 1000)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec: any = new SR()
+    rec.lang = 'fr-FR'
+    rec.continuous = true
+    rec.interimResults = false
+    speechRef.current = rec
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as ArrayLike<{ [index: number]: { transcript: string } }>)
+        .map((r: { [index: number]: { transcript: string } }) => r[0].transcript).join(' ')
+      stopVoice(transcript)
+    }
+    rec.onerror = () => stopVoice('')
+    rec.start()
+  }, [stopVoice])
 
   // SEND MESSAGE
   const send = useCallback(async (presetDisplay?: string, presetApi?: string) => {
@@ -19087,6 +19165,44 @@ export default function AIPanel({
 
         /* Model picker pill hover */
         .aip-model-pill:hover { background: var(--pill-hover) !important; }
+
+        /* B2 — Desktop: floating input, no separator */
+        @media (min-width: 768px) {
+          .aip-input-footer {
+            border-top: none !important;
+            background: transparent !important;
+            padding-bottom: 18px !important;
+          }
+          .aip-input-wrap {
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+          }
+        }
+
+        /* B4 — Thinking animation */
+        @keyframes ai_think_pulse {
+          0%,100% { transform: scale(0.98); opacity: 0.9; }
+          50% { transform: scale(1.02); opacity: 1; }
+        }
+        @keyframes ai_think_fade_in {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .aip-thinking { animation: ai_think_pulse 2s ease-in-out infinite; }
+        .aip-think-text { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .aip-think-text.visible { opacity: 1; transform: translateY(0); }
+        .aip-think-text.hidden  { opacity: 0; transform: translateY(3px); }
+
+        /* B3 — Voice recording animation */
+        @keyframes ai_voice_dot {
+          0%,80%,100% { transform: scaleY(0.4); opacity: 0.5; }
+          40% { transform: scaleY(1); opacity: 1; }
+        }
+
+        /* B4 — shimmer bar */
+        @keyframes ai_shimmer {
+          0%   { transform: translateX(-200%); }
+          100% { transform: translateX(300%); }
+        }
       `}</style>
 
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
@@ -19987,25 +20103,30 @@ export default function AIPanel({
                   </div>
                 ))}
 
-                {/* Thinking indicator */}
+                {/* Thinking indicator — B4 */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, animation: 'ai_msg_in 0.18s ease both', padding: '4px 0' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                      alt={model}
-                      className="ai-logo-spinning"
-                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
-                    />
-                    {/* Bare dots — no pill wrapper */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {[0, 1, 2].map(i => (
-                        <span key={i} style={{
-                          display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
-                          background: 'var(--ai-dim)',
-                          animation: `ai_dot_pulse 1.4s ease infinite ${i * 0.2}s`,
-                        }} />
-                      ))}
+                  <div className="aip-thinking" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, animation: 'ai_msg_in 0.18s ease both', padding: '8px 0 4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                        alt={model}
+                        style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }}
+                      />
+                      <span
+                        className={`aip-think-text ${thinkFade ? 'visible' : 'hidden'}`}
+                        style={{ fontSize: 13, color: 'var(--ai-dim)', fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic' }}
+                      >
+                        {THINK_TEXTS[thinkIdx]}
+                      </span>
+                    </div>
+                    {/* Shimmer bar */}
+                    <div style={{ width: 120, height: 3, borderRadius: 2, background: 'var(--ai-border)', overflow: 'hidden', marginLeft: 34 }}>
+                      <div style={{
+                        height: '100%', width: '40%', borderRadius: 2,
+                        background: 'linear-gradient(90deg, transparent, var(--ai-accent), transparent)',
+                        animation: 'ai_shimmer 1.4s ease-in-out infinite',
+                      }} />
                     </div>
                   </div>
                 )}
@@ -20026,7 +20147,7 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           {activeAgent === 'training' && <>
-          <div style={{
+          <div className="aip-input-footer" style={{
             padding: '10px 16px 14px',
             borderTop: '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
@@ -20173,7 +20294,28 @@ export default function AIPanel({
                 }}
               />
 
-              {/* Ligne basse : + · modèle · [spacer] · envoyer */}
+              {/* Recording bar — B3 */}
+              {recording && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 0' }}>
+                  {/* Cancel */}
+                  <button onClick={cancelVoice} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>✕</button>
+                  {/* Wave bars */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {[0,1,2,3,4].map(i => (
+                      <span key={i} style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 2, background: '#00c8e0', animation: `ai_voice_dot 1s ease infinite ${i*0.12}s` }} />
+                    ))}
+                  </div>
+                  {/* Timer */}
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00c8e0', minWidth: 36 }}>
+                    {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)', flex: 1 }}>Parle, valide pour insérer</span>
+                  {/* Confirm — stop recognition → onresult fires with final transcript */}
+                  <button onClick={() => { try { speechRef.current?.stop() } catch { stopVoice('') } }} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12 }}>✓</button>
+                </div>
+              )}
+
+              {/* Ligne basse : + · modèle · [spacer] · mic · envoyer */}
               <div style={{
                 display: 'flex', alignItems: 'center',
                 padding: '4px 8px 8px', gap: 5,
@@ -20202,6 +20344,25 @@ export default function AIPanel({
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
+
+                {/* Mic button — B3 (hidden if not supported) */}
+                {speechSupported && !loading && (
+                  <button
+                    onClick={recording ? cancelVoice : startVoice}
+                    title={recording ? 'Annuler' : 'Dictée vocale'}
+                    className="aip-icon-btn"
+                    style={{
+                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                      color: recording ? '#00c8e0' : 'var(--ai-dim)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="2" width="6" height="11" rx="3"/>
+                      <path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8"/>
+                    </svg>
+                  </button>
+                )}
 
                 {/* Envoyer / Stop */}
                 {loading ? (

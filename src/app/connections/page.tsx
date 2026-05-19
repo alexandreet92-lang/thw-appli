@@ -253,43 +253,45 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
   return (
     <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
       style={{
-        padding: isMobile ? '12px 14px' : '12px 16px',
+        padding: isMobile ? '10px 12px' : '12px 16px',
         borderRadius: 12,
         border: '1px solid var(--border)',
         background: isHovered ? 'var(--bg-hover)' : 'var(--bg-card)',
         marginBottom: 6,
         display: 'flex',
-        alignItems: isMobile ? 'flex-start' : 'center',
-        gap: 14,
-        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: 'center',
+        gap: isMobile ? 8 : 14,
+        flexDirection: 'row',
         transition: 'background 0.15s, transform 0.15s, box-shadow 0.15s',
         transform: isHovered ? 'translateY(-1px)' : 'none',
         boxShadow: isHovered ? '0 4px 16px rgba(0,0,0,0.10)' : 'none',
       }}>
 
       {/* Logo + Name + Description */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-        <AppLogo app={app} size={44} logoErrors={logoErrors} onError={onLogoError} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+        <AppLogo app={app} size={isMobile ? 36 : 44} logoErrors={logoErrors} onError={onLogoError} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 500, fontSize: 14, color: 'var(--text)', lineHeight: 1.3, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 500, fontSize: isMobile ? 13 : 14, color: 'var(--text)', lineHeight: 1.3, marginBottom: isMobile ? 0 : 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {app.name}
           </div>
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {app.description}
-          </div>
+          {!isMobile && (
+            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {app.description}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Status + last sync */}
-      <div style={{ minWidth: isMobile ? 'auto' : 136, display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', gap: 4, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
         <StatusBadge status={effectiveStatus} />
-        {effectiveStatus === 'connected' && lastSync && (
+        {!isMobile && effectiveStatus === 'connected' && lastSync && (
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)' }}>{lastSync}</span>
         )}
       </div>
 
       {/* Action buttons */}
-      <div style={{ minWidth: isMobile ? 'auto' : 140, display: 'flex', gap: 6, justifyContent: isMobile ? 'flex-start' : 'flex-end', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexShrink: 0 }}>
 
         {effectiveStatus === 'connected' && (
           <>
@@ -681,18 +683,20 @@ function ConnectionsInner() {
 
         {/* ── Header ───────────────────────────────────────────── */}
         <div style={{ padding: isMobile ? '24px 16px 0' : '32px 32px 0', background: 'var(--bg)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
-            <div>
-              <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 24, color: 'var(--text)', margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: isMobile ? 20 : 24, color: 'var(--text)', margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
                 Connexions
               </h1>
-              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
-                Connecte tes applications pour centraliser tes données : entraînement, récupération, nutrition et santé.
-              </p>
+              {!isMobile && (
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
+                  Connecte tes applications pour centraliser tes données : entraînement, récupération, nutrition et santé.
+                </p>
+              )}
               {!loadingStatus && connectedCount > 0 && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#22c55e' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#22c55e' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 6px #22c55e' }} />
-                  {connectedCount} application{connectedCount > 1 ? 's' : ''} connectée{connectedCount > 1 ? 's' : ''}
+                  {connectedCount} app{connectedCount > 1 ? 's' : ''} connectée{connectedCount > 1 ? 's' : ''}
                 </div>
               )}
             </div>
@@ -701,12 +705,15 @@ function ConnectionsInner() {
             <button onClick={handleSyncAll} disabled={syncingAll || loadingStatus || connectedCount === 0}
               onMouseEnter={() => setSyncAllHov(true)} onMouseLeave={() => setSyncAllHov(false)}
               style={{
-                padding: '10px 18px', borderRadius: 10, border: 'none',
+                padding: isMobile ? '8px 14px' : '10px 18px',
+                height: isMobile ? 40 : 'auto',
+                width: isMobile ? '100%' : 'auto',
+                borderRadius: 10, border: 'none',
                 background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? '#4a5bef' : ACCENT,
                 color: (syncingAll || connectedCount === 0) ? 'var(--text-dim)' : '#fff',
                 fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13,
                 cursor: (syncingAll || connectedCount === 0) ? 'default' : 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 boxShadow: (syncingAll || connectedCount === 0) ? 'none' : '0 2px 16px rgba(91,111,255,0.30)',
                 transition: 'background 0.18s',
                 whiteSpace: 'nowrap', flexShrink: 0,

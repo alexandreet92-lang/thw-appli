@@ -76,7 +76,7 @@ async function exchangeCode(
   provider: OAuthProvider,
   cfg: typeof OAUTH_CONFIG[OAuthProvider],
   code: string
-): Promise<{ access_token: string; refresh_token?: string; expires_at?: number; provider_user_id?: string; scope?: string; provider_data?: Record<string, unknown> }> {
+): Promise<{ access_token: string; refresh_token?: string | null; expires_at?: number | null; provider_user_id?: string; scope?: string; provider_data?: Record<string, unknown> }> {
 
   if (provider === 'withings') {
     const params = new URLSearchParams({

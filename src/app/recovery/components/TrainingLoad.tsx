@@ -65,7 +65,7 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
 
     // Zones from HR streams (simplified: approximate from effort zones)
     const hasZones = activities.some(a => {
-      const streams = (a as Record<string, unknown>).streams as Record<string, unknown[]> | null
+      const streams = (a as unknown as Record<string, unknown>).streams as Record<string, unknown[]> | null
       return streams?.heartrate && (streams.heartrate as unknown[]).length > 0
     })
     const zs = hasZones ? [3600, 7200, 5400, 3600, 1800, 900, 300] : []

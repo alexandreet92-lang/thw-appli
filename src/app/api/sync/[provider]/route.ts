@@ -60,15 +60,21 @@ export async function POST(
         count = await syncWahooWorkouts(userId)
         break
       case 'polar': {
+        console.log(`[sync/polar] === DÉBUT SYNC userId=${userId} ===`)
         // Ensure user is registered with Polar AccessLink (idempotent, 409 = already done)
-        try { await registerPolarUser(userId) } catch { /* 409 ignored */ }
+        try {
+          await registerPolarUser(userId)
+          console.log('[sync/polar] registerPolarUser: OK')
+        } catch (e) {
+          console.log('[sync/polar] registerPolarUser:', e instanceof Error ? e.message : String(e), '(409=déjà enregistré, ignoré)')
+        }
         const [pActs, pSleep, pPhys] = await Promise.all([
-          syncPolarActivities(userId).catch((e) => { console.error('[polar] activities:', e); return 0 }),
-          syncPolarSleep(userId).catch((e) => { console.error('[polar] sleep:', e); return 0 }),
-          syncPolarPhysical(userId).catch((e) => { console.error('[polar] physical:', e); return 0 }),
+          syncPolarActivities(userId).catch((e) => { console.error('[sync/polar] activities ERREUR:', e instanceof Error ? e.message : String(e)); return 0 }),
+          syncPolarSleep(userId).catch((e) => { console.error('[sync/polar] sleep ERREUR:', e instanceof Error ? e.message : String(e)); return 0 }),
+          syncPolarPhysical(userId).catch((e) => { console.error('[sync/polar] physical ERREUR:', e instanceof Error ? e.message : String(e)); return 0 }),
         ])
         count = pActs + pSleep + pPhys
-        console.log(`[sync/polar] activities=${pActs} sleep=${pSleep} physical=${pPhys}`)
+        console.log(`[sync/polar] === FIN SYNC — activities=${pActs} sleep=${pSleep} physical=${pPhys} total=${count} ===`)
         break
       }
       case 'withings': {
@@ -114,6 +120,44 @@ export async function GET(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = createServiceClient()
+
+  // ?debug=1 → diagnostic complet health_data + oauth_tokens
+  if (req.nextUrl.searchParams.get('debug') === '1' && provider === 'polar') {
+    const [tokenRow, sleepRows, physRows, actCount] = await Promise.all([
+      db.from('oauth_tokens')
+        .select('provider, is_active, provider_user_id, expires_at, last_used_at, updated_at')
+        .eq('user_id', user.id)
+        .eq('provider', 'polar')
+        .maybeSingle(),
+      db.from('health_data')
+        .select('id, date, data_type, sleep_duration_min, sleep_score, provider')
+        .eq('user_id', user.id)
+        .eq('data_type', 'sleep')
+        .order('date', { ascending: false })
+        .limit(10),
+      db.from('health_data')
+        .select('id, date, data_type, raw_data, provider')
+        .eq('user_id', user.id)
+        .eq('data_type', 'physical')
+        .order('date', { ascending: false })
+        .limit(5),
+      db.from('activities')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('provider', 'polar'),
+    ])
+
+    return NextResponse.json({
+      diagnostic: 'polar',
+      token: tokenRow.data ?? null,
+      health_data_sleep_count: sleepRows.data?.length ?? 0,
+      health_data_sleep_latest: sleepRows.data ?? [],
+      health_data_physical: physRows.data ?? [],
+      activities_count: actCount.count ?? 0,
+      note: 'Table utilisée: health_data (pas sleep_data). data_type=sleep pour le sommeil Polar.',
+    })
+  }
+
   const { data } = await db
     .from('activities')
     .select('*')

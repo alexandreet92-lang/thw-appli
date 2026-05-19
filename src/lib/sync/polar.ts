@@ -160,34 +160,63 @@ export async function syncPolarActivities(userId: string): Promise<number> {
 // ── Sleep ──────────────────────────────────────────────────────
 
 export async function syncPolarSleep(userId: string): Promise<number> {
+  console.log('=== DÉBUT SYNC POLAR SLEEP ===')
+
   const token = await getValidToken(userId, 'polar')
+  console.log('[syncPolarSleep] Token trouvé:', !!token)
   if (!token) throw new Error('No valid Polar token')
 
   const polarUserId = await getPolarUserId(userId)
+  console.log('[syncPolarSleep] Polar user ID:', polarUserId ?? 'MANQUANT')
   if (!polarUserId) throw new Error('Polar user ID not found')
 
   const supabase = createServiceClient()
 
   const today = new Date().toISOString().split('T')[0]
   const from  = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const url   = `${POLAR_API}/users/${polarUserId}/sleep?from=${from}&to=${today}`
 
-  console.log(`[syncPolarSleep] fetching ${from} → ${today} for polarUser=${polarUserId}`)
-  const res = await fetch(
-    `${POLAR_API}/users/${polarUserId}/sleep?from=${from}&to=${today}`,
-    { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
-  )
+  console.log(`[syncPolarSleep] URL appelée: ${url}`)
 
-  console.log(`[syncPolarSleep] status=${res.status}`)
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+
+  console.log(`[syncPolarSleep] Réponse API sleep - status: ${res.status}`)
+
+  const rawBody = await res.text()
+  console.log(`[syncPolarSleep] Réponse API sleep - body: ${rawBody.slice(0, 800)}`)
+
   if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    console.error(`[syncPolarSleep] error body: ${body.slice(0, 300)}`)
+    console.error(`[syncPolarSleep] ERREUR HTTP ${res.status}`)
+    console.error(`[syncPolarSleep] Body complet: ${rawBody}`)
     return 0
   }
 
-  const data  = await res.json()
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(rawBody) as Record<string, unknown>
+  } catch (e) {
+    console.error('[syncPolarSleep] JSON parse error:', e)
+    return 0
+  }
+
+  // Log top-level keys to understand structure
+  console.log('[syncPolarSleep] Clés JSON reçues:', Object.keys(data).join(', '))
+
   const nights = (data['nights'] as Record<string, unknown>[] | undefined) ?? []
-  console.log(`[syncPolarSleep] nights received: ${nights.length}`)
-  if (!nights.length) return 0
+  console.log(`[syncPolarSleep] Nombre de nuits reçues: ${nights.length}`)
+
+  if (!nights.length) {
+    console.log('[syncPolarSleep] Aucune nuit — vérifie si des données existent sur Polar Flow pour les 90 derniers jours')
+    console.log('=== FIN SYNC POLAR SLEEP (0 nuits) ===')
+    return 0
+  }
+
+  // Log first night sample
+  if (nights[0]) {
+    console.log('[syncPolarSleep] Exemple nuit[0]:', JSON.stringify(nights[0]).slice(0, 400))
+  }
 
   const rows = nights.map(n => ({
     user_id:            userId,
@@ -211,12 +240,22 @@ export async function syncPolarSleep(userId: string): Promise<number> {
     raw_data:           n,
   }))
 
-  const { error } = await supabase
+  console.log(`[syncPolarSleep] Tentative upsert de ${rows.length} lignes dans health_data`)
+  console.log('[syncPolarSleep] Exemple row[0]:', JSON.stringify(rows[0]).slice(0, 400))
+
+  const { error, data: upsertData } = await supabase
     .from('health_data')
     .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
+    .select('id,date')
 
-  if (error) throw new Error(`health_data upsert: ${error.message}`)
-  console.log(`[syncPolarSleep] upserted ${rows.length} rows`)
+  if (error) {
+    console.error('[syncPolarSleep] ERREUR UPSERT:', error.message)
+    console.error('[syncPolarSleep] Détail erreur:', JSON.stringify(error))
+    throw new Error(`health_data upsert: ${error.message}`)
+  }
+
+  console.log(`[syncPolarSleep] Upsert OK — ${(upsertData as unknown[])?.length ?? rows.length} lignes`)
+  console.log('=== FIN SYNC POLAR SLEEP ===')
   return rows.length
 }
 

@@ -37,7 +37,17 @@ export async function GET(req: NextRequest) {
 
   try {
     const cfg    = OAUTH_CONFIG[provider]
+    // ── DEBUG callback entry ───────────────────────────────────
+    console.log(`[oauth/callback] provider=${provider}`)
+    console.log(`[oauth/callback] code received: ${code ? code.slice(0,12)+'…' : 'MISSING'}`)
+    console.log(`[oauth/callback] redirectUri: "${cfg.redirectUri}"`)
+    console.log(`[oauth/callback] clientId exists: ${!!cfg.clientId} (len=${cfg.clientId.length})`)
+    console.log(`[oauth/callback] clientSecret exists: ${!!cfg.clientSecret}`)
+    // ──────────────────────────────────────────────────────────
     const tokens = await exchangeCode(provider, cfg, code)
+    // ── DEBUG token result ─────────────────────────────────────
+    console.log(`[oauth/callback] token exchange OK — access_token exists: ${!!tokens.access_token}, provider_user_id: ${tokens.provider_user_id ?? 'none'}, expires_at: ${tokens.expires_at ?? 'null'}`)
+    // ──────────────────────────────────────────────────────────
     await saveTokens(user.id, provider, tokens)
 
     // Polar: register user with AccessLink immediately (required before any data call)
@@ -96,6 +106,43 @@ async function exchangeCode(
     code,
     redirect_uri:  cfg.redirectUri,
   })
+
+  // ── DEBUG token request ────────────────────────────────────────
+  console.log(`[exchangeCode:${provider}] POST ${cfg.tokenUrl}`)
+  console.log(`[exchangeCode:${provider}] body (sans secret): grant_type=authorization_code&client_id=${cfg.clientId}&code=${code ? code.slice(0,12)+'…' : 'MISSING'}&redirect_uri=${cfg.redirectUri}`)
+  if (provider === 'polar') {
+    const basicAuth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64')
+    console.log(`[exchangeCode:polar] using Basic Auth header: Basic ${basicAuth.slice(0,8)}…`)
+    // Polar requires Basic Auth, not body params for client credentials
+    const polarRes = await fetch(cfg.tokenUrl, {
+      method:  'POST',
+      headers: {
+        'Authorization':  `Basic ${basicAuth}`,
+        'Content-Type':   'application/x-www-form-urlencoded',
+        'Accept':         'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type:   'authorization_code',
+        code,
+        redirect_uri: cfg.redirectUri,
+      }),
+    })
+    const polarBody = await polarRes.text()
+    console.log(`[exchangeCode:polar] response status: ${polarRes.status}`)
+    console.log(`[exchangeCode:polar] response body: ${polarBody}`)
+    if (!polarRes.ok) throw new Error(`Polar token exchange failed ${polarRes.status}: ${polarBody}`)
+    const polarJson = JSON.parse(polarBody)
+    return {
+      access_token:     polarJson.access_token,
+      refresh_token:    polarJson.refresh_token ?? null,
+      expires_at:       null,   // Polar tokens never expire
+      provider_user_id: String(polarJson.x_user_id ?? ''),
+      scope:            polarJson.scope ?? cfg.scope,
+      provider_data:    {},
+    }
+  }
+  // ──────────────────────────────────────────────────────────────
+
   const res  = await fetch(cfg.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`)
   const json = await res.json()

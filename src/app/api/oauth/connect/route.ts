@@ -27,5 +27,16 @@ export async function GET(req: NextRequest) {
     path:     '/',
   })
 
-  return NextResponse.redirect(buildAuthUrl(provider, state))
+  // ── DEBUG ──────────────────────────────────────────────────────
+  const cfg = OAUTH_CONFIG[provider]
+  console.log(`[oauth/connect] provider=${provider}`)
+  console.log(`[oauth/connect] clientId exists: ${!!cfg.clientId} (len=${cfg.clientId.length})`)
+  console.log(`[oauth/connect] clientSecret exists: ${!!cfg.clientSecret}`)
+  console.log(`[oauth/connect] redirectUri: "${cfg.redirectUri}"`)
+  console.log(`[oauth/connect] scope: "${cfg.scope}"`)
+  const authUrl = buildAuthUrl(provider, state)
+  console.log(`[oauth/connect] authUrl: ${authUrl}`)
+  // ──────────────────────────────────────────────────────────────
+
+  return NextResponse.redirect(authUrl)
 }

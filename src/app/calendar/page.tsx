@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import GoalBanner from './components/GoalBanner'
 import NextRaceBar from './components/NextRaceBar'
 import AnnualView from './components/AnnualView'
-import MonthlyView from './components/MonthlyView'
+import AppleCalendarView from './components/AppleCalendarView'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
 import type { RaceStage, NutritionItem } from './components/types'
@@ -689,8 +689,17 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
   const [eventModal, setEventModal] = useState<{ mode: 'create' | 'edit'; stage?: RaceStage } | null>(null)
   // DayModal
   const [dayModal,   setDayModal]   = useState<{ stage: RaceStage; date: string } | null>(null)
-  const year = new Date().getFullYear()
-  const gty  = races.find(r => r.level === 'gty' && new Date(r.date).getFullYear() === year)
+  // Year selector
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [yearPickerOpen, setYearPickerOpen] = useState(false)
+  const YEAR_RANGE = [2024, 2025, 2026, 2027, 2028, 2029, 2030]
+  const gty  = races.find(r => r.level === 'gty' && new Date(r.date).getFullYear() === selectedYear)
+  const yearRaces = races.filter(r => new Date(r.date).getFullYear() === selectedYear)
+  const yearStages = raceStages.filter(s => {
+    const sy = new Date(s.startDate + 'T12:00:00').getFullYear()
+    const ey = new Date(s.endDate + 'T12:00:00').getFullYear()
+    return sy === selectedYear || ey === selectedYear
+  })
 
   function openNewRace(date?: string) {
     setEditRace(null)
@@ -717,22 +726,69 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      <GoalBanner gty={gty} races={races} />
+      <GoalBanner gty={gty} races={races} year={selectedYear} />
 
-      {/* Controls */}
+      {/* Year selector + Controls */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:8 }}>
-        <div style={{ display:'flex',gap:5 }}>
-          {(['year','month'] as CalView[]).map(v => (
-            <button key={v} onClick={() => setCalView(v)} style={{
-              padding:'6px 12px',borderRadius:9,border:'1px solid',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400,
-              borderColor:calView===v?'#00c8e0':'var(--border)',
-              background:calView===v?'rgba(0,200,224,0.10)':'var(--bg-card)',
-              color:calView===v?'#00c8e0':'var(--text-mid)',
-            }}>
-              {v === 'year' ? 'Vue annuelle' : 'Vue mensuelle'}
+        {/* Left: year + view toggle */}
+        <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+          {/* Year picker */}
+          <div style={{ position:'relative' as const }}>
+            <button
+              onClick={() => setYearPickerOpen(o => !o)}
+              style={{
+                fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:800,
+                background:'transparent',border:'none',cursor:'pointer',
+                color:'var(--text)',padding:'0 2px',letterSpacing:'-0.02em',
+                display:'flex',alignItems:'center',gap:4,
+              }}
+            >
+              {selectedYear}
+              <span style={{ fontSize:12,color:'var(--text-dim)',fontWeight:400 }}>▾</span>
             </button>
-          ))}
+            {yearPickerOpen && (
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position:'absolute' as const,top:'calc(100% + 4px)',left:0,zIndex:50,
+                  background:'var(--bg-card)',border:'1px solid var(--border)',
+                  borderRadius:12,padding:8,boxShadow:'0 8px 24px rgba(0,0,0,0.3)',
+                  display:'flex',flexDirection:'column' as const,gap:2,minWidth:90,
+                }}
+              >
+                {YEAR_RANGE.map(y => (
+                  <button key={y} onClick={() => { setSelectedYear(y); setYearPickerOpen(false) }}
+                    style={{
+                      padding:'6px 14px',borderRadius:8,border:'1px solid',cursor:'pointer',
+                      fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:y===selectedYear?700:400,
+                      borderColor:y===selectedYear?'#00c8e0':'transparent',
+                      background:y===selectedYear?'rgba(0,200,224,0.10)':'transparent',
+                      color:y===selectedYear?'#00c8e0':'var(--text)',textAlign:'left' as const,
+                    }}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* View toggle */}
+          <div style={{ display:'flex',gap:5 }}>
+            {(['year','month'] as CalView[]).map(v => (
+              <button key={v} onClick={() => setCalView(v)} style={{
+                padding:'6px 12px',borderRadius:9,border:'1px solid',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400,
+                borderColor:calView===v?'#00c8e0':'var(--border)',
+                background:calView===v?'rgba(0,200,224,0.10)':'var(--bg-card)',
+                color:calView===v?'#00c8e0':'var(--text-mid)',
+              }}>
+                {v === 'year' ? 'Vue annuelle' : 'Vue mensuelle'}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Right: action buttons */}
         <div style={{ display:'flex',gap:6 }}>
           <button onClick={() => setEventModal({ mode: 'create' })} style={{
             padding:'6px 12px',borderRadius:9,fontSize:11,fontWeight:600,cursor:'pointer',
@@ -749,10 +805,15 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
         </div>
       </div>
 
+      {/* Close year picker on outside click */}
+      {yearPickerOpen && (
+        <div onClick={() => setYearPickerOpen(false)} style={{ position:'fixed',inset:0,zIndex:40 }} />
+      )}
+
       {/* Views */}
       {calView === 'year' && (
         <AnnualView
-          races={races} stages={raceStages} year={year}
+          races={yearRaces} stages={yearStages} year={selectedYear}
           onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
           onStageClick={s => setEventModal({ mode: 'edit', stage: s })}
           onMonthClick={m => { setCurrentMonth(m); setCalView('month') }}
@@ -760,11 +821,9 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
         />
       )}
       {calView === 'month' && (
-        <MonthlyView
-          races={races} stages={raceStages} year={year}
-          initialMonth={currentMonth}
+        <AppleCalendarView
+          races={yearRaces} stages={yearStages} year={selectedYear}
           onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
-          onStageClick={s => setEventModal({ mode: 'edit', stage: s })}
           onStageDayClick={(s, date) => setDayModal({ stage: s, date })}
           onDayClick={date => openNewRace(date)}
         />
@@ -774,9 +833,9 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
       <NextRaceBar races={races} onEdit={r => { setEditRace(r); setShowRaceModal(true) }} />
 
       {/* Empty state */}
-      {races.length === 0 && raceStages.length === 0 && (
+      {yearRaces.length === 0 && yearStages.length === 0 && (
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée en {selectedYear}</p>
           <button onClick={() => openNewRace()} style={{
             padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
             border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',

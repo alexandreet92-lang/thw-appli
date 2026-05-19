@@ -9,12 +9,11 @@ const SPORT_DISPLAY: Record<RaceSport, string> = {
 interface Props {
   gty: Race | undefined
   races: Race[]
+  year?: number
 }
 
-export default function GoalBanner({ gty, races }: Props) {
-  const year = new Date().getFullYear()
-
-  // Stats for current year
+export default function GoalBanner({ gty, races, year = new Date().getFullYear() }: Props) {
+  // Stats for selected year
   const yearRaces = races.filter(r => new Date(r.date).getFullYear() === year)
   const total = yearRaces.length
   const bySport: Partial<Record<RaceSport, number>> = {}

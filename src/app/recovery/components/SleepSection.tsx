@@ -51,7 +51,7 @@ function SleepTrend({ data }: { data: { date: string; quality: number; hours: nu
         <rect x={0} y={H*0.2} width={W} height={H*0.4} fill="rgba(59,143,212,0.06)" />
         <rect x={0} y={H*0.6} width={W} height={H*0.4} fill="rgba(239,68,68,0.06)" />
         <path d={path} fill="none" stroke="#8B5CF6" strokeWidth={2} strokeLinecap="round"
-          ref={svgRef} strokeDasharray={pathLen} strokeDashoffset={animated ? 0 : pathLen}
+          strokeDasharray={pathLen} strokeDashoffset={animated ? 0 : pathLen}
           style={{ transition:'stroke-dashoffset 1s ease-out' }} />
         {pts.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={3} fill="#8B5CF6" opacity={0.7} />

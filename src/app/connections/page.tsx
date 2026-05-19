@@ -69,6 +69,21 @@ const CATEGORIES: Category[] = [
   { id: 'sleep',      label: 'Sommeil' },
 ]
 
+// Canonical section IDs used in HTML
+const SECTION_ID: Record<CategoryId, string> = {
+  training:   'entrainement',
+  recovery:   'recuperation-sante',
+  body:       'balance-corps',
+  nutrition:  'nutrition',
+  biometrics: 'biometrie-capteurs',
+  sleep:      'sommeil',
+}
+
+function scrollToSection(catId: CategoryId) {
+  const el = document.getElementById(SECTION_ID[catId])
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 // ── Apps ────────────────────────────────────────────────────────
 
 const APPS: AppDef[] = [
@@ -128,6 +143,9 @@ const APPS: AppDef[] = [
 // Providers with working OAuth flow
 const OAUTH_PROVIDERS = new Set(['strava', 'wahoo', 'withings', 'polar'])
 
+// Blue accent used consistently across all CTAs
+const ACCENT = '#5b6fff'
+
 // ── Spinner ─────────────────────────────────────────────────────
 
 function Spinner({ size = 14, color = 'currentColor' }: { size?: number; color?: string }) {
@@ -141,29 +159,52 @@ function Spinner({ size = 14, color = 'currentColor' }: { size?: number; color?:
   )
 }
 
+// ── RefreshIcon ─────────────────────────────────────────────────
+
+function RefreshIcon({ size = 13, spinning = false }: { size?: number; spinning?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}
+      style={{ flexShrink: 0, animation: spinning ? 'spin 0.8s linear infinite' : 'none' }}>
+      <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+    </svg>
+  )
+}
+
 // ── AppLogo ─────────────────────────────────────────────────────
 
-function AppLogo({ app, size = 48, logoErrors, onError }: {
+function AppLogo({ app, size = 44, logoErrors, onError }: {
   app: AppDef; size?: number; logoErrors: Set<string>; onError: (id: string) => void
 }) {
   const hasError = logoErrors.has(app.id)
   const showLogo = app.logo !== null && !hasError
-  const radius = size <= 48 ? 12 : 14
-  const imgSize = Math.round(size * 0.75)
+  const radius = 10
+  const imgSize = Math.round(size * 0.72)
   return (
-    <div style={{ width: size, height: size, borderRadius: radius, background: showLogo ? '#fff' : app.color, border: showLogo ? '1px solid rgba(0,0,0,0.08)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+    <div style={{
+      width: size, height: size, borderRadius: radius, flexShrink: 0, overflow: 'hidden',
+      background: showLogo ? '#fff' : app.color,
+      border: showLogo ? '1px solid rgba(0,0,0,0.08)' : 'none',
+      boxShadow: showLogo ? '0 1px 6px rgba(0,0,0,0.10)' : 'none',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: showLogo ? 4 : 0,
+      boxSizing: 'border-box' as const,
+    }}>
       {showLogo ? (
         <img
           src={`/logos/apps/${app.logo}.png`}
           width={imgSize} height={imgSize}
           alt={app.name}
           onError={() => onError(app.id)}
-          style={{ objectFit: 'contain', display: 'block', imageRendering: 'auto' }}
+          style={{ objectFit: 'contain', display: 'block', width: '100%', height: '100%' }}
         />
       ) : (
-        <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: Math.round(size * 0.27), color: '#fff', letterSpacing: '0.02em' }}>
+        <span style={{
+          fontFamily: 'Syne, sans-serif', fontWeight: 700,
+          fontSize: Math.round(size * 0.27), color: '#fff', letterSpacing: '0.02em',
+        }}>
           {app.logoInitial}
-        </div>
+        </span>
       )}
     </div>
   )
@@ -179,18 +220,19 @@ function StatusBadge({ status }: { status: ConnectionStatus }) {
     </span>
   )
   if (status === 'pending') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
-      <Spinner size={8} color="#f97316" />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20, background: 'rgba(91,111,255,0.12)', color: ACCENT, fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+      <Spinner size={8} color={ACCENT} />
       En cours
     </span>
   )
   if (status === 'available') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, border: '1px solid var(--border-mid)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
       Disponible
     </span>
   )
+  // coming
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, whiteSpace: 'nowrap', opacity: 0.7 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.10)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
       En cours d&apos;intégration
     </span>
   )
@@ -210,66 +252,122 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
 
   return (
     <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
-      style={{ padding: isMobile ? '12px 14px' : '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: isHovered ? 'var(--bg-hover)' : 'var(--bg-card)', marginBottom: 6, display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: 14, flexDirection: isMobile ? 'column' : 'row', transition: 'background 0.14s' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-        <AppLogo app={app} size={48} logoErrors={logoErrors} onError={onLogoError} />
+      style={{
+        padding: isMobile ? '12px 14px' : '12px 16px',
+        borderRadius: 12,
+        border: '1px solid var(--border)',
+        background: isHovered ? 'var(--bg-hover)' : 'var(--bg-card)',
+        marginBottom: 6,
+        display: 'flex',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        gap: 14,
+        flexDirection: isMobile ? 'column' : 'row',
+        transition: 'background 0.15s, transform 0.15s, box-shadow 0.15s',
+        transform: isHovered ? 'translateY(-1px)' : 'none',
+        boxShadow: isHovered ? '0 4px 16px rgba(0,0,0,0.10)' : 'none',
+      }}>
+
+      {/* Logo + Name + Description */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+        <AppLogo app={app} size={44} logoErrors={logoErrors} onError={onLogoError} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)', lineHeight: 1.3, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 500, fontSize: 14, color: 'var(--text)', lineHeight: 1.3, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {app.name}
           </div>
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {app.description}
           </div>
         </div>
       </div>
 
-      <div style={{ minWidth: isMobile ? 'auto' : 140, textAlign: isMobile ? 'left' : 'right', display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', gap: 4, flexShrink: 0 }}>
+      {/* Status + last sync */}
+      <div style={{ minWidth: isMobile ? 'auto' : 136, display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', gap: 4, flexShrink: 0 }}>
         <StatusBadge status={effectiveStatus} />
         {effectiveStatus === 'connected' && lastSync && (
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)' }}>{lastSync}</span>
         )}
       </div>
 
-      <div style={{ minWidth: isMobile ? 'auto' : 130, display: 'flex', gap: 6, justifyContent: isMobile ? 'flex-start' : 'flex-end', flexShrink: 0 }}>
+      {/* Action buttons */}
+      <div style={{ minWidth: isMobile ? 'auto' : 140, display: 'flex', gap: 6, justifyContent: isMobile ? 'flex-start' : 'flex-end', flexShrink: 0 }}>
+
         {effectiveStatus === 'connected' && (
           <>
+            {/* Sync */}
             <button onClick={onSync} disabled={isSyncing}
               onMouseEnter={() => setSyncHov(true)} onMouseLeave={() => setSyncHov(false)}
-              style={{ padding: '5px 10px', borderRadius: 7, border: `1px solid ${isSyncing ? 'var(--border)' : '#00c8e0'}`, background: syncHov && !isSyncing ? 'rgba(0,200,224,0.10)' : 'transparent', color: isSyncing ? 'var(--text-dim)' : '#00c8e0', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, cursor: isSyncing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'background 0.14s', whiteSpace: 'nowrap' }}>
-              {isSyncing ? <Spinner size={11} color="#00c8e0" /> : (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                  <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-                </svg>
-              )}
+              style={{
+                padding: '5px 10px', borderRadius: 7,
+                border: `1px solid ${syncHov && !isSyncing ? 'var(--border-mid)' : 'var(--border)'}`,
+                background: syncHov && !isSyncing ? 'var(--bg-hover)' : 'transparent',
+                color: isSyncing ? 'var(--text-dim)' : 'var(--text-mid)',
+                fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                cursor: isSyncing ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: 5,
+                transition: 'background 0.14s, border-color 0.14s',
+                whiteSpace: 'nowrap',
+              }}>
+              {isSyncing
+                ? <Spinner size={11} color="var(--text-dim)" />
+                : <RefreshIcon size={10} />
+              }
               Sync
             </button>
+            {/* Disconnect */}
             <button onClick={onDisconnect}
               onMouseEnter={() => setDisconnectHov(true)} onMouseLeave={() => setDisconnectHov(false)}
-              style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid #ef4444', background: disconnectHov ? 'rgba(239,68,68,0.09)' : 'transparent', color: '#ef4444', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, cursor: 'pointer', transition: 'background 0.14s', whiteSpace: 'nowrap' }}>
+              style={{
+                padding: '5px 10px', borderRadius: 7,
+                border: 'none',
+                background: disconnectHov ? 'rgba(239,68,68,0.08)' : 'transparent',
+                color: disconnectHov ? '#ef4444' : 'var(--text-dim)',
+                fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'background 0.14s, color 0.14s',
+                whiteSpace: 'nowrap',
+              }}>
               Déconnecter
             </button>
           </>
         )}
+
         {effectiveStatus === 'pending' && (
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', color: 'var(--text-dim)', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
             <Spinner size={11} color="var(--text-dim)" />
-            Autorisation en cours
+            Autorisation…
           </span>
         )}
+
         {effectiveStatus === 'available' && (
           <button onClick={onConnect}
             onMouseEnter={() => setConnectHov(true)} onMouseLeave={() => setConnectHov(false)}
-            style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${app.color}`, background: connectHov ? `${app.color}1a` : `${app.color}0d`, color: app.color, fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'background 0.14s', whiteSpace: 'nowrap' }}>
+            style={{
+              padding: '5px 12px', borderRadius: 7,
+              border: `1px solid ${ACCENT}`,
+              background: connectHov ? ACCENT : 'transparent',
+              color: connectHov ? '#fff' : ACCENT,
+              fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 5,
+              transition: 'background 0.15s, color 0.15s',
+              whiteSpace: 'nowrap',
+            }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Connecter
           </button>
         )}
+
         {effectiveStatus === 'coming' && (
-          <button disabled style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, cursor: 'default', opacity: 0.6, whiteSpace: 'nowrap' }}>
-            En cours d&apos;intégration
+          <button disabled style={{
+            padding: '5px 10px', borderRadius: 7,
+            border: '1px solid var(--border)',
+            background: 'transparent', color: 'var(--text-dim)',
+            fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 400,
+            cursor: 'default', opacity: 0.55, whiteSpace: 'nowrap',
+          }}>
+            Bientôt disponible
           </button>
         )}
       </div>
@@ -280,7 +378,23 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
 // ── PillFilter ──────────────────────────────────────────────────
 
 function PillFilter({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return <button onClick={onClick} className={`tab-btn${active ? ' active' : ''}`}>{label}</button>
+  const [hov, setHov] = useState(false)
+  return (
+    <button onClick={onClick}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        padding: '6px 14px', borderRadius: 20,
+        border: active ? 'none' : '1px solid var(--border)',
+        background: active ? ACCENT : hov ? 'var(--bg-hover)' : 'var(--bg-card2)',
+        color: active ? '#fff' : hov ? 'var(--text)' : 'var(--text-dim)',
+        fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: active ? 600 : 400,
+        cursor: 'pointer',
+        transition: 'background 0.14s, color 0.14s',
+        whiteSpace: 'nowrap',
+      }}>
+      {label}
+    </button>
+  )
 }
 
 // ── ConnectModal ─────────────────────────────────────────────────
@@ -297,7 +411,7 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
         style={{ width: '100%', maxWidth: 400, background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-mid)', padding: 28, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, animation: 'fadeUp 0.22s ease forwards' }}>
         {modal.step === 'loading' ? (
           <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <Spinner size={36} color="#00c8e0" />
+            <Spinner size={36} color={ACCENT} />
             <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: 'var(--text-mid)', textAlign: 'center' }}>
               Redirection vers {app.name}…
             </span>
@@ -321,7 +435,7 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
               </button>
               <button onClick={onContinue}
                 onMouseEnter={() => setContinueHov(true)} onMouseLeave={() => setContinueHov(false)}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: continueHov ? 'linear-gradient(135deg, #00b8ce, #4a5fff)' : 'linear-gradient(135deg, #00c8e0, #5b6fff)', color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 2px 14px rgba(0,200,224,0.3)', transition: 'background 0.14s' }}>
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: continueHov ? '#4a5bef' : ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 2px 14px rgba(91,111,255,0.35)', transition: 'background 0.14s' }}>
                 Continuer
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
@@ -339,7 +453,7 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
 
 function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 'info' | 'success' | 'error'; onDismiss: () => void }) {
   useEffect(() => { const t = setTimeout(onDismiss, 4500); return () => clearTimeout(t) }, [onDismiss])
-  const color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#f97316'
+  const color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : ACCENT
   return (
     <div style={{ position: 'fixed', bottom: 28, right: 24, zIndex: 2000, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 12, padding: '11px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.20)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp 0.2s ease forwards', maxWidth: 360 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}` }} />
@@ -376,14 +490,18 @@ function ConnectionsInner() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // IntersectionObserver for sidebar
+  // IntersectionObserver — highlight active sidebar item while scrolling
   useEffect(() => {
     const observers: IntersectionObserver[] = []
     CATEGORIES.forEach(cat => {
-      const el = document.getElementById(`section-${cat.id}`)
+      const el = document.getElementById(SECTION_ID[cat.id])
       if (!el) return
-      const obs = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setActiveCategory(cat.id) }, { threshold: 0.3 })
-      obs.observe(el); observers.push(obs)
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveCategory(cat.id) },
+        { threshold: 0.25, rootMargin: '-80px 0px -60% 0px' }
+      )
+      obs.observe(el)
+      observers.push(obs)
     })
     return () => observers.forEach(o => o.disconnect())
   }, [])
@@ -422,7 +540,6 @@ function ConnectionsInner() {
       const app = APPS.find(a => a.provider === provider)
       addToast(`${app?.name ?? provider} connecté avec succès`, 'success')
       void loadStatus()
-      // Clean URL
       window.history.replaceState({}, '', '/connections')
     } else if (oauth === 'denied') {
       addToast('Connexion annulée', 'info')
@@ -547,18 +664,22 @@ function ConnectionsInner() {
   const modalApp = connectModal ? APPS.find(a => a.id === connectModal.appId) : null
 
   const filterPills: { id: StatusFilter; label: string }[] = [
-    { id: 'all', label: 'Tout' },
+    { id: 'all',       label: 'Tout' },
     { id: 'connected', label: 'Connecté' },
     { id: 'available', label: 'Disponible' },
+    { id: 'coming',    label: 'En cours' },
   ]
 
   return (
     <>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      <style>{`
+        @keyframes spin    { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes fadeUp  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
 
-        {/* Header */}
+        {/* ── Header ───────────────────────────────────────────── */}
         <div style={{ padding: isMobile ? '24px 16px 0' : '32px 32px 0', background: 'var(--bg)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
             <div>
@@ -568,31 +689,38 @@ function ConnectionsInner() {
               <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
                 Connecte tes applications pour centraliser tes données : entraînement, récupération, nutrition et santé.
               </p>
-              {loadingStatus && !connectedCount ? null : connectedCount > 0 && (
+              {!loadingStatus && connectedCount > 0 && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#22c55e' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 6px #22c55e' }} />
                   {connectedCount} application{connectedCount > 1 ? 's' : ''} connectée{connectedCount > 1 ? 's' : ''}
                 </div>
               )}
             </div>
-            <button onClick={handleSyncAll} disabled={syncingAll || loadingStatus}
+
+            {/* Sync All */}
+            <button onClick={handleSyncAll} disabled={syncingAll || loadingStatus || connectedCount === 0}
               onMouseEnter={() => setSyncAllHov(true)} onMouseLeave={() => setSyncAllHov(false)}
-              style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: syncingAll ? 'var(--bg-card2)' : syncAllHov ? 'linear-gradient(135deg, #00b8ce, #4a5fff)' : 'linear-gradient(135deg, #00c8e0, #5b6fff)', color: syncingAll ? 'var(--text-dim)' : '#fff', fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13, cursor: syncingAll ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: syncingAll ? 'none' : '0 2px 16px rgba(0,200,224,0.25)', transition: 'background 0.18s', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              {syncingAll ? <Spinner size={13} color="#00c8e0" /> : (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                  <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-                </svg>
-              )}
+              style={{
+                padding: '10px 18px', borderRadius: 10, border: 'none',
+                background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? '#4a5bef' : ACCENT,
+                color: (syncingAll || connectedCount === 0) ? 'var(--text-dim)' : '#fff',
+                fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13,
+                cursor: (syncingAll || connectedCount === 0) ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                boxShadow: (syncingAll || connectedCount === 0) ? 'none' : '0 2px 16px rgba(91,111,255,0.30)',
+                transition: 'background 0.18s',
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+              <RefreshIcon size={13} spinning={syncingAll} />
               {syncingAll ? 'Synchronisation...' : 'Synchroniser tout'}
             </button>
           </div>
 
-          {/* Search + filters */}
+          {/* ── Search + filters (sticky bar) ─────────────────── */}
           <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', paddingTop: 8, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-                <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: searchFocused ? '#00c8e0' : 'var(--text-dim)', display: 'flex', pointerEvents: 'none', transition: 'color 0.14s' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: searchFocused ? ACCENT : 'var(--text-dim)', display: 'flex', pointerEvents: 'none', transition: 'color 0.14s' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                   </svg>
@@ -600,7 +728,16 @@ function ConnectionsInner() {
                 <input type="text" placeholder="Rechercher une application..." value={search}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                   onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-                  style={{ width: '100%', padding: '8px 12px 8px 33px', borderRadius: 10, border: `1px solid ${searchFocused ? 'rgba(0,200,224,0.4)' : 'var(--border)'}`, background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box', boxShadow: searchFocused ? '0 0 0 3px rgba(0,200,224,0.10)' : 'none', transition: 'border-color 0.14s, box-shadow 0.14s' }} />
+                  style={{
+                    width: '100%', padding: '8px 12px 8px 34px',
+                    borderRadius: 12,
+                    border: `1px solid ${searchFocused ? `${ACCENT}80` : 'var(--border)'}`,
+                    background: 'var(--input-bg)', color: 'var(--text)',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 13, outline: 'none',
+                    boxSizing: 'border-box' as const,
+                    boxShadow: searchFocused ? `0 0 0 3px ${ACCENT}18` : 'none',
+                    transition: 'border-color 0.14s, box-shadow 0.14s',
+                  }} />
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {filterPills.map(pill => (
@@ -611,19 +748,34 @@ function ConnectionsInner() {
           </div>
         </div>
 
-        {/* Body */}
+        {/* ── Body ─────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flex: 1, padding: isMobile ? '0 0 60px' : '0 32px 60px' }}>
 
-          {/* Left sidebar (desktop) */}
+          {/* Left sidebar (desktop only) */}
           {!isMobile && (
-            <div style={{ width: 200, flexShrink: 0, position: 'sticky', top: 0, alignSelf: 'flex-start', height: 'calc(100vh - 120px)', overflowY: 'auto', paddingTop: 24, paddingRight: 16 }}>
+            <div style={{
+              width: 196, flexShrink: 0,
+              position: 'sticky', top: 100, alignSelf: 'flex-start',
+              paddingTop: 28, paddingRight: 16,
+            }}>
               {CATEGORIES.map(cat => {
                 const catConnected = APPS.filter(a => a.category === cat.id && a.provider && connectedProviders[a.provider]).length
                 const isActive = activeCategory === cat.id
                 return (
                   <button key={cat.id}
-                    onClick={() => { const el = document.getElementById(`section-${cat.id}`); if (el) el.scrollIntoView({ behavior: 'smooth' }) }}
-                    style={{ width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', borderLeft: isActive ? '3px solid #00c8e0' : '3px solid transparent', background: isActive ? 'rgba(0,200,224,0.07)' : 'transparent', color: isActive ? '#00c8e0' : 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: isActive ? 600 : 400, cursor: 'pointer', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, transition: 'background 0.14s, color 0.14s' }}>
+                    onClick={() => scrollToSection(cat.id)}
+                    style={{
+                      width: '100%', textAlign: 'left',
+                      padding: '7px 10px', borderRadius: 8, border: 'none',
+                      borderLeft: isActive ? `2px solid ${ACCENT}` : '2px solid transparent',
+                      background: isActive ? `${ACCENT}12` : 'transparent',
+                      color: isActive ? ACCENT : 'var(--text-dim)',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                      fontWeight: isActive ? 600 : 400,
+                      cursor: 'pointer', marginBottom: 2,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                      transition: 'background 0.14s, color 0.14s',
+                    }}>
                     <span style={{ lineHeight: 1.3 }}>{cat.label}</span>
                     {catConnected > 0 && (
                       <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '1px 5px', borderRadius: 8, flexShrink: 0 }}>
@@ -638,13 +790,20 @@ function ConnectionsInner() {
 
           {/* Mobile: horizontal category pills */}
           {isMobile && (
-            <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '14px 16px 0', scrollbarWidth: 'none', width: '100%', flexShrink: 0 }}>
+            <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '14px 16px 0', scrollbarWidth: 'none' as const, width: '100%', flexShrink: 0 }}>
               {CATEGORIES.map(cat => {
                 const isActive = activeCategory === cat.id
                 return (
                   <button key={cat.id}
-                    onClick={() => { const el = document.getElementById(`section-${cat.id}`); if (el) el.scrollIntoView({ behavior: 'smooth' }) }}
-                    style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 20, border: isActive ? 'none' : '1px solid var(--border-mid)', background: isActive ? 'linear-gradient(135deg, #00c8e0, #5b6fff)' : 'var(--bg-card)', color: isActive ? '#fff' : 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: isActive ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    onClick={() => scrollToSection(cat.id)}
+                    style={{
+                      flexShrink: 0, padding: '5px 12px', borderRadius: 20,
+                      border: isActive ? 'none' : '1px solid var(--border-mid)',
+                      background: isActive ? ACCENT : 'var(--bg-card)',
+                      color: isActive ? '#fff' : 'var(--text-dim)',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: isActive ? 600 : 400,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}>
                     {cat.label}
                   </button>
                 )
@@ -652,7 +811,7 @@ function ConnectionsInner() {
             </div>
           )}
 
-          {/* Right content */}
+          {/* ── Right content ──────────────────────────────────── */}
           <div style={{ flex: 1, minWidth: 0, paddingTop: 24, paddingLeft: isMobile ? 16 : 0, paddingRight: isMobile ? 16 : 0 }}>
             {filteredApps.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
@@ -664,24 +823,30 @@ function ConnectionsInner() {
                 if (catApps.length === 0) return null
                 const connCount = catApps.filter(a => a.provider && connectedProviders[a.provider]).length
                 return (
-                  <section key={cat.id} id={`section-${cat.id}`} style={{ paddingTop: 32, paddingBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16 }}>
-                      <div style={{ width: 28, height: 1, background: 'var(--border)', flexShrink: 0 }} />
-                      <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                  <section key={cat.id} id={SECTION_ID[cat.id]} style={{ paddingTop: 32, paddingBottom: 8 }}>
+
+                    {/* Section header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                      <span style={{
+                        fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11,
+                        letterSpacing: '0.10em', textTransform: 'uppercase' as const,
+                        color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
                         {cat.label}
                       </span>
                       <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         {connCount > 0 && (
-                          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '1px 6px', borderRadius: 10 }}>
+                          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '2px 7px', borderRadius: 10 }}>
                             {connCount} connectée{connCount > 1 ? 's' : ''}
                           </span>
                         )}
-                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 10 }}>
+                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 10 }}>
                           {catApps.length} app{catApps.length > 1 ? 's' : ''}
                         </span>
                       </div>
                     </div>
+
                     {catApps.map(app => {
                       const effStatus = getEffectiveStatus(app)
                       return (

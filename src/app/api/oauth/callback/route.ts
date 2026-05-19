@@ -72,12 +72,54 @@ export async function GET(req: NextRequest) {
   }
 }
 
+interface ExchangeResult {
+  access_token:      string
+  refresh_token?:    string
+  expires_at?:       number
+  provider_user_id?: string
+  scope?:            string
+  provider_data?:    Record<string, unknown>
+}
+
 async function exchangeCode(
   provider: OAuthProvider,
   cfg: typeof OAUTH_CONFIG[OAuthProvider],
   code: string
-): Promise<{ access_token: string; refresh_token?: string | null; expires_at?: number | null; provider_user_id?: string; scope?: string; provider_data?: Record<string, unknown> }> {
+): Promise<ExchangeResult> {
 
+  // ── Polar: Basic Auth required ─────────────────────────────────
+  if (provider === 'polar') {
+    const basicAuth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64')
+    console.log(`[exchangeCode:polar] POST ${cfg.tokenUrl}`)
+    console.log(`[exchangeCode:polar] clientId len=${cfg.clientId.length}, redirectUri="${cfg.redirectUri}"`)
+    console.log(`[exchangeCode:polar] Basic ${basicAuth.slice(0,8)}…`)
+    const polarRes = await fetch(cfg.tokenUrl, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type':  'application/x-www-form-urlencoded',
+        'Accept':        'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type:   'authorization_code',
+        code,
+        redirect_uri: cfg.redirectUri,
+      }),
+    })
+    const polarBody = await polarRes.text()
+    console.log(`[exchangeCode:polar] status=${polarRes.status} body=${polarBody}`)
+    if (!polarRes.ok) throw new Error(`Polar token exchange failed ${polarRes.status}: ${polarBody}`)
+    const j = JSON.parse(polarBody) as Record<string, unknown>
+    return {
+      access_token:     String(j['access_token'] ?? ''),
+      // Polar tokens never expire — omit expires_at entirely
+      provider_user_id: String(j['x_user_id']   ?? ''),
+      scope:            String(j['scope']        ?? cfg.scope),
+      provider_data:    {},
+    }
+  }
+
+  // ── Withings: custom action param ─────────────────────────────
   if (provider === 'withings') {
     const params = new URLSearchParams({
       action:        'requesttoken',
@@ -88,17 +130,20 @@ async function exchangeCode(
       redirect_uri:  cfg.redirectUri,
     })
     const res  = await fetch(cfg.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-    const json = await res.json()
-    if (json.status !== 0) throw new Error(`Withings error: ${json.error}`)
+    const json = await res.json() as Record<string, unknown>
+    const body = json['body'] as Record<string, unknown> | undefined
+    if (json['status'] !== 0) throw new Error(`Withings error: ${json['error']}`)
     return {
-      access_token:     json.body.access_token,
-      refresh_token:    json.body.refresh_token,
-      expires_at:       Math.floor(Date.now() / 1000) + json.body.expires_in,
-      provider_user_id: String(json.body.userid),
-      scope:            json.body.scope,
+      access_token:     String(body?.['access_token']  ?? ''),
+      refresh_token:    String(body?.['refresh_token'] ?? ''),
+      expires_at:       Math.floor(Date.now() / 1000) + Number(body?.['expires_in'] ?? 3600),
+      provider_user_id: String(body?.['userid']        ?? ''),
+      scope:            String(body?.['scope']         ?? ''),
     }
   }
 
+  // ── Standard OAuth (Strava, Wahoo) ─────────────────────────────
+  console.log(`[exchangeCode:${provider}] POST ${cfg.tokenUrl} redirect_uri="${cfg.redirectUri}"`)
   const params = new URLSearchParams({
     grant_type:    'authorization_code',
     client_id:     cfg.clientId,
@@ -106,67 +151,26 @@ async function exchangeCode(
     code,
     redirect_uri:  cfg.redirectUri,
   })
-
-  // ── DEBUG token request ────────────────────────────────────────
-  console.log(`[exchangeCode:${provider}] POST ${cfg.tokenUrl}`)
-  console.log(`[exchangeCode:${provider}] body (sans secret): grant_type=authorization_code&client_id=${cfg.clientId}&code=${code ? code.slice(0,12)+'…' : 'MISSING'}&redirect_uri=${cfg.redirectUri}`)
-  if (provider === 'polar') {
-    const basicAuth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64')
-    console.log(`[exchangeCode:polar] using Basic Auth header: Basic ${basicAuth.slice(0,8)}…`)
-    // Polar requires Basic Auth, not body params for client credentials
-    const polarRes = await fetch(cfg.tokenUrl, {
-      method:  'POST',
-      headers: {
-        'Authorization':  `Basic ${basicAuth}`,
-        'Content-Type':   'application/x-www-form-urlencoded',
-        'Accept':         'application/json',
-      },
-      body: new URLSearchParams({
-        grant_type:   'authorization_code',
-        code,
-        redirect_uri: cfg.redirectUri,
-      }),
-    })
-    const polarBody = await polarRes.text()
-    console.log(`[exchangeCode:polar] response status: ${polarRes.status}`)
-    console.log(`[exchangeCode:polar] response body: ${polarBody}`)
-    if (!polarRes.ok) throw new Error(`Polar token exchange failed ${polarRes.status}: ${polarBody}`)
-    const polarJson = JSON.parse(polarBody)
-    return {
-      access_token:     polarJson.access_token,
-      refresh_token:    polarJson.refresh_token ?? null,
-      expires_at:       null,   // Polar tokens never expire
-      provider_user_id: String(polarJson.x_user_id ?? ''),
-      scope:            polarJson.scope ?? cfg.scope,
-      provider_data:    {},
-    }
-  }
-  // ──────────────────────────────────────────────────────────────
-
-  const res  = await fetch(cfg.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+  const res = await fetch(cfg.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`)
-  const json = await res.json()
+  const json = await res.json() as Record<string, unknown>
 
   const providerUserId =
-    provider === 'strava' ? String(json.athlete?.id ?? '') :
-    provider === 'wahoo'  ? String(json.user?.id   ?? '') :
-    provider === 'polar'  ? String(json.x_user_id  ?? '') : ''
+    provider === 'strava' ? String((json['athlete'] as Record<string,unknown>)?.['id'] ?? '') :
+    provider === 'wahoo'  ? String((json['user']    as Record<string,unknown>)?.['id'] ?? '') : ''
 
-  const providerData =
-    provider === 'strava' ? json.athlete :
-    provider === 'wahoo'  ? json.user    : {}
-
-  // Polar tokens do not expire — store null to prevent spurious refresh attempts
-  const expiresAt = provider === 'polar'
-    ? null
-    : (json.expires_at ?? Math.floor(Date.now() / 1000) + (json.expires_in ?? 3600))
+  const providerData: Record<string, unknown> =
+    provider === 'strava' ? (json['athlete'] as Record<string,unknown> ?? {}) :
+    provider === 'wahoo'  ? (json['user']    as Record<string,unknown> ?? {}) : {}
 
   return {
-    access_token:     json.access_token,
-    refresh_token:    json.refresh_token ?? null,
-    expires_at:       expiresAt,
+    access_token:     String(json['access_token']  ?? ''),
+    refresh_token:    json['refresh_token'] ? String(json['refresh_token']) : undefined,
+    expires_at:       json['expires_at']
+      ? Number(json['expires_at'])
+      : Math.floor(Date.now() / 1000) + Number(json['expires_in'] ?? 3600),
     provider_user_id: providerUserId,
-    scope:            json.scope,
+    scope:            json['scope'] ? String(json['scope']) : undefined,
     provider_data:    providerData,
   }
 }

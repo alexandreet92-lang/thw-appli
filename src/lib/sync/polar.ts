@@ -203,40 +203,55 @@ export async function syncPolarSleep(userId: string): Promise<number> {
 
   // Log top-level keys to understand structure
   console.log('[syncPolarSleep] Clés JSON reçues:', Object.keys(data).join(', '))
+  console.log('[syncPolarSleep] JSON complet (2000c):', JSON.stringify(data).slice(0, 2000))
 
-  const nights = (data['nights'] as Record<string, unknown>[] | undefined) ?? []
+  // Polar v3 returns "nights" — fallback sur "data" ou tableau direct
+  const nights: Record<string, unknown>[] = Array.isArray(data)
+    ? (data as Record<string, unknown>[])
+    : ((data['nights'] ?? data['data'] ?? data['sleep']) as Record<string, unknown>[] | undefined) ?? []
+
   console.log(`[syncPolarSleep] Nombre de nuits reçues: ${nights.length}`)
 
   if (!nights.length) {
     console.log('[syncPolarSleep] Aucune nuit — vérifie si des données existent sur Polar Flow pour les 90 derniers jours')
+    console.log('[syncPolarSleep] Toutes les clés du JSON:', JSON.stringify(Object.keys(data)))
     console.log('=== FIN SYNC POLAR SLEEP (0 nuits) ===')
     return 0
   }
 
   // Log first night sample
   if (nights[0]) {
-    console.log('[syncPolarSleep] Exemple nuit[0]:', JSON.stringify(nights[0]).slice(0, 400))
+    console.log('[syncPolarSleep] Exemple nuit[0]:', JSON.stringify(nights[0]).slice(0, 600))
+    console.log('[syncPolarSleep] Clés nuit[0]:', Object.keys(nights[0]).join(', '))
   }
 
   const rows = nights.map(n => ({
     user_id:            userId,
     provider:           'polar',
-    provider_id:        `sleep_${n['date']}`,
-    measured_at:        n['sleep-start-time'],
-    date:               n['date'],
+    provider_id:        `sleep_${n['date'] ?? n['id']}`,
+    // measured_at NOT NULL — fallback sur date si sleep-start-time absent
+    measured_at:        n['sleep-start-time'] ?? n['sleepStartTime'] ?? `${n['date'] ?? new Date().toISOString().split('T')[0]}T00:00:00+00:00`,
+    date:               n['date'] ?? n['sleepDate'],
     data_type:          'sleep',
     sleep_duration_min: n['total-sleep-time']
-      ? Math.round(parsePolarDuration(n['total-sleep-time'] as string) / 60) : null,
-    sleep_score:        n['sleep-score'] ?? null,
+      ? Math.round(parsePolarDuration(n['total-sleep-time'] as string) / 60)
+      : (n['totalSleepTime'] ? Math.round(parsePolarDuration(n['totalSleepTime'] as string) / 60) : null),
+    sleep_score:        n['sleep-score'] ?? n['sleepScore'] ?? null,
     rem_duration_min:   n['rem-sleep']
-      ? Math.round(parsePolarDuration(n['rem-sleep'] as string) / 60) : null,
+      ? Math.round(parsePolarDuration(n['rem-sleep'] as string) / 60)
+      : (n['remSleep'] ? Math.round(parsePolarDuration(n['remSleep'] as string) / 60) : null),
     deep_duration_min:  n['deep-sleep']
-      ? Math.round(parsePolarDuration(n['deep-sleep'] as string) / 60) : null,
+      ? Math.round(parsePolarDuration(n['deep-sleep'] as string) / 60)
+      : (n['deepSleep'] ? Math.round(parsePolarDuration(n['deepSleep'] as string) / 60) : null),
     light_duration_min: n['light-sleep']
-      ? Math.round(parsePolarDuration(n['light-sleep'] as string) / 60) : null,
-    awake_duration_min: (n['awakenings'] as number | undefined) ?? null,
-    sleep_start:        n['sleep-start-time'],
-    sleep_end:          n['sleep-end-time'],
+      ? Math.round(parsePolarDuration(n['light-sleep'] as string) / 60)
+      : (n['lightSleep'] ? Math.round(parsePolarDuration(n['lightSleep'] as string) / 60) : null),
+    // awakenings = count d'éveils (integer), pas une durée
+    awake_duration_min: n['total-interruption-duration']
+      ? Math.round(parsePolarDuration(n['total-interruption-duration'] as string) / 60)
+      : null,
+    sleep_start:        n['sleep-start-time'] ?? n['sleepStartTime'] ?? null,
+    sleep_end:          n['sleep-end-time'] ?? n['sleepEndTime'] ?? null,
     raw_data:           n,
   }))
 

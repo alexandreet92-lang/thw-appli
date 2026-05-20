@@ -9,6 +9,7 @@ import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
 import { registerPolarUser, syncPolarActivities, syncPolarSleep, syncPolarPhysical } from '@/lib/sync/polar'
+import { getValidToken } from '@/lib/oauth/tokens'
 
 export async function POST(
   req: NextRequest,
@@ -120,6 +121,71 @@ export async function GET(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = createServiceClient()
+
+  // ?live=1 → appel direct API Polar Sleep + retour réponse brute
+  if (req.nextUrl.searchParams.get('live') === '1' && provider === 'polar') {
+    const POLAR_API = 'https://www.polaraccesslink.com/v3'
+    const token = await getValidToken(user.id, 'polar')
+    if (!token) return NextResponse.json({ error: 'No valid Polar token' }, { status: 400 })
+
+    // Get Polar user ID from DB
+    const { data: tokenRow } = await db
+      .from('oauth_tokens')
+      .select('provider_user_id, expires_at, last_error, scope')
+      .eq('user_id', user.id)
+      .eq('provider', 'polar')
+      .maybeSingle()
+
+    const polarUserId = (tokenRow as { provider_user_id: string | null } | null)?.provider_user_id
+    if (!polarUserId) return NextResponse.json({ error: 'No Polar user ID in oauth_tokens' }, { status: 400 })
+
+    const today = new Date().toISOString().split('T')[0]
+    const from  = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const tests: Record<string, unknown> = {
+      polar_user_id: polarUserId,
+      token_len:     token.length,
+      scope:         tokenRow?.scope,
+      date_range:    { from, to: today },
+    }
+
+    // Test 1 : GET /v3/users/{id}/sleep
+    try {
+      const sleepUrl = `${POLAR_API}/users/${polarUserId}/sleep?from=${from}&to=${today}`
+      tests['sleep_url'] = sleepUrl
+      const r = await fetch(sleepUrl, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      })
+      const body = await r.text()
+      tests['sleep_status'] = r.status
+      tests['sleep_body_raw'] = body.slice(0, 2000)
+      try { tests['sleep_body_parsed'] = JSON.parse(body) } catch { tests['sleep_body_parsed'] = 'parse_error' }
+    } catch (e) { tests['sleep_error'] = String(e) }
+
+    // Test 2 : GET /v3/users/{id} (check user registration)
+    try {
+      const r2 = await fetch(`${POLAR_API}/users/${polarUserId}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      })
+      const body2 = await r2.text()
+      tests['user_status'] = r2.status
+      tests['user_body'] = body2.slice(0, 500)
+    } catch (e) { tests['user_error'] = String(e) }
+
+    // Test 3 : GET /v3/users/{id}/sleep/{date} — today's night specifically
+    const yesterday = new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0]
+    try {
+      const r3 = await fetch(`${POLAR_API}/users/${polarUserId}/sleep/${yesterday}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      })
+      const body3 = await r3.text()
+      tests['sleep_single_status'] = r3.status
+      tests['sleep_single_date'] = yesterday
+      tests['sleep_single_body'] = body3.slice(0, 1000)
+    } catch (e) { tests['sleep_single_error'] = String(e) }
+
+    return NextResponse.json({ live_test: true, ...tests })
+  }
 
   // ?debug=1 → diagnostic complet health_data + oauth_tokens
   if (req.nextUrl.searchParams.get('debug') === '1' && provider === 'polar') {

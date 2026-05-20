@@ -3,21 +3,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 
-const variants = {
-  hidden:  { opacity: 0, y: 18, scale: 0.99 },
-  visible: { opacity: 1, y: 0,  scale: 1    },
-  exit:    { opacity: 0, y: -8, scale: 0.99 },
-}
-
-const transition = {
-  duration: 0.28,
-  ease: [0.22, 1, 0.36, 1] as const,
-}
-
 /**
- * Wrap page content in AnimatePresence + motion.div.
- * Keyed by pathname → triggers on every navigation.
- * Place this directly around {children} inside <main> in layout.tsx.
+ * Wrap page content with a pure-opacity fade transition.
+ * Spec: fade-out 150ms / fade-in 150ms, no translateX/Y.
+ * Place directly around {children} inside <main> in layout.tsx.
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -25,11 +14,10 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        variants={variants}
-        transition={transition}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15, ease: 'easeInOut' }}
         style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
       >
         {children}

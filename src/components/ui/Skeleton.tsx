@@ -111,3 +111,88 @@ export function SkeletonActivityList({ rows = 4 }: { rows?: number }) {
     </div>
   )
 }
+
+// ── Generic section card skeleton ────────────────────────────────
+export function SkeletonCard({
+  titleWidth = 120,
+  valueWidth = 80,
+  rows = 2,
+  style,
+}: {
+  titleWidth?: number
+  valueWidth?: number
+  rows?: number
+  style?: React.CSSProperties
+}) {
+  return (
+    <div style={{
+      padding: '18px 16px', borderRadius: 16,
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      boxShadow: 'var(--shadow-card)',
+      display: 'flex', flexDirection: 'column', gap: 10,
+      ...style,
+    }}>
+      <Skeleton height={11} width={titleWidth} borderRadius={4} />
+      <Skeleton height={24} width={valueWidth} borderRadius={6} />
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} height={8} width={`${85 - i * 18}%`} borderRadius={3} />
+      ))}
+    </div>
+  )
+}
+
+// ── Page header skeleton ──────────────────────────────────────────
+export function SkeletonPageHeader({ style }: { style?: React.CSSProperties }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
+      <Skeleton height={28} width={180} borderRadius={8} />
+      <Skeleton height={12} width={110} borderRadius={4} />
+    </div>
+  )
+}
+
+// ── Profile header skeleton ───────────────────────────────────────
+export function SkeletonProfileHeader() {
+  return (
+    <div style={{
+      padding: '24px 16px', borderRadius: 16,
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      display: 'flex', alignItems: 'center', gap: 16,
+    }}>
+      <Skeleton height={72} width={72} borderRadius={36} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Skeleton height={20} width={140} borderRadius={6} />
+        <Skeleton height={12} width={90} borderRadius={4} />
+        <Skeleton height={10} width={120} borderRadius={4} />
+      </div>
+    </div>
+  )
+}
+
+// ── Calendar grid skeleton ────────────────────────────────────────
+export function SkeletonCalendarGrid() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Month header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Skeleton height={32} width={32} borderRadius={8} />
+        <Skeleton height={20} width={140} borderRadius={6} />
+        <Skeleton height={32} width={32} borderRadius={8} />
+      </div>
+      {/* Day labels */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {Array.from({ length: 7 }).map((_, i) => (
+          <Skeleton key={i} height={14} borderRadius={4} />
+        ))}
+      </div>
+      {/* Day cells — 5 weeks */}
+      {Array.from({ length: 5 }).map((_, week) => (
+        <div key={week} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+          {Array.from({ length: 7 }).map((_, day) => (
+            <Skeleton key={day} height={52} borderRadius={8} />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}

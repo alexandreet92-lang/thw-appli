@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { LucideIcon } from 'lucide-react'
@@ -65,10 +65,23 @@ function SubItem({ href, label, Icon, active }: Sub & { active: boolean }) {
 
 export default function MobileTabBar() {
   const pathname              = usePathname()
+  const router                = useRouter()
   const [mode, setMode]       = useState<Mode>('main')
   const [exiting, setExiting] = useState(false)
   const [aiOpen, setAiOpen]   = useState(false)
   const [hidden, setHidden]   = useState(false)
+
+  // Prefetch all main routes so navigation is instant
+  useEffect(() => {
+    const routes = [
+      '/',
+      '/planning', '/calendar', '/session', '/injuries',
+      '/activities', '/recovery', '/nutrition', '/performance',
+      '/connections', '/briefing', '/profile', '/parametres',
+      '/record',
+    ]
+    routes.forEach(r => router.prefetch(r))
+  }, [router])
 
   // Hide when software keyboard pushes viewport up
   useEffect(() => {

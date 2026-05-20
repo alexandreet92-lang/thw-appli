@@ -552,28 +552,15 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
 // Mobile  : top bar 56px fixe + drawer CSS-transitionné
 // ══════════════════════════════════════════════════════════════
 
-// ── Page title mapping (mobile top bar) ───────────────────────
-const PAGE_TITLES: Record<string, string> = {
-  '/':            'Dashboard',
-  '/planning':    'Planning',
-  '/calendar':    'Calendar',
-  '/session':     'Session',
-  '/activities':  'Training',
-  '/recovery':    'Récupération',
-  '/nutrition':   'Nutrition',
-  '/performance': 'Performance',
-  '/injuries':    'Blessures',
-  '/connections': 'Connexions',
-  '/briefing':    'Briefing',
-  '/profile':     'Profil',
-  '/parametres':  'Réglages',
-  '/record':      'Enregistrer',
-}
 
 export function Sidebar() {
   const [aiOpen, setAiOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const { profile } = useProfile()
   const pathname = usePathname()
+
+  // Ferme le drawer mobile à chaque changement de route
+  useEffect(() => { setMobileOpen(false) }, [pathname])
 
   return (
     <>
@@ -604,40 +591,70 @@ export function Sidebar() {
           MOBILE — top bar fixe 56px + drawer avec transition
           ════════════════════════════════════════════════════ */}
 
-      {/* Top bar — mobile : logo | titre page centré | avatar */}
+      {/* Top bar — hamburger | logo | spacer | logo IA | avatar */}
       <div
         className="md:hidden"
         style={{
           position: 'fixed', top: 0, left: 0, right: 0,
           height: 56, zIndex: 50,
           display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between',
+          gap: 8,
           padding: '0 12px',
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
           boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
         }}
       >
-        {/* Logo — gauche */}
+        {/* Hamburger — gauche */}
+        <button
+          onClick={() => setMobileOpen(o => !o)}
+          aria-label="Menu"
+          style={{
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            alignItems: 'center', gap: 5,
+            width: 36, height: 36,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: 0, flexShrink: 0,
+          }}
+        >
+          <span style={{ display: 'block', width: 20, height: 1.5, background: 'var(--text)', borderRadius: 2 }} />
+          <span style={{ display: 'block', width: 20, height: 1.5, background: 'var(--text)', borderRadius: 2 }} />
+          <span style={{ display: 'block', width: 20, height: 1.5, background: 'var(--text)', borderRadius: 2 }} />
+        </button>
+
+        {/* Logo app */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo_app.png"
             alt="THW Coaching"
-            style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain' }}
+            style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain' }}
           />
         </Link>
 
-        {/* Titre page — centré en absolu */}
-        <div style={{
-          position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-          fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700,
-          color: 'var(--text)', whiteSpace: 'nowrap', pointerEvents: 'none',
-        }}>
-          {PAGE_TITLES[pathname] ?? 'THW Coaching'}
-        </div>
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
 
-        {/* Avatar — droite */}
+        {/* Logo IA — ouvre Coach IA */}
+        <button
+          onClick={() => setAiOpen(o => !o)}
+          aria-label="Coach IA"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 36, height: 36,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: 0, flexShrink: 0,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/logo_4bras.png"
+            alt="Coach IA"
+            style={{ width: 36, height: 36, objectFit: 'contain' }}
+          />
+        </button>
+
+        {/* Avatar */}
         <Link href="/profile" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
           <Avatar
             url={profile?.avatar_url ?? null}
@@ -647,8 +664,38 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* Overlay + Drawer masqués sur mobile — la navigation est gérée par MobileTabBar */}
-      {/* Kept in DOM for desktop fallback but hidden on mobile */}
+      {/* Overlay */}
+      <div
+        className="md:hidden"
+        onClick={() => setMobileOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 59,
+          background: 'rgba(0,0,0,0.45)',
+          opacity: mobileOpen ? 1 : 0,
+          pointerEvents: mobileOpen ? 'auto' : 'none',
+          transition: 'opacity 0.25s ease',
+        }}
+      />
+
+      {/* Drawer */}
+      <div
+        className="md:hidden"
+        style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0,
+          width: 280, zIndex: 60,
+          background: 'var(--nav-bg)',
+          borderRight: '1px solid var(--nav-border)',
+          transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+        }}
+      >
+        <SidebarContent
+          onClose={() => setMobileOpen(false)}
+          onOpenAI={() => { setAiOpen(o => !o); setMobileOpen(false) }}
+        />
+      </div>
 
       {/* ── AIPanel global ── */}
       <AIPanel

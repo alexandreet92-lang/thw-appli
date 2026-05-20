@@ -45,6 +45,13 @@ interface ConnectionInfo {
   provider:     string
   last_used_at: string | null
   updated_at:   string | null
+  scope:        string | null
+}
+
+/** Retourne true si le token Polar stocké est un ancien token v3 (accesslink.read_all) */
+function isPolarV3Token(info: ConnectionInfo | undefined): boolean {
+  if (!info) return false
+  return (info.scope ?? '').includes('accesslink.read_all')
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -240,11 +247,12 @@ function StatusBadge({ status }: { status: ConnectionStatus }) {
 
 // ── AppRow ──────────────────────────────────────────────────────
 
-function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErrors, onLogoError, onMouseEnter, onMouseLeave, onConnect, onDisconnect, onSync, isMobile }: {
+function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErrors, onLogoError, onMouseEnter, onMouseLeave, onConnect, onDisconnect, onSync, isMobile, needsReconnect }: {
   app: AppDef; effectiveStatus: ConnectionStatus; lastSync: string | null
   isSyncing: boolean; isHovered: boolean; logoErrors: Set<string>
   onLogoError: (id: string) => void; onMouseEnter: () => void; onMouseLeave: () => void
   onConnect: () => void; onDisconnect: () => void; onSync: () => void; isMobile: boolean
+  needsReconnect?: boolean
 }) {
   const [syncHov, setSyncHov] = useState(false)
   const [disconnectHov, setDisconnectHov] = useState(false)
@@ -285,6 +293,11 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
       {/* Status + last sync */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
         <StatusBadge status={effectiveStatus} />
+        {needsReconnect && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            ⚠️ v3 — Reconnecter
+          </span>
+        )}
         {!isMobile && effectiveStatus === 'connected' && lastSync && (
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)' }}>{lastSync}</span>
         )}
@@ -293,7 +306,24 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexShrink: 0 }}>
 
-        {effectiveStatus === 'connected' && (
+        {effectiveStatus === 'connected' && needsReconnect && (
+          /* Token v3 obsolète — bouton Reconnecter remplace Sync */
+          <button onClick={onConnect}
+            onMouseEnter={() => setSyncHov(true)} onMouseLeave={() => setSyncHov(false)}
+            style={{
+              padding: '5px 10px', borderRadius: 7,
+              border: `1px solid #f97316`,
+              background: syncHov ? 'rgba(249,115,22,0.12)' : 'transparent',
+              color: '#f97316',
+              fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              transition: 'background 0.14s', whiteSpace: 'nowrap',
+            }}>
+            Reconnecter v4
+          </button>
+        )}
+
+        {effectiveStatus === 'connected' && !needsReconnect && (
           <>
             {/* Sync */}
             <button onClick={onSync} disabled={isSyncing}
@@ -331,6 +361,21 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
               Déconnecter
             </button>
           </>
+        )}
+
+        {/* Bouton Déconnecter seul quand needsReconnect (en plus du bouton Reconnecter) */}
+        {effectiveStatus === 'connected' && needsReconnect && (
+          <button onClick={onDisconnect}
+            onMouseEnter={() => setDisconnectHov(true)} onMouseLeave={() => setDisconnectHov(false)}
+            style={{
+              padding: '5px 10px', borderRadius: 7, border: 'none',
+              background: disconnectHov ? 'rgba(239,68,68,0.08)' : 'transparent',
+              color: disconnectHov ? '#ef4444' : 'var(--text-dim)',
+              fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+              cursor: 'pointer', transition: 'background 0.14s, color 0.14s', whiteSpace: 'nowrap',
+            }}>
+            Déconnecter
+          </button>
         )}
 
         {effectiveStatus === 'pending' && (
@@ -878,7 +923,8 @@ function ConnectionsInner() {
                           onConnect={() => app.provider && OAUTH_PROVIDERS.has(app.provider) ? handleConnectClick(app.id) : undefined}
                           onDisconnect={() => handleDisconnect(app)}
                           onSync={() => handleSync(app)}
-                          isMobile={isMobile} />
+                          isMobile={isMobile}
+                          needsReconnect={app.provider ? isPolarV3Token(connectedProviders[app.provider]) : false} />
                       )
                     })}
                   </section>

@@ -114,6 +114,37 @@ async function doRefreshToken(
         expires_at:    Math.floor(Date.now() / 1000) + json.body.expires_in,
       }
     }
+
+    // Polar v4 : Basic Auth (client_id:client_secret en header, pas en body)
+    if (provider === 'polar') {
+      const basicAuth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64')
+      const params = new URLSearchParams({
+        grant_type:    'refresh_token',
+        refresh_token: refreshToken,
+      })
+      const res = await fetch(cfg.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${basicAuth}`,
+          'Content-Type':  'application/x-www-form-urlencoded',
+        },
+        body: params,
+      })
+      if (!res.ok) {
+        console.error(`[doRefreshToken:polar] ${res.status}: ${await res.text().catch(() => '')}`)
+        return null
+      }
+      const json = await res.json() as Record<string, unknown>
+      return {
+        access_token:  String(json['access_token'] ?? ''),
+        refresh_token: json['refresh_token'] ? String(json['refresh_token']) : undefined,
+        expires_at:    json['expires_in']
+          ? Math.floor(Date.now() / 1000) + Number(json['expires_in'])
+          : Math.floor(Date.now() / 1000) + 3600,
+      }
+    }
+
+    // Standard OAuth (Strava, Wahoo)
     const params = new URLSearchParams({
       grant_type:    'refresh_token',
       refresh_token: refreshToken,

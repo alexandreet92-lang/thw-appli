@@ -6,6 +6,7 @@ export interface ConnectionInfo {
   provider:     string
   last_used_at: string | null
   updated_at:   string | null
+  scope:        string | null
 }
 
 export async function GET() {
@@ -16,14 +17,15 @@ export async function GET() {
   const db = createServiceClient()
   const { data } = await db
     .from('oauth_tokens')
-    .select('provider, last_used_at, updated_at')
+    .select('provider, last_used_at, updated_at, scope')
     .eq('user_id', user.id)
     .eq('is_active', true)
 
-  const connected: ConnectionInfo[] = (data ?? []).map((r: { provider: string; last_used_at: string | null; updated_at: string | null }) => ({
+  const connected: ConnectionInfo[] = (data ?? []).map((r: { provider: string; last_used_at: string | null; updated_at: string | null; scope: string | null }) => ({
     provider:     r.provider,
     last_used_at: r.last_used_at,
     updated_at:   r.updated_at,
+    scope:        r.scope,
   }))
 
   return NextResponse.json({ connected })

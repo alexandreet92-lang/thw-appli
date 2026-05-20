@@ -50,15 +50,8 @@ export async function GET(req: NextRequest) {
     // ──────────────────────────────────────────────────────────
     await saveTokens(user.id, provider, tokens)
 
-    // Polar: register user with AccessLink immediately (required before any data call)
-    if (provider === 'polar') {
-      try {
-        const { registerPolarUser } = await import('@/lib/sync/polar')
-        await registerPolarUser(user.id)
-      } catch {
-        // 409 = already registered — not an error
-      }
-    }
+    // NOTE : Polar v4 (Dynamic API) n'a PAS d'étape d'enregistrement utilisateur.
+    // registerPolarUser() n'est plus appelé ici.
 
     fetch(`${BASE_URL}/api/sync/${provider}`, {
       method:  'POST',
@@ -87,12 +80,11 @@ async function exchangeCode(
   code: string
 ): Promise<ExchangeResult> {
 
-  // ── Polar: Basic Auth required ─────────────────────────────────
+  // ── Polar v4 (Dynamic API) : Basic Auth + PKCE-less flow ─────────
   if (provider === 'polar') {
     const basicAuth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64')
-    console.log(`[exchangeCode:polar] POST ${cfg.tokenUrl}`)
-    console.log(`[exchangeCode:polar] clientId len=${cfg.clientId.length}, redirectUri="${cfg.redirectUri}"`)
-    console.log(`[exchangeCode:polar] Basic ${basicAuth.slice(0,8)}…`)
+    console.log(`[exchangeCode:polar v4] POST ${cfg.tokenUrl}`)
+    console.log(`[exchangeCode:polar v4] clientId len=${cfg.clientId.length}, redirectUri="${cfg.redirectUri}"`)
     const polarRes = await fetch(cfg.tokenUrl, {
       method:  'POST',
       headers: {
@@ -107,15 +99,34 @@ async function exchangeCode(
       }),
     })
     const polarBody = await polarRes.text()
-    console.log(`[exchangeCode:polar] status=${polarRes.status} body=${polarBody}`)
-    if (!polarRes.ok) throw new Error(`Polar token exchange failed ${polarRes.status}: ${polarBody}`)
+    console.log(`[exchangeCode:polar v4] status=${polarRes.status} body=${polarBody.slice(0, 300)}`)
+    if (!polarRes.ok) throw new Error(`Polar v4 token exchange failed ${polarRes.status}: ${polarBody}`)
     const j = JSON.parse(polarBody) as Record<string, unknown>
+
+    // Extraire le user ID depuis l'id_token (JWT sub claim)
+    let polarUserId = ''
+    if (j['id_token'] && typeof j['id_token'] === 'string') {
+      try {
+        const parts = j['id_token'].split('.')
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8')) as Record<string, unknown>
+          polarUserId = String(payload['sub'] ?? '')
+          console.log(`[exchangeCode:polar v4] JWT sub=${polarUserId}`)
+        }
+      } catch { /* ignore JWT decode errors */ }
+    }
+    // Fallback: certaines réponses v4 incluent encore x_user_id
+    if (!polarUserId && j['x_user_id']) polarUserId = String(j['x_user_id'])
+
     return {
-      access_token:     String(j['access_token'] ?? ''),
-      // Polar tokens never expire — omit expires_at entirely
-      provider_user_id: String(j['x_user_id']   ?? ''),
-      scope:            String(j['scope']        ?? cfg.scope),
-      provider_data:    {},
+      access_token:     String(j['access_token']  ?? ''),
+      refresh_token:    j['refresh_token'] ? String(j['refresh_token']) : undefined,
+      expires_at:       j['expires_in']
+        ? Math.floor(Date.now() / 1000) + Number(j['expires_in'])
+        : undefined,
+      provider_user_id: polarUserId || undefined,
+      scope:            String(j['scope'] ?? cfg.scope),
+      provider_data:    { id_token: j['id_token'] ?? null, token_type: j['token_type'] ?? null },
     }
   }
 

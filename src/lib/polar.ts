@@ -1,37 +1,41 @@
 /**
- * Polar AccessLink v3 — client HTTP partagé
+ * Polar Dynamic API v4 — client HTTP partagé
  *
- * UNE SEULE implémentation utilisée par :
- *   - le live test  (GET /api/sync/polar?live=1)
- *   - le sync réel  (POST /api/sync/polar)
+ * Base : https://www.polaraccesslink.com/v4/data
+ * Utilisé par le live test ET le sync réel — UNE seule implémentation.
  *
- * Garantit que les deux modes appellent l'API Polar avec
- * les mêmes headers, la même URL, les mêmes options fetch.
+ * Les endpoints v4 n'ont PAS de user ID dans l'URL.
+ * Le Bearer token identifie l'utilisateur.
  */
 
-const POLAR_BASE = 'https://www.polaraccesslink.com'
+const POLAR_V4_BASE = 'https://www.polaraccesslink.com/v4/data'
 
 /**
- * Appelle l'API Polar AccessLink.
+ * Appelle un endpoint Polar v4.
  *
- * @param endpointOrUrl  Soit un chemin absolu  ('/v3/users/123/physical-information')
- *                       Soit une URL complète  ('https://www.polaraccesslink.com/v3/...')
- *                       Les resource-uri retournés par Polar sont des URLs complètes.
- * @param token          Bearer token OAuth2
- * @param method         GET (défaut) | POST | PUT
+ * @param endpoint   Nom de l'endpoint ex: 'sleeps', 'exercises'
+ *                   Ou URL complète si elle commence par 'http'
+ * @param token      Bearer token OAuth2
+ * @param params     Query params (?from=...&to=...)
+ * @param method     GET (défaut) ou POST
  */
-export async function callPolarAPI(
-  endpointOrUrl: string,
+export async function callPolarV4(
+  endpoint: string,
   token: string,
-  method: 'GET' | 'POST' | 'PUT' = 'GET',
+  params?: Record<string, string>,
+  method: 'GET' | 'POST' = 'GET',
 ): Promise<Response> {
-  const url = endpointOrUrl.startsWith('http')
-    ? endpointOrUrl
-    : `${POLAR_BASE}${endpointOrUrl}`
+  const url = endpoint.startsWith('http')
+    ? new URL(endpoint)
+    : new URL(`${POLAR_V4_BASE}/${endpoint}`)
 
-  console.log(`[Polar API] ${method} ${url} | token[0:8]: ${token.slice(0, 8)}`)
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+  }
 
-  const res = await fetch(url, {
+  console.log(`[Polar v4] ${method} ${url.toString()} | token[0:8]: ${token.slice(0, 8)}`)
+
+  const res = await fetch(url.toString(), {
     method,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -40,6 +44,13 @@ export async function callPolarAPI(
     cache: 'no-store',
   })
 
-  console.log(`[Polar API] ${method} ${url.replace(POLAR_BASE, '')} → ${res.status}`)
+  console.log(`[Polar v4] ${method} /${endpoint.replace(POLAR_V4_BASE, '')} → ${res.status}`)
   return res
+}
+
+/** Construit la plage de dates (YYYY-MM-DD) pour les requêtes v4 */
+export function polarDateRange(daysBack = 90): { from: string; to: string } {
+  const to   = new Date().toISOString().split('T')[0]
+  const from = new Date(Date.now() - daysBack * 86400000).toISOString().split('T')[0]
+  return { from, to }
 }

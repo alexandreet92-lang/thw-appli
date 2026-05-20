@@ -30,9 +30,9 @@ export const OAUTH_CONFIG: Record<OAuthProvider, ProviderConfig> = {
     clientId:     process.env.POLAR_CLIENT_ID     ?? '',
     clientSecret: process.env.POLAR_CLIENT_SECRET ?? '',
     redirectUri:  process.env.POLAR_REDIRECT_URI  ?? '',
-    authUrl:      'https://flow.polar.com/oauth2/authorization',
-    tokenUrl:     'https://polarremote.com/v2/oauth2/token',
-    scope:        'accesslink.read_all',
+    authUrl:      'https://auth.polar.com/oauth/authorize',
+    tokenUrl:     'https://auth.polar.com/oauth/token',
+    scope:        'openid email profile nightly_recharge:read sleep:read daily_activity:read exercise:read physical_information:read',
   },
   withings: {
     clientId:     process.env.WITHINGS_CLIENT_ID     ?? '',

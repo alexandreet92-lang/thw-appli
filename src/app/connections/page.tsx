@@ -706,7 +706,7 @@ function ConnectionsInner() {
               onMouseEnter={() => setSyncAllHov(true)} onMouseLeave={() => setSyncAllHov(false)}
               style={{
                 padding: isMobile ? '8px 14px' : '10px 18px',
-                height: isMobile ? 40 : 'auto',
+                height: isMobile ? 44 : 'auto',
                 width: isMobile ? '100%' : 'auto',
                 borderRadius: 10, border: 'none',
                 background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? '#4a5bef' : ACCENT,
@@ -746,7 +746,7 @@ function ConnectionsInner() {
                     transition: 'border-color 0.14s, box-shadow 0.14s',
                   }} />
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none' as const }}>
                 {filterPills.map(pill => (
                   <PillFilter key={pill.id} label={pill.label} active={statusFilter === pill.id} onClick={() => setStatusFilter(pill.id)} />
                 ))}
@@ -756,7 +756,7 @@ function ConnectionsInner() {
         </div>
 
         {/* ── Body ─────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flex: 1, padding: isMobile ? '0 0 60px' : '0 32px 60px' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flex: 1, padding: isMobile ? '0 0 60px' : '0 32px 60px' }}>
 
           {/* Left sidebar (desktop only) */}
           {!isMobile && (

@@ -122,71 +122,61 @@ export async function GET(
 
   const db = createServiceClient()
 
-  // ?live=1 → test live du flux transactionnel Polar Sleep (lecture seule, pas de commit)
+  // ?live=1 → sonde tous les endpoints Polar pertinents, retourne status + body brut
   if (req.nextUrl.searchParams.get('live') === '1' && provider === 'polar') {
-    const POLAR_API_BASE = 'https://www.polaraccesslink.com/v3'
+    const BASE = 'https://www.polaraccesslink.com/v3'
     const token = await getValidToken(user.id, 'polar')
     if (!token) return NextResponse.json({ error: 'No valid Polar token' }, { status: 400 })
 
     const { data: tokenRow } = await db
       .from('oauth_tokens')
-      .select('provider_user_id, expires_at, last_error, scope')
-      .eq('user_id', user.id)
-      .eq('provider', 'polar')
-      .maybeSingle()
+      .select('provider_user_id, scope')
+      .eq('user_id', user.id).eq('provider', 'polar').maybeSingle()
 
-    const polarUserId = (tokenRow as { provider_user_id: string | null } | null)?.provider_user_id
-    if (!polarUserId) return NextResponse.json({ error: 'No Polar user ID in oauth_tokens' }, { status: 400 })
+    const uid = (tokenRow as { provider_user_id: string | null } | null)?.provider_user_id
+    if (!uid) return NextResponse.json({ error: 'No Polar user ID' }, { status: 400 })
 
     const hdrs = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-    const result: Record<string, unknown> = {
-      polar_user_id: polarUserId,
-      token_len:     token.length,
-      scope:         (tokenRow as Record<string,unknown> | null)?.scope,
+
+    async function probe(label: string, url: string): Promise<Record<string, unknown>> {
+      try {
+        const r = await fetch(url, { headers: hdrs })
+        const body = await r.text()
+        let parsed: unknown = null
+        try { parsed = JSON.parse(body) } catch { /* raw only */ }
+        return { label, url, status: r.status, body_raw: body.slice(0, 500), body_parsed: parsed }
+      } catch (e) {
+        return { label, url, status: 'FETCH_ERROR', error: String(e) }
+      }
     }
 
-    // Test A : vérif compte utilisateur
-    try {
-      const rU = await fetch(`${POLAR_API_BASE}/users/${polarUserId}`, { headers: hdrs })
-      const bU = await rU.text()
-      result['step_A_user_status'] = rU.status
-      result['step_A_user_body']   = bU.slice(0, 300)
-    } catch (e) { result['step_A_error'] = String(e) }
+    // Run all probes in parallel
+    const probes = await Promise.all([
+      probe('1_sleep',                `${BASE}/users/${uid}/sleep`),
+      probe('2_nightly_recharge',     `${BASE}/users/${uid}/nightly-recharge`),
+      probe('3_physical_information', `${BASE}/users/${uid}/physical-information`),
+      probe('4_daily_activity',       `${BASE}/users/${uid}/daily-activity`),
+      probe('5_exercise_transactions',`${BASE}/users/${uid}/exercise-transactions`),
+    ])
 
-    // Test B : GET /sleep sans params → créer transaction (lecture seule ici)
-    const sleepTxUrl = `${POLAR_API_BASE}/users/${polarUserId}/sleep`
-    result['step_B_url'] = sleepTxUrl
-    try {
-      const rTx = await fetch(sleepTxUrl, { headers: hdrs })
-      const bTx = await rTx.text()
-      result['step_B_status'] = rTx.status
-      result['step_B_body_raw'] = bTx.slice(0, 1000)
-      if (rTx.status === 204) {
-        result['step_B_interpretation'] = 'NO_NEW_DATA — aucune nuit non-commitée disponible'
-      } else if (rTx.ok) {
-        try {
-          const parsed = JSON.parse(bTx) as Record<string, unknown>
-          result['step_B_body_parsed'] = parsed
-          result['step_B_resource_uri'] = parsed['resource-uri'] ?? parsed['resourceUri'] ?? 'NOT_FOUND'
-
-          // Test C : si resource-uri trouvé, lister les nuits (sans commit)
-          const resUri = (parsed['resource-uri'] ?? parsed['resourceUri']) as string | undefined
-          if (resUri) {
-            result['step_C_url'] = resUri
-            const rList = await fetch(resUri, { headers: hdrs })
-            const bList = await rList.text()
-            result['step_C_status'] = rList.status
-            result['step_C_body_raw'] = bList.slice(0, 2000)
-            try { result['step_C_body_parsed'] = JSON.parse(bList) } catch { /* ignore */ }
-          }
-        } catch { result['step_B_body_parsed'] = 'json_parse_error' }
-      } else {
-        result['step_B_interpretation'] = `ERREUR HTTP ${rTx.status}`
+    // For sleep: if 200, follow resource-uri one level deeper (read-only, no commit)
+    const sleepProbe = probes[0]
+    if (sleepProbe['status'] === 200) {
+      const parsed = sleepProbe['body_parsed'] as Record<string, unknown> | null
+      const resUri = parsed?.['resource-uri'] as string | undefined
+      if (resUri) {
+        const listProbe = await probe('1b_sleep_list', resUri)
+        probes.splice(1, 0, listProbe)
       }
-    } catch (e) { result['step_B_error'] = String(e) }
+    }
 
-    result['note'] = 'Test READ-ONLY — aucun commit effectué. Relance un vrai sync après ce test.'
-    return NextResponse.json({ live_test: 'transaction_model', ...result })
+    return NextResponse.json({
+      live_test:    'endpoint_survey',
+      polar_user_id: uid,
+      scope:        (tokenRow as Record<string,unknown> | null)?.scope,
+      note:         'READ-ONLY — aucun commit. 200=données dispo, 204=rien de nouveau, 404=endpoint non supporté par ce compte/montre.',
+      endpoints:    probes,
+    })
   }
 
   // ?debug=1 → diagnostic complet health_data + oauth_tokens

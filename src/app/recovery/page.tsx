@@ -15,6 +15,7 @@ import TrainingLoad        from './components/TrainingLoad'
 import SleepSection        from './components/SleepSection'
 import RecoveryTrends      from './components/RecoveryTrends'
 import PhysioSection       from './components/PhysioSection'
+import DailyStepsCard      from './components/DailyStepsCard'
 import DataSources         from './components/DataSources'
 import RecoveryWaterfall   from './components/RecoveryWaterfall'
 import RecoveryTimeline    from './components/RecoveryTimeline'
@@ -154,15 +155,18 @@ export default function RecoveryPage() {
       {/* 8. Tendances check-in */}
       <RecoveryTrends history={history} activities={activities} />
 
-      {/* 9. Physio */}
+      {/* 9. Physio (FC repos Polar) */}
       <PhysioSection />
 
-      {/* 10. Cercle de respiration */}
+      {/* 10. Pas quotidiens (Polar daily activity) */}
+      <DailyStepsCard />
+
+      {/* 12. Cercle de respiration */}
       <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, boxShadow:'var(--shadow-card)' }}>
         <BreathingCircle />
       </div>
 
-      {/* 11. Sources */}
+      {/* 13. Sources */}
       <DataSources sourcesRef={sourcesRef} />
 
       {/* Modal */}

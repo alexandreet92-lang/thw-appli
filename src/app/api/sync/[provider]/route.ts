@@ -8,7 +8,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
-import { registerPolarUser, syncPolarActivities, syncPolarSleep, syncPolarPhysical } from '@/lib/sync/polar'
+import { registerPolarUser, syncPolarActivities, syncPolarDailyActivity, syncPolarPhysical } from '@/lib/sync/polar'
 import { getValidToken } from '@/lib/oauth/tokens'
 
 export async function POST(
@@ -62,21 +62,44 @@ export async function POST(
         break
       case 'polar': {
         console.log(`[sync/polar] === DÉBUT SYNC userId=${userId} ===`)
-        // Ensure user is registered with Polar AccessLink (idempotent, 409 = already done)
         try {
           await registerPolarUser(userId)
-          console.log('[sync/polar] registerPolarUser: OK')
         } catch (e) {
-          console.log('[sync/polar] registerPolarUser:', e instanceof Error ? e.message : String(e), '(409=déjà enregistré, ignoré)')
+          console.log('[sync/polar] register:', e instanceof Error ? e.message : String(e))
         }
-        const [pActs, pSleep, pPhys] = await Promise.all([
-          syncPolarActivities(userId).catch((e) => { console.error('[sync/polar] activities ERREUR:', e instanceof Error ? e.message : String(e)); return 0 }),
-          syncPolarSleep(userId).catch((e) => { console.error('[sync/polar] sleep ERREUR:', e instanceof Error ? e.message : String(e)); return 0 }),
-          syncPolarPhysical(userId).catch((e) => { console.error('[sync/polar] physical ERREUR:', e instanceof Error ? e.message : String(e)); return 0 }),
-        ])
-        count = pActs + pSleep + pPhys
-        console.log(`[sync/polar] === FIN SYNC — activities=${pActs} sleep=${pSleep} physical=${pPhys} total=${count} ===`)
-        break
+
+        // 1. Physical information (direct, pas de transaction)
+        const physResult = await syncPolarPhysical(userId)
+          .catch(e => { console.error('[sync/polar] physical error:', e instanceof Error ? e.message : String(e)); return { status: 'error', resting_hr: null, weight: null } })
+        console.log(`[sync/polar] physical → ${physResult.status} resting_hr=${physResult.resting_hr} weight=${physResult.weight}`)
+
+        // 2. Daily activity (transaction GET)
+        const dailyResult = await syncPolarDailyActivity(userId)
+          .catch(e => { console.error('[sync/polar] daily error:', e instanceof Error ? e.message : String(e)); return { status: 'error', days_synced: 0 } })
+        console.log(`[sync/polar] daily_activity → ${dailyResult.status} days=${dailyResult.days_synced}`)
+
+        // 3. Exercises (transaction POST)
+        const exResult = await syncPolarActivities(userId)
+          .catch(e => { console.error('[sync/polar] exercises error:', e instanceof Error ? e.message : String(e)); return { status: 'error', exercises_synced: 0 } })
+        console.log(`[sync/polar] exercises → ${exResult.status} count=${exResult.exercises_synced}`)
+
+        count = (physResult.resting_hr != null ? 1 : 0) + dailyResult.days_synced + exResult.exercises_synced
+        console.log(`[sync/polar] === FIN SYNC total=${count} ===`)
+
+        // Retourner un résumé détaillé plutôt que juste { success, synced }
+        if (log?.id) {
+          await supabase
+            .from('sync_logs')
+            .update({ status: 'success', items_synced: count, completed_at: new Date().toISOString() })
+            .eq('id', log.id)
+        }
+        return NextResponse.json({
+          success: true,
+          synced:  count,
+          physical:       { status: physResult.status, resting_hr: physResult.resting_hr, weight: physResult.weight },
+          daily_activity: { status: dailyResult.status, days_synced: dailyResult.days_synced },
+          exercises:      { status: exResult.status, exercises_synced: exResult.exercises_synced },
+        })
       }
       case 'withings': {
         const [n1, n2] = await Promise.all([
@@ -122,7 +145,7 @@ export async function GET(
 
   const db = createServiceClient()
 
-  // ?live=1 → sonde tous les endpoints Polar pertinents, retourne status + body brut
+  // ?live=1 → teste les 3 endpoints Polar AccessLink autorisés (read-only, pas de commit)
   if (req.nextUrl.searchParams.get('live') === '1' && provider === 'polar') {
     const BASE = 'https://www.polaraccesslink.com/v3'
     const token = await getValidToken(user.id, 'polar')
@@ -138,44 +161,39 @@ export async function GET(
 
     const hdrs = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
 
-    async function probe(label: string, url: string): Promise<Record<string, unknown>> {
+    async function probe(label: string, url: string, method = 'GET'): Promise<Record<string, unknown>> {
       try {
-        const r = await fetch(url, { headers: hdrs })
+        const r = await fetch(url, { method, headers: hdrs })
         const body = await r.text()
         let parsed: unknown = null
         try { parsed = JSON.parse(body) } catch { /* raw only */ }
-        return { label, url, status: r.status, body_raw: body.slice(0, 500), body_parsed: parsed }
+        return { label, url, method, status: r.status, body_raw: body.slice(0, 600), body_parsed: parsed }
       } catch (e) {
-        return { label, url, status: 'FETCH_ERROR', error: String(e) }
+        return { label, url, method, status: 'FETCH_ERROR', error: String(e) }
       }
     }
 
-    // Run all probes in parallel
-    const probes = await Promise.all([
-      probe('1_sleep',                `${BASE}/users/${uid}/sleep`),
-      probe('2_nightly_recharge',     `${BASE}/users/${uid}/nightly-recharge`),
-      probe('3_physical_information', `${BASE}/users/${uid}/physical-information`),
-      probe('4_daily_activity',       `${BASE}/users/${uid}/daily-activity`),
-      probe('5_exercise_transactions',`${BASE}/users/${uid}/exercise-transactions`),
+    // 3 endpoints autorisés seulement
+    const [physProbe, dailyProbe, exProbe] = await Promise.all([
+      probe('1_physical_information', `${BASE}/users/${uid}/physical-information`),
+      probe('2_daily_activity',       `${BASE}/users/${uid}/daily-activity`),
+      probe('3_exercise_transactions',`${BASE}/users/${uid}/exercise-transactions`, 'POST'),
     ])
 
-    // For sleep: if 200, follow resource-uri one level deeper (read-only, no commit)
-    const sleepProbe = probes[0]
-    if (sleepProbe['status'] === 200) {
-      const parsed = sleepProbe['body_parsed'] as Record<string, unknown> | null
-      const resUri = parsed?.['resource-uri'] as string | undefined
-      if (resUri) {
-        const listProbe = await probe('1b_sleep_list', resUri)
-        probes.splice(1, 0, listProbe)
-      }
+    // Si daily-activity retourne 200 avec resource-uri, suivre un niveau (sans commit)
+    const dailyParsed = dailyProbe['body_parsed'] as Record<string, unknown> | null
+    const dailyResUri = dailyParsed?.['resource-uri'] as string | undefined
+    let dailyListProbe: Record<string, unknown> | null = null
+    if (dailyProbe['status'] === 200 && dailyResUri) {
+      dailyListProbe = await probe('2b_daily_activity_list', dailyResUri)
     }
 
     return NextResponse.json({
-      live_test:    'endpoint_survey',
+      live_test:     'authorized_endpoints',
       polar_user_id: uid,
-      scope:        (tokenRow as Record<string,unknown> | null)?.scope,
-      note:         'READ-ONLY — aucun commit. 200=données dispo, 204=rien de nouveau, 404=endpoint non supporté par ce compte/montre.',
-      endpoints:    probes,
+      scope:         (tokenRow as Record<string,unknown> | null)?.scope,
+      note:          '200=données dispo | 204=rien de nouveau | 404=endpoint non supporté. exercise-transactions=POST (204 si pas de nouvelles activités).',
+      endpoints: [physProbe, dailyProbe, ...(dailyListProbe ? [dailyListProbe] : []), exProbe],
     })
   }
 

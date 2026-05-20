@@ -583,8 +583,19 @@ function ConnectionsInner() {
     try {
       const res = await fetch(`/api/sync/${app.provider}`, { method: 'POST' })
       const data = await res.json()
+      console.log(`[handleSync] ${app.provider} response:`, data)
       if (res.ok) {
-        addToast(`${app.name} synchronisé — ${data.synced ?? 0} éléments`, 'success')
+        // Toast enrichi pour Polar (résumé structuré)
+        if (app.provider === 'polar' && data.physical) {
+          const parts: string[] = []
+          if (data.physical?.resting_hr) parts.push(`FC repos ${data.physical.resting_hr} bpm`)
+          if (data.daily_activity?.days_synced > 0) parts.push(`${data.daily_activity.days_synced} jour(s) d'activité`)
+          if (data.exercises?.exercises_synced > 0) parts.push(`${data.exercises.exercises_synced} exercice(s)`)
+          const msg = parts.length ? parts.join(' · ') : 'aucune nouvelle donnée'
+          addToast(`Polar synchronisé — ${msg}`, 'success')
+        } else {
+          addToast(`${app.name} synchronisé — ${data.synced ?? 0} éléments`, 'success')
+        }
         await loadStatus()
       } else {
         addToast(`Erreur sync ${app.name}: ${data.error ?? ''}`, 'error')

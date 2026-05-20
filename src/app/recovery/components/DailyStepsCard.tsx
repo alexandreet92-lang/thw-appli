@@ -36,7 +36,8 @@ export default function DailyStepsCard() {
         .order('date', { ascending: false })
         .limit(14)
         .then(({ data: rows }) => {
-          if (!rows?.length) return
+          console.log('[DailyStepsCard] health_data daily_activity:', rows)
+          if (!rows?.length) { console.log('[DailyStepsCard] aucune donnée daily_activity en base'); return }
           const mapped = rows.map(r => ({
             date:            r.date as string,
             steps:           r.steps as number | null,

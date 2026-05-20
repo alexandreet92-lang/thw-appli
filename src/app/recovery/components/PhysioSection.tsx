@@ -87,25 +87,56 @@ export default function PhysioSection() {
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
+    sb.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      sb.from('health_data')
-        .select('date, raw_data')
+
+      // Source 1 : health_data(data_type='physical')
+      const { data: hdData } = await sb
+        .from('health_data')
+        .select('date, hr_resting, raw_data')
         .eq('user_id', user.id)
         .eq('data_type', 'physical')
         .order('date', { ascending: false })
         .limit(30)
-        .then(({ data }) => {
-          if (!data) return
-          setPhysHistory(data.map((row: { date: string | null; raw_data: unknown }) => {
-            const rd = row.raw_data as Record<string, unknown> | null
-            return {
-              date:       row.date ?? '',
-              resting_hr: rd?.['resting_hr'] != null ? Number(rd['resting_hr']) : null,
-              max_hr:     rd?.['max_hr']     != null ? Number(rd['max_hr'])     : null,
-            }
-          }).filter(r => r.date))
-        })
+
+      console.log('[PhysioSection] health_data physical:', hdData)
+
+      // Source 2 : metrics_daily (écrit par syncPolarPhysical)
+      const { data: mdData } = await sb
+        .from('metrics_daily')
+        .select('date, resting_hr')
+        .eq('user_id', user.id)
+        .not('resting_hr', 'is', null)
+        .order('date', { ascending: false })
+        .limit(30)
+
+      console.log('[PhysioSection] metrics_daily:', mdData)
+
+      // Fusionner par date, health_data prioritaire
+      const byDate = new Map<string, PhysicalPoint>()
+
+      // Ajouter metrics_daily en base (priorité basse)
+      for (const row of (mdData ?? [])) {
+        const d = row.date as string
+        if (d) byDate.set(d, { date: d, resting_hr: Number(row.resting_hr), max_hr: null })
+      }
+
+      // Écraser avec health_data (priorité haute)
+      for (const row of (hdData ?? [])) {
+        const rd = row.raw_data as Record<string, unknown> | null
+        const d  = row.date as string ?? ''
+        if (!d) continue
+        // hr_resting colonne directe > raw_data.resting_hr > existant metrics_daily
+        const rhr = row.hr_resting != null
+          ? Number(row.hr_resting)
+          : rd?.['resting_hr'] != null ? Number(rd['resting_hr']) : (byDate.get(d)?.resting_hr ?? null)
+        const mhr = rd?.['max_hr'] != null ? Number(rd['max_hr']) : null
+        byDate.set(d, { date: d, resting_hr: rhr, max_hr: mhr })
+      }
+
+      const merged = [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date))
+      console.log('[PhysioSection] merged final:', merged)
+      setPhysHistory(merged)
     })
   }, [])
 

@@ -176,27 +176,39 @@ export async function GET(
       }
     }
 
-    // 3 endpoints autorisés seulement
+    // 3 endpoints transaction (tous en POST — même pattern)
     const [physProbe, dailyProbe, exProbe] = await Promise.all([
-      probe('1_physical_information', `/v3/users/${uid}/physical-information`),
-      probe('2_daily_activity',       `/v3/users/${uid}/daily-activity`),
-      probe('3_exercise_transactions',`/v3/users/${uid}/exercise-transactions`, 'POST'),
+      probe('1_physical_information_transactions', `/v3/users/${uid}/physical-information-transactions`, 'POST'),
+      probe('2_daily_activity_transactions',       `/v3/users/${uid}/daily-activity-transactions`,       'POST'),
+      probe('3_exercise_transactions',             `/v3/users/${uid}/exercise-transactions`,             'POST'),
     ])
 
-    // Si daily-activity retourne 200 avec resource-uri, suivre un niveau (sans commit)
-    const dailyParsed = dailyProbe['body_parsed'] as Record<string, unknown> | null
-    const dailyResUri = dailyParsed?.['resource-uri'] as string | undefined
-    let dailyListProbe: Record<string, unknown> | null = null
-    if (dailyProbe['status'] === 200 && dailyResUri) {
-      dailyListProbe = await probe('2b_daily_activity_list', dailyResUri)
+    // Si une transaction est créée (200), lister les items (sans commit — read-only)
+    async function probeList(label: string, probe: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+      const parsed = probe['body_parsed'] as Record<string, unknown> | null
+      const txId = (parsed?.['transaction-id'] ?? parsed?.['id']) as string | undefined
+      if (probe['status'] !== 200 && probe['status'] !== 201) return null
+      if (!txId) return null
+      const endpoint = (probe['url'] as string).replace('https://www.polaraccesslink.com', '') + `/${txId}`
+      return await probe_fn(label, endpoint)
     }
+    // Helper alias (probe fn is defined above in scope)
+    const probe_fn = probe
+    const [physListProbe, dailyListProbe] = await Promise.all([
+      probeList('1b_physical_list', physProbe),
+      probeList('2b_daily_list',    dailyProbe),
+    ])
 
     return NextResponse.json({
-      live_test:     'authorized_endpoints',
+      live_test:     'transaction_endpoints',
       polar_user_id: uid,
       scope:         (tokenRow as Record<string,unknown> | null)?.scope,
-      note:          '200=données dispo | 204=rien de nouveau | 404=endpoint non supporté. exercise-transactions=POST (204 si pas de nouvelles activités).',
-      endpoints: [physProbe, dailyProbe, ...(dailyListProbe ? [dailyListProbe] : []), exProbe],
+      note:          '200/201=transaction créée (txId) | 204=rien de nouveau | 404=endpoint inconnu. Tous les endpoints utilisent POST pour créer la transaction.',
+      endpoints: [
+        physProbe,  ...(physListProbe  ? [physListProbe]  : []),
+        dailyProbe, ...(dailyListProbe ? [dailyListProbe] : []),
+        exProbe,
+      ],
     })
   }
 

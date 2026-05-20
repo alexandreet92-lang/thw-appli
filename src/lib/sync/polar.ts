@@ -86,7 +86,8 @@ export async function registerPolarUser(userId: string): Promise<void> {
 }
 
 // ── Physical information ────────────────────────────────────────
-// GET /v3/users/{id}/physical-information (direct, pas de transaction)
+// Transaction POST /v3/users/{id}/physical-information-transactions
+// → resource-uri → list items → GET each → commit PUT
 // Stocke dans health_data + met à jour profiles + metrics_daily
 
 export async function syncPolarPhysical(userId: string): Promise<{
@@ -98,87 +99,119 @@ export async function syncPolarPhysical(userId: string): Promise<{
   if (!ctx) return { status: 'no_context', resting_hr: null, weight: null }
 
   const { token, polarUserId } = ctx
-  const endpoint = `${POLAR_BASE_V3}/users/${polarUserId}/physical-information`
-
   const supabase = createServiceClient()
-  const today = new Date().toISOString().split('T')[0]
 
-  // ── callPolarAPI : même fonction que le live test ──
-  const res = await callPolarAPI(endpoint, token)
-  const resBody = await res.text()
-  console.log(`[syncPolarPhysical] body (500c): ${resBody.slice(0, 500)}`)
+  // Étape 1 : créer la transaction (POST — même pattern que exercises)
+  const txRes = await callPolarAPI(
+    `${POLAR_BASE_V3}/users/${polarUserId}/physical-information-transactions`,
+    token, 'POST'
+  )
+  console.log(`[syncPolarPhysical] transaction status=${txRes.status}`)
 
-  if (!res.ok) {
-    return { status: `error_${res.status}`, resting_hr: null, weight: null }
+  if (txRes.status === 204) return { status: 'no_new_data', resting_hr: null, weight: null }
+  if (!txRes.ok) {
+    const msg = await txRes.text().catch(() => '')
+    console.error(`[syncPolarPhysical] transaction error: ${msg.slice(0, 300)}`)
+    return { status: `error_${txRes.status}`, resting_hr: null, weight: null }
   }
 
-  let phys: Record<string, unknown>
-  try { phys = JSON.parse(resBody) as Record<string, unknown> }
-  catch {
-    console.error('[syncPolarPhysical] JSON parse error')
-    return { status: 'json_error', resting_hr: null, weight: null }
+  const tx = await txRes.json() as Record<string, unknown>
+  const txId = (tx['transaction-id'] ?? tx['id']) as string | undefined
+  console.log(`[syncPolarPhysical] txId=${txId} resource-uri=${tx['resource-uri'] ?? 'N/A'}`)
+  if (!txId) return { status: 'no_tx_id', resting_hr: null, weight: null }
+
+  // Étape 2 : lister les items
+  const listRes = await callPolarAPI(
+    `${POLAR_BASE_V3}/users/${polarUserId}/physical-information-transactions/${txId}`,
+    token
+  )
+  if (!listRes.ok) {
+    await callPolarAPI(`${POLAR_BASE_V3}/users/${polarUserId}/physical-information-transactions/${txId}`, token, 'PUT').catch(() => {})
+    return { status: `list_error_${listRes.status}`, resting_hr: null, weight: null }
   }
 
-  const restingHr  = phys['resting-heart-rate'] != null ? Number(phys['resting-heart-rate']) : null
-  const maxHr      = phys['maximum-heart-rate']  != null ? Number(phys['maximum-heart-rate'])  : null
-  const weightKg   = phys['weight']              != null ? Number(phys['weight'])              : null
-  const heightCm   = phys['height']              != null ? Number(phys['height'])              : null
-  const vo2max     = phys['vo2-max']             != null ? Number(phys['vo2-max'])             : null
+  const list = await listRes.json() as Record<string, unknown>
+  // La clé peut être 'physical-informations' ou un tableau direct
+  const itemUrls: string[] = Array.isArray(list)
+    ? (list as string[])
+    : ((list['physical-informations'] ?? list['items'] ?? list['data']) as string[] | undefined) ?? []
 
-  console.log(`[syncPolarPhysical] resting_hr=${restingHr} weight=${weightKg} height=${heightCm}`)
+  console.log(`[syncPolarPhysical] ${itemUrls.length} items listés`)
 
-  // 1. health_data (source primaire — lecture par PhysioSection)
+  // Étape 3 : récupérer chaque item — prend le plus récent
+  let bestPhys: Record<string, unknown> | null = null
+
+  for (const url of itemUrls) {
+    try {
+      const itemRes = await callPolarAPI(typeof url === 'string' ? url : String(url), token)
+      if (!itemRes.ok) continue
+      const phys = await itemRes.json() as Record<string, unknown>
+      // Garde le dernier (Polar les retourne du plus ancien au plus récent)
+      bestPhys = phys
+    } catch (e) {
+      console.error('[syncPolarPhysical] fetch item error:', e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  // Étape 4 : commit (toujours)
+  await callPolarAPI(
+    `${POLAR_BASE_V3}/users/${polarUserId}/physical-information-transactions/${txId}`,
+    token, 'PUT'
+  ).catch(() => {})
+
+  if (!bestPhys) return { status: 'ok_no_items', resting_hr: null, weight: null }
+
+  const restingHr  = bestPhys['resting-heart-rate'] != null ? Number(bestPhys['resting-heart-rate']) : null
+  const maxHr      = bestPhys['maximum-heart-rate']  != null ? Number(bestPhys['maximum-heart-rate'])  : null
+  const weightKg   = bestPhys['weight']              != null ? Number(bestPhys['weight'])              : null
+  const heightCm   = bestPhys['height']              != null ? Number(bestPhys['height'])              : null
+  const vo2max     = bestPhys['vo2-max']             != null ? Number(bestPhys['vo2-max'])             : null
+  // La date de mesure Polar (format: "2024-03-15") ou aujourd'hui par défaut
+  const measuredDate = (bestPhys['created'] as string | undefined)?.split('T')[0]
+                    ?? (bestPhys['date'] as string | undefined)
+                    ?? new Date().toISOString().split('T')[0]
+
+  console.log(`[syncPolarPhysical] date=${measuredDate} resting_hr=${restingHr} weight=${weightKg}`)
+
+  // 1. health_data
   const hdRow = {
-    user_id:    userId,
-    provider:   'polar',
-    provider_id: `physical_${today}`,
-    measured_at: `${today}T12:00:00+00:00`,
-    date:       today,
-    data_type:  'physical',
-    hr_resting: restingHr,
-    weight_kg:  weightKg,
-    raw_data: {
-      resting_hr: restingHr,
-      max_hr:     maxHr,
-      weight_kg:  weightKg,
-      height_cm:  heightCm,
-      vo2max,
-    },
+    user_id:     userId,
+    provider:    'polar',
+    provider_id: `physical_${measuredDate}`,
+    measured_at: `${measuredDate}T12:00:00+00:00`,
+    date:        measuredDate,
+    data_type:   'physical',
+    hr_resting:  restingHr,
+    weight_kg:   weightKg,
+    raw_data: { resting_hr: restingHr, max_hr: maxHr, weight_kg: weightKg, height_cm: heightCm, vo2max },
   }
-
   const { error: hdErr } = await supabase
     .from('health_data')
     .upsert([hdRow], { onConflict: 'user_id,provider,date,data_type' })
   if (hdErr) console.error(`[syncPolarPhysical] health_data upsert error: ${hdErr.message}`)
 
-  // 2. metrics_daily.resting_hr (utilisé par les calculs CTL/TSB)
+  // 2. metrics_daily.resting_hr
   if (restingHr != null) {
     const { error: mdErr } = await supabase
       .from('metrics_daily')
-      .upsert({ user_id: userId, date: today, resting_hr: restingHr },
-               { onConflict: 'user_id,date' })
+      .upsert({ user_id: userId, date: measuredDate, resting_hr: restingHr }, { onConflict: 'user_id,date' })
     if (mdErr) console.error(`[syncPolarPhysical] metrics_daily upsert error: ${mdErr.message}`)
   }
 
-  // 3. profiles.weight_kg + height_cm (page Profil/Nutrition)
+  // 3. profiles
   const profileUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (weightKg != null) profileUpdates['weight_kg'] = weightKg
   if (heightCm != null) profileUpdates['height_cm'] = heightCm
-
   if (Object.keys(profileUpdates).length > 1) {
-    const { error: profErr } = await supabase
-      .from('profiles')
-      .update(profileUpdates)
-      .eq('id', userId)
+    const { error: profErr } = await supabase.from('profiles').update(profileUpdates).eq('id', userId)
     if (profErr) console.error(`[syncPolarPhysical] profiles update error: ${profErr.message}`)
   }
 
-  // 4. body_weight (historique poids)
+  // 4. body_weight
   if (weightKg != null) {
     const { error: bwErr } = await supabase
       .from('body_weight')
-      .upsert({ user_id: userId, date: today, weight_kg: weightKg },
-               { onConflict: 'user_id,date' })
+      .upsert({ user_id: userId, date: measuredDate, weight_kg: weightKg }, { onConflict: 'user_id,date' })
     if (bwErr) console.error(`[syncPolarPhysical] body_weight upsert error: ${bwErr.message}`)
   }
 
@@ -186,7 +219,8 @@ export async function syncPolarPhysical(userId: string): Promise<{
 }
 
 // ── Daily activity ─────────────────────────────────────────────
-// Transaction : GET /daily-activity → resource-uri → list → details → commit
+// Transaction POST /v3/users/{id}/daily-activity-transactions
+// → txId → GET list → GET each → commit PUT
 // Stocke steps, active_calories, total_calories dans health_data
 
 export async function syncPolarDailyActivity(userId: string): Promise<{
@@ -199,12 +233,10 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
   const { token, polarUserId } = ctx
   const supabase = createServiceClient()
 
-  // Étape 1 : créer la transaction (GET pour daily-activity)
-  const endpoint = `${POLAR_BASE_V3}/users/${polarUserId}/daily-activity`
-  console.log(`[syncPolarDailyActivity] Étape 1 GET ${endpoint}`)
-
-  // ── callPolarAPI : même fonction que le live test ──
-  const txRes = await callPolarAPI(endpoint, token)
+  // Étape 1 : créer la transaction (POST — même pattern que exercises)
+  const txEndpoint = `${POLAR_BASE_V3}/users/${polarUserId}/daily-activity-transactions`
+  console.log(`[syncPolarDailyActivity] Étape 1 POST ${txEndpoint}`)
+  const txRes = await callPolarAPI(txEndpoint, token, 'POST')
   console.log(`[syncPolarDailyActivity] Étape 1 status=${txRes.status}`)
 
   if (txRes.status === 204) {
@@ -227,15 +259,20 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
     return { status: 'json_error', days_synced: 0 }
   }
 
-  const resourceUri = (txData['resource-uri'] ?? txData['resourceUri']) as string | undefined
-  console.log(`[syncPolarDailyActivity] resource-uri: ${resourceUri ?? 'NOT_FOUND'}`)
-  if (!resourceUri) return { status: 'no_resource_uri', days_synced: 0 }
+  const txId = (txData['transaction-id'] ?? txData['id']) as string | undefined
+  console.log(`[syncPolarDailyActivity] txId=${txId}`)
+  if (!txId) return { status: 'no_tx_id', days_synced: 0 }
 
-  // Étape 2 : lister les jours (resource-uri est une URL complète)
-  console.log(`[syncPolarDailyActivity] Étape 2 GET ${resourceUri}`)
-  const listRes = await callPolarAPI(resourceUri, token)
+  const listEndpoint = `${POLAR_BASE_V3}/users/${polarUserId}/daily-activity-transactions/${txId}`
+
+  // Étape 2 : lister les jours
+  console.log(`[syncPolarDailyActivity] Étape 2 GET ${listEndpoint}`)
+  const listRes = await callPolarAPI(listEndpoint, token)
   console.log(`[syncPolarDailyActivity] Étape 2 status=${listRes.status}`)
-  if (!listRes.ok) return { status: `list_error_${listRes.status}`, days_synced: 0 }
+  if (!listRes.ok) {
+    await callPolarAPI(listEndpoint, token, 'PUT').catch(() => {})
+    return { status: `list_error_${listRes.status}`, days_synced: 0 }
+  }
 
   const listBody = await listRes.text()
   console.log(`[syncPolarDailyActivity] Étape 2 body: ${listBody.slice(0, 800)}`)
@@ -250,7 +287,7 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   console.log(`[syncPolarDailyActivity] ${activityUrls.length} jours listés`)
   if (!activityUrls.length) {
-    await callPolarAPI(resourceUri, token, 'PUT').catch(() => {})
+    await callPolarAPI(listEndpoint, token, 'PUT').catch(() => {})
     return { status: 'ok', days_synced: 0 }
   }
 
@@ -302,7 +339,7 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
   }
 
   // Étape 5 : commit
-  const commitRes = await callPolarAPI(resourceUri, token, 'PUT')
+  const commitRes = await callPolarAPI(listEndpoint, token, 'PUT')
   console.log(`[syncPolarDailyActivity] commit status=${commitRes.status}`)
 
   return { status: 'ok', days_synced: rows.length }

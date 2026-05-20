@@ -3,18 +3,59 @@ import { getValidToken } from '@/lib/oauth/tokens'
 
 const POLAR_API = 'https://www.polaraccesslink.com/v3'
 
-// ── Helpers ────────────────────────────────────────────────────
+// ── Shared context ──────────────────────────────────────────────
+// Un seul chemin pour obtenir token + polarUserId + headers.
+// Utilisé à la fois par le mode live test (route GET) et le mode réel sync.
 
-async function getPolarUserId(userId: string): Promise<string | null> {
+export interface PolarContext {
+  token:       string
+  polarUserId: string
+  headers:     Record<string, string>
+}
+
+export async function getPolarContext(userId: string): Promise<PolarContext | null> {
   const supabase = createServiceClient()
-  const { data } = await supabase
+
+  // Une seule requête pour token ET provider_user_id
+  const { data, error } = await supabase
     .from('oauth_tokens')
-    .select('provider_user_id')
+    .select('access_token, provider_user_id')
     .eq('user_id', userId)
     .eq('provider', 'polar')
     .eq('is_active', true)
-    .maybeSingle()
-  return (data as { provider_user_id: string | null } | null)?.provider_user_id ?? null
+    .single()
+
+  if (error || !data) {
+    console.error('[getPolarContext] oauth_tokens query failed:', error?.message ?? 'no data')
+    return null
+  }
+
+  const row = data as { access_token: string; provider_user_id: string | null }
+  if (!row.access_token || !row.provider_user_id) {
+    console.error('[getPolarContext] missing access_token or provider_user_id:', JSON.stringify(row))
+    return null
+  }
+
+  const ctx: PolarContext = {
+    token:       row.access_token,
+    polarUserId: row.provider_user_id,
+    headers: {
+      Authorization: `Bearer ${row.access_token}`,
+      Accept:        'application/json',
+    },
+  }
+
+  console.log('[getPolarContext] OK — polarUserId:', ctx.polarUserId,
+    '| token length:', ctx.token.length,
+    '| token[0:8]:', ctx.token.slice(0, 8))
+
+  return ctx
+}
+
+// Compatibilité interne : helpers qui utilisent getPolarContext
+async function getPolarUserId(userId: string): Promise<string | null> {
+  const ctx = await getPolarContext(userId)
+  return ctx?.polarUserId ?? null
 }
 
 /** Parse ISO-8601 duration (PT1H30M45S) → seconds */
@@ -53,7 +94,8 @@ export async function registerPolarUser(userId: string): Promise<void> {
       'Content-Type': 'application/json',
       Accept:         'application/json',
     },
-    body: JSON.stringify({ 'member-id': userId }),
+    body:  JSON.stringify({ 'member-id': userId }),
+    cache: 'no-store',
   })
   if (!res.ok && res.status !== 409) {
     const err = await res.text()
@@ -70,27 +112,21 @@ export async function syncPolarPhysical(userId: string): Promise<{
   resting_hr: number | null
   weight: number | null
 }> {
-  const token = await getValidToken(userId, 'polar')
-  const polarUserId = await getPolarUserId(userId)
+  // ── Même chemin que le live test ──
+  const ctx = await getPolarContext(userId)
+  if (!ctx) return { status: 'no_context', resting_hr: null, weight: null }
 
-  // ── LOGS DE COMPARAISON (identiques entre live et réel sync) ──
-  console.log('=== REAL SYNC syncPolarPhysical ===')
-  console.log('userId (Supabase):', userId)
-  console.log('polarUserId (Polar):', polarUserId)
-  console.log('token exists:', !!token, '| token length:', token?.length)
-  console.log('token first 8 chars:', token?.slice(0, 8))
+  const { token, polarUserId, headers } = ctx
   const physicalUrl = `${POLAR_API}/users/${polarUserId}/physical-information`
-  console.log('physicalUrl:', physicalUrl)
-  // ──────────────────────────────────────────────────────────────
-
-  if (!token) return { status: 'no_token', resting_hr: null, weight: null }
-  if (!polarUserId) return { status: 'no_polar_user_id', resting_hr: null, weight: null }
+  console.log('[syncPolarPhysical] GET', physicalUrl)
+  console.log('[syncPolarPhysical] Auth header:', `Bearer ${token.slice(0, 8)}...`)
 
   const supabase = createServiceClient()
   const today = new Date().toISOString().split('T')[0]
 
   const res = await fetch(physicalUrl, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    headers,
+    cache: 'no-store',   // désactiver le cache Next.js
   })
 
   console.log(`[syncPolarPhysical] HTTP status=${res.status}`)
@@ -179,29 +215,22 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
   status: string
   days_synced: number
 }> {
-  const token = await getValidToken(userId, 'polar')
-  const polarUserId = await getPolarUserId(userId)
+  // ── Même chemin que le live test ──
+  const ctx = await getPolarContext(userId)
+  if (!ctx) return { status: 'no_context', days_synced: 0 }
 
-  // ── LOGS DE COMPARAISON ──
-  console.log('=== REAL SYNC syncPolarDailyActivity ===')
-  console.log('userId (Supabase):', userId)
-  console.log('polarUserId (Polar):', polarUserId)
-  console.log('token exists:', !!token, '| token length:', token?.length)
-  console.log('token first 8 chars:', token?.slice(0, 8))
+  const { token, polarUserId, headers } = ctx
   const dailyActivityUrl = `${POLAR_API}/users/${polarUserId}/daily-activity`
-  console.log('dailyActivityUrl:', dailyActivityUrl)
-  // ──────────────────────────────────────────────────────────────
-
-  if (!token) return { status: 'no_token', days_synced: 0 }
-  if (!polarUserId) return { status: 'no_polar_user_id', days_synced: 0 }
+  console.log('[syncPolarDailyActivity] GET', dailyActivityUrl)
+  console.log('[syncPolarDailyActivity] Auth header:', `Bearer ${token.slice(0, 8)}...`)
 
   const supabase = createServiceClient()
-  const hdrs = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+  const hdrs = headers
 
   // Étape 1 : créer la transaction (GET, pas POST pour daily-activity)
   const txUrl = dailyActivityUrl
   console.log(`[syncPolarDailyActivity] Étape 1 GET ${txUrl}`)
-  const txRes = await fetch(txUrl, { headers: hdrs })
+  const txRes = await fetch(txUrl, { headers: hdrs, cache: 'no-store' })
   console.log(`[syncPolarDailyActivity] Étape 1 status=${txRes.status}`)
 
   if (txRes.status === 204) {
@@ -227,7 +256,7 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   // Étape 2 : lister les jours
   console.log(`[syncPolarDailyActivity] Étape 2 GET ${resourceUri}`)
-  const listRes = await fetch(resourceUri, { headers: hdrs })
+  const listRes = await fetch(resourceUri, { headers: hdrs, cache: 'no-store' })
   console.log(`[syncPolarDailyActivity] Étape 2 status=${listRes.status}`)
   if (!listRes.ok) return { status: `list_error_${listRes.status}`, days_synced: 0 }
 
@@ -244,7 +273,7 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   console.log(`[syncPolarDailyActivity] ${activityUrls.length} jours listés`)
   if (!activityUrls.length) {
-    await fetch(resourceUri, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+    await fetch(resourceUri, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).catch(() => {})
     return { status: 'ok', days_synced: 0 }
   }
 
@@ -253,7 +282,7 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   for (const url of activityUrls) {
     try {
-      const dayRes = await fetch(typeof url === 'string' ? url : String(url), { headers: hdrs })
+      const dayRes = await fetch(typeof url === 'string' ? url : String(url), { headers: hdrs, cache: 'no-store' })
       if (!dayRes.ok) continue
       const day = await dayRes.json() as Record<string, unknown>
 
@@ -296,8 +325,9 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   // Étape 5 : commit
   const commitRes = await fetch(resourceUri, {
-    method: 'PUT',
+    method:  'PUT',
     headers: { Authorization: `Bearer ${token}` },
+    cache:   'no-store',
   })
   console.log(`[syncPolarDailyActivity] commit status=${commitRes.status}`)
 
@@ -312,18 +342,19 @@ export async function syncPolarActivities(userId: string): Promise<{
   status: string
   exercises_synced: number
 }> {
-  const token = await getValidToken(userId, 'polar')
-  if (!token) return { status: 'no_token', exercises_synced: 0 }
+  // ── Même chemin que le live test ──
+  const ctx = await getPolarContext(userId)
+  if (!ctx) return { status: 'no_context', exercises_synced: 0 }
 
-  const polarUserId = await getPolarUserId(userId)
-  if (!polarUserId) return { status: 'no_polar_user_id', exercises_synced: 0 }
+  const { token, polarUserId, headers } = ctx
 
   const supabase = createServiceClient()
 
   // Étape 1 : créer transaction (POST pour exercises)
   const txRes = await fetch(`${POLAR_API}/users/${polarUserId}/exercise-transactions`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    headers,
+    cache: 'no-store',
   })
 
   console.log(`[syncPolarActivities] transaction status=${txRes.status}`)
@@ -341,7 +372,7 @@ export async function syncPolarActivities(userId: string): Promise<{
   // Étape 2 : lister les exercices
   const listRes = await fetch(
     `${POLAR_API}/users/${polarUserId}/exercise-transactions/${txId}`,
-    { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+    { headers, cache: 'no-store' }
   )
   if (!listRes.ok) {
     await commitExerciseTx(token, polarUserId, txId)
@@ -362,7 +393,7 @@ export async function syncPolarActivities(userId: string): Promise<{
 
   for (const url of exerciseUrls) {
     try {
-      const actRes = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      const actRes = await fetch(url, { headers, cache: 'no-store' })
       if (!actRes.ok) continue
       const a = await actRes.json() as Record<string, unknown>
 
@@ -439,7 +470,8 @@ export async function syncPolarActivities(userId: string): Promise<{
 
 async function commitExerciseTx(token: string, polarUserId: string, txId: string): Promise<void> {
   await fetch(`${POLAR_API}/users/${polarUserId}/exercise-transactions/${txId}`, {
-    method: 'PUT',
+    method:  'PUT',
     headers: { Authorization: `Bearer ${token}` },
+    cache:   'no-store',
   }).catch(() => {})
 }

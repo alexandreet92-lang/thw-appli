@@ -8,8 +8,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
-import { registerPolarUser, syncPolarActivities, syncPolarDailyActivity, syncPolarPhysical } from '@/lib/sync/polar'
-import { getValidToken } from '@/lib/oauth/tokens'
+import { getPolarContext, syncPolarActivities, syncPolarDailyActivity, syncPolarPhysical } from '@/lib/sync/polar'
 
 export async function POST(
   req: NextRequest,
@@ -61,33 +60,15 @@ export async function POST(
         count = await syncWahooWorkouts(userId)
         break
       case 'polar': {
-        console.log('=== REAL SYNC route polar ===')
-        console.log('userId from route:', userId)
-        console.log('request method:', req.method)
-        console.log('x-user-id header:', req.headers.get('x-user-id') ?? 'none')
-
-        // Vérifier le token et polarUserId directement ici pour comparaison
-        const { data: _dbCheck } = await supabase
-          .from('oauth_tokens')
-          .select('provider_user_id, is_active, length(access_token) as tok_len, expires_at')
-          .eq('user_id', userId)
-          .eq('provider', 'polar')
-          .maybeSingle()
-        console.log('oauth_tokens row:', JSON.stringify(_dbCheck))
-
-        const physicalUrlCheck = `https://www.polaraccesslink.com/v3/users/${(_dbCheck as Record<string,unknown> | null)?.provider_user_id}/physical-information`
-        const dailyActivityUrlCheck = `https://www.polaraccesslink.com/v3/users/${(_dbCheck as Record<string,unknown> | null)?.provider_user_id}/daily-activity`
-        const exercisesUrlCheck = `https://www.polaraccesslink.com/v3/users/${(_dbCheck as Record<string,unknown> | null)?.provider_user_id}/exercise-transactions`
-        console.log('physical URL (expected):', physicalUrlCheck)
-        console.log('daily_activity URL (expected):', dailyActivityUrlCheck)
-        console.log('exercises URL (expected):', exercisesUrlCheck)
-
-        console.log(`[sync/polar] === DÉBUT SYNC userId=${userId} ===`)
-        try {
-          await registerPolarUser(userId)
-        } catch (e) {
-          console.log('[sync/polar] register:', e instanceof Error ? e.message : String(e))
+        // Vérifier le contexte (token + polarUserId) via le même chemin que le live test
+        const ctx = await getPolarContext(userId)
+        if (!ctx) {
+          return NextResponse.json({ error: 'No valid Polar token or user ID' }, { status: 401 })
         }
+        console.log(`[sync/polar] START userId=${userId} polarUserId=${ctx.polarUserId} token=${ctx.token.slice(0, 8)}...`)
+
+        // NOTE : registerPolarUser est appelé UNE SEULE FOIS lors du callback OAuth.
+        // L'appeler à chaque sync provoque des 404 sur les endpoints de données.
 
         // 1. Physical information (direct, pas de transaction)
         const physResult = await syncPolarPhysical(userId)
@@ -97,7 +78,7 @@ export async function POST(
         // 2. Daily activity (transaction GET)
         const dailyResult = await syncPolarDailyActivity(userId)
           .catch(e => { console.error('[sync/polar] daily error:', e instanceof Error ? e.message : String(e)); return { status: 'error', days_synced: 0 } })
-        console.log(`[sync/polar] daily_activity → ${dailyResult.status} days=${dailyResult.days_synced}`)
+        console.log(`[sync/polar] daily → ${dailyResult.status} days=${dailyResult.days_synced}`)
 
         // 3. Exercises (transaction POST)
         const exResult = await syncPolarActivities(userId)
@@ -105,9 +86,8 @@ export async function POST(
         console.log(`[sync/polar] exercises → ${exResult.status} count=${exResult.exercises_synced}`)
 
         count = (physResult.resting_hr != null ? 1 : 0) + dailyResult.days_synced + exResult.exercises_synced
-        console.log(`[sync/polar] === FIN SYNC total=${count} ===`)
+        console.log(`[sync/polar] END total=${count}`)
 
-        // Retourner un résumé détaillé plutôt que juste { success, synced }
         if (log?.id) {
           await supabase
             .from('sync_logs')
@@ -169,22 +149,22 @@ export async function GET(
   // ?live=1 → teste les 3 endpoints Polar AccessLink autorisés (read-only, pas de commit)
   if (req.nextUrl.searchParams.get('live') === '1' && provider === 'polar') {
     const BASE = 'https://www.polaraccesslink.com/v3'
-    const token = await getValidToken(user.id, 'polar')
-    if (!token) return NextResponse.json({ error: 'No valid Polar token' }, { status: 400 })
 
+    // Même chemin que le sync réel — getPolarContext est LA source unique
+    const polarCtx = await getPolarContext(user.id)
+    if (!polarCtx) return NextResponse.json({ error: 'No valid Polar token or user ID' }, { status: 400 })
+
+    const { token, polarUserId: uid, headers: hdrs } = polarCtx
+
+    // scope pour info
     const { data: tokenRow } = await db
       .from('oauth_tokens')
-      .select('provider_user_id, scope')
+      .select('scope')
       .eq('user_id', user.id).eq('provider', 'polar').maybeSingle()
-
-    const uid = (tokenRow as { provider_user_id: string | null } | null)?.provider_user_id
-    if (!uid) return NextResponse.json({ error: 'No Polar user ID' }, { status: 400 })
-
-    const hdrs = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
 
     async function probe(label: string, url: string, method = 'GET'): Promise<Record<string, unknown>> {
       try {
-        const r = await fetch(url, { method, headers: hdrs })
+        const r = await fetch(url, { method, headers: hdrs, cache: 'no-store' })
         const body = await r.text()
         let parsed: unknown = null
         try { parsed = JSON.parse(body) } catch { /* raw only */ }

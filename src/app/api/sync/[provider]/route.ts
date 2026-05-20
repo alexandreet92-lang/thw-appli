@@ -61,6 +61,27 @@ export async function POST(
         count = await syncWahooWorkouts(userId)
         break
       case 'polar': {
+        console.log('=== REAL SYNC route polar ===')
+        console.log('userId from route:', userId)
+        console.log('request method:', req.method)
+        console.log('x-user-id header:', req.headers.get('x-user-id') ?? 'none')
+
+        // Vérifier le token et polarUserId directement ici pour comparaison
+        const { data: _dbCheck } = await supabase
+          .from('oauth_tokens')
+          .select('provider_user_id, is_active, length(access_token) as tok_len, expires_at')
+          .eq('user_id', userId)
+          .eq('provider', 'polar')
+          .maybeSingle()
+        console.log('oauth_tokens row:', JSON.stringify(_dbCheck))
+
+        const physicalUrlCheck = `https://www.polaraccesslink.com/v3/users/${(_dbCheck as Record<string,unknown> | null)?.provider_user_id}/physical-information`
+        const dailyActivityUrlCheck = `https://www.polaraccesslink.com/v3/users/${(_dbCheck as Record<string,unknown> | null)?.provider_user_id}/daily-activity`
+        const exercisesUrlCheck = `https://www.polaraccesslink.com/v3/users/${(_dbCheck as Record<string,unknown> | null)?.provider_user_id}/exercise-transactions`
+        console.log('physical URL (expected):', physicalUrlCheck)
+        console.log('daily_activity URL (expected):', dailyActivityUrlCheck)
+        console.log('exercises URL (expected):', exercisesUrlCheck)
+
         console.log(`[sync/polar] === DÉBUT SYNC userId=${userId} ===`)
         try {
           await registerPolarUser(userId)

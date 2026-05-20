@@ -71,29 +71,40 @@ export async function syncPolarPhysical(userId: string): Promise<{
   weight: number | null
 }> {
   const token = await getValidToken(userId, 'polar')
-  if (!token) return { status: 'no_token', resting_hr: null, weight: null }
-
   const polarUserId = await getPolarUserId(userId)
+
+  // ── LOGS DE COMPARAISON (identiques entre live et réel sync) ──
+  console.log('=== REAL SYNC syncPolarPhysical ===')
+  console.log('userId (Supabase):', userId)
+  console.log('polarUserId (Polar):', polarUserId)
+  console.log('token exists:', !!token, '| token length:', token?.length)
+  console.log('token first 8 chars:', token?.slice(0, 8))
+  const physicalUrl = `${POLAR_API}/users/${polarUserId}/physical-information`
+  console.log('physicalUrl:', physicalUrl)
+  // ──────────────────────────────────────────────────────────────
+
+  if (!token) return { status: 'no_token', resting_hr: null, weight: null }
   if (!polarUserId) return { status: 'no_polar_user_id', resting_hr: null, weight: null }
 
   const supabase = createServiceClient()
   const today = new Date().toISOString().split('T')[0]
 
-  console.log(`[syncPolarPhysical] GET physical-information for polarUser=${polarUserId}`)
+  const res = await fetch(physicalUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
 
-  const res = await fetch(
-    `${POLAR_API}/users/${polarUserId}/physical-information`,
-    { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
-  )
+  console.log(`[syncPolarPhysical] HTTP status=${res.status}`)
+  const resBody = await res.text()
+  console.log(`[syncPolarPhysical] response body (500c): ${resBody.slice(0, 500)}`)
 
-  console.log(`[syncPolarPhysical] status=${res.status}`)
   if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    console.error(`[syncPolarPhysical] error: ${body.slice(0, 300)}`)
     return { status: `error_${res.status}`, resting_hr: null, weight: null }
   }
 
-  const phys = await res.json() as Record<string, unknown>
+  let phys: Record<string, unknown>
+  try { phys = JSON.parse(resBody) as Record<string, unknown> }
+  catch { console.error('[syncPolarPhysical] JSON parse error'); return { status: 'json_error', resting_hr: null, weight: null } }
+
   const restingHr  = phys['resting-heart-rate'] != null ? Number(phys['resting-heart-rate']) : null
   const maxHr      = phys['maximum-heart-rate']  != null ? Number(phys['maximum-heart-rate'])  : null
   const weightKg   = phys['weight']              != null ? Number(phys['weight'])              : null
@@ -169,16 +180,26 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
   days_synced: number
 }> {
   const token = await getValidToken(userId, 'polar')
-  if (!token) return { status: 'no_token', days_synced: 0 }
-
   const polarUserId = await getPolarUserId(userId)
+
+  // ── LOGS DE COMPARAISON ──
+  console.log('=== REAL SYNC syncPolarDailyActivity ===')
+  console.log('userId (Supabase):', userId)
+  console.log('polarUserId (Polar):', polarUserId)
+  console.log('token exists:', !!token, '| token length:', token?.length)
+  console.log('token first 8 chars:', token?.slice(0, 8))
+  const dailyActivityUrl = `${POLAR_API}/users/${polarUserId}/daily-activity`
+  console.log('dailyActivityUrl:', dailyActivityUrl)
+  // ──────────────────────────────────────────────────────────────
+
+  if (!token) return { status: 'no_token', days_synced: 0 }
   if (!polarUserId) return { status: 'no_polar_user_id', days_synced: 0 }
 
   const supabase = createServiceClient()
   const hdrs = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
 
   // Étape 1 : créer la transaction (GET, pas POST pour daily-activity)
-  const txUrl = `${POLAR_API}/users/${polarUserId}/daily-activity`
+  const txUrl = dailyActivityUrl
   console.log(`[syncPolarDailyActivity] Étape 1 GET ${txUrl}`)
   const txRes = await fetch(txUrl, { headers: hdrs })
   console.log(`[syncPolarDailyActivity] Étape 1 status=${txRes.status}`)

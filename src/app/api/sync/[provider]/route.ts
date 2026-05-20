@@ -9,6 +9,7 @@ import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
 import { getPolarContext, syncPolarActivities, syncPolarDailyActivity, syncPolarPhysical } from '@/lib/sync/polar'
+import { callPolarAPI } from '@/lib/polar'
 
 export async function POST(
   req: NextRequest,
@@ -148,13 +149,12 @@ export async function GET(
 
   // ?live=1 → teste les 3 endpoints Polar AccessLink autorisés (read-only, pas de commit)
   if (req.nextUrl.searchParams.get('live') === '1' && provider === 'polar') {
-    const BASE = 'https://www.polaraccesslink.com/v3'
 
-    // Même chemin que le sync réel — getPolarContext est LA source unique
+    // ── Même chemin que le sync réel — getPolarContext + callPolarAPI ──
     const polarCtx = await getPolarContext(user.id)
     if (!polarCtx) return NextResponse.json({ error: 'No valid Polar token or user ID' }, { status: 400 })
 
-    const { token, polarUserId: uid, headers: hdrs } = polarCtx
+    const { token, polarUserId: uid } = polarCtx
 
     // scope pour info
     const { data: tokenRow } = await db
@@ -162,23 +162,25 @@ export async function GET(
       .select('scope')
       .eq('user_id', user.id).eq('provider', 'polar').maybeSingle()
 
-    async function probe(label: string, url: string, method = 'GET'): Promise<Record<string, unknown>> {
+    // ── probe utilise callPolarAPI — exactement comme le sync réel ──
+    async function probe(label: string, endpoint: string, method: 'GET' | 'POST' | 'PUT' = 'GET'): Promise<Record<string, unknown>> {
       try {
-        const r = await fetch(url, { method, headers: hdrs, cache: 'no-store' })
+        const r = await callPolarAPI(endpoint, token, method)
         const body = await r.text()
         let parsed: unknown = null
         try { parsed = JSON.parse(body) } catch { /* raw only */ }
+        const url = endpoint.startsWith('http') ? endpoint : `https://www.polaraccesslink.com${endpoint}`
         return { label, url, method, status: r.status, body_raw: body.slice(0, 600), body_parsed: parsed }
       } catch (e) {
-        return { label, url, method, status: 'FETCH_ERROR', error: String(e) }
+        return { label, endpoint, method, status: 'FETCH_ERROR', error: String(e) }
       }
     }
 
     // 3 endpoints autorisés seulement
     const [physProbe, dailyProbe, exProbe] = await Promise.all([
-      probe('1_physical_information', `${BASE}/users/${uid}/physical-information`),
-      probe('2_daily_activity',       `${BASE}/users/${uid}/daily-activity`),
-      probe('3_exercise_transactions',`${BASE}/users/${uid}/exercise-transactions`, 'POST'),
+      probe('1_physical_information', `/v3/users/${uid}/physical-information`),
+      probe('2_daily_activity',       `/v3/users/${uid}/daily-activity`),
+      probe('3_exercise_transactions',`/v3/users/${uid}/exercise-transactions`, 'POST'),
     ])
 
     // Si daily-activity retourne 200 avec resource-uri, suivre un niveau (sans commit)

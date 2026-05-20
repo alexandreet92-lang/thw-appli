@@ -1,7 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken } from '@/lib/oauth/tokens'
+import { callPolarAPI } from '@/lib/polar'
 
-const POLAR_API = 'https://www.polaraccesslink.com/v3'
+const POLAR_BASE_V3 = '/v3'
 
 // ── Shared context ──────────────────────────────────────────────
 // Un seul chemin pour obtenir token + polarUserId + headers.
@@ -10,7 +11,6 @@ const POLAR_API = 'https://www.polaraccesslink.com/v3'
 export interface PolarContext {
   token:       string
   polarUserId: string
-  headers:     Record<string, string>
 }
 
 export async function getPolarContext(userId: string): Promise<PolarContext | null> {
@@ -39,10 +39,6 @@ export async function getPolarContext(userId: string): Promise<PolarContext | nu
   const ctx: PolarContext = {
     token:       row.access_token,
     polarUserId: row.provider_user_id,
-    headers: {
-      Authorization: `Bearer ${row.access_token}`,
-      Accept:        'application/json',
-    },
   }
 
   console.log('[getPolarContext] OK — polarUserId:', ctx.polarUserId,
@@ -50,12 +46,6 @@ export async function getPolarContext(userId: string): Promise<PolarContext | nu
     '| token[0:8]:', ctx.token.slice(0, 8))
 
   return ctx
-}
-
-// Compatibilité interne : helpers qui utilisent getPolarContext
-async function getPolarUserId(userId: string): Promise<string | null> {
-  const ctx = await getPolarContext(userId)
-  return ctx?.polarUserId ?? null
 }
 
 /** Parse ISO-8601 duration (PT1H30M45S) → seconds */
@@ -82,21 +72,13 @@ function mapPolarSport(sport?: string): string {
 }
 
 // ── Register ───────────────────────────────────────────────────
+// Appelé UNE SEULE FOIS lors du callback OAuth — jamais lors du sync.
 
 export async function registerPolarUser(userId: string): Promise<void> {
   const token = await getValidToken(userId, 'polar')
   if (!token) throw new Error('No valid Polar token')
 
-  const res = await fetch(`${POLAR_API}/users`, {
-    method: 'POST',
-    headers: {
-      Authorization:  `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept:         'application/json',
-    },
-    body:  JSON.stringify({ 'member-id': userId }),
-    cache: 'no-store',
-  })
+  const res = await callPolarAPI('/v3/users', token, 'POST')
   if (!res.ok && res.status !== 409) {
     const err = await res.text()
     throw new Error(`Polar register error ${res.status}: ${err}`)
@@ -112,26 +94,19 @@ export async function syncPolarPhysical(userId: string): Promise<{
   resting_hr: number | null
   weight: number | null
 }> {
-  // ── Même chemin que le live test ──
   const ctx = await getPolarContext(userId)
   if (!ctx) return { status: 'no_context', resting_hr: null, weight: null }
 
-  const { token, polarUserId, headers } = ctx
-  const physicalUrl = `${POLAR_API}/users/${polarUserId}/physical-information`
-  console.log('[syncPolarPhysical] GET', physicalUrl)
-  console.log('[syncPolarPhysical] Auth header:', `Bearer ${token.slice(0, 8)}...`)
+  const { token, polarUserId } = ctx
+  const endpoint = `${POLAR_BASE_V3}/users/${polarUserId}/physical-information`
 
   const supabase = createServiceClient()
   const today = new Date().toISOString().split('T')[0]
 
-  const res = await fetch(physicalUrl, {
-    headers,
-    cache: 'no-store',   // désactiver le cache Next.js
-  })
-
-  console.log(`[syncPolarPhysical] HTTP status=${res.status}`)
+  // ── callPolarAPI : même fonction que le live test ──
+  const res = await callPolarAPI(endpoint, token)
   const resBody = await res.text()
-  console.log(`[syncPolarPhysical] response body (500c): ${resBody.slice(0, 500)}`)
+  console.log(`[syncPolarPhysical] body (500c): ${resBody.slice(0, 500)}`)
 
   if (!res.ok) {
     return { status: `error_${res.status}`, resting_hr: null, weight: null }
@@ -139,7 +114,10 @@ export async function syncPolarPhysical(userId: string): Promise<{
 
   let phys: Record<string, unknown>
   try { phys = JSON.parse(resBody) as Record<string, unknown> }
-  catch { console.error('[syncPolarPhysical] JSON parse error'); return { status: 'json_error', resting_hr: null, weight: null } }
+  catch {
+    console.error('[syncPolarPhysical] JSON parse error')
+    return { status: 'json_error', resting_hr: null, weight: null }
+  }
 
   const restingHr  = phys['resting-heart-rate'] != null ? Number(phys['resting-heart-rate']) : null
   const maxHr      = phys['maximum-heart-rate']  != null ? Number(phys['maximum-heart-rate'])  : null
@@ -215,22 +193,18 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
   status: string
   days_synced: number
 }> {
-  // ── Même chemin que le live test ──
   const ctx = await getPolarContext(userId)
   if (!ctx) return { status: 'no_context', days_synced: 0 }
 
-  const { token, polarUserId, headers } = ctx
-  const dailyActivityUrl = `${POLAR_API}/users/${polarUserId}/daily-activity`
-  console.log('[syncPolarDailyActivity] GET', dailyActivityUrl)
-  console.log('[syncPolarDailyActivity] Auth header:', `Bearer ${token.slice(0, 8)}...`)
-
+  const { token, polarUserId } = ctx
   const supabase = createServiceClient()
-  const hdrs = headers
 
-  // Étape 1 : créer la transaction (GET, pas POST pour daily-activity)
-  const txUrl = dailyActivityUrl
-  console.log(`[syncPolarDailyActivity] Étape 1 GET ${txUrl}`)
-  const txRes = await fetch(txUrl, { headers: hdrs, cache: 'no-store' })
+  // Étape 1 : créer la transaction (GET pour daily-activity)
+  const endpoint = `${POLAR_BASE_V3}/users/${polarUserId}/daily-activity`
+  console.log(`[syncPolarDailyActivity] Étape 1 GET ${endpoint}`)
+
+  // ── callPolarAPI : même fonction que le live test ──
+  const txRes = await callPolarAPI(endpoint, token)
   console.log(`[syncPolarDailyActivity] Étape 1 status=${txRes.status}`)
 
   if (txRes.status === 204) {
@@ -248,15 +222,18 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   let txData: Record<string, unknown>
   try { txData = JSON.parse(txBody) as Record<string, unknown> }
-  catch { console.error('[syncPolarDailyActivity] Étape 1 JSON parse error'); return { status: 'json_error', days_synced: 0 } }
+  catch {
+    console.error('[syncPolarDailyActivity] Étape 1 JSON parse error')
+    return { status: 'json_error', days_synced: 0 }
+  }
 
   const resourceUri = (txData['resource-uri'] ?? txData['resourceUri']) as string | undefined
   console.log(`[syncPolarDailyActivity] resource-uri: ${resourceUri ?? 'NOT_FOUND'}`)
   if (!resourceUri) return { status: 'no_resource_uri', days_synced: 0 }
 
-  // Étape 2 : lister les jours
+  // Étape 2 : lister les jours (resource-uri est une URL complète)
   console.log(`[syncPolarDailyActivity] Étape 2 GET ${resourceUri}`)
-  const listRes = await fetch(resourceUri, { headers: hdrs, cache: 'no-store' })
+  const listRes = await callPolarAPI(resourceUri, token)
   console.log(`[syncPolarDailyActivity] Étape 2 status=${listRes.status}`)
   if (!listRes.ok) return { status: `list_error_${listRes.status}`, days_synced: 0 }
 
@@ -273,16 +250,17 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
 
   console.log(`[syncPolarDailyActivity] ${activityUrls.length} jours listés`)
   if (!activityUrls.length) {
-    await fetch(resourceUri, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).catch(() => {})
+    await callPolarAPI(resourceUri, token, 'PUT').catch(() => {})
     return { status: 'ok', days_synced: 0 }
   }
 
-  // Étape 3 : récupérer chaque jour
+  // Étape 3 : récupérer chaque jour (URLs complètes depuis Polar)
   const rows: Record<string, unknown>[] = []
 
   for (const url of activityUrls) {
     try {
-      const dayRes = await fetch(typeof url === 'string' ? url : String(url), { headers: hdrs, cache: 'no-store' })
+      const dayUrl = typeof url === 'string' ? url : String(url)
+      const dayRes = await callPolarAPI(dayUrl, token)
       if (!dayRes.ok) continue
       const day = await dayRes.json() as Record<string, unknown>
 
@@ -324,11 +302,7 @@ export async function syncPolarDailyActivity(userId: string): Promise<{
   }
 
   // Étape 5 : commit
-  const commitRes = await fetch(resourceUri, {
-    method:  'PUT',
-    headers: { Authorization: `Bearer ${token}` },
-    cache:   'no-store',
-  })
+  const commitRes = await callPolarAPI(resourceUri, token, 'PUT')
   console.log(`[syncPolarDailyActivity] commit status=${commitRes.status}`)
 
   return { status: 'ok', days_synced: rows.length }
@@ -342,21 +316,15 @@ export async function syncPolarActivities(userId: string): Promise<{
   status: string
   exercises_synced: number
 }> {
-  // ── Même chemin que le live test ──
   const ctx = await getPolarContext(userId)
   if (!ctx) return { status: 'no_context', exercises_synced: 0 }
 
-  const { token, polarUserId, headers } = ctx
-
+  const { token, polarUserId } = ctx
   const supabase = createServiceClient()
 
   // Étape 1 : créer transaction (POST pour exercises)
-  const txRes = await fetch(`${POLAR_API}/users/${polarUserId}/exercise-transactions`, {
-    method: 'POST',
-    headers,
-    cache: 'no-store',
-  })
-
+  // ── callPolarAPI : même fonction que le live test ──
+  const txRes = await callPolarAPI(`${POLAR_BASE_V3}/users/${polarUserId}/exercise-transactions`, token, 'POST')
   console.log(`[syncPolarActivities] transaction status=${txRes.status}`)
 
   if (txRes.status === 204) return { status: 'no_new_data', exercises_synced: 0 }
@@ -370,9 +338,9 @@ export async function syncPolarActivities(userId: string): Promise<{
   if (!txId) return { status: 'no_tx_id', exercises_synced: 0 }
 
   // Étape 2 : lister les exercices
-  const listRes = await fetch(
-    `${POLAR_API}/users/${polarUserId}/exercise-transactions/${txId}`,
-    { headers, cache: 'no-store' }
+  const listRes = await callPolarAPI(
+    `${POLAR_BASE_V3}/users/${polarUserId}/exercise-transactions/${txId}`,
+    token
   )
   if (!listRes.ok) {
     await commitExerciseTx(token, polarUserId, txId)
@@ -388,12 +356,12 @@ export async function syncPolarActivities(userId: string): Promise<{
     return { status: 'ok', exercises_synced: 0 }
   }
 
-  // Étape 3 : récupérer les exercices
+  // Étape 3 : récupérer les exercices (URLs complètes depuis Polar)
   const candidates: Record<string, unknown>[] = []
 
   for (const url of exerciseUrls) {
     try {
-      const actRes = await fetch(url, { headers, cache: 'no-store' })
+      const actRes = await callPolarAPI(url, token)
       if (!actRes.ok) continue
       const a = await actRes.json() as Record<string, unknown>
 
@@ -469,9 +437,9 @@ export async function syncPolarActivities(userId: string): Promise<{
 }
 
 async function commitExerciseTx(token: string, polarUserId: string, txId: string): Promise<void> {
-  await fetch(`${POLAR_API}/users/${polarUserId}/exercise-transactions/${txId}`, {
-    method:  'PUT',
-    headers: { Authorization: `Bearer ${token}` },
-    cache:   'no-store',
-  }).catch(() => {})
+  await callPolarAPI(
+    `${POLAR_BASE_V3}/users/${polarUserId}/exercise-transactions/${txId}`,
+    token,
+    'PUT'
+  ).catch(() => {})
 }

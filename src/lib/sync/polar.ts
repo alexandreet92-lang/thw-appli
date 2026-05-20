@@ -157,10 +157,22 @@ export async function syncPolarActivities(userId: string): Promise<number> {
   return rows.length
 }
 
-// ── Sleep ──────────────────────────────────────────────────────
+// ── Sleep (transaction model) ──────────────────────────────────
+//
+// Polar AccessLink v3 sleep uses the same pull-transaction pattern
+// as exercises (GET to create, not POST):
+//
+//  1. GET  /v3/users/{id}/sleep            → 200 {resource-uri} | 204 no new data
+//  2. GET  {resource-uri}                  → list of sleep item URLs
+//  3. GET  {resource-uri}/{sleep-id}       → individual night data
+//  4. (upsert all rows into DB)
+//  5. PUT  {resource-uri}                  → commit (marks data as read)
+//
+// After commit, the same nights won't appear again — idempotence is
+// handled by the upsert(onConflict) on the DB side.
 
 export async function syncPolarSleep(userId: string): Promise<number> {
-  console.log('=== DÉBUT SYNC POLAR SLEEP ===')
+  console.log('=== DÉBUT SYNC POLAR SLEEP (transaction model) ===')
 
   const token = await getValidToken(userId, 'polar')
   console.log('[syncPolarSleep] Token trouvé:', !!token)
@@ -171,91 +183,129 @@ export async function syncPolarSleep(userId: string): Promise<number> {
   if (!polarUserId) throw new Error('Polar user ID not found')
 
   const supabase = createServiceClient()
+  const hdrs = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
 
-  const today = new Date().toISOString().split('T')[0]
-  const from  = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const url   = `${POLAR_API}/users/${polarUserId}/sleep?from=${from}&to=${today}`
+  // ── ÉTAPE 1 : créer la transaction ────────────────────────────
+  const txUrl = `${POLAR_API}/users/${polarUserId}/sleep`
+  console.log(`[syncPolarSleep] Étape 1 — GET ${txUrl}`)
 
-  console.log(`[syncPolarSleep] URL appelée: ${url}`)
+  const txRes = await fetch(txUrl, { headers: hdrs })
+  console.log(`[syncPolarSleep] Étape 1 — status: ${txRes.status}`)
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-  })
-
-  console.log(`[syncPolarSleep] Réponse API sleep - status: ${res.status}`)
-
-  const rawBody = await res.text()
-  console.log(`[syncPolarSleep] Réponse API sleep - body: ${rawBody.slice(0, 800)}`)
-
-  if (!res.ok) {
-    console.error(`[syncPolarSleep] ERREUR HTTP ${res.status}`)
-    console.error(`[syncPolarSleep] Body complet: ${rawBody}`)
+  if (txRes.status === 204) {
+    console.log('[syncPolarSleep] 204 No Content — aucune nouvelle nuit disponible')
+    console.log('=== FIN SYNC POLAR SLEEP (0 nouvelles nuits) ===')
     return 0
   }
 
-  let data: Record<string, unknown>
-  try {
-    data = JSON.parse(rawBody) as Record<string, unknown>
-  } catch (e) {
-    console.error('[syncPolarSleep] JSON parse error:', e)
+  if (!txRes.ok) {
+    const errBody = await txRes.text().catch(() => '')
+    console.error(`[syncPolarSleep] Étape 1 ERREUR ${txRes.status}: ${errBody.slice(0, 500)}`)
     return 0
   }
 
-  // Log top-level keys to understand structure
-  console.log('[syncPolarSleep] Clés JSON reçues:', Object.keys(data).join(', '))
-  console.log('[syncPolarSleep] JSON complet (2000c):', JSON.stringify(data).slice(0, 2000))
+  const txBody = await txRes.text()
+  console.log(`[syncPolarSleep] Étape 1 body: ${txBody.slice(0, 500)}`)
 
-  // Polar v3 returns "nights" — fallback sur "data" ou tableau direct
-  const nights: Record<string, unknown>[] = Array.isArray(data)
-    ? (data as Record<string, unknown>[])
-    : ((data['nights'] ?? data['data'] ?? data['sleep']) as Record<string, unknown>[] | undefined) ?? []
+  let txData: Record<string, unknown>
+  try { txData = JSON.parse(txBody) as Record<string, unknown> }
+  catch { console.error('[syncPolarSleep] Étape 1 JSON parse error'); return 0 }
 
-  console.log(`[syncPolarSleep] Nombre de nuits reçues: ${nights.length}`)
+  // resource-uri can be at root or nested
+  const resourceUri = (txData['resource-uri'] ?? txData['resourceUri']) as string | undefined
+  console.log(`[syncPolarSleep] resource-uri: ${resourceUri ?? 'NON TROUVÉ'}`)
+  console.log(`[syncPolarSleep] Étape 1 clés: ${Object.keys(txData).join(', ')}`)
+
+  if (!resourceUri) {
+    console.error('[syncPolarSleep] Pas de resource-uri dans la réponse — données inattendues')
+    return 0
+  }
+
+  // ── ÉTAPE 2 : lister les nuits disponibles ────────────────────
+  console.log(`[syncPolarSleep] Étape 2 — GET ${resourceUri}`)
+  const listRes = await fetch(resourceUri, { headers: hdrs })
+  console.log(`[syncPolarSleep] Étape 2 — status: ${listRes.status}`)
+
+  if (!listRes.ok) {
+    const errBody = await listRes.text().catch(() => '')
+    console.error(`[syncPolarSleep] Étape 2 ERREUR ${listRes.status}: ${errBody.slice(0, 300)}`)
+    return 0
+  }
+
+  const listBody = await listRes.text()
+  console.log(`[syncPolarSleep] Étape 2 body: ${listBody.slice(0, 1000)}`)
+
+  let listData: Record<string, unknown>
+  try { listData = JSON.parse(listBody) as Record<string, unknown> }
+  catch { console.error('[syncPolarSleep] Étape 2 JSON parse error'); return 0 }
+
+  console.log(`[syncPolarSleep] Étape 2 clés: ${Object.keys(listData).join(', ')}`)
+
+  // Sleep items can be under "sleep" key (array of URLs) or directly as array
+  const sleepItems: string[] = Array.isArray(listData)
+    ? (listData as string[])
+    : ((listData['sleep'] ?? listData['nights'] ?? listData['data']) as string[] | undefined) ?? []
+
+  console.log(`[syncPolarSleep] Nombre de nuits listées: ${sleepItems.length}`)
+  if (!sleepItems.length) {
+    console.log('[syncPolarSleep] Liste vide — rien à récupérer')
+    return 0
+  }
+
+  // ── ÉTAPE 3 : récupérer chaque nuit ───────────────────────────
+  const nights: Record<string, unknown>[] = []
+
+  for (const itemUrl of sleepItems) {
+    const url = typeof itemUrl === 'string' ? itemUrl : String(itemUrl)
+    console.log(`[syncPolarSleep] Étape 3 — GET ${url}`)
+    try {
+      const nightRes = await fetch(url, { headers: hdrs })
+      console.log(`[syncPolarSleep] Étape 3 — status: ${nightRes.status} (${url})`)
+      if (!nightRes.ok) continue
+      const nightData = await nightRes.json() as Record<string, unknown>
+      console.log(`[syncPolarSleep] Nuit récupérée: date=${nightData['date']} score=${nightData['sleep-score']}`)
+      nights.push(nightData)
+    } catch (e) {
+      console.error(`[syncPolarSleep] Étape 3 erreur pour ${url}:`, e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  console.log(`[syncPolarSleep] ${nights.length} nuits récupérées sur ${sleepItems.length}`)
 
   if (!nights.length) {
-    console.log('[syncPolarSleep] Aucune nuit — vérifie si des données existent sur Polar Flow pour les 90 derniers jours')
-    console.log('[syncPolarSleep] Toutes les clés du JSON:', JSON.stringify(Object.keys(data)))
-    console.log('=== FIN SYNC POLAR SLEEP (0 nuits) ===')
+    console.log('[syncPolarSleep] Aucune nuit récupérée — commit quand même pour ne pas bloquer')
+    await fetch(resourceUri, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
     return 0
   }
 
-  // Log first night sample
-  if (nights[0]) {
-    console.log('[syncPolarSleep] Exemple nuit[0]:', JSON.stringify(nights[0]).slice(0, 600))
-    console.log('[syncPolarSleep] Clés nuit[0]:', Object.keys(nights[0]).join(', '))
-  }
+  // Log sample
+  console.log('[syncPolarSleep] Exemple nuit[0]:', JSON.stringify(nights[0]).slice(0, 600))
 
+  // ── ÉTAPE 4 : insérer en base (avant commit) ──────────────────
   const rows = nights.map(n => ({
     user_id:            userId,
     provider:           'polar',
     provider_id:        `sleep_${n['date'] ?? n['id']}`,
-    // measured_at NOT NULL — fallback sur date si sleep-start-time absent
-    measured_at:        n['sleep-start-time'] ?? n['sleepStartTime'] ?? `${n['date'] ?? new Date().toISOString().split('T')[0]}T00:00:00+00:00`,
-    date:               n['date'] ?? n['sleepDate'],
+    measured_at:        n['sleep-start-time'] ?? `${n['date'] ?? new Date().toISOString().split('T')[0]}T00:00:00+00:00`,
+    date:               n['date'],
     data_type:          'sleep',
     sleep_duration_min: n['total-sleep-time']
-      ? Math.round(parsePolarDuration(n['total-sleep-time'] as string) / 60)
-      : (n['totalSleepTime'] ? Math.round(parsePolarDuration(n['totalSleepTime'] as string) / 60) : null),
-    sleep_score:        n['sleep-score'] ?? n['sleepScore'] ?? null,
+      ? Math.round(parsePolarDuration(n['total-sleep-time'] as string) / 60) : null,
+    sleep_score:        (n['sleep-score'] as number | undefined) ?? null,
     rem_duration_min:   n['rem-sleep']
-      ? Math.round(parsePolarDuration(n['rem-sleep'] as string) / 60)
-      : (n['remSleep'] ? Math.round(parsePolarDuration(n['remSleep'] as string) / 60) : null),
+      ? Math.round(parsePolarDuration(n['rem-sleep'] as string) / 60) : null,
     deep_duration_min:  n['deep-sleep']
-      ? Math.round(parsePolarDuration(n['deep-sleep'] as string) / 60)
-      : (n['deepSleep'] ? Math.round(parsePolarDuration(n['deepSleep'] as string) / 60) : null),
+      ? Math.round(parsePolarDuration(n['deep-sleep'] as string) / 60) : null,
     light_duration_min: n['light-sleep']
-      ? Math.round(parsePolarDuration(n['light-sleep'] as string) / 60)
-      : (n['lightSleep'] ? Math.round(parsePolarDuration(n['lightSleep'] as string) / 60) : null),
-    // awakenings = count d'éveils (integer), pas une durée
+      ? Math.round(parsePolarDuration(n['light-sleep'] as string) / 60) : null,
     awake_duration_min: n['total-interruption-duration']
-      ? Math.round(parsePolarDuration(n['total-interruption-duration'] as string) / 60)
-      : null,
-    sleep_start:        n['sleep-start-time'] ?? n['sleepStartTime'] ?? null,
-    sleep_end:          n['sleep-end-time'] ?? n['sleepEndTime'] ?? null,
+      ? Math.round(parsePolarDuration(n['total-interruption-duration'] as string) / 60) : null,
+    sleep_start:        (n['sleep-start-time'] as string | undefined) ?? null,
+    sleep_end:          (n['sleep-end-time'] as string | undefined) ?? null,
     raw_data:           n,
   }))
 
-  console.log(`[syncPolarSleep] Tentative upsert de ${rows.length} lignes dans health_data`)
+  console.log(`[syncPolarSleep] Étape 4 — upsert ${rows.length} lignes dans health_data`)
   console.log('[syncPolarSleep] Exemple row[0]:', JSON.stringify(rows[0]).slice(0, 400))
 
   const { error, data: upsertData } = await supabase
@@ -265,11 +315,27 @@ export async function syncPolarSleep(userId: string): Promise<number> {
 
   if (error) {
     console.error('[syncPolarSleep] ERREUR UPSERT:', error.message)
-    console.error('[syncPolarSleep] Détail erreur:', JSON.stringify(error))
+    console.error('[syncPolarSleep] Détail:', JSON.stringify(error))
+    // Ne pas throw ici — on veut quand même commiter pour ne pas retraiter à l'infini
+    // mais on reporte l'erreur
     throw new Error(`health_data upsert: ${error.message}`)
   }
 
-  console.log(`[syncPolarSleep] Upsert OK — ${(upsertData as unknown[])?.length ?? rows.length} lignes`)
+  console.log(`[syncPolarSleep] Upsert OK — ${(upsertData as unknown[])?.length ?? rows.length} lignes insérées/mises à jour`)
+
+  // ── ÉTAPE 5 : commit la transaction ───────────────────────────
+  console.log(`[syncPolarSleep] Étape 5 — PUT ${resourceUri} (commit)`)
+  const commitRes = await fetch(resourceUri, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  console.log(`[syncPolarSleep] Commit status: ${commitRes.status}`)
+  if (!commitRes.ok) {
+    const commitErr = await commitRes.text().catch(() => '')
+    console.error(`[syncPolarSleep] Commit ERREUR ${commitRes.status}: ${commitErr.slice(0, 300)}`)
+    // Non bloquant — les données sont déjà en base
+  }
+
   console.log('=== FIN SYNC POLAR SLEEP ===')
   return rows.length
 }

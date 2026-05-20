@@ -251,3 +251,8 @@ button:active { transform: scale(0.97); }
   /* Légende : items non rétrécissables pour que le scroll soit utile */
   .perf-chart1-legend > * { flex-shrink: 0; }
 }
+
+/* ── MobileTabBar — hidden on desktop ── */
+@media (min-width: 768px) {
+  .mobile-tab-bar { display: none !important; }
+}

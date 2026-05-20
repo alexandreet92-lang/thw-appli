@@ -114,7 +114,7 @@ export default function MobileTabBar() {
 
   return (
     <>
-      <nav className="md:hidden" style={BAR}>
+      <nav className="mobile-tab-bar md:hidden" style={BAR}>
         <div style={{
           display: 'flex', width: '100%', height: 64, alignItems: 'center',
           opacity:   exiting ? 0 : 1,

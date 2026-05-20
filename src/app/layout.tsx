@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import MobileTabBar from '@/components/MobileTabBar'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,10 +64,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             background: 'var(--bg)',
             scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+            paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
           }}>
             <PageTransition>{children}</PageTransition>
           </main>
         </div>
+
+        {/* Bottom tab bar — mobile only, position:fixed */}
+        <MobileTabBar />
 
       </body>
     </html>

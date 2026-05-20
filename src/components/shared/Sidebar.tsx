@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useProfile } from '@/hooks/useProfile'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -552,41 +552,28 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
 // Mobile  : top bar 56px fixe + drawer CSS-transitionné
 // ══════════════════════════════════════════════════════════════
 
+// ── Page title mapping (mobile top bar) ───────────────────────
+const PAGE_TITLES: Record<string, string> = {
+  '/':            'Dashboard',
+  '/planning':    'Planning',
+  '/calendar':    'Calendar',
+  '/session':     'Session',
+  '/activities':  'Training',
+  '/recovery':    'Récupération',
+  '/nutrition':   'Nutrition',
+  '/performance': 'Performance',
+  '/injuries':    'Blessures',
+  '/connections': 'Connexions',
+  '/briefing':    'Briefing',
+  '/profile':     'Profil',
+  '/parametres':  'Réglages',
+  '/record':      'Enregistrer',
+}
+
 export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
-  const touchStartX = useRef(0)
-  const touchStartY = useRef(0)
   const { profile } = useProfile()
-
-  // Swipe to open/close on mobile
-  useEffect(() => {
-    const onStart = (e: TouchEvent) => {
-      touchStartX.current = e.touches[0].clientX
-      touchStartY.current = e.touches[0].clientY
-    }
-    const onEnd = (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - touchStartX.current
-      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
-      // Swipe right from left edge → open
-      if (dx > 55 && dy < 80 && touchStartX.current < 32) setMobileOpen(true)
-      // Swipe left → close
-      if (dx < -55 && dy < 80) setMobileOpen(false)
-    }
-    document.addEventListener('touchstart', onStart, { passive: true })
-    document.addEventListener('touchend', onEnd, { passive: true })
-    return () => {
-      document.removeEventListener('touchstart', onStart)
-      document.removeEventListener('touchend', onEnd)
-    }
-  }, [])
-
-  // Close on Escape
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false) }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [])
+  const pathname = usePathname()
 
   return (
     <>
@@ -617,83 +604,40 @@ export function Sidebar() {
           MOBILE — top bar fixe 56px + drawer avec transition
           ════════════════════════════════════════════════════ */}
 
-      {/* Top bar */}
+      {/* Top bar — mobile : logo | titre page centré | avatar */}
       <div
         className="md:hidden"
         style={{
           position: 'fixed', top: 0, left: 0, right: 0,
           height: 56, zIndex: 50,
           display: 'flex', alignItems: 'center',
-          justifyContent: 'flex-start',
-          gap: 8,
-          padding: '0 10px',
+          justifyContent: 'space-between',
+          padding: '0 12px',
           background: 'var(--nav-bg)',
           borderBottom: '1px solid var(--nav-border)',
           boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
         }}
       >
-        {/* Burger — no bubble */}
-        <button
-          onClick={() => setMobileOpen(v => !v)}
-          style={{
-            width: 36, height: 36,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer', color: 'var(--text)',
-            flexShrink: 0,
-            padding: 0,
-          }}
-        >
-          {mobileOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <path d="M3 6h18M3 12h18M3 18h18"/>
-            </svg>
-          )}
-        </button>
-
-        {/* Logo app — right of burger, clickable → home */}
+        {/* Logo — gauche */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo_app.png"
             alt="THW Coaching"
-            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain' }}
+            style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain' }}
           />
         </Link>
 
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
+        {/* Titre page — centré en absolu */}
+        <div style={{
+          position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+          fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700,
+          color: 'var(--text)', whiteSpace: 'nowrap', pointerEvents: 'none',
+        }}>
+          {PAGE_TITLES[pathname] ?? 'THW Coaching'}
+        </div>
 
-        {/* Logo IA — 36×36 */}
-        <button
-          onClick={() => setAiOpen(o => !o)}
-          aria-label="Assistant IA"
-          style={{
-            width: 36, height: 36,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: aiOpen ? 'rgba(0,200,224,0.12)' : 'transparent',
-            border: 'none',
-            borderRadius: 9,
-            cursor: 'pointer',
-            transition: 'opacity 0.15s, background 0.15s',
-            padding: 0,
-            flexShrink: 0,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logos/logo_4bras.png"
-            alt="Assistant IA"
-            style={{ width: 36, height: 36, objectFit: 'contain' }}
-          />
-        </button>
-
-        {/* Avatar — 32×32, lien vers profil */}
+        {/* Avatar — droite */}
         <Link href="/profile" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
           <Avatar
             url={profile?.avatar_url ?? null}
@@ -703,36 +647,8 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* Overlay sombre derrière le drawer */}
-      <div
-        className="md:hidden"
-        onClick={() => setMobileOpen(false)}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 55,
-          background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(2px)',
-          opacity: mobileOpen ? 1 : 0,
-          pointerEvents: mobileOpen ? 'auto' : 'none',
-          transition: 'opacity 0.25s ease',
-        }}
-      />
-
-      {/* Drawer — transition CSS, pas de conditional render */}
-      <div
-        className="md:hidden"
-        style={{
-          position: 'fixed', top: 0, left: 0, bottom: 0,
-          width: 280, zIndex: 60,
-          background: 'var(--nav-bg)',
-          boxShadow: mobileOpen ? '4px 0 32px rgba(0,0,0,0.18)' : 'none',
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-          transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.26s cubic-bezier(0.32,1.06,0.64,1)',
-        }}
-      >
-        <SidebarContent onClose={() => setMobileOpen(false)} onOpenAI={() => { setAiOpen(o => !o); setMobileOpen(false) }} />
-      </div>
+      {/* Overlay + Drawer masqués sur mobile — la navigation est gérée par MobileTabBar */}
+      {/* Kept in DOM for desktop fallback but hidden on mobile */}
 
       {/* ── AIPanel global ── */}
       <AIPanel

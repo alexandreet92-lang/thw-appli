@@ -16,6 +16,8 @@ import BodyCompositionChart from './components/BodyCompositionChart'
 import KcalBarChart from './components/KcalBarChart'
 import MacrosLineChart from './components/MacrosLineChart'
 import MealTypesSection from './components/MealTypesSection'
+import HabitudesSection from './components/HabitudesSection'
+import { useNutritionHabits } from '@/hooks/useNutritionHabits'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
@@ -176,6 +178,7 @@ export default function NutritionPage() {
 
   const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog } = useNutrition()
   const { templates, loading: templatesLoading, addTemplate, updateTemplate, deleteTemplate } = useNutritionTemplates()
+  const { habits, loading: habitsLoading, addHabit, updateHabit, deleteHabit } = useNutritionHabits()
   const { sessions } = usePlanning()
 
   // ── State ──────────────────────────────────────────────────────
@@ -1453,6 +1456,15 @@ export default function NutritionPage() {
         onUpdate={updateTemplate}
         onDelete={deleteTemplate}
         onOpenAI={(prompt) => { setAiPrompt(prompt); setAiPanelOpen(true) }}
+      />
+
+      {/* Section Habitudes */}
+      <HabitudesSection
+        habits={habits}
+        loading={habitsLoading}
+        onAdd={addHabit}
+        onUpdate={updateHabit}
+        onDelete={deleteHabit}
       />
 
       {/* AI Panel */}

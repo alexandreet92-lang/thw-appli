@@ -14,7 +14,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken } from '@/lib/oauth/tokens'
-import { callPolarV4, polarDateRange } from '@/lib/polar'
+import { callPolarV4, polarDateRange, polarDateChunks } from '@/lib/polar'
 
 // ── Context ────────────────────────────────────────────────────────
 // v4 : pas besoin du polarUserId dans les URLs — le token suffit.
@@ -86,9 +86,13 @@ export async function syncPolarSleep(userId: string): Promise<{
   }
 
   const raw = await res.json() as unknown
+  console.log('[syncPolarSleep] raw keys:', raw && typeof raw === 'object' ? Object.keys(raw as object) : typeof raw)
+
+  // Polar v4 retourne { nightSleeps: [...] } — essayer toutes les variantes connues
   const items: Record<string, unknown>[] = Array.isArray(raw)
     ? (raw as Record<string, unknown>[])
-    : (((raw as Record<string, unknown>)['sleeps'] ??
+    : (((raw as Record<string, unknown>)['nightSleeps'] ??    // ← clé réelle Polar v4
+       (raw as Record<string, unknown>)['sleeps'] ??
        (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
 
   console.log(`[syncPolarSleep] ${items.length} nuits reçues`)
@@ -96,16 +100,29 @@ export async function syncPolarSleep(userId: string): Promise<{
 
   const supabase = createServiceClient()
   const rows = items.map(s => {
-    const date          = String(s['date'] ?? s['sleep_start_time']?.toString().split('T')[0] ?? '')
-    const startTime     = String(s['sleep_start_time'] ?? '')
-    const endTime       = String(s['sleep_end_time']   ?? '')
-    const totalSec      = Number(s['total_sleep_duration']  ?? 0)
-    const lightSec      = Number(s['light_sleep_duration']  ?? 0)
-    const deepSec       = Number(s['deep_sleep_duration']   ?? 0)
-    const remSec        = Number(s['rem_sleep_duration']    ?? 0)
-    const interruptSec  = Number(s['interruption_duration'] ?? 0)
-    const sleepScore    = s['sleep_score']  != null ? Number(s['sleep_score'])  : null
-    const sleepCycles   = s['sleep_cycles'] != null ? Number(s['sleep_cycles']) : null
+    // Polar v4 utilise le camelCase : sleepStartTime, totalSleepTime, sleepScore …
+    // On accepte aussi le snake_case par sécurité
+    const startTime = String(
+      s['sleepStartTime'] ?? s['sleep_start_time'] ?? s['sleep_start'] ?? ''
+    )
+    const endTime = String(
+      s['sleepEndTime'] ?? s['sleep_end_time'] ?? s['sleep_end'] ?? ''
+    )
+    const date = String(
+      s['date'] ??
+      (startTime ? startTime.split('T')[0] : '') ??
+      ''
+    )
+    const totalSec     = Number(s['totalSleepTime']       ?? s['total_sleep_duration']  ?? 0)
+    const lightSec     = Number(s['lightSleepDuration']   ?? s['light_sleep_duration']  ?? 0)
+    const deepSec      = Number(s['deepSleepDuration']    ?? s['deep_sleep_duration']   ?? 0)
+    const remSec       = Number(s['remSleepDuration']     ?? s['rem_sleep_duration']    ?? 0)
+    const interruptSec = Number(s['interruptionsDuration'] ?? s['interruption_duration'] ?? s['awake_duration'] ?? 0)
+    const rawScore  = s['sleepScore']  ?? s['sleep_score']
+    const rawCycles = s['sleepCycles'] ?? s['sleep_cycles']
+    const sleepScore  = rawScore  != null ? Number(rawScore)  : null
+    const sleepCycles = rawCycles != null ? Number(rawCycles) : null
+
     return {
       user_id:     userId,
       provider:    'polar',
@@ -113,18 +130,21 @@ export async function syncPolarSleep(userId: string): Promise<{
       measured_at: startTime || `${date}T00:00:00Z`,
       date,
       data_type:   'sleep',
-      sleep_duration_min:    secToMin(totalSec),
-      light_sleep_min:       secToMin(lightSec),
-      deep_sleep_min:        secToMin(deepSec),
-      rem_sleep_min:         secToMin(remSec),
-      interruptions_min:     secToMin(interruptSec),
-      sleep_cycles:          sleepCycles,
-      sleep_score:           sleepScore,
-      time_bed:              startTime || null,
-      time_wake:             endTime   || null,
+      sleep_duration_min: secToMin(totalSec),
+      // Noms de colonnes alignés sur ce que SleepSection.tsx attend
+      light_duration_min: secToMin(lightSec),
+      deep_duration_min:  secToMin(deepSec),
+      rem_duration_min:   secToMin(remSec),
+      awake_duration_min: secToMin(interruptSec),
+      sleep_cycles:       sleepCycles,
+      sleep_score:        sleepScore,
+      sleep_start:        startTime || null,
+      sleep_end:          endTime   || null,
       raw_data: s,
     }
   }).filter(r => r.date)
+
+  console.log(`[syncPolarSleep] ${rows.length} nuits à upsert (sample date: ${rows[0]?.date ?? 'n/a'})`)
 
   const { error } = await supabase
     .from('health_data')
@@ -135,6 +155,9 @@ export async function syncPolarSleep(userId: string): Promise<{
 }
 
 // ── 2. Nightly Recharge (HRV) ─────────────────────────────────────
+//
+// Polar v4 limite nightly-recharge-results à 28 jours par appel.
+// On fait 3 appels de 28 jours pour couvrir 84 jours (~3 mois).
 
 export async function syncPolarNightlyRecharge(userId: string): Promise<{
   status: string
@@ -143,32 +166,41 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
   const ctx = await getPolarContext(userId)
   if (!ctx) return { status: 'no_context', nights_synced: 0 }
 
-  const { from, to } = polarDateRange(90)
-  const res = await callPolarV4('nightly-recharge-results', ctx.token, { from, to })
+  // 3 tranches de 28 jours max (contrainte API Polar)
+  const chunks = polarDateChunks(84, 28)
+  const allItems: Record<string, unknown>[] = []
 
-  if (res.status === 204) return { status: 'no_new_data', nights_synced: 0 }
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    console.error(`[syncPolarNightlyRecharge] ${res.status}: ${body.slice(0, 200)}`)
-    return { status: `error_${res.status}`, nights_synced: 0 }
+  for (const chunk of chunks) {
+    const res = await callPolarV4('nightly-recharge-results', ctx.token, { from: chunk.from, to: chunk.to })
+    if (res.status === 204) continue
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      console.warn(`[syncPolarNightlyRecharge] chunk ${chunk.from}→${chunk.to}: ${res.status} ${body.slice(0, 150)}`)
+      continue  // non-bloquant — on continue avec les autres tranches
+    }
+    const raw = await res.json() as unknown
+    // Essayer toutes les clés connues (camelCase et kebab-case)
+    const items: Record<string, unknown>[] = Array.isArray(raw)
+      ? (raw as Record<string, unknown>[])
+      : (((raw as Record<string, unknown>)['nightlyRechargeResults'] ??
+         (raw as Record<string, unknown>)['nightly-recharge-results'] ??
+         (raw as Record<string, unknown>)['nightly_recharge_results'] ??
+         (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
+    allItems.push(...items)
   }
 
-  const raw = await res.json() as unknown
-  const items: Record<string, unknown>[] = Array.isArray(raw)
-    ? (raw as Record<string, unknown>[])
-    : (((raw as Record<string, unknown>)['nightly-recharge-results'] ??
-       (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
-
-  console.log(`[syncPolarNightlyRecharge] ${items.length} nuits reçues`)
-  if (!items.length) return { status: 'ok', nights_synced: 0 }
+  console.log(`[syncPolarNightlyRecharge] ${allItems.length} nuits reçues (${chunks.length} chunks)`)
+  if (!allItems.length) return { status: 'ok', nights_synced: 0 }
 
   const supabase = createServiceClient()
-  const rows = items.map(r => {
+  const rows = allItems.map(r => {
     const date          = String(r['date'] ?? '')
-    const hrvMs         = r['hrv_mssd']       != null ? Number(r['hrv_mssd'])       : null
-    const ansCharge     = r['ans_charge']     != null ? Number(r['ans_charge'])     : null
-    const breathingRate = r['breathing_rate'] != null ? Number(r['breathing_rate']) : null
-    const snrResult     = r['snr_result']     != null ? Number(r['snr_result'])     : null
+    // Polar v4 : camelCase ou snake_case selon la version
+    const hrvMs         = r['hrvMssd']       ?? r['hrv_mssd']
+    const ansCharge     = r['ansCharge']     ?? r['ans_charge']
+    const breathingRate = r['breathingRate'] ?? r['breathing_rate']
+    const snrResult     = r['snrResult']     ?? r['snr_result']
+    const hrvVal        = hrvMs != null ? Number(hrvMs) : null
     return {
       user_id:     userId,
       provider:    'polar',
@@ -177,32 +209,36 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
       date,
       data_type:   'nightly_recharge',
       raw_data: {
-        hrv_ms:         hrvMs,
-        ans_charge:     ansCharge,
-        breathing_rate: breathingRate,
-        snr_result:     snrResult,
+        hrv_ms:         hrvVal,
+        hrv_rmssd:      hrvVal,   // alias pour HrvSection (raw_data.hrv_rmssd fallback)
+        ans_charge:     ansCharge     != null ? Number(ansCharge)     : null,
+        breathing_rate: breathingRate != null ? Number(breathingRate) : null,
+        snr_result:     snrResult     != null ? Number(snrResult)     : null,
         ...r,
       },
     }
   }).filter(r => r.date)
 
+  // Déduplication si plusieurs chunks se chevauchent
+  const deduped = [...new Map(rows.map(r => [r.date, r])).values()]
+
   const { error } = await supabase
     .from('health_data')
-    .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
+    .upsert(deduped, { onConflict: 'user_id,provider,date,data_type' })
   if (error) console.error(`[syncPolarNightlyRecharge] upsert error: ${error.message}`)
 
   // Mettre à jour metrics_daily avec HRV
-  for (const item of items) {
-    const date  = String(item['date'] ?? '')
-    const hrv   = item['hrv_mssd'] != null ? Number(item['hrv_mssd']) : null
-    if (!date || hrv == null) continue
+  for (const row of deduped) {
+    const hrv = (row.raw_data as Record<string, unknown>)['hrv_ms'] as number | null
+    if (!row.date || hrv == null) continue
     await supabase
       .from('metrics_daily')
-      .upsert({ user_id: userId, date, hrv_ms: hrv }, { onConflict: 'user_id,date' })
+      .upsert({ user_id: userId, date: row.date, hrv_ms: hrv }, { onConflict: 'user_id,date' })
       .then(({ error: e }) => { if (e) console.error(`[syncPolarNightlyRecharge] metrics_daily: ${e.message}`) })
   }
 
-  return { status: 'ok', nights_synced: rows.length }
+  console.log(`[syncPolarNightlyRecharge] ${deduped.length} nuits upserted`)
+  return { status: 'ok', nights_synced: deduped.length }
 }
 
 // ── 3. Daily Activity ─────────────────────────────────────────────

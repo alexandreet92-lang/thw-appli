@@ -54,3 +54,28 @@ export function polarDateRange(daysBack = 90): { from: string; to: string } {
   const from = new Date(Date.now() - daysBack * 86400000).toISOString().split('T')[0]
   return { from, to }
 }
+
+/**
+ * Découpe une plage de `totalDays` jours en tranches de `chunkSize` max.
+ * Polar nightly-recharge-results : 28 jours maximum par appel.
+ *
+ * Exemple pour totalDays=84, chunkSize=28 :
+ *   [{from: today-28, to: today}, {from: today-56, to: today-28}, {from: today-84, to: today-56}]
+ */
+export function polarDateChunks(
+  totalDays = 84,
+  chunkSize = 28,
+): Array<{ from: string; to: string }> {
+  const chunks: Array<{ from: string; to: string }> = []
+  const today = Date.now()
+  let offset = 0
+  while (offset < totalDays) {
+    const daysTo   = offset
+    const daysFrom = Math.min(offset + chunkSize, totalDays)
+    const to   = new Date(today - daysTo   * 86400000).toISOString().split('T')[0]
+    const from = new Date(today - daysFrom * 86400000).toISOString().split('T')[0]
+    chunks.push({ from, to })
+    offset += chunkSize
+  }
+  return chunks
+}

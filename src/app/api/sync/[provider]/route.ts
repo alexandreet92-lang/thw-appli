@@ -183,7 +183,8 @@ export async function GET(
       .select('scope, expires_at, last_used_at')
       .eq('user_id', user.id).eq('provider', 'polar').maybeSingle()
 
-    const { from, to } = polarDateRange(30)
+    const { from: from30, to } = polarDateRange(30)
+    const { from: from28 }    = polarDateRange(28) // nightly-recharge : max 28 jours
 
     // probe : utilise callPolarV4 — même fonction que le sync réel
     async function probe(
@@ -219,15 +220,15 @@ export async function GET(
 
     const [physProbe, sleepProbe, rechargeProbe, dailyProbe, exProbe] = await Promise.all([
       probe('1_physical_information',   'physical-information'),
-      probe('2_sleeps',                 'sleeps',                        { from, to }),
-      probe('3_nightly_recharge',       'nightly-recharge-results',      { from, to }),
-      probe('4_daily_activity',         'daily-activity',                { from, to }),
-      probe('5_exercises',              'exercises',                     { from, to }),
+      probe('2_sleeps',                 'sleeps',                        { from: from30, to }),
+      probe('3_nightly_recharge',       'nightly-recharge-results',      { from: from28, to }), // 28 j max
+      probe('4_daily_activity',         'daily-activity',                { from: from30, to }),
+      probe('5_exercises',              'exercises',                     { from: from30, to }),
     ])
 
     return NextResponse.json({
       live_test:  'polar_v4_dynamic_api',
-      date_range: { from, to },
+      date_range: { from: from30, to, note_recharge: `nightly-recharge uses from=${from28} (28d max)` },
       token_info: tokenRow ?? null,
       note:       '200=données | 204=rien | 401=token invalide (reconnecter) | 403=scope manquant | 404=endpoint inconnu',
       endpoints:  [physProbe, sleepProbe, rechargeProbe, dailyProbe, exProbe],

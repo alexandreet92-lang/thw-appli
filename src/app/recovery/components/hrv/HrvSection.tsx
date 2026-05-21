@@ -15,28 +15,55 @@ export default function HrvSection() {
     const sb = createClient()
     sb.auth.getUser().then(({ data: { user } }) => {
       if (!user) { setLoading(false); return }
-      // Try hrv_rmssd column, then raw_data fallback
-      sb.from('health_data')
-        .select('date, hrv_rmssd, raw_data')
-        .eq('user_id', user.id)
-        .eq('data_type', 'hrv')
-        .order('date', { ascending: false })
-        .limit(90)
-        .then(({ data }) => {
-          if (data) {
-            const parsed = (data as { date: string | null; hrv_rmssd: number | null; raw_data: Record<string, unknown> | null }[])
-              .filter(r => r.date)
-              .map(r => {
-                const hrv = r.hrv_rmssd
-                  ?? (r.raw_data as Record<string, unknown> | null)?.['hrv_rmssd'] as number | null
-                  ?? null
-                return hrv != null ? { date: r.date!, hrv } : null
-              })
-              .filter((r): r is HrvRow => r != null)
-            setRows(parsed)
-          }
-          setLoading(false)
-        })
+
+      // Source 1 : data_type='hrv' (entrées dédiées, colonne hrv_rmssd ou raw_data.hrv_rmssd)
+      // Source 2 : data_type='nightly_recharge' (Polar v4, raw_data.hrv_ms ou raw_data.hrv_rmssd)
+      Promise.all([
+        sb.from('health_data')
+          .select('date, hrv_rmssd, raw_data')
+          .eq('user_id', user.id)
+          .eq('data_type', 'hrv')
+          .order('date', { ascending: false })
+          .limit(90),
+        sb.from('health_data')
+          .select('date, raw_data')
+          .eq('user_id', user.id)
+          .eq('data_type', 'nightly_recharge')
+          .order('date', { ascending: false })
+          .limit(90),
+      ]).then(([hd1, hd2]) => {
+        type RawHrvRow = { date: string | null; hrv_rmssd?: number | null; raw_data: Record<string, unknown> | null }
+
+        // Rows from dedicated hrv entries
+        const fromHrv: HrvRow[] = ((hd1.data ?? []) as RawHrvRow[])
+          .filter(r => r.date)
+          .map(r => {
+            const hrv = r.hrv_rmssd
+              ?? (r.raw_data as Record<string, unknown> | null)?.['hrv_rmssd'] as number | null
+              ?? null
+            return hrv != null ? { date: r.date!, hrv } : null
+          })
+          .filter((r): r is HrvRow => r != null)
+
+        // Rows from nightly recharge (Polar v4)
+        const fromRecharge: HrvRow[] = ((hd2.data ?? []) as RawHrvRow[])
+          .filter(r => r.date)
+          .map(r => {
+            const raw = r.raw_data as Record<string, unknown> | null
+            const hrv = (raw?.['hrv_ms']    as number | null)
+                     ?? (raw?.['hrv_rmssd'] as number | null)
+                     ?? null
+            return hrv != null ? { date: r.date!, hrv } : null
+          })
+          .filter((r): r is HrvRow => r != null)
+
+        // Merge — hrv entries take precedence over nightly_recharge for same date
+        const byDate = new Map<string, HrvRow>()
+        for (const r of [...fromRecharge, ...fromHrv]) byDate.set(r.date, r)
+
+        setRows([...byDate.values()])
+        setLoading(false)
+      })
     })
   }, [])
 

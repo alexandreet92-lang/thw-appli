@@ -72,21 +72,46 @@ export async function syncPolarSleep(userId: string): Promise<{
   status: string
   nights_synced: number
 }> {
+  console.log('[SYNC SLEEP] START userId:', userId)
+
   const ctx = await getPolarContext(userId)
-  if (!ctx) return { status: 'no_context', nights_synced: 0 }
+  if (!ctx) {
+    console.log('[SYNC SLEEP] EXIT: no context (no valid token)')
+    return { status: 'no_context', nights_synced: 0 }
+  }
 
   const { from, to } = polarDateRange(90)
-  const res = await callPolarV4('sleeps', ctx.token, { from, to })
+  console.log('[SYNC SLEEP] Calling Polar sleeps API... range:', from, '→', to)
 
-  if (res.status === 204) return { status: 'no_new_data', nights_synced: 0 }
+  const res = await callPolarV4('sleeps', ctx.token, { from, to })
+  console.log('[SYNC SLEEP] API status:', res.status)
+
+  if (res.status === 204) {
+    console.log('[SYNC SLEEP] EXIT: 204 no content')
+    return { status: 'no_new_data', nights_synced: 0 }
+  }
   if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    console.error(`[syncPolarSleep] ${res.status}: ${body.slice(0, 200)}`)
+    const errBody = await res.text().catch(() => '')
+    console.log('[SYNC SLEEP] EXIT: API error', res.status, errBody.slice(0, 300))
     return { status: `error_${res.status}`, nights_synced: 0 }
   }
 
-  const raw = await res.json() as unknown
-  console.log('[syncPolarSleep] raw keys:', raw && typeof raw === 'object' ? Object.keys(raw as object) : typeof raw)
+  // Lire le body UNE seule fois (stream non réutilisable)
+  const bodyText = await res.text().catch(() => '{}')
+  console.log('[SYNC SLEEP] API body (raw):', bodyText.slice(0, 500))
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(bodyText)
+  } catch (e) {
+    console.log('[SYNC SLEEP] EXIT: JSON parse error:', String(e))
+    return { status: 'parse_error', nights_synced: 0 }
+  }
+
+  console.log('[SYNC SLEEP] JSON top-level keys:', raw && typeof raw === 'object' ? Object.keys(raw as object) : typeof raw)
+  console.log('[SYNC SLEEP] Nights found (nightSleeps):', (raw as Record<string, unknown>)?.['nightSleeps'] !== undefined
+    ? ((raw as Record<string, unknown>)['nightSleeps'] as unknown[])?.length
+    : 'key missing')
 
   // Polar v4 retourne { nightSleeps: [...] } — essayer toutes les variantes connues
   const items: Record<string, unknown>[] = Array.isArray(raw)
@@ -95,24 +120,18 @@ export async function syncPolarSleep(userId: string): Promise<{
        (raw as Record<string, unknown>)['sleeps'] ??
        (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
 
-  console.log(`[syncPolarSleep] ${items.length} nuits reçues`)
-  if (!items.length) return { status: 'ok', nights_synced: 0 }
+  console.log('[SYNC SLEEP] Items parsed:', items.length, '— first item keys:', items[0] ? Object.keys(items[0]) : 'none')
+
+  if (!items.length) {
+    console.log('[SYNC SLEEP] EXIT: items array empty after key extraction')
+    return { status: 'ok', nights_synced: 0 }
+  }
 
   const supabase = createServiceClient()
   const rows = items.map(s => {
-    // Polar v4 utilise le camelCase : sleepStartTime, totalSleepTime, sleepScore …
-    // On accepte aussi le snake_case par sécurité
-    const startTime = String(
-      s['sleepStartTime'] ?? s['sleep_start_time'] ?? s['sleep_start'] ?? ''
-    )
-    const endTime = String(
-      s['sleepEndTime'] ?? s['sleep_end_time'] ?? s['sleep_end'] ?? ''
-    )
-    const date = String(
-      s['date'] ??
-      (startTime ? startTime.split('T')[0] : '') ??
-      ''
-    )
+    const startTime = String(s['sleepStartTime'] ?? s['sleep_start_time'] ?? s['sleep_start'] ?? '')
+    const endTime   = String(s['sleepEndTime']   ?? s['sleep_end_time']   ?? s['sleep_end']   ?? '')
+    const date      = String(s['date'] ?? (startTime ? startTime.split('T')[0] : '') ?? '')
     const totalSec     = Number(s['totalSleepTime']       ?? s['total_sleep_duration']  ?? 0)
     const lightSec     = Number(s['lightSleepDuration']   ?? s['light_sleep_duration']  ?? 0)
     const deepSec      = Number(s['deepSleepDuration']    ?? s['deep_sleep_duration']   ?? 0)
@@ -120,9 +139,7 @@ export async function syncPolarSleep(userId: string): Promise<{
     const interruptSec = Number(s['interruptionsDuration'] ?? s['interruption_duration'] ?? s['awake_duration'] ?? 0)
     const rawScore  = s['sleepScore']  ?? s['sleep_score']
     const rawCycles = s['sleepCycles'] ?? s['sleep_cycles']
-    const sleepScore  = rawScore  != null ? Number(rawScore)  : null
-    const sleepCycles = rawCycles != null ? Number(rawCycles) : null
-
+    console.log('[SYNC SLEEP] Mapping night — date:', date, 'totalSec:', totalSec, 'score:', rawScore)
     return {
       user_id:     userId,
       provider:    'polar',
@@ -131,25 +148,41 @@ export async function syncPolarSleep(userId: string): Promise<{
       date,
       data_type:   'sleep',
       sleep_duration_min: secToMin(totalSec),
-      // Noms de colonnes alignés sur ce que SleepSection.tsx attend
       light_duration_min: secToMin(lightSec),
       deep_duration_min:  secToMin(deepSec),
       rem_duration_min:   secToMin(remSec),
       awake_duration_min: secToMin(interruptSec),
-      sleep_cycles:       sleepCycles,
-      sleep_score:        sleepScore,
-      sleep_start:        startTime || null,
-      sleep_end:          endTime   || null,
+      sleep_cycles:  rawCycles != null ? Number(rawCycles) : null,
+      sleep_score:   rawScore  != null ? Number(rawScore)  : null,
+      sleep_start:   startTime || null,
+      sleep_end:     endTime   || null,
       raw_data: s,
     }
-  }).filter(r => r.date)
+  }).filter(r => {
+    if (!r.date) { console.log('[SYNC SLEEP] FILTERED OUT row with empty date, keys:', Object.keys(r)) }
+    return r.date
+  })
 
-  console.log(`[syncPolarSleep] ${rows.length} nuits à upsert (sample date: ${rows[0]?.date ?? 'n/a'})`)
+  console.log('[SYNC SLEEP] Rows after filter:', rows.length, '— dates:', rows.map(r => r.date))
 
-  const { error } = await supabase
+  if (!rows.length) {
+    console.log('[SYNC SLEEP] EXIT: all rows filtered out (no date field)')
+    return { status: 'ok_no_date', nights_synced: 0 }
+  }
+
+  console.log('[SYNC SLEEP] Inserting', rows.length, 'nights for user:', userId)
+  for (const row of rows) {
+    console.log('[SYNC SLEEP] Inserting night:', row.date, 'duration_min:', row.sleep_duration_min)
+  }
+
+  const { data: upsertData, error: upsertError } = await supabase
     .from('health_data')
     .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
-  if (error) console.error(`[syncPolarSleep] upsert error: ${error.message}`)
+    .select('id, date')
+
+  console.log('[SYNC SLEEP] Insert result — data:', JSON.stringify(upsertData), 'error:', upsertError ? upsertError.message : null)
+
+  if (upsertError) console.error('[SYNC SLEEP] UPSERT ERROR:', upsertError.message, upsertError.details ?? '')
 
   return { status: 'ok', nights_synced: rows.length }
 }

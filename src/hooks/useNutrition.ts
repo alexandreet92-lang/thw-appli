@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export type MealKey = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
+export type MealTiming = 'pre_training' | 'post_training' | 'rest' | 'morning' | 'evening'
+export interface Ingredient { name: string; quantity: string; unit: 'g' | 'ml' | 'piece' }
 
 export interface MealTemplate {
   id: string
@@ -16,6 +18,13 @@ export interface MealTemplate {
   lipides: number | null
   actif: boolean
   created_at: string
+  // Extended fields
+  meal_timing: MealTiming | null
+  photo_url: string | null
+  ingredients: Ingredient[] | null
+  recommended_frequency_per_week: number | null
+  is_favorite: boolean
+  source: 'manual' | 'ai'
 }
 
 export interface NutritionPlan {

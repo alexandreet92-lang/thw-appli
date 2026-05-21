@@ -36,22 +36,30 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
     const sb = createClient()
     void (async () => {
       // Try with meal_timing first; fall back without it if column is missing
-      let { data, error } = await sb
+      let rows: Record<string, unknown>[] = []
+      const { data, error } = await sb
         .from('nutrition_meal_templates')
         .select('id,nom,kcal,proteines,glucides,lipides,meal_timing')
         .order('nom')
-      if (error) {
+      if (!error && data) {
+        rows = data as Record<string, unknown>[]
+      } else {
         // Retry without meal_timing in case column doesn't exist yet
         const fallback = await sb
           .from('nutrition_meal_templates')
           .select('id,nom,kcal,proteines,glucides,lipides')
           .order('nom')
-        data = fallback.data
+        rows = (fallback.data ?? []) as Record<string, unknown>[]
       }
-      setTemplates((data ?? []).map(r => {
-        const row = r as Record<string, unknown>
-        return { id: row.id as string, nom: row.nom as string, kcal: (row.kcal as number | null) ?? null, proteines: (row.proteines as number | null) ?? null, glucides: (row.glucides as number | null) ?? null, lipides: (row.lipides as number | null) ?? null, meal_timing: (row.meal_timing as string | null) ?? null }
-      }))
+      setTemplates(rows.map(r => ({
+        id:          r.id          as string,
+        nom:         r.nom         as string,
+        kcal:        (r.kcal       as number | null) ?? null,
+        proteines:   (r.proteines  as number | null) ?? null,
+        glucides:    (r.glucides   as number | null) ?? null,
+        lipides:     (r.lipides    as number | null) ?? null,
+        meal_timing: (r.meal_timing as string | null) ?? null,
+      })))
       setLoading(false)
     })()
   }, [])

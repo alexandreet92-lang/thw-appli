@@ -80,14 +80,14 @@ export async function syncPolarSleep(userId: string): Promise<{
     return { status: 'no_context', nights_synced: 0 }
   }
 
-  // ── Étape 1 : Lister les dates de sommeil (30j max par appel) ───────
+  // ── Lister les nuits de sommeil (30j max par appel, Polar limite) ───
   const chunks = polarDateChunks(90, 30)
-  const sleepDates = new Set<string>()
+  const nightsByDate = new Map<string, Record<string, unknown>>()
 
   for (const chunk of chunks) {
     const res = await callPolarV4('sleeps', ctx.token, { from: chunk.from, to: chunk.to })
     if (res.status === 204) continue
-    if (!res.ok) { console.log('[SYNC SLEEP] List error', res.status, 'chunk', chunk.from); continue }
+    if (!res.ok) { console.log('[SLEEP] List error', res.status, 'chunk', chunk.from); continue }
 
     const body = await res.text()
     let raw: unknown
@@ -100,41 +100,42 @@ export async function syncPolarSleep(userId: string): Promise<{
          (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
 
     for (const item of items) {
-      // La liste retourne { sleepDate: "YYYY-MM-DD" } uniquement
+      // Polar v4 retourne { sleepDate: "YYYY-MM-DD" } — sleepDate est la vraie clé
       const d = String(item['sleepDate'] ?? item['date'] ?? '')
-      if (d) sleepDates.add(d)
+      if (d) nightsByDate.set(d, item)   // dédoublonnage par date
     }
   }
 
-  console.log('[SYNC SLEEP] Sleep dates found:', sleepDates.size, [...sleepDates])
-  if (!sleepDates.size) return { status: 'ok', nights_synced: 0 }
+  const nights = [...nightsByDate.entries()].map(([date, raw]) => ({ date, raw }))
+  console.log('[SLEEP] nights received:', nights.length)
+  console.log('[SLEEP] first night:', JSON.stringify(nights[0]).slice(0, 300))
 
-  // ── Étape 2 : Insérer chaque date (l'API v4 ne retourne que la date, pas les détails) ──
-  // GET /sleeps/{date} retourne 404 → la liste EST la donnée disponible
+  if (!nights.length) return { status: 'ok', nights_synced: 0 }
+
   const supabase = createServiceClient()
-  // Polar v4 ne fournit que la date — insérer uniquement les colonnes core
-  // (sleep_cycles, sleep_score, etc. n'existent pas dans health_data)
-  const rows = [...sleepDates].map(date => ({
+
+  // Insérer dans health_data — colonnes core uniquement (sleep_cycles etc. n'existent pas)
+  const rows = nights.map(n => ({
     user_id:     userId,
     provider:    'polar',
-    provider_id: `sleep_${date}`,
-    measured_at: `${date}T00:00:00Z`,
-    date,
+    provider_id: `sleep_${n.date}`,
+    measured_at: `${n.date}T00:00:00Z`,
+    date:        n.date,
     data_type:   'sleep',
-    raw_data:    { sleepDate: date },
+    raw_data:    n.raw,
   }))
 
-  const { data: ud, error: ue } = await supabase
+  console.log('[SLEEP] inserting', rows.length, 'rows into health_data (data_type=sleep)...')
+
+  const { data, error } = await supabase
     .from('health_data')
     .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
     .select('id, date')
 
-  console.log('[SYNC SLEEP] Insert result — data:', JSON.stringify(ud), 'error:', ue?.message ?? null)
-  if (ue) console.error('[SYNC SLEEP] UPSERT ERROR:', ue.message)
+  console.log('[SLEEP] result:', error ? error.message : 'OK', 'rows:', data?.length ?? 0)
+  if (error) console.error('[SLEEP] UPSERT ERROR detail:', error.message, error.details ?? '')
 
-  const inserted = ue ? 0 : rows.length
-  console.log('[SYNC SLEEP] DONE — inserted:', inserted, 'nights')
-  return { status: 'ok', nights_synced: inserted }
+  return { status: 'ok', nights_synced: error ? 0 : rows.length }
 }
 
 // ── 2. Nightly Recharge (HRV) ─────────────────────────────────────

@@ -13,6 +13,8 @@ import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 import BodyCompositionChart from './components/BodyCompositionChart'
+import KcalBarChart from './components/KcalBarChart'
+import MacrosLineChart from './components/MacrosLineChart'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
@@ -20,7 +22,8 @@ const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: fa
 // ══════════════════════════════════════════════════════════════════
 type DayType      = 'low' | 'mid' | 'hard'
 type WeightPeriod = '3m' | '6m' | '1y' | '5y'
-type HistRange    = '7j' | '14j'
+type HistRange    = '7j' | '14j' | '28j'
+type DataFilter   = 'kcal' | 'proteines' | 'glucides' | 'lipides' | 'macros' | 'micros'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
 
@@ -128,164 +131,16 @@ function MacroBar({ label, consumed, objective, color }: { label: string; consum
   )
 }
 
-function KcalHistoryChart({ logs, range, activePlan }: { logs: DailyLog[]; range: HistRange; activePlan: NutritionPlanData | null }) {
-  const days = range === '7j' ? 7 : 14
-  const today = new Date().toISOString().split('T')[0]
-  const dates: string[] = []
-  for (let i = days - 1; i >= 0; i--) dates.push(addDays(today, -i))
+// KcalHistoryChart and MacrosChart extracted to ./components/KcalBarChart.tsx and ./components/MacrosLineChart.tsx
 
-  const entries = dates.map(date => {
-    const log = logs.find(l => l.date === date)
-    const planDay = activePlan?.jours?.find(j => j.date === date)
-    const consumed = log?.kcal_consommees ?? 0
-    const planned = planDay?.kcal ?? activePlan?.calories_low ?? 0
-    return { date, consumed, planned, label: formatDate(date) }
-  })
-
-  const maxVal = Math.max(...entries.map(e => Math.max(e.consumed, e.planned)), 1000)
-  const chartH = 160
-  const chartW = 300
-  const barW = Math.floor(chartW / days) - 4
-  const leftPad = 36
-
-  return (
-    <svg viewBox={`0 0 ${chartW + leftPad} ${chartH + 28}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {/* Y axis labels */}
-      {[0, 0.5, 1].map(frac => {
-        const val = Math.round(maxVal * frac)
-        const y = chartH - frac * chartH
-        return (
-          <g key={frac}>
-            <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
-              {val}
-            </text>
-          </g>
-        )
-      })}
-      {entries.map((e, i) => {
-        const x = leftPad + i * (chartW / days) + 2
-        const plannedH = maxVal > 0 ? (e.planned / maxVal) * chartH : 0
-        const consumedH = maxVal > 0 ? (e.consumed / maxVal) * chartH : 0
-        return (
-          <g key={e.date}>
-            {/* Planned (outline) */}
-            <rect
-              x={x} y={chartH - plannedH} width={barW} height={plannedH}
-              fill="var(--border)" rx={2}
-              opacity={0.4}
-            />
-            {/* Consumed (filled) */}
-            <rect
-              x={x} y={chartH - consumedH} width={barW} height={consumedH}
-              fill="#00c8e0" rx={2}
-              opacity={0.85}
-            />
-            <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={9} fontFamily="DM Sans,sans-serif">
-              {e.label.split(' ')[0]}
-            </text>
-            <text x={x + barW / 2} y={chartH + 26} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Mono,monospace">
-              {e.label.split(' ')[1]}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: NutritionPlanData | null }) {
-  const today = new Date().toISOString().split('T')[0]
-  const dates: string[] = []
-  for (let i = 6; i >= 0; i--) dates.push(addDays(today, -i))
-
-  const objP = activePlan?.macros_low?.proteines ?? 0
-  const objG = activePlan?.macros_low?.glucides ?? 0
-  const objL = activePlan?.macros_low?.lipides ?? 0
-
-  const pts = dates.map(date => {
-    const log = logs.find(l => l.date === date)
-    return {
-      date,
-      p: log?.proteines ?? 0,
-      g: log?.glucides ?? 0,
-      l: log?.lipides ?? 0,
-    }
-  })
-
-  const maxVal = Math.max(...pts.flatMap(p => [p.p, p.g, p.l]), objP, objG, objL, 1)
-  const chartH = 180
-  const chartW = 300
-  const leftPad = 36
-  const n = dates.length
-
-  function toPoints(vals: number[]): string {
-    return vals
-      .map((v, i) => {
-        const x = leftPad + (i / (n - 1)) * chartW
-        const y = chartH - (v / maxVal) * chartH
-        return `${x},${y}`
-      })
-      .join(' ')
-  }
-
-  const refY = (val: number) => chartH - (val / maxVal) * chartH
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${chartW + leftPad} ${chartH + 24}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-        {/* Y axis */}
-        {[0, 0.5, 1].map(frac => {
-          const val = Math.round(maxVal * frac)
-          const y = chartH - frac * chartH
-          return (
-            <g key={frac}>
-              <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-              <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
-                {val}
-              </text>
-            </g>
-          )
-        })}
-        {/* Objective reference lines */}
-        {objP > 0 && <line x1={leftPad} y1={refY(objP)} x2={chartW + leftPad} y2={refY(objP)} stroke="#22c55e" strokeWidth={1} strokeDasharray="4 3" opacity={0.5} />}
-        {objG > 0 && <line x1={leftPad} y1={refY(objG)} x2={chartW + leftPad} y2={refY(objG)} stroke="#eab308" strokeWidth={1} strokeDasharray="4 3" opacity={0.5} />}
-        {objL > 0 && <line x1={leftPad} y1={refY(objL)} x2={chartW + leftPad} y2={refY(objL)} stroke="#f97316" strokeWidth={1} strokeDasharray="4 3" opacity={0.5} />}
-        {/* Polylines */}
-        {pts.some(p => p.p > 0) && (
-          <polyline points={toPoints(pts.map(p => p.p))} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinejoin="round" />
-        )}
-        {pts.some(p => p.g > 0) && (
-          <polyline points={toPoints(pts.map(p => p.g))} fill="none" stroke="#eab308" strokeWidth={2} strokeLinejoin="round" />
-        )}
-        {pts.some(p => p.l > 0) && (
-          <polyline points={toPoints(pts.map(p => p.l))} fill="none" stroke="#f97316" strokeWidth={2} strokeLinejoin="round" />
-        )}
-        {/* X axis dates */}
-        {dates.map((date, i) => {
-          const x = leftPad + (i / (n - 1)) * chartW
-          return (
-            <text key={date} x={x} y={chartH + 14} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
-              {formatDate(date).split(' ')[1]}
-            </text>
-          )
-        })}
-      </svg>
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-        {[
-          { color: '#22c55e', label: 'Proteines' },
-          { color: '#eab308', label: 'Glucides' },
-          { color: '#f97316', label: 'Lipides' },
-        ].map(item => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }} />
-            <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{item.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+/** Returns the ISO date of the Monday of the week at the given offset (0 = current week) */
+function getWeekStart(offset: number): string {
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  const mon = new Date(today)
+  mon.setDate(today.getDate() - daysSinceMon + offset * 7)
+  return mon.toISOString().split('T')[0]
 }
 
 // WeightChart replaced by BodyCompositionChart (see ./components/BodyCompositionChart.tsx)
@@ -751,6 +606,8 @@ export default function NutritionPage() {
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
+  const [weekOffset, setWeekOffset] = useState<number>(0)
+  const [dataFilters, setDataFilters] = useState<DataFilter[]>(['kcal'])
   const [weightPeriod, setWeightPeriod] = useState<WeightPeriod>('3m')
   const [weightSaveMsg, setWeightSaveMsg] = useState<string>('')
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
@@ -1361,63 +1218,197 @@ export default function NutritionPage() {
         <div style={cardStyle}>
           <p style={sectionTitle}>Historique</p>
 
-          {/* Range toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {(['7j', '14j'] as HistRange[]).map(r => (
-              <button
-                key={r}
-                onClick={() => setHistRange(r)}
-                style={{
-                  padding: '5px 12px', borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: histRange === r ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                  color: histRange === r ? '#00c8e0' : 'var(--text-dim)',
-                  fontWeight: histRange === r ? 700 : 400,
-                  fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                }}
-              >
-                {r}
-              </button>
-            ))}
+          {/* Row 1 — Period toggle */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+            {([
+              { key: '7j' as HistRange,  label: '7 jours' },
+              { key: '14j' as HistRange, label: '2 semaines' },
+              { key: '28j' as HistRange, label: '4 semaines' },
+            ]).map(({ key, label }) => {
+              const active = histRange === key
+              return (
+                <button key={key}
+                  onClick={() => { setHistRange(key); setWeekOffset(0) }}
+                  style={{
+                    padding: '5px 14px', borderRadius: 20, cursor: 'pointer',
+                    border: active ? 'none' : '1px solid var(--border)',
+                    background: active ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-dim)',
+                    fontWeight: active ? 700 : 400,
+                    fontSize: 11, fontFamily: 'Syne,sans-serif',
+                  }}
+                >{label}</button>
+              )
+            })}
           </div>
 
-          {/* Graph 1 — Kcal history */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
-              Kcal consommees vs planifiees
-            </div>
-            {dailyLogs.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '16px 0' }}>
-                Aucune donnee disponible
+          {/* Row 2 — Week navigation (7j only) */}
+          {histRange === '7j' && (() => {
+            const ws = getWeekStart(weekOffset)
+            const we = addDays(ws, 6)
+            const fmt = (d: string) => { const [, m, day] = d.split('-'); return `${day}/${m}` }
+            const btnStyle = (disabled: boolean): React.CSSProperties => ({
+              width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)',
+              background: 'var(--bg-card2)', color: disabled ? 'var(--text-dim)' : 'var(--text)',
+              fontSize: 14, cursor: disabled ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: disabled ? 0.4 : 1, fontFamily: 'monospace', flexShrink: 0,
+            })
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <button style={btnStyle(weekOffset <= -6)}
+                  onClick={() => { if (weekOffset > -6) setWeekOffset(o => o - 1) }}>
+                  {'<'}
+                </button>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 12, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>
+                  Semaine du {fmt(ws)} au {fmt(we)}
+                </span>
+                <button style={btnStyle(weekOffset >= 0)}
+                  onClick={() => { if (weekOffset < 0) setWeekOffset(o => o + 1) }}>
+                  {'>'}
+                </button>
               </div>
-            ) : (
-              <KcalHistoryChart
-                logs={dailyLogs}
-                range={histRange}
-                activePlan={activePlan?.plan_data ?? null}
-              />
-            )}
-            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 12, height: 8, borderRadius: 2, background: '#00c8e0' }} />
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Consomme</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 12, height: 8, borderRadius: 2, background: 'var(--border)' }} />
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Planifie</span>
-              </div>
-            </div>
+            )
+          })()}
+
+          {/* Row 3 — Data filters (multi-select) */}
+          <div style={{ display: 'flex', gap: 5, marginBottom: 18, flexWrap: 'wrap' }}>
+            {([
+              { key: 'kcal' as DataFilter,      label: 'Kcal' },
+              { key: 'proteines' as DataFilter,  label: 'Proteines' },
+              { key: 'glucides' as DataFilter,   label: 'Glucides' },
+              { key: 'lipides' as DataFilter,    label: 'Lipides' },
+              { key: 'macros' as DataFilter,     label: 'Macros completes' },
+              { key: 'micros' as DataFilter,     label: 'Micros' },
+            ]).map(({ key, label }) => {
+              const active = dataFilters.includes(key)
+              return (
+                <button key={key}
+                  onClick={() => setDataFilters(f =>
+                    active ? (f.length > 1 ? f.filter(x => x !== key) : f) : [...f, key]
+                  )}
+                  style={{
+                    padding: '4px 11px', borderRadius: 20, cursor: 'pointer',
+                    border: active ? 'none' : '1px solid var(--border)',
+                    background: active ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-dim)',
+                    fontWeight: active ? 700 : 400,
+                    fontSize: 10, fontFamily: 'Syne,sans-serif',
+                  }}
+                >{label}</button>
+              )
+            })}
           </div>
 
-          {/* Graph 2 — Macros 7j */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Macros 7 derniers jours (g)</div>
-            {dailyLogs.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '16px 0' }}>Aucune donnee disponible</div>
-            ) : (
-              <MacrosChart logs={dailyLogs} activePlan={activePlan?.plan_data ?? null} />
-            )}
-          </div>
+          {/* Weekly summary (7j only) */}
+          {histRange === '7j' && (() => {
+            const ws = getWeekStart(weekOffset)
+            const weekDates = Array.from({ length: 7 }, (_, i) => addDays(ws, i))
+            const prevDates = Array.from({ length: 7 }, (_, i) => addDays(getWeekStart(weekOffset - 1), i))
+
+            function sumField(dates: string[], field: keyof DailyLog): number {
+              return dates.reduce((s, d) => {
+                const log = dailyLogs.find(l => l.date === d)
+                return s + ((log?.[field] as number) ?? 0)
+              }, 0)
+            }
+
+            const curr = {
+              kcal: Math.round(sumField(weekDates, 'kcal_consommees')),
+              prot: Math.round(sumField(weekDates, 'proteines')),
+              gluc: Math.round(sumField(weekDates, 'glucides')),
+              lip:  Math.round(sumField(weekDates, 'lipides')),
+            }
+            const prev = {
+              kcal: Math.round(sumField(prevDates, 'kcal_consommees')),
+              prot: Math.round(sumField(prevDates, 'proteines')),
+              gluc: Math.round(sumField(prevDates, 'glucides')),
+              lip:  Math.round(sumField(prevDates, 'lipides')),
+            }
+
+            if (curr.kcal === 0 && curr.prot === 0) return null
+
+            function deltaBadge(c: number, p: number) {
+              if (p === 0 || c === 0) return <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>—</span>
+              const pct = Math.round(((c - p) / p) * 100)
+              const pos = pct >= 0
+              return (
+                <span style={{ fontSize: 9, fontWeight: 700, color: pos ? '#22C55E' : '#EF4444' }}>
+                  {pos ? '+' : ''}{pct}%
+                </span>
+              )
+            }
+
+            const stats = [
+              { label: 'Total Kcal', val: curr.kcal, prevVal: prev.kcal, unit: '' },
+              { label: 'Proteines',  val: curr.prot, prevVal: prev.prot, unit: 'g' },
+              { label: 'Glucides',   val: curr.gluc, prevVal: prev.gluc, unit: 'g' },
+              { label: 'Lipides',    val: curr.lip,  prevVal: prev.lip,  unit: 'g' },
+            ]
+
+            return (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 20 }}
+                  className="hist-summary-grid">
+                  {stats.map(({ label, val, prevVal, unit }) => (
+                    <div key={label} style={{
+                      background: 'var(--bg-card2)', borderRadius: 10,
+                      border: '1px solid var(--border)', padding: '10px 8px', textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: 'var(--text)', lineHeight: 1.2 }}>
+                        {val.toLocaleString('fr-FR')}
+                        {unit && <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 2 }}>{unit}</span>}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{label}</div>
+                      <div style={{ marginTop: 4 }}>{deltaBadge(val, prevVal)}</div>
+                    </div>
+                  ))}
+                </div>
+                <style>{`@media (max-width:480px){.hist-summary-grid{grid-template-columns:repeat(2,1fr)!important}}`}</style>
+              </>
+            )
+          })()}
+
+          {/* Kcal bar chart */}
+          {dataFilters.includes('kcal') && (() => {
+            const days = histRange === '7j' ? 7 : histRange === '14j' ? 14 : 28
+            const startDate = histRange === '7j' ? getWeekStart(weekOffset) : addDays(today, -(days - 1))
+            const entries = Array.from({ length: days }, (_, i) => {
+              const date = addDays(startDate, i)
+              const log = dailyLogs.find(l => l.date === date)
+              const planDay = activePlan?.plan_data?.jours?.find(j => j.date === date)
+              return {
+                date,
+                label: formatDate(date),
+                consumed: log?.kcal_consommees ?? 0,
+                planned: planDay?.kcal ?? activePlan?.plan_data?.calories_low ?? 0,
+              }
+            })
+            return (
+              <div style={{ marginBottom: 20 }}>
+                <KcalBarChart entries={entries} />
+              </div>
+            )
+          })()}
+
+          {/* Macros line chart */}
+          {(['proteines', 'glucides', 'lipides', 'macros'] as DataFilter[]).some(k => dataFilters.includes(k)) && (() => {
+            const days = histRange === '7j' ? 7 : histRange === '14j' ? 14 : 28
+            const startDate = histRange === '7j' ? getWeekStart(weekOffset) : addDays(today, -(days - 1))
+            const entries = Array.from({ length: days }, (_, i) => {
+              const date = addDays(startDate, i)
+              const log = dailyLogs.find(l => l.date === date)
+              return { date, label: formatDate(date), p: log?.proteines ?? 0, g: log?.glucides ?? 0, l: log?.lipides ?? 0 }
+            })
+            const objP = activePlan?.plan_data?.macros_low?.proteines ?? 0
+            const objG = activePlan?.plan_data?.macros_low?.glucides ?? 0
+            const objL = activePlan?.plan_data?.macros_low?.lipides ?? 0
+            return (
+              <div style={{ marginBottom: 4 }}>
+                <MacrosLineChart entries={entries} objP={objP} objG={objG} objL={objL} />
+              </div>
+            )
+          })()}
         </div>
 
         {/* Weight section */}

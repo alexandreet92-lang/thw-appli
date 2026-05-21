@@ -109,70 +109,38 @@ export async function syncPolarSleep(userId: string): Promise<{
   console.log('[SYNC SLEEP] Sleep dates found:', sleepDates.size, [...sleepDates])
   if (!sleepDates.size) return { status: 'ok', nights_synced: 0 }
 
-  // ── Étape 2 : Fetcher le détail de chaque nuit ──────────────────────
-  // GET /v4/data/sleeps/{date} → données complètes (durée, phases, score)
+  // ── Étape 2 : Insérer chaque date (l'API v4 ne retourne que la date, pas les détails) ──
+  // GET /sleeps/{date} retourne 404 → la liste EST la donnée disponible
   const supabase = createServiceClient()
-  let inserted = 0
+  const rows = [...sleepDates].map(date => ({
+    user_id:     userId,
+    provider:    'polar',
+    provider_id: `sleep_${date}`,
+    measured_at: `${date}T00:00:00Z`,
+    date,
+    data_type:   'sleep',
+    // Métriques non disponibles via cette API (scope limité)
+    sleep_duration_min: null,
+    light_duration_min: null,
+    deep_duration_min:  null,
+    rem_duration_min:   null,
+    awake_duration_min: null,
+    sleep_cycles:       null,
+    sleep_score:        null,
+    sleep_start:        null,
+    sleep_end:          null,
+    raw_data:           { sleepDate: date },
+  }))
 
-  for (const date of sleepDates) {
-    console.log('[SYNC SLEEP] Fetching detail for', date)
-    const res = await callPolarV4(`sleeps/${date}`, ctx.token)
-    console.log('[SYNC SLEEP] Detail status', res.status, 'for', date)
+  const { data: ud, error: ue } = await supabase
+    .from('health_data')
+    .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
+    .select('id, date')
 
-    if (res.status === 204) continue
-    if (!res.ok) {
-      console.log('[SYNC SLEEP] Detail error', res.status, 'for', date, await res.text().catch(() => '').then(t => t.slice(0, 150)))
-      continue
-    }
+  console.log('[SYNC SLEEP] Insert result — data:', JSON.stringify(ud), 'error:', ue?.message ?? null)
+  if (ue) console.error('[SYNC SLEEP] UPSERT ERROR:', ue.message)
 
-    const bodyText = await res.text()
-    console.log('[SYNC SLEEP] Detail body for', date, ':', bodyText.slice(0, 400))
-
-    let s: Record<string, unknown>
-    try { s = JSON.parse(bodyText) as Record<string, unknown> }
-    catch (e) { console.log('[SYNC SLEEP] Parse error for', date, ':', String(e)); continue }
-
-    const startTime = String(s['sleepStartTime'] ?? s['sleep_start_time'] ?? s['sleepStart'] ?? '')
-    const endTime   = String(s['sleepEndTime']   ?? s['sleep_end_time']   ?? s['sleepEnd']   ?? '')
-    const sleepDate = String(s['sleepDate'] ?? s['date'] ?? date)
-    const totalSec     = Number(s['totalSleepTime']        ?? s['total_sleep_time']         ?? 0)
-    const lightSec     = Number(s['lightSleepDuration']    ?? s['light_sleep_duration']     ?? 0)
-    const deepSec      = Number(s['deepSleepDuration']     ?? s['deep_sleep_duration']      ?? 0)
-    const remSec       = Number(s['remSleepDuration']      ?? s['rem_sleep_duration']       ?? 0)
-    const interruptSec = Number(s['interruptionsDuration'] ?? s['interruption_duration']    ?? 0)
-    const rawScore     = s['sleepScore']  ?? s['sleep_score']
-    const rawCycles    = s['sleepCycles'] ?? s['sleep_cycles']
-
-    console.log('[SYNC SLEEP] Detail fields — date:', sleepDate, 'totalSec:', totalSec, 'score:', rawScore, 'keys:', Object.keys(s))
-
-    const row = {
-      user_id:     userId,
-      provider:    'polar',
-      provider_id: `sleep_${sleepDate}`,
-      measured_at: startTime || `${sleepDate}T00:00:00Z`,
-      date:        sleepDate,
-      data_type:   'sleep',
-      sleep_duration_min: secToMin(totalSec),
-      light_duration_min: secToMin(lightSec),
-      deep_duration_min:  secToMin(deepSec),
-      rem_duration_min:   secToMin(remSec),
-      awake_duration_min: secToMin(interruptSec),
-      sleep_cycles:  rawCycles != null ? Number(rawCycles) : null,
-      sleep_score:   rawScore  != null ? Number(rawScore)  : null,
-      sleep_start:   startTime || null,
-      sleep_end:     endTime   || null,
-      raw_data: s,
-    }
-
-    const { data: ud, error: ue } = await supabase
-      .from('health_data')
-      .upsert([row], { onConflict: 'user_id,provider,date,data_type' })
-      .select('id, date')
-
-    console.log('[SYNC SLEEP] Insert result for', date, '— data:', JSON.stringify(ud), 'error:', ue?.message ?? null)
-    if (!ue) inserted++
-  }
-
+  const inserted = ue ? 0 : rows.length
   console.log('[SYNC SLEEP] DONE — inserted:', inserted, 'nights')
   return { status: 'ok', nights_synced: inserted }
 }
@@ -236,18 +204,19 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
     return {
       user_id:     userId,
       provider:    'polar',
-      provider_id: `nightly_recharge_${date}`,
+      provider_id: `polar_hrv_${date}`,
       measured_at: `${date}T00:00:00Z`,
       date,
-      data_type:   'nightly_recharge',
+      // 'nightly_recharge' n'est pas dans le CHECK constraint de health_data
+      // → on stocke comme 'hrv' (valeur autorisée, HrvSection le lit déjà)
+      data_type:   'hrv',
       raw_data: {
-        hrv_ms:            hrvVal,
-        hrv_rmssd:         hrvVal,   // alias pour HrvSection (raw_data.hrv_rmssd fallback)
-        rri_ms:            rri != null ? Number(rri) : null,
-        ans_rate:          ansRate       != null ? Number(ansRate)       : null,
-        breathing_rate:    breathingRate != null ? Number(breathingRate) : null,
-        recovery_indicator: recoveryInd  != null ? Number(recoveryInd)  : null,
-        ans_status:        ansStatus     != null ? Number(ansStatus)     : null,
+        hrv_rmssd:          hrvVal,   // lu par HrvSection via raw_data.hrv_rmssd
+        rri_ms:             rri != null ? Number(rri) : null,
+        ans_rate:           ansRate       != null ? Number(ansRate)       : null,
+        breathing_rate:     breathingRate != null ? Number(breathingRate) : null,
+        recovery_indicator: recoveryInd   != null ? Number(recoveryInd)  : null,
+        ans_status:         ansStatus     != null ? Number(ansStatus)     : null,
         ...r,
       },
     }
@@ -264,15 +233,7 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
     .upsert(deduped, { onConflict: 'user_id,provider,date,data_type' })
   if (error) console.error(`[syncPolarNightlyRecharge] upsert error: ${error.message}`)
 
-  // Mettre à jour metrics_daily avec HRV
-  for (const row of deduped) {
-    const hrv = (row.raw_data as Record<string, unknown>)['hrv_ms'] as number | null
-    if (!row.date || hrv == null) continue
-    await supabase
-      .from('metrics_daily')
-      .upsert({ user_id: userId, date: row.date, hrv_ms: hrv }, { onConflict: 'user_id,date' })
-      .then(({ error: e }) => { if (e) console.error(`[syncPolarNightlyRecharge] metrics_daily: ${e.message}`) })
-  }
+  // metrics_daily.hrv_ms n'existe pas encore → skip (migration future)
 
   console.log(`[syncPolarNightlyRecharge] ${deduped.length} nuits upserted`)
   return { status: 'ok', nights_synced: deduped.length }

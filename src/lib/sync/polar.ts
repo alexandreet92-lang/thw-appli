@@ -80,55 +80,51 @@ export async function syncPolarSleep(userId: string): Promise<{
     return { status: 'no_context', nights_synced: 0 }
   }
 
-  const { from, to } = polarDateRange(90)
-  console.log('[SYNC SLEEP] Calling Polar sleeps API... range:', from, '→', to)
+  // Polar /sleeps : max 30 jours par appel — 3 chunks de 30j = 90j
+  const chunks = polarDateChunks(90, 30)
+  console.log('[SYNC SLEEP] chunks:', chunks.map(c => `${c.from}→${c.to}`).join(' | '))
 
-  const res = await callPolarV4('sleeps', ctx.token, { from, to })
-  console.log('[SYNC SLEEP] API status:', res.status)
+  const allItems: Record<string, unknown>[] = []
 
-  if (res.status === 204) {
-    console.log('[SYNC SLEEP] EXIT: 204 no content')
-    return { status: 'no_new_data', nights_synced: 0 }
+  for (const chunk of chunks) {
+    console.log('[SYNC SLEEP] Calling Polar sleeps API... range:', chunk.from, '→', chunk.to)
+    const res = await callPolarV4('sleeps', ctx.token, { from: chunk.from, to: chunk.to })
+    console.log('[SYNC SLEEP] API status:', res.status, 'for chunk', chunk.from)
+
+    if (res.status === 204) { console.log('[SYNC SLEEP] 204 no content for chunk', chunk.from); continue }
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '')
+      console.log('[SYNC SLEEP] API error', res.status, errBody.slice(0, 200), 'for chunk', chunk.from)
+      continue // non-bloquant
+    }
+
+    const bodyText = await res.text().catch(() => '{}')
+    console.log('[SYNC SLEEP] API body chunk', chunk.from, ':', bodyText.slice(0, 500))
+
+    let raw: unknown
+    try { raw = JSON.parse(bodyText) }
+    catch (e) { console.log('[SYNC SLEEP] JSON parse error:', String(e)); continue }
+
+    console.log('[SYNC SLEEP] JSON top-level keys:', raw && typeof raw === 'object' ? Object.keys(raw as object) : typeof raw)
+
+    const items: Record<string, unknown>[] = Array.isArray(raw)
+      ? (raw as Record<string, unknown>[])
+      : (((raw as Record<string, unknown>)['nightSleeps'] ??
+         (raw as Record<string, unknown>)['sleeps'] ??
+         (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
+
+    console.log('[SYNC SLEEP] Items in chunk:', items.length, '— first item keys:', items[0] ? Object.keys(items[0]) : 'none')
+    allItems.push(...items)
   }
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '')
-    console.log('[SYNC SLEEP] EXIT: API error', res.status, errBody.slice(0, 300))
-    return { status: `error_${res.status}`, nights_synced: 0 }
-  }
 
-  // Lire le body UNE seule fois (stream non réutilisable)
-  const bodyText = await res.text().catch(() => '{}')
-  console.log('[SYNC SLEEP] API body (raw):', bodyText.slice(0, 500))
-
-  let raw: unknown
-  try {
-    raw = JSON.parse(bodyText)
-  } catch (e) {
-    console.log('[SYNC SLEEP] EXIT: JSON parse error:', String(e))
-    return { status: 'parse_error', nights_synced: 0 }
-  }
-
-  console.log('[SYNC SLEEP] JSON top-level keys:', raw && typeof raw === 'object' ? Object.keys(raw as object) : typeof raw)
-  console.log('[SYNC SLEEP] Nights found (nightSleeps):', (raw as Record<string, unknown>)?.['nightSleeps'] !== undefined
-    ? ((raw as Record<string, unknown>)['nightSleeps'] as unknown[])?.length
-    : 'key missing')
-
-  // Polar v4 retourne { nightSleeps: [...] } — essayer toutes les variantes connues
-  const items: Record<string, unknown>[] = Array.isArray(raw)
-    ? (raw as Record<string, unknown>[])
-    : (((raw as Record<string, unknown>)['nightSleeps'] ??    // ← clé réelle Polar v4
-       (raw as Record<string, unknown>)['sleeps'] ??
-       (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
-
-  console.log('[SYNC SLEEP] Items parsed:', items.length, '— first item keys:', items[0] ? Object.keys(items[0]) : 'none')
-
-  if (!items.length) {
-    console.log('[SYNC SLEEP] EXIT: items array empty after key extraction')
+  console.log('[SYNC SLEEP] Total items across all chunks:', allItems.length)
+  if (!allItems.length) {
+    console.log('[SYNC SLEEP] EXIT: no items found in any chunk')
     return { status: 'ok', nights_synced: 0 }
   }
 
   const supabase = createServiceClient()
-  const rows = items.map(s => {
+  const rows = allItems.map(s => {
     const startTime = String(s['sleepStartTime'] ?? s['sleep_start_time'] ?? s['sleep_start'] ?? '')
     const endTime   = String(s['sleepEndTime']   ?? s['sleep_end_time']   ?? s['sleep_end']   ?? '')
     const date      = String(s['date'] ?? (startTime ? startTime.split('T')[0] : '') ?? '')
@@ -159,32 +155,30 @@ export async function syncPolarSleep(userId: string): Promise<{
       raw_data: s,
     }
   }).filter(r => {
-    if (!r.date) { console.log('[SYNC SLEEP] FILTERED OUT row with empty date, keys:', Object.keys(r)) }
+    if (!r.date) console.log('[SYNC SLEEP] FILTERED OUT: empty date, item keys:', Object.keys(r))
     return r.date
   })
 
-  console.log('[SYNC SLEEP] Rows after filter:', rows.length, '— dates:', rows.map(r => r.date))
+  // Dédoublonnage si un jour est dans 2 chunks
+  const deduped = [...new Map(rows.map(r => [r.date, r])).values()]
+  console.log('[SYNC SLEEP] Rows after dedup:', deduped.length, '— dates:', deduped.map(r => r.date))
 
-  if (!rows.length) {
-    console.log('[SYNC SLEEP] EXIT: all rows filtered out (no date field)')
+  if (!deduped.length) {
+    console.log('[SYNC SLEEP] EXIT: all rows filtered (no date field)')
     return { status: 'ok_no_date', nights_synced: 0 }
   }
 
-  console.log('[SYNC SLEEP] Inserting', rows.length, 'nights for user:', userId)
-  for (const row of rows) {
-    console.log('[SYNC SLEEP] Inserting night:', row.date, 'duration_min:', row.sleep_duration_min)
-  }
+  console.log('[SYNC SLEEP] Inserting', deduped.length, 'nights for user:', userId)
 
   const { data: upsertData, error: upsertError } = await supabase
     .from('health_data')
-    .upsert(rows, { onConflict: 'user_id,provider,date,data_type' })
+    .upsert(deduped, { onConflict: 'user_id,provider,date,data_type' })
     .select('id, date')
 
-  console.log('[SYNC SLEEP] Insert result — data:', JSON.stringify(upsertData), 'error:', upsertError ? upsertError.message : null)
-
+  console.log('[SYNC SLEEP] Insert result — data:', JSON.stringify(upsertData), 'error:', upsertError?.message ?? null)
   if (upsertError) console.error('[SYNC SLEEP] UPSERT ERROR:', upsertError.message, upsertError.details ?? '')
 
-  return { status: 'ok', nights_synced: rows.length }
+  return { status: 'ok', nights_synced: deduped.length }
 }
 
 // ── 2. Nightly Recharge (HRV) ─────────────────────────────────────
@@ -223,17 +217,29 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
   }
 
   console.log(`[syncPolarNightlyRecharge] ${allItems.length} nuits reçues (${chunks.length} chunks)`)
+  if (allItems[0]) {
+    console.log('[syncPolarNightlyRecharge] first item keys:', Object.keys(allItems[0]))
+    console.log('[syncPolarNightlyRecharge] first item raw:', JSON.stringify(allItems[0]).slice(0, 400))
+  }
   if (!allItems.length) return { status: 'ok', nights_synced: 0 }
 
   const supabase = createServiceClient()
   const rows = allItems.map(r => {
-    const date          = String(r['date'] ?? '')
+    // Polar v4 : essayer toutes les variantes connues du champ date
+    const date = String(
+      r['date'] ??
+      r['nightDate'] ??       // variante possible Polar v4
+      r['rechargeDate'] ??    // variante possible
+      r['night_date'] ??
+      ''
+    )
     // Polar v4 : camelCase ou snake_case selon la version
-    const hrvMs         = r['hrvMssd']       ?? r['hrv_mssd']
+    const hrvMs         = r['hrvMssd']       ?? r['hrv_mssd']       ?? r['hrv']
     const ansCharge     = r['ansCharge']     ?? r['ans_charge']
-    const breathingRate = r['breathingRate'] ?? r['breathing_rate']
-    const snrResult     = r['snrResult']     ?? r['snr_result']
+    const breathingRate = r['breathingRate'] ?? r['breathing_rate'] ?? r['respiratoryRate'] ?? r['respiratory_rate']
+    const snrResult     = r['snrResult']     ?? r['snr_result']     ?? r['snr']
     const hrvVal        = hrvMs != null ? Number(hrvMs) : null
+    console.log('[syncPolarNightlyRecharge] item date:', date, 'hrv:', hrvVal)
     return {
       user_id:     userId,
       provider:    'polar',
@@ -250,7 +256,10 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
         ...r,
       },
     }
-  }).filter(r => r.date)
+  }).filter(r => {
+    if (!r.date) console.log('[syncPolarNightlyRecharge] FILTERED OUT: empty date')
+    return r.date
+  })
 
   // Déduplication si plusieurs chunks se chevauchent
   const deduped = [...new Map(rows.map(r => [r.date, r])).values()]

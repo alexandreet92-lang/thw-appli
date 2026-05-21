@@ -10,9 +10,9 @@ import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
-import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
+import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
-import BodyCompositionChart from './components/BodyCompositionChart'
+import WeightSection from './components/WeightSection'
 import KcalBarChart from './components/KcalBarChart'
 import MacrosLineChart from './components/MacrosLineChart'
 import MealTypesSection from './components/MealTypesSection'
@@ -23,9 +23,8 @@ const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: fa
 // ══════════════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════════════
-type DayType      = 'low' | 'mid' | 'hard'
-type WeightPeriod = '3m' | '6m' | '1y' | '5y'
-type HistRange    = '7j' | '14j' | '28j'
+type DayType   = 'low' | 'mid' | 'hard'
+type HistRange = '7j' | '14j' | '28j'
 type DataFilter   = 'kcal' | 'proteines' | 'glucides' | 'lipides' | 'macros' | 'micros'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
@@ -146,7 +145,6 @@ function getWeekStart(offset: number): string {
   return mon.toISOString().split('T')[0]
 }
 
-// WeightChart replaced by BodyCompositionChart (see ./components/BodyCompositionChart.tsx)
 
 // ══════════════════════════════════════════════════════════════════
 // SECTION STYLES
@@ -176,7 +174,7 @@ const sectionTitle: React.CSSProperties = {
 export default function NutritionPage() {
   const today = new Date().toISOString().split('T')[0]
 
-  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog } = useNutrition()
+  const { activePlan, dailyLogs, loading: nutLoading, saveDailyLog } = useNutrition()
   const { templates, loading: templatesLoading, addTemplate, updateTemplate, deleteTemplate } = useNutritionTemplates()
   const { habits, loading: habitsLoading, addHabit, updateHabit, deleteHabit } = useNutritionHabits()
   const { sessions } = usePlanning()
@@ -187,14 +185,8 @@ export default function NutritionPage() {
   const [histRange, setHistRange] = useState<HistRange>('7j')
   const [weekOffset, setWeekOffset] = useState<number>(0)
   const [dataFilters, setDataFilters] = useState<DataFilter[]>(['kcal'])
-  const [weightPeriod, setWeightPeriod] = useState<WeightPeriod>('3m')
-  const [weightSaveMsg, setWeightSaveMsg] = useState<string>('')
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [savingLog, setSavingLog] = useState<boolean>(false)
-  const [weightInputDate, setWeightInputDate] = useState<string>(today)
-  const [weightInput, setWeightInput] = useState<string>('')
-  const [mgInput, setMgInput] = useState<string>('')
-  const [mmInput, setMmInput] = useState<string>('')
   const [manualMeals, setManualMeals] = useState<Partial<Record<MealKey, string>>>({})
   const [manualKcal, setManualKcal] = useState<string>('')
   const [manualP, setManualP] = useState<string>('')
@@ -372,30 +364,7 @@ export default function NutritionPage() {
     setSavingLog(false)
   }, [todayLog, today, planVariant, saveDailyLog])
 
-  // ── Save weight log ────────────────────────────────────────────
-  const handleSaveWeight = useCallback(async () => {
-    if (!weightInput && !mgInput && !mmInput) return
-    const log: Omit<WeightLog, 'id'> = {
-      measured_at: weightInputDate,
-      weight_kg:        weightInput ? parseFloat(weightInput) : null,
-      fat_mass_percent: mgInput     ? parseFloat(mgInput)     : null,
-      muscle_mass_kg:   mmInput     ? parseFloat(mmInput)     : null,
-      source: 'manual',
-    }
-    try {
-      await saveWeightLog(log)
-      setWeightInput('')
-      setMgInput('')
-      setMmInput('')
-      setWeightInputDate(new Date().toISOString().split('T')[0])
-      setWeightSaveMsg('Mesure enregistree')
-      setTimeout(() => setWeightSaveMsg(''), 3000)
-    } catch (err) {
-      console.error('[handleSaveWeight]', err)
-      setWeightSaveMsg('Erreur — verifiez la console')
-      setTimeout(() => setWeightSaveMsg(''), 4000)
-    }
-  }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
+  // Weight section handled by <WeightSection /> component
 
   // ── Save manual log ────────────────────────────────────────────
   const handleSaveManualLog = useCallback(async () => {
@@ -998,170 +967,7 @@ export default function NutritionPage() {
         </div>
 
         {/* Weight section */}
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Poids et composition</p>
-
-          {/* Last measurement summary pills */}
-          {(() => {
-            const sorted = [...weightLogs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
-            const last = sorted[sorted.length - 1]
-            if (!last) return null
-            const d = new Date(last.measured_at + 'T00:00:00')
-            const label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-            return (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                  {last.weight_kg != null && (
-                    <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: '#06B6D4', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
-                      {last.weight_kg.toFixed(1)} kg
-                    </span>
-                  )}
-                  {last.fat_mass_percent != null && (
-                    <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', border: '1px solid #F97316', color: '#F97316', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
-                      {last.fat_mass_percent.toFixed(1)}% MG
-                    </span>
-                  )}
-                  {last.muscle_mass_kg != null && (
-                    <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', border: '1px solid #3B82F6', color: '#3B82F6', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
-                      {last.muscle_mass_kg.toFixed(1)} kg MM
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Derniere mesure : {label}</div>
-              </div>
-            )
-          })()}
-
-          {/* Period toggle */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-            {([
-              { key: '3m' as WeightPeriod, label: '3 mois' },
-              { key: '6m' as WeightPeriod, label: '6 mois' },
-              { key: '1y' as WeightPeriod, label: '1 an' },
-              { key: '5y' as WeightPeriod, label: '5 ans' },
-            ]).map(({ key, label }) => {
-              const active = weightPeriod === key
-              return (
-                <button
-                  key={key}
-                  onClick={() => setWeightPeriod(key)}
-                  style={{
-                    padding: '5px 14px', borderRadius: 20, cursor: 'pointer',
-                    border: active ? 'none' : '1px solid var(--border)',
-                    background: active
-                      ? 'linear-gradient(90deg,#06B6D4,#3B82F6)'
-                      : 'transparent',
-                    color: active ? '#fff' : 'var(--text-dim)',
-                    fontWeight: active ? 700 : 400,
-                    fontSize: 11, fontFamily: 'Syne,sans-serif',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Chart */}
-          {(() => {
-            const now = Date.now()
-            const daysBack = weightPeriod === '3m' ? 90 : weightPeriod === '6m' ? 180 : weightPeriod === '1y' ? 365 : 1825
-            const cutoff = new Date(now - daysBack * 86400000).toISOString().split('T')[0]
-            const filtered = weightLogs
-              .filter(l => l.measured_at >= cutoff)
-              .map(l => ({
-                date:  l.measured_at,
-                poids: l.weight_kg,
-                mg:    l.fat_mass_percent,
-                mm:    l.muscle_mass_kg,
-              }))
-            return <BodyCompositionChart logs={filtered} />
-          })()}
-
-          {/* Form */}
-          <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500, marginBottom: 12 }}>
-              Ajouter une mesure
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Date</label>
-                <input
-                  type="date"
-                  value={weightInputDate}
-                  onChange={e => setWeightInputDate(e.target.value)}
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids (kg)</label>
-                <input
-                  type="number" step="0.1"
-                  value={weightInput}
-                  onChange={e => setWeightInput(e.target.value)}
-                  placeholder="78.5"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse grasse (%)</label>
-                <input
-                  type="number" step="0.1"
-                  value={mgInput}
-                  onChange={e => setMgInput(e.target.value)}
-                  placeholder="14.2"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse musculaire (kg)</label>
-                <input
-                  type="number" step="0.1"
-                  value={mmInput}
-                  onChange={e => setMmInput(e.target.value)}
-                  placeholder="62.1"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-            </div>
-            <button
-              onClick={() => void handleSaveWeight()}
-              style={{
-                width: '100%', padding: '10px 0',
-                background: 'linear-gradient(90deg,#06B6D4,#3B82F6)',
-                border: 'none', borderRadius: 8,
-                color: '#fff', fontFamily: 'Syne,sans-serif',
-                fontWeight: 700, fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Sauvegarder la mesure
-            </button>
-            {weightSaveMsg && (
-              <div style={{ marginTop: 8, textAlign: 'center', fontSize: 12, color: '#06B6D4', fontWeight: 600 }}>
-                {weightSaveMsg}
-              </div>
-            )}
-          </div>
-        </div>
+        <WeightSection />
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}

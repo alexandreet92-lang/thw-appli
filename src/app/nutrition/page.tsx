@@ -12,13 +12,14 @@ import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
+import BodyCompositionChart from './components/BodyCompositionChart'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type DayType      = 'low' | 'mid' | 'hard'
-type WeightMetric = 'poids' | 'mg' | 'mm'
+type WeightPeriod = '3m' | '6m' | '1y' | '5y'
 type HistRange    = '7j' | '14j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
@@ -287,70 +288,7 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
   )
 }
 
-function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric }) {
-  if (!logs.length) {
-    return <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>Aucune donnee disponible</div>
-  }
-
-  const sorted = [...logs].sort((a, b) => a.date.localeCompare(b.date))
-  const vals = sorted.map(l => (metric === 'poids' ? l.poids : metric === 'mg' ? l.mg : l.mm) ?? null)
-  const nonNull = vals.filter((v): v is number => v !== null)
-  if (!nonNull.length) return <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>Aucune donnee pour cette metrique</div>
-
-  const minV = Math.min(...nonNull)
-  const maxV = Math.max(...nonNull)
-  const range = maxV - minV || 1
-  const chartH = 160
-  const chartW = 300
-  const leftPad = 40
-  const n = sorted.length
-
-  function toX(i: number) {
-    return n === 1 ? leftPad + chartW / 2 : leftPad + (i / (n - 1)) * chartW
-  }
-  function toY(v: number) {
-    return chartH - ((v - minV) / range) * chartH * 0.8 - chartH * 0.1
-  }
-
-  const points = sorted
-    .map((_, i) => (vals[i] !== null ? `${toX(i)},${toY(vals[i] as number)}` : null))
-    .filter(Boolean)
-    .join(' ')
-
-  const yLabels = [minV, (minV + maxV) / 2, maxV]
-
-  return (
-    <svg viewBox={`0 0 ${chartW + leftPad} ${chartH + 28}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {yLabels.map((v, i) => {
-        const y = toY(v)
-        return (
-          <g key={i}>
-            <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
-              {v.toFixed(1)}
-            </text>
-          </g>
-        )
-      })}
-      {points && <polyline points={points} fill="none" stroke="#00c8e0" strokeWidth={2} strokeLinejoin="round" />}
-      {sorted.map((_, i) => {
-        const v = vals[i]
-        if (v === null) return null
-        return (
-          <circle key={i} cx={toX(i)} cy={toY(v)} r={4} fill="#00c8e0" stroke="var(--bg-card)" strokeWidth={2} />
-        )
-      })}
-      {sorted.map((entry, i) => {
-        if (i % Math.ceil(n / 5) !== 0 && i !== n - 1) return null
-        return (
-          <text key={entry.date} x={toX(i)} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
-            {entry.date.slice(5)}
-          </text>
-        )
-      })}
-    </svg>
-  )
-}
+// WeightChart replaced by BodyCompositionChart (see ./components/BodyCompositionChart.tsx)
 
 // ══════════════════════════════════════════════════════════════════
 // SECTION STYLES
@@ -813,7 +751,8 @@ export default function NutritionPage() {
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
-  const [weightMetric, setWeightMetric] = useState<WeightMetric>('poids')
+  const [weightPeriod, setWeightPeriod] = useState<WeightPeriod>('3m')
+  const [weightSaveMsg, setWeightSaveMsg] = useState<string>('')
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [savingLog, setSavingLog] = useState<boolean>(false)
   const [weightInputDate, setWeightInputDate] = useState<string>(today)
@@ -1011,6 +950,8 @@ export default function NutritionPage() {
     setWeightInput('')
     setMgInput('')
     setMmInput('')
+    setWeightSaveMsg('Mesure enregistree')
+    setTimeout(() => setWeightSaveMsg(''), 3000)
   }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
 
   // ── Save manual log ────────────────────────────────────────────
@@ -1483,38 +1424,82 @@ export default function NutritionPage() {
         <div style={cardStyle}>
           <p style={sectionTitle}>Poids et composition</p>
 
-          {/* Metric toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {/* Last measurement summary pills */}
+          {(() => {
+            const sorted = [...weightLogs].sort((a, b) => a.date.localeCompare(b.date))
+            const last = sorted[sorted.length - 1]
+            if (!last) return null
+            const d = new Date(last.date + 'T00:00:00')
+            const label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            return (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                  {last.poids != null && (
+                    <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: '#06B6D4', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+                      {last.poids.toFixed(1)} kg
+                    </span>
+                  )}
+                  {last.mg != null && (
+                    <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', border: '1px solid #F97316', color: '#F97316', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+                      {last.mg.toFixed(1)}% MG
+                    </span>
+                  )}
+                  {last.mm != null && (
+                    <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', border: '1px solid #3B82F6', color: '#3B82F6', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+                      {last.mm.toFixed(1)} kg MM
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Derniere mesure : {label}</div>
+              </div>
+            )
+          })()}
+
+          {/* Period toggle */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
             {([
-              { key: 'poids' as WeightMetric, label: 'Poids' },
-              { key: 'mg' as WeightMetric, label: 'Masse grasse' },
-              { key: 'mm' as WeightMetric, label: 'Masse musculaire' },
-            ]).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setWeightMetric(key)}
-                style={{
-                  padding: '5px 12px', borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: weightMetric === key ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                  color: weightMetric === key ? '#00c8e0' : 'var(--text-dim)',
-                  fontWeight: weightMetric === key ? 700 : 400,
-                  fontSize: 11, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            ))}
+              { key: '3m' as WeightPeriod, label: '3 mois' },
+              { key: '6m' as WeightPeriod, label: '6 mois' },
+              { key: '1y' as WeightPeriod, label: '1 an' },
+              { key: '5y' as WeightPeriod, label: '5 ans' },
+            ]).map(({ key, label }) => {
+              const active = weightPeriod === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setWeightPeriod(key)}
+                  style={{
+                    padding: '5px 14px', borderRadius: 20, cursor: 'pointer',
+                    border: active ? 'none' : '1px solid var(--border)',
+                    background: active
+                      ? 'linear-gradient(90deg,#06B6D4,#3B82F6)'
+                      : 'transparent',
+                    color: active ? '#fff' : 'var(--text-dim)',
+                    fontWeight: active ? 700 : 400,
+                    fontSize: 11, fontFamily: 'Syne,sans-serif',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
 
-          <WeightChart logs={weightLogs} metric={weightMetric} />
+          {/* Chart */}
+          {(() => {
+            const now = Date.now()
+            const daysBack = weightPeriod === '3m' ? 90 : weightPeriod === '6m' ? 180 : weightPeriod === '1y' ? 365 : 1825
+            const cutoff = new Date(now - daysBack * 86400000).toISOString().split('T')[0]
+            const filtered = weightLogs.filter(l => l.date >= cutoff)
+            return <BodyCompositionChart logs={filtered} />
+          })()}
 
-          {/* Weight input form */}
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 10, color: 'var(--text)' }}>
+          {/* Form */}
+          <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500, marginBottom: 12 }}>
               Ajouter une mesure
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
               <div>
                 <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Date</label>
                 <input
@@ -1531,11 +1516,10 @@ export default function NutritionPage() {
               <div>
                 <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids (kg)</label>
                 <input
-                  type="number"
-                  step="0.1"
+                  type="number" step="0.1"
                   value={weightInput}
                   onChange={e => setWeightInput(e.target.value)}
-                  placeholder="ex: 78.5"
+                  placeholder="78.5"
                   style={{
                     width: '100%', background: 'var(--input-bg)',
                     border: '1px solid var(--border)', borderRadius: 7,
@@ -1547,11 +1531,10 @@ export default function NutritionPage() {
               <div>
                 <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse grasse (%)</label>
                 <input
-                  type="number"
-                  step="0.1"
+                  type="number" step="0.1"
                   value={mgInput}
                   onChange={e => setMgInput(e.target.value)}
-                  placeholder="ex: 14.2"
+                  placeholder="14.2"
                   style={{
                     width: '100%', background: 'var(--input-bg)',
                     border: '1px solid var(--border)', borderRadius: 7,
@@ -1563,11 +1546,10 @@ export default function NutritionPage() {
               <div>
                 <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse musculaire (kg)</label>
                 <input
-                  type="number"
-                  step="0.1"
+                  type="number" step="0.1"
                   value={mmInput}
                   onChange={e => setMmInput(e.target.value)}
-                  placeholder="ex: 62.1"
+                  placeholder="62.1"
                   style={{
                     width: '100%', background: 'var(--input-bg)',
                     border: '1px solid var(--border)', borderRadius: 7,
@@ -1577,13 +1559,23 @@ export default function NutritionPage() {
                 />
               </div>
             </div>
-            <Button
-              variant="secondary"
+            <button
               onClick={() => void handleSaveWeight()}
-              style={{ width: '100%', justifyContent: 'center' }}
+              style={{
+                width: '100%', padding: '10px 0',
+                background: 'linear-gradient(90deg,#06B6D4,#3B82F6)',
+                border: 'none', borderRadius: 8,
+                color: '#fff', fontFamily: 'Syne,sans-serif',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              }}
             >
               Sauvegarder la mesure
-            </Button>
+            </button>
+            {weightSaveMsg && (
+              <div style={{ marginTop: 8, textAlign: 'center', fontSize: 12, color: '#06B6D4', fontWeight: 600 }}>
+                {weightSaveMsg}
+              </div>
+            )}
           </div>
         </div>
       </div>

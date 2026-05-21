@@ -18,6 +18,7 @@ import MacrosLineChart from './components/MacrosLineChart'
 import MealTypesSection from './components/MealTypesSection'
 import HabitudesSection from './components/HabitudesSection'
 import { useNutritionHabits } from '@/hooks/useNutritionHabits'
+import MealSlotGrid from './components/MealSlotGrid'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
@@ -635,136 +636,7 @@ export default function NutritionPage() {
               }}
             />
           </div>
-
-          {/* Option A / B toggle */}
-          {selectedPlanDay && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              {(['A', 'B'] as PlanVariant[]).map(v => (
-                <button
-                  key={v}
-                  onClick={() => setPlanVariant(v)}
-                  style={{
-                    padding: '5px 14px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    background: planVariant === v ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                    color: planVariant === v ? '#00c8e0' : 'var(--text-dim)',
-                    fontWeight: planVariant === v ? 700 : 400,
-                    fontSize: 12,
-                    fontFamily: 'Syne,sans-serif',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Option {v}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selectedPlanDay ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {MEAL_KEYS.map(mealKey => {
-                const mealSet: MealSet = planVariant === 'A'
-                  ? selectedPlanDay.repas.option_A
-                  : selectedPlanDay.repas.option_B
-                const slotVal = mealSet[mealKey]
-                const text = slotText(slotVal)
-                const isConsumed = selectedLog?.repas_details?.[mealKey]?.consumed ?? false
-                const isToday = selectedDate === today
-                if (text === '-') return null
-                return (
-                  <div
-                    key={mealKey}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      background: isConsumed ? 'rgba(34,197,94,0.06)' : 'var(--bg-card2)',
-                      border: `1px solid ${isConsumed ? 'rgba(34,197,94,0.25)' : 'var(--border)'}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontFamily: 'Syne,sans-serif', fontWeight: 700, color: 'var(--text-mid)' }}>
-                        {MEAL_LABELS[mealKey]}
-                      </span>
-                      {isToday && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={isConsumed}
-                            onChange={e => void handleMealToggle(mealKey, e.target.checked)}
-                            disabled={savingLog}
-                            style={{ accentColor: '#22c55e' }}
-                          />
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Consomme</span>
-                        </label>
-                      )}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{text}</p>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
-                Aucun plan pour cette date. Ajoutez des repas manuellement.
-              </p>
-              {/* Manual entry form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {MEAL_KEYS.map(mealKey => (
-                  <div key={mealKey}>
-                    <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>
-                      {MEAL_LABELS[mealKey]}
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={manualMeals[mealKey] ?? ''}
-                      onChange={e => setManualMeals(m => ({ ...m, [mealKey]: e.target.value }))}
-                      placeholder="Description du repas..."
-                      style={{
-                        width: '100%', background: 'var(--input-bg)',
-                        border: '1px solid var(--border)', borderRadius: 8,
-                        padding: '8px 10px', fontSize: 12, color: 'var(--text)',
-                        fontFamily: 'DM Sans,sans-serif', resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  {[
-                    { label: 'Kcal', val: manualKcal, set: setManualKcal },
-                    { label: 'Prot. (g)', val: manualP, set: setManualP },
-                    { label: 'Gluc. (g)', val: manualG, set: setManualG },
-                    { label: 'Lip. (g)', val: manualL, set: setManualL },
-                  ].map(({ label, val, set }) => (
-                    <div key={label}>
-                      <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>{label}</label>
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={e => set(e.target.value)}
-                        style={{
-                          width: '100%', background: 'var(--input-bg)',
-                          border: '1px solid var(--border)', borderRadius: 7,
-                          padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                          fontFamily: 'DM Mono,monospace',
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => void handleSaveManualLog()}
-                  disabled={savingLog}
-                  loading={savingLog}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                >
-                  Sauvegarder
-                </Button>
-              </div>
-            </div>
-          )}
+          <MealSlotGrid date={selectedDate} />
         </div>
 
         {/* ══════════════════════════════════════════════════════ */}

@@ -108,11 +108,11 @@ export interface DailyLog {
 
 export interface WeightLog {
   id?: string
-  date: string
-  poids: number | null
-  mg: number | null
-  mm: number | null
-  source: 'balance_connectee' | 'manuel'
+  measured_at: string
+  weight_kg: number | null
+  fat_mass_percent: number | null
+  muscle_mass_kg: number | null
+  source: 'manual' | 'connected_scale'
 }
 
 export function useNutrition() {
@@ -130,7 +130,7 @@ export function useNutrition() {
     const [planRes, logsRes, weightRes] = await Promise.all([
       supabase.from('nutrition_plans').select('*').eq('user_id', user.id).eq('actif', true).order('created_at', { ascending: false }).limit(1),
       supabase.from('nutrition_daily_logs').select('*').eq('user_id', user.id).gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).order('date', { ascending: false }),
-      supabase.from('nutrition_weight_logs').select('*').eq('user_id', user.id).gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).order('date', { ascending: false }),
+      supabase.from('body_measurements').select('*').eq('user_id', user.id).order('measured_at', { ascending: false }),
     ])
 
     setActivePlan(planRes.data?.[0] ?? null)
@@ -159,7 +159,10 @@ export function useNutrition() {
   async function saveWeightLog(log: Omit<WeightLog, 'id'>): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('nutrition_weight_logs').upsert({ user_id: user.id, ...log }, { onConflict: 'user_id,date' })
+    const { error } = await supabase
+      .from('body_measurements')
+      .upsert({ user_id: user.id, ...log }, { onConflict: 'user_id,measured_at' })
+    if (error) console.error('[saveWeightLog]', error)
     await load()
   }
 

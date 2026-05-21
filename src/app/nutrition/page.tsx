@@ -376,18 +376,25 @@ export default function NutritionPage() {
   const handleSaveWeight = useCallback(async () => {
     if (!weightInput && !mgInput && !mmInput) return
     const log: Omit<WeightLog, 'id'> = {
-      date: weightInputDate,
-      poids: weightInput ? parseFloat(weightInput) : null,
-      mg: mgInput ? parseFloat(mgInput) : null,
-      mm: mmInput ? parseFloat(mmInput) : null,
-      source: 'manuel',
+      measured_at: weightInputDate,
+      weight_kg:        weightInput ? parseFloat(weightInput) : null,
+      fat_mass_percent: mgInput     ? parseFloat(mgInput)     : null,
+      muscle_mass_kg:   mmInput     ? parseFloat(mmInput)     : null,
+      source: 'manual',
     }
-    await saveWeightLog(log)
-    setWeightInput('')
-    setMgInput('')
-    setMmInput('')
-    setWeightSaveMsg('Mesure enregistree')
-    setTimeout(() => setWeightSaveMsg(''), 3000)
+    try {
+      await saveWeightLog(log)
+      setWeightInput('')
+      setMgInput('')
+      setMmInput('')
+      setWeightInputDate(new Date().toISOString().split('T')[0])
+      setWeightSaveMsg('Mesure enregistree')
+      setTimeout(() => setWeightSaveMsg(''), 3000)
+    } catch (err) {
+      console.error('[handleSaveWeight]', err)
+      setWeightSaveMsg('Erreur — verifiez la console')
+      setTimeout(() => setWeightSaveMsg(''), 4000)
+    }
   }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
 
   // ── Save manual log ────────────────────────────────────────────
@@ -996,27 +1003,27 @@ export default function NutritionPage() {
 
           {/* Last measurement summary pills */}
           {(() => {
-            const sorted = [...weightLogs].sort((a, b) => a.date.localeCompare(b.date))
+            const sorted = [...weightLogs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
             const last = sorted[sorted.length - 1]
             if (!last) return null
-            const d = new Date(last.date + 'T00:00:00')
+            const d = new Date(last.measured_at + 'T00:00:00')
             const label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
             return (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                  {last.poids != null && (
+                  {last.weight_kg != null && (
                     <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: '#06B6D4', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
-                      {last.poids.toFixed(1)} kg
+                      {last.weight_kg.toFixed(1)} kg
                     </span>
                   )}
-                  {last.mg != null && (
+                  {last.fat_mass_percent != null && (
                     <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', border: '1px solid #F97316', color: '#F97316', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
-                      {last.mg.toFixed(1)}% MG
+                      {last.fat_mass_percent.toFixed(1)}% MG
                     </span>
                   )}
-                  {last.mm != null && (
+                  {last.muscle_mass_kg != null && (
                     <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', border: '1px solid #3B82F6', color: '#3B82F6', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
-                      {last.mm.toFixed(1)} kg MM
+                      {last.muscle_mass_kg.toFixed(1)} kg MM
                     </span>
                   )}
                 </div>
@@ -1060,7 +1067,14 @@ export default function NutritionPage() {
             const now = Date.now()
             const daysBack = weightPeriod === '3m' ? 90 : weightPeriod === '6m' ? 180 : weightPeriod === '1y' ? 365 : 1825
             const cutoff = new Date(now - daysBack * 86400000).toISOString().split('T')[0]
-            const filtered = weightLogs.filter(l => l.date >= cutoff)
+            const filtered = weightLogs
+              .filter(l => l.measured_at >= cutoff)
+              .map(l => ({
+                date:  l.measured_at,
+                poids: l.weight_kg,
+                mg:    l.fat_mass_percent,
+                mm:    l.muscle_mass_kg,
+              }))
             return <BodyCompositionChart logs={filtered} />
           })()}
 

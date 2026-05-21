@@ -112,6 +112,8 @@ export async function syncPolarSleep(userId: string): Promise<{
   // ── Étape 2 : Insérer chaque date (l'API v4 ne retourne que la date, pas les détails) ──
   // GET /sleeps/{date} retourne 404 → la liste EST la donnée disponible
   const supabase = createServiceClient()
+  // Polar v4 ne fournit que la date — insérer uniquement les colonnes core
+  // (sleep_cycles, sleep_score, etc. n'existent pas dans health_data)
   const rows = [...sleepDates].map(date => ({
     user_id:     userId,
     provider:    'polar',
@@ -119,17 +121,7 @@ export async function syncPolarSleep(userId: string): Promise<{
     measured_at: `${date}T00:00:00Z`,
     date,
     data_type:   'sleep',
-    // Métriques non disponibles via cette API (scope limité)
-    sleep_duration_min: null,
-    light_duration_min: null,
-    deep_duration_min:  null,
-    rem_duration_min:   null,
-    awake_duration_min: null,
-    sleep_cycles:       null,
-    sleep_score:        null,
-    sleep_start:        null,
-    sleep_end:          null,
-    raw_data:           { sleepDate: date },
+    raw_data:    { sleepDate: date },
   }))
 
   const { data: ud, error: ue } = await supabase

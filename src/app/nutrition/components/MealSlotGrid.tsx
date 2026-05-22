@@ -4,6 +4,7 @@ import type { ReactElement, CSSProperties } from 'react'
 import { useDailyMeals, SLOT_KEYS, SLOT_LABELS, type MealSlotKey, type DailyMealEntry } from '@/hooks/useDailyMeals'
 import MealModal from './MealModal'
 import type { ManualSaveData } from './tabs/MealModalManual'
+import type { ToastType } from '@/hooks/useToast'
 
 // ── SVG Icons ─────────────────────────────────────────────────────
 const SLOT_ICONS: Record<MealSlotKey, ReactElement> = {
@@ -119,10 +120,12 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
 
 // ── Main component ────────────────────────────────────────────────
 interface Props {
-  date: string
+  date:       string
+  onSaved?:   () => void
+  showToast?: (msg: string, type?: ToastType) => void
 }
 
-export default function MealSlotGrid({ date }: Props) {
+export default function MealSlotGrid({ date, onSaved, showToast }: Props) {
   const { entries, totals, saveEntry } = useDailyMeals(date)
   const [modal,    setModal]    = useState<{ slot: MealSlotKey; initData?: Partial<ManualSaveData> } | null>(null)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -141,15 +144,21 @@ export default function MealSlotGrid({ date }: Props) {
   const hasAny = entries.length > 0
 
   async function handleSave(slot: MealSlotKey, data: ManualSaveData) {
-    await saveEntry(slot, {
-      meal_name:   data.meal_name,
-      ingredients: data.ingredients,
-      actual_kcal: data.actual_kcal,
-      actual_prot: data.actual_prot,
-      actual_gluc: data.actual_gluc,
-      actual_lip:  data.actual_lip,
-      source:      'manual',
-    })
+    try {
+      await saveEntry(slot, {
+        meal_name:   data.meal_name,
+        ingredients: data.ingredients,
+        actual_kcal: data.actual_kcal,
+        actual_prot: data.actual_prot,
+        actual_gluc: data.actual_gluc,
+        actual_lip:  data.actual_lip,
+        source:      'manual',
+      })
+      showToast?.('Repas enregistre', 'success')
+      onSaved?.()
+    } catch {
+      showToast?.('Erreur lors de l\'enregistrement', 'error')
+    }
   }
 
   return (

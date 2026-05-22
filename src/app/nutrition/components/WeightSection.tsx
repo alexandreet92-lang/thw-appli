@@ -4,6 +4,7 @@ import { useBodyMetrics, getMetricValue } from '@/hooks/useBodyMetrics'
 import type { BodyMeasurement } from '@/hooks/useBodyMetrics'
 import { useProfile } from '@/hooks/useProfile'
 import WeightChart from './WeightChart'
+import type { ToastType } from '@/hooks/useToast'
 
 // ── Stepper config ────────────────────────────────────────────────
 type StepKey = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg' | 'metabolic_age'
@@ -212,7 +213,11 @@ function HistoryTable({
 }
 
 // ── Main export ───────────────────────────────────────────────────
-export default function WeightSection() {
+interface WeightSectionProps {
+  showToast?: (msg: string, type?: ToastType) => void
+}
+
+export default function WeightSection({ showToast }: WeightSectionProps) {
   const { measurements, loading, addMeasurement, updateMeasurement, deleteMeasurement } = useBodyMetrics()
   const { profile } = useProfile()
   const heightCm = profile?.height_cm ?? null
@@ -248,8 +253,10 @@ export default function WeightSection() {
       setForm({ weight_kg: '', fat_mass_percent: '', muscle_mass_kg: '', metabolic_age: '' })
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 1500)
+      showToast?.('Mesure enregistree', 'success')
     } catch (err) {
       console.error('[WeightSection.handleSave]', err)
+      showToast?.('Erreur lors de l\'enregistrement', 'error')
     } finally {
       setSaving(false)
     }

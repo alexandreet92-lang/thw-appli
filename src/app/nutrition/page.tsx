@@ -19,6 +19,9 @@ import MealTypesSection from './components/MealTypesSection'
 import HabitudesSection from './components/HabitudesSection'
 import { useNutritionHabits } from '@/hooks/useNutritionHabits'
 import MealSlotGrid from './components/MealSlotGrid'
+import ToastContainer from './components/ToastContainer'
+import { useToast } from '@/hooks/useToast'
+import { useDailyMeals } from '@/hooks/useDailyMeals'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
@@ -180,6 +183,12 @@ export default function NutritionPage() {
   const { habits, loading: habitsLoading, addHabit, updateHabit, deleteHabit } = useNutritionHabits()
   const { sessions } = usePlanning()
 
+  // ── Toast system ───────────────────────────────────────────────
+  const { toasts, showToast, dismissToast } = useToast()
+
+  // ── MealSlotGrid totals for Bilan du jour ─────────────────────
+  const { totals: todaySlotTotals, reload: reloadTodaySlots } = useDailyMeals(today)
+
   // ── State ──────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
@@ -338,6 +347,14 @@ export default function NutritionPage() {
     todayMealSet,
   )
 
+  // ── Combined bilan (plan-based + manual slot entries) ──────────
+  const bilanTotals = {
+    kcal: todayMealTotals.kcal + todaySlotTotals.kcal,
+    prot: todayMealTotals.prot + todaySlotTotals.prot,
+    gluc: todayMealTotals.gluc + todaySlotTotals.gluc,
+    lip:  todayMealTotals.lip  + todaySlotTotals.lip,
+  }
+
   // ── Selected date data ─────────────────────────────────────────
   const selectedPlanDay = activePlan?.plan_data?.jours?.find(j => j.date === selectedDate) ?? null
   const selectedLog = dailyLogs.find(l => l.date === selectedDate)
@@ -396,6 +413,8 @@ export default function NutritionPage() {
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
 
   return (
+    <>
+    <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     <div style={{ padding: '0 0 80px' }}>
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 0' }}>
@@ -427,7 +446,7 @@ export default function NutritionPage() {
           <div style={{ display: 'flex', gap: 12, justifyContent: 'space-around', flexWrap: 'wrap' }}>
             <MacroDonut
               label="Calories"
-              consumed={todayMealTotals.kcal}
+              consumed={bilanTotals.kcal}
               objective={todayKcalObj}
               unit="kcal"
               color="#00c8e0"
@@ -435,7 +454,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Proteines"
-              consumed={todayMealTotals.prot}
+              consumed={bilanTotals.prot}
               objective={todayMacroObj.proteines}
               unit="g"
               color="#22c55e"
@@ -443,7 +462,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Glucides"
-              consumed={todayMealTotals.gluc}
+              consumed={bilanTotals.gluc}
               objective={todayMacroObj.glucides}
               unit="g"
               color="#eab308"
@@ -451,7 +470,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Lipides"
-              consumed={todayMealTotals.lip}
+              consumed={bilanTotals.lip}
               objective={todayMacroObj.lipides}
               unit="g"
               color="#f97316"
@@ -636,7 +655,11 @@ export default function NutritionPage() {
               }}
             />
           </div>
-          <MealSlotGrid date={selectedDate} />
+          <MealSlotGrid
+            date={selectedDate}
+            showToast={showToast}
+            onSaved={selectedDate === today ? reloadTodaySlots : undefined}
+          />
         </div>
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -839,7 +862,7 @@ export default function NutritionPage() {
         </div>
 
         {/* Weight section */}
-        <WeightSection />
+        <WeightSection showToast={showToast} />
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
@@ -1167,5 +1190,6 @@ export default function NutritionPage() {
         prefillMessage={aiPrompt || undefined}
       />
     </div>
+    </>
   )
 }

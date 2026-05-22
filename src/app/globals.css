@@ -256,3 +256,24 @@ button:active { transform: scale(0.97); }
 @media (min-width: 768px) {
   .mobile-tab-bar { display: none !important; }
 }
+
+/* ── Toast animations ───────────────────────────────────────────── */
+@keyframes toast-in {
+  0%   { opacity: 0; transform: translateX(-110%); }
+  60%  { transform: translateX(8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  0%   { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-110%); }
+}
+@keyframes progress-bar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+.toast-item {
+  animation: toast-in 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.toast-item.leaving {
+  animation: toast-out 280ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}

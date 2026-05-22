@@ -15,6 +15,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
+import AISidebar from './AISidebar'
+import AIMessageBubble from './AIMessageBubble'
+import AIQuickActionsSheet from './AIQuickActionsSheet'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -18289,8 +18292,7 @@ export default function AIPanel({
     setTimeout(() => areaRef.current?.focus(), 80)
   }
 
-  const selectConv = (c: AIConv) => {
-    // Support rename via HistoryDrawer passing modified conv
+  const selectConv = (c: { id: string; title: string }) => {
     setConvs(prev => prev.map(x => x.id === c.id ? { ...x, title: c.title } : x))
     setActiveId(c.id)
     setActiveFlow(null)
@@ -19399,7 +19401,7 @@ export default function AIPanel({
 
           {/* ── Sidebar desktop (persistante, toujours visible) ── */}
           {isDesktop && (
-            <HistoryDrawer
+            <AISidebar
               persistent
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
@@ -19413,7 +19415,7 @@ export default function AIPanel({
 
           {/* ── Sidebar mobile (overlay) ── */}
           {!isDesktop && histOpen && (
-            <HistoryDrawer
+            <AISidebar
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
@@ -19893,66 +19895,17 @@ export default function AIPanel({
                   >
 
                     {/* Message row */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start', gap: 12,
-                    }}>
-                      {/* Avatar IA — logo modèle */}
-                      {msg.role === 'assistant' && (() => {
-                        const m = msg.modelId ?? 'athena'
-                        const isStreaming = loading && idx === active.msgs.length - 1
-                        const logoSrc = m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'
-                        return (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={logoSrc}
-                            alt={m}
-                            className={isStreaming ? 'ai-logo-spinning' : undefined}
-                            style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, marginTop: 0 }}
-                          />
-                        )
-                      })()}
-
-                      {/* Bulle user / texte IA libre */}
-                      {msg.role === 'user' ? (
-                        <>
-                          <div style={{
-                            maxWidth: '78%',
-                            padding: '10px 16px',
-                            borderRadius: 18,
-                            background: '#3B8FD4',
-                            color: '#fff',
-                          }}>
-                            <span style={{ fontSize: 16, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
-                          </div>
-                          {/* User avatar (D2) */}
-                          <div style={{
-                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                            background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            {userInitials ? (
-                              <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', fontFamily: 'DM Sans,sans-serif', userSelect: 'none' }}>{userInitials}</span>
-                            ) : (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round">
-                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
-                              </svg>
-                            )}
-                          </div>
-                        </>
-                      ) : (() => {
-                        const isStreamingMsg = loading && idx === active.msgs.length - 1
-                        return (
-                          <div style={{
-                            flex: 1, minWidth: 0,
-                            padding: '4px 0',
-                            animation: 'ai_msg_in 0.15s ease both',
-                          }}>
-                            <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
-                          </div>
-                        )
-                      })()}
-                    </div>
+                    <AIMessageBubble
+                      role={msg.role}
+                      modelId={msg.modelId}
+                      userInitials={userInitials}
+                      isStreaming={loading && idx === active.msgs.length - 1}
+                    >
+                      {msg.role === 'user'
+                        ? msg.content
+                        : <TypedText text={msg.content} isStreaming={loading && idx === active.msgs.length - 1} fontFamily={chatFontFamily} />
+                      }
+                    </AIMessageBubble>
                     {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
                     {msg.role === 'assistant' && msg.sessionData && (
                       <div style={{ marginLeft: 34 }}>
@@ -20131,18 +20084,18 @@ export default function AIPanel({
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
-            {/* Plus menu */}
-            {plusOpen && (
-              <PlusMenu
-                onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
-                onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
-                onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
-                onClose={() => setPlusOpen(false)}
-                onCamera={() => cameraRef.current?.click()}
-                onPhotos={() => photosRef.current?.click()}
-                onFiles={() => filesRef.current?.click()}
-              />
-            )}
+            {/* Plus menu — AIQuickActionsSheet */}
+            <AIQuickActionsSheet
+              open={plusOpen}
+              onClose={() => setPlusOpen(false)}
+              isMobile={!isDesktop}
+              onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
+              onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
+              onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f as FlowId) }}
+              onCamera={() => cameraRef.current?.click()}
+              onPhotos={() => photosRef.current?.click()}
+              onFiles={() => filesRef.current?.click()}
+            />
 
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />

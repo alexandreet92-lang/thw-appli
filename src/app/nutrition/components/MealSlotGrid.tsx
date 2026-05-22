@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import type { ReactElement, CSSProperties } from 'react'
 import { useDailyMeals, SLOT_KEYS, SLOT_LABELS, type MealSlotKey, type DailyMealEntry } from '@/hooks/useDailyMeals'
 import MealModal from './MealModal'
+import MealScoreDot from './MealScoreDot'
 import type { ManualSaveData } from './tabs/MealModalManual'
 import type { ToastType } from '@/hooks/useToast'
 
@@ -87,10 +88,13 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
 
   return (
     <div style={{ ...base, alignItems: 'flex-start', justifyContent: 'flex-start', cursor: 'default' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Syne,sans-serif', fontWeight: 700 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Syne,sans-serif', fontWeight: 700, flex: 1 }}>
           {SLOT_LABELS[slot]}
         </span>
+        {entry.actual_kcal != null && (
+          <MealScoreDot calories={entry.actual_kcal} prot={entry.actual_prot ?? 0} fat={entry.actual_lip ?? 0} />
+        )}
         <button onClick={() => onEdit(entry)}
           style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}>
           <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">

@@ -34,8 +34,16 @@ function sumMacros(ingredients: AddedIngredient[]) {
   )
 }
 
-export default function MealModalManual({ initialName = '', onSave }: Props) {
-  const [ingredients,  setIngredients]  = useState<AddedIngredient[]>([])
+export default function MealModalManual({ initialName = '', initialKcal = 0, initialProt = 0, initialGluc = 0, initialLip = 0, onSave }: Props) {
+  const [ingredients, setIngredients] = useState<AddedIngredient[]>(() => {
+    if (initialKcal > 0 || initialProt > 0 || initialGluc > 0 || initialLip > 0) {
+      return [{
+        food: { id: `prefill-${initialName || 'repas'}`, name: initialName || 'Repas', kcal_100g: initialKcal, prot_100g: initialProt, gluc_100g: initialGluc, lip_100g: initialLip },
+        qty: 100,
+      }]
+    }
+    return []
+  })
   const [name,         setName]         = useState(initialName)
   const [scannerOpen,  setScannerOpen]  = useState(false)
   const [saving,       setSaving]       = useState(false)

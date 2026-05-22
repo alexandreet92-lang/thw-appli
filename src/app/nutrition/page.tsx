@@ -22,6 +22,7 @@ import MealSlotGrid from './components/MealSlotGrid'
 import type { MealSavedData } from './components/MealSlotGrid'
 import DailyBilan from './components/DailyBilan'
 import MealConfirmCard from './components/MealConfirmCard'
+import WeeklySummary from './components/WeeklySummary'
 import ToastContainer from './components/ToastContainer'
 import { useToast } from '@/hooks/useToast'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
@@ -788,6 +789,31 @@ export default function NutritionPage() {
                 </div>
                 <style>{`@media (max-width:480px){.hist-summary-grid{grid-template-columns:repeat(2,1fr)!important}}`}</style>
               </>
+            )
+          })()}
+
+          {/* Weekly AI summary (7j only) */}
+          {histRange === '7j' && (() => {
+            const ws = getWeekStart(weekOffset)
+            const weekData = Array.from({ length: 7 }, (_, i) => {
+              const date    = addDays(ws, i)
+              const log     = dailyLogs.find(l => l.date === date)
+              const planDay = activePlan?.plan_data?.jours?.find(j => j.date === date)
+              return {
+                date,
+                kcal:   (log?.kcal_consommees ?? 0) + (mealLogTotals[date]?.kcal ?? 0),
+                target: planDay?.kcal ?? activePlan?.plan_data?.calories_low ?? 0,
+                prot:   log?.proteines ?? 0,
+                gluc:   log?.glucides  ?? 0,
+                lip:    log?.lipides   ?? 0,
+              }
+            })
+            return (
+              <WeeklySummary
+                key={weekOffset}
+                weekData={weekData}
+                planType={activePlan?.type}
+              />
             )
           })()}
 

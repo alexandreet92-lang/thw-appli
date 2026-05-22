@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import MealModalManual, { type ManualSaveData } from './tabs/MealModalManual'
 import MealModalTemplates, { type LocalTemplate } from './tabs/MealModalTemplates'
 import MealModalPhotoAI from './tabs/MealModalPhotoAI'
+import FoodSuggestions from './tabs/FoodSuggestions'
 import type { MealSlotKey, MealIngredient } from '@/hooks/useDailyMeals'
 import { SLOT_LABELS } from '@/hooks/useDailyMeals'
 
@@ -115,15 +116,21 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
 
         {/* Tab content */}
         {tab === 'manual' && (
-          <MealModalManual
-            key={JSON.stringify(seed)}
-            initialName={seed?.meal_name}
-            initialKcal={seed?.actual_kcal}
-            initialProt={seed?.actual_prot}
-            initialGluc={seed?.actual_gluc}
-            initialLip={seed?.actual_lip}
-            initialIngredients={seed?.ingredients}
-            onSave={async d => { await onSave(d); close() }} />
+          <>
+            <FoodSuggestions
+              slot={slot}
+              onSelect={meal => setSeed({ meal_name: meal.meal_name, actual_kcal: meal.kcal, actual_prot: meal.prot, actual_gluc: meal.gluc, actual_lip: meal.lip })}
+            />
+            <MealModalManual
+              key={JSON.stringify(seed)}
+              initialName={seed?.meal_name}
+              initialKcal={seed?.actual_kcal}
+              initialProt={seed?.actual_prot}
+              initialGluc={seed?.actual_gluc}
+              initialLip={seed?.actual_lip}
+              initialIngredients={seed?.ingredients}
+              onSave={async d => { await onSave(d); close() }} />
+          </>
         )}
         {tab === 'templates' && (
           <MealModalTemplates slot={slot} onSelect={handleSelectTemplate} />

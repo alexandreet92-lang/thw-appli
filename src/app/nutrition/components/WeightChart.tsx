@@ -90,7 +90,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
   const hRow = hover !== null ? data[hover] : null
   const hVal = hRow ? getMetricValue(hRow, metric, heightCm) : null
   const zoneW = n > 1 ? chartW / (n - 1) : chartW
-  const gradId = `wg_${metric}`
+  const gradId = `gradient-${metric}`
 
   return (
     <div>

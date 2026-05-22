@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__eb8b5410-2937-4d4a-a382-7094a1865c25__list_projects",
+      "mcp__eb8b5410-2937-4d4a-a382-7094a1865c25__execute_sql",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Alex\\\\Documents\\\\thw-appli-main\\\\src\\\\app\\\\api\\\\strava\\\\activities\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"ok\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Alex\\\\Documents\\\\thw-appli-main\\\\src\\\\app\\\\api\\\\strava\\\\import-history\")",
+      "Bash(touch \"C:\\\\Users\\\\Alex\\\\Documents\\\\thw-appli-main\\\\src\\\\app\\\\api\\\\strava\\\\import-history\\\\route.ts\")",
+      "Bash(npx tsc *)",
+      "mcp__eb8b5410-2937-4d4a-a382-7094a1865c25__apply_migration"
+    ]
+  }
+}

@@ -62,8 +62,8 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
 
         {/* Bars */}
         {entries.map((e, i) => {
-          const ph = Math.max(toH(e.planned), e.planned > 0 ? 1 : 0)
-          const ch = Math.max(toH(e.consumed), e.consumed > 0 ? 1 : 0)
+          const ph = Math.max(toH(e.planned), e.planned > 0 ? 3 : 0)
+          const ch = Math.max(toH(e.consumed), 3)
           const by = barBaseY()
           const isHov = hover === i
           return (

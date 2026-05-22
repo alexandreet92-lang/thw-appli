@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useBodyMetrics, getMetricValue } from '@/hooks/useBodyMetrics'
 import type { BodyMeasurement } from '@/hooks/useBodyMetrics'
 import { useProfile } from '@/hooks/useProfile'
@@ -14,7 +14,7 @@ const STEPPERS: { key: StepKey; label: string; unit: string; step: number; start
   { key: 'muscle_mass_kg',   label: 'Masse musc.',      unit: 'kg',  step: 0.1, start: 60,  dec: 1, optional: true  },
   { key: 'metabolic_age',    label: 'Age metabolique',  unit: 'ans', step: 1,   start: 35,  dec: 0, optional: true  },
 ]
-type Period = '3m' | '6m' | '1y' | '5y'
+const WINDOW_SIZE = 8
 
 function roundDec(n: number, dec: number) {
   return Math.round(n * 10 ** dec) / 10 ** dec
@@ -223,17 +223,33 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
   const heightCm = profile?.height_cm ?? null
   const targetWeight = profile?.weight_kg ?? null
 
-  const [period, setPeriod] = useState<Period>('3m')
+  const [windowEnd, setWindowEnd] = useState<number>(-1)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [form, setForm] = useState<Record<StepKey, string>>({ weight_kg: '', fat_mass_percent: '', muscle_mass_kg: '', metabolic_age: '' })
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const touchStartX = useRef<number | null>(null)
 
-  const filtered = useMemo(() => {
-    const daysBack: Record<Period, number> = { '3m': 90, '6m': 180, '1y': 365, '5y': 1825 }
-    const cutoff = new Date(Date.now() - daysBack[period] * 86400000).toISOString().split('T')[0]
-    return measurements.filter(m => m.measured_at >= cutoff)
-  }, [measurements, period])
+  const sorted = useMemo(
+    () => [...measurements].sort((a, b) => a.measured_at.localeCompare(b.measured_at)),
+    [measurements],
+  )
+
+  // Reset windowEnd when measurements change (new entry added)
+  useEffect(() => {
+    if (sorted.length > 0) setWindowEnd(sorted.length - 1)
+  }, [sorted.length])
+
+  const effectiveEnd  = windowEnd < 0 ? sorted.length - 1 : windowEnd
+  const windowStart   = Math.max(0, effectiveEnd - WINDOW_SIZE + 1)
+  const visibleData   = sorted.slice(windowStart, effectiveEnd + 1)
+  const canGoBack     = windowStart > 0
+  const canGoForward  = effectiveEnd < sorted.length - 1
+  const totalDots     = Math.ceil(sorted.length / WINDOW_SIZE) || 1
+  const currentDot    = Math.floor(effectiveEnd / WINDOW_SIZE)
+
+  function goBack()    { if (canGoBack)    setWindowEnd(e => Math.max(WINDOW_SIZE - 1, e - WINDOW_SIZE)) }
+  function goForward() { if (canGoForward) setWindowEnd(e => Math.min(sorted.length - 1, e + WINDOW_SIZE)) }
 
   const last = [...measurements].sort((a, b) => b.measured_at.localeCompare(a.measured_at))[0]
 
@@ -304,29 +320,71 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
         </div>
       )}
 
-      {/* Period toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-        {([['3m', '3 mois'], ['6m', '6 mois'], ['1y', '1 an'], ['5y', '5 ans']] as [Period, string][]).map(([key, label]) => (
-          <button key={key} onClick={() => setPeriod(key)}
-            style={{
-              padding: '5px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 11, fontFamily: 'Syne,sans-serif',
-              border: period === key ? 'none' : '1px solid var(--border)',
-              background: period === key ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'transparent',
-              color: period === key ? '#fff' : 'var(--text-dim)',
-              fontWeight: period === key ? 700 : 400,
-            }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Chart */}
+      {/* Chart with sliding window navigation */}
       {loading ? (
         <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
           Chargement...
         </div>
       ) : (
-        <WeightChart measurements={filtered} heightCm={heightCm} targetWeight={targetWeight} />
+        <div>
+          {/* Chart + desktop chevrons */}
+          <div style={{ position: 'relative' }}
+            onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+            onTouchEnd={e => {
+              if (touchStartX.current === null) return
+              const delta = e.changedTouches[0].clientX - touchStartX.current
+              touchStartX.current = null
+              if (delta > 50) goBack()
+              else if (delta < -50) goForward()
+            }}>
+            {/* Left chevron */}
+            <button
+              onClick={goBack} disabled={!canGoBack}
+              style={{
+                position: 'absolute', left: -12, top: '50%', transform: 'translateY(-50%)',
+                zIndex: 2, width: 28, height: 28, borderRadius: '50%',
+                background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                cursor: canGoBack ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: canGoBack ? 1 : 0.3, transition: 'opacity 0.15s',
+              }}>
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+
+            <WeightChart measurements={visibleData} heightCm={heightCm} targetWeight={targetWeight} />
+
+            {/* Right chevron */}
+            <button
+              onClick={goForward} disabled={!canGoForward}
+              style={{
+                position: 'absolute', right: -12, top: '50%', transform: 'translateY(-50%)',
+                zIndex: 2, width: 28, height: 28, borderRadius: '50%',
+                background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                cursor: canGoForward ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: canGoForward ? 1 : 0.3, transition: 'opacity 0.15s',
+              }}>
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Dots indicator */}
+          {totalDots > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 10 }}>
+              {Array.from({ length: totalDots }, (_, i) => (
+                <div key={i}
+                  onClick={() => setWindowEnd(Math.min(sorted.length - 1, i * WINDOW_SIZE + WINDOW_SIZE - 1))}
+                  style={{
+                    width: i === currentDot ? 16 : 6, height: 6, borderRadius: 3,
+                    background: i === currentDot ? '#06B6D4' : 'var(--border)',
+                    cursor: 'pointer', transition: 'width 0.2s, background 0.2s',
+                  }} />
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Form */}

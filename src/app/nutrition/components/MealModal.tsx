@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import MealModalManual, { type ManualSaveData } from './tabs/MealModalManual'
 import MealModalTemplates, { type LocalTemplate } from './tabs/MealModalTemplates'
-import MealModalPhotoAI, { type PhotoMacroResult } from './tabs/MealModalPhotoAI'
+import MealModalPhotoAI from './tabs/MealModalPhotoAI'
 import type { MealSlotKey, MealIngredient } from '@/hooks/useDailyMeals'
 import { SLOT_LABELS } from '@/hooks/useDailyMeals'
 
@@ -26,7 +26,15 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
   const [tab,        setTab]        = useState<Tab>('manual')
   const [visible,    setVisible]    = useState(false)
   const [seed,       setSeed]       = useState<Partial<ManualSaveData> | undefined>(initialData)
+  const [isDesktop,  setIsDesktop]  = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
@@ -49,13 +57,8 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
     setTab('manual')
   }
 
-  function handlePhotoAdjust(r: PhotoMacroResult) {
-    setSeed({ actual_kcal: r.kcal, actual_prot: r.prot, actual_gluc: r.gluc, actual_lip: r.lip })
-    setTab('manual')
-  }
-
-  async function handlePhotoUse(r: PhotoMacroResult) {
-    await onSave({ meal_name: 'Repas photo', ingredients: [], actual_kcal: r.kcal, actual_prot: r.prot, actual_gluc: r.gluc, actual_lip: r.lip })
+  async function handlePhotoSave(data: ManualSaveData) {
+    await onSave(data)
     close()
   }
 
@@ -65,19 +68,26 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
     <div ref={overlayRef}
       onClick={e => { if (e.target === overlayRef.current) close() }}
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.65)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        display: 'flex', alignItems: isDesktop ? 'center' : 'flex-end', justifyContent: 'center',
+        padding: isDesktop ? '20px' : '0',
         transition: 'opacity 0.22s ease', opacity: visible ? 1 : 0 }}>
       <div style={{
-        background: 'var(--bg-card)', borderRadius: '20px 20px 0 0',
+        background: 'var(--bg-card)',
+        borderRadius: isDesktop ? 18 : '20px 20px 0 0',
         width: '100%', maxWidth: 560,
         padding: '20px 20px 32px',
         maxHeight: '92vh', overflowY: 'auto',
-        transform: visible ? 'translateY(0) scale(1)' : 'translateY(100%) scale(0.97)',
+        transform: visible
+          ? 'translateY(0) scale(1)'
+          : isDesktop ? 'scale(0.96) translateY(8px)' : 'translateY(100%) scale(0.97)',
         transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.35)',
+        boxShadow: isDesktop ? '0 8px 48px rgba(0,0,0,0.40)' : '0 -8px 40px rgba(0,0,0,0.35)',
+        animation: isDesktop && visible ? 'modal-in 220ms ease both' : undefined,
       }}>
-        {/* Drag handle */}
-        <div style={{ width: 40, height: 4, background: 'var(--border)', borderRadius: 2, margin: '0 auto 16px' }} />
+        {/* Drag handle — mobile only */}
+        {!isDesktop && (
+          <div style={{ width: 40, height: 4, background: 'var(--border)', borderRadius: 2, margin: '0 auto 16px' }} />
+        )}
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -119,7 +129,7 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
           <MealModalTemplates slot={slot} onSelect={handleSelectTemplate} />
         )}
         {tab === 'photo' && (
-          <MealModalPhotoAI onUse={handlePhotoUse} onAdjust={handlePhotoAdjust} />
+          <MealModalPhotoAI onSave={handlePhotoSave} />
         )}
       </div>
     </div>,

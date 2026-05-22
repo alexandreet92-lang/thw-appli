@@ -1,109 +1,285 @@
 'use client'
-import { useState, useRef } from 'react'
-import MacroDonuts from '../MacroDonuts'
+import { useState, useRef, useEffect } from 'react'
+import type { ManualSaveData } from './MealModalManual'
 
-export interface PhotoMacroResult {
-  kcal:       number
-  prot:       number
-  gluc:       number
-  lip:        number
-  confidence: number
+// ── Types ─────────────────────────────────────────────────────────
+interface ApiItem { name: string; qty: number; unit: string; kcal: number }
+interface ApiResult {
+  meal_name: string
+  items:     ApiItem[]
+  totals:    { kcal: number; prot: number; gluc: number; lip: number }
+  confidence: 'low' | 'medium' | 'high'
+  notes?:    string
+}
+interface EditItem {
+  name:      string
+  qty:       number
+  unit:      string
+  kcal:      number
+  baseQty:   number
+  baseKcal:  number
 }
 
 interface Props {
-  onUse:    (r: PhotoMacroResult) => Promise<void>
-  onAdjust: (r: PhotoMacroResult) => void
+  onSave: (data: ManualSaveData) => Promise<void>
 }
 
-export default function MealModalPhotoAI({ onUse, onAdjust }: Props) {
-  const [file,    setFile]    = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [result,  setResult]  = useState<PhotoMacroResult | null>(null)
-  const [error,   setError]   = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+// ── Image resize ──────────────────────────────────────────────────
+async function resizeImage(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = ev => {
+      const img = new Image()
+      img.onerror = reject
+      img.onload = () => {
+        const MAX = 1024
+        let w = img.width, h = img.height
+        if (w > MAX || h > MAX) {
+          if (w >= h) { h = Math.round(h * MAX / w); w = MAX }
+          else { w = Math.round(w * MAX / h); h = MAX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { reject(new Error('canvas ctx null')); return }
+        ctx.drawImage(img, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
+        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' })
+      }
+      img.src = ev.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+// ── Confidence badge ──────────────────────────────────────────────
+function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
+  const cfg = {
+    low:    { label: 'Confiance faible',  bg: 'rgba(239,68,68,0.12)',  color: '#EF4444' },
+    medium: { label: 'Confiance moyenne', bg: 'rgba(234,179,8,0.12)',  color: '#EAB308' },
+    high:   { label: 'Confiance haute',   bg: 'rgba(34,197,94,0.12)',  color: '#22C55E' },
+  }[level]
+  return (
+    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, background: cfg.bg, color: cfg.color }}>
+      {cfg.label}
+    </span>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────
+export default function MealModalPhotoAI({ onSave }: Props) {
+  const [preview,   setPreview]   = useState<string | null>(null)
+  const [fileData,  setFileData]  = useState<File | null>(null)
+  const [loading,   setLoading]   = useState(false)
+  const [result,    setResult]    = useState<ApiResult | null>(null)
+  const [mealName,  setMealName]  = useState('')
+  const [items,     setItems]     = useState<EditItem[]>([])
+  const [error,     setError]     = useState<string | null>(null)
+  const [saving,    setSaving]    = useState(false)
+  const [isMobile,  setIsMobile]  = useState(false)
+  const [dragging,  setDragging]  = useState(false)
+  const cameraRef  = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   function handleFile(f: File) {
-    setFile(f)
+    setFileData(f)
     setPreview(URL.createObjectURL(f))
-    setResult(null)
-    setError(null)
+    setResult(null); setItems([]); setError(null)
   }
 
   async function analyze() {
-    if (!file) return
-    setLoading(true)
-    setError(null)
+    if (!fileData) return
+    setLoading(true); setError(null)
     try {
-      const fd = new FormData()
-      fd.append('image', file)
-      const res = await fetch('/api/analyze-meal-photo', { method: 'POST', body: fd })
+      const { base64, mimeType } = await resizeImage(fileData)
+      const res = await fetch('/api/analyze-meal-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, mimeType }),
+      })
       if (!res.ok) throw new Error(await res.text())
-      const data = await res.json() as PhotoMacroResult
+      const data = await res.json() as ApiResult
       setResult(data)
+      setMealName(data.meal_name)
+      setItems(data.items.map(it => ({
+        name: it.name, qty: it.qty, unit: it.unit, kcal: it.kcal,
+        baseQty: it.qty || 1, baseKcal: it.kcal,
+      })))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur analyse')
     } finally { setLoading(false) }
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div
-        onClick={() => inputRef.current?.click()}
-        onDragOver={e => e.preventDefault()}
-        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
-        style={{ border: '2px dashed var(--border)', borderRadius: 12, padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--bg-card2)', minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-        {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="preview" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8, objectFit: 'cover' }} />
+  function updateItemQty(idx: number, newQty: number) {
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it
+      const ratio = it.baseQty > 0 ? newQty / it.baseQty : 1
+      return { ...it, qty: newQty, kcal: Math.round(it.baseKcal * ratio) }
+    }))
+  }
+
+  function updateItemName(idx: number, name: string) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, name } : it))
+  }
+
+  function updateItemKcal(idx: number, kcal: number) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, kcal } : it))
+  }
+
+  const totalKcal = items.reduce((s, it) => s + it.kcal, 0)
+  const originalKcal = result?.totals.kcal ?? 1
+  const ratio = originalKcal > 0 ? totalKcal / originalKcal : 1
+
+  async function handleSave() {
+    if (!result) return
+    setSaving(true)
+    try {
+      await onSave({
+        meal_name:   mealName || result.meal_name,
+        ingredients: items.map(it => ({ name: it.name, qty: `${it.qty}`, unit: it.unit })),
+        actual_kcal: totalKcal,
+        actual_prot: Math.round(result.totals.prot * ratio),
+        actual_gluc: Math.round(result.totals.gluc * ratio),
+        actual_lip:  Math.round(result.totals.lip  * ratio),
+      })
+    } finally { setSaving(false) }
+  }
+
+  function reset() {
+    setPreview(null); setFileData(null); setResult(null)
+    setItems([]); setMealName(''); setError(null)
+  }
+
+  // ── Upload state ─────────────────────────────────────────────────
+  if (!result) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Upload zone */}
+        {isMobile ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => cameraRef.current?.click()}
+              style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Camera
+            </button>
+            <button onClick={() => galleryRef.current?.click()}
+              style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="m21 15-5-5L5 21"/>
+              </svg>
+              Galerie
+            </button>
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+            <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+          </div>
         ) : (
-          <>
-            <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="3" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <path d="m21 15-5-5L5 21" />
+          <div
+            onDragOver={e => { e.preventDefault(); setDragging(true) }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+            onClick={() => galleryRef.current?.click()}
+            style={{ border: `2px dashed ${dragging ? '#00c8e0' : 'var(--border)'}`, borderRadius: 12, padding: 28, textAlign: 'center', cursor: 'pointer', background: dragging ? 'rgba(0,200,224,0.05)' : 'var(--bg-card2)', transition: 'border-color 0.15s, background 0.15s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="m21 15-5-5L5 21"/>
             </svg>
             <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Glisser une photo ou cliquer</span>
-          </>
+            <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+          </div>
         )}
+
+        {/* Preview */}
+        {preview && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="preview" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8, objectFit: 'cover', alignSelf: 'center' }} />
+        )}
+
+        {/* Analyze button */}
+        <button onClick={() => void analyze()} disabled={!fileData || loading}
+          style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: fileData && !loading ? 'linear-gradient(90deg,#8B5CF6,#06B6D4)' : 'var(--border)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: fileData && !loading ? 'pointer' : 'default', fontFamily: 'Syne,sans-serif' }}>
+          {loading ? 'Analyse en cours...' : 'Analyser avec IA'}
+        </button>
+
+        {error && <div style={{ fontSize: 12, color: '#ef4444', textAlign: 'center' }}>{error}</div>}
       </div>
-      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+    )
+  }
 
-      <button onClick={() => void analyze()} disabled={!file || loading}
-        style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: file && !loading ? 'linear-gradient(90deg,#8B5CF6,#06B6D4)' : 'var(--border)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: file && !loading ? 'pointer' : 'default', fontFamily: 'Syne,sans-serif' }}>
-        {loading ? 'Analyse en cours...' : 'Analyser avec IA'}
-      </button>
+  // ── Result state ──────────────────────────────────────────────────
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <ConfidenceBadge level={result.confidence} />
+        <button onClick={reset}
+          style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          Recommencer
+        </button>
+      </div>
 
-      {error && (
-        <div style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', padding: '4px 0' }}>{error}</div>
-      )}
+      {/* Meal name */}
+      <input value={mealName} onChange={e => setMealName(e.target.value)}
+        style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
 
-      {result && (
-        <div style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>Resultat IA</span>
-            <span style={{
-              fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700,
-              background: result.confidence > 0.7 ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
-              color:      result.confidence > 0.7 ? '#22C55E' : '#EAB308',
-            }}>
-              {Math.round(result.confidence * 100)}% confiance
-            </span>
-          </div>
-          <MacroDonuts kcal={result.kcal} prot={result.prot} gluc={result.gluc} lip={result.lip} size={52} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-            <button onClick={() => void onUse(result)}
-              style={{ padding: '8px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>
-              Utiliser ces valeurs
-            </button>
-            <button onClick={() => onAdjust(result)}
-              style={{ padding: '8px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-              Ajuster manuellement
-            </button>
-          </div>
+      {/* Items list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
+          {['Aliment', 'Qte', 'Kcal'].map(h => (
+            <span key={h} style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'DM Sans,sans-serif' }}>{h}</span>
+          ))}
         </div>
+        {items.map((it, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, alignItems: 'center' }}>
+            <input value={it.name} onChange={e => updateItemName(i, e.target.value)}
+              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: 'var(--text)', outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <input type="number" value={it.qty} min={0} onChange={e => updateItemQty(i, Number(e.target.value))}
+                style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 5px', fontSize: 11, color: 'var(--text)', outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' }} />
+              <span style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{it.unit}</span>
+            </div>
+            <input type="number" value={it.kcal} min={0} onChange={e => updateItemKcal(i, Number(e.target.value))}
+              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: '#00c8e0', outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' }} />
+          </div>
+        ))}
+        {/* Totals row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>Total</span>
+          <span />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#00c8e0', fontFamily: 'DM Mono,monospace', textAlign: 'center' }}>{totalKcal}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', paddingLeft: 2 }}>
+          <span>P {Math.round(result.totals.prot * ratio)}g</span>
+          <span>G {Math.round(result.totals.gluc * ratio)}g</span>
+          <span>L {Math.round(result.totals.lip  * ratio)}g</span>
+        </div>
+      </div>
+
+      {result.notes && (
+        <div style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>{result.notes}</div>
       )}
+
+      {/* Save button */}
+      <button onClick={() => void handleSave()} disabled={saving}
+        style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: saving ? 'var(--border)' : 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', fontFamily: 'Syne,sans-serif' }}>
+        {saving ? 'Enregistrement...' : 'Enregistrer ce repas'}
+      </button>
     </div>
   )
 }

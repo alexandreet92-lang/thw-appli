@@ -22,6 +22,7 @@ import MealSlotGrid from './components/MealSlotGrid'
 import ToastContainer from './components/ToastContainer'
 import { useToast } from '@/hooks/useToast'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
+import { useMealLogRange } from '@/hooks/useMealLogRange'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ══════════════════════════════════════════════════════════════════
@@ -220,6 +221,12 @@ export default function NutritionPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  // ── Historique date range for combined meal log totals ────────
+  const histDays      = histRange === '7j' ? 7 : histRange === '14j' ? 14 : 28
+  const histStartDate = histRange === '7j' ? getWeekStart(weekOffset) : addDays(today, -(histDays - 1))
+  const histEndDate   = addDays(histStartDate, histDays - 1)
+  const { totals: mealLogTotals } = useMealLogRange(histStartDate, histEndDate)
 
   // ── Meal logs for today (Bilan du jour) ───────────────────────
   const { logs: todayMealLogs, reload: reloadTodayLogs } = useMealLogs(activePlan?.id, today)
@@ -821,16 +828,17 @@ export default function NutritionPage() {
 
           {/* Kcal bar chart */}
           {dataFilters.includes('kcal') && (() => {
-            const days = histRange === '7j' ? 7 : histRange === '14j' ? 14 : 28
-            const startDate = histRange === '7j' ? getWeekStart(weekOffset) : addDays(today, -(days - 1))
+            const days = histDays
+            const startDate = histStartDate
             const entries = Array.from({ length: days }, (_, i) => {
               const date = addDays(startDate, i)
               const log = dailyLogs.find(l => l.date === date)
+              const slotKcal = mealLogTotals[date]?.kcal ?? 0
               const planDay = activePlan?.plan_data?.jours?.find(j => j.date === date)
               return {
                 date,
                 label: formatDate(date),
-                consumed: log?.kcal_consommees ?? 0,
+                consumed: (log?.kcal_consommees ?? 0) + slotKcal,
                 planned: planDay?.kcal ?? activePlan?.plan_data?.calories_low ?? 0,
               }
             })

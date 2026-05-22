@@ -5,19 +5,19 @@ import type { ManualSaveData } from './MealModalManual'
 // ── Types ─────────────────────────────────────────────────────────
 interface ApiItem { name: string; qty: number; unit: string; kcal: number }
 interface ApiResult {
-  meal_name: string
-  items:     ApiItem[]
-  totals:    { kcal: number; prot: number; gluc: number; lip: number }
+  meal_name:  string
+  items:      ApiItem[]
+  totals:     { kcal: number; prot: number; gluc: number; lip: number }
   confidence: 'low' | 'medium' | 'high'
-  notes?:    string
+  notes?:     string
 }
 interface EditItem {
-  name:      string
-  qty:       number
-  unit:      string
-  kcal:      number
-  baseQty:   number
-  baseKcal:  number
+  name:     string
+  qty:      number
+  unit:     string
+  kcal:     number
+  baseQty:  number
+  baseKcal: number
 }
 
 interface Props {
@@ -44,8 +44,7 @@ async function resizeImage(file: File): Promise<{ base64: string; mimeType: stri
         const ctx = canvas.getContext('2d')
         if (!ctx) { reject(new Error('canvas ctx null')); return }
         ctx.drawImage(img, 0, 0, w, h)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
-        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' })
+        resolve({ base64: canvas.toDataURL('image/jpeg', 0.82).split(',')[1], mimeType: 'image/jpeg' })
       }
       img.src = ev.target?.result as string
     }
@@ -67,18 +66,42 @@ function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
   )
 }
 
+// ── Overlay spinner ───────────────────────────────────────────────
+function OverlaySpinner() {
+  return (
+    <>
+      <style>{`@keyframes _spin{to{transform:rotate(360deg)}}`}</style>
+      <svg width={32} height={32} viewBox="0 0 32 32" fill="none"
+        style={{ animation: '_spin 0.75s linear infinite', display: 'block' }}>
+        <circle cx={16} cy={16} r={13} stroke="rgba(255,255,255,0.25)" strokeWidth={3} />
+        <path d="M16 3a13 13 0 0 1 13 13" stroke="white" strokeWidth={3} strokeLinecap="round" />
+      </svg>
+    </>
+  )
+}
+
+// ── Warning icon ──────────────────────────────────────────────────
+function IconWarning() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" style={{ flexShrink: 0 }}>
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      <line x1={12} y1={9} x2={12} y2={13} />
+      <line x1={12} y1={17} x2={12.01} y2={17} />
+    </svg>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────
 export default function MealModalPhotoAI({ onSave }: Props) {
-  const [preview,   setPreview]   = useState<string | null>(null)
-  const [fileData,  setFileData]  = useState<File | null>(null)
-  const [loading,   setLoading]   = useState(false)
-  const [result,    setResult]    = useState<ApiResult | null>(null)
-  const [mealName,  setMealName]  = useState('')
-  const [items,     setItems]     = useState<EditItem[]>([])
-  const [error,     setError]     = useState<string | null>(null)
-  const [saving,    setSaving]    = useState(false)
-  const [isMobile,  setIsMobile]  = useState(false)
-  const [dragging,  setDragging]  = useState(false)
+  const [preview,  setPreview]  = useState<string | null>(null)
+  const [loading,  setLoading]  = useState(false)
+  const [result,   setResult]   = useState<ApiResult | null>(null)
+  const [mealName, setMealName] = useState('')
+  const [items,    setItems]    = useState<EditItem[]>([])
+  const [error,    setError]    = useState<string | null>(null)
+  const [saving,   setSaving]   = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const cameraRef  = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
 
@@ -89,17 +112,13 @@ export default function MealModalPhotoAI({ onSave }: Props) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  function handleFile(f: File) {
-    setFileData(f)
+  // ── Auto-analyse on file select ───────────────────────────────
+  async function handleFile(f: File) {
     setPreview(URL.createObjectURL(f))
     setResult(null); setItems([]); setError(null)
-  }
-
-  async function analyze() {
-    if (!fileData) return
-    setLoading(true); setError(null)
+    setLoading(true)
     try {
-      const { base64, mimeType } = await resizeImage(fileData)
+      const { base64, mimeType } = await resizeImage(f)
       const res = await fetch('/api/analyze-meal-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,11 +132,32 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         name: it.name, qty: it.qty, unit: it.unit, kcal: it.kcal,
         baseQty: it.qty || 1, baseKcal: it.kcal,
       })))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur analyse')
+    } catch {
+      setError('Analyse impossible. Reessaye avec une photo plus nette.')
     } finally { setLoading(false) }
   }
 
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''   // allow re-selecting same file
+    if (f) void handleFile(f)
+  }
+
+  function reset() {
+    setPreview(null); setResult(null)
+    setItems([]); setMealName(''); setError(null); setLoading(false)
+  }
+
+  function changePhoto() {
+    reset()
+    // Inputs are always in DOM — open appropriate picker
+    requestAnimationFrame(() => {
+      if (isMobile) cameraRef.current?.click()
+      else galleryRef.current?.click()
+    })
+  }
+
+  // ── Item edit helpers ─────────────────────────────────────────
   function updateItemQty(idx: number, newQty: number) {
     setItems(prev => prev.map((it, i) => {
       if (i !== idx) return it
@@ -125,18 +165,16 @@ export default function MealModalPhotoAI({ onSave }: Props) {
       return { ...it, qty: newQty, kcal: Math.round(it.baseKcal * ratio) }
     }))
   }
-
   function updateItemName(idx: number, name: string) {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, name } : it))
   }
-
   function updateItemKcal(idx: number, kcal: number) {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, kcal } : it))
   }
 
-  const totalKcal = items.reduce((s, it) => s + it.kcal, 0)
+  const totalKcal    = items.reduce((s, it) => s + it.kcal, 0)
   const originalKcal = result?.totals.kcal ?? 1
-  const ratio = originalKcal > 0 ? totalKcal / originalKcal : 1
+  const ratio        = originalKcal > 0 ? totalKcal / originalKcal : 1
 
   async function handleSave() {
     if (!result) return
@@ -153,20 +191,23 @@ export default function MealModalPhotoAI({ onSave }: Props) {
     } finally { setSaving(false) }
   }
 
-  function reset() {
-    setPreview(null); setFileData(null); setResult(null)
-    setItems([]); setMealName(''); setError(null)
-  }
+  // ── Persistent hidden inputs (always in DOM) ──────────────────
+  const hiddenInputs = (
+    <>
+      <input ref={cameraRef}  type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onInputChange} />
+      <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onInputChange} />
+    </>
+  )
 
-  // ── Upload state ─────────────────────────────────────────────────
-  if (!result) {
+  // ── Phase 1 : no photo selected ───────────────────────────────
+  if (!preview && !result) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Upload zone */}
+        {hiddenInputs}
         {isMobile ? (
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => cameraRef.current?.click()}
-              style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              style={{ flex: 1, padding: '14px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                 <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                 <circle cx="12" cy="13" r="4"/>
@@ -174,7 +215,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
               Camera
             </button>
             <button onClick={() => galleryRef.current?.click()}
-              style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              style={{ flex: 1, padding: '14px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                 <rect x="3" y="3" width="18" height="18" rx="3"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -182,49 +223,87 @@ export default function MealModalPhotoAI({ onSave }: Props) {
               </svg>
               Galerie
             </button>
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-            <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
           </div>
         ) : (
           <div
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
-            onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+            onDrop={e => {
+              e.preventDefault(); setDragging(false)
+              const f = e.dataTransfer.files[0]; if (f) void handleFile(f)
+            }}
             onClick={() => galleryRef.current?.click()}
-            style={{ border: `2px dashed ${dragging ? '#00c8e0' : 'var(--border)'}`, borderRadius: 12, padding: 28, textAlign: 'center', cursor: 'pointer', background: dragging ? 'rgba(0,200,224,0.05)' : 'var(--bg-card2)', transition: 'border-color 0.15s, background 0.15s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            style={{
+              border: `2px dashed ${dragging ? '#00c8e0' : 'var(--border)'}`,
+              borderRadius: 12, padding: 32, textAlign: 'center', cursor: 'pointer',
+              background: dragging ? 'rgba(0,200,224,0.05)' : 'var(--bg-card2)',
+              transition: 'border-color 0.15s, background 0.15s',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+            }}>
             <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round">
               <rect x="3" y="3" width="18" height="18" rx="3"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="m21 15-5-5L5 21"/>
             </svg>
             <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Glisser une photo ou cliquer</span>
-            <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
           </div>
         )}
-
-        {/* Preview */}
-        {preview && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="preview" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8, objectFit: 'cover', alignSelf: 'center' }} />
-        )}
-
-        {/* Analyze button */}
-        <button onClick={() => void analyze()} disabled={!fileData || loading}
-          style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: fileData && !loading ? 'linear-gradient(90deg,#8B5CF6,#06B6D4)' : 'var(--border)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: fileData && !loading ? 'pointer' : 'default', fontFamily: 'Syne,sans-serif' }}>
-          {loading ? 'Analyse en cours...' : 'Analyser avec IA'}
-        </button>
-
-        {error && <div style={{ fontSize: 12, color: '#ef4444', textAlign: 'center' }}>{error}</div>}
       </div>
     )
   }
 
-  // ── Result state ──────────────────────────────────────────────────
+  // ── Phase 2 : photo selected — loading or error ───────────────
+  if (!result) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {hiddenInputs}
+
+        {/* Preview + overlay */}
+        <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', lineHeight: 0 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview!} alt="preview"
+            style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block', borderRadius: 12 }} />
+
+          {loading && (
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.52)',
+              borderRadius: 12, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 10,
+            }}>
+              <OverlaySpinner />
+              <p style={{ color: '#fff', fontSize: 12, fontWeight: 500, fontFamily: 'DM Sans,sans-serif', margin: 0 }}>
+                Analyse en cours...
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Error message */}
+        {error && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }}>
+              <IconWarning />
+              {error}
+            </div>
+            <button onClick={changePhoto}
+              style={{
+                padding: '7px 0', borderRadius: 8, border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--text-dim)',
+                fontSize: 12, fontFamily: 'DM Sans,sans-serif', cursor: 'pointer',
+              }}>
+              Changer de photo
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ── Phase 3 : result ready ────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {hiddenInputs}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <ConfidenceBadge level={result.confidence} />

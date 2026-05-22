@@ -23,6 +23,7 @@ import type { MealSavedData } from './components/MealSlotGrid'
 import DailyBilan from './components/DailyBilan'
 import MealConfirmCard from './components/MealConfirmCard'
 import WeeklySummary from './components/WeeklySummary'
+import CalendarView from './components/CalendarView'
 import ToastContainer from './components/ToastContainer'
 import { useToast } from '@/hooks/useToast'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
@@ -33,7 +34,7 @@ const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: fa
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type DayType   = 'low' | 'mid' | 'hard'
-type HistRange = '7j' | '14j' | '28j'
+type HistRange = '7j' | '14j' | '28j' | 'cal'
 type DataFilter   = 'kcal' | 'proteines' | 'glucides' | 'lipides' | 'macros' | 'micros'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
@@ -610,7 +611,7 @@ export default function NutritionPage() {
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 4 — Repas de la journee                       */}
         {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
+        <div id="repas-section" style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <p style={{ ...sectionTitle, marginBottom: 0 }}>Repas de la journee</p>
             <input
@@ -644,9 +645,10 @@ export default function NutritionPage() {
           {/* Row 1 — Period toggle */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
             {([
-              { key: '7j' as HistRange,  label: '7 jours' },
-              { key: '14j' as HistRange, label: '2 semaines' },
-              { key: '28j' as HistRange, label: '4 semaines' },
+              { key: '7j'  as HistRange, label: '7 jours'     },
+              { key: '14j' as HistRange, label: '2 semaines'  },
+              { key: '28j' as HistRange, label: '4 semaines'  },
+              { key: 'cal' as HistRange, label: 'Calendrier'  },
             ]).map(({ key, label }) => {
               const active = histRange === key
               return (
@@ -694,8 +696,8 @@ export default function NutritionPage() {
             )
           })()}
 
-          {/* Row 3 — Data filters (multi-select) */}
-          <div style={{ display: 'flex', gap: 5, marginBottom: 18, flexWrap: 'wrap' }}>
+          {/* Row 3 — Data filters (multi-select, hidden in calendar view) */}
+          {histRange !== 'cal' && <div style={{ display: 'flex', gap: 5, marginBottom: 18, flexWrap: 'wrap' }}>
             {([
               { key: 'kcal' as DataFilter,      label: 'Kcal' },
               { key: 'proteines' as DataFilter,  label: 'Proteines' },
@@ -721,7 +723,7 @@ export default function NutritionPage() {
                 >{label}</button>
               )
             })}
-          </div>
+          </div>}
 
           {/* Weekly summary (7j only) */}
           {histRange === '7j' && (() => {
@@ -817,8 +819,8 @@ export default function NutritionPage() {
             )
           })()}
 
-          {/* Kcal bar chart */}
-          {dataFilters.includes('kcal') && (() => {
+          {/* Kcal bar chart (hidden in calendar view) */}
+          {histRange !== 'cal' && dataFilters.includes('kcal') && (() => {
             const days = histDays
             const startDate = histStartDate
             const entries = Array.from({ length: days }, (_, i) => {
@@ -840,8 +842,8 @@ export default function NutritionPage() {
             )
           })()}
 
-          {/* Macros line chart */}
-          {(['proteines', 'glucides', 'lipides', 'macros'] as DataFilter[]).some(k => dataFilters.includes(k)) && (() => {
+          {/* Macros line chart (hidden in calendar view) */}
+          {histRange !== 'cal' && (['proteines', 'glucides', 'lipides', 'macros'] as DataFilter[]).some(k => dataFilters.includes(k)) && (() => {
             const days = histRange === '7j' ? 7 : histRange === '14j' ? 14 : 28
             const startDate = histRange === '7j' ? getWeekStart(weekOffset) : addDays(today, -(days - 1))
             const entries = Array.from({ length: days }, (_, i) => {
@@ -858,6 +860,17 @@ export default function NutritionPage() {
               </div>
             )
           })()}
+
+          {/* Calendar view */}
+          {histRange === 'cal' && (
+            <CalendarView
+              targetKcal={todayKcalObj}
+              onDayClick={date => {
+                setSelectedDate(date)
+                setTimeout(() => document.getElementById('repas-section')?.scrollIntoView({ behavior: 'smooth' }), 50)
+              }}
+            />
+          )}
         </div>
 
         {/* Weight section */}

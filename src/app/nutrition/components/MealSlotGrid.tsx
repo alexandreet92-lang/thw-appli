@@ -119,9 +119,11 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
 }
 
 // ── Main component ────────────────────────────────────────────────
+export interface MealSavedData { meal_name: string; actual_kcal: number; actual_prot: number }
+
 interface Props {
   date:       string
-  onSaved?:   () => void
+  onSaved?:   (data: MealSavedData) => void
   showToast?: (msg: string, type?: ToastType) => void
 }
 
@@ -155,7 +157,7 @@ export default function MealSlotGrid({ date, onSaved, showToast }: Props) {
         source:      'manual',
       })
       showToast?.('Repas enregistre', 'success')
-      onSaved?.()
+      onSaved?.({ meal_name: data.meal_name, actual_kcal: data.actual_kcal, actual_prot: data.actual_prot })
     } catch {
       showToast?.('Erreur lors de l\'enregistrement', 'error')
     }

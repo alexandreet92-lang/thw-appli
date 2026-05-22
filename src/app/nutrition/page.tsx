@@ -19,6 +19,9 @@ import MealTypesSection from './components/MealTypesSection'
 import HabitudesSection from './components/HabitudesSection'
 import { useNutritionHabits } from '@/hooks/useNutritionHabits'
 import MealSlotGrid from './components/MealSlotGrid'
+import type { MealSavedData } from './components/MealSlotGrid'
+import DailyBilan from './components/DailyBilan'
+import MealConfirmCard from './components/MealConfirmCard'
 import ToastContainer from './components/ToastContainer'
 import { useToast } from '@/hooks/useToast'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
@@ -213,6 +216,9 @@ export default function NutritionPage() {
   const [editProt, setEditProt] = useState('')
   const [editGluc, setEditGluc] = useState('')
   const [editLip, setEditLip] = useState('')
+  const [confirmCard, setConfirmCard] = useState<{ visible: boolean; mealName: string; calories: number; protein: number }>({
+    visible: false, mealName: '', calories: 0, protein: 0,
+  })
 
   // ── Desktop breakpoint ─────────────────────────────────────────
   useEffect(() => {
@@ -434,56 +440,11 @@ export default function NutritionPage() {
         {/* SECTION 1 — Bilan du jour                             */}
         {/* ══════════════════════════════════════════════════════ */}
         <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <p style={sectionTitle}>Bilan du jour</p>
-            <div style={{
-              padding: '4px 10px',
-              borderRadius: 8,
-              background: DAY_COLORS[todayType].bg,
-              border: `1px solid ${DAY_COLORS[todayType].border}`,
-              color: DAY_COLORS[todayType].text,
-              fontSize: 11,
-              fontFamily: 'Syne,sans-serif',
-              fontWeight: 700,
-            }}>
-              {DAY_COLORS[todayType].label}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'space-around', flexWrap: 'wrap' }}>
-            <MacroDonut
-              label="Calories"
-              consumed={bilanTotals.kcal}
-              objective={todayKcalObj}
-              unit="kcal"
-              color="#00c8e0"
-              size={96}
-            />
-            <MacroDonut
-              label="Proteines"
-              consumed={bilanTotals.prot}
-              objective={todayMacroObj.proteines}
-              unit="g"
-              color="#22c55e"
-              size={96}
-            />
-            <MacroDonut
-              label="Glucides"
-              consumed={bilanTotals.gluc}
-              objective={todayMacroObj.glucides}
-              unit="g"
-              color="#eab308"
-              size={96}
-            />
-            <MacroDonut
-              label="Lipides"
-              consumed={bilanTotals.lip}
-              objective={todayMacroObj.lipides}
-              unit="g"
-              color="#f97316"
-              size={96}
-            />
-          </div>
+          <DailyBilan
+            consumed={{ calories: bilanTotals.kcal, protein: bilanTotals.prot, carbs: bilanTotals.gluc, fat: bilanTotals.lip }}
+            targets={{ calories: todayKcalObj, protein: todayMacroObj.proteines, carbs: todayMacroObj.glucides, fat: todayMacroObj.lipides }}
+            dayType={todayType}
+          />
           {!activePlan && (
             <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 12, textAlign: 'center' }}>
               Aucun plan actif — créez un plan pour voir vos objectifs.
@@ -665,7 +626,11 @@ export default function NutritionPage() {
           <MealSlotGrid
             date={selectedDate}
             showToast={showToast}
-            onSaved={selectedDate === today ? reloadTodaySlots : undefined}
+            onSaved={selectedDate === today ? (data: MealSavedData) => {
+              reloadTodaySlots()
+              setConfirmCard({ visible: true, mealName: data.meal_name || 'Repas', calories: data.actual_kcal, protein: data.actual_prot })
+              setTimeout(() => setConfirmCard(c => ({ ...c, visible: false })), 2200)
+            } : undefined}
           />
         </div>
 
@@ -1198,6 +1163,14 @@ export default function NutritionPage() {
         prefillMessage={aiPrompt || undefined}
       />
     </div>
+
+    <MealConfirmCard
+      mealName={confirmCard.mealName}
+      calories={confirmCard.calories}
+      protein={confirmCard.protein}
+      visible={confirmCard.visible}
+      onHide={() => setConfirmCard(c => ({ ...c, visible: false }))}
+    />
     </>
   )
 }

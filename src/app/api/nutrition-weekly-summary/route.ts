@@ -57,10 +57,8 @@ Ton : coach direct, pas condescendant. Prose, pas de bullet points. Pas de titre
       }],
     })
 
-    const text = response.content
-      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-      .map(b => b.text)
-      .join('')
+    const textBlock = response.content.find(b => b.type === 'text')
+    const text = (textBlock && textBlock.type === 'text') ? textBlock.text : ''
 
     return NextResponse.json({ summary: text })
   } catch (err) {

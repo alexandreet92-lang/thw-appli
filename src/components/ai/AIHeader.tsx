@@ -1,13 +1,15 @@
 'use client'
-import { AgentIcon } from './AgentIcon'
-import type { AgentId } from './AgentIcon'
+import { LogoOfficial } from './sidebar/LogoOfficial'
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
 
-const AGENT_NAMES: Record<THWModel, string> = {
-  athena: 'Athena',
-  zeus:   'Zeus',
-  hermes: 'Hermes',
+// Mapping interne → label utilisateur.
+// Les modèles internes (hermes/athena/zeus) sont des routes d'orchestration.
+// L'utilisateur ne voit que "Training" et "Networks".
+const MODEL_TO_AGENT_LABEL: Record<THWModel, string> = {
+  athena: 'Training',
+  zeus:   'Training',
+  hermes: 'Training',
 }
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
   onNewConv:            () => void
   onToggleFullscreen:   () => void
   onClose:              () => void
+  agentLabelOverride?:  string  // ex: "Networks" pour le mode Networks
 }
 
 function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
@@ -39,7 +42,12 @@ function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: s
   )
 }
 
-export default function AIHeader({ model, isDesktop, fullscr, onOpenSidebar, onNewConv, onToggleFullscreen, onClose }: Props) {
+export default function AIHeader({
+  model, isDesktop, fullscr,
+  onOpenSidebar, onNewConv, onToggleFullscreen, onClose,
+  agentLabelOverride,
+}: Props) {
+  const agentLabel = agentLabelOverride ?? MODEL_TO_AGENT_LABEL[model]
   return (
     <div style={{
       height: 48, padding: '0 10px',
@@ -56,14 +64,17 @@ export default function AIHeader({ model, isDesktop, fullscr, onOpenSidebar, onN
         </HeaderBtn>
       )}
 
-      {/* Agent name — centered */}
+      {/* Agent name + logo officiel — centered */}
       <div style={{
         position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'center', gap: 7, pointerEvents: 'none',
+        display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none',
       }}>
-        <AgentIcon agent={model as AgentId} size={16} />
-        <span style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A', fontFamily: 'DM Sans,sans-serif' }}>
-          {AGENT_NAMES[model]}
+        <LogoOfficial size={16} alt={agentLabel} />
+        <span style={{
+          fontSize: 14, fontWeight: 600, color: '#0A0A0A',
+          fontFamily: 'DM Sans,sans-serif',
+        }}>
+          {agentLabel}
         </span>
       </div>
 

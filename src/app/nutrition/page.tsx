@@ -23,7 +23,7 @@ const BarcodeScanner = dynamicImport(
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type DayType      = 'low' | 'mid' | 'hard'
-type WeightMetric = 'poids' | 'mg' | 'mm'
+type WeightMetric = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg'
 type HistRange    = '7j' | '14j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
@@ -297,8 +297,8 @@ function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric
     return <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>Aucune donnee disponible</div>
   }
 
-  const sorted = [...logs].sort((a, b) => a.date.localeCompare(b.date))
-  const vals = sorted.map(l => (metric === 'poids' ? l.poids : metric === 'mg' ? l.mg : l.mm) ?? null)
+  const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
+  const vals = sorted.map(l => (metric === 'weight_kg' ? l.weight_kg : metric === 'fat_mass_percent' ? l.fat_mass_percent : l.muscle_mass_kg) ?? null)
   const nonNull = vals.filter((v): v is number => v !== null)
   if (!nonNull.length) return <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>Aucune donnee pour cette metrique</div>
 
@@ -348,8 +348,8 @@ function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric
       {sorted.map((entry, i) => {
         if (i % Math.ceil(n / 5) !== 0 && i !== n - 1) return null
         return (
-          <text key={entry.date} x={toX(i)} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
-            {entry.date.slice(5)}
+          <text key={entry.measured_at} x={toX(i)} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
+            {entry.measured_at.slice(5)}
           </text>
         )
       })}
@@ -818,7 +818,7 @@ export default function NutritionPage() {
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
-  const [weightMetric, setWeightMetric] = useState<WeightMetric>('poids')
+  const [weightMetric, setWeightMetric] = useState<WeightMetric>('weight_kg')
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [savingLog, setSavingLog] = useState<boolean>(false)
   const [weightInputDate, setWeightInputDate] = useState<string>(today)
@@ -1008,11 +1008,11 @@ export default function NutritionPage() {
   const handleSaveWeight = useCallback(async () => {
     if (!weightInput && !mgInput && !mmInput) return
     const log: Omit<WeightLog, 'id'> = {
-      date: weightInputDate,
-      poids: weightInput ? parseFloat(weightInput) : null,
-      mg: mgInput ? parseFloat(mgInput) : null,
-      mm: mmInput ? parseFloat(mmInput) : null,
-      source: 'manuel',
+      measured_at: weightInputDate,
+      weight_kg: weightInput ? parseFloat(weightInput) : null,
+      fat_mass_percent: mgInput ? parseFloat(mgInput) : null,
+      muscle_mass_kg: mmInput ? parseFloat(mmInput) : null,
+      source: 'manual',
     }
     await saveWeightLog(log)
     setWeightInput('')
@@ -1537,9 +1537,9 @@ export default function NutritionPage() {
           {/* Metric toggle */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {([
-              { key: 'poids' as WeightMetric, label: 'Poids' },
-              { key: 'mg' as WeightMetric, label: 'Masse grasse' },
-              { key: 'mm' as WeightMetric, label: 'Masse musculaire' },
+              { key: 'weight_kg' as WeightMetric, label: 'Poids' },
+              { key: 'fat_mass_percent' as WeightMetric, label: 'Masse grasse' },
+              { key: 'muscle_mass_kg' as WeightMetric, label: 'Masse musculaire' },
             ]).map(({ key, label }) => (
               <button
                 key={key}

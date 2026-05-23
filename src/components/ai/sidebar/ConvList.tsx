@@ -39,69 +39,53 @@ function ConvRow({ c, active, onSelect, onDelete, onPin }: {
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [menu])
+
+  const btnBase = 'w-full text-left px-3 py-2 rounded-xl transition-colors duration-100 font-[DM_Sans]'
+  const btnState = active
+    ? 'bg-black/[0.08] dark:bg-white/10'
+    : 'hover:bg-black/5 dark:hover:bg-white/[0.06]'
+
   return (
-    <div ref={ref} style={{ position: 'relative', marginBottom: 1 }}>
-      <button
-        onClick={() => onSelect(c)}
-        style={{
-          width: '100%', textAlign: 'left',
-          padding: '8px 12px', borderRadius: 12, border: 'none',
-          background: active ? 'rgba(255,255,255,0.10)' : 'transparent',
-          cursor: 'pointer', transition: 'background-color 100ms',
-          fontFamily: 'DM Sans, sans-serif',
-        }}
-        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)' }}
-        onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-      >
-        <p style={{
-          margin: 0, fontSize: 13, fontWeight: 500,
-          color: 'rgba(255,255,255,0.92)', lineHeight: 1.35,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {c.isPinned && <span style={{ marginRight: 4, color: '#9ec5ff' }}>★</span>}
+    <div ref={ref} className="relative mb-px">
+      <button onClick={() => onSelect(c)} className={`${btnBase} ${btnState}`}>
+        <p className="text-sm font-medium truncate text-[#0A0A0A] dark:text-white leading-snug">
+          {c.isPinned && <span className="mr-1 text-[#3B82F6]">★</span>}
           {c.title || 'Nouvelle discussion'}
         </p>
-        <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.40)' }}>
-          {fmt(c.updatedAt)}
-        </p>
+        <p className="text-xs text-[#8C8C8C] mt-0.5">{fmt(c.updatedAt)}</p>
       </button>
       <button
         onClick={e => { e.stopPropagation(); setMenu(m => !m) }}
         aria-label="Options"
-        style={{
-          position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-          width: 22, height: 22, border: 'none', background: 'transparent',
-          color: 'rgba(255,255,255,0.5)', cursor: 'pointer', borderRadius: 6,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded
+                   flex items-center justify-center
+                   text-[#8C8C8C] hover:bg-black/5 dark:hover:bg-white/10"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
         </svg>
       </button>
       {menu && (
-        <div style={{
-          position: 'absolute', right: 6, top: 'calc(100% - 2px)', zIndex: 50,
-          background: '#262626', border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 10, minWidth: 150, overflow: 'hidden',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        }}>
-          {[
-            { label: c.isPinned ? 'Désépingler' : 'Épingler', action: () => { onPin(c.id); setMenu(false) } },
-            { label: 'Supprimer', action: () => { onDelete(c.id); setMenu(false) }, danger: true },
-          ].map(it => (
-            <button key={it.label} onClick={it.action} style={{
-              display: 'block', width: '100%', padding: '9px 12px',
-              border: 'none', background: 'transparent', cursor: 'pointer',
-              textAlign: 'left', fontSize: 12, fontFamily: 'DM Sans, sans-serif',
-              color: (it as { danger?: boolean }).danger ? '#ff6b6b' : 'rgba(255,255,255,0.9)',
-            }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-            >
-              {it.label}
-            </button>
-          ))}
+        <div className="absolute right-1.5 top-[calc(100%-2px)] z-50 min-w-[150px]
+                        rounded-xl overflow-hidden
+                        bg-white dark:bg-[#262626]
+                        border border-black/[0.08] dark:border-white/[0.08]
+                        shadow-[0_8px_24px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.40)]">
+          <button
+            onClick={() => { onPin(c.id); setMenu(false) }}
+            className="block w-full px-3 py-2 text-left text-xs font-[DM_Sans]
+                       text-[#0A0A0A] dark:text-white/90
+                       hover:bg-black/[0.06] dark:hover:bg-white/[0.06]"
+          >
+            {c.isPinned ? 'Désépingler' : 'Épingler'}
+          </button>
+          <button
+            onClick={() => { onDelete(c.id); setMenu(false) }}
+            className="block w-full px-3 py-2 text-left text-xs font-[DM_Sans]
+                       text-[#ef4444] hover:bg-black/[0.06] dark:hover:bg-white/[0.06]"
+          >
+            Supprimer
+          </button>
         </div>
       )}
     </div>
@@ -111,10 +95,7 @@ function ConvRow({ c, active, onSelect, onDelete, onPin }: {
 export function ConvList({ convs, activeId, onSelect, onDelete, onPin, emptyLabel }: Props) {
   if (convs.length === 0) {
     return (
-      <p style={{
-        textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.35)',
-        margin: '20px 12px', fontFamily: 'DM Sans, sans-serif',
-      }}>
+      <p className="text-center text-xs text-[#8C8C8C] mt-5 mb-2 mx-3 font-[DM_Sans]">
         {emptyLabel ?? 'Aucune conversation'}
       </p>
     )
@@ -125,11 +106,9 @@ export function ConvList({ convs, activeId, onSelect, onDelete, onPin, emptyLabe
     <>
       {pinned.length > 0 && (
         <>
-          <p style={{
-            fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 600,
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-            margin: '6px 12px 4px', fontFamily: 'DM Sans, sans-serif',
-          }}>Épinglés</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8C8C8C] mx-3 mt-1.5 mb-1 font-[DM_Sans]">
+            Épinglés
+          </p>
           {pinned.map(c => (
             <ConvRow key={c.id} c={c} active={c.id === activeId}
               onSelect={onSelect} onDelete={onDelete} onPin={onPin} />

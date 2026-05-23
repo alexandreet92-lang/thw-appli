@@ -18700,13 +18700,16 @@ export default function AIPanel({
           --ai-accent-soft: rgba(37,99,235,0.06);
           --ai-accent-line: rgba(37,99,235,0.40);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
+          /* Btn bg adaptatif pour boutons d'input bar */
+          --ai-btn-bg:       rgba(0,0,0,0.06);
+          --ai-btn-bg-hover: rgba(0,0,0,0.10);
           /* Quick actions sheet vars */
           --aiq-bg:          #ffffff;
           --aiq-sidebar-bg:  #F7F7F7;
         }
         html.dark .aip-root {
           --ai-bg:          #0A0A0A;
-          --ai-bg2:         #141414;
+          --ai-bg2:         #1A1A1A;
           --ai-border:      rgba(255,255,255,0.07);
           --ai-text:        #FAFAFA;
           --ai-mid:         #8C8C8C;
@@ -18716,8 +18719,10 @@ export default function AIPanel({
           --ai-accent-soft: rgba(37,99,235,0.08);
           --ai-accent-line: rgba(37,99,235,0.45);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
-          --aiq-bg:          #141414;
-          --aiq-sidebar-bg:  #141414;
+          --ai-btn-bg:       rgba(255,255,255,0.06);
+          --ai-btn-bg-hover: rgba(255,255,255,0.10);
+          --aiq-bg:          #0A0A0A;
+          --aiq-sidebar-bg:  #1A1A1A;
         }
 
         /* Panneau */
@@ -18772,7 +18777,6 @@ export default function AIPanel({
 
         /* Dark mode overrides for new palette */
         html.dark .aip-root .aiq-conv-btn:hover { background: rgba(255,255,255,0.05) !important; }
-        html.dark .aip-root .aiq-sidebar { background: #141414 !important; }
 
         /* Messages scroll */
         .aip-messages {
@@ -19462,13 +19466,13 @@ export default function AIPanel({
                   style={{
                     width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                     border: 'none',
-                    background: plusOpen ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.06)',
+                    background: plusOpen ? 'var(--ai-btn-bg-hover)' : 'var(--ai-btn-bg)',
                     cursor: 'pointer', color: '#8C8C8C',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = plusOpen ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.06)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-btn-bg-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = plusOpen ? 'var(--ai-btn-bg-hover)' : 'var(--ai-btn-bg)' }}
                 >
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -19485,13 +19489,13 @@ export default function AIPanel({
                   style={{
                     height: 28, padding: '0 10px', borderRadius: 8, flexShrink: 0,
                     border: 'none',
-                    background: 'rgba(0,0,0,0.06)',
+                    background: 'var(--ai-btn-bg)',
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-btn-bg-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-btn-bg)' }}
                 >
                   <LogoAgent agent={modelToAgent(model)} size={14} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
@@ -19529,7 +19533,7 @@ export default function AIPanel({
                       border: 'none',
                       background: (input.trim() || attachment || activeQA || quotedText)
                         ? 'linear-gradient(135deg,#06B6D4,#2563EB)'
-                        : 'rgba(0,0,0,0.08)',
+                        : 'var(--ai-btn-bg)',
                       cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'all 0.15s',

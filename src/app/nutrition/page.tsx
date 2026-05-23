@@ -549,6 +549,12 @@ function MealTemplatesSection({
       glucides: form.glucides ? parseFloat(form.glucides) : null,
       lipides: form.lipides ? parseFloat(form.lipides) : null,
       actif: true,
+      source: 'manual' as const,
+      meal_timing: null,
+      photo_url: null,
+      ingredients: null,
+      recommended_frequency_per_week: null,
+      is_favorite: false,
     }
     if (editingId) {
       await onUpdate(editingId, data)

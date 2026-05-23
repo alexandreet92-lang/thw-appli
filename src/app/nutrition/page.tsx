@@ -14,6 +14,10 @@ import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
+const BarcodeScanner = dynamicImport(
+  () => import('@/components/nutrition/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })),
+  { ssr: false }
+)
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -829,6 +833,8 @@ export default function NutritionPage() {
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   // edit sub-modal: which meal slot is being edited + form values
   const [editSlot, setEditSlot] = useState<MealKey | null>(null)
   const [editDesc, setEditDesc] = useState('')
@@ -1044,11 +1050,54 @@ export default function NutritionPage() {
 
   return (
     <div style={{ padding: '0 0 80px' }}>
+      {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
+      {scannerOpen && (
+        <BarcodeScanner
+          onDetected={code => {
+            setScannedBarcode(code)
+            setScannerOpen(false)
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
+
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 0' }}>
         <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 24, margin: 0 }}>Nutrition</h1>
-        <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Bouton scanner — visible mobile uniquement (md:hidden via Tailwind) */}
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="flex md:hidden items-center justify-center w-9 h-9 rounded-full"
+            style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)' }}
+            aria-label="Scanner un code-barres"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M3 5h2M7 5h1M3 7v2M21 5h-2M17 5h-1M21 7v2M3 17v2M3 19h2M7 19h1M21 17v2M21 19h-2M17 19h-1"/>
+              <path d="M7 3v18M11 3v18M15 3v18M3 11h18"/>
+            </svg>
+          </button>
+          <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
+        </div>
       </div>
+
+      {/* Code scanné — feedback visible */}
+      {scannedBarcode && (
+        <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(0,200,224,0.08)', border: '1px solid rgba(0,200,224,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div>
+            <p style={{ fontSize: 11, color: '#00c8e0', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Code scanne</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{scannedBarcode}</p>
+          </div>
+          <button
+            onClick={() => setScannedBarcode(null)}
+            style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       <div style={{ padding: '16px 16px 0' }}>
 

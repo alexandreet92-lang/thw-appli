@@ -16,7 +16,10 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
 import AISidebar from './AISidebar'
 import AIMessageBubble from './AIMessageBubble'
-import AIQuickActionsSheet from './AIQuickActionsSheet'
+import QuickActionsSheet from './QuickActionsSheet'
+import AIHeader from './AIHeader'
+import { AgentIcon } from './AgentIcon'
+import type { AgentId } from './AgentIcon'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -18685,32 +18688,37 @@ export default function AIPanel({
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* CSS variables */
+        /* CSS variables — palette reduite Claude.ai style */
         .aip-root {
           --ai-bg:          #ffffff;
-          --ai-bg2:         #f6f8fc;
-          --ai-border:      rgba(0,0,0,0.08);
-          --ai-text:        #0d1117;
-          --ai-mid:         rgba(13,17,23,0.58);
-          --ai-dim:         rgba(13,17,23,0.36);
-          --ai-accent:      #8b5cf6;
-          --ai-accent-dim:  rgba(139,92,246,0.12);
-          --ai-accent-soft: rgba(139,92,246,0.06);
-          --ai-accent-line: rgba(139,92,246,0.48);
-          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
+          --ai-bg2:         #F7F7F7;
+          --ai-border:      rgba(0,0,0,0.06);
+          --ai-text:        #0A0A0A;
+          --ai-mid:         #8C8C8C;
+          --ai-dim:         #8C8C8C;
+          --ai-accent:      #2563EB;
+          --ai-accent-dim:  rgba(37,99,235,0.10);
+          --ai-accent-soft: rgba(37,99,235,0.06);
+          --ai-accent-line: rgba(37,99,235,0.40);
+          --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
+          /* Quick actions sheet vars */
+          --aiq-bg:          #ffffff;
+          --aiq-sidebar-bg:  #F7F7F7;
         }
         html.dark .aip-root {
-          --ai-bg:          #13161e;
-          --ai-bg2:         #0f121a;
-          --ai-border:      rgba(255,255,255,0.09);
-          --ai-text:        #eef2f7;
-          --ai-mid:         rgba(238,242,247,0.60);
-          --ai-dim:         rgba(238,242,247,0.35);
-          --ai-accent:      #8b5cf6;
-          --ai-accent-dim:  rgba(139,92,246,0.15);
-          --ai-accent-soft: rgba(139,92,246,0.08);
-          --ai-accent-line: rgba(139,92,246,0.55);
-          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
+          --ai-bg:          #0A0A0A;
+          --ai-bg2:         #141414;
+          --ai-border:      rgba(255,255,255,0.07);
+          --ai-text:        #FAFAFA;
+          --ai-mid:         #8C8C8C;
+          --ai-dim:         #8C8C8C;
+          --ai-accent:      #2563EB;
+          --ai-accent-dim:  rgba(37,99,235,0.15);
+          --ai-accent-soft: rgba(37,99,235,0.08);
+          --ai-accent-line: rgba(37,99,235,0.45);
+          --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
+          --aiq-bg:          #141414;
+          --aiq-sidebar-bg:  #141414;
         }
 
         /* Panneau */
@@ -18720,9 +18728,9 @@ export default function AIPanel({
           width: 640px; max-width: 100vw;
           z-index: 1200;
           background: var(--ai-bg);
-          border-left: 1px solid var(--ai-border);
+          border-left: 1px solid rgba(0,0,0,0.08);
           display: flex; flex-direction: column; overflow: hidden;
-          box-shadow: -16px 0 48px rgba(0,0,0,0.18);
+          box-shadow: -8px 0 32px rgba(0,0,0,0.10);
           transition: transform 0.3s cubic-bezier(0.32,1.06,0.64,1);
           color: var(--ai-text);
           padding-top: env(safe-area-inset-top, 0px);
@@ -18758,13 +18766,14 @@ export default function AIPanel({
         .aip-textarea { font-size: 16px !important; }
         @media (min-width: 768px) { .aip-textarea { font-size: 14px !important; } }
 
-        /* Focus : bordure du conteneur input */
+        /* Focus : shadow du conteneur input */
         .aip-input-wrap:focus-within {
-          border-color: rgba(0,0,0,0.18) !important;
+          box-shadow: 0 0 0 1.5px rgba(37,99,235,0.25), 0 2px 8px rgba(0,0,0,0.06) !important;
         }
-        html.dark .aip-input-wrap:focus-within {
-          border-color: rgba(255,255,255,0.18) !important;
-        }
+
+        /* Dark mode overrides for new palette */
+        html.dark .aip-root .aiq-conv-btn:hover { background: rgba(255,255,255,0.05) !important; }
+        html.dark .aip-root .aiq-sidebar { background: #141414 !important; }
 
         /* Messages scroll */
         .aip-messages {
@@ -18822,99 +18831,15 @@ export default function AIPanel({
       <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
 
         {/* ══ HEADER ════════════════════════════════════════ */}
-        <div style={{
-          height: 50, padding: '0 12px',
-          borderBottom: '1px solid var(--ai-border)',
-          display: 'flex', alignItems: 'center', gap: 8,
-          flexShrink: 0, background: 'var(--ai-bg)',
-        }}>
-          {/* Hamburger (mobile only — desktop has persistent sidebar) */}
-          {!isDesktop && (
-            <button
-              onClick={() => setHistOpen(h => !h)}
-              title="Menu"
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                border: 'none', background: 'var(--ai-bg2)',
-                cursor: 'pointer', color: 'var(--ai-mid)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M3 12h18M3 6h18M3 18h18"/>
-              </svg>
-            </button>
-          )}
-
-          {/* Agent name + shuriken — centré */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minWidth: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 32 32">
-              <defs>
-                <linearGradient id="hdr_grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#00c8e0"/>
-                  <stop offset="100%" stopColor="#3B82F6"/>
-                </linearGradient>
-              </defs>
-              <path d="M16 2 L20 12 L30 8 L22 16 L30 24 L20 20 L16 30 L12 20 L2 24 L10 16 L2 8 L12 12 Z" fill="url(#hdr_grad)"/>
-            </svg>
-            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--ai-text)', lineHeight: 1 }}>
-              {MODEL_CONFIGS[model].name}
-            </span>
-          </div>
-
-          {/* New conv */}
-          <button
-            onClick={newConv}
-            title="Nouvelle conversation"
-            style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: 'none', background: 'transparent',
-              cursor: 'pointer', color: 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </button>
-
-          {/* Fullscreen */}
-          <button
-            onClick={() => setFullscr(f => !f)}
-            title={fullscr ? 'Reduire' : 'Plein ecran'}
-            style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: 'none', background: 'transparent',
-              cursor: 'pointer', color: 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            {fullscr ? (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3"/>
-              </svg>
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-              </svg>
-            )}
-          </button>
-
-          {/* Close */}
-          <button
-            onClick={onClose}
-            style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: 'none', background: 'transparent',
-              cursor: 'pointer', color: 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
+        <AIHeader
+          model={model}
+          isDesktop={isDesktop}
+          fullscr={fullscr}
+          onOpenSidebar={() => setHistOpen(h => !h)}
+          onNewConv={newConv}
+          onToggleFullscreen={() => setFullscr(f => !f)}
+          onClose={onClose}
+        />
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
         <div className="aip-body">
@@ -18963,19 +18888,11 @@ export default function AIPanel({
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px' }}>
-                <svg width="48" height="48" viewBox="0 0 32 32" style={{ marginBottom: 16 }}>
-                  <defs>
-                    <linearGradient id="shuriken_grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#00c8e0"/>
-                      <stop offset="100%" stopColor="#3B82F6"/>
-                    </linearGradient>
-                  </defs>
-                  <path d="M16 2 L20 12 L30 8 L22 16 L30 24 L20 20 L16 30 L12 20 L2 24 L10 16 L2 8 L12 12 Z" fill="url(#shuriken_grad)"/>
-                </svg>
-                <p style={{ textAlign: 'center', margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.3 }}>
-                  Bonjour, bon {mounted ? getGreeting() : 'matin'} !
+                <AgentIcon agent={model as AgentId} size={48} />
+                <p style={{ textAlign: 'center', margin: '16px 0 6px', fontSize: 20, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.3 }}>
+                  {mounted ? (getGreeting() === 'matin' ? 'Bonjour, bon matin !' : getGreeting() === 'après-midi' ? 'Bon après-midi !' : 'Bonsoir !') : 'Bonjour !'}
                 </p>
-                <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--ai-dim)', margin: 0 }}>
+                <p style={{ textAlign: 'center', fontSize: 13, color: '#8C8C8C', margin: 0 }}>
                   Comment puis-je t'aider ?
                 </p>
               </div>
@@ -19387,13 +19304,12 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           <div style={{
-            padding: '8px 12px 12px',
-            borderTop: '1px solid var(--ai-border)',
+            padding: '6px 10px 10px',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
-            {/* Plus menu */}
-            <AIQuickActionsSheet
+            {/* Quick actions sheet */}
+            <QuickActionsSheet
               open={plusOpen}
               onClose={() => setPlusOpen(false)}
               onInject={(prompt, agent) => {
@@ -19416,9 +19332,9 @@ export default function AIPanel({
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
               background: 'var(--ai-bg2)',
-              border: '1px solid var(--ai-border)',
-              borderRadius: 18,
-              transition: 'border-color 0.15s',
+              borderRadius: 16,
+              boxShadow: '0 0 0 1px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.06)',
+              transition: 'box-shadow 0.15s',
             }}>
 
               {/* Citation de texte sélectionné */}
@@ -19535,34 +19451,54 @@ export default function AIPanel({
                 }}
               />
 
-              {/* Ligne basse : + · modèle · [spacer] · envoyer */}
+              {/* Ligne basse : + · agent · [spacer] · envoyer */}
               <div style={{
                 display: 'flex', alignItems: 'center',
-                padding: '4px 8px 8px', gap: 5,
+                padding: '2px 10px 10px', gap: 6,
               }}>
                 {/* + button */}
                 <button
                   onClick={() => setPlusOpen(p => !p)}
                   title="Actions"
                   style={{
-                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    border: `1px solid ${plusOpen ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
-                    background: plusOpen ? 'var(--ai-bg)' : 'transparent',
-                    cursor: 'pointer', color: 'var(--ai-dim)',
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                    border: 'none',
+                    background: plusOpen ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.06)',
+                    cursor: 'pointer', color: '#8C8C8C',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.12s',
+                    transition: 'background 0.1s',
                   }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = plusOpen ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.06)' }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M12 5v14M5 12h14" />
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </button>
 
-                {/* Police */}
-                <FontPicker current={chatFontFamily} onChange={setChatFontFamily} />
-
-                {/* Sélecteur modèle */}
-                <ModelPicker model={model} onChange={setModel} />
+                {/* Agent pill */}
+                <button
+                  onClick={() => {
+                    const order: THWModel[] = ['athena', 'zeus', 'hermes']
+                    const idx = order.indexOf(model)
+                    setModel(order[(idx + 1) % 3])
+                  }}
+                  style={{
+                    height: 28, padding: '0 10px', borderRadius: 8, flexShrink: 0,
+                    border: 'none',
+                    background: 'rgba(0,0,0,0.06)',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
+                >
+                  <AgentIcon agent={model as AgentId} size={12} />
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                    {MODEL_CONFIGS[model].name}
+                  </span>
+                </button>
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
@@ -19573,7 +19509,7 @@ export default function AIPanel({
                     onClick={stopGeneration}
                     title="Arrêter la génération"
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                       border: 'none',
                       background: '#ef4444',
                       cursor: 'pointer',
@@ -19581,7 +19517,7 @@ export default function AIPanel({
                       transition: 'background 0.15s',
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="none">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="none">
                       <rect x="4" y="4" width="16" height="16" rx="2" />
                     </svg>
                   </button>
@@ -19590,27 +19526,30 @@ export default function AIPanel({
                     onClick={() => void send()}
                     disabled={!input.trim() && !attachment && !activeQA && !quotedText}
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                       border: 'none',
-                      background: (input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-text)' : 'var(--ai-border)',
+                      background: (input.trim() || attachment || activeQA || quotedText)
+                        ? 'linear-gradient(135deg,#06B6D4,#2563EB)'
+                        : 'rgba(0,0,0,0.08)',
                       cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 0.15s',
+                      transition: 'all 0.15s',
+                      boxShadow: (input.trim() || attachment || activeQA || quotedText) ? '0 2px 8px rgba(6,182,212,0.3)' : 'none',
                     }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                      stroke={(input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-bg)' : 'var(--ai-dim)'}
-                      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                      <path d="M13 1L6 8M13 1L9 13l-3-5-5-3 12-4z"
+                        stroke={(input.trim() || attachment || activeQA || quotedText) ? 'white' : '#8C8C8C'}
+                        strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </button>
                 )}
               </div>
             </div>
 
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, color: '#8C8C8C', marginTop: 4, textAlign: 'center', fontFamily: 'DM Sans,sans-serif' }}>
               Entrée · Shift+Entrée pour nouvelle ligne
-            </div>
+            </p>
           </div>
           {/* /chat-col */}
           </div>

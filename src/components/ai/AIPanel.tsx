@@ -14,7 +14,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
-import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import AISidebar from './AISidebar'
 import AIMessageBubble from './AIMessageBubble'
 import AIQuickActionsSheet from './AIQuickActionsSheet'
@@ -61,7 +60,6 @@ interface AIConv {
   updatedAt: number
   msgs: AIMsg[]
   isPinned?: boolean
-  agent?: 'training' | 'networks'
 }
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
@@ -160,17 +158,6 @@ function fmtDate(ts: number) {
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-/** Format timestamp for message hover (C4) */
-function fmtMsgTime(ts: number): string {
-  const now = new Date()
-  const d = new Date(ts)
-  const hhmm = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000)
-  if (diffDays === 0) return hhmm
-  if (diffDays === 1) return `Hier ${hhmm}`
-  return `${d.getDate()} ${d.toLocaleString('fr-FR', { month: 'short' })} ${hhmm}`
-}
-
 // ── Markdown renderer ──────────────────────────────────────────
 
 const HEADING_STYLES: Record<number, React.CSSProperties> = {
@@ -195,36 +182,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
     // Hidden metadata tag (e.g. sport:running) — skip rendering
     if (/^sport:[a-z_]+$/.test(line.trim())) { i++; continue }
 
-    // ── E2: Fenced code block ``` ─────────────────────────────────
-    if (line.trim().startsWith('```')) {
-      const lang = line.trim().slice(3).trim()
-      const codeLines: string[] = []
-      i++
-      while (i < lines.length && !lines[i].trim().startsWith('```')) {
-        codeLines.push(lines[i])
-        i++
-      }
-      i++ // skip closing ```
-      blocks.push(<CodeBlock key={`code-${i}`} lang={lang} code={codeLines.join('\n')} />)
-      continue
-    }
-
-    // ── E5: Blockquote > ──────────────────────────────────────────
-    if (line.trim().startsWith('> ')) {
-      const quoteLines: string[] = []
-      while (i < lines.length && lines[i].trim().startsWith('> ')) {
-        quoteLines.push(lines[i].trim().slice(2))
-        i++
-      }
-      blocks.push(
-        <div key={`bq-${i}`} style={{ borderLeft: '3px solid #D1D5DB', paddingLeft: 16, margin: '8px 0', color: '#6B7280', fontStyle: 'italic' }}>
-          {quoteLines.map((q, qi) => <p key={qi} style={{ margin: qi > 0 ? '4px 0 0' : 0, fontSize: 14, lineHeight: 1.6 }}>{parseBold(q)}</p>)}
-        </div>
-      )
-      continue
-    }
-
-    // ── E1: Tableau Markdown — groupe les lignes | ... | consécutives ──
+    // ── Tableau Markdown — groupe les lignes | ... | consécutives ──
     if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
       const tableLines: string[] = []
       while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
@@ -240,11 +198,11 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         const dataRows = rows.slice(1)
         blocks.push(
           <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '10px 0' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif', border: '1px solid #E5E7EB' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif' }}>
               <thead>
-                <tr style={{ background: '#F9FAFB' }}>
+                <tr>
                   {headers.map((h, hi) => (
-                    <th key={hi} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--ai-text)', border: '1px solid #E5E7EB', whiteSpace: 'nowrap' as const }}>
+                    <th key={hi} style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--ai-text)', borderBottom: '2px solid var(--ai-border)', whiteSpace: 'nowrap' as const }}>
                       {parseBold(h)}
                     </th>
                   ))}
@@ -252,9 +210,9 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
               </thead>
               <tbody>
                 {dataRows.map((row, ri) => (
-                  <tr key={ri}>
+                  <tr key={ri} style={{ background: ri % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
                     {row.map((cell, ci) => (
-                      <td key={ci} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ai-mid)', border: '1px solid #E5E7EB' }}>
+                      <td key={ci} style={{ padding: '6px 10px', fontSize: 12, color: 'var(--ai-mid)', borderBottom: '1px solid var(--ai-border)' }}>
                         {parseBold(cell)}
                       </td>
                     ))}
@@ -290,27 +248,25 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
           <span style={{ color: 'var(--ai-dim)', minWidth: 18, fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3, fontFamily: 'DM Mono,monospace' }}>
             {nMatch[1]}.
           </span>
-          <span style={{ fontSize: 15, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
+          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
         </div>
       )
       i++; continue
     }
 
-    const bMatch = raw.match(/^(\s*)[-•*]\s+(.+)/)
+    const bMatch = line.match(/^[-•*]\s+(.+)/)
     if (bMatch) {
-      const indent = bMatch[1].length
-      const level = Math.floor(indent / 2)
       blocks.push(
-        <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 4, paddingLeft: level * 16 }}>
-          <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: level > 0 ? 6 : 8, marginTop: level > 0 ? 7 : 6, lineHeight: 1 }}>{level > 0 ? '○' : '●'}</span>
-          <span style={{ fontSize: 15, lineHeight: 1.72 }}>{parseBold(bMatch[2])}</span>
+        <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 5 }}>
+          <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: 8, marginTop: 6, lineHeight: 1 }}>●</span>
+          <span style={{ fontSize: 13.5, lineHeight: 1.72 }}>{parseBold(bMatch[1])}</span>
         </div>
       )
       i++; continue
     }
 
     blocks.push(
-      <p key={i} style={{ fontSize: 16, lineHeight: 1.65, margin: '0 0 8px 0', color: 'var(--ai-text)' }}>
+      <p key={i} style={{ fontSize: 13.5, lineHeight: 1.75, margin: '0 0 6px 0', color: 'var(--ai-text)' }}>
         {parseBold(line)}
       </p>
     )
@@ -367,12 +323,15 @@ function TypedText({ text, isStreaming, fontFamily }: { text: string; isStreamin
 
   const cursor = isStreaming
     ? <span style={{
-        display:         'inline',
-        marginLeft:      1,
-        color:           'var(--ai-accent)',
-        animation:       'ai_cursor 1s step-start infinite',
-        userSelect:      'none',
-      }}>▍</span>
+        display:         'inline-block',
+        width:           2,
+        height:          13,
+        marginLeft:      2,
+        verticalAlign:   'middle',
+        background:      'var(--ai-accent)',
+        borderRadius:    1,
+        animation:       'ai_cursor 0.65s ease-in-out infinite',
+      }} />
     : null
 
   return (
@@ -384,59 +343,12 @@ function TypedText({ text, isStreaming, fontFamily }: { text: string; isStreamin
 }
 
 function parseBold(text: string): React.ReactNode {
-  // Support **bold** and `inline code` in text segments
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+  const parts = text.split(/\*\*([^*]+)\*\*/g)
   if (parts.length === 1) return text
-  return <>{parts.map((p, j) => {
-    if (p.startsWith('**') && p.endsWith('**')) return <strong key={j} style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{p.slice(2, -2)}</strong>
-    if (p.startsWith('`') && p.endsWith('`')) return <code key={j} style={{ background: '#F3F4F6', padding: '2px 6px', borderRadius: 4, fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', fontSize: 13, color: '#d63384' }}>{p.slice(1, -1)}</code>
-    return <span key={j}>{p}</span>
-  })}</>
-}
-
-// CodeBlock — E2: fenced code block with language label and copy button
-function CodeBlock({ lang, code }: { lang: string; code: string }) {
-  const [copied, setCopied] = useState(false)
-  const [showBtn, setShowBtn] = useState(false)
-  return (
-    <div
-      style={{ position: 'relative', margin: '10px 0' }}
-      onMouseEnter={() => setShowBtn(true)}
-      onMouseLeave={() => setShowBtn(false)}
-    >
-      {lang && (
-        <div style={{ background: '#E9EBF0', padding: '3px 12px', borderRadius: '8px 8px 0 0', fontSize: 11, color: '#6B7280', fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', borderBottom: '1px solid #E5E7EB' }}>
-          {lang}
-        </div>
-      )}
-      <pre style={{
-        background: '#F6F8FA', borderRadius: lang ? '0 0 8px 8px' : 8,
-        padding: '12px 16px', margin: 0, overflowX: 'auto',
-        fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', fontSize: 13, lineHeight: 1.55,
-        border: '1px solid #E5E7EB', borderTop: lang ? 'none' : undefined,
-      }}>
-        <code style={{ color: '#24292e' }}>{code}</code>
-      </pre>
-      {showBtn && (
-        <button
-          onClick={() => { void navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-          style={{
-            position: 'absolute', top: lang ? 28 : 6, right: 8,
-            background: 'white', border: '1px solid #E5E7EB', borderRadius: 6,
-            padding: '3px 7px', cursor: 'pointer', fontSize: 11, color: '#6B7280',
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}
-        >
-          {copied ? (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-          ) : (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          )}
-          {copied ? 'Copié' : 'Copier'}
-        </button>
-      )}
-    </div>
-  )
+  return <>{parts.map((p, j) => j % 2 === 1
+    ? <strong key={j} style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{p}</strong>
+    : <span key={j}>{p}</span>
+  )}</>
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1283,12 +1195,7 @@ function ModelPicker({ model, onChange }: {
           transition: 'all 0.12s',
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-          alt={cfg.name}
-          style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.75 }}
-        />
+        <ModelEffigy model={model} isAnimating={false} size={14} color="var(--ai-mid)" />
       </button>
 
       {/* Dropdown */}
@@ -1333,11 +1240,8 @@ function ModelPicker({ model, onChange }: {
                 onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                 onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                  alt={mc.name}
-                  style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
+                <ModelEffigy model={m} isAnimating={false} size={15}
+                  color={isA ? 'var(--ai-text)' : 'var(--ai-dim)'}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
@@ -11476,7 +11380,6 @@ function HistoryDrawer({
   onSelect,
   onDelete,
   onNew,
-  onPin,
   onClose,
   persistent = false,
 }: {
@@ -11485,7 +11388,6 @@ function HistoryDrawer({
   onSelect: (c: AIConv) => void
   onDelete: (id: string) => void
   onNew: () => void
-  onPin: (id: string) => void
   onClose: () => void
   persistent?: boolean
 }) {
@@ -11493,7 +11395,6 @@ function HistoryDrawer({
   const [renId,    setRenId]    = useState<string | null>(null)
   const [renVal,   setRenVal]   = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [searchQ, setSearchQ]     = useState('')
   // Gate SSR-safety pour fmtDate() qui utilise Date.now() au render.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -11526,42 +11427,16 @@ function HistoryDrawer({
           onClick={onNew}
           title="Nouvelle conversation"
           style={{
-            width: 28, height: 28, borderRadius: 8, border: 'none',
-            background: 'var(--ai-accent)',
-            opacity: 0.85,
+            width: 24, height: 24, borderRadius: 6, border: 'none',
+            background: 'var(--ai-gradient)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'opacity 0.15s',
+            boxShadow: '0 2px 6px rgba(91,111,255,0.3)',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
-      </div>
-
-      {/* Search input (F1) */}
-      <div style={{ padding: '6px 8px', flexShrink: 0 }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
-            style={{ position: 'absolute', left: 8, pointerEvents: 'none', flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-          </svg>
-          <input
-            id="aip-conv-search"
-            type="text"
-            placeholder="Rechercher..."
-            value={searchQ}
-            onChange={e => setSearchQ(e.target.value)}
-            style={{
-              width: '100%', padding: '5px 8px 5px 26px', borderRadius: 6,
-              border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-              color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 11,
-              outline: 'none', boxSizing: 'border-box',
-            }}
-          />
-        </div>
       </div>
 
       {/* Conversation list */}
@@ -11570,10 +11445,7 @@ function HistoryDrawer({
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
           </div>
-        ) : [...convs]
-            .filter(c => !searchQ.trim() || c.title.toLowerCase().includes(searchQ.toLowerCase()))
-            .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0))
-            .map(conv => (
+        ) : convs.map(conv => (
           <div key={conv.id} className="aip-hist-item" style={{ position: 'relative', marginBottom: 1 }}>
             {renId === conv.id ? (
               <div style={{ padding: '3px 4px' }}>
@@ -11602,31 +11474,25 @@ function HistoryDrawer({
               <div
                 onClick={() => { onSelect(conv); if (!persistent) onClose() }}
                 style={{
-                  padding: '7px 8px 7px 10px', borderRadius: 8, cursor: 'pointer',
-                  background: conv.id === activeId ? 'rgba(0,0,0,0.06)' : 'transparent',
-                  border: 'none',
-                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 4px 6px 8px', borderRadius: 6, cursor: 'pointer',
+                  background: conv.id === activeId ? 'rgba(91,111,255,0.11)' : 'transparent',
+                  border: `1px solid ${conv.id === activeId ? 'rgba(91,111,255,0.25)' : 'transparent'}`,
+                  display: 'flex', alignItems: 'center', gap: 3,
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = '#F5F5F5' }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.04)' }}
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  {conv.isPinned && (
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="var(--ai-accent)" stroke="none" style={{ flexShrink: 0, marginBottom: 1 }}>
-                      <path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/>
-                    </svg>
-                  )}
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    flex: 1, minWidth: 0,
-                    fontSize: 13, fontWeight: conv.id === activeId ? 600 : 400,
+                    fontSize: 11, fontWeight: conv.id === activeId ? 600 : 400,
                     color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     lineHeight: 1.3,
                   }}>
                     {conv.title}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 9, color: 'var(--ai-dim)', marginTop: 1 }}>
                     {mounted ? fmtDate(conv.updatedAt) : ''}
                   </div>
                 </div>
@@ -11659,17 +11525,8 @@ function HistoryDrawer({
                       borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                       overflow: 'hidden', minWidth: 148,
                     }}>
-                      {/* Pin (G3) */}
-                      <button onClick={() => { onPin(conv.id); setMenuId(null) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill={conv.isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/></svg>
-                        {conv.isPinned ? 'Désépingler' : 'Épingler'}
-                      </button>
                       <button onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
-                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >Renommer</button>
@@ -11706,20 +11563,20 @@ function HistoryDrawer({
       </div>
 
       {/* ── Settings ── */}
-      <div style={{ borderTop: '1px solid var(--ai-border)', padding: '6px 8px 8px', flexShrink: 0 }}>
+      <div style={{ borderTop: '1px solid var(--ai-border)', padding: '7px 6px 8px', flexShrink: 0 }}>
         <a
           href="/profile"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '12px 16px', borderRadius: 8,
-            color: '#374151', textDecoration: 'none',
-            fontFamily: 'DM Sans,sans-serif', fontSize: 13,
-            transition: 'background 0.12s',
+            padding: '7px 9px', borderRadius: 7,
+            color: 'var(--ai-mid)', textDecoration: 'none',
+            fontFamily: 'DM Sans,sans-serif', fontSize: 11,
+            transition: 'background 0.1s',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#F5F5F5' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(0,0,0,0.04)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
           </svg>
@@ -11734,8 +11591,8 @@ function HistoryDrawer({
     return (
       <div style={{
         width: 190, flexShrink: 0,
-        borderRight: '0.5px solid var(--ai-border)',
-        background: 'var(--ai-bg)',
+        borderRight: '1px solid var(--ai-border)',
+        background: 'var(--ai-bg2)',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}>
@@ -17992,30 +17849,10 @@ export default function AIPanel({
   const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
   const [showQuickActions, setShowQuickActions] = useState(true)
-  const [userInitials,     setUserInitials]     = useState<string>('')
-  const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
-  const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
 
-  // ── Agent selector ────────────────────────────────────────────
-  const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks'>('training')
-  const [agentDropOpen, setAgentDropOpen] = useState(false)
-
-  // ── Voice recording (B3) ─────────────────────────────────────
-  const [recording,    setRecording]    = useState(false)
-  const [recSecs,      setRecSecs]      = useState(0)
-  const recIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const recRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const speechRef      = useRef<any>(null)
-  const [speechSupported, setSpeechSupported] = useState(false)
-
-  // (B4 thinking animation now uses pure CSS 3-dot bounce — no state needed)
-
-  const areaRef            = useRef<HTMLTextAreaElement>(null)
-  const endRef             = useRef<HTMLDivElement>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const autoScrollRef      = useRef<boolean>(true)
-  const initMsgRef         = useRef<string | undefined>(undefined)
+  const areaRef    = useRef<HTMLTextAreaElement>(null)
+  const endRef     = useRef<HTMLDivElement>(null)
+  const initMsgRef = useRef<string | undefined>(undefined)
   // Swipe tracking (mobile)
   const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
@@ -18026,24 +17863,10 @@ export default function AIPanel({
   const filesRef   = useRef<HTMLInputElement>(null)
   // AbortController pour annuler la requête en cours
   const abortRef   = useRef<AbortController | null>(null)
-  // Agent selector dropdown
-  const agentDropRef = useRef<HTMLDivElement>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
 
   // ── Effects ────────────────────────────────────────────────
-
-  // Ferme le dropdown agent au clic extérieur
-  useEffect(() => {
-    if (!agentDropOpen) return
-    function handleOut(e: MouseEvent) {
-      if (agentDropRef.current && !agentDropRef.current.contains(e.target as Node)) {
-        setAgentDropOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOut)
-    return () => document.removeEventListener('mousedown', handleOut)
-  }, [agentDropOpen])
 
   useEffect(() => {
     setMounted(true)
@@ -18102,66 +17925,9 @@ export default function AIPanel({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (mounted) saveConvs(convs) }, [convs, mounted])
-
-  // Fetch user initials for avatar (D2)
-  useEffect(() => {
-    if (!mounted) return
-    ;(async () => {
-      try {
-        const { createClient } = await import('@/lib/supabase/client')
-        const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
-        const name = user.user_metadata?.full_name ?? user.email ?? ''
-        const parts = name.trim().split(/\s+/)
-        if (parts.length >= 2) setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
-        else if (parts[0]) setUserInitials(parts[0][0].toUpperCase())
-      } catch { /* silent */ }
-    })()
-  }, [mounted])
-  // Re-enable auto-scroll when conversation changes or loading starts
-  useEffect(() => { autoScrollRef.current = true }, [activeId, loading])
-  // Auto-scroll during streaming — only if user hasn't manually scrolled up
-  useEffect(() => {
-    if (!autoScrollRef.current) return
-    endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' })
-  }, [activeId, loading, convs])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: loading ? 'instant' : 'smooth' }) }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
-
-  // ── Speech API support detection (B3) ────────────────────────
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    setSpeechSupported(!!SR)
-  }, [])
-
-  // ── Voice recording timer cleanup ────────────────────────────
-  useEffect(() => () => {
-    if (recIntervalRef.current) clearInterval(recIntervalRef.current)
-    if (recRef.current) clearTimeout(recRef.current)
-  }, [])
-
-  // ── Keyboard shortcuts (F2) ───────────────────────────────────
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey
-      // Cmd/Ctrl+K → nouvelle conversation
-      if (mod && e.key === 'k') { e.preventDefault(); newConv(); return }
-      // Cmd/Ctrl+Enter → send message
-      if (mod && e.key === 'Enter') { e.preventDefault(); void send(); return }
-      // Cmd/Ctrl+F → focus search in sidebar
-      if (mod && e.key === 'f') {
-        e.preventDefault()
-        const searchEl = document.getElementById('aip-conv-search')
-        if (searchEl) { (searchEl as HTMLInputElement).focus() }
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
 
   // Déclenche le flow initial si fourni (ex: depuis la page Nutrition)
   const initialFlowSetRef = useRef<boolean>(false)
@@ -18279,7 +18045,7 @@ export default function AIPanel({
     setInput(e.target.value)
     const el = e.target
     el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+    el.style.height = Math.min(el.scrollHeight, 130) + 'px'
   }
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
@@ -18305,24 +18071,6 @@ export default function AIPanel({
 
   const pinConv = (id: string) => {
     setConvs(prev => prev.map(c => c.id === id ? { ...c, isPinned: !c.isPinned } : c))
-  }
-
-  // G2 — Export conversation as Markdown
-  const exportMarkdown = () => {
-    if (!active) return
-    const modelNames: Record<THWModel, string> = { hermes: 'Hermès', athena: 'Athèna', zeus: 'Zeus' }
-    const lines: string[] = [`# ${active.title}`, '', `_Exporté le ${new Date().toLocaleDateString('fr-FR')}_`, '']
-    for (const m of active.msgs) {
-      const role = m.role === 'user' ? '## Vous' : `## ${modelNames[m.modelId ?? 'athena']}`
-      lines.push(role, '', m.content, '')
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${active.title.replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-').toLowerCase()}.md`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   // ── Swipe (mobile) ────────────────────────────────────────
@@ -18624,44 +18372,6 @@ export default function AIPanel({
     }
   }, [])
 
-  // ── Voice recording (B3) ─────────────────────────────────────
-  const stopVoice = useCallback((transcript = '') => {
-    if (recIntervalRef.current) { clearInterval(recIntervalRef.current); recIntervalRef.current = null }
-    try { speechRef.current?.stop() } catch { /* ignore */ }
-    speechRef.current = null
-    setRecording(false)
-    setRecSecs(0)
-    if (transcript) {
-      setInput(prev => (prev ? prev + ' ' : '') + transcript.trim())
-      setTimeout(() => areaRef.current?.focus(), 80)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const cancelVoice = useCallback(() => stopVoice(''), [stopVoice])
-
-  const startVoice = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) return
-    setRecording(true)
-    setRecSecs(0)
-    recIntervalRef.current = setInterval(() => setRecSecs(s => s + 1), 1000)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rec: any = new SR()
-    rec.lang = 'fr-FR'
-    rec.continuous = true
-    rec.interimResults = false
-    speechRef.current = rec
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      const transcript = Array.from(e.results as ArrayLike<{ [index: number]: { transcript: string } }>)
-        .map((r: { [index: number]: { transcript: string } }) => r[0].transcript).join(' ')
-      stopVoice(transcript)
-    }
-    rec.onerror = () => stopVoice('')
-    rec.start()
-  }, [stopVoice])
-
   // SEND MESSAGE
   const send = useCallback(async (presetDisplay?: string, presetApi?: string) => {
     const txt = (presetDisplay ?? input).trim()
@@ -18692,7 +18402,6 @@ export default function AIPanel({
         id: genId(),
         title: displayText.slice(0, 46) + (displayText.length > 46 ? '…' : ''),
         createdAt: Date.now(), updatedAt: Date.now(), msgs: [],
-        agent: activeAgent,
       }
       isNew = true
     }
@@ -18776,7 +18485,7 @@ export default function AIPanel({
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
+          agentId:  isPlanChat ? 'plan_coach' : 'central',
           modelId:  snapshot,
           messages: apiMsgs,
           aiRules:  aiRules.length > 0 ? aiRules : undefined,
@@ -18907,20 +18616,7 @@ export default function AIPanel({
         setLoading(false)
         return
       }
-      // G1 — Error message based on error type
-      const msg429 = 'Trop de requêtes. Patiente quelques secondes.'
-      const msgTimeout = 'La réponse prend trop de temps. Réessaie.'
-      const msgNetwork = 'Problème de connexion. Vérifie ta connexion internet.'
-      const msgDefault = 'Une erreur est survenue. Réessaie.'
-      let errText = msgDefault
-      if (e instanceof Error) {
-        const s = e.message.toLowerCase()
-        if (s.includes('429') || s.includes('rate limit')) errText = msg429
-        else if (s.includes('timeout') || s.includes('timed out') || s.includes('signal')) errText = msgTimeout
-        else if (s.includes('network') || s.includes('fetch') || s.includes('failed to fetch')) errText = msgNetwork
-      }
-      const errContent = `⚠️ ${errText}`
-      const err: AIMsg = { id: genId(), role: 'assistant', content: errContent, ts: Date.now() }
+      const err: AIMsg = { id: genId(), role: 'assistant', content: 'Erreur réseau. Réessaie.', ts: Date.now() }
       setConvs(prev => prev.map(c =>
         c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
       ))
@@ -18965,27 +18661,14 @@ export default function AIPanel({
     <>
       {/* ── CSS global ─────────────────────────────────────── */}
       <style>{`
-        /* ── Thinking dots — organic spring bounce (used in flows) ── */
+        /* ── Thinking dots — organic spring bounce ───────────── */
         @keyframes ai_dot {
           0%, 70%, 100% { opacity: 0.22; transform: scale(0.75) translateY(0); }
           35%            { opacity: 1;    transform: scale(1.18) translateY(-4px); }
         }
-        /* ── Bare dots for thinking indicator ────────────────── */
-        @keyframes ai_dot_pulse {
-          0%, 60%, 100% { opacity: 0.3; }
-          30%            { opacity: 1; }
-        }
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }
-        }
-        @keyframes ai_empty_logo {
-          from { opacity:0; transform:scale(0.9); }
-          to   { opacity:1; transform:scale(1); }
-        }
-        @keyframes ai_actions_in {
-          from { opacity:0; }
-          to   { opacity:1; }
         }
         /* ── Typing cursor blink ──────────────────────────────── */
         @keyframes ai_cursor {
@@ -18993,48 +18676,41 @@ export default function AIPanel({
           50%       { opacity: 0; }
         }
         /* ── Message appear ──────────────────────────────────── */
+        @keyframes ai_pulse {
+          0%,100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(0.92); }
+        }
         @keyframes ai_msg_in {
           from { opacity: 0; transform: translateY(6px); }
           to   { opacity: 1; transform: translateY(0); }
-        }
-        /* ── Logo rotation with pause ────────────────────────── */
-        /* 2s rotation (57%) + 1.5s pause (43%) = 3.5s total     */
-        @keyframes ai_spin_pause {
-          0%   { transform: rotate(0deg); }
-          57%  { transform: rotate(720deg); }
-          100% { transform: rotate(720deg); }
-        }
-        .ai-logo-spinning {
-          animation: ai_spin_pause 3.5s ease-in-out infinite;
-          transform-origin: center center;
         }
 
         /* CSS variables */
         .aip-root {
           --ai-bg:          #ffffff;
-          --ai-bg2:         #f9fafb;
-          --ai-border:      rgba(0,0,0,0.07);
+          --ai-bg2:         #f6f8fc;
+          --ai-border:      rgba(0,0,0,0.08);
           --ai-text:        #0d1117;
-          --ai-mid:         rgba(13,17,23,0.55);
-          --ai-dim:         rgba(13,17,23,0.35);
-          --ai-accent:      #00c8e0;
-          --ai-accent-dim:  rgba(0,200,224,0.10);
-          --ai-accent-soft: rgba(0,200,224,0.05);
-          --ai-accent-line: rgba(0,200,224,0.40);
-          --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
+          --ai-mid:         rgba(13,17,23,0.58);
+          --ai-dim:         rgba(13,17,23,0.36);
+          --ai-accent:      #8b5cf6;
+          --ai-accent-dim:  rgba(139,92,246,0.12);
+          --ai-accent-soft: rgba(139,92,246,0.06);
+          --ai-accent-line: rgba(139,92,246,0.48);
+          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
         }
         html.dark .aip-root {
           --ai-bg:          #13161e;
           --ai-bg2:         #0f121a;
-          --ai-border:      rgba(255,255,255,0.08);
+          --ai-border:      rgba(255,255,255,0.09);
           --ai-text:        #eef2f7;
-          --ai-mid:         rgba(238,242,247,0.58);
-          --ai-dim:         rgba(238,242,247,0.33);
-          --ai-accent:      #00c8e0;
-          --ai-accent-dim:  rgba(0,200,224,0.12);
-          --ai-accent-soft: rgba(0,200,224,0.07);
-          --ai-accent-line: rgba(0,200,224,0.45);
-          --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
+          --ai-mid:         rgba(238,242,247,0.60);
+          --ai-dim:         rgba(238,242,247,0.35);
+          --ai-accent:      #8b5cf6;
+          --ai-accent-dim:  rgba(139,92,246,0.15);
+          --ai-accent-soft: rgba(139,92,246,0.08);
+          --ai-accent-line: rgba(139,92,246,0.55);
+          --ai-gradient:    linear-gradient(135deg,#8b5cf6,#5b6fff);
         }
 
         /* Panneau */
@@ -19078,27 +18754,17 @@ export default function AIPanel({
         .aip-hist-list::-webkit-scrollbar { width: 3px; }
         .aip-hist-list::-webkit-scrollbar-thumb { background: var(--ai-border); border-radius: 2px; }
 
-        /* Textarea font — 16px toujours (évite zoom Safari sur iOS) */
+        /* Textarea font — 16px min pour éviter zoom Safari */
         .aip-textarea { font-size: 16px !important; }
+        @media (min-width: 768px) { .aip-textarea { font-size: 14px !important; } }
 
         /* Focus : bordure du conteneur input */
         .aip-input-wrap:focus-within {
-          border-color: rgba(0,200,224,0.45) !important;
-          box-shadow: 0 0 0 3px rgba(0,200,224,0.08) !important;
+          border-color: rgba(0,0,0,0.18) !important;
         }
         html.dark .aip-input-wrap:focus-within {
-          border-color: rgba(0,200,224,0.5) !important;
-          box-shadow: 0 0 0 3px rgba(0,200,224,0.1) !important;
+          border-color: rgba(255,255,255,0.18) !important;
         }
-        /* Icon buttons in header — hover effect */
-        .aip-icon-btn {
-          background: transparent !important;
-          border: none !important;
-          cursor: pointer;
-          transition: background 0.12s !important;
-        }
-        .aip-icon-btn:hover { background: rgba(0,0,0,0.06) !important; }
-        html.dark .aip-icon-btn:hover { background: rgba(255,255,255,0.08) !important; }
 
         /* Messages scroll */
         .aip-messages {
@@ -19150,47 +18816,6 @@ export default function AIPanel({
 
         /* Model picker pill hover */
         .aip-model-pill:hover { background: var(--pill-hover) !important; }
-
-        /* B2 — Floating input: no border-top, transparent outer bg */
-        .aip-input-footer {
-          border-top: none !important;
-          background: transparent !important;
-          padding: 0 16px 16px !important;
-        }
-
-        /* B2 — Input wrap: Claude-style rounded box */
-        .aip-input-wrap {
-          border-radius: 24px !important;
-          background: #F4F4F5 !important;
-          border: 1px solid transparent !important;
-          box-shadow: none !important;
-        }
-        html.dark .aip-input-wrap {
-          background: #2A2A2E !important;
-        }
-        .aip-input-wrap:focus-within {
-          border-color: #D1D5DB !important;
-          box-shadow: none !important;
-        }
-        html.dark .aip-input-wrap:focus-within {
-          border-color: #4A4A4E !important;
-          box-shadow: none !important;
-        }
-
-        /* B4 — 3-dot bounce thinking animation */
-        @keyframes ai_bounce_dot {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-8px); }
-        }
-        .aip-dot-1 { animation: ai_bounce_dot 1.4s ease infinite 0s; }
-        .aip-dot-2 { animation: ai_bounce_dot 1.4s ease infinite 0.2s; }
-        .aip-dot-3 { animation: ai_bounce_dot 1.4s ease infinite 0.4s; }
-
-        /* B3 — Voice recording bar animation */
-        @keyframes ai_voice_bar {
-          0%, 100% { transform: scaleY(0.3); }
-          50% { transform: scaleY(1); }
-        }
       `}</style>
 
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
@@ -19200,181 +18825,77 @@ export default function AIPanel({
         <div style={{
           height: 50, padding: '0 12px',
           borderBottom: '1px solid var(--ai-border)',
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center', gap: 8,
           flexShrink: 0, background: 'var(--ai-bg)',
         }}>
-          {/* ── Agent Selector ──────────────────────────────── */}
-          <div ref={agentDropRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          {/* Hamburger (mobile only — desktop has persistent sidebar) */}
+          {!isDesktop && (
             <button
-              onClick={() => setAgentDropOpen(o => !o)}
-              aria-label="Sélectionner un agent IA"
-              aria-haspopup="menu"
-              aria-expanded={agentDropOpen}
+              onClick={() => setHistOpen(h => !h)}
+              title="Menu"
               style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                background: 'none', border: 'none', padding: 0,
-                cursor: 'pointer', maxWidth: '100%',
+                width: 36, height: 36, borderRadius: '50%',
+                border: 'none', background: 'var(--ai-bg2)',
+                cursor: 'pointer', color: 'var(--ai-mid)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}
             >
-              <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--ai-text)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
-                {activeAgent === 'training' ? 'Hybrid Training' : 'Hybrid Networks'}
-              </span>
-              <svg
-                width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="var(--ai-dim)" strokeWidth="2.5" strokeLinecap="round"
-                style={{ flexShrink: 0, transition: 'transform 0.15s', transform: agentDropOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-              >
-                <path d="M6 9l6 6 6-6"/>
-              </svg>
-            </button>
-
-            {!agentDropOpen && active && (
-              <div style={{ fontSize: 12, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, maxWidth: '220px' }}>
-                {active.title}
-              </div>
-            )}
-
-            {/* Dropdown menu */}
-            {agentDropOpen && (
-              <div
-                role="menu"
-                style={{
-                  position: 'absolute', top: 'calc(100% + 8px)', left: 0,
-                  background: 'var(--ai-bg)',
-                  border: '1px solid var(--ai-border)',
-                  borderRadius: 12,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
-                  minWidth: 240, zIndex: 9999,
-                  overflow: 'hidden',
-                  animation: 'ai_slidein 0.15s ease',
-                }}
-              >
-                {/* Hybrid Training */}
-                <button
-                  role="menuitem"
-                  onClick={() => { setActiveAgent('training'); setAgentDropOpen(false) }}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 11,
-                    width: '100%', padding: '12px 14px',
-                    background: activeAgent === 'training' ? 'rgba(0,200,224,0.06)' : 'none',
-                    border: 'none', borderBottom: '1px solid var(--ai-border)',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'rgba(0,200,224,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                    {/* Zap icon */}
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00c8e0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)' }}>Hybrid Training</span>
-                      {activeAgent === 'training' && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 2 }}>Entraînement · Nutrition</div>
-                  </div>
-                </button>
-
-                {/* Hybrid Networks */}
-                <button
-                  role="menuitem"
-                  onClick={() => { setActiveAgent('networks'); setAgentDropOpen(false) }}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 11,
-                    width: '100%', padding: '12px 14px',
-                    background: activeAgent === 'networks' ? 'rgba(91,111,255,0.06)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                    {/* Globe icon */}
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="2" y1="12" x2="22" y2="12"/>
-                      <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)' }}>Hybrid Networks</span>
-                      {activeAgent === 'networks' && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 2 }}>Instagram · Marketing</div>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Spacer between title and actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-
-          {/* History button */}
-          <button
-            onClick={() => setHistOpen(h => !h)}
-            title="Conversations"
-            className="aip-icon-btn"
-            style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: histOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, position: 'relative',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-            </svg>
-            {convs.length > 0 && (
-              <div style={{
-                position: 'absolute', top: 5, right: 5,
-                width: 5, height: 5, borderRadius: '50%',
-                background: '#00c8e0',
-              }} />
-            )}
-          </button>
-
-          {/* Export (G2) */}
-          {active && (
-            <button
-              onClick={exportMarkdown}
-              title="Exporter en Markdown"
-              className="aip-icon-btn"
-              style={{ width: 32, height: 32, borderRadius: 6, color: 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 12h18M3 6h18M3 18h18"/>
               </svg>
             </button>
           )}
 
+          {/* Agent name + shuriken — centré */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minWidth: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 32 32">
+              <defs>
+                <linearGradient id="hdr_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#00c8e0"/>
+                  <stop offset="100%" stopColor="#3B82F6"/>
+                </linearGradient>
+              </defs>
+              <path d="M16 2 L20 12 L30 8 L22 16 L30 24 L20 20 L16 30 L12 20 L2 24 L10 16 L2 8 L12 12 Z" fill="url(#hdr_grad)"/>
+            </svg>
+            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--ai-text)', lineHeight: 1 }}>
+              {MODEL_CONFIGS[model].name}
+            </span>
+          </div>
+
+          {/* New conv */}
+          <button
+            onClick={newConv}
+            title="Nouvelle conversation"
+            style={{
+              width: 30, height: 30, borderRadius: 8,
+              border: 'none', background: 'transparent',
+              cursor: 'pointer', color: 'var(--ai-dim)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+
           {/* Fullscreen */}
           <button
             onClick={() => setFullscr(f => !f)}
-            title={fullscr ? 'Réduire' : 'Plein écran'}
-            className="aip-icon-btn"
+            title={fullscr ? 'Reduire' : 'Plein ecran'}
             style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: 'var(--ai-dim)',
+              width: 30, height: 30, borderRadius: 8,
+              border: 'none', background: 'transparent',
+              cursor: 'pointer', color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
             {fullscr ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3"/>
               </svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
               </svg>
             )}
           </button>
@@ -19382,18 +18903,17 @@ export default function AIPanel({
           {/* Close */}
           <button
             onClick={onClose}
-            className="aip-icon-btn"
             style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: 'var(--ai-dim)',
+              width: 30, height: 30, borderRadius: 8,
+              border: 'none', background: 'transparent',
+              cursor: 'pointer', color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
+              <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           </button>
-          </div>{/* /actions flex */}
         </div>
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
@@ -19403,12 +18923,14 @@ export default function AIPanel({
           {isDesktop && (
             <AISidebar
               persistent
-              convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
+              convs={convs}
               activeId={activeId}
+              model={model}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
               onPin={pinConv}
+              onModelChange={m => setModel(m as THWModel)}
               onClose={() => setHistOpen(false)}
             />
           )}
@@ -19416,12 +18938,14 @@ export default function AIPanel({
           {/* ── Sidebar mobile (overlay) ── */}
           {!isDesktop && histOpen && (
             <AISidebar
-              convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
+              convs={convs}
               activeId={activeId}
+              model={model}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
               onPin={pinConv}
+              onModelChange={m => setModel(m as THWModel)}
               onClose={() => setHistOpen(false)}
             />
           )}
@@ -19433,163 +18957,26 @@ export default function AIPanel({
             onTouchEnd={handleTouchEnd}
           >
 
-          {/* ── Hybrid Networks ──────────────────────────── */}
-          {activeAgent === 'networks' && (
-            <HybridNetworksPanel
-              convs={convs.filter(c => (c.agent ?? 'training') === 'networks') as unknown as HNConv[]}
-              activeId={activeId}
-              onConvsChange={(updater) => setConvs(prev => updater(prev as unknown as HNConv[]) as unknown as AIConv[])}
-              onActiveIdChange={setActiveId}
-            />
-          )}
-
           {/* ── MESSAGES ───────────────────────────────────── */}
-          {activeAgent === 'training' && <div
-            ref={scrollContainerRef}
-            className="aip-messages"
-            style={{ padding: '24px 20px 0' }}
-            onMouseUp={handleMsgMouseUp}
-            onScroll={() => {
-              const el = scrollContainerRef.current
-              if (!el) return
-              const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
-              autoScrollRef.current = atBottom
-            }}
-          >
+          <div className="aip-messages" style={{ padding: '16px 16px 0' }} onMouseUp={handleMsgMouseUp}>
 
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
-              <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                  alt="THW Coach"
-                  style={{
-                    width: 48, height: 48, objectFit: 'contain',
-                    animation: 'ai_empty_logo 0.4s ease both',
-                    marginBottom: 16,
-                  }}
-                />
-                <p style={{
-                  textAlign: 'center', margin: '0 0 6px',
-                  fontSize: 16, fontWeight: 700, color: 'var(--ai-text)',
-                  fontFamily: 'Syne,sans-serif', lineHeight: 1.3,
-                }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px' }}>
+                <svg width="48" height="48" viewBox="0 0 32 32" style={{ marginBottom: 16 }}>
+                  <defs>
+                    <linearGradient id="shuriken_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#00c8e0"/>
+                      <stop offset="100%" stopColor="#3B82F6"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M16 2 L20 12 L30 8 L22 16 L30 24 L20 20 L16 30 L12 20 L2 24 L10 16 L2 8 L12 12 Z" fill="url(#shuriken_grad)"/>
+                </svg>
+                <p style={{ textAlign: 'center', margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.3 }}>
                   Bonjour, bon {mounted ? getGreeting() : 'matin'} !
                 </p>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 28px' }}>
-                  Comment puis-je t'aider aujourd'hui ?
-                </p>
-
-                <button
-                  onClick={() => {
-                    const next = !showQuickActions
-                    setShowQuickActions(next)
-                    localStorage.setItem('thw_ai_show_quick_actions', String(next))
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '0 0 9px',
-                  }}
-                >
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-                    textTransform: 'uppercase', color: 'var(--ai-dim)',
-                  }}>
-                    Actions rapides
-                  </span>
-                  <svg
-                    width="10" height="10" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
-                    style={{ transform: showQuickActions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                  >
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-
-                {showQuickActions && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                    {QUICK_ACTIONS.map((qa, i) => {
-                      const mcfg = MODEL_CONFIGS[qa.model]
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setModel(qa.model)
-                            if (qa.flow) {
-                              setActiveFlow(qa.flow)
-                              setActiveQA(null)
-                            } else if (qa.enrichedId) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void handleEnrichedAction(qa.enrichedId, qa.label)
-                            } else if (qa.prompt) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void send(qa.label, qa.prompt)
-                            }
-                          }}
-                          disabled={loading}
-                          style={{
-                            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                            gap: 10, padding: '11px 14px', borderRadius: 10,
-                            border: '1px solid var(--ai-border)',
-                            background: 'var(--ai-bg2)',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            textAlign: 'left', width: '100%',
-                            opacity: loading ? 0.5 : 1,
-                            transition: 'border-color 0.12s, background 0.12s',
-                          }}
-                          onMouseEnter={e => { if (!loading) {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = mcfg.color + '50'
-                            ;(e.currentTarget as HTMLButtonElement).style.background = mcfg.colorBg
-                          }}}
-                          onMouseLeave={e => {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
-                            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                              {qa.label}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
-                              {qa.sub}
-                            </div>
-                            {/* Modèle recommandé */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={qa.model === 'hermes' ? '/logos/logo_3bras.png' : qa.model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                                alt={mcfg.name}
-                                style={{ width: 12, height: 12, objectFit: 'contain', flexShrink: 0 }}
-                              />
-                              <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
-                                {mcfg.name}
-                              </span>
-                            </div>
-                          </div>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {!showQuickActions && (
-                  <p
-                    style={{ fontSize: 11, color: 'var(--ai-dim)', textAlign: 'center', margin: '0 0 16px', cursor: 'pointer' }}
-                    onClick={() => { setShowQuickActions(true); localStorage.setItem('thw_ai_show_quick_actions', 'true') }}
-                  >
-                    Afficher les actions rapides
-                  </p>
-                )}
-
-                <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 14, margin: 0 }}>
-                  ou utilise + pour explorer toutes les options
+                <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--ai-dim)', margin: 0 }}>
+                  Comment puis-je t'aider ?
                 </p>
               </div>
             )}
@@ -19885,26 +19272,15 @@ export default function AIPanel({
                 flow a créé une conv via onRecordConv. Le flow reprend la
                 main tout seul. */}
             {active && active.msgs.length > 0 && !activeFlow && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
                 {active.msgs.map((msg, idx) => (
-                  <div
-                    key={msg.id}
-                    style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-                    onMouseEnter={() => setHoveredMsgId(msg.id)}
-                    onMouseLeave={() => setHoveredMsgId(null)}
-                  >
-
-                    {/* Message row */}
-                    <AIMessageBubble
-                      role={msg.role}
-                      modelId={msg.modelId}
-                      userInitials={userInitials}
-                      isStreaming={loading && idx === active.msgs.length - 1}
-                    >
-                      {msg.role === 'user'
-                        ? msg.content
-                        : <TypedText text={msg.content} isStreaming={loading && idx === active.msgs.length - 1} fontFamily={chatFontFamily} />
-                      }
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <AIMessageBubble role={msg.role} isStreaming={loading && idx === active.msgs.length - 1}>
+                      {msg.role === 'user' ? (
+                        <span>{msg.content}</span>
+                      ) : (
+                        <TypedText text={msg.content} isStreaming={loading && idx === active.msgs.length - 1} fontFamily={chatFontFamily} />
+                      )}
                     </AIMessageBubble>
                     {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
                     {msg.role === 'assistant' && msg.sessionData && (
@@ -19969,95 +19345,28 @@ export default function AIPanel({
                         isStreaming={loading && idx === active.msgs.length - 1}
                       />
                     )}
-
-                    {/* ── Message actions + timestamp (C1, C4) ─── */}
-                    {hoveredMsgId === msg.id && (
-                      <div style={{
-                        display: 'flex', alignItems: 'center',
-                        justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        gap: 4, paddingLeft: msg.role === 'assistant' ? 32 : 0,
-                        opacity: 0, animation: 'ai_actions_in 0.15s ease forwards',
-                      }}>
-                        {/* Timestamp (C4) */}
-                        <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.7, userSelect: 'none', marginRight: 4 }}>
-                          {fmtMsgTime(msg.ts)}
-                        </span>
-                        {/* AI message actions (C1) */}
-                        {msg.role === 'assistant' && (
-                          <>
-                            {/* Copy */}
-                            <button
-                              title="Copier"
-                              onClick={() => {
-                                void navigator.clipboard.writeText(msg.content)
-                                setCopiedMsgId(msg.id)
-                                setTimeout(() => setCopiedMsgId(null), 1500)
-                              }}
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              {copiedMsgId === msg.id ? (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                              ) : (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                              )}
-                            </button>
-                            {/* Regenerate */}
-                            <button
-                              title="Régénérer la réponse"
-                              onClick={() => {
-                                // Find last user message before this AI message and resend
-                                const prevUser = active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')
-                                if (prevUser) void send(prevUser.content)
-                              }}
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                            </button>
-                            {/* Thumbs up */}
-                            <button
-                              title="Bonne réponse"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
-                            </button>
-                            {/* Thumbs down */}
-                            <button
-                              title="Mauvaise réponse"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zM17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
                   </div>
                 ))}
 
-                {/* Thinking indicator — 3-dot bounce (Claude style) */}
+                {/* Thinking indicator */}
                 {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'ai_msg_in 0.18s ease both', padding: '6px 0' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                      alt={model}
-                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {(['aip-dot-1','aip-dot-2','aip-dot-3'] as const).map(cls => (
-                        <span key={cls} className={cls} style={{
-                          display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                          background: 'var(--ai-dim)',
-                        }} />
-                      ))}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, animation: 'ai_msg_in 0.18s ease both' }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                      background: 'var(--ai-accent-dim)',
+                      border: '1px solid var(--ai-accent-line)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <ModelEffigy model={model} isAnimating={true} size={15} color="var(--ai-accent)" />
+                    </div>
+                    <div style={{
+                      padding: '8px 14px',
+                      background: 'var(--ai-bg2)',
+                      border: '1px solid var(--ai-border)',
+                      borderRadius: '4px 18px 18px 18px',
+                      display: 'flex', alignItems: 'center',
+                    }}>
+                      <Dots />
                     </div>
                   </div>
                 )}
@@ -20074,24 +19383,26 @@ export default function AIPanel({
                 <div ref={endRef} />
               </div>
             )}
-          </div>}
+          </div>
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
-          {activeAgent === 'training' && <>
-          <div className="aip-input-footer" style={{
-            padding: '10px 16px 14px',
+          <div style={{
+            padding: '8px 12px 12px',
             borderTop: '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
-            {/* Plus menu — AIQuickActionsSheet */}
+            {/* Plus menu */}
             <AIQuickActionsSheet
               open={plusOpen}
               onClose={() => setPlusOpen(false)}
+              onInject={(prompt, agent) => {
+                setInput(prompt)
+                setModel(agent as THWModel)
+                setPlusOpen(false)
+                setTimeout(() => areaRef.current?.focus(), 80)
+              }}
               isMobile={!isDesktop}
-              onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
-              onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
-              onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f as FlowId) }}
               onCamera={() => cameraRef.current?.click()}
               onPhotos={() => photosRef.current?.click()}
               onFiles={() => filesRef.current?.click()}
@@ -20104,6 +19415,9 @@ export default function AIPanel({
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
+              background: 'var(--ai-bg2)',
+              border: '1px solid var(--ai-border)',
+              borderRadius: 18,
               transition: 'border-color 0.15s',
             }}>
 
@@ -20197,59 +19511,31 @@ export default function AIPanel({
                 </div>
               )}
 
-              {/* Textarea — hidden during recording */}
-              {!recording && (
-                <textarea
-                  ref={areaRef}
-                  className="aip-textarea"
-                  value={input}
-                  onChange={handleInput}
-                  onKeyDown={handleKey}
-                  placeholder={activeQA
-                    ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
-                    : 'Écrire un message…'}
-                  rows={1}
-                  style={{
-                    display: 'block', width: '100%',
-                    background: 'transparent',
-                    border: 'none', outline: 'none', resize: 'none',
-                    fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 16, lineHeight: 1.5, color: 'var(--ai-text)',
-                    padding: '14px 16px 6px',
-                    minHeight: 52, maxHeight: 200,
-                    overflowY: 'auto',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              )}
+              {/* Textarea */}
+              <textarea
+                ref={areaRef}
+                className="aip-textarea"
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKey}
+                placeholder={activeQA
+                  ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
+                  : 'Pose ta question…'}
+                rows={1}
+                style={{
+                  display: 'block', width: '100%',
+                  background: 'transparent',
+                  border: 'none', outline: 'none', resize: 'none',
+                  fontFamily: 'DM Sans, sans-serif',
+                  lineHeight: 1.55, color: 'var(--ai-text)',
+                  padding: '14px 16px 6px',
+                  minHeight: 26, maxHeight: 130,
+                  overflowY: 'auto',
+                  boxSizing: 'border-box',
+                }}
+              />
 
-              {/* Recording overlay — B3 */}
-              {recording && (
-                <div style={{ padding: '14px 16px 6px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 52 }}>
-                  {/* Cancel X */}
-                  <button onClick={cancelVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#374151', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>✕</button>
-                  {/* Sound wave — 20 bars */}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, height: 28, overflow: 'hidden' }}>
-                    {Array.from({ length: 20 }, (_, i) => (
-                      <span key={i} style={{
-                        display: 'inline-block', width: '4%', maxWidth: 4, height: '100%',
-                        borderRadius: 2, background: 'var(--ai-dim)', flexShrink: 0,
-                        animation: `ai_voice_bar ${0.6 + (i % 5) * 0.1}s ease-in-out infinite alternate`,
-                        animationDelay: `${(i * 0.05) % 0.5}s`,
-                        transformOrigin: 'bottom',
-                      }} />
-                    ))}
-                  </div>
-                  {/* Timer + confirm */}
-                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--ai-dim)', flexShrink: 0 }}>
-                    {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
-                  </span>
-                  {/* Confirm ✓ */}
-                  <button onClick={() => { try { speechRef.current?.stop() } catch { stopVoice('') } }} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
-                </div>
-              )}
-
-              {/* Ligne basse : + · modèle · [spacer] · mic · envoyer */}
+              {/* Ligne basse : + · modèle · [spacer] · envoyer */}
               <div style={{
                 display: 'flex', alignItems: 'center',
                 padding: '4px 8px 8px', gap: 5,
@@ -20258,11 +19544,13 @@ export default function AIPanel({
                 <button
                   onClick={() => setPlusOpen(p => !p)}
                   title="Actions"
-                  className="aip-icon-btn"
                   style={{
-                    width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                    color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
+                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                    border: `1px solid ${plusOpen ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
+                    background: plusOpen ? 'var(--ai-bg)' : 'transparent',
+                    cursor: 'pointer', color: 'var(--ai-dim)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.12s',
                   }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -20279,25 +19567,6 @@ export default function AIPanel({
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
-                {/* Mic button — B3 (hidden if not supported) */}
-                {speechSupported && !loading && (
-                  <button
-                    onClick={recording ? cancelVoice : startVoice}
-                    title={recording ? 'Annuler' : 'Dictée vocale'}
-                    className="aip-icon-btn"
-                    style={{
-                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                      color: recording ? '#00c8e0' : 'var(--ai-dim)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="2" width="6" height="11" rx="3"/>
-                      <path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8"/>
-                    </svg>
-                  </button>
-                )}
-
                 {/* Envoyer / Stop */}
                 {loading ? (
                   <button
@@ -20306,7 +19575,7 @@ export default function AIPanel({
                     style={{
                       width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
-                      background: '#374151',
+                      background: '#ef4444',
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'background 0.15s',
@@ -20323,15 +19592,14 @@ export default function AIPanel({
                     style={{
                       width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
-                      background: '#00c8e0',
-                      opacity: (input.trim() || attachment || activeQA || quotedText) ? 1 : 0.35,
+                      background: (input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-text)' : 'var(--ai-border)',
                       cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'opacity 0.15s',
+                      transition: 'background 0.15s',
                     }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                      stroke="#fff"
+                      stroke={(input.trim() || attachment || activeQA || quotedText) ? 'var(--ai-bg)' : 'var(--ai-dim)'}
                       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
                     </svg>
@@ -20344,7 +19612,6 @@ export default function AIPanel({
               Entrée · Shift+Entrée pour nouvelle ligne
             </div>
           </div>
-          </>}
           {/* /chat-col */}
           </div>
         {/* /body */}

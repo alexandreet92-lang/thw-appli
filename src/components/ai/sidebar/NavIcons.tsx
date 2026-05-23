@@ -9,13 +9,22 @@ export function ProjectsIcon({ size = 18 }: { size?: number }) {
   )
 }
 
-export function NetworksIcon({ size = 18 }: { size?: number }) {
+export function NetworksIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18" />
-      <path d="M12 3a13 13 0 0 1 0 18" />
-      <path d="M12 3a13 13 0 0 0 0 18" />
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 2c0 0-3 2-3 6s3 6 3 6M8 2c0 0 3 2 3 6s-3 6-3 6M2 8h12"
+        stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function TrainingIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M1 8h2M13 8h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M3 6h2v4H3zM11 6h2v4h-2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M5 8h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }

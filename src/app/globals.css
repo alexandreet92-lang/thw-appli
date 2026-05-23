@@ -238,6 +238,16 @@ button:active { transform: scale(0.97); }
 }
 .yd-reveal.yd-visible { opacity: 1; transform: none; }
 
+/* ── Barcode scanner scan line ─────────────────────────────────── */
+@keyframes scan-line {
+  0%, 100% { top: 10%; }
+  50%       { top: 85%; }
+}
+.animate-scan-line {
+  animation: scan-line 2s ease-in-out infinite;
+  position: absolute;
+}
+
 /* ── Performance page — overrides mobile (@max-width: 768px) ───── */
 @media (max-width: 768px) {
   /* Chart 1 : Volume mensuel — hauteur minimale + légende scrollable */

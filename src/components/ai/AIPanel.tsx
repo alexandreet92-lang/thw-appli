@@ -18,8 +18,6 @@ import AISidebar from './AISidebar'
 import AIMessageBubble from './AIMessageBubble'
 import QuickActionsSheet from './QuickActionsSheet'
 import AIHeader from './AIHeader'
-import { AgentIcon } from './AgentIcon'
-import type { AgentId } from './AgentIcon'
 import { LogoOfficial } from './sidebar/LogoOfficial'
 
 // ── Colonnes activities — source de vérité unique ──────────────
@@ -19495,9 +19493,9 @@ export default function AIPanel({
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
                 >
-                  <AgentIcon agent={model as AgentId} size={12} />
+                  <LogoOfficial size={12} alt="Training" />
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
-                    {MODEL_CONFIGS[model].name}
+                    Training
                   </span>
                 </button>
 

@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { AgentIcon } from './AgentIcon'
-import type { AgentId } from './AgentIcon'
+import { LogoAgent, modelToAgent } from './sidebar/LogoOfficial'
+
+type AgentId = 'hermes' | 'athena' | 'zeus'
 
 interface Props {
   open: boolean
@@ -132,7 +133,7 @@ export default function QuickActionsSheet({ open, onClose, onInject, isMobile, o
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.04)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
           >
-            <AgentIcon agent={action.agent} size={18} />
+            <LogoAgent agent={modelToAgent(action.agent)} size={18} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#0A0A0A' }}>{action.label}</p>
               <p style={{ margin: '1px 0 0', fontSize: 11, color: '#8C8C8C' }}>{action.desc}</p>

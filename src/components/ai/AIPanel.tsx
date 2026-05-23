@@ -18,7 +18,7 @@ import AISidebar from './AISidebar'
 import AIMessageBubble from './AIMessageBubble'
 import QuickActionsSheet from './QuickActionsSheet'
 import AIHeader from './AIHeader'
-import { LogoOfficial } from './sidebar/LogoOfficial'
+import { LogoAgent, modelToAgent } from './sidebar/LogoOfficial'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -18887,7 +18887,7 @@ export default function AIPanel({
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px', gap: 12 }}>
-                <LogoOfficial size={52} />
+                <LogoAgent agent={modelToAgent(model)} size={52} />
                 <p style={{ textAlign: 'center', margin: '4px 0 4px', fontSize: 20, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.3 }}>
                   {mounted ? (getGreeting() === 'matin' ? 'Bonjour, bon matin !' : getGreeting() === 'après-midi' ? 'Bon après-midi !' : 'Bonsoir !') : 'Bonjour !'}
                 </p>
@@ -19493,9 +19493,9 @@ export default function AIPanel({
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
                 >
-                  <LogoOfficial size={12} alt="Training" />
+                  <LogoAgent agent={modelToAgent(model)} size={14} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
-                    Training
+                    {modelToAgent(model) === 'networks' ? 'Networks' : modelToAgent(model) === 'hermes' ? 'Hermès' : 'Training'}
                   </span>
                 </button>
 

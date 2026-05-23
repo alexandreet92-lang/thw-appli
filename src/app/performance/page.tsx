@@ -2436,7 +2436,7 @@ export default function PerformancePage() {
   ]
 
   return (
-    <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
+    <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
       {/* ── En-tête ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>
         <div>

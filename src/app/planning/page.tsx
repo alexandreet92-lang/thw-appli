@@ -11367,7 +11367,7 @@ export default function PlanningPage() {
   }
 
   return (
-    <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
+    <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>

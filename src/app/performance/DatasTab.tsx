@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -217,12 +217,8 @@ const DUR_SECS: Record<string, number> = {
   '4h':14400, '5h':18000, '6h':21600,
 }
 
-const RUN_DISTS = ['100m','200m','400m','1km','1 mile','2 miles','5km','10km','15km','10 miles','Semi','20km','15 miles','Marathon','50km','100km']
-const RUN_KM: Record<string,number> = {
-  '100m':0.1,'200m':0.2,'400m':0.4,'1km':1,'1 mile':1.60934,'2 miles':3.21869,
-  '5km':5,'10km':10,'15km':15,'10 miles':16.0934,'Semi':21.0975,'20km':20,
-  '15 miles':24.1402,'Marathon':42.195,'50km':50,'100km':100,
-}
+const RUN_DISTS = ['400m','1km','5km','10km','Semi','Marathon','50km','100km']
+const RUN_KM: Record<string,number> = { '400m':0.4,'1km':1,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
 
 const SWIM_DISTS = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
@@ -277,19 +273,11 @@ interface SpRecord {
   performance: string
   performance_unit: string
   achieved_at: string
-  // triathlon splits
   split_swim?: string | null
   split_t1?:   string | null
   split_bike?: string | null
   split_t2?:   string | null
   split_run?:  string | null
-  // running extras
-  event_type?:      string | null   // 'competition' | 'training'
-  race_name?:       string | null
-  rpe?:             number | null
-  elevation_gain_m?: number | null
-  terrain_type?:    string | null   // 'flat' | 'hilly' | 'mountain'
-  surface?:         string | null   // 'route' | 'piste' | 'trail'
 }
 
 interface HyroxRace {
@@ -312,605 +300,111 @@ const HYROX_FORMAT_LABELS: Record<string, string> = {
   duo_pro:   'Duo Pro',
 }
 
-// ── RunGaugeChart — helpers ──────────────────────────────────────
-function lightenHex(hex: string, factor = 0.5): string {
-  if (hex.length !== 7 || hex[0] !== '#') return hex
-  const r = parseInt(hex.slice(1,3), 16)
-  const g = parseInt(hex.slice(3,5), 16)
-  const b = parseInt(hex.slice(5,7), 16)
-  return '#' + [r, g, b].map(c => Math.min(255, Math.round(c + (255-c)*factor)).toString(16).padStart(2,'0')).join('')
+const CHART_DISTS: Record<string, string[]> = {
+  run:    ['5km', '10km', 'Semi', 'Marathon'],
+  swim:   ['100m', '200m', '400m', '1500m'],
+  rowing: ['500m', '2000m', '5000m'],
 }
 
-// ── RunGaugeChart — jauges running pleine largeur ────────────────
-// Hauteur ∝ temps (lent = haut, rapide = bas). Ordre chronologique.
-const RUN_REF_SECS: Record<string, number[]> = {
-  '100m':     [10,12,15,20],
-  '200m':     [20,25,30,40],
-  '400m':     [45,60,75,90],
-  '1km':      [150,180,210,240],
-  '1 mile':   [240,300,360,420],
-  '2 miles':  [510,600,720,840],
-  '5km':      [840,1020,1200,1500,1800],
-  '10km':     [1800,2100,2400,2700,3000],
-  '15km':     [3000,3600,4200,4800],
-  '10 miles': [3300,3900,4500,5400],
-  'Semi':     [3900,4500,5100,6000,7200],
-  '20km':     [4200,4800,5400,6300],
-  '15 miles': [5400,6300,7200,8100],
-  'Marathon': [9000,10800,12600,14400,16200],
-  '50km':     [12600,16200,19800,23400],
-  '100km':    [25200,32400,39600,50400],
-}
 
-function secToLabel(s: number): string {
-  if (s < 60) return `${s}s`
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  if (h > 0) return `${h}h${String(m).padStart(2,'0')}`
-  return sec > 0 ? `${m}:${String(sec).padStart(2,'0')}` : `${m}min`
-}
-
-function RunGaugeChart({ records, dist, recordYear }: {
-  records: SpRecord[]   // already filtered to sport='run' and distance_label=dist
-  dist: string
-  recordYear: string
-}) {
-  const [count, setCount] = useState(10)
-  const [tip, setTip] = useState<{ r: SpRecord; cx: number; cy: number } | null>(null)
-  const [hoveredBar, setHoveredBar] = useState<string | null>(null)
-  const MAX_H = 200, MIN_H = 24
-
-  const filtered = records.filter(r => {
-    if (toSec(r.performance) <= 0) return false
-    if (recordYear !== 'All Time') return r.achieved_at.slice(0,4) === recordYear
-    return true
-  })
-  const sorted = [...filtered]
-    .sort((a, b) => a.achieved_at.localeCompare(b.achieved_at))
-    .slice(-count)
-
-  const allSecs = sorted.map(r => toSec(r.performance))
-  const maxSec  = allSecs.length > 0 ? Math.max(...allSecs) : 0
-  const minSec  = allSecs.length > 0 ? Math.min(...allSecs) : 0
-  const topSec  = maxSec > 0 ? maxSec * 1.12 : 3600
-
-  function barH(s: number): number {
-    return Math.max(MIN_H, (s / topSec) * MAX_H)
-  }
-
-  function fmtBarDate(dateStr: string): string {
-    try { return new Date(dateStr).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) }
-    catch { return dateStr.slice(0,7) }
-  }
-
-  const refs = (RUN_REF_SECS[dist] ?? []).filter(s => s <= topSec && s > 0)
-  const allYrs = [...new Set(sorted.map(r => r.achieved_at.slice(0,4)))].sort((a,b) => b.localeCompare(a))
-
-  if (records.length === 0) {
-    return (
-      <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-dim)', fontSize:12 }}>
-        Aucun record enregistré — clique sur "+ Ajouter" pour saisir ton premier temps.
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ marginBottom: 8 }}>
-      {/* Count selector — pills */}
-      <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-        {[5,10,20].map(n => (
-          <button key={n} onClick={() => setCount(n)} style={{
-            padding:'4px 14px', borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:600,
-            border: count===n ? 'none' : '1px solid #D1D5DB',
-            background: count===n ? '#111827' : 'transparent',
-            color: count===n ? '#fff' : '#6B7280',
-            transition:'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='#F3F4F6' }}
-          onMouseLeave={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='transparent' }}
-          >{n} derniers</button>
-        ))}
-        <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)', alignSelf:'center' }}>
-          {sorted.length} / {filtered.length} affichés
-        </span>
-      </div>
-
-      {sorted.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'16px 0', fontSize:11, color:'var(--text-dim)' }}>
-          Aucun record{recordYear !== 'All Time' ? ` pour ${recordYear}` : ''} sur {dist}
-        </div>
-      ) : (
-        /* Graph zone */
-        <div style={{
-          position:'relative',
-          background:'#F9FAFB',
-          borderRadius:12,
-          padding:'16px 16px 48px 52px',
-          minHeight:240,
-          boxSizing:'border-box',
-        }}>
-          {/* Y-axis reference lines */}
-          <div style={{ position:'absolute', left:52, right:16, top:16, height:MAX_H, pointerEvents:'none' }}>
-            {refs.map(s => {
-              const pct = s / topSec
-              const top = MAX_H * (1 - pct)
-              return (
-                <div key={s} style={{ position:'absolute', left:0, right:0, top, display:'flex', alignItems:'center' }}>
-                  <div style={{ flex:1, borderTop:'1px dashed #E5E7EB' }} />
-                  <span style={{ position:'absolute', left:-48, fontSize:13, color:'#374151', fontWeight:500, whiteSpace:'nowrap', width:44, textAlign:'right', lineHeight:1 }}>
-                    {secToLabel(s)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Bars — capped at 1/5 container width, centered */}
-          <div style={{ display:'flex', gap:12, height:MAX_H, alignItems:'flex-end', justifyContent:'center', position:'relative' }}>
-            {sorted.map((r) => {
-              const secs     = toSec(r.performance)
-              const h        = barH(secs)
-              const yr       = r.achieved_at.slice(0,4)
-              const col      = getPCColor(yr, allYrs)
-              const colLight = lightenHex(col)
-              const isBest   = secs === minSec
-              const isHov    = hoveredBar === r.id
-              return (
-                <div key={r.id} style={{
-                  flex:'1 0 0',
-                  maxWidth:'calc(20% - 9.6px)',
-                  height: h,
-                  background: `linear-gradient(to top, ${col}, ${colLight})`,
-                  borderTopLeftRadius: 6,
-                  borderTopRightRadius: 6,
-                  border: isBest ? '2px solid #F59E0B' : 'none',
-                  boxShadow:'0 2px 8px rgba(0,0,0,0.12)',
-                  position:'relative',
-                  cursor:'pointer',
-                  display:'flex',
-                  flexDirection:'column',
-                  alignItems:'center',
-                  paddingTop:3,
-                  transition:'filter 150ms ease',
-                  filter: isHov ? 'brightness(1.1)' : 'none',
-                }}
-                onMouseEnter={e => { setHoveredBar(r.id); setTip({ r, cx:e.clientX, cy:e.clientY }) }}
-                onMouseMove={e  => { setTip({ r, cx:e.clientX, cy:e.clientY }) }}
-                onMouseLeave={() => { setHoveredBar(null); setTip(null) }}>
-                  {/* Gold star above best */}
-                  {isBest && (
-                    <div style={{ position:'absolute', top:-20, left:'50%', transform:'translateX(-50%)', fontSize:14, color:'#F59E0B', lineHeight:1, pointerEvents:'none' }}>★</div>
-                  )}
-                  {/* Time label — hidden if bar too short */}
-                  {h >= 40 && (
-                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'90%', padding:'0 2px', lineHeight:1.3, userSelect:'none' }}>
-                      {r.performance}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* X labels — dates under bars */}
-          <div style={{ position:'absolute', left:52, right:16, top:16+MAX_H+6, display:'flex', gap:12, justifyContent:'center' }}>
-            {sorted.map(r => (
-              <div key={r.id} style={{
-                flex:'1 0 0',
-                maxWidth:'calc(20% - 9.6px)',
-                textAlign:'center', fontSize:11, color:'#6B7280',
-                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                transform:'rotate(-30deg)', transformOrigin:'center top',
-              }}>
-                {fmtBarDate(r.achieved_at)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tooltip portal */}
-      {tip && createPortal(
-        <div style={{
-          position:'fixed', left:tip.cx+14, top:tip.cy-130,
-          background:'var(--bg-card)', border:'1px solid var(--border)',
-          borderRadius:10, padding:'10px 14px',
-          boxShadow:'0 4px 20px rgba(0,0,0,0.24)', zIndex:9999, pointerEvents:'none', minWidth:170,
-        }}>
-          <div style={{ fontWeight:700, fontSize:16, fontFamily:'DM Mono,monospace', color:'var(--text)', marginBottom:4 }}>{tip.r.performance}</div>
-          {RUN_KM[dist] && <div style={{ fontSize:12, color:'#22c55e', marginBottom:4, fontWeight:600 }}>{calcPacePerKm(RUN_KM[dist], tip.r.performance)}</div>}
-          <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>
-            {(() => { try { return new Date(tip.r.achieved_at).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'}) } catch { return tip.r.achieved_at } })()}
-          </div>
-          {tip.r.event_type && (
-            <div style={{ fontSize:10, fontWeight:600, color:tip.r.event_type==='competition'?'#F59E0B':'var(--text-dim)', marginBottom:2 }}>
-              {tip.r.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
-              {tip.r.race_name ? ` — ${tip.r.race_name}` : ''}
-            </div>
-          )}
-          {tip.r.rpe != null && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:2 }}>RPE {tip.r.rpe}/10</div>}
-          {tip.r.elevation_gain_m != null && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:2 }}>D+ {tip.r.elevation_gain_m} m</div>}
-          {tip.r.surface && <div style={{ fontSize:10, color:'var(--text-dim)' }}>Surface : {tip.r.surface}</div>}
-          {tip.r.terrain_type && <div style={{ fontSize:10, color:'var(--text-dim)' }}>Relief : {tip.r.terrain_type==='flat'?'Plat':tip.r.terrain_type==='hilly'?'Vallonné':'Montagneux'}</div>}
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-// ── GaugeEntry — type pour UniversalGaugeChart ───────────────────
-interface GaugeEntry {
-  id: string
-  val: number          // seconds for time sports; watts for bike
-  display: string      // formatted: "1:23:45" or "285W"
-  date: string         // "YYYY-MM-DD"
-  metric?: string | null  // "/100m", "/500m", "W/kg", etc.
-  event_type?: string | null
-  race_name?: string | null
-  rpe?: number | null
-}
-
-// ── Reference values for gauge charts ────────────────────────────
-const SWIM_REF_SECS: Record<string, number[]> = {
-  '100m': [60,75,90,120], '200m': [130,155,185,240],
-  '400m': [270,315,375,480], '1000m': [750,900,1050,1200],
-  '1500m': [1170,1380,1590,1800], '2000m': [1620,1920,2220,2700],
-  '5000m': [4200,4800,5700,6600], '10000m': [8400,9600,11400,14400],
-}
-const ROW_REF_SECS: Record<string, number[]> = {
-  '500m': [90,105,120,135], '1000m': [195,225,255,285],
-  '2000m': [390,450,510,570], '5000m': [1080,1260,1440,1620],
-  '10000m': [2280,2640,3000,3600], 'Semi': [5400,6300,7200,8400],
-  'Marathon': [10800,12600,14400,18000],
-}
-const BIKE_REF_WATTS: Record<string, number[]> = {
-  'Pmax': [800,1000,1200,1500], '10s': [600,800,1000,1300],
-  '30s': [450,600,800,1000], '1min': [350,450,550,700],
-  '3min': [280,360,440,550], '5min': [240,310,380,480],
-  '8min': [220,290,360,440], '10min': [210,280,350,430],
-  '12min': [205,270,340,420], '15min': [200,260,330,410],
-  '20min': [190,250,310,400], '30min': [180,240,300,380],
-  '1h': [170,225,280,360], '90min': [160,210,265,340],
-  '2h': [155,200,255,320], '3h': [145,190,240,300],
-  '4h': [135,180,225,280], '5h': [125,165,210,260], '6h': [115,155,195,245],
-}
-
-// ── UniversalGaugeChart — identical design to RunGaugeChart for all sports ──
-function UniversalGaugeChart({ entries, distLabel, recordYear, lowerIsBetter = true, refVals }: {
-  entries: GaugeEntry[]
-  distLabel: string
-  recordYear: string
-  lowerIsBetter?: boolean
-  refVals?: number[]
-}) {
-  const [count, setCount] = useState(10)
-  const [tip, setTip] = useState<{ e: GaugeEntry; cx: number; cy: number } | null>(null)
-  const [hoveredBar, setHoveredBar] = useState<string | null>(null)
-  const MAX_H = 200, MIN_H = 24
-
-  const sorted = [...entries]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-count)
-
-  const allVals = sorted.map(e => e.val)
-  const maxVal  = allVals.length > 0 ? Math.max(...allVals) : 0
-  const minVal  = allVals.length > 0 ? Math.min(...allVals) : 0
-  const topVal  = maxVal > 0 ? maxVal * 1.12 : 3600
-
-  function barH(v: number): number {
-    return Math.max(MIN_H, (v / topVal) * MAX_H)
-  }
-
-  function fmtBarDate(dateStr: string): string {
-    try { return new Date(dateStr).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) }
-    catch { return dateStr.slice(0,7) }
-  }
-
-  const refs = (refVals ?? []).filter(s => s <= topVal && s > 0)
-  const allYrs = [...new Set(sorted.map(e => e.date.slice(0,4)))].sort((a,b) => b.localeCompare(a))
-
-  if (entries.length === 0) {
-    return (
-      <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-dim)', fontSize:12 }}>
-        Aucun record enregistré — clique sur &quot;+ Ajouter&quot; pour saisir ton premier temps.
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ marginBottom: 8 }}>
-      {/* Count selector — pills */}
-      <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-        {[5,10,20].map(n => (
-          <button key={n} onClick={() => setCount(n)} style={{
-            padding:'4px 14px', borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:600,
-            border: count===n ? 'none' : '1px solid #D1D5DB',
-            background: count===n ? '#111827' : 'transparent',
-            color: count===n ? '#fff' : '#6B7280',
-            transition:'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='#F3F4F6' }}
-          onMouseLeave={e => { if (count!==n)(e.currentTarget as HTMLButtonElement).style.background='transparent' }}
-          >{n} derniers</button>
-        ))}
-        <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)', alignSelf:'center' }}>
-          {sorted.length} / {entries.length} affichés
-        </span>
-      </div>
-
-      {sorted.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'16px 0', fontSize:11, color:'var(--text-dim)' }}>
-          Aucun record{recordYear !== 'All Time' ? ` pour ${recordYear}` : ''} sur {distLabel}
-        </div>
-      ) : (
-        <div style={{
-          position:'relative',
-          background:'#F9FAFB',
-          borderRadius:12,
-          padding:'16px 16px 48px 52px',
-          minHeight:240,
-          boxSizing:'border-box',
-        }}>
-          {/* Y-axis reference lines */}
-          <div style={{ position:'absolute', left:52, right:16, top:16, height:MAX_H, pointerEvents:'none' }}>
-            {refs.map(s => {
-              const pct = s / topVal
-              const top = MAX_H * (1 - pct)
-              return (
-                <div key={s} style={{ position:'absolute', left:0, right:0, top, display:'flex', alignItems:'center' }}>
-                  <div style={{ flex:1, borderTop:'1px dashed #E5E7EB' }} />
-                  <span style={{ position:'absolute', left:-48, fontSize:13, color:'#374151', fontWeight:500, whiteSpace:'nowrap', width:44, textAlign:'right', lineHeight:1 }}>
-                    {lowerIsBetter ? secToLabel(s) : `${s}W`}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Bars */}
-          <div style={{ display:'flex', gap:12, height:MAX_H, alignItems:'flex-end', justifyContent:'center', position:'relative' }}>
-            {sorted.map((e) => {
-              const h        = barH(e.val)
-              const yr       = e.date.slice(0,4)
-              const col      = getPCColor(yr, allYrs)
-              const colLight = lightenHex(col)
-              const isBest   = lowerIsBetter ? e.val === minVal : e.val === maxVal
-              const isHov    = hoveredBar === e.id
-              return (
-                <div key={e.id} style={{
-                  flex:'1 0 0',
-                  maxWidth:'calc(20% - 9.6px)',
-                  height: h,
-                  background: `linear-gradient(to top, ${col}, ${colLight})`,
-                  borderTopLeftRadius: 6,
-                  borderTopRightRadius: 6,
-                  border: isBest ? '2px solid #F59E0B' : 'none',
-                  boxShadow:'0 2px 8px rgba(0,0,0,0.12)',
-                  position:'relative',
-                  cursor:'pointer',
-                  display:'flex',
-                  flexDirection:'column',
-                  alignItems:'center',
-                  paddingTop:3,
-                  transition:'filter 150ms ease',
-                  filter: isHov ? 'brightness(1.1)' : 'none',
-                }}
-                onMouseEnter={ev => { setHoveredBar(e.id); setTip({ e, cx:ev.clientX, cy:ev.clientY }) }}
-                onMouseMove={ev  => { setTip({ e, cx:ev.clientX, cy:ev.clientY }) }}
-                onMouseLeave={() => { setHoveredBar(null); setTip(null) }}>
-                  {/* Gold star above best */}
-                  {isBest && (
-                    <div style={{ position:'absolute', top:-20, left:'50%', transform:'translateX(-50%)', fontSize:14, color:'#F59E0B', lineHeight:1, pointerEvents:'none' }}>★</div>
-                  )}
-                  {/* Value label */}
-                  {h >= 40 && (
-                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'90%', padding:'0 2px', lineHeight:1.3, userSelect:'none' }}>
-                      {e.display}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* X labels — dates under bars */}
-          <div style={{ position:'absolute', left:52, right:16, top:16+MAX_H+6, display:'flex', gap:12, justifyContent:'center' }}>
-            {sorted.map(e => (
-              <div key={e.id} style={{
-                flex:'1 0 0',
-                maxWidth:'calc(20% - 9.6px)',
-                textAlign:'center', fontSize:11, color:'#6B7280',
-                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                transform:'rotate(-30deg)', transformOrigin:'center top',
-              }}>
-                {fmtBarDate(e.date)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tooltip portal */}
-      {tip && createPortal(
-        <div style={{
-          position:'fixed', left:tip.cx+14, top:tip.cy-130,
-          background:'var(--bg-card)', border:'1px solid var(--border)',
-          borderRadius:10, padding:'10px 14px',
-          boxShadow:'0 4px 20px rgba(0,0,0,0.24)', zIndex:9999, pointerEvents:'none', minWidth:170,
-        }}>
-          <div style={{ fontWeight:700, fontSize:16, fontFamily:'DM Mono,monospace', color:'var(--text)', marginBottom:4 }}>{tip.e.display}</div>
-          {tip.e.metric && <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:4, fontWeight:600 }}>{tip.e.metric}</div>}
-          <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>
-            {(() => { try { return new Date(tip.e.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'}) } catch { return tip.e.date } })()}
-          </div>
-          {tip.e.event_type && (
-            <div style={{ fontSize:10, fontWeight:600, color:tip.e.event_type==='competition'?'#F59E0B':'var(--text-dim)', marginBottom:2 }}>
-              {tip.e.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
-              {tip.e.race_name ? ` — ${tip.e.race_name}` : ''}
-            </div>
-          )}
-          {tip.e.rpe != null && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:2 }}>RPE {tip.e.rpe}/10</div>}
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-// ── ChartEntry — type unifié pour RecordChart ────────────────────
-type ChartEntry = {
-  id: string
-  val: number      // secondes pour les sports temps, watts pour vélo
-  display: string  // ex: "1:30:45" ou "350W"
-  date: string     // "2024-07-14"
-  sub?: string     // allure, watts/kg, etc.
-}
-
-// ── RecordChart — remplace TimeBarChart + TriathlonBarChart ───────
-type RCView = 'year' | 'alltime' | 'recent'
-type RCTip = { idx: number; clientX: number; clientY: number }
-
-function RecordChart({ title, entries, recordYear, color, lowerIsBetter = true }: {
-  title: string
-  entries: ChartEntry[]
-  recordYear: string
+// ── TimeBarChart ─────────────────────────────────────────────────
+// Taller bar = slower = worse. Supabase data only.
+function TimeBarChart({ records, chartDists, color }: {
+  records: SpRecord[]
+  chartDists: string[]
   color: string
-  lowerIsBetter?: boolean
 }) {
-  const [view, setView] = useState<RCView>('alltime')
-  const [tip, setTip]   = useState<RCTip | null>(null)
+  const [selDist, setSelDist] = useState(chartDists[0] ?? '')
+  const [hovIdx, setHovIdx]   = useState<number | null>(null)
 
-  const BAR_W = 28, MAX_H = 100, MIN_H = 24, BAR_GAP = 8
+  const distRecs = records.filter(r => r.distance_label === selDist && r.performance !== '—')
 
-  const bars = useMemo(() => {
-    if (view === 'year') {
-      if (recordYear === 'All Time') return []
-      return [...entries]
-        .filter(e => e.date.slice(0, 4) === recordYear)
-        .sort((a, b) => a.date.localeCompare(b.date))
+  const byYear: Record<string, { perf: string; date: string }> = {}
+  for (const rec of distRecs) {
+    const yr = rec.achieved_at.slice(0, 4)
+    if (!byYear[yr] || toSec(rec.performance) < toSec(byYear[yr].perf)) {
+      byYear[yr] = { perf: rec.performance, date: rec.achieved_at }
     }
-    if (view === 'alltime') {
-      return [...entries]
-        .sort((a, b) => lowerIsBetter ? a.val - b.val : b.val - a.val)
-        .slice(0, 6)
+  }
+  const sortedYears = Object.keys(byYear).sort((a, b) => b.localeCompare(a))
+
+  const W = 360, H = 160, padL = 48, padR = 16, padT = 20, padB = 36
+  const plotW = W - padL - padR
+  const plotH = H - padT - padB
+
+  function fmtSec(s: number): string {
+    if (s >= 3600) {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60
+      return `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`
     }
-    // recent
-    return [...entries]
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 6)
-  }, [entries, view, recordYear, lowerIsBetter])
-
-  // Years present in current bars (desc) for color mapping
-  const sortedYears = useMemo(() => {
-    const yrs = [...new Set(bars.map(b => b.date.slice(0, 4)))]
-    return yrs.sort((a, b) => b.localeCompare(a))
-  }, [bars])
-
-  // Best bar index: lowest val if lowerIsBetter, else highest
-  const bestIdx = useMemo(() => {
-    if (bars.length === 0) return -1
-    return bars.reduce((bi, b, i) => {
-      if (bi === -1) return i
-      return lowerIsBetter ? (b.val < bars[bi].val ? i : bi) : (b.val > bars[bi].val ? i : bi)
-    }, -1)
-  }, [bars, lowerIsBetter])
-
-  // Heights: best bar = MAX_H, others proportional (taller = better)
-  const heights = useMemo(() => {
-    if (bars.length === 0) return []
-    const bestVal = bars[bestIdx]?.val ?? 1
-    return bars.map(b => {
-      if (!b.val) return MIN_H
-      const ratio = lowerIsBetter
-        ? (bestVal > 0 ? bestVal / b.val : 0)
-        : (bestVal > 0 ? b.val / bestVal : 0)
-      return Math.max(MIN_H, Math.round(ratio * MAX_H))
-    })
-  }, [bars, bestIdx, lowerIsBetter])
-
-  const yearDisabled = recordYear === 'All Time'
-
-  const tipBar = tip !== null ? bars[tip.idx] : null
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`
+  }
 
   return (
-    <div style={{ marginBottom: 12 }}>
-      {/* View tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginRight: 4 }}>{title}</span>
-        {([['year', recordYear === 'All Time' ? 'Année' : recordYear], ['alltime', 'All Time'], ['recent', '6 derniers']] as [RCView, string][]).map(([v, label]) => (
-          <button key={v} onClick={() => { if (v === 'year' && yearDisabled) return; setView(v) }} style={{
-            padding: '4px 10px', borderRadius: 20, border: 'none', cursor: v === 'year' && yearDisabled ? 'not-allowed' : 'pointer',
-            fontSize: 11, fontWeight: view === v ? 700 : 500,
-            background: view === v ? color : 'var(--bg-card2)',
-            color: view === v ? '#fff' : (v === 'year' && yearDisabled ? 'var(--border)' : 'var(--text-dim)'),
-            opacity: v === 'year' && yearDisabled ? 0.4 : 1,
-            transition: 'all 0.15s',
-          }}>{label}</button>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+        {chartDists.map(d => (
+          <button key={d} onClick={() => setSelDist(d)} style={{
+            padding: '4px 10px', borderRadius: 6,
+            background: selDist === d ? `${color}22` : 'var(--bg-card2)',
+            border: `1px solid ${selDist === d ? color : 'var(--border)'}`,
+            color: selDist === d ? color : 'var(--text-dim)',
+            fontSize: 11, fontWeight: selDist === d ? 600 : 400, cursor: 'pointer',
+          }}>{d}</button>
         ))}
       </div>
-
-      {/* Chart */}
-      {bars.length === 0 ? (
-        <div style={{ padding: '16px 12px', background: 'var(--bg-card2)', borderRadius: 10, textAlign: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-            {view === 'year' ? `Aucun record pour ${recordYear}` : 'Aucune donnée'}
-          </span>
-        </div>
-      ) : (
-        <div style={{
-          display: 'flex', gap: BAR_GAP, overflowX: 'auto',
-          padding: '14px 12px 10px', background: 'var(--bg-card2)',
-          borderRadius: 10, alignItems: 'flex-end',
-        }}>
-          {bars.map((b, i) => {
-            const yr  = b.date.slice(0, 4)
-            const col = getPCColor(yr, sortedYears)
-            const h   = heights[i] ?? MIN_H
-            const isBest = i === bestIdx
-            return (
-              <div key={b.id + i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, cursor: 'default' }}
-                onMouseEnter={e => setTip({ idx: i, clientX: e.clientX, clientY: e.clientY })}
-                onMouseMove={e  => setTip({ idx: i, clientX: e.clientX, clientY: e.clientY })}
-                onMouseLeave={() => setTip(null)}>
-                {isBest && (
-                  <span style={{ fontSize: 10, color: col, marginBottom: 2 }}>★</span>
-                )}
-                <span style={{ fontSize: 9, fontWeight: 700, color: col, whiteSpace: 'nowrap', marginBottom: 2, maxWidth: BAR_W + 20, textAlign: 'center', lineHeight: 1.2 }}>
-                  {b.display}
-                </span>
-                <div style={{ width: BAR_W, height: h, background: col, opacity: isBest ? 1 : 0.7, borderRadius: '4px 4px 0 0' }} />
-                <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 4, whiteSpace: 'nowrap' }}>{yr}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Tooltip via portal */}
-      {tip !== null && tipBar && createPortal(
-        <div style={{
-          position: 'fixed', left: tip.clientX + 14, top: tip.clientY - 100,
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: '8px 12px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.22)', zIndex: 9999, pointerEvents: 'none', minWidth: 130,
-        }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: getPCColor(tipBar.date.slice(0, 4), sortedYears), marginBottom: 3 }}>
-            {tipBar.date.slice(0, 4)}
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: 'DM Mono,monospace', color: 'var(--text)', marginBottom: 2 }}>
-            {tipBar.display}
-          </div>
-          {tipBar.sub && (
-            <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 2 }}>{tipBar.sub}</div>
-          )}
-          <div style={{ color: 'var(--text-dim)', fontSize: 10 }}>
-            {(() => { try { return new Date(tipBar.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return tipBar.date } })()}
-          </div>
-        </div>,
-        document.body
-      )}
+      {sortedYears.length === 0 ? (
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
+          Ajoute un record {selDist} pour voir l'évolution annuelle.
+        </p>
+      ) : (() => {
+        const maxSec = Math.max(...sortedYears.map(y => toSec(byYear[y].perf)))
+        const minSec = Math.min(...sortedYears.map(y => toSec(byYear[y].perf)))
+        const range   = maxSec - minSec || maxSec * 0.1 || 60
+        const topSec  = maxSec + range * 0.2
+        const barW    = Math.min(40, plotW / sortedYears.length * 0.65)
+        const gap     = plotW / sortedYears.length
+        const bh  = (s: number) => (s / topSec) * plotH
+        const bx  = (i: number) => padL + gap * i + gap / 2 - barW / 2
+        const by  = (s: number) => padT + plotH - bh(s)
+        return (
+          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+            {[0, 0.5, 1].map(f => {
+              const y = padT + plotH * (1 - f)
+              return (
+                <g key={f}>
+                  <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3,3" />
+                  <text x={padL - 4} y={y + 4} textAnchor="end" fontSize={8} fill="var(--text-dim)">{fmtSec(Math.round(topSec * f))}</text>
+                </g>
+              )
+            })}
+            {sortedYears.map((yr, i) => {
+              const secs  = toSec(byYear[yr].perf)
+              const x     = bx(i), y = by(secs), h = bh(secs)
+              const col   = getPCColor(yr, sortedYears)
+              const isHov = hovIdx === i
+              const isBest = secs === minSec
+              return (
+                <g key={yr} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
+                  <rect x={x} y={y} width={barW} height={h}
+                    fill={`${col}${isHov ? 'ee' : '88'}`} stroke={col}
+                    strokeWidth={isBest ? 2 : 1} rx={3} />
+                  {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill={col} fontWeight="bold">★</text>}
+                  {(isHov || isBest) && (
+                    <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill={col} fontWeight="600">
+                      {byYear[yr].perf}
+                    </text>
+                  )}
+                  <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize={9}
+                    fill={isHov ? col : 'var(--text-dim)'}>{yr}</text>
+                </g>
+              )
+            })}
+            <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
+            <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
+          </svg>
+        )
+      })()}
     </div>
   )
 }
@@ -1122,10 +616,9 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
 }
 
 // ── HyroxSection ─────────────────────────────────────────────────
-function HyroxSection({ onSelect, selectedDatum, recordYear }: {
+function HyroxSection({ onSelect, selectedDatum }: {
   onSelect: (label: string, value: string) => void
   selectedDatum: { label: string; value: string } | null
-  recordYear: string
 }) {
   const [races,    setRaces]    = useState<HyroxRace[]>([])
   const [loading,  setLoading]  = useState(true)
@@ -1133,11 +626,6 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
   const [saving,   setSaving]   = useState(false)
   const [c1Format, setC1Format] = useState('all')
   const [c2Id,     setC2Id]     = useState<string | null>(null)
-
-  // Record chart views
-  const [hyroxView,   setHyroxView]   = useState<'total' | 'station' | 'run'>('total')
-  const [selStation,  setSelStation]  = useState<string>(HYROX_STATIONS[0])
-  const [selRunIdx,   setSelRunIdx]   = useState<number>(0)
 
   // Form state
   const [fDate,       setFDate]       = useState(new Date().toISOString().slice(0, 10))
@@ -1221,19 +709,6 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
   }
   const selectedRace = races.find(r => r.id === c2Id) ?? races[0] ?? null
 
-  const hyroxGaugeEntries: GaugeEntry[] = c1Races
-    .filter(r => toSec(r.temps_final) > 0)
-    .map(r => ({
-      id: r.id,
-      val: toSec(r.temps_final),
-      display: r.temps_final,
-      date: r.date,
-      metric: null,
-      event_type: 'competition',
-      race_name: r.partenaire ? `Avec ${r.partenaire}` : (HYROX_FORMAT_LABELS[r.format] ?? r.format),
-      rpe: null,
-    }))
-
   if (loading) {
     return <Card><p style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center', padding: '20px 0' }}>Chargement…</p></Card>
   }
@@ -1282,159 +757,20 @@ function HyroxSection({ onSelect, selectedDatum, recordYear }: {
               </p>
             ) : (
               <>
-                {/* Best time header */}
-                {bestId && (() => {
-                  const best = c1Races.find(r => r.id === bestId)!
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.2)', flexWrap: 'wrap' }}>
-                      <div>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Meilleur temps</p>
-                        <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 20, fontWeight: 800, color: '#10B981', margin: 0, lineHeight: 1 }}>{best.temps_final}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Format</p>
-                        <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{HYROX_FORMAT_LABELS[best.format] ?? best.format}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Date</p>
-                        <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{(() => { try { return new Date(best.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return best.date } })()}</p>
-                      </div>
-                      {best.partenaire && (
-                        <div>
-                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>Partenaire</p>
-                          <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{best.partenaire}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-                {/* Gauge chart */}
-                {hyroxGaugeEntries.length > 0 && (
-                  <UniversalGaugeChart
-                    entries={hyroxGaugeEntries}
-                    distLabel={c1Format === 'all' ? 'Tous formats' : (HYROX_FORMAT_LABELS[c1Format] ?? c1Format)}
-                    recordYear={recordYear}
-                    lowerIsBetter={true}
-                  />
-                )}
-                {/* History table */}
-                <div style={{ marginTop: 16, minHeight: 200 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #F3F4F6' }}>
-                        {['Date', 'Format', 'Temps', 'Partenaire', ''].map((h, i) => (
-                          <th key={i} style={{ textAlign: i === 4 ? 'right' : 'left', padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {c1Races.map((r, i) => {
-                        const isBest = r.id === bestId
-                        return (
-                          <tr key={r.id} style={{ background: i % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom: '1px solid #F3F4F6' }}>
-                            <td style={{ padding: '7px 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
-                              {(() => { try { return new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return r.date } })()}
-                            </td>
-                            <td style={{ padding: '7px 8px', fontSize: 11 }}>{HYROX_FORMAT_LABELS[r.format] ?? r.format}</td>
-                            <td style={{ padding: '7px 8px', fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 700, color: isBest ? '#10B981' : 'var(--text)' }}>
-                              {r.temps_final}{isBest && <span style={{ marginLeft: 5, fontSize: 10, color: '#10B981' }}>★</span>}
-                            </td>
-                            <td style={{ padding: '7px 8px', fontSize: 11, color: 'var(--text-dim)' }}>{r.partenaire ?? '—'}</td>
-                            <td style={{ padding: '7px 8px', textAlign: 'right' }}>
-                              <button onClick={() => setC2Id(r.id)} title="Voir détail" style={{
-                                padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)',
-                                background: 'transparent', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
-                              }}>
-                                Détail
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                <HyroxTotalChart races={c1Races} bestId={bestId} bestByYear={bestByYear} />
+                <div style={{ display:'flex', gap:12, alignItems:'center', justifyContent:'flex-end', marginTop:4 }}>
+                  <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
+                    <span style={{ color:'#ef4444', fontWeight:700 }}>★</span> Meilleur global
+                  </span>
+                  <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:4 }}>
+                    <span style={{ color:'#ef4444aa', fontWeight:700 }}>✦</span> Meilleur annuel
+                  </span>
                 </div>
               </>
             )}
           </>
         )}
       </Card>
-
-      {/* RecordChart — Temps total / Stations / Run compromised */}
-      {races.length > 0 && (
-        <Card>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Analyse des courses</h2>
-          {/* 3 onglets */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
-            {([['total', 'Temps total'], ['station', 'Stations'], ['run', 'Run compromised']] as ['total' | 'station' | 'run', string][]).map(([v, label]) => (
-              <button key={v} onClick={() => setHyroxView(v)} style={{
-                padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: hyroxView === v ? 700 : 500,
-                background: hyroxView === v ? '#ef4444' : 'var(--bg-card2)',
-                color: hyroxView === v ? '#fff' : 'var(--text-dim)',
-                transition: 'all 0.15s',
-              }}>{label}</button>
-            ))}
-          </div>
-
-          {hyroxView === 'total' && (() => {
-            const totalEntries: GaugeEntry[] = c1Races
-              .filter(r => toSec(r.temps_final) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.temps_final), display: r.temps_final, date: r.date, metric: null, event_type: 'competition', race_name: HYROX_FORMAT_LABELS[r.format] ?? r.format, rpe: null }))
-            return <UniversalGaugeChart entries={totalEntries} distLabel="Temps total Hyrox" recordYear={recordYear} lowerIsBetter={true} />
-          })()}
-
-          {hyroxView === 'station' && (() => {
-            const stationEntries: GaugeEntry[] = c1Races
-              .filter(r => r.stations[selStation] && toSec(r.stations[selStation]) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.stations[selStation]), display: r.stations[selStation], date: r.date, metric: null, event_type: null, race_name: null, rpe: null }))
-            return (
-              <>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {HYROX_STATIONS.map(s => (
-                    <button key={s} onClick={() => setSelStation(s)} style={{
-                      padding: '3px 9px', borderRadius: 6,
-                      background: selStation === s ? 'rgba(239,68,68,0.15)' : 'var(--bg-card2)',
-                      border: `1px solid ${selStation === s ? '#ef4444' : 'var(--border)'}`,
-                      color: selStation === s ? '#ef4444' : 'var(--text-dim)',
-                      fontSize: 10, fontWeight: selStation === s ? 700 : 400, cursor: 'pointer',
-                    }}>{s}</button>
-                  ))}
-                </div>
-                <UniversalGaugeChart entries={stationEntries} distLabel={selStation} recordYear={recordYear} lowerIsBetter={true} />
-              </>
-            )
-          })()}
-
-          {hyroxView === 'run' && (() => {
-            const runTotalEntries: GaugeEntry[] = c1Races
-              .filter(r => r.temps_run_total && toSec(r.temps_run_total) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.temps_run_total!), display: r.temps_run_total!, date: r.date, metric: null, event_type: null, race_name: null, rpe: null }))
-            const runEntries: GaugeEntry[] = c1Races
-              .filter(r => r.runs[selRunIdx] && toSec(r.runs[selRunIdx]) > 0)
-              .map(r => ({ id: r.id, val: toSec(r.runs[selRunIdx]), display: r.runs[selRunIdx], date: r.date, metric: null, event_type: null, race_name: null, rpe: null }))
-            return (
-              <>
-                {runTotalEntries.length > 0 && (
-                  <UniversalGaugeChart entries={runTotalEntries} distLabel="Run total" recordYear={recordYear} lowerIsBetter={true} />
-                )}
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <button key={i} onClick={() => setSelRunIdx(i)} style={{
-                      padding: '3px 9px', borderRadius: 6,
-                      background: selRunIdx === i ? 'rgba(239,68,68,0.15)' : 'var(--bg-card2)',
-                      border: `1px solid ${selRunIdx === i ? '#ef4444' : 'var(--border)'}`,
-                      color: selRunIdx === i ? '#ef4444' : 'var(--text-dim)',
-                      fontSize: 10, fontWeight: selRunIdx === i ? 700 : 400, cursor: 'pointer',
-                    }}>Run {i + 1}</button>
-                  ))}
-                </div>
-                <UniversalGaugeChart entries={runEntries} distLabel={`Run ${selRunIdx + 1}`} recordYear={recordYear} lowerIsBetter={true} />
-              </>
-            )
-          })()}
-        </Card>
-      )}
 
       {/* Chart 2: station detail */}
       {races.length > 0 && (
@@ -1813,14 +1149,6 @@ function SectionHeader({ label, gradient }: { label: string; gradient: string })
 }
 
 // ── RecordDrawer — Wingate-style fullscreen record entry ─────────
-interface RunExtras {
-  raceType: 'training' | 'competition'
-  raceName: string
-  rpe: number | null
-  terrain: 'flat' | 'hilly' | 'mountain'
-  surface: 'route' | 'piste' | 'trail'
-  dplus: string
-}
 interface RecordDrawerProps {
   sport: RecordSport
   distLabel: string
@@ -1829,7 +1157,7 @@ interface RecordDrawerProps {
   date: string
   setDate: (v: string) => void
   saving: boolean
-  onConfirm: (extras?: RunExtras) => Promise<void>
+  onConfirm: () => Promise<void>
   onClose: () => void
   profile: Props['profile']
 }
@@ -1838,13 +1166,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   const [mounted, setMounted] = useState(false)
   const [np,      setNp]      = useState('')
   const [dur,     setDur]     = useState('')
-  const [surface,   setSurface]   = useState<'route'|'piste'|'trail'>('route')
-  const [dplus,     setDplus]     = useState('')
-  const [raceType,  setRaceType]  = useState<'training'|'competition'>('training')
-  const [raceName,  setRaceName]  = useState('')
-  const [rpe,       setRpe]       = useState<number|null>(null)
-  const [terrain,   setTerrain]   = useState<'flat'|'hilly'|'mountain'>('flat')
-  const [pool,      setPool]      = useState<'25m'|'50m'|'open'>('25m')
+  const [surface, setSurface] = useState<'route'|'piste'|'trail'>('route')
+  const [dplus,   setDplus]   = useState('')
+  const [pool,    setPool]    = useState<'25m'|'50m'|'open'>('25m')
   const [combi,   setCombi]   = useState(false)
   const [ergo,    setErgo]    = useState(true)
   const [damper,  setDamper]  = useState('')
@@ -1938,14 +1262,13 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   const sumItems: { label: string; value: string; hi?: boolean }[] = []
 
   if (sport === 'run') {
-    const RPE_LABELS: Record<number,string> = { 1:'très facile',3:'facile',5:'modéré',7:'dur',9:'très dur',10:'maximal' }
     perfSec = (
       <div style={secBox(bg)}>
         <div style={secHdr}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={secLbl}>Performance</span>
         </div>
-        <p style={lbl10}>Temps (hh:mm:ss ou mm:ss)</p>
+        <p style={lbl10}>Temps (hh:mm:ss)</p>
         <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 0:45:30" autoFocus />
         {timeSec > 0 && runKm > 0 && <div style={{ display:'flex', flexWrap:'wrap' }}>
           {runPaceStr  && calc(runPaceStr)}
@@ -1953,32 +1276,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           {runVmaStr   && calc(runVmaStr)}
         </div>}
         {profile.vma <= 0 && <p style={{ fontSize:10, color:'var(--text-dim)', marginTop:6 }}>Renseignez votre VMA dans le profil pour voir le % VMA.</p>}
-        {/* Type de performance */}
-        <p style={{ ...lbl10, marginTop:14 }}>Type</p>
-        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-          {(['training','competition'] as const).map(t => (
-            <button key={t} style={tog(raceType===t)} onClick={() => setRaceType(t)}>
-              {t === 'training' ? 'Entraînement' : 'Compétition'}
-            </button>
-          ))}
-        </div>
-        {raceType === 'competition' && <>
-          <p style={lbl10}>Nom de la course</p>
-          <input style={{ ...inp, marginBottom:12 }} value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="ex : Semi de Paris 2025" />
-        </>}
-        {/* RPE */}
-        <p style={lbl10}>RPE — Ressenti d'effort (1-10)</p>
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:6 }}>
-          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-            <button key={n} onClick={() => setRpe(rpe===n ? null : n)} style={{
-              width:30, height:30, borderRadius:6, border:`1px solid ${rpe===n ? color : 'var(--border)'}`,
-              background: rpe===n ? color : 'var(--bg-card2)',
-              color: rpe===n ? '#000' : 'var(--text-dim)',
-              fontSize:12, fontWeight: rpe===n ? 700 : 400, cursor:'pointer',
-            }}>{n}</button>
-          ))}
-        </div>
-        {rpe !== null && <p style={{ fontSize:10, color, marginTop:2, marginBottom:4 }}>{RPE_LABELS[rpe] ?? ''}</p>}
       </div>
     )
     condSec = (
@@ -1995,16 +1292,10 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
             </button>
           ))}
         </div>
-        <p style={lbl10}>Relief</p>
-        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-          {(['flat','hilly','mountain'] as const).map(t => (
-            <button key={t} style={tog(terrain===t)} onClick={() => setTerrain(t)}>
-              {t==='flat' ? 'Plat' : t==='hilly' ? 'Vallonné' : 'Montagneux'}
-            </button>
-          ))}
-        </div>
-        <p style={lbl10}>Dénivelé positif D+ (m, optionnel)</p>
-        <input style={{ ...inp, maxWidth:160 }} type="number" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="ex : 450" />
+        {surface==='trail' && <>
+          <p style={lbl10}>Dénivelé positif (m)</p>
+          <input style={{ ...inp, maxWidth:160 }} type="number" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="ex : 450" />
+        </>}
       </div>
     )
     if (draft)        sumItems.push({ label:'Distance', value:distLabel })
@@ -2012,12 +1303,8 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (runPaceStr)   sumItems.push({ label:'Allure', value:runPaceStr, hi:true })
     if (runSpeedStr)  sumItems.push({ label:'Vitesse', value:runSpeedStr, hi:true })
     if (runVmaStr)    sumItems.push({ label:'% VMA', value:runVmaStr, hi:true })
-    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Compétition' : 'Entraînement' })
-    if (raceName)     sumItems.push({ label:'Course', value:raceName })
-    if (rpe !== null) sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Surface', value:surface })
-    sumItems.push({ label:'Relief', value:terrain==='flat'?'Plat':terrain==='hilly'?'Vallonné':'Montagneux' })
-    if (dplus)        sumItems.push({ label:'D+', value:`${dplus} m` })
+    if (surface==='trail' && dplus) sumItems.push({ label:'D+', value:`${dplus} m` })
   }
 
   if (sport === 'swim') {
@@ -2030,21 +1317,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         <p style={lbl10}>Temps (mm:ss)</p>
         <input style={inp} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 5:20" autoFocus />
         {swimSplitStr && <div>{calc(`Allure : ${swimSplitStr}`)}</div>}
-        <p style={{ ...lbl10, marginTop:12 }}>Type</p>
-        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-          <button style={tog(raceType==='training')} onClick={() => setRaceType('training')}>Entraînement</button>
-          <button style={tog(raceType==='competition')} onClick={() => setRaceType('competition')}>Compétition</button>
-        </div>
-        {raceType === 'competition' && <>
-          <p style={lbl10}>Nom de la course</p>
-          <input style={{ ...inp, marginBottom:12 }} value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="ex : Open de Paris" />
-        </>}
-        <p style={lbl10}>RPE (effort perçu)</p>
-        <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
-          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-            <button key={n} style={tog(rpe===n)} onClick={() => setRpe(rpe===n?null:n)}>{n}</button>
-          ))}
-        </div>
       </div>
     )
     condSec = (
@@ -2071,9 +1343,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (draft)          sumItems.push({ label:'Distance', value:distLabel })
     if (draft)          sumItems.push({ label:'Temps', value:draft })
     if (swimSplitStr)   sumItems.push({ label:'Allure', value:swimSplitStr, hi:true })
-    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Compétition' : 'Entraînement' })
-    if (raceName && raceType === 'competition') sumItems.push({ label:'Course', value:raceName })
-    if (rpe !== null)   sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Bassin', value:pool==='open'?'Open water':`Bassin ${pool}` })
     sumItems.push({ label:'Combi', value:combi?'Oui':'Non' })
   }
@@ -2091,21 +1360,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           {rowSplStr && calc(`Split : ${rowSplStr}`)}
           {rowPower  && calc(`~${rowPower} W (Concept2)`)}
         </div>}
-        <p style={{ ...lbl10, marginTop:12 }}>Type</p>
-        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-          <button style={tog(raceType==='training')} onClick={() => setRaceType('training')}>Entraînement</button>
-          <button style={tog(raceType==='competition')} onClick={() => setRaceType('competition')}>Compétition</button>
-        </div>
-        {raceType === 'competition' && <>
-          <p style={lbl10}>Nom de la course</p>
-          <input style={{ ...inp, marginBottom:12 }} value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="ex : Head de la Marne" />
-        </>}
-        <p style={lbl10}>RPE (effort perçu)</p>
-        <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
-          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-            <button key={n} style={tog(rpe===n)} onClick={() => setRpe(rpe===n?null:n)}>{n}</button>
-          ))}
-        </div>
       </div>
     )
     condSec = (
@@ -2129,9 +1383,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (draft)    sumItems.push({ label:'Temps', value:draft })
     if (rowSplStr) sumItems.push({ label:'Split /500m', value:rowSplStr, hi:true })
     if (rowPower)  sumItems.push({ label:'Puissance est.', value:`~${rowPower} W`, hi:true })
-    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Compétition' : 'Entraînement' })
-    if (raceName && raceType === 'competition') sumItems.push({ label:'Course', value:raceName })
-    if (rpe !== null)   sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Support', value:ergo?'Ergomètre':'Sur l\'eau' })
     if (ergo && damper) sumItems.push({ label:'Damper', value:damper })
   }
@@ -2168,11 +1419,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-10h4l4 10M9 7h6"/></svg>
           <span style={secLbl}>Conditions</span>
         </div>
-        <p style={lbl10}>Type</p>
-        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-          <button style={tog(raceType==='training')} onClick={() => setRaceType('training')}>Entraînement</button>
-          <button style={tog(raceType==='competition')} onClick={() => setRaceType('competition')}>Course</button>
-        </div>
         <p style={lbl10}>Environnement</p>
         <div style={{ display:'flex', gap:6, marginBottom:12 }}>
           <button style={tog(ergo)}  onClick={() => setErgo(true)}>Home trainer</button>
@@ -2185,12 +1431,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
             <span style={{ fontSize:12, color:'var(--text-dim)' }}>m</span>
           </div>
         </>}
-        <p style={{ ...lbl10, marginTop:12 }}>RPE (effort perçu)</p>
-        <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
-          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-            <button key={n} style={tog(rpe===n)} onClick={() => setRpe(rpe===n?null:n)}>{n}</button>
-          ))}
-        </div>
       </div>
     )
     if (draft)   sumItems.push({ label:'Format', value:distLabel })
@@ -2199,8 +1439,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     if (np)      sumItems.push({ label:'NP', value:`${np} W` })
     if (npWkg)   sumItems.push({ label:'NP W/kg', value:`${npWkg} W/kg`, hi:true })
     if (dur)     sumItems.push({ label:'Durée', value:dur })
-    sumItems.push({ label:'Type', value: raceType === 'competition' ? 'Course' : 'Entraînement' })
-    if (rpe !== null) sumItems.push({ label:'RPE', value:`${rpe}/10` })
     sumItems.push({ label:'Environnement', value:ergo?'Home trainer':'Extérieur' })
     if (!ergo && dplus) sumItems.push({ label:'D+', value:`${dplus} m` })
   }
@@ -2273,7 +1511,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         {/* Fixed save */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${color}20` }}>
           <button
-            onClick={() => void onConfirm({ raceType, raceName, rpe, terrain, surface, dplus })}
+            onClick={() => void onConfirm()}
             disabled={!canSave || saving}
             style={{
               width:'100%', padding:'14px',
@@ -3663,14 +2901,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   const [sport, setSport] = useState<RecordSport>('bike')
   // ── Année globale (pills DS §16) ─────────────────────────────────
   const [recordYear, setRecordYear] = useState('All Time')
-
-  // ── Distance/durée sélectionnée pour les graphiques par distance ──
-  const [selRunDist,  setSelRunDist]  = useState<string>(RUN_DISTS[0])
-  const [selSwimDist, setSelSwimDist] = useState<string>(SWIM_DISTS[0])
-  const [selRowDist,  setSelRowDist]  = useState<string>(ROW_DISTS[0])
-  const [selBikeDur,  setSelBikeDur]  = useState<string>('20min')
-  const [selTriFmt,   setSelTriFmt]   = useState<string>('M')
-  const [selTriDisc,  setSelTriDisc]  = useState<string>('total')
   const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set())
   // ── Inline edit state (one record at a time) ─────────────────────
   const [activeEdit, setActiveEdit] = useState<string | null>(null)
@@ -3704,12 +2934,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     cancelEdit()
   }
 
-  async function deleteSpRecord(id: string) {
-    const supabase = createClient()
-    await supabase.from('personal_records').delete().eq('id', id)
-    setAllSpRecords(prev => prev.filter(r => r.id !== id))
-  }
-
   // ── Triathlon drawer ───────────────────────────────────────────────
   const [trDrawerFmt, setTriDrawerFmt] = useState<string | null>(null)
 
@@ -3732,13 +2956,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     cancelEdit()
   }
 
-  // All personal records for all sports from Supabase
+  // Tous les records vélo depuis Supabase (toutes années)
+  const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
+
+  // All personal records for run/swim/rowing/gym from Supabase
   const [allSpRecords, setAllSpRecords] = useState<SpRecord[]>([])
 
-  // Derived: bike records from allSpRecords
-  const bikeAllRecords = allSpRecords.filter(r => r.sport === 'bike')
-
-  // Load run/swim/rowing/gym/triathlon/bike records from Supabase
+  // Load all bike records from Supabase on mount (toutes années)
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
@@ -3746,9 +2970,26 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       if (!user) return
       const { data } = await supabase
         .from('personal_records')
-        .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run, event_type, race_name, rpe, elevation_gain_m, terrain_type, surface')
+        .select('id, distance_label, performance, achieved_at')
         .eq('user_id', user.id)
-        .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon', 'bike'])
+        .eq('sport', 'bike')
+        .order('achieved_at', { ascending: false })
+      if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
+    }
+    void load()
+  }, [])
+
+  // Load run/swim/rowing/gym/triathlon records from Supabase
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('personal_records')
+        .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run')
+        .eq('user_id', user.id)
+        .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
         .order('achieved_at', { ascending: false })
       if (data) setAllSpRecords(data as SpRecord[])
     }
@@ -3905,36 +3146,28 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   // Toutes les années disponibles (vélo + tous sports) pour les pills
   const allRecordYears: string[] = (() => {
     const s = new Set<string>()
+    bikeAllRecords.forEach(r => s.add(r.achieved_at.slice(0, 4)))
     allSpRecords.forEach(r => s.add(r.achieved_at.slice(0, 4)))
     return [...s].sort((a, b) => b.localeCompare(a))
   })()
 
-  async function confirmSpRecord(sp: string, dist: string, unit: string, runExtras?: RunExtras) {
+  async function confirmSpRecord(sp: string, dist: string, unit: string) {
     setRecordSaving(true)
     if (editDraft) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const achievedAt = editDate || new Date().toISOString().slice(0, 10)
-        const extraFields = ['run', 'swim', 'rowing', 'bike'].includes(sp) && runExtras ? {
-          event_type:       runExtras.raceType,
-          race_name:        runExtras.raceName || null,
-          rpe:              runExtras.rpe,
-          elevation_gain_m: sp === 'run' && runExtras.dplus ? parseInt(runExtras.dplus) : null,
-          terrain_type:     sp === 'run' ? runExtras.terrain : null,
-          surface:          sp === 'run' ? runExtras.surface : null,
-        } : {}
         if (editingRecordId) {
           // UPDATE du record existant
           await supabase.from('personal_records').update({
             performance:      editDraft,
             performance_unit: unit,
             achieved_at:      achievedAt,
-            ...extraFields,
           }).eq('id', editingRecordId)
           setAllSpRecords(prev => prev.map(r =>
             r.id === editingRecordId
-              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt, ...extraFields }
+              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt }
               : r
           ))
         } else {
@@ -3945,21 +3178,66 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             distance_label:   dist,
             performance:      editDraft,
             performance_unit: unit,
-            event_type:       runExtras?.raceType ?? 'training',
+            event_type:       'training',
             achieved_at:      achievedAt,
-            race_name:        runExtras?.raceName || null,
-            rpe:              runExtras?.rpe ?? null,
-            elevation_gain_m: runExtras?.dplus ? parseInt(runExtras.dplus) : null,
-            terrain_type:     runExtras?.terrain ?? null,
-            surface:          runExtras?.surface ?? null,
+            race_name:        null,
             pace_s_km:        null,
+            elevation_gain_m: null,
             split_swim:       null,
             split_bike:       null,
             split_run:        null,
             station_times:    null,
             notes:            null,
-          }).select('id, sport, distance_label, performance, performance_unit, achieved_at, event_type, race_name, rpe, elevation_gain_m, terrain_type, surface').single()
+          }).select('id, sport, distance_label, performance, performance_unit, achieved_at').single()
           if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
+        }
+      }
+    }
+    setRecordSaving(false)
+    setActiveEdit(null)
+    setEditingRecordId(null)
+    setEditDraft('')
+  }
+
+  async function confirmBikeRecord(dur: string) {
+    setRecordSaving(true)
+    const watts = parseInt(editDraft) || 0
+    if (watts > 0) {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const achievedAt = editDate || new Date().toISOString().split('T')[0]
+        if (editingRecordId) {
+          // UPDATE du record existant
+          await supabase.from('personal_records').update({
+            performance: String(watts),
+            achieved_at: achievedAt,
+          }).eq('id', editingRecordId)
+          setBikeAllRecords(prev => prev.map(r =>
+            r.id === editingRecordId
+              ? { ...r, performance: String(watts), achieved_at: achievedAt }
+              : r
+          ))
+        } else {
+          // INSERT nouveau record
+          const { data: inserted } = await supabase.from('personal_records').insert({
+            user_id:          user.id,
+            sport:            'bike',
+            distance_label:   dur,
+            performance:      String(watts),
+            performance_unit: 'watts',
+            event_type:       'training',
+            achieved_at:      achievedAt,
+            race_name:        null,
+            pace_s_km:        null,
+            elevation_gain_m: null,
+            split_swim:       null,
+            split_bike:       null,
+            split_run:        null,
+            station_times:    null,
+            notes:            null,
+          }).select('id, distance_label, performance, achieved_at').single()
+          if (inserted) setBikeAllRecords(prev => [...prev, inserted as typeof bikeAllRecords[0]])
         }
       }
     }
@@ -4014,9 +3292,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           date={editDate}
           setDate={setEditDate}
           saving={recordSaving}
-          onConfirm={async (extras) => {
-            const unit = drawerSpec.sport === 'bike' ? 'watts' : drawerSpec.sport === 'gym' ? 'kg' : 'time'
-            await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit, extras)
+          onConfirm={async () => {
+            if (drawerSpec.sport === 'bike') {
+              await confirmBikeRecord(drawerSpec.distLabel)
+            } else {
+              const unit = drawerSpec.sport === 'gym' ? 'kg' : 'time'
+              await confirmSpRecord(drawerSpec.sport, drawerSpec.distLabel, unit)
+            }
             setDrawerSpec(null)
           }}
           onClose={closeDrawer}
@@ -4060,12 +3342,53 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         onChange={(id) => setSport(id as RecordSport)}
       />
 
+      {/* Year pills DS §16 */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {(['All Time', ...allRecordYears] as string[]).map(yr => {
+          const active = recordYear === yr
+          const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+          return (
+            <button key={yr} onClick={() => setRecordYear(yr)} style={{
+              padding: '5px 12px', borderRadius: 20, border: 'none',
+              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              fontSize: 12, fontWeight: active ? 700 : 500,
+              transition: 'background 0.15s, color 0.15s',
+              background: active ? color : 'var(--bg-card2)',
+              color: active ? '#ffffff' : 'var(--text-dim)',
+            }}>
+              {yr}
+            </button>
+          )
+        })}
+      </div>
+
       {/* BIKE */}
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <CyclingRadar profile={profile} />
           <Card>
-            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 10px' }}>Power Curve</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
+              {/* Year filter — same state as global pills */}
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {(['All Time', ...bikeYears] as string[]).map(yr => {
+                  const active = recordYear === yr
+                  const color  = yr === 'All Time' ? '#5b6fff' : (getPCColor(yr, bikeYears))
+                  return (
+                    <button key={yr} onClick={() => setRecordYear(yr)} style={{
+                      padding: '4px 10px', borderRadius: 16, border: 'none',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      fontSize: 11, fontWeight: active ? 700 : 500,
+                      transition: 'background 0.15s, color 0.15s',
+                      background: active ? color : 'var(--bg-card2)',
+                      color: active ? '#ffffff' : 'var(--text-dim)',
+                    }}>
+                      {yr}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             {/* Scroll horizontal sur mobile si l'axe X est trop dense */}
             <div style={{ overflowX: 'auto', overflowY: 'visible', margin: '0 -4px' }}>
@@ -4094,165 +3417,30 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             </div>
           </Card>
 
-          {/* Year pills — bike */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['All Time', ...allRecordYears] as string[]).map(yr => {
-              const active = recordYear === yr
-              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
-              return (
-                <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: 'none',
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  transition: 'background 0.15s, color 0.15s',
-                  background: active ? color : 'var(--bg-card2)',
-                  color: active ? '#ffffff' : 'var(--text-dim)',
-                }}>{yr}</button>
-              )
-            })}
-          </div>
           <Card>
             <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Records de puissance</h2>
-            {/* Sélecteur de durée */}
-            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 10, paddingBottom: 2 }}>
-              {BIKE_DURS.map(d => (
-                <button key={d} onClick={() => setSelBikeDur(d)} style={{
-                  padding: '3px 9px', borderRadius: 6, flexShrink: 0,
-                  background: selBikeDur === d ? 'rgba(91,111,255,0.15)' : 'var(--bg-card2)',
-                  border: `1px solid ${selBikeDur === d ? '#5b6fff' : 'var(--border)'}`,
-                  color: selBikeDur === d ? '#5b6fff' : 'var(--text-dim)',
-                  fontSize: 10, fontWeight: selBikeDur === d ? 700 : 400, cursor: 'pointer',
-                }}>{d}</button>
-              ))}
-            </div>
-            {(() => {
-              const durRecs = allSpRecords.filter(r => r.sport === 'bike' && r.distance_label === selBikeDur && parseInt(r.performance) > 0)
-              const yearRecs = recordYear === 'All Time' ? durRecs : durRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
-              const bestRec = [...durRecs].sort((a,b) => parseInt(b.performance) - parseInt(a.performance))[0] ?? null
-              const wkg = (w: string) => profile.weight > 0 ? `${(parseInt(w)/profile.weight).toFixed(2)} W/kg` : null
-              const bikeGaugeEntries: GaugeEntry[] = yearRecs.map(r => ({
-                id: r.id, val: parseInt(r.performance) || 0, display: `${r.performance}W`,
-                date: r.achieved_at.slice(0,10),
-                metric: wkg(r.performance),
-                event_type: r.event_type, race_name: r.race_name, rpe: r.rpe,
-              }))
+            {BIKE_DURS.map(d => {
+              const eff = getEffectiveRec(d)
+              const prev = getPrevRec(d)
+              const sel = selectedDatum?.label === `Vélo ${d}` && selectedDatum?.value === `${eff.w}W`
               return (
-                <>
-                  {/* Best power header */}
-                  {bestRec ? (
-                    <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
-                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                        <div>
-                          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                            <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#5b6fff', lineHeight:1 }}>{bestRec.performance}W</span>
-                            {wkg(bestRec.performance) && <span style={{ fontSize:14, color:'#5b6fff', fontWeight:600 }}>{wkg(bestRec.performance)}</span>}
-                          </div>
-                          <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-                            <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
-                            <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
-                            {bestRec.event_type && (
-                              <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
-                                background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
-                                color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
-                              }}>
-                                {bestRec.event_type==='competition' ? '🏆 Course' : '🚴 Entraînement'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button onClick={() => openDrawer('bike', selBikeDur, null, '')} style={{
-                          padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                          background:'#5b6fff', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0,
-                        }}>+ Ajouter</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-mid)' }}>Records {selBikeDur}</span>
-                      <button onClick={() => openDrawer('bike', selBikeDur, null, '')} style={{
-                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                        background:'#5b6fff', color:'#fff', fontSize:11, fontWeight:700,
-                      }}>+ Ajouter</button>
-                    </div>
-                  )}
-
-                  {/* Gauge chart — inverted for bike: more watts = taller */}
-                  <UniversalGaugeChart entries={bikeGaugeEntries} distLabel={selBikeDur} recordYear={recordYear} lowerIsBetter={false} refVals={BIKE_REF_WATTS[selBikeDur]} />
-
-                  {/* History table */}
-                  {durRecs.length > 0 && (() => {
-                    const sortedHistory = [...durRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
-                    const bestW = durRecs.reduce((m, r) => Math.max(m, parseInt(r.performance)||0), 0)
-                    return (
-                      <div style={{ marginTop:16 }}>
-                        <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
-                        <div style={{ overflowX:'auto', minHeight:200 }}>
-                          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                            <thead>
-                              <tr>
-                                {['Date','Watts','W/kg','Type','RPE',''].map(h => (
-                                  <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sortedHistory.map((r, idx) => {
-                                const isRecord = (parseInt(r.performance)||0) === bestW
-                                const wColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#5b6fff'
-                                const isComp = r.event_type === 'competition'
-                                return (
-                                  <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
-                                    <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
-                                      {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
-                                    </td>
-                                    <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: wColor, fontSize:12 }}>{r.performance}W</td>
-                                    <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>
-                                      {profile.weight > 0 ? `${((parseInt(r.performance)||0)/profile.weight).toFixed(2)} W/kg` : '—'}
-                                    </td>
-                                    <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                      {r.event_type ? (
-                                        <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
-                                          background: isComp ? '#FEF3C7' : '#EFF6FF', color: isComp ? '#D97706' : '#3B82F6',
-                                        }}>{isComp ? 'Course' : 'Entraîn.'}</span>
-                                      ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
-                                    </td>
-                                    <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
-                                    <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                      <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                                        <button onClick={() => openDrawer('bike', selBikeDur, r.id, r.performance)} title="Modifier"
-                                          style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
-                                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                          </svg>
-                                        </button>
-                                        <button onClick={() => { if (confirm('Supprimer ?')) void deleteSpRecord(r.id) }} title="Supprimer"
-                                          style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
-                                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="3 6 5 6 21 6"/>
-                                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                            <path d="M10 11v6M14 11v6"/>
-                                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </>
+                <RecordRow key={d} label={d}
+                  rec24={eff.w > 0 ? `${eff.w}W` : '—'}
+                  rec23={prev && prev.w > 0 ? `${prev.w}W` : '—'}
+                  sub={eff.w > 0 ? `${(eff.w / profile.weight).toFixed(2)} W/kg` : undefined}
+                  onSelect={() => eff.w > 0 ? onSelect(`Vélo ${d}`, `${eff.w}W`) : undefined}
+                  selected={sel}
+                  actions={
+                    <button
+                      onClick={() => openDrawer('bike', d, eff.id, eff.w > 0 ? String(eff.w) : '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      Modifier
+                    </button>
+                  }
+                />
               )
-            })()}
+            })}
           </Card>
 
           <ClimbsSection profile={profile} />
@@ -4264,505 +3452,104 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <RunningRadar profile={profile} />
-
-          {/* Year pills */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['All Time', ...allRecordYears] as string[]).map(yr => {
-              const active = recordYear === yr
-              const col = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
+            </div>
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
+            {RUN_DISTS.map(d => {
+              const spBest  = getSpBest('run', d, recordYear)
+              const prevRec = getSpPrev('run', d)
+              const pace = spBest ? calcPacePerKm(RUN_KM[d] ?? 0, spBest.perf) : '—'
+              const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               return (
-                <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding:'5px 12px', borderRadius:20, border:'none', cursor:'pointer',
-                  whiteSpace:'nowrap', flexShrink:0, fontSize:12, fontWeight:active?700:500,
-                  background:active?col:'var(--bg-card2)', color:active?'#fff':'var(--text-dim)',
-                }}>{yr}</button>
+                <RecordRow key={d} label={d}
+                  rec24={spBest?.perf ?? '—'}
+                  rec23={prevRec?.perf ?? '—'}
+                  sub={pace !== '—' ? pace : undefined}
+                  onSelect={() => spBest ? onSelect(`Course ${d}`, spBest.perf) : undefined}
+                  selected={sel}
+                  actions={
+                    <button onClick={() => openDrawer('run', d, spBest?.id ?? null, spBest?.perf ?? '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Modifier
+                    </button>
+                  } />
               )
             })}
-          </div>
-
-          {/* Distance selector */}
-          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-            {RUN_DISTS.map(d => (
-              <button key={d} onClick={() => setSelRunDist(d)} style={{
-                padding:'4px 11px', borderRadius:8,
-                background: selRunDist===d ? 'rgba(34,197,94,0.18)' : 'var(--bg-card2)',
-                border:`1px solid ${selRunDist===d ? '#22c55e' : 'var(--border)'}`,
-                color: selRunDist===d ? '#22c55e' : 'var(--text-dim)',
-                fontSize:11, fontWeight:selRunDist===d?700:400, cursor:'pointer',
-              }}>{d}</button>
-            ))}
-          </div>
-
-          {/* Per-distance card */}
-          {(() => {
-            const distRecs = allSpRecords
-              .filter(r => r.sport === 'run' && r.distance_label === selRunDist && toSec(r.performance) > 0)
-            const yearRecs = recordYear === 'All Time'
-              ? distRecs
-              : distRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
-            const bestRec = [...distRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
-            const km = RUN_KM[selRunDist] ?? 0
-
-            return (
-              <Card>
-                {/* Best time header */}
-                {bestRec ? (
-                  <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                      <div>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#22c55e', lineHeight:1 }}>{bestRec.performance}</span>
-                          {km > 0 && <span style={{ fontSize:14, color:'#22c55e', fontWeight:600 }}>{calcPacePerKm(km, bestRec.performance)}</span>}
-                        </div>
-                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
-                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
-                          {bestRec.event_type && (
-                            <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
-                              background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
-                              color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
-                            }}>
-                              {bestRec.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
-                            </span>
-                          )}
-                          {bestRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestRec.race_name}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => openDrawer('run', selRunDist, null, '')} style={{
-                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                        background:'#22c55e', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
-                      }}>+ Ajouter</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-                    <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Records {selRunDist}</h2>
-                    <button onClick={() => openDrawer('run', selRunDist, null, '')} style={{
-                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                      background:'#22c55e', color:'#000', fontSize:11, fontWeight:700,
-                    }}>+ Ajouter</button>
-                  </div>
-                )}
-
-                {/* Gauge chart */}
-                <RunGaugeChart records={yearRecs} dist={selRunDist} recordYear={recordYear} />
-
-                {/* History table */}
-                {distRecs.length > 0 && (() => {
-                  const sortedHistory = [...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
-                  const bestSecs = distRecs.reduce((m, r) => Math.min(m, toSec(r.performance)), Infinity)
-                  return (
-                    <div style={{ marginTop:16 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
-                      <div style={{ overflowX:'auto', minHeight:200 }}>
-                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                          <thead>
-                            <tr>
-                              {['Date','Temps','Allure','Type','Course','RPE','D+',''].map(h => (
-                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedHistory.map((r, idx) => {
-                              const isRecord = toSec(r.performance) === bestSecs
-                              const timeColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#3B82F6'
-                              const isComp = r.event_type === 'competition'
-                              return (
-                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
-                                    {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>{km > 0 ? calcPacePerKm(km, r.performance) : '—'}</td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    {r.event_type ? (
-                                      <span style={{
-                                        display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
-                                        background: isComp ? '#FEF3C7' : '#EFF6FF',
-                                        color: isComp ? '#D97706' : '#3B82F6',
-                                      }}>
-                                        {isComp ? 'Compét.' : 'Entraîn.'}
-                                      </span>
-                                    ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>{r.race_name ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.elevation_gain_m != null ? `${r.elevation_gain_m}m` : '—'}</td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                                      <button
-                                        onClick={() => openDrawer('run', selRunDist, r.id, r.performance)}
-                                        title="Modifier"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center', transition:'color 0.15s' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}
-                                      >
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                      </button>
-                                      <button
-                                        onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }}
-                                        title="Supprimer"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center', transition:'color 0.15s' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}
-                                      >
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6"/>
-                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                          <path d="M10 11v6M14 11v6"/>
-                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </Card>
-            )
-          })()}
+          </Card>
         </div>
       )}
 
       {/* SWIM */}
       {sport === 'swim' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Year pills — swim */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['All Time', ...allRecordYears] as string[]).map(yr => {
-              const active = recordYear === yr
-              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
+            </div>
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} color="#38bdf8" />
+            {SWIM_DISTS.map(d => {
+              const spBest  = getSpBest('swim', d, recordYear)
+              const prevRec = getSpPrev('swim', d)
+              const split   = spBest ? calcSplit500m(SWIM_M[d] ?? 0, spBest.perf).replace('/500m', '/100m') : '—'
+              const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               return (
-                <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: 'none',
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  transition: 'background 0.15s, color 0.15s',
-                  background: active ? color : 'var(--bg-card2)',
-                  color: active ? '#ffffff' : 'var(--text-dim)',
-                }}>{yr}</button>
+                <RecordRow key={d} label={d}
+                  rec24={spBest?.perf ?? '—'}
+                  rec23={prevRec?.perf ?? '—'}
+                  sub={split !== '—' ? split : undefined}
+                  onSelect={() => spBest ? onSelect(`Natation ${d}`, spBest.perf) : undefined}
+                  selected={sel}
+                  actions={
+                    <button onClick={() => openDrawer('swim', d, spBest?.id ?? null, spBest?.perf ?? '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Modifier
+                    </button>
+                  } />
               )
             })}
-          </div>
-          {/* Distance selector */}
-          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-            {SWIM_DISTS.map(d => (
-              <button key={d} onClick={() => setSelSwimDist(d)} style={{
-                padding:'4px 11px', borderRadius:8,
-                background: selSwimDist===d ? 'rgba(56,189,248,0.18)' : 'var(--bg-card2)',
-                border:`1px solid ${selSwimDist===d ? '#38bdf8' : 'var(--border)'}`,
-                color: selSwimDist===d ? '#38bdf8' : 'var(--text-dim)',
-                fontSize:11, fontWeight:selSwimDist===d?700:400, cursor:'pointer',
-              }}>{d}</button>
-            ))}
-          </div>
-          {/* Per-distance card */}
-          {(() => {
-            const distRecs = allSpRecords.filter(r => r.sport === 'swim' && r.distance_label === selSwimDist && toSec(r.performance) > 0)
-            const yearRecs = recordYear === 'All Time' ? distRecs : distRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
-            const bestRec = [...distRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
-            const swimM = SWIM_M[selSwimDist] ?? 0
-            const swimGaugeEntries: GaugeEntry[] = yearRecs.map(r => ({
-              id: r.id, val: toSec(r.performance), display: r.performance,
-              date: r.achieved_at.slice(0,10),
-              metric: swimM > 0 ? calcSplit500m(swimM, r.performance).replace('/500m', '/100m') : null,
-              event_type: r.event_type, race_name: r.race_name, rpe: r.rpe,
-            }))
-            return (
-              <Card>
-                {/* Best time header */}
-                {bestRec ? (
-                  <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                      <div>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#38bdf8', lineHeight:1 }}>{bestRec.performance}</span>
-                          {swimM > 0 && <span style={{ fontSize:14, color:'#38bdf8', fontWeight:600 }}>{calcSplit500m(swimM, bestRec.performance).replace('/500m', '/100m')}</span>}
-                        </div>
-                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
-                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
-                          {bestRec.event_type && (
-                            <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
-                              background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
-                              color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
-                            }}>
-                              {bestRec.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
-                            </span>
-                          )}
-                          {bestRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestRec.race_name}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => openDrawer('swim', selSwimDist, null, '')} style={{
-                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                        background:'#38bdf8', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
-                      }}>+ Ajouter</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-                    <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Records {selSwimDist}</h2>
-                    <button onClick={() => openDrawer('swim', selSwimDist, null, '')} style={{
-                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                      background:'#38bdf8', color:'#000', fontSize:11, fontWeight:700,
-                    }}>+ Ajouter</button>
-                  </div>
-                )}
-
-                {/* Gauge chart */}
-                <UniversalGaugeChart entries={swimGaugeEntries} distLabel={selSwimDist} recordYear={recordYear} lowerIsBetter={true} refVals={SWIM_REF_SECS[selSwimDist]} />
-
-                {/* History table */}
-                {distRecs.length > 0 && (() => {
-                  const sortedHistory = [...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
-                  const bestSecs = distRecs.reduce((m, r) => Math.min(m, toSec(r.performance)), Infinity)
-                  return (
-                    <div style={{ marginTop:16 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
-                      <div style={{ overflowX:'auto', minHeight:200 }}>
-                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                          <thead>
-                            <tr>
-                              {['Date','Temps','/100m','Type','Course','RPE',''].map(h => (
-                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedHistory.map((r, idx) => {
-                              const isRecord = toSec(r.performance) === bestSecs
-                              const timeColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#38bdf8'
-                              const isComp = r.event_type === 'competition'
-                              return (
-                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
-                                    {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>
-                                    {swimM > 0 ? calcSplit500m(swimM, r.performance).replace('/500m', '/100m') : '—'}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    {r.event_type ? (
-                                      <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
-                                        background: isComp ? '#FEF3C7' : '#EFF6FF', color: isComp ? '#D97706' : '#3B82F6',
-                                      }}>{isComp ? 'Compét.' : 'Entraîn.'}</span>
-                                    ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>{r.race_name ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                                      <button onClick={() => openDrawer('swim', selSwimDist, r.id, r.performance)} title="Modifier"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                      </button>
-                                      <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} title="Supprimer"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6"/>
-                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                          <path d="M10 11v6M14 11v6"/>
-                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </Card>
-            )
-          })()}
+          </Card>
         </div>
       )}
 
       {/* ROWING */}
       {sport === 'rowing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Year pills — rowing */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['All Time', ...allRecordYears] as string[]).map(yr => {
-              const active = recordYear === yr
-              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
+            </div>
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} color="#14b8a6" />
+            {ROW_DISTS.map(d => {
+              const spBest  = getSpBest('rowing', d, recordYear)
+              const prevRec = getSpPrev('rowing', d)
+              const split   = spBest ? calcSplit500m(ROW_M[d] ?? 0, spBest.perf) : '—'
+              const wStr = (() => {
+                if (split === '—') return '—'
+                const pp = split.split('/')[0].split(':').map(Number)
+                const ss = (pp[0] ?? 0) * 60 + (pp[1] ?? 0)
+                return ss > 0 ? `~${Math.round(2.80 / (ss / 500) ** 3)}W` : '—'
+              })()
+              const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
+              const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               return (
-                <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: 'none',
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  transition: 'background 0.15s, color 0.15s',
-                  background: active ? color : 'var(--bg-card2)',
-                  color: active ? '#ffffff' : 'var(--text-dim)',
-                }}>{yr}</button>
+                <RecordRow key={d} label={lbl}
+                  rec24={spBest?.perf ?? '—'}
+                  rec23={prevRec?.perf ?? '—'}
+                  sub={split !== '—' ? `${split} · ${wStr}` : undefined}
+                  onSelect={() => spBest ? onSelect(`Aviron ${d}`, spBest.perf) : undefined}
+                  selected={sel}
+                  actions={
+                    <button onClick={() => openDrawer('rowing', d, spBest?.id ?? null, spBest?.perf ?? '')}
+                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Modifier
+                    </button>
+                  } />
               )
             })}
-          </div>
-          {/* Distance selector */}
-          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-            {ROW_DISTS.map(d => (
-              <button key={d} onClick={() => setSelRowDist(d)} style={{
-                padding:'4px 11px', borderRadius:8,
-                background: selRowDist===d ? 'rgba(20,184,166,0.18)' : 'var(--bg-card2)',
-                border:`1px solid ${selRowDist===d ? '#14b8a6' : 'var(--border)'}`,
-                color: selRowDist===d ? '#14b8a6' : 'var(--text-dim)',
-                fontSize:11, fontWeight:selRowDist===d?700:400, cursor:'pointer',
-              }}>{d}</button>
-            ))}
-          </div>
-          {/* Per-distance card */}
-          {(() => {
-            const distRecs = allSpRecords.filter(r => r.sport === 'rowing' && r.distance_label === selRowDist && toSec(r.performance) > 0)
-            const yearRecs = recordYear === 'All Time' ? distRecs : distRecs.filter(r => r.achieved_at.slice(0,4) === recordYear)
-            const bestRec = [...distRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
-            const rowM = ROW_M[selRowDist] ?? 0
-            const rowGaugeEntries: GaugeEntry[] = yearRecs.map(r => ({
-              id: r.id, val: toSec(r.performance), display: r.performance,
-              date: r.achieved_at.slice(0,10),
-              metric: rowM > 0 ? calcSplit500m(rowM, r.performance) : null,
-              event_type: r.event_type, race_name: r.race_name, rpe: r.rpe,
-            }))
-            return (
-              <Card>
-                {/* Best time header */}
-                {bestRec ? (
-                  <div style={{ marginBottom:16, paddingBottom:14, borderBottom:'1px solid var(--border)' }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                      <div>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:26, fontWeight:700, color:'#14b8a6', lineHeight:1 }}>{bestRec.performance}</span>
-                          {rowM > 0 && <span style={{ fontSize:14, color:'#14b8a6', fontWeight:600 }}>{calcSplit500m(rowM, bestRec.performance)}</span>}
-                        </div>
-                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
-                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
-                          {bestRec.event_type && (
-                            <span style={{ padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:600,
-                              background: bestRec.event_type==='competition' ? 'rgba(245,158,11,0.1)' : 'var(--bg-card2)',
-                              color: bestRec.event_type==='competition' ? '#f59e0b' : 'var(--text-dim)',
-                            }}>
-                              {bestRec.event_type==='competition' ? '🏅 Compétition' : '🏃 Entraînement'}
-                            </span>
-                          )}
-                          {bestRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestRec.race_name}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => openDrawer('rowing', selRowDist, null, '')} style={{
-                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                        background:'#14b8a6', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
-                      }}>+ Ajouter</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-                    <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0 }}>Records {selRowDist}</h2>
-                    <button onClick={() => openDrawer('rowing', selRowDist, null, '')} style={{
-                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                      background:'#14b8a6', color:'#000', fontSize:11, fontWeight:700,
-                    }}>+ Ajouter</button>
-                  </div>
-                )}
-
-                {/* Gauge chart */}
-                <UniversalGaugeChart entries={rowGaugeEntries} distLabel={selRowDist} recordYear={recordYear} lowerIsBetter={true} refVals={ROW_REF_SECS[selRowDist]} />
-
-                {/* History table */}
-                {distRecs.length > 0 && (() => {
-                  const sortedHistory = [...distRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
-                  const bestSecs = distRecs.reduce((m, r) => Math.min(m, toSec(r.performance)), Infinity)
-                  return (
-                    <div style={{ marginTop:16 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique</div>
-                      <div style={{ overflowX:'auto', minHeight:200 }}>
-                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                          <thead>
-                            <tr>
-                              {['Date','Temps','/500m','Type','Course','RPE',''].map(h => (
-                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedHistory.map((r, idx) => {
-                              const isRecord = toSec(r.performance) === bestSecs
-                              const timeColor = isRecord ? '#10B981' : r.event_type === 'competition' ? '#F59E0B' : '#14b8a6'
-                              const isComp = r.event_type === 'competition'
-                              return (
-                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>
-                                    {new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', fontFamily:'DM Mono,monospace', fontSize:11 }}>
-                                    {rowM > 0 ? calcSplit500m(rowM, r.performance) : '—'}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    {r.event_type ? (
-                                      <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:10, fontSize:10, fontWeight:600,
-                                        background: isComp ? '#FEF3C7' : '#EFF6FF', color: isComp ? '#D97706' : '#3B82F6',
-                                      }}>{isComp ? 'Compét.' : 'Entraîn.'}</span>
-                                    ) : <span style={{ color:'var(--text-dim)' }}>—</span>}
-                                  </td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>{r.race_name ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-dim)', textAlign:'center', fontSize:11 }}>{r.rpe != null ? `${r.rpe}/10` : '—'}</td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                                      <button onClick={() => openDrawer('rowing', selRowDist, r.id, r.performance)} title="Modifier"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                      </button>
-                                      <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} title="Supprimer"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6"/>
-                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                          <path d="M10 11v6M14 11v6"/>
-                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </Card>
-            )
-          })()}
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>Puissance via formule Concept2 : P = 2.80 / (split/500)³</p>
+          </Card>
         </div>
       )}
 
@@ -4770,211 +3557,6 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {sport === 'triathlon' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <TriathlonRadar profile={profile} />
-          {/* Year pills — triathlon */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['All Time', ...allRecordYears] as string[]).map(yr => {
-              const active = recordYear === yr
-              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
-              return (
-                <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: 'none',
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  transition: 'background 0.15s, color 0.15s',
-                  background: active ? color : 'var(--bg-card2)',
-                  color: active ? '#ffffff' : 'var(--text-dim)',
-                }}>{yr}</button>
-              )
-            })}
-          </div>
-          {/* Graphique triathlon — sélecteur format + discipline */}
-          {(() => {
-            const DISC_OPTIONS: { id: string; label: string; color: string }[] = [
-              { id: 'total',    label: 'Total',    color: '#f59e0b' },
-              { id: 'natation', label: 'Natation', color: '#38bdf8' },
-              { id: 'vélo',     label: 'Vélo',     color: '#5b6fff' },
-              { id: 'run',      label: 'Run',      color: '#22c55e' },
-              { id: 't1',       label: 'T1',       color: '#f97316' },
-              { id: 't2',       label: 'T2',       color: '#f97316' },
-            ]
-            const discColor = DISC_OPTIONS.find(d => d.id === selTriDisc)?.color ?? '#f59e0b'
-            const fmtLabel  = TRIATHLON_FORMATS.find(f => f.id === selTriFmt)?.label ?? selTriFmt
-            const fmtObj    = TRIATHLON_FORMATS.find(f => f.id === selTriFmt)
-
-            const fmtRecs = allSpRecords.filter(r => r.sport === 'triathlon' && r.distance_label === selTriFmt)
-            const triGaugeEntries: GaugeEntry[] = fmtRecs.flatMap(r => {
-              const entry = (() => {
-                if (selTriDisc === 'total') {
-                  const v = toSec(r.performance); if (!v) return null
-                  return { id: r.id, val: v, display: r.performance, date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
-                }
-                if (selTriDisc === 'natation') {
-                  const v = toSec(r.split_swim ?? ''); if (!v) return null
-                  const swimMDisc = fmtObj ? ({ XS:400,S:750,M:1500,'70.3':1900,Ironman:3800 } as Record<string,number>)[fmtObj.id] ?? 0 : 0
-                  const metric = swimMDisc > 0 ? calcSplit500m(swimMDisc, r.split_swim ?? '').replace('/500m', '/100m') : null
-                  return { id: r.id, val: v, display: r.split_swim ?? '—', date: r.achieved_at.slice(0, 10), metric, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
-                }
-                if (selTriDisc === 'vélo') {
-                  const v = toSec(r.split_bike ?? ''); if (!v) return null
-                  return { id: r.id, val: v, display: r.split_bike ?? '—', date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
-                }
-                if (selTriDisc === 'run') {
-                  const v = toSec(r.split_run ?? ''); if (!v) return null
-                  const runKmDisc = fmtObj ? TRI_DIST[fmtObj.id]?.runKm ?? 0 : 0
-                  const metric = runKmDisc > 0 ? calcPacePerKm(runKmDisc, r.split_run ?? '') : null
-                  return { id: r.id, val: v, display: r.split_run ?? '—', date: r.achieved_at.slice(0, 10), metric, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
-                }
-                if (selTriDisc === 't1') {
-                  const v = toSec(r.split_t1 ?? ''); if (!v) return null
-                  return { id: r.id, val: v, display: r.split_t1 ?? '—', date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
-                }
-                if (selTriDisc === 't2') {
-                  const v = toSec(r.split_t2 ?? ''); if (!v) return null
-                  return { id: r.id, val: v, display: r.split_t2 ?? '—', date: r.achieved_at.slice(0, 10), metric: null, event_type: r.event_type, race_name: r.race_name, rpe: r.rpe }
-                }
-                return null
-              })()
-              return entry ? [entry as GaugeEntry] : []
-            })
-
-            const bestFmtRec = [...fmtRecs].sort((a,b) => toSec(a.performance) - toSec(b.performance))[0] ?? null
-
-            return (
-              <Card style={{ marginBottom: 10 }}>
-                {/* Best time header for selected format */}
-                {bestFmtRec ? (
-                  <div style={{ marginBottom:14, paddingBottom:12, borderBottom:'1px solid var(--border)' }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                      <div>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                          <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'#f59e0b' }}>{fmtLabel}</span>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:22, fontWeight:700, color:'#f59e0b', lineHeight:1 }}>{bestFmtRec.performance}</span>
-                        </div>
-                        {(bestFmtRec.split_swim || bestFmtRec.split_bike || bestFmtRec.split_run) && (
-                          <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:10, fontFamily:'DM Mono,monospace', color:'var(--text-dim)', marginBottom:4 }}>
-                            {bestFmtRec.split_swim && <span>🏊 {bestFmtRec.split_swim}</span>}
-                            {bestFmtRec.split_t1   && <span>T1 {bestFmtRec.split_t1}</span>}
-                            {bestFmtRec.split_bike && <span>🚴 {bestFmtRec.split_bike}</span>}
-                            {bestFmtRec.split_t2   && <span>T2 {bestFmtRec.split_t2}</span>}
-                            {bestFmtRec.split_run  && <span>🏃 {bestFmtRec.split_run}</span>}
-                          </div>
-                        )}
-                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-                          <span style={{ padding:'2px 8px', borderRadius:10, background:'rgba(245,158,11,0.15)', color:'#f59e0b', fontSize:10, fontWeight:700 }}>★ Record personnel</span>
-                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{new Date(bestFmtRec.achieved_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span>
-                          {bestFmtRec.race_name && <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic' }}>{bestFmtRec.race_name}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => openTriDrawer(selTriFmt, null)} style={{
-                        padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                        background:'#f59e0b', color:'#000', fontSize:11, fontWeight:700, flexShrink:0,
-                      }}>+ Ajouter</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-                    <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700 }}>Records {fmtLabel}</span>
-                    <button onClick={() => openTriDrawer(selTriFmt, null)} style={{
-                      padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer',
-                      background:'#f59e0b', color:'#000', fontSize:11, fontWeight:700,
-                    }}>+ Ajouter</button>
-                  </div>
-                )}
-
-                {/* Sélecteur format */}
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {TRIATHLON_FORMATS.map(f => (
-                    <button key={f.id} onClick={() => setSelTriFmt(f.id)} style={{
-                      padding: '3px 9px', borderRadius: 6,
-                      background: selTriFmt === f.id ? 'rgba(245,158,11,0.15)' : 'var(--bg-card2)',
-                      border: `1px solid ${selTriFmt === f.id ? '#f59e0b' : 'var(--border)'}`,
-                      color: selTriFmt === f.id ? '#f59e0b' : 'var(--text-dim)',
-                      fontSize: 10, fontWeight: selTriFmt === f.id ? 700 : 400, cursor: 'pointer',
-                    }}>{f.label}</button>
-                  ))}
-                </div>
-                {/* Sélecteur discipline */}
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {DISC_OPTIONS.map(d => (
-                    <button key={d.id} onClick={() => setSelTriDisc(d.id)} style={{
-                      padding: '3px 9px', borderRadius: 6,
-                      background: selTriDisc === d.id ? `${d.color}22` : 'var(--bg-card2)',
-                      border: `1px solid ${selTriDisc === d.id ? d.color : 'var(--border)'}`,
-                      color: selTriDisc === d.id ? d.color : 'var(--text-dim)',
-                      fontSize: 10, fontWeight: selTriDisc === d.id ? 700 : 400, cursor: 'pointer',
-                    }}>{d.label}</button>
-                  ))}
-                </div>
-
-                {/* UniversalGaugeChart */}
-                <UniversalGaugeChart entries={triGaugeEntries} distLabel={`${fmtLabel} — ${selTriDisc}`} recordYear={recordYear} lowerIsBetter={true} />
-
-                {/* History table for selected format */}
-                {fmtRecs.length > 0 && (() => {
-                  const sortedHistory = [...fmtRecs].sort((a,b) => b.achieved_at.localeCompare(a.achieved_at))
-                  const bestSecs = fmtRecs.reduce((m,r) => Math.min(m, toSec(r.performance)), Infinity)
-                  return (
-                    <div style={{ marginTop:16 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Historique {fmtLabel}</div>
-                      <div style={{ overflowX:'auto', minHeight:120 }}>
-                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                          <thead>
-                            <tr>
-                              {['Date','Total','🏊','🚴','🏃','T1','T2',''].map(h => (
-                                <th key={h} style={{ textAlign:'left', padding:'6px 8px', fontSize:9, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #F3F4F6', whiteSpace:'nowrap' }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedHistory.map((r, idx) => {
-                              const isRecord = toSec(r.performance) === bestSecs
-                              const timeColor = isRecord ? '#10B981' : '#F59E0B'
-                              return (
-                                <tr key={r.id} style={{ background: idx % 2 === 0 ? '#FAFAFA' : '#fff', borderBottom:'1px solid #F3F4F6' }}>
-                                  <td style={{ padding:'7px 8px', color:'var(--text-mid)', whiteSpace:'nowrap', fontSize:11 }}>{new Date(r.achieved_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}</td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontWeight:700, color: timeColor, fontSize:12 }}>{r.performance}</td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_swim ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_bike ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_run ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_t1 ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', fontFamily:'DM Mono,monospace', fontSize:10, color:'var(--text-dim)' }}>{r.split_t2 ?? '—'}</td>
-                                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                                      <button onClick={() => openTriDrawer(selTriFmt, r)} title="Modifier"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#3B82F6'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                      </button>
-                                      <button onClick={() => { if (confirm('Supprimer ce record ?')) void deleteSpRecord(r.id) }} title="Supprimer"
-                                        style={{ background:'none', border:'none', cursor:'pointer', padding:2, color:'#9CA3AF', display:'flex', alignItems:'center' }}
-                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color='#EF4444'}
-                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color='#9CA3AF'}>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6"/>
-                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                          <path d="M10 11v6M14 11v6"/>
-                                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </Card>
-            )
-          })()}
-
           {TRIATHLON_FORMATS.map(fmt => {
             const best = getTrBest(fmt.id)
             const prev = getTrPrev(fmt.id)
@@ -5031,30 +3613,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <HyroxRadar />
           <HyroxTestsBandeau onNavigateToTests={onNavigateToTests} />
-          <HyroxSection onSelect={onSelect} selectedDatum={selectedDatum} recordYear={recordYear} />
+          <HyroxSection onSelect={onSelect} selectedDatum={selectedDatum} />
         </div>
       )}
 
       {/* GYM */}
       {sport === 'gym' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Year pills — gym */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['All Time', ...allRecordYears] as string[]).map(yr => {
-              const active = recordYear === yr
-              const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
-              return (
-                <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: 'none',
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  transition: 'background 0.15s, color 0.15s',
-                  background: active ? color : 'var(--bg-card2)',
-                  color: active ? '#ffffff' : 'var(--text-dim)',
-                }}>{yr}</button>
-              )
-            })}
-          </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <SectionHeader label="Records muscu" gradient="linear-gradient(180deg,#fb923c,#f97316)" />
           </div>
@@ -5323,10 +3888,6 @@ function YearDatasSubTab() {
   const [weeklyStats, setWeeklyStats] = useState<
     Record<string, Record<number, Record<string, { km: number; heures: number; nb_sorties: number }>>>
   >({})
-  // dailyMap : date(YYYY-MM-DD) → {h, tss, sports}
-  const [dailyMap, setDailyMap] = useState<Record<string, { h: number; tss: number; sports: string[] }>>({})
-  // Heatmap tooltip
-  const [hmTip, setHmTip] = useState<{ date: string; h: number; sports: string[]; clientX: number; clientY: number } | null>(null)
 
   // Edit state (manual mode)
   const [editYear,  setEditYear]  = useState<string | null>(null)
@@ -5367,19 +3928,6 @@ function YearDatasSubTab() {
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
-  }, [])
-
-  // Heatmap container width for dynamic cell sizing
-  const hmContainerRef = useRef<HTMLDivElement>(null)
-  const [hmContainerW, setHmContainerW] = useState(0)
-  useEffect(() => {
-    const el = hmContainerRef.current
-    if (!el) return
-    const ro = new ResizeObserver(entries => {
-      setHmContainerW(entries[0]?.contentRect.width ?? 0)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
   }, [])
 
   // Scroll reveal §12 — déclenché quand les charts passent dans le viewport
@@ -5477,23 +4025,6 @@ function YearDatasSubTab() {
     Object.keys(auto).forEach(y => yearsSet.add(y))
     Object.values(manual).forEach(m => Object.keys(m).forEach(y => yearsSet.add(y)))
     const years = Array.from(yearsSet).sort((a, b) => b.localeCompare(a))
-
-    // Daily map
-    const daily: Record<string, { h: number; tss: number; sports: string[] }> = {}
-    for (const act of acts) {
-      if (!act.started_at || !act.sport_type) continue
-      const day = act.started_at.slice(0, 10)
-      const lower = act.sport_type.toLowerCase()
-      for (const sp of YD_SPORTS) {
-        if (!sp.keys.includes(lower)) continue
-        if (!daily[day]) daily[day] = { h: 0, tss: 0, sports: [] }
-        daily[day].h += (act.moving_time_s ?? 0) / 3600
-        daily[day].tss += (act.tss ?? 0)
-        if (!daily[day].sports.includes(sp.id)) daily[day].sports.push(sp.id)
-        break
-      }
-    }
-    setDailyMap(daily)
 
     setAutoStats(auto)
     setManualMap(manual)
@@ -6327,144 +4858,33 @@ function YearDatasSubTab() {
         }}
       />
 
-      {/* ── Premium KPI cards ── */}
-      {(() => {
-        const kpiYear = chart1Year || currentYear
-        // Sport-specific totals for selected year
-        const kpiAuto    = autoStats[kpiYear]?.[activeSport]
-        const kpiManual  = manualMap[activeSport]?.[kpiYear]
-        const kpiKm      = kpiAuto?.km      ?? kpiManual?.km      ?? 0
-        const kpiH       = kpiAuto?.heures  ?? kpiManual?.heures  ?? 0
-        const kpiSorties = kpiAuto?.nb_sorties ?? kpiManual?.nb_sorties ?? 0
-        const kpiDeniv   = kpiAuto?.denivele   ?? kpiManual?.denivele   ?? 0
-        // Previous year comparison (same sport)
-        const prevYear   = String(parseInt(kpiYear) - 1)
-        const prevAuto   = autoStats[prevYear]?.[activeSport]
-        const prevManual = manualMap[activeSport]?.[prevYear]
-        const prevKm      = prevAuto?.km      ?? prevManual?.km      ?? 0
-        const prevH       = prevAuto?.heures  ?? prevManual?.heures  ?? 0
-        const prevSorties = prevAuto?.nb_sorties ?? prevManual?.nb_sorties ?? 0
-
-        // Sparkline: last 6 months (active sport only)
-        const sparkMonths = Array.from({ length: 6 }, (_, i) => {
-          const now = new Date()
-          const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-          const yr = String(d.getFullYear())
-          const mo = d.getMonth()
-          return {
-            km:      monthlyStats[yr]?.[mo]?.[activeSport]?.km ?? 0,
-            heures:  monthlyStats[yr]?.[mo]?.[activeSport]?.heures ?? 0,
-            sorties: monthlyStats[yr]?.[mo]?.[activeSport]?.nb_sorties ?? 0,
-          }
-        })
-
-        function Sparkline({ vals, color }: { vals: number[]; color: string }) {
-          const W = 60, H = 24
-          const max = Math.max(...vals, 0.01)
-          const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * W},${H - (v / max) * (H - 2)}`)
-          return (
-            <svg width={W} height={H} style={{ display: 'block' }}>
-              <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-            </svg>
-          )
-        }
-
-        function pctDiff(curr: number, prev: number): number | null {
-          if (!prev || !curr) return null
-          return Math.round((curr - prev) / prev * 100)
-        }
-
-        const kpiCards = [
-          {
-            icon: (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12h18M3 6l9-3 9 3M3 18l9 3 9-3"/>
-              </svg>
-            ),
-            label: `Distance ${sportDef.label} ${kpiYear}`,
-            value: kpiKm > 0 ? `${Math.round(kpiKm).toLocaleString('fr-FR')} km` : '— km',
-            diff: pctDiff(kpiKm, prevKm),
-            sparkVals: sparkMonths.map(m => m.km),
-            color: sportDef.color,
-            sub: pctDiff(kpiKm, prevKm) != null ? `${(pctDiff(kpiKm, prevKm) ?? 0) >= 0 ? '▲ +' : '▼ '}${Math.abs(pctDiff(kpiKm, prevKm) ?? 0)}% vs ${prevYear}` : `vs ${prevYear}`,
-          },
-          {
-            icon: (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-            ),
-            label: `Temps ${sportDef.label} ${kpiYear}`,
-            value: kpiH > 0 ? `${Math.floor(kpiH)}h ${String(Math.round((kpiH % 1) * 60)).padStart(2,'0')}` : '— h',
-            diff: pctDiff(kpiH, prevH),
-            sparkVals: sparkMonths.map(m => m.heures),
-            color: '#3b82f6',
-            sub: pctDiff(kpiH, prevH) != null ? `${(pctDiff(kpiH, prevH) ?? 0) >= 0 ? '▲ +' : '▼ '}${Math.abs(pctDiff(kpiH, prevH) ?? 0)}% vs ${prevYear}` : `vs ${prevYear}`,
-          },
-          {
-            icon: (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            ),
-            label: `Sorties ${sportDef.label} ${kpiYear}`,
-            value: kpiSorties > 0 ? String(Math.round(kpiSorties)) : '—',
-            diff: pctDiff(kpiSorties, prevSorties),
-            sparkVals: sparkMonths.map(m => m.sorties),
-            color: '#f97316',
-            sub: pctDiff(kpiSorties, prevSorties) != null ? `${(pctDiff(kpiSorties, prevSorties) ?? 0) >= 0 ? '▲ +' : '▼ '}${Math.abs(pctDiff(kpiSorties, prevSorties) ?? 0)}% vs ${prevYear}` : (kpiSorties > 0 ? `${(kpiSorties / 52).toFixed(1)}/sem` : `—`),
-          },
-          {
-            icon: (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/>
-              </svg>
-            ),
-            label: `Dénivelé ${sportDef.label} ${kpiYear}`,
-            value: kpiDeniv > 0 ? `${Math.round(kpiDeniv).toLocaleString('fr-FR')} m` : '— m',
-            diff: null,
-            sparkVals: sparkMonths.map(m => m.heures),
-            color: '#10b981',
-            sub: kpiDeniv > 0 ? `${(kpiDeniv / 8848).toFixed(1)}× Everest` : `—`,
-          },
-        ]
-
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 12 }}>
-            {kpiCards.map((card, i) => (
-              <div key={i} style={{
-                background: 'var(--bg-card)', borderRadius: 16, padding: '16px 16px 12px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-                border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                    background: `${card.color}18`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: card.color,
-                  }}>
-                    {card.icon}
-                  </div>
-                  <Sparkline vals={card.sparkVals} color={card.color} />
-                </div>
-                <div>
-                  <p style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0, lineHeight: 1.1, fontFamily: 'DM Mono,monospace' }}>
-                    {card.value}
-                  </p>
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>{card.label}</p>
-                </div>
-                <p style={{
-                  fontSize: 11, margin: 0, fontWeight: 500,
-                  color: card.diff != null ? (card.diff >= 0 ? '#10b981' : '#ef4444') : 'var(--text-dim)',
-                }}>
-                  {card.sub}
+      {/* ── KPI cards ── */}
+      {hasDisplay ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+          {sportMetrics.map(mk => {
+            const m = YD_METRICS[mk]; if (!m) return null
+            const val = mode === 'auto'
+              ? (displayAuto   ? m.fromAuto(displayAuto)            : 0)
+              : (displayManual ? (m.fromManual(displayManual) ?? 0) : 0)
+            return (
+              <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{m.label}</p>
+                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: sportDef.color, margin: 0 }}>
+                  {val > 0 ? m.fmt(val) : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
                 </p>
               </div>
-            ))}
-          </div>
-        )
-      })()}
+            )
+          })}
+        </div>
+      ) : (
+        <Card>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', margin: 0, padding: '10px 0' }}>
+            {mode === 'manual'
+              ? 'Aucune donnée. Clique sur "+ Saisir" pour ajouter une année.'
+              : 'Aucune activité Strava pour ce sport / cette période.'}
+          </p>
+        </Card>
+      )}
 
       {/* ════ Chart 1 — Volume par sport (mois / semaine) ════ */}
       <Card style={{ position: 'relative' }}>
@@ -6740,16 +5160,6 @@ function YearDatasSubTab() {
                 if (c1HoveredInjury) { router.push('/injuries') }
               }}
             >
-              {/* Gradient defs */}
-              <defs>
-                {!c1CompareMode && c1Sports.map(sp => (
-                  <linearGradient key={sp.id} id={`yd-grad-${sp.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={sp.color} stopOpacity="0.12" />
-                    <stop offset="100%" stopColor={sp.color} stopOpacity="0" />
-                  </linearGradient>
-                ))}
-              </defs>
-
               {/* Grid */}
               {(() => {
                 const ticks = chart1Metric === 'heures'
@@ -6759,8 +5169,8 @@ function YearDatasSubTab() {
                   const y = c1Y(v)
                   return (
                     <g key={v}>
-                      <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="#F3F4F6" strokeWidth="1" />
-                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'sans-serif', fontWeight: 400 }}>
+                      <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
+                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                         {chart1Metric === 'heures' ? `${v}h` : `${Math.round(v)}`}
                       </text>
                     </g>
@@ -6796,9 +5206,9 @@ function YearDatasSubTab() {
                 const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
                 return (
                   <g key={yr}>
-                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={monotonePath(pts)} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, i) => v > 0 && hoveredPoint === i ? (
-                      <circle key={i} cx={c1X(i)} cy={c1Y(v)} r={5} fill={color} stroke="white" strokeWidth="2" />
+                      <circle key={i} cx={c1X(i)} cy={c1Y(v)} r={3} fill={color} stroke={color} strokeWidth="1.5" />
                     ) : null)}
                   </g>
                 )
@@ -6808,19 +5218,14 @@ function YearDatasSubTab() {
               {!c1CompareMode && c1Sports.map(sp => {
                 const vals  = c1PointVals(sp.id)
                 const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
-                const fillPts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)])
-                const lastX = c1X(vals.length - 1)
-                const baseY = C1_PT + c1PlotH
-                const fillD = `M ${fillPts[0]?.[0] ?? 0} ${baseY} ${monotonePath(fillPts).slice(1)} L ${lastX} ${baseY} Z`
                 return (
                   <g key={sp.id}>
-                    {sp.id === activeSport && <path d={fillD} fill={`url(#yd-grad-${sp.id})`} pointerEvents="none" />}
-                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
                     {vals.map((v, i) => v > 0 ? (
                       <circle key={i}
                         cx={c1X(i)} cy={c1Y(v)}
-                        r={hoveredPoint === i ? 5 : 0}
-                        fill={sp.color} stroke="white" strokeWidth="2"
+                        r={hoveredPoint === i ? 3 : 0}
+                        fill={sp.color} stroke={sp.color} strokeWidth="1.5"
                         opacity={hoveredPoint === i ? 1 : 0}
                       />
                     ) : null)}
@@ -6848,7 +5253,7 @@ function YearDatasSubTab() {
                 <line
                   x1={c1X(hoveredPoint)} y1={C1_PT}
                   x2={c1X(hoveredPoint)} y2={C1_PT + c1PlotH}
-                  stroke="#E5E7EB" strokeWidth="1"
+                  stroke="var(--border)" strokeWidth="1" strokeOpacity="0.6"
                   pointerEvents="none"
                 />
               )}
@@ -6857,13 +5262,13 @@ function YearDatasSubTab() {
               {chart1Period === 'mois'
                 ? MONTHS.map((m, i) => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 11, fill: '#6B7280', fontFamily: 'sans-serif', fontWeight: 500 }}>
+                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                       {m}
                     </text>
                   ))
                 : Array.from({ length: 52 }, (_, i) => i).filter(i => i % 8 === 0).map(i => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 11, fill: '#6B7280', fontFamily: 'sans-serif', fontWeight: 500 }}>
+                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                       S{i + 1}
                     </text>
                   ))
@@ -7000,265 +5405,6 @@ function YearDatasSubTab() {
         )}
       </Card>
 
-      {/* ════ Heatmap des sorties ════ */}
-      {Object.keys(dailyMap).length > 0 && (() => {
-        const hmYear = chart1Year || currentYear
-        const startOfYear = new Date(parseInt(hmYear), 0, 1)
-        const startDow = startOfYear.getDay()
-        const isLeap = (parseInt(hmYear) % 4 === 0 && parseInt(hmYear) % 100 !== 0) || parseInt(hmYear) % 400 === 0
-        const totalDays = isLeap ? 366 : 365
-        const cells: { date: string; h: number; sports: string[]; week: number; dow: number }[] = []
-        for (let d = 0; d < totalDays; d++) {
-          const dt = new Date(parseInt(hmYear), 0, d + 1)
-          if (dt.getFullYear() > parseInt(hmYear)) break
-          const dateStr = dt.toISOString().slice(0, 10)
-          const dow = dt.getDay()
-          const week = Math.floor((d + startDow) / 7)
-          const info = dailyMap[dateStr] ?? { h: 0, tss: 0, sports: [] }
-          cells.push({ date: dateStr, h: info.h, sports: info.sports, week, dow })
-        }
-
-        const GAP = 2
-        const HM_DAY_LBL_W = 20
-        const hmCols = Math.max(...cells.map(c => c.week)) + 1
-        const availW = hmContainerW > 0 ? hmContainerW - HM_DAY_LBL_W - 8 : 0
-        const CELL = availW > 0 ? Math.max(9, Math.floor((availW - (hmCols - 1) * GAP) / hmCols)) : 11
-        const STEP = CELL + GAP
-        const COLS = hmCols
-        const DOW_LABELS = ['D','L','M','M','J','V','S']
-
-        function cellColor(cell: { h: number; sports: string[] }): string {
-          if (cell.h === 0) return '#F3F4F6'
-          const sp = cell.sports[0] ? YD_SPORTS.find(s => s.id === cell.sports[0]) : null
-          const col = sp?.color ?? sportDef.color
-          if (cell.h < 1) return col + '55'
-          if (cell.h < 2) return col + 'AA'
-          return col
-        }
-
-        return (
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: 0 }}>
-                Heatmap des sorties
-              </h3>
-              <span style={{ fontSize: 12, color: '#6B7280' }}>{hmYear}</span>
-            </div>
-            <div ref={hmContainerRef} style={{ width: '100%', overflowX: 'hidden' }}>
-              <div style={{ position: 'relative', width: '100%' }}>
-                {/* Month labels */}
-                <div style={{ display: 'flex', gap: 0, paddingLeft: HM_DAY_LBL_W, marginBottom: 4, height: 14, position: 'relative' }}>
-                  {['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'].map((m, mi) => {
-                    const firstDayOfMonth = new Date(parseInt(hmYear), mi, 1)
-                    const dayIdx = Math.floor((firstDayOfMonth.getTime() - startOfYear.getTime()) / 86400000)
-                    const col = Math.floor((dayIdx + startDow) / 7)
-                    return (
-                      <span key={m} style={{
-                        position: 'absolute', left: HM_DAY_LBL_W + col * STEP,
-                        fontSize: 10, color: '#6B7280', fontWeight: 500, whiteSpace: 'nowrap',
-                      }}>{m}</span>
-                    )
-                  })}
-                </div>
-                {/* Grid */}
-                <div style={{ display: 'flex', gap: 0 }}>
-                  {/* Day labels */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: 4, paddingTop: 0, width: HM_DAY_LBL_W - 4, flexShrink: 0 }}>
-                    {DOW_LABELS.map((d, i) => (
-                      <div key={i} style={{ height: CELL, fontSize: 10, color: '#9CA3AF', display: 'flex', alignItems: 'center', lineHeight: 1 }}>
-                        {i % 2 === 1 ? d : ''}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Weeks */}
-                  <div style={{ display: 'flex', gap: GAP }}>
-                    {Array.from({ length: COLS }, (_, wi) => (
-                      <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
-                        {Array.from({ length: 7 }, (_, di) => {
-                          const cell = cells.find(c => c.week === wi && c.dow === di)
-                          if (!cell) return <div key={di} style={{ width: CELL, height: CELL }} />
-                          return (
-                            <div key={di}
-                              onMouseEnter={e => {
-                                setHmTip({ date: cell.date, h: cell.h, sports: cell.sports, clientX: e.clientX, clientY: e.clientY })
-                              }}
-                              onMouseLeave={() => setHmTip(null)}
-                              style={{
-                                width: CELL, height: CELL, borderRadius: 2,
-                                background: cellColor(cell),
-                                cursor: cell.h > 0 ? 'pointer' : 'default',
-                                transition: 'opacity 0.1s',
-                              }}
-                            />
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Legend */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
-                  <span style={{ fontSize: 9, color: '#9CA3AF' }}>Moins</span>
-                  {(['#F3F4F6', sportDef.color + '55', sportDef.color + 'AA', sportDef.color] as string[]).map((c, i) => (
-                    <div key={i} style={{ width: CELL, height: CELL, borderRadius: 2, background: c }} />
-                  ))}
-                  <span style={{ fontSize: 9, color: '#9CA3AF' }}>Plus</span>
-                </div>
-              </div>
-            </div>
-            {/* Tooltip */}
-            {hmTip && createPortal(
-              <div style={{
-                position: 'fixed', left: hmTip.clientX + 14, top: hmTip.clientY - 60,
-                background: 'white', border: '1px solid #E5E7EB', borderRadius: 8,
-                padding: '8px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 9999, pointerEvents: 'none', fontSize: 11,
-              }}>
-                <p style={{ margin: '0 0 4px', fontWeight: 600, color: '#111827' }}>
-                  {(() => { try { return new Date(hmTip.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) } catch { return hmTip.date } })()}
-                </p>
-                {hmTip.h > 0 ? (
-                  <>
-                    <p style={{ margin: '0 0 2px', color: '#6B7280' }}>
-                      {hmTip.h.toFixed(1)}h d&apos;entraînement
-                    </p>
-                    <p style={{ margin: 0, color: '#6B7280' }}>
-                      {hmTip.sports.map(s => YD_SPORTS.find(sp => sp.id === s)?.label ?? s).join(', ')}
-                    </p>
-                  </>
-                ) : (
-                  <p style={{ margin: 0, color: '#9CA3AF' }}>Repos</p>
-                )}
-              </div>,
-              document.body
-            )}
-          </Card>
-        )
-      })()}
-
-      {/* ════ Radar de consistance ════ */}
-      {Object.keys(dailyMap).length > 0 && (() => {
-        const rYear = chart1Year || currentYear
-        const prevRYear = String(parseInt(rYear) - 1)
-
-        function consistencyData(year: string): number[] {
-          const DOW_ORDER = [1,2,3,4,5,6,0]
-          const weekDays: Record<number, Set<number>> = {}
-          Object.entries(dailyMap).forEach(([date, info]) => {
-            if (!date.startsWith(year) || info.h === 0) return
-            const dow = new Date(date).getDay()
-            const d = new Date(date)
-            const startYr = new Date(parseInt(year), 0, 1)
-            const week = Math.floor((d.getTime() - startYr.getTime()) / (7 * 86400000))
-            if (!weekDays[week]) weekDays[week] = new Set()
-            weekDays[week].add(dow)
-          })
-          const totalWeeks = Math.max(1, Object.keys(weekDays).length)
-          return DOW_ORDER.map(dow => {
-            const count = Object.values(weekDays).filter(s => s.has(dow)).length
-            return Math.round(count / totalWeeks * 100)
-          })
-        }
-
-        const currData = consistencyData(rYear)
-        const prevData = consistencyData(prevRYear)
-        const DAY_LABELS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
-
-        const CX = 120, CY = 110, R = 85
-        const N = 7
-        function radarPt(i: number, pct: number): [number, number] {
-          const angle = (i / N) * Math.PI * 2 - Math.PI / 2
-          const r = (pct / 100) * R
-          return [CX + Math.cos(angle) * r, CY + Math.sin(angle) * r]
-        }
-        function labelPt(i: number): [number, number] {
-          const angle = (i / N) * Math.PI * 2 - Math.PI / 2
-          return [CX + Math.cos(angle) * (R + 16), CY + Math.sin(angle) * (R + 16)]
-        }
-
-        const currPts = currData.map((v, i) => radarPt(i, v))
-        const prevPts = prevData.map((v, i) => radarPt(i, v))
-
-        function pathStr(pts: [number,number][]): string {
-          return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ') + ' Z'
-        }
-        function gridPathStr(pct: number): string {
-          const gridPts = Array.from({ length: N }, (_, i) => radarPt(i, pct))
-          return pathStr(gridPts)
-        }
-
-        return (
-          <Card>
-            <div style={{ marginBottom: 12 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
-                Répartition hebdomadaire des entraînements
-              </h3>
-              <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
-                % de semaines avec au moins une sortie
-              </p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-              <svg width={240} height={220} viewBox={`0 0 ${CX * 2} ${CY * 2}`} style={{ flexShrink: 0 }}>
-                {/* Grid rings */}
-                {[25, 50, 75, 100].map(pct => (
-                  <path key={pct} d={gridPathStr(pct)} fill="none" stroke="#F3F4F6" strokeWidth="1" />
-                ))}
-                {/* Axes */}
-                {Array.from({ length: N }, (_, i) => {
-                  const [x, y] = radarPt(i, 100)
-                  return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="#F3F4F6" strokeWidth="1" />
-                })}
-                {/* Previous year polygon */}
-                {prevData.some(v => v > 0) && (
-                  <path d={pathStr(prevPts)} fill={`${sportDef.color}22`} stroke={`${sportDef.color}66`} strokeWidth="1.5" strokeDasharray="4 2" />
-                )}
-                {/* Current year polygon */}
-                <path d={pathStr(currPts)} fill={`${sportDef.color}33`} stroke={sportDef.color} strokeWidth="2" />
-                {/* Labels */}
-                {DAY_LABELS.map((label, i) => {
-                  const [lx, ly] = labelPt(i)
-                  return (
-                    <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
-                      style={{ fontSize: 10, fontWeight: 600, fill: '#6B7280' }}>
-                      {label}
-                    </text>
-                  )
-                })}
-                {/* Data points */}
-                {currPts.map(([x, y], i) => (
-                  <circle key={i} cx={x} cy={y} r={3} fill={sportDef.color} />
-                ))}
-              </svg>
-              {/* Stats list */}
-              <div style={{ flex: 1, minWidth: 140 }}>
-                {DAY_LABELS.map((label, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: '#6B7280', width: 30 }}>{label}</span>
-                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: '#F3F4F6', overflow: 'hidden' }}>
-                      <div style={{ width: `${currData[i]}%`, height: '100%', background: sportDef.color, borderRadius: 3, transition: 'width 0.4s' }} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: sportDef.color, width: 32, textAlign: 'right' }}>{currData[i]}%</span>
-                  </div>
-                ))}
-                {/* Legend */}
-                <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <div style={{ width: 14, height: 2, background: sportDef.color, borderRadius: 1 }} />
-                    <span style={{ fontSize: 10, color: '#6B7280' }}>{rYear}</span>
-                  </div>
-                  {prevData.some(v => v > 0) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 14, height: 2, background: `${sportDef.color}66`, borderRadius: 1 }} />
-                      <span style={{ fontSize: 10, color: '#6B7280' }}>{prevRYear}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        )
-      })()}
-
       {/* ════ Chart 2 — Comparaison inter-années par sport ════ */}
       {(chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
@@ -7303,44 +5449,17 @@ function YearDatasSubTab() {
                     const cx = bx + barW / 2
                     const col = SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR
                     const sel = selectedYear === yr, hov = hoveredBar?.year === yr
-                    const isCurrentYear = yr === currentYear
-                    const prevIdx = i - 1
-                    const prevVal = prevIdx >= 0 ? chartVals[prevIdx] : null
-                    const pctChange = prevVal && prevVal > 0 ? Math.round((val - prevVal) / prevVal * 100) : null
                     return (
                       <g key={yr} style={{ cursor: 'pointer' }}
                         onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
                         onClick={() => setSelectedYear(yr)}>
-                        <defs>
-                          <linearGradient id={`c2g-${yr}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={lightenHex(col, 0.35)} />
-                            <stop offset="100%" stopColor={col} />
-                          </linearGradient>
-                        </defs>
-                        <rect x={bx} y={by} width={barW} height={bh}
-                          rx={6} ry={6}
-                          fill={`url(#c2g-${yr})`}
-                          opacity={hov || sel ? 1.0 : 0.82}
+                        <rect
+                          x={bx} y={by} width={barW} height={bh} rx={4}
+                          fill={col} opacity={hov || sel ? 1.0 : 0.75}
                           className="yd-bar"
                           style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
                         />
-                        {/* Clip bottom corners overlay */}
-                        <rect x={bx} y={by + 6} width={barW} height={Math.max(0, bh - 6)} fill={`url(#c2g-${yr})`} opacity={hov || sel ? 1.0 : 0.82} />
-                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={6} fill="none" stroke={col} strokeWidth="1.5" />}
-                        {/* Value label above bar */}
-                        {val > 0 && bh > 0 && (
-                          <text x={cx} y={by - 4} textAnchor="middle"
-                            style={{ fontSize: isMobile ? 7 : 9, fontFamily: 'DM Mono,monospace', fill: col, fontWeight: '700' }}>
-                            {metricDef.fmt(val)}
-                          </text>
-                        )}
-                        {/* Progress badge for current year */}
-                        {isCurrentYear && pctChange !== null && (
-                          <text x={cx} y={by - (val > 0 ? 14 : 4)} textAnchor="middle"
-                            style={{ fontSize: 8, fill: pctChange >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
-                            {pctChange >= 0 ? '▲' : '▼'} {Math.abs(pctChange)}%
-                          </text>
-                        )}
+                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={4} fill="none" stroke={col} strokeWidth="1.5" />}
                         {(!isMobile || barW >= 18) && (
                           <text x={cx} y={svgH - 5} textAnchor="middle"
                             style={{ fontSize: isMobile ? 8 : 9, fontFamily: 'DM Mono,monospace', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
@@ -7350,17 +5469,6 @@ function YearDatasSubTab() {
                       </g>
                     )
                   })}
-                  {/* Trend line connecting bar tops */}
-                  {chartYears.length > 1 && (() => {
-                    const pts = chartYears.map((yr, i) => {
-                      const val = chartVals[i], bh = Math.max(0, (val / yMax) * plotH)
-                      const bx = lPad + i * (barW + gap) + gap / 2
-                      const cx = bx + barW / 2
-                      const by = tPad + plotH - bh
-                      return `${cx},${by}`
-                    }).join(' ')
-                    return <polyline points={pts} fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 3" strokeLinecap="round" opacity="0.7" />
-                  })()}
                 </svg>
                 {hoveredBar && (
                   <div style={{
@@ -7436,158 +5544,6 @@ function YearDatasSubTab() {
           </div>
         </Card>
       )}
-
-      {/* ════ Charge d'entraînement CTL/ATL/TSB ════ */}
-      {(() => {
-        const loadYear = chart1Year || currentYear
-        const yearDays = Array.from({ length: 365 }, (_, d) => {
-          const dt = new Date(parseInt(loadYear), 0, d + 1)
-          if (dt.getFullYear() > parseInt(loadYear)) return null
-          const date = dt.toISOString().slice(0, 10)
-          return { date, tss: dailyMap[date]?.tss ?? 0 }
-        }).filter((x): x is { date: string; tss: number } => x !== null)
-
-        const hasTSS = yearDays.some(d => d.tss > 0)
-
-        if (!hasTSS) {
-          return (
-            <Card>
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>⚡</div>
-                <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>
-                  Charge d&apos;entraînement
-                </h3>
-                <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
-                  Connectez un capteur de puissance ou de fréquence cardiaque pour voir votre charge (CTL/ATL/TSB).
-                </p>
-              </div>
-            </Card>
-          )
-        }
-
-        // Warm-up: include previous year data for meaningful initial CTL/ATL
-        const loadYearNum = parseInt(loadYear)
-        const K_CTL = Math.exp(-1 / 42), K_ATL = Math.exp(-1 / 7)
-        type LoadPoint = { date: string; ctl: number; atl: number; tsb: number; tss: number }
-        let ctl = 0, atl = 0
-        // Pre-warm from Jan 1 of previous year
-        const warmDays = Array.from({ length: 365 }, (_, d) => {
-          const dt = new Date(loadYearNum - 1, 0, d + 1)
-          if (dt.getFullYear() >= loadYearNum) return null
-          const date = dt.toISOString().slice(0, 10)
-          return { date, tss: dailyMap[date]?.tss ?? 0 }
-        }).filter((x): x is { date: string; tss: number } => x !== null)
-        for (const { tss } of warmDays) {
-          ctl = ctl * K_CTL + tss * (1 - K_CTL)
-          atl = atl * K_ATL + tss * (1 - K_ATL)
-        }
-        const loadData: LoadPoint[] = yearDays.map(({ date, tss }) => {
-          const prevCtl = ctl, prevAtl = atl
-          ctl = prevCtl * K_CTL + tss * (1 - K_CTL)
-          atl = prevAtl * K_ATL + tss * (1 - K_ATL)
-          const tsb = Math.round((prevCtl - prevAtl) * 10) / 10
-          return { date, ctl: Math.round(ctl * 10) / 10, atl: Math.round(atl * 10) / 10, tsb, tss }
-        })
-
-        const maxLoad = Math.max(...loadData.map(d => Math.max(d.ctl, d.atl)), 1)
-        const minTsb  = Math.min(...loadData.map(d => d.tsb), 0)
-        const maxTsb  = Math.max(...loadData.map(d => d.tsb), 0)
-
-        const LW = 500, LH = 120, LPL = 36, LPR = 8, LPT = 12, LPB = 20
-        const LplotW = LW - LPL - LPR
-        const LplotH = LH - LPT - LPB
-
-        const lX = (i: number) => LPL + (i / Math.max(1, loadData.length - 1)) * LplotW
-        const lY = (v: number, mn: number, mx: number) => LPT + LplotH - ((v - mn) / Math.max(0.01, mx - mn)) * LplotH
-
-        const TSB_H = 60, TSB_PT = 8, TSB_PB = 16
-        const tsbPlotH = TSB_H - TSB_PT - TSB_PB
-        const tsbMid = TSB_PT + tsbPlotH * (maxTsb / Math.max(0.01, maxTsb - minTsb))
-        const tY = (v: number) => TSB_PT + tsbPlotH - ((v - minTsb) / Math.max(0.01, maxTsb - minTsb)) * tsbPlotH
-
-        return (
-          <Card>
-            <div style={{ marginBottom: 12 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
-                Charge d&apos;entraînement
-              </h3>
-              <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>CTL (forme) · ATL (fatigue) · TSB (fraîcheur)</p>
-            </div>
-
-            {/* CTL/ATL chart */}
-            <svg viewBox={`0 0 ${LW} ${LH}`} style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}>
-              <defs>
-                <linearGradient id="yd-ctl-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {/* Grid */}
-              {[0, 0.5, 1].map(f => {
-                const v = maxLoad * f
-                const y = lY(v, 0, maxLoad)
-                return (
-                  <g key={f}>
-                    <line x1={LPL} y1={y} x2={LW - LPR} y2={y} stroke="#F3F4F6" strokeWidth="1" />
-                    <text x={LPL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: '#9CA3AF', fontFamily: 'DM Mono,monospace' }}>
-                      {Math.round(v)}
-                    </text>
-                  </g>
-                )
-              })}
-              {/* ATL (fatigue) - orange */}
-              <path d={monotonePath(loadData.map((d, i) => [lX(i), lY(d.atl, 0, maxLoad)] as [number, number]))} fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              {/* CTL (forme) - blue */}
-              <path d={monotonePath(loadData.map((d, i) => [lX(i), lY(d.ctl, 0, maxLoad)] as [number, number]))} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-
-            {/* TSB chart */}
-            <svg viewBox={`0 0 ${LW} ${TSB_H}`} style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block', marginTop: 4 }}>
-              {/* Reference lines */}
-              {[{v:25,c:'#86EFAC',l:'Pic fraîcheur'},{v:0,c:'#D1D5DB',l:''},{v:-10,c:'#93C5FD',l:'Zone productive'},{v:-30,c:'#FCA5A5',l:'Surcharge'}].map(({v,c,l}) => {
-                const y = tY(v)
-                if (y < TSB_PT - 2 || y > TSB_H - TSB_PB + 2) return null
-                return (
-                  <g key={v}>
-                    <line x1={LPL} y1={y} x2={LW - LPR} y2={y} stroke={c} strokeWidth="1" strokeDasharray={v !== 0 ? '4 3' : undefined} opacity="0.8" />
-                    {l && <text x={LW - LPR - 2} y={y - 2} textAnchor="end" style={{ fontSize: 8, fill: c, fontWeight: 600 }}>{l}</text>}
-                  </g>
-                )
-              })}
-              {/* Baseline */}
-              <line x1={LPL} y1={tsbMid} x2={LW - LPR} y2={tsbMid} stroke="#D1D5DB" strokeWidth="1" />
-              {/* Stem bars — 2px thin */}
-              {loadData.map((d, i) => {
-                const x = lX(i), y1 = tY(d.tsb), ym = tsbMid
-                const isPos = d.tsb >= 0
-                return (
-                  <line key={i}
-                    x1={x} y1={isPos ? y1 : ym}
-                    x2={x} y2={isPos ? ym : y1}
-                    stroke={isPos ? '#10b981' : '#ef4444'} strokeWidth="2" opacity="0.65"
-                    aria-label={`TSB ${d.tsb}`}
-                  />
-                )
-              })}
-              <text x={LPL - 3} y={TSB_PT + 8} textAnchor="end" style={{ fontSize: 9, fill: '#9CA3AF' }}>TSB</text>
-            </svg>
-
-            {/* Legend */}
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
-              {[
-                { color: '#3b82f6', label: 'CTL — Forme (42j)' },
-                { color: '#f97316', label: 'ATL — Fatigue (7j)' },
-                { color: '#10b981', label: 'TSB — Fraîcheur' },
-              ].map(({ color, label }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 14, height: 3, background: color, borderRadius: 2 }} />
-                  <span style={{ fontSize: 10, color: '#6B7280' }}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )
-      })()}
 
       {/* ── Manual entry list ── */}
       {mode === 'manual' && (

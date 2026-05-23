@@ -14,6 +14,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
+import AISidebar from './AISidebar'
+import AIMessageBubble from './AIMessageBubble'
+import AIQuickActionsSheet from './AIQuickActionsSheet'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -56,6 +59,7 @@ interface AIConv {
   createdAt: number
   updatedAt: number
   msgs: AIMsg[]
+  isPinned?: boolean
 }
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
@@ -18054,8 +18058,7 @@ export default function AIPanel({
     setTimeout(() => areaRef.current?.focus(), 80)
   }
 
-  const selectConv = (c: AIConv) => {
-    // Support rename via HistoryDrawer passing modified conv
+  const selectConv = (c: { id: string; title: string }) => {
     setConvs(prev => prev.map(x => x.id === c.id ? { ...x, title: c.title } : x))
     setActiveId(c.id)
     setActiveFlow(null)
@@ -18064,6 +18067,10 @@ export default function AIPanel({
   const deleteConv = (id: string) => {
     setConvs(prev => prev.filter(c => c.id !== id))
     if (activeId === id) setActiveId(null)
+  }
+
+  const pinConv = (id: string) => {
+    setConvs(prev => prev.map(c => c.id === id ? { ...c, isPinned: !c.isPinned } : c))
   }
 
   // ── Swipe (mobile) ────────────────────────────────────────
@@ -18669,6 +18676,10 @@ export default function AIPanel({
           50%       { opacity: 0; }
         }
         /* ── Message appear ──────────────────────────────────── */
+        @keyframes ai_pulse {
+          0%,100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(0.92); }
+        }
         @keyframes ai_msg_in {
           from { opacity: 0; transform: translateY(6px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -18814,49 +18825,42 @@ export default function AIPanel({
         <div style={{
           height: 50, padding: '0 12px',
           borderBottom: '1px solid var(--ai-border)',
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center', gap: 8,
           flexShrink: 0, background: 'var(--ai-bg)',
         }}>
-          {/* Logo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="THW" style={{ height: 24, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+          {/* Hamburger (mobile only — desktop has persistent sidebar) */}
+          {!isDesktop && (
+            <button
+              onClick={() => setHistOpen(h => !h)}
+              title="Menu"
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                border: 'none', background: 'var(--ai-bg2)',
+                cursor: 'pointer', color: 'var(--ai-mid)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 12h18M3 6h18M3 18h18"/>
+              </svg>
+            </button>
+          )}
 
-          {/* Title */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)', lineHeight: 1.2 }}>
-              THW Coach
-            </div>
-            {active && (
-              <div style={{ fontSize: 10, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                {active.title}
-              </div>
-            )}
-          </div>
-
-          {/* History button */}
-          <button
-            onClick={() => setHistOpen(h => !h)}
-            title="Conversations"
-            style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: `1px solid ${histOpen ? 'rgba(91,111,255,0.4)' : 'var(--ai-border)'}`,
-              background: histOpen ? 'rgba(91,111,255,0.1)' : 'transparent',
-              cursor: 'pointer', color: histOpen ? '#5b6fff' : 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, position: 'relative',
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          {/* Agent name + shuriken — centré */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minWidth: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 32 32">
+              <defs>
+                <linearGradient id="hdr_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#00c8e0"/>
+                  <stop offset="100%" stopColor="#3B82F6"/>
+                </linearGradient>
+              </defs>
+              <path d="M16 2 L20 12 L30 8 L22 16 L30 24 L20 20 L16 30 L12 20 L2 24 L10 16 L2 8 L12 12 Z" fill="url(#hdr_grad)"/>
             </svg>
-            {convs.length > 0 && (
-              <div style={{
-                position: 'absolute', top: 3, right: 3,
-                width: 6, height: 6, borderRadius: '50%',
-                background: '#5b6fff',
-              }} />
-            )}
-          </button>
+            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--ai-text)', lineHeight: 1 }}>
+              {MODEL_CONFIGS[model].name}
+            </span>
+          </div>
 
           {/* New conv */}
           <button
@@ -18864,36 +18868,34 @@ export default function AIPanel({
             title="Nouvelle conversation"
             style={{
               width: 30, height: 30, borderRadius: 8,
-              border: 'none',
-              background: 'var(--ai-gradient)',
-              cursor: 'pointer', color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, boxShadow: '0 2px 8px rgba(91,111,255,0.3)',
+              border: 'none', background: 'transparent',
+              cursor: 'pointer', color: 'var(--ai-dim)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14"/>
             </svg>
           </button>
 
           {/* Fullscreen */}
           <button
             onClick={() => setFullscr(f => !f)}
-            title={fullscr ? 'Réduire' : 'Plein écran'}
+            title={fullscr ? 'Reduire' : 'Plein ecran'}
             style={{
               width: 30, height: 30, borderRadius: 8,
-              border: '1px solid var(--ai-border)', background: 'transparent',
+              border: 'none', background: 'transparent',
               cursor: 'pointer', color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
             {fullscr ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3"/>
               </svg>
             ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
               </svg>
             )}
           </button>
@@ -18903,13 +18905,13 @@ export default function AIPanel({
             onClick={onClose}
             style={{
               width: 30, height: 30, borderRadius: 8,
-              border: '1px solid var(--ai-border)', background: 'transparent',
+              border: 'none', background: 'transparent',
               cursor: 'pointer', color: 'var(--ai-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           </button>
         </div>
@@ -18919,25 +18921,31 @@ export default function AIPanel({
 
           {/* ── Sidebar desktop (persistante, toujours visible) ── */}
           {isDesktop && (
-            <HistoryDrawer
+            <AISidebar
               persistent
               convs={convs}
               activeId={activeId}
+              model={model}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
+              onPin={pinConv}
+              onModelChange={m => setModel(m as THWModel)}
               onClose={() => setHistOpen(false)}
             />
           )}
 
           {/* ── Sidebar mobile (overlay) ── */}
           {!isDesktop && histOpen && (
-            <HistoryDrawer
+            <AISidebar
               convs={convs}
               activeId={activeId}
+              model={model}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
+              onPin={pinConv}
+              onModelChange={m => setModel(m as THWModel)}
               onClose={() => setHistOpen(false)}
             />
           )}
@@ -18954,122 +18962,21 @@ export default function AIPanel({
 
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
-              <div style={{ animation: 'ai_slidein 0.25s ease' }}>
-                <p style={{
-                  textAlign: 'center', margin: '16px 0 6px',
-                  fontSize: 16, fontWeight: 700, color: 'var(--ai-text)',
-                  fontFamily: 'Syne,sans-serif', lineHeight: 1.3,
-                }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px' }}>
+                <svg width="48" height="48" viewBox="0 0 32 32" style={{ marginBottom: 16 }}>
+                  <defs>
+                    <linearGradient id="shuriken_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#00c8e0"/>
+                      <stop offset="100%" stopColor="#3B82F6"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M16 2 L20 12 L30 8 L22 16 L30 24 L20 20 L16 30 L12 20 L2 24 L10 16 L2 8 L12 12 Z" fill="url(#shuriken_grad)"/>
+                </svg>
+                <p style={{ textAlign: 'center', margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.3 }}>
                   Bonjour, bon {mounted ? getGreeting() : 'matin'} !
                 </p>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 22px' }}>
+                <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--ai-dim)', margin: 0 }}>
                   Comment puis-je t'aider ?
-                </p>
-
-                <button
-                  onClick={() => {
-                    const next = !showQuickActions
-                    setShowQuickActions(next)
-                    localStorage.setItem('thw_ai_show_quick_actions', String(next))
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '0 0 9px',
-                  }}
-                >
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-                    textTransform: 'uppercase', color: 'var(--ai-dim)',
-                  }}>
-                    Actions rapides
-                  </span>
-                  <svg
-                    width="10" height="10" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
-                    style={{ transform: showQuickActions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                  >
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-
-                {showQuickActions && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                    {QUICK_ACTIONS.map((qa, i) => {
-                      const mcfg = MODEL_CONFIGS[qa.model]
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setModel(qa.model)
-                            if (qa.flow) {
-                              setActiveFlow(qa.flow)
-                              setActiveQA(null)
-                            } else if (qa.enrichedId) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void handleEnrichedAction(qa.enrichedId, qa.label)
-                            } else if (qa.prompt) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void send(qa.label, qa.prompt)
-                            }
-                          }}
-                          disabled={loading}
-                          style={{
-                            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                            gap: 10, padding: '11px 14px', borderRadius: 10,
-                            border: '1px solid var(--ai-border)',
-                            background: 'var(--ai-bg2)',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            textAlign: 'left', width: '100%',
-                            opacity: loading ? 0.5 : 1,
-                            transition: 'border-color 0.12s, background 0.12s',
-                          }}
-                          onMouseEnter={e => { if (!loading) {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = mcfg.color + '50'
-                            ;(e.currentTarget as HTMLButtonElement).style.background = mcfg.colorBg
-                          }}}
-                          onMouseLeave={e => {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
-                            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                              {qa.label}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
-                              {qa.sub}
-                            </div>
-                            {/* Modèle recommandé */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                              <ModelEffigy model={qa.model} isAnimating={false} size={10} />
-                              <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
-                                {mcfg.name}
-                              </span>
-                            </div>
-                          </div>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {!showQuickActions && (
-                  <p
-                    style={{ fontSize: 11, color: 'var(--ai-dim)', textAlign: 'center', margin: '0 0 16px', cursor: 'pointer' }}
-                    onClick={() => { setShowQuickActions(true); localStorage.setItem('thw_ai_show_quick_actions', 'true') }}
-                  >
-                    Afficher les actions rapides
-                  </p>
-                )}
-
-                <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 14, margin: 0 }}>
-                  ou utilise + pour explorer toutes les options
                 </p>
               </div>
             )}
@@ -19368,54 +19275,13 @@ export default function AIPanel({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
                 {active.msgs.map((msg, idx) => (
                   <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-
-                    {/* Message row */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start', gap: 10,
-                    }}>
-                      {/* Avatar IA — neutre */}
-                      {msg.role === 'assistant' && (() => {
-                        const m = msg.modelId ?? 'athena'
-                        const isStreaming = loading && idx === active.msgs.length - 1
-                        return (
-                          <div style={{
-                            width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                            background: 'var(--ai-bg2)',
-                            border: '1px solid var(--ai-border)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            marginTop: 2,
-                          }}>
-                            <ModelEffigy model={m} isAnimating={isStreaming} size={15} color="var(--ai-mid)" />
-                          </div>
-                        )
-                      })()}
-
-                      {/* Bulle user / texte IA libre */}
+                    <AIMessageBubble role={msg.role} isStreaming={loading && idx === active.msgs.length - 1}>
                       {msg.role === 'user' ? (
-                        <div style={{
-                          maxWidth: '78%',
-                          padding: '9px 14px',
-                          borderRadius: '18px 18px 4px 18px',
-                          background: '#1B6EF3',
-                          color: '#fff',
-                        }}>
-                          <span style={{ fontSize: 13.5, lineHeight: 1.55, display: 'block' }}>{msg.content}</span>
-                        </div>
-                      ) : (() => {
-                        const isStreamingMsg = loading && idx === active.msgs.length - 1
-                        return (
-                          <div style={{
-                            flex: 1, minWidth: 0,
-                            padding: '4px 0',
-                            animation: 'ai_msg_in 0.15s ease both',
-                          }}>
-                            <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
-                          </div>
-                        )
-                      })()}
-                    </div>
+                        <span>{msg.content}</span>
+                      ) : (
+                        <TypedText text={msg.content} isStreaming={loading && idx === active.msgs.length - 1} fontFamily={chatFontFamily} />
+                      )}
+                    </AIMessageBubble>
                     {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
                     {msg.role === 'assistant' && msg.sessionData && (
                       <div style={{ marginLeft: 34 }}>
@@ -19527,17 +19393,20 @@ export default function AIPanel({
             position: 'relative',
           }}>
             {/* Plus menu */}
-            {plusOpen && (
-              <PlusMenu
-                onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
-                onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
-                onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
-                onClose={() => setPlusOpen(false)}
-                onCamera={() => cameraRef.current?.click()}
-                onPhotos={() => photosRef.current?.click()}
-                onFiles={() => filesRef.current?.click()}
-              />
-            )}
+            <AIQuickActionsSheet
+              open={plusOpen}
+              onClose={() => setPlusOpen(false)}
+              onInject={(prompt, agent) => {
+                setInput(prompt)
+                setModel(agent as THWModel)
+                setPlusOpen(false)
+                setTimeout(() => areaRef.current?.focus(), 80)
+              }}
+              isMobile={!isDesktop}
+              onCamera={() => cameraRef.current?.click()}
+              onPhotos={() => photosRef.current?.click()}
+              onFiles={() => filesRef.current?.click()}
+            />
 
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />

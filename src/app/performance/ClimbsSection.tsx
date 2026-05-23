@@ -3,6 +3,19 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 
+// ─── useDarkMode — suit la classe dark/light sur <html> ──────────────────────
+function useDarkMode() {
+  const [dark, setDark] = useState(true)
+  useEffect(() => {
+    const check = () => setDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return dark
+}
+
 // ─── Design token §2.3 ───────────────────────────────────────────────────────
 const BIKE_COLOR = '#3b82f6'
 
@@ -24,6 +37,7 @@ interface ClimbRecord {
   temp_bottom_celsius: number | null
   temp_summit_celsius: number | null
   intensity_rating: number | null
+  race_id: string | null
   created_at: string
 }
 
@@ -66,15 +80,38 @@ function yearColor(yr: string, all: string[]) {
 // Paliers de durée en minutes
 const BP = [5, 10, 20, 30, 45, 60, 90, 120]
 
-// Référence Alien W/kg à chaque palier selon la table de pré-fatigue
-// heavy: non-monotone à 45' (référence Pogacar sur cols longs avec fatigue)
-const REF_ALIEN = {
-  standard: [8.5, 7.8, 7.2, 6.9, 6.6, 6.4, 6.0, 5.6],  // fresh / light
-  moderate: [7.8, 7.2, 6.6, 6.3, 6.1, 5.9, 5.5, 5.2],  // moderate
-  heavy:    [7.2, 6.6, 6.1, 5.9, 6.2, 5.4, 5.1, 4.8],  // high
+// 3 tables × 6 niveaux × 8 paliers de durée
+// Ligne 0 = Alien (formule), lignes 1-5 = niveaux inférieurs (barème)
+// heavy : 45' = 6.2 (non-monotone, calibré Pogacar TdF 2ème semaine)
+const REF_TABLES_ALL = {
+  //           5'    10'   20'   30'   45'   60'   90'   120'
+  standard: [
+    [9.5, 8.8, 8.0, 7.5, 7.0, 6.8, 6.4, 6.0],  // Alien
+    [8.0, 7.4, 6.8, 6.4, 6.0, 5.8, 5.5, 5.2],  // Pro top intl.
+    [6.8, 6.3, 5.8, 5.5, 5.2, 5.0, 4.7, 4.4],  // Pro
+    [5.8, 5.4, 5.0, 4.7, 4.5, 4.3, 4.0, 3.8],  // AHN
+    [5.0, 4.6, 4.2, 4.0, 3.8, 3.6, 3.4, 3.2],  // Bon amateur
+    [4.0, 3.7, 3.4, 3.2, 3.0, 2.8, 2.6, 2.4],  // Amateur
+  ],
+  moderate: [
+    [8.7, 8.1, 7.4, 6.9, 6.4, 6.3, 5.9, 5.5],
+    [7.4, 6.8, 6.3, 5.9, 5.5, 5.3, 5.1, 4.8],
+    [6.3, 5.8, 5.3, 5.1, 4.8, 4.6, 4.3, 4.0],
+    [5.3, 5.0, 4.6, 4.3, 4.1, 4.0, 3.7, 3.5],
+    [4.6, 4.2, 3.9, 3.7, 3.5, 3.3, 3.1, 2.9],
+    [3.7, 3.4, 3.1, 2.9, 2.8, 2.6, 2.4, 2.2],
+  ],
+  heavy: [
+    [8.1, 7.5, 6.8, 6.4, 6.2, 5.8, 5.4, 5.1],
+    [6.8, 6.3, 5.8, 5.4, 5.1, 4.9, 4.7, 4.4],
+    [5.8, 5.4, 4.9, 4.7, 4.4, 4.3, 4.0, 3.7],
+    [4.9, 4.6, 4.3, 4.0, 3.8, 3.7, 3.4, 3.2],
+    [4.3, 3.9, 3.6, 3.4, 3.2, 3.1, 2.9, 2.7],
+    [3.4, 3.1, 2.9, 2.7, 2.6, 2.4, 2.2, 2.0],
+  ],
 } as const
 
-type FatigueTable = keyof typeof REF_ALIEN
+type FatigueTable = keyof typeof REF_TABLES_ALL
 
 function fatigueToTable(preFatigue: string | null): FatigueTable {
   if (!preFatigue || preFatigue === 'fresh' || preFatigue === 'light') return 'standard'
@@ -83,7 +120,7 @@ function fatigueToTable(preFatigue: string | null): FatigueTable {
 }
 
 function interpolateAlienRef(durMin: number, table: FatigueTable): number {
-  const refs = REF_ALIEN[table]
+  const refs = REF_TABLES_ALL[table][0]  // ligne 0 = Alien
   if (durMin <= BP[0]) return refs[0]
   if (durMin >= BP[BP.length - 1]) return refs[BP.length - 1]
   for (let i = 0; i < BP.length - 1; i++) {
@@ -159,12 +196,12 @@ function calcScore(c: ClimbRecord): number {
 interface Level { label: string; color: string; min: number; max: number }
 const LEVELS: Level[] = [
   { label: 'Alien',              color: '#00FF87', min: 95, max: 100 },
-  { label: 'Pro top intl.',      color: '#00C8E0', min: 80, max:  94 },
-  { label: 'Pro',                color: '#5B6FFF', min: 65, max:  79 },
-  { label: 'Amateur haut niv.',  color: '#FFD700', min: 50, max:  64 },
-  { label: 'Bon amateur',        color: '#FF9500', min: 35, max:  49 },
-  { label: 'Amateur',            color: '#D1D5DB', min: 20, max:  34 },
-  { label: 'Débutant',           color: '#EF4444', min:  0, max:  19 },
+  { label: 'Pro top intl.',      color: '#00C8E0', min: 90, max:  94 },
+  { label: 'Pro',                color: '#5B6FFF', min: 80, max:  89 },
+  { label: 'Amateur haut niv.',  color: '#FFD700', min: 65, max:  79 },
+  { label: 'Bon amateur',        color: '#FF9500', min: 50, max:  64 },
+  { label: 'Amateur',            color: '#D1D5DB', min: 30, max:  49 },
+  { label: 'Débutant',           color: '#EF4444', min:  0, max:  29 },
 ]
 function levelOf(s: number): Level {
   return LEVELS.find(l => s >= l.min) ?? LEVELS[LEVELS.length - 1]
@@ -173,8 +210,10 @@ function scoreColor(s: number): string {
   const l = levelOf(s); return l.color
 }
 
-// Durées affichées dans le barème dynamique (minutes)
-const BAREM_DURS = [10, 20, 30, 45, 60, 90]
+// Durées affichées dans le barème (doivent correspondre à des paliers BP exacts)
+// Indices dans BP = [5,10,20,30,45,60,90,120] → [1,2,3,4,5,6]
+const BAREM_DURS    = [10, 20, 30, 45, 60, 90]
+const BAREM_BP_IDX  = [ 1,  2,  3,  4,  5,  6]
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
@@ -218,14 +257,16 @@ const calcBadge = (txt: string, color = BIKE_COLOR) => (
 const PL = 48, PR = 16, PT = 16, PB = 40
 interface TooltipState { climb: ClimbRecord; x: number; y: number }
 
-function ScatterSVG({ climbs, allYears, onPointClick }: {
+function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
   climbs: ClimbRecord[]
   allYears: string[]
   onPointClick: (c: ClimbRecord) => void
+  highlightIds: Set<string> | null
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(520)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const isDark = useDarkMode()
 
   useEffect(() => {
     if (!wrapRef.current) return
@@ -234,39 +275,58 @@ function ScatterSVG({ climbs, allYears, onPointClick }: {
     return () => ro.disconnect()
   }, [])
 
+  // Couleurs adaptatives dark / light
+  const gridColor  = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'
+  const axisColor  = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'
+  const labelColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)'
+  const axisLblColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
+  const dimPointColor = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.15)'
+
   const H  = Math.max(220, Math.min(w * 0.48, 300))
   const CW = w - PL - PR, CH = H - PT - PB
   const maxDurMin = Math.max(...climbs.map(c => c.duration_seconds / 60))
   const maxWkg    = Math.max(...climbs.map(c => c.wpkg))
-  const xMax = Math.ceil(maxDurMin * 1.15 / 5) * 5
-  const yMax = Math.ceil(maxWkg * 1.18 * 10) / 10
+  // Axe X : pas fixe de 15 min, minimum 30 min affiché
+  const xStep = 15
+  const xMax  = Math.max(30, Math.ceil(maxDurMin * 1.15 / 15) * 15)
+  // Axe Y : pas fixe de 0.5 W/kg
+  const yStep = 0.5
+  const yMax  = Math.ceil(maxWkg * 1.20 / 0.5) * 0.5
   const xPos = (d: number) => PL + (d / xMax) * CW
   const yPos = (v: number) => PT + CH - (v / yMax) * CH
-  const xStep = xMax <= 30 ? 5 : xMax <= 60 ? 10 : xMax <= 120 ? 20 : 30
   const xTicks: number[] = []; for (let v = 0; v <= xMax; v += xStep) xTicks.push(v)
-  const yStep = yMax <= 3 ? 0.5 : yMax <= 6 ? 1 : 1.5
   const yTicks: number[] = []; for (let v = 0; v <= yMax + 0.01; v += yStep) yTicks.push(parseFloat(v.toFixed(1)))
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <svg width="100%" height={H} viewBox={`0 0 ${w} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
-        {xTicks.map(v => <line key={`xg${v}`} x1={xPos(v)} y1={PT} x2={xPos(v)} y2={PT+CH} stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>)}
-        {yTicks.map(v => <line key={`yg${v}`} x1={PL} y1={yPos(v)} x2={PL+CW} y2={yPos(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>)}
-        <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke="rgba(255,255,255,0.15)" strokeWidth={1}/>
-        <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke="rgba(255,255,255,0.15)" strokeWidth={1}/>
-        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.35)">{v}</text>)}
-        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.4)">Durée (min)</text>
-        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill="rgba(255,255,255,0.35)">{v}</text>)}
-        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill="rgba(255,255,255,0.4)" transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
+        {/* Grille verticale — toutes les 15 min */}
+        {xTicks.map(v => <line key={`xg${v}`} x1={xPos(v)} y1={PT} x2={xPos(v)} y2={PT+CH} stroke={gridColor} strokeWidth={1}/>)}
+        {/* Grille horizontale — tous les 0.5 W/kg */}
+        {yTicks.map(v => <line key={`yg${v}`} x1={PL} y1={yPos(v)} x2={PL+CW} y2={yPos(v)} stroke={gridColor} strokeWidth={1}/>)}
+        {/* Axes */}
+        <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
+        <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
+        {/* Labels axe X */}
+        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v}</text>)}
+        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor}>Durée (min)</text>
+        {/* Labels axe Y */}
+        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v.toFixed(1)}</text>)}
+        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor} transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
+        {/* Points — grisés si hors filtre actif */}
         {climbs.map(c => {
           const cx  = xPos(c.duration_seconds / 60)
           const cy  = yPos(c.wpkg)
           const col = yearColor(yearOf(c.date), allYears)
+          const lit = highlightIds === null || highlightIds.has(c.id)
           return (
             <g key={c.id} style={{ cursor: 'pointer' }} onClick={() => onPointClick(c)}>
               <circle cx={cx} cy={cy} r={12} fill="transparent"/>
-              <circle cx={cx} cy={cy} r={5} fill={col} fillOpacity={0.85}
-                stroke={col} strokeWidth={1.5} strokeOpacity={0.5}
+              <circle cx={cx} cy={cy} r={lit ? 6 : 4} fill={lit ? col : dimPointColor}
+                fillOpacity={lit ? 0.90 : 1}
+                stroke={lit ? col : dimPointColor} strokeWidth={lit ? 1.5 : 1}
+                strokeOpacity={lit ? 0.6 : 1}
+                style={{ transition: 'all 0.2s' }}
                 onMouseEnter={e => setTooltip({ climb: c, x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setTooltip(null)}/>
             </g>
@@ -325,13 +385,24 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
   const [tempBottom, setTempBottom] = useState(existing?.temp_bottom_celsius != null ? String(existing.temp_bottom_celsius) : '')
   const [tempSummit, setTempSummit] = useState(existing?.temp_summit_celsius != null ? String(existing.temp_summit_celsius) : '')
   const [intensity, setIntensity]   = useState<number | null>(existing?.intensity_rating ?? null)
-  const [saving,   setSaving]   = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [saving,    setSaving]   = useState(false)
+  const [deleting,  setDeleting] = useState(false)
+  const [error,     setError]    = useState<string | null>(null)
+  const [raceName,  setRaceName] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
     const t = setTimeout(() => setVisible(true), 10)
+    // Fetch linked race name if race_id is set
+    if (existing?.race_id) {
+      void (async () => {
+        try {
+          const sb = createClient()
+          const { data } = await sb.from('race_records').select('name').eq('id', existing.race_id!).maybeSingle()
+          if (data?.name) setRaceName(data.name)
+        } catch { /* ignore */ }
+      })()
+    }
     return () => clearTimeout(t)
   }, [])
   if (!mounted) return null
@@ -389,6 +460,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
         temp_bottom_celsius: partialRecord.temp_bottom_celsius,
         temp_summit_celsius: partialRecord.temp_summit_celsius,
         intensity_rating: intensity,
+        race_id: existing?.race_id ?? null,
       }
       let data: ClimbRecord
       if (isEdit && existing) {
@@ -469,6 +541,15 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
             </div>
             <p style={lbl10}>Nom de l'ascension</p>
             <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="ex : Alpe d'Huez, Col du Tourmalet…" autoFocus={!isEdit}/>
+            {existing?.race_id && (
+              <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6,
+                            background:'rgba(249,115,22,0.07)', border:'1px solid rgba(249,115,22,0.25)',
+                            borderRadius:8, padding:'6px 10px' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={2}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <span style={{ fontSize:11, color:'var(--text-dim)' }}>Course associée :</span>
+                <span style={{ fontSize:11, fontWeight:600, color:'#f97316' }}>{raceName ?? '…'}</span>
+              </div>
+            )}
           </div>
 
           {/* PERFORMANCE */}
@@ -641,6 +722,29 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
   )
 }
 
+// ─── Filtres durée ────────────────────────────────────────────────────────────
+type DurFilterId = 'lt5' | '5-10' | '10-20' | '20-30' | '30-60' | '1h+'
+const DUR_FILTERS: { label: string; id: DurFilterId | null }[] = [
+  { label: 'Toutes',  id: null    },
+  { label: "<5'",     id: 'lt5'   },
+  { label: "5-10'",   id: '5-10'  },
+  { label: "10-20'",  id: '10-20' },
+  { label: "20-30'",  id: '20-30' },
+  { label: "30-60'",  id: '30-60' },
+  { label: "1H+",     id: '1h+'   },
+]
+function matchDurFilter(durSec: number, id: DurFilterId | null): boolean {
+  const min = durSec / 60
+  if (!id)             return true
+  if (id === 'lt5')    return min < 5
+  if (id === '5-10')   return min >= 5  && min < 10
+  if (id === '10-20')  return min >= 10 && min < 20
+  if (id === '20-30')  return min >= 20 && min < 30
+  if (id === '30-60')  return min >= 30 && min < 60
+  if (id === '1h+')    return min >= 60
+  return true
+}
+
 // ─── BaremeAccordion — 3 onglets dynamiques ───────────────────────────────────
 const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
   standard: 'Standard (frais / légère)',
@@ -651,8 +755,8 @@ const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
 function BaremeAccordion() {
   const [tab, setTab] = useState<FatigueTable>('standard')
 
-  // Niveaux affichés (Alien → Bon amateur)
-  const shownLevels = LEVELS.slice(0, 5)
+  // 6 niveaux affichés (Alien → Amateur), correspondant aux 6 lignes de REF_TABLES_ALL
+  const shownLevels = LEVELS.slice(0, 6)
 
   return (
     <Accordion title="Barème des niveaux">
@@ -683,15 +787,15 @@ function BaremeAccordion() {
           </thead>
           <tbody>
             {BAREM_DURS.map((dur, ri) => {
-              const alienRef = interpolateAlienRef(dur, tab)
+              const bpIdx = BAREM_BP_IDX[ri]
               return (
                 <tr key={dur} style={{ background: ri%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
                   <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
-                  {shownLevels.map(l => {
-                    const minWkg = (l.min / 100) * alienRef
+                  {shownLevels.map((l, li) => {
+                    const val = REF_TABLES_ALL[tab][li][bpIdx]
                     return (
                       <td key={l.label} style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)', textAlign:'right' }}>
-                        ≥ {minWkg.toFixed(1)}
+                        ≥ {val.toFixed(1)}
                       </td>
                     )
                   })}
@@ -702,30 +806,66 @@ function BaremeAccordion() {
         </table>
       </div>
       <p style={{ fontSize:10, color:'var(--text-dim)', margin:'8px 0 0', lineHeight:1.5 }}>
-        W/kg minimum pour atteindre chaque niveau en conditions neutres (sans bonus temp/altitude/ressenti). Score = W/kg ÷ Réf. Alien × 100.
+        W/kg minimum pour atteindre chaque niveau (conditions neutres, hors bonus temp/altitude/ressenti).
       </p>
     </Accordion>
   )
 }
 
 // ─── RankingDrawer ────────────────────────────────────────────────────────────
-function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: () => void }) {
-  const [mounted, setMounted]   = useState(false)
-  const [visible, setVisible]   = useState(false)
-  const [closing, setClosing]   = useState(false)
-  const [expanded, setExpanded] = useState<string | null>(null)
+function RankingDrawer({ climbs, onClose, onFilterChange }: {
+  climbs: ClimbRecord[]
+  onClose: () => void
+  onFilterChange: (ids: Set<string> | null) => void
+}) {
+  const [mounted, setMounted]         = useState(false)
+  const [visible, setVisible]         = useState(false)
+  const [closing, setClosing]         = useState(false)
+  const [expanded, setExpanded]       = useState<string | null>(null)
+  const [yearFilter, setYearFilter]   = useState<string | null>(null)
+  const [durFilter,  setDurFilter]    = useState<DurFilterId | null>(null)
+
+  // Années présentes dans les données
+  const allYearsRanking = [...new Set(climbs.map(c => yearOf(c.date)))].sort()
 
   useEffect(() => {
     setMounted(true)
     const t = setTimeout(() => setVisible(true), 10)
     return () => clearTimeout(t)
   }, [])
+
+  // Synchroniser la surbrillance du graphique à chaque changement de filtre
+  useEffect(() => {
+    if (yearFilter === null && durFilter === null) {
+      onFilterChange(null)
+      return
+    }
+    const ids = new Set(
+      climbs
+        .filter(c =>
+          (yearFilter === null || yearOf(c.date) === yearFilter) &&
+          matchDurFilter(c.duration_seconds, durFilter)
+        )
+        .map(c => c.id)
+    )
+    onFilterChange(ids)
+  }, [yearFilter, durFilter, climbs, onFilterChange])
+
   if (!mounted) return null
 
-  function handleClose() { setClosing(true); setTimeout(() => onClose(), 300) }
+  function handleClose() {
+    onFilterChange(null)
+    setClosing(true)
+    setTimeout(() => onClose(), 300)
+  }
   const shown = visible && !closing
 
+  // Liste filtrée + re-classée sur le sous-ensemble
   const ranked = [...climbs]
+    .filter(c =>
+      (yearFilter === null || yearOf(c.date) === yearFilter) &&
+      matchDurFilter(c.duration_seconds, durFilter)
+    )
     .map(c => ({ c, sd: computeScoreDetails(c) }))
     .sort((a, b) => b.sd.total - a.sd.total)
 
@@ -761,8 +901,37 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
           }}>×</button>
         </div>
 
+        {/* Filtres */}
+        <div style={{ padding:'10px 16px 0', flexShrink:0, borderBottom:'1px solid var(--border)' }}>
+          {/* Filtre année */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
+            <button style={tog(yearFilter===null, BIKE_COLOR)} onClick={()=>setYearFilter(null)}>Toutes</button>
+            {allYearsRanking.map(yr => (
+              <button key={yr} style={tog(yearFilter===yr, BIKE_COLOR)} onClick={()=>setYearFilter(yr===yearFilter ? null : yr)}>{yr}</button>
+            ))}
+          </div>
+          {/* Filtre durée */}
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
+            {DUR_FILTERS.map(({ label, id }) => (
+              <button key={label} style={tog(durFilter===id, '#6b7280')} onClick={()=>setDurFilter(id===durFilter ? null : id)}>{label}</button>
+            ))}
+          </div>
+          {/* Résumé filtre actif */}
+          {(yearFilter || durFilter) && (
+            <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:8 }}>
+              {ranked.length} ascension{ranked.length!==1?'s':''} filtrée{ranked.length!==1?'s':''}
+              {ranked.length === 0 && ' — aucun résultat'}
+            </div>
+          )}
+        </div>
+
         {/* List */}
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
+          {ranked.length === 0 && (
+            <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>
+              Aucune ascension pour ce filtre
+            </div>
+          )}
           {ranked.map(({ c, sd }, idx) => {
             const rank = idx + 1
             const col  = scoreColor(sd.total)
@@ -863,42 +1032,43 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
             {/* Exemples */}
             {[
               {
-                title: 'Exemple 1 — Bon amateur, 45 min, conditions standard',
+                title: 'Exemple 1 — Bon amateur, 12 min, conditions standard',
                 lines: [
-                  'W/kg : 3.2 · Durée : 45 min · Frais · 15°C · 800 m · Ressenti 4',
-                  'Réf. Alien (45 min, standard) : 6.6 W/kg',
-                  'score_brut = 3.2 / 6.6 × 100 = 48.5',
-                  'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02',
+                  'W/kg : 3.2 · Durée : 12 min · Frais · 15°C · 900 m · Ressenti 4',
+                  'Réf. Alien 12 min (interp. standard) ≈ 8.4 W/kg',
+                  'score_brut = 3.2 / 8.4 × 100 = 38',
+                  'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02 → ×1.03',
                 ],
-                result: 'Score = min(100, 48.5 × 1.00 × 1.01 × 1.02) = 50/100 — AHN',
+                result: 'Score = min(100, 38 × 1.03) = 39/100 — Amateur',
               },
               {
-                title: 'Exemple 2 — Même athlète, 33°C, 1800 m, ressenti 3',
+                title: 'Exemple 2 — 50 min, grosse fatigue, chaleur, 1800 m',
                 lines: [
-                  'W/kg : 3.2 · Durée : 45 min · Frais · 33°C · 1800 m · Ressenti 3',
-                  'score_brut = 48.5 (identique)',
-                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04',
+                  'W/kg : 3.6 · Durée : 50 min · Grosse pré-fatigue · 32°C · 1800 m · Ressenti 3',
+                  'Réf. Alien 50 min (interp. heavy) ≈ 6.2 W/kg',
+                  'score_brut = 3.6 / 6.2 × 100 = 58',
+                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04 → ×1.11',
                 ],
-                result: 'Score = min(100, 48.5 × 1.04 × 1.03 × 1.04) = 54/100 — AHN+',
-                note: 'Conditions très difficiles : 4 points de bonus sur la même puissance.',
+                result: 'Score = min(100, 58 × 1.11) = 64/100 — Bon amateur',
+                note: 'Grosse fatigue + chaleur + altitude : la table heavy + les coefficients reflètent la vraie difficulté.',
               },
               {
-                title: 'Exemple 3 — Grosse fatigue, 60 min, 5.0 W/kg',
+                title: 'Exemple 3 — Pogacar, 40 min, grosse fatigue',
                 lines: [
-                  'W/kg : 5.0 · Durée : 60 min · Pré-fatigue élevée',
-                  'Réf. Alien (60 min, heavy) : 5.4 W/kg',
-                  'score_brut = 5.0 / 5.4 × 100 = 92.6',
-                  'Conditions normales : cTemp/cAlt/cRessenti = ×1.00',
+                  'W/kg : 6.8 · Durée : 40 min · Grosse fatigue · 30°C+ · 2000 m+',
+                  'Réf. Alien 40 min (interp. heavy) ≈ 6.2 W/kg',
+                  'score_brut = 6.8 / 6.2 × 100 = 110 → plafonné à 100',
+                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.00 → ×1.07',
                 ],
-                result: 'Score = 92.6/100 — Pro top intl.',
-                note: 'La table "fatigue élevée" valorise cette performance : 5.0 W/kg sous fatigue vaut presque le niveau Alien fatigué.',
+                result: 'Score = min(100, 100) = 100/100 — Alien',
+                note: 'Dépasser la référence Alien plafonne le score à 100. Seuls quelques athlètes au monde peuvent y prétendre.',
               },
               {
                 title: 'Exemple 4 — Ressenti facile = marge restante',
                 lines: [
-                  'Deux montées à 3.8 W/kg, 45 min, conditions identiques :',
-                  'Ressenti 5 (à fond) → score = 57.6 × 1.00 = 58/100',
-                  'Ressenti 2 (facile) → score = 57.6 × 1.06 = 61/100',
+                  'Deux montées à 3.8 W/kg, 45 min standard, conditions identiques :',
+                  'Ressenti 5 (à fond) → score_brut = 54 × 1.00 = 54/100 — Bon amateur',
+                  'Ressenti 2 (facile) → score_brut = 54 × 1.06 = 57/100 — Bon amateur',
                 ],
                 note: 'Produire la même puissance sans se mettre dans le rouge indique une capacité supérieure. Le score le récompense.',
               },
@@ -975,11 +1145,16 @@ function RankingDrawer({ climbs, onClose }: { climbs: ClimbRecord[]; onClose: ()
 interface ClimbsSectionProps { profile: { weight: number } }
 
 export function ClimbsSection({ profile }: ClimbsSectionProps) {
-  const [climbs,      setClimbs]      = useState<ClimbRecord[]>([])
-  const [loaded,      setLoaded]      = useState(false)
-  const [showDrawer,  setShowDrawer]  = useState(false)
-  const [editClimb,   setEditClimb]   = useState<ClimbRecord | null>(null)
-  const [showRanking, setShowRanking] = useState(false)
+  const [climbs,       setClimbs]       = useState<ClimbRecord[]>([])
+  const [loaded,       setLoaded]       = useState(false)
+  const [showDrawer,   setShowDrawer]   = useState(false)
+  const [editClimb,    setEditClimb]    = useState<ClimbRecord | null>(null)
+  const [showRanking,  setShowRanking]  = useState(false)
+  const [highlightIds, setHighlightIds] = useState<Set<string> | null>(null)
+
+  const handleFilterChange = useCallback((ids: Set<string> | null) => {
+    setHighlightIds(ids)
+  }, [])
 
   const allYears = [...new Set(climbs.map(c => yearOf(c.date)))].sort()
 
@@ -1059,7 +1234,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
       {/* Chart + légende années */}
       {loaded && climbs.length > 0 && (
         <>
-          <ScatterSVG climbs={climbs} allYears={allYears} onPointClick={c => setEditClimb(c)}/>
+          <ScatterSVG climbs={climbs} allYears={allYears} onPointClick={c => setEditClimb(c)} highlightIds={highlightIds}/>
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:10 }}>
             {allYears.map(yr => {
               const col = yearColor(yr, allYears)
@@ -1076,7 +1251,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
 
       {showDrawer && <ClimbDrawer profileWeight={profile.weight} onSaved={handleSaved} onClose={()=>setShowDrawer(false)}/>}
       {editClimb  && <ClimbDrawer profileWeight={profile.weight} existing={editClimb} onSaved={handleSaved} onDeleted={handleDeleted} onClose={()=>setEditClimb(null)}/>}
-      {showRanking && <RankingDrawer climbs={climbs} onClose={()=>setShowRanking(false)}/>}
+      {showRanking && <RankingDrawer climbs={climbs} onFilterChange={handleFilterChange} onClose={()=>{ setShowRanking(false); setHighlightIds(null) }}/>}
     </div>
   )
 }

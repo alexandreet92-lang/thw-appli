@@ -18,6 +18,10 @@ const BarcodeScanner = dynamicImport(
   () => import('@/components/nutrition/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })),
   { ssr: false }
 )
+const FoodSearchSheet = dynamicImport(
+  () => import('@/components/nutrition/FoodSearchSheet').then(m => ({ default: m.FoodSearchSheet })),
+  { ssr: false }
+)
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -841,6 +845,8 @@ export default function NutritionPage() {
   const [isDesktop, setIsDesktop] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
+  const [foodSearchOpen, setFoodSearchOpen] = useState(false)
+  const [foodSearchBarcode, setFoodSearchBarcode] = useState<string | undefined>(undefined)
   // edit sub-modal: which meal slot is being edited + form values
   const [editSlot, setEditSlot] = useState<MealKey | null>(null)
   const [editDesc, setEditDesc] = useState('')
@@ -1062,8 +1068,28 @@ export default function NutritionPage() {
           onDetected={code => {
             setScannedBarcode(code)
             setScannerOpen(false)
+            setFoodSearchBarcode(code)
+            setFoodSearchOpen(true)
           }}
           onClose={() => setScannerOpen(false)}
+        />
+      )}
+
+      {foodSearchOpen && (
+        <FoodSearchSheet
+          initialBarcode={foodSearchBarcode}
+          onClose={() => { setFoodSearchOpen(false); setFoodSearchBarcode(undefined) }}
+          onSelect={(food, grams) => {
+            const ratio = grams / 100
+            const n = food.nutriments
+            setEditDesc(food.product_name + (grams !== 100 ? ` (${grams}g)` : ''))
+            setEditKcal(String(Math.round(n['energy-kcal_100g'] * ratio)))
+            setEditProt(String(+((n.proteins_100g * ratio).toFixed(1))))
+            setEditGluc(String(+((n.carbohydrates_100g * ratio).toFixed(1))))
+            setEditLip(String(+((n.fat_100g * ratio).toFixed(1))))
+            setFoodSearchOpen(false)
+            setFoodSearchBarcode(undefined)
+          }}
         />
       )}
 
@@ -1864,6 +1890,19 @@ export default function NutritionPage() {
                       borderTop: '1px solid var(--border)',
                       background: 'rgba(91,111,255,0.04)',
                     }}>
+                      <button
+                        onClick={() => { setFoodSearchBarcode(undefined); setFoodSearchOpen(true) }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 7, width: '100%',
+                          padding: '7px 10px', borderRadius: 8, marginBottom: 8,
+                          border: '1px solid var(--border)', background: 'var(--bg-card)',
+                          cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12,
+                          fontFamily: 'DM Sans,sans-serif',
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        Rechercher un aliment
+                      </button>
                       <textarea
                         rows={2}
                         value={editDesc}

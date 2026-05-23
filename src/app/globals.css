@@ -238,6 +238,12 @@ button:active { transform: scale(0.97); }
 }
 .yd-reveal.yd-visible { opacity: 1; transform: none; }
 
+/* ── Skeleton pulse ────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 /* ── Barcode scanner scan line ─────────────────────────────────── */
 @keyframes scan-line {
   0%, 100% { top: 10%; }

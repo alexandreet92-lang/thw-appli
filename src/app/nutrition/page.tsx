@@ -679,6 +679,7 @@ function MealTemplatesSection({
                       </p>
                     )}
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {groupTemplates.map(t => {
                       const isEditingThis = editingId === t.id
 
@@ -778,6 +779,7 @@ function MealTemplatesSection({
                         </div>
                       )
                     })}
+                    </div>{/* end templates grid */}
 
                     {/* Add form for this group */}
                     {isAddingHere && (
@@ -1055,7 +1057,7 @@ export default function NutritionPage() {
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
 
   return (
-    <div style={{ padding: '0 0 80px' }}>
+    <div className="max-w-screen-2xl mx-auto" style={{ padding: '0 0 80px' }}>
       {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
       {scannerOpen && (
         <BarcodeScanner
@@ -1126,6 +1128,8 @@ export default function NutritionPage() {
       )}
 
       <div style={{ padding: '16px 16px 0' }}>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 1 — Bilan du jour                             */}
@@ -1237,6 +1241,8 @@ export default function NutritionPage() {
             ))
           )}
         </div>
+
+        </div>{/* end xl:grid-cols-2 */}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 3 — Plan nutritionnel                         */}
@@ -1560,6 +1566,8 @@ export default function NutritionPage() {
         <div style={cardStyle}>
           <p style={sectionTitle}>Poids et composition</p>
 
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2">
           {/* Metric toggle */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {([
@@ -1585,7 +1593,9 @@ export default function NutritionPage() {
           </div>
 
           <WeightChart logs={weightLogs} metric={weightMetric} />
+          </div>{/* end xl:col-span-2 */}
 
+          <div>
           {/* Weight input form */}
           <div style={{ marginTop: 20 }}>
             <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 10, color: 'var(--text)' }}>
@@ -1662,6 +1672,8 @@ export default function NutritionPage() {
               Sauvegarder la mesure
             </Button>
           </div>
+          </div>{/* end form column */}
+          </div>{/* end xl:grid-cols-3 */}
         </div>
       </div>
 

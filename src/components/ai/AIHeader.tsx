@@ -41,7 +41,7 @@ export default function AIHeader({ model, isDesktop, fullscr, onOpenSidebar, onN
     <div style={{
       height: 48, padding: '0 10px',
       display: 'flex', alignItems: 'center', gap: 4,
-      flexShrink: 0, background: 'var(--aiq-bg)',
+      flexShrink: 0, background: 'transparent',
       position: 'relative',
     }}>
       {/* Hamburger — mobile only */}

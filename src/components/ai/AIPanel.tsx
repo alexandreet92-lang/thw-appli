@@ -18721,7 +18721,7 @@ export default function AIPanel({
           --ai-accent-soft: rgba(37,99,235,0.08);
           --ai-accent-line: rgba(37,99,235,0.45);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
-          --aiq-bg:          #141414;
+          --aiq-bg:          #0A0A0A;
           --aiq-sidebar-bg:  #1A1A1A;
         }
 

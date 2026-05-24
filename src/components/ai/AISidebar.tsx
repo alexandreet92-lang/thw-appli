@@ -85,10 +85,12 @@ function ConvItem({ c, activeId, onSelect, onDelete, onPin }: {
     ? 'bg-black/[0.06] dark:bg-white/10'
     : 'bg-transparent hover:bg-black/[0.05] dark:hover:bg-white/5'
   return (
-    <div ref={ref} className="relative mb-px">
+    <div ref={ref} className="group relative">
       <button
         onClick={() => onSelect(c)}
-        className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors duration-100 ${itemCls}`}
+        className={`w-full text-left px-3 py-2.5 rounded-xl
+                    border-0 outline-none focus:outline-none
+                    transition-colors duration-100 ${itemCls}`}
       >
         <p className="text-[13px] font-medium truncate text-[#0A0A0A] dark:text-white leading-snug">
           {c.isPinned && <span className="mr-1 text-[#3B82F6]">★</span>}
@@ -99,9 +101,11 @@ function ConvItem({ c, activeId, onSelect, onDelete, onPin }: {
       <button
         onClick={e => { e.stopPropagation(); setMenu(m => !m) }}
         aria-label="Options"
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded
-                   flex items-center justify-center text-[#8C8C8C]
-                   hover:bg-black/5 dark:hover:bg-white/10"
+        className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded
+                    flex items-center justify-center text-[#8C8C8C]
+                    transition-opacity duration-100
+                    hover:bg-black/5 dark:hover:bg-white/10
+                    ${menu || isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>

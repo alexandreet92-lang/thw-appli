@@ -18,8 +18,6 @@ import AISidebar from './AISidebar'
 import AIMessageBubble from './AIMessageBubble'
 import QuickActionsSheet from './QuickActionsSheet'
 import AIHeader from './AIHeader'
-import { AgentIcon } from './AgentIcon'
-import type { AgentId } from './AgentIcon'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -18718,7 +18716,7 @@ export default function AIPanel({
           --ai-accent-line: rgba(37,99,235,0.45);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
           --aiq-bg:          #141414;
-          --aiq-sidebar-bg:  #141414;
+          --aiq-sidebar-bg:  #1A1A1A;
         }
 
         /* Panneau */
@@ -18888,7 +18886,14 @@ export default function AIPanel({
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px' }}>
-                <AgentIcon agent={model as AgentId} size={48} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                  width={52}
+                  height={52}
+                  alt=""
+                  style={{ objectFit: 'contain' }}
+                />
                 <p style={{ textAlign: 'center', margin: '16px 0 6px', fontSize: 20, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.3 }}>
                   {mounted ? (getGreeting() === 'matin' ? 'Bonjour, bon matin !' : getGreeting() === 'après-midi' ? 'Bon après-midi !' : 'Bonsoir !') : 'Bonjour !'}
                 </p>
@@ -19494,14 +19499,43 @@ export default function AIPanel({
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
                 >
-                  <AgentIcon agent={model as AgentId} size={12} />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                    width={14}
+                    height={14}
+                    alt=""
+                    style={{ objectFit: 'contain' }}
+                  />
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
-                    {MODEL_CONFIGS[model].name}
+                    {model === 'zeus' ? 'Networks' : 'Training'}
                   </span>
                 </button>
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
+
+                {/* Mic button */}
+                <button
+                  title="Dictée vocale"
+                  style={{
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                    border: 'none',
+                    background: 'rgba(0,0,0,0.06)',
+                    cursor: 'pointer',
+                    color: '#8C8C8C',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
+                >
+                  <svg width="13" height="17" viewBox="0 0 13 17" fill="none">
+                    <rect x="4" y="1" width="5" height="9" rx="2.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M1 8.5c0 3.038 2.462 5.5 5.5 5.5S12 11.538 12 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    <path d="M6.5 14v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                </button>
 
                 {/* Envoyer / Stop */}
                 {loading ? (

@@ -19315,7 +19315,7 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           <div
-            className="px-4 pt-2 pb-4 bg-white dark:bg-[#0A0A0A]"
+            className="px-4 pt-2 pb-6 bg-white dark:bg-[#0A0A0A]"
             style={{ flexShrink: 0, position: 'relative' }}
           >
             {/* Quick actions sheet */}
@@ -19342,10 +19342,10 @@ export default function AIPanel({
             {/* ── Conteneur principal de saisie ── */}
             <div
               className="aip-input-wrap max-w-[680px] mx-auto
-                         bg-white dark:bg-[#1A1A1A]
+                         bg-white dark:bg-[#1E1E1E]
                          rounded-2xl
                          border border-[#E8E8E8] dark:border-[#2A2A2A]
-                         shadow-[0_2px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
+                         shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
               style={{ transition: 'box-shadow 0.15s' }}
             >
 
@@ -19442,7 +19442,6 @@ export default function AIPanel({
               {/* Textarea */}
               <textarea
                 ref={areaRef}
-                className="aip-textarea"
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
@@ -19450,32 +19449,25 @@ export default function AIPanel({
                   ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
                   : 'Pose ta question…'}
                 rows={1}
-                style={{
-                  display: 'block', width: '100%',
-                  background: 'transparent',
-                  border: 'none', outline: 'none', resize: 'none',
-                  fontFamily: 'DM Sans, sans-serif',
-                  lineHeight: 1.55, color: 'var(--ai-text)',
-                  padding: '14px 16px 6px',
-                  minHeight: 26, maxHeight: 130,
-                  overflowY: 'auto',
-                  boxSizing: 'border-box',
-                }}
+                className="w-full px-4 pt-4 pb-2 bg-transparent resize-none
+                           text-[15px] leading-relaxed
+                           text-[#0A0A0A] dark:text-white
+                           placeholder:text-[#BABABA] dark:placeholder:text-[#555]
+                           focus:outline-none
+                           min-h-[56px] max-h-[180px] overflow-y-auto
+                           border-0 font-[DM_Sans,sans-serif]"
               />
 
-              {/* Ligne basse : + · agent · [spacer] · envoyer */}
-              <div style={{
-                display: 'flex', alignItems: 'center',
-                padding: '2px 10px 10px', gap: 6,
-              }}>
+              {/* Ligne basse : + · agent · [spacer] · micro · envoyer */}
+              <div className="flex items-center gap-2 px-3 pb-3 pt-1">
                 {/* + button */}
                 <button
                   onClick={() => setPlusOpen(p => !p)}
                   title="Actions"
                   className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
-                             bg-[#F0F0F0] dark:bg-[#2A2A2A]
-                             hover:bg-[#E5E5E5] dark:hover:bg-[#333]
-                             text-[#666] dark:text-[#999] transition-colors"
+                             bg-[#F2F2F2] dark:bg-[#2A2A2A]
+                             hover:bg-[#E8E8E8] dark:hover:bg-[#333]
+                             text-[#555] dark:text-[#999] transition-colors"
                 >
                   <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                     <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -19489,9 +19481,9 @@ export default function AIPanel({
                     const idx = order.indexOf(model)
                     setModel(order[(idx + 1) % 3])
                   }}
-                  className="h-8 px-3 rounded-xl flex items-center gap-1.5 flex-shrink-0
-                             bg-[#F0F0F0] dark:bg-[#2A2A2A]
-                             hover:bg-[#E5E5E5] dark:hover:bg-[#333]
+                  className="h-8 px-3 rounded-xl flex items-center gap-2 flex-shrink-0
+                             bg-[#F2F2F2] dark:bg-[#2A2A2A]
+                             hover:bg-[#E8E8E8] dark:hover:bg-[#333]
                              transition-colors"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -19517,7 +19509,7 @@ export default function AIPanel({
                   className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
                     ${isListening
                       ? 'bg-red-500 text-white animate-pulse'
-                      : 'bg-[#F0F0F0] dark:bg-[#2A2A2A] text-[#666] dark:text-[#999] hover:bg-[#E5E5E5] dark:hover:bg-[#333]'
+                      : 'bg-[#F2F2F2] dark:bg-[#2A2A2A] text-[#555] dark:text-[#999] hover:bg-[#E8E8E8] dark:hover:bg-[#333]'
                     }`}
                 >
                   <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
@@ -19554,13 +19546,13 @@ export default function AIPanel({
                         disabled={!canSend}
                         className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
                           ${canSend
-                            ? 'bg-[#0A0A0A] dark:bg-white cursor-pointer'
-                            : 'bg-[#F0F0F0] dark:bg-[#2A2A2A] cursor-not-allowed'
+                            ? 'bg-[#0A0A0A] dark:bg-white text-white dark:text-[#0A0A0A] shadow-sm cursor-pointer'
+                            : 'bg-[#F2F2F2] dark:bg-[#2A2A2A] text-[#999] cursor-not-allowed'
                           }`}
                       >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M13 1L6.5 7.5M13 1L9 13l-3-5-5-3 12-4z"
-                            stroke={canSend ? (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '#0A0A0A' : 'white') : '#999'}
+                          <path d="M13 1L6.5 7.5M13 1L9 13l-2.5-5L1 5.5 13 1z"
+                            stroke="currentColor"
                             strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </button>
@@ -19570,7 +19562,7 @@ export default function AIPanel({
               </div>
             </div>
 
-            <p style={{ fontSize: 11, color: '#8C8C8C', marginTop: 4, textAlign: 'center', fontFamily: 'DM Sans,sans-serif' }}>
+            <p className="text-center text-[11px] text-[#BABABA] mt-2 hidden md:block">
               Entrée · Shift+Entrée pour nouvelle ligne
             </p>
           </div>

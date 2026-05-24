@@ -83,12 +83,12 @@ function ConvItem({ c, activeId, onSelect, onDelete, onPin }: {
   const isActive = c.id === activeId
   const itemCls = isActive
     ? 'bg-black/[0.06] dark:bg-white/10'
-    : 'hover:bg-black/[0.04] dark:hover:bg-white/5'
+    : 'hover:bg-black/[0.05] dark:hover:bg-white/5'
   return (
     <div ref={ref} className="relative mb-px">
       <button
         onClick={() => onSelect(c)}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 ${itemCls}`}
+        className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors duration-100 ${itemCls}`}
       >
         <p className="text-[13px] font-medium truncate text-[#0A0A0A] dark:text-white leading-snug">
           {c.isPinned && <span className="mr-1 text-[#3B82F6]">★</span>}

@@ -1,47 +1,87 @@
-export default function RecordPage() {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      minHeight: '60vh', gap: 24, padding: '40px 24px',
-      textAlign: 'center',
-    }}>
-      {/* Logo */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logos/logo_app.png"
-        alt="THW Coaching"
-        style={{ width: 72, height: 72, borderRadius: 18, objectFit: 'contain' }}
-      />
+'use client'
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import SportSelector, { type SportId } from '@/components/record/SportSelector'
+import Toast from '@/components/record/Toast'
 
-      <div>
-        <h1 style={{
-          fontFamily: 'Syne, sans-serif',
-          fontSize: 22, fontWeight: 700,
-          margin: '0 0 8px',
-          color: 'var(--text)',
-        }}>
-          Enregistrer une séance
-        </h1>
-        <p style={{
-          fontFamily: 'DM Sans, sans-serif',
-          fontSize: 15, color: 'var(--text-dim)',
-          margin: 0, lineHeight: 1.5,
-        }}>
-          Cette fonctionnalité arrive bientôt.
-        </p>
+const MapBackground  = dynamic(() => import('@/components/record/MapBackground'),  { ssr: false })
+const CyclingScreen  = dynamic(() => import('@/components/record/CyclingScreen'),  { ssr: false })
+
+type View = 'home' | 'sport-select' | 'cycling'
+
+export default function RecordPage() {
+  const [view, setView] = useState<View>('home')
+  const [toast, setToast] = useState<string | null>(null)
+
+  const onSelectSport = (sport: SportId) => {
+    if (sport === 'cycling') {
+      setView('cycling')
+    } else {
+      setToast('Bientôt disponible')
+      setView('home')
+    }
+  }
+
+  if (view === 'cycling') {
+    return (
+      <>
+        <CyclingScreen
+          onExit={() => setView('home')}
+          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+        />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
+  return (
+    <div className="relative w-full h-[calc(100dvh-var(--tabbar-h,60px))] overflow-hidden bg-[var(--bg)]">
+      {/* Carte plein écran (60% top) */}
+      <div className="absolute inset-0 z-0">
+        <MapBackground />
       </div>
 
-      <span style={{
-        padding: '6px 16px', borderRadius: 20,
-        background: 'rgba(0,200,224,0.1)',
-        border: '1px solid rgba(0,200,224,0.25)',
-        fontSize: 12, fontWeight: 600,
-        color: '#00c8e0',
-        fontFamily: 'DM Sans, sans-serif',
-      }}>
-        Bientôt disponible
-      </span>
+      {/* Zone basse (40% bottom) */}
+      <div
+        className="absolute left-0 right-0 bottom-0 z-10
+                   bg-[var(--bg)] border-t border-[var(--border)]
+                   rounded-t-3xl
+                   pt-4 pb-[max(20px,env(safe-area-inset-bottom))] px-5"
+        style={{ height: '40%' }}
+      >
+        <h1 className="text-lg font-semibold text-center text-[var(--text)] mb-5">
+          Enregistrer
+        </h1>
+
+        <button
+          onClick={() => setView('sport-select')}
+          className="w-full h-14 rounded-2xl
+                     bg-gradient-to-r from-cyan-500 to-blue-600
+                     text-white font-semibold text-base
+                     shadow-[0_4px_18px_rgba(6,182,212,0.30)]
+                     active:scale-[0.98] transition-transform mb-3"
+        >
+          Démarrer une activité
+        </button>
+
+        <button
+          onClick={() => setToast('Fonctionnalité à venir')}
+          className="w-full h-14 rounded-2xl
+                     bg-[var(--bg-card2)] text-[var(--text)] font-medium text-base
+                     border border-[var(--border)]
+                     active:scale-[0.98] transition-transform"
+        >
+          Créer un parcours
+        </button>
+      </div>
+
+      <SportSelector
+        open={view === 'sport-select'}
+        onClose={() => setView('home')}
+        onSelect={onSelectSport}
+      />
+
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

@@ -185,31 +185,32 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0,
           height: '85vh',
-          background: '#1A1A1A',
+          background: 'var(--bg-card)',
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 280ms cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform',
-          color: '#fff',
+          color: 'var(--text)',
           fontFamily: 'DM Sans, sans-serif',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
         }}
       >
         {/* Drag indicator */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.20)' }} />
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: 0, fontFamily: 'Syne, sans-serif' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'Syne, sans-serif' }}>
             Choisir un sport
           </h2>
           <button
             onClick={onClose}
             aria-label="Fermer"
             style={{
-              color: 'rgba(255,255,255,0.60)', background: 'none', border: 'none',
+              color: 'var(--text-dim)', background: 'none', border: 'none',
               fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px',
             }}
           >
@@ -220,12 +221,13 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
         {/* Search */}
         <div style={{ padding: '0 16px 12px' }}>
           <div style={{
-            background: 'rgba(255,255,255,0.10)', borderRadius: 12,
+            background: 'var(--bg-card2)', borderRadius: 12,
             padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
+            border: '1px solid var(--border)',
           }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5" stroke="rgba(255,255,255,0.50)" strokeWidth="1.5"/>
-              <path d="M11 11l3 3" stroke="rgba(255,255,255,0.50)" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="7" cy="7" r="5" stroke="#8C8C8C" strokeWidth="1.5"/>
+              <path d="M11 11l3 3" stroke="#8C8C8C" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input
               placeholder="Rechercher"
@@ -233,7 +235,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
               onChange={e => setSearch(e.target.value)}
               style={{
                 background: 'none', border: 'none', outline: 'none',
-                color: '#fff', fontSize: 15, flex: 1,
+                color: 'var(--text)', fontSize: 15, flex: 1,
                 fontFamily: 'DM Sans, sans-serif',
               }}
             />
@@ -260,15 +262,16 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
                 >
                   <span style={{
                     width: 52, height: 52, borderRadius: '50%',
-                    background: active ? ACCENT : 'rgba(255,255,255,0.12)',
+                    background: active ? ACCENT : 'var(--bg-card2)',
+                    border: active ? 'none' : '1px solid var(--border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff',
+                    color: active ? '#fff' : 'var(--text)',
                   }}>
                     {sport.icon}
                   </span>
                   <span style={{
                     fontSize: 11, lineHeight: 1.2, textAlign: 'center',
-                    color: active ? ACCENT : 'rgba(255,255,255,0.70)',
+                    color: active ? ACCENT : 'var(--text-mid)',
                   }}>
                     {sport.label}
                   </span>
@@ -283,7 +286,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
           {filteredCats.map(category => (
             <div key={category.name}>
               <p style={{
-                fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.40)',
+                fontSize: 12, fontWeight: 700, color: '#8C8C8C',
                 padding: '10px 12px 4px', margin: 0,
                 textTransform: 'uppercase', letterSpacing: '0.06em',
               }}>
@@ -300,18 +303,21 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
                       padding: '14px 12px',
                       background: 'none', border: 'none', cursor: 'pointer',
                       borderRadius: 10,
-                      color: '#fff',
+                      color: 'var(--text)',
                       textAlign: 'left',
+                      transition: 'background-color 100ms',
                     }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
                   >
                     <span style={{
                       width: 36, height: 36, display: 'flex',
                       alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', opacity: 0.85,
+                      color: 'var(--text)', opacity: 0.85,
                     }}>
                       {sport.icon}
                     </span>
-                    <span style={{ fontSize: 16, color: '#fff', fontWeight: 400, fontFamily: 'DM Sans, sans-serif' }}>
+                    <span style={{ fontSize: 16, color: 'var(--text)', fontWeight: 400, fontFamily: 'DM Sans, sans-serif' }}>
                       {sport.label}
                     </span>
                     {active && (
@@ -326,7 +332,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
           ))}
           {filteredCats.length === 0 && (
             <p style={{
-              textAlign: 'center', color: 'rgba(255,255,255,0.40)',
+              textAlign: 'center', color: '#8C8C8C',
               padding: '24px 16px', fontSize: 14,
             }}>
               Aucun sport trouvé

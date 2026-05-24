@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
 import Toast from '@/components/record/Toast'
@@ -10,6 +11,7 @@ const CyclingScreen  = dynamic(() => import('@/components/record/CyclingScreen')
 type View = 'home' | 'cycling'
 
 export default function RecordPage() {
+  const router = useRouter()
   const [view, setView] = useState<View>('home')
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
@@ -42,7 +44,7 @@ export default function RecordPage() {
       style={{
         position: 'relative',
         width: '100%',
-        height: 'calc(100dvh - var(--tabbar-h, 60px))',
+        height: '100dvh',
         overflow: 'hidden',
         background: 'var(--bg)',
       }}
@@ -52,10 +54,31 @@ export default function RecordPage() {
         <MapBackground />
       </div>
 
-      {/* Panel bas — fond theme-aware */}
+      {/* Bouton retour — top-left, par-dessus la carte */}
+      <button
+        onClick={() => router.push('/')}
+        aria-label="Retour"
+        style={{
+          position: 'absolute',
+          top: 'calc(16px + env(safe-area-inset-top))',
+          left: 16,
+          zIndex: 1000,
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'rgba(0,0,0,0.60)',
+          backdropFilter: 'blur(8px)',
+          border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M11 4L6 9l5 5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* Panel bas — fixed, collé en bas de l'écran */}
       <div
         style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10,
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 999,
           height: 132,
           background: 'var(--bg-card)',
           borderTop: '1px solid var(--border)',

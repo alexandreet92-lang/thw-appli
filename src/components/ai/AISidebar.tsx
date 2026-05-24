@@ -83,7 +83,7 @@ function ConvItem({ c, activeId, onSelect, onDelete, onPin }: {
   const isActive = c.id === activeId
   const itemCls = isActive
     ? 'bg-black/[0.06] dark:bg-white/10'
-    : 'hover:bg-black/[0.05] dark:hover:bg-white/5'
+    : 'bg-transparent hover:bg-black/[0.05] dark:hover:bg-white/5'
   return (
     <div ref={ref} className="relative mb-px">
       <button

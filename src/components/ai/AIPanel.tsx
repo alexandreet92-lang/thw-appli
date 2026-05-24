@@ -18775,10 +18775,6 @@ export default function AIPanel({
           box-shadow: 0 0 0 1.5px rgba(37,99,235,0.25), 0 2px 8px rgba(0,0,0,0.06) !important;
         }
 
-        /* Dark mode overrides for new palette */
-        html.dark .aip-root .aiq-conv-btn:hover { background: rgba(255,255,255,0.05) !important; }
-        html.dark .aip-root .aiq-sidebar { background: #141414 !important; }
-
         /* Messages scroll */
         .aip-messages {
           flex: 1; overflow-y: auto;

@@ -345,3 +345,15 @@ button:active { transform: scale(0.97); }
 @keyframes sheet-close { from { transform: translateY(0); }    to { transform: translateY(100%); } }
 .sheet-open  { animation: sheet-open  280ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .sheet-close { animation: sheet-close 220ms cubic-bezier(0.4, 0, 1, 1)   forwards; }
+
+/* ── Full-screen overlay — slide depuis la droite ────────────── */
+@keyframes editor-slide-in  { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes editor-slide-out { from { transform: translateX(0); }    to { transform: translateX(100%); } }
+.editor-slide-in  { animation: editor-slide-in  300ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.editor-slide-out { animation: editor-slide-out 240ms cubic-bezier(0.4, 0, 1, 1)   forwards; }
+
+/* ── Toast — slide horizontal ────────────────────────────────── */
+@keyframes toast-slide-in  { from { transform: translateX(120%);  opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes toast-slide-out { from { transform: translateX(0);     opacity: 1; } to { transform: translateX(-120%); opacity: 0; } }
+.toast-slide-in  { animation: toast-slide-in  220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.toast-slide-out { animation: toast-slide-out 220ms cubic-bezier(0.4, 0, 1, 1)   forwards; }

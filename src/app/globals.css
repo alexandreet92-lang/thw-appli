@@ -339,3 +339,9 @@ button:active { transform: scale(0.97); }
 .cycling-page-in {
   animation: cycling-page-in 200ms ease-out;
 }
+
+/* ── Bottom sheets — ouverture / fermeture universelles ──────── */
+@keyframes sheet-open  { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheet-close { from { transform: translateY(0); }    to { transform: translateY(100%); } }
+.sheet-open  { animation: sheet-open  280ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.sheet-close { animation: sheet-close 220ms cubic-bezier(0.4, 0, 1, 1)   forwards; }

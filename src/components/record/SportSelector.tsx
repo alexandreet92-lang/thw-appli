@@ -154,15 +154,16 @@ interface Props {
 }
 
 export default function SportSelector({ open, onClose, selectedSport, onSelect }: Props) {
-  const [visible, setVisible] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
   useEffect(() => {
-    if (open) requestAnimationFrame(() => setVisible(true))
-    else { setVisible(false); setSearch('') }
+    if (open) setClosing(false)
+    else setSearch('')
   }, [open])
   if (!open) return null
 
   const ACCENT = '#06B6D4'
+  const handleClose = () => { setClosing(true); setTimeout(onClose, 210) }
   const filteredCats = SPORT_CATEGORIES.map(c => ({
     ...c,
     sports: c.sports.filter(s => s.label.toLowerCase().includes(search.toLowerCase())),
@@ -174,22 +175,22 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
       <div
-        onClick={onClose}
+        onClick={handleClose}
         style={{
           position: 'absolute', inset: 0,
           background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)',
-          opacity: visible ? 1 : 0, transition: 'opacity 200ms',
+          animation: closing ? 'sportsel-fade-out 200ms ease-in forwards'
+                             : 'sportsel-fade-in  200ms ease-out forwards',
         }}
       />
       <div
+        className={closing ? 'sheet-close' : 'sheet-open'}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0,
           height: '85vh',
           background: 'var(--bg-card)',
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          transform: visible ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 280ms cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform',
           color: 'var(--text)',
           fontFamily: 'DM Sans, sans-serif',
@@ -207,7 +208,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
             Choisir un sport
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Fermer"
             style={{
               color: 'var(--text-dim)', background: 'none', border: 'none',
@@ -340,6 +341,10 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
           )}
         </div>
       </div>
+      <style>{`
+        @keyframes sportsel-fade-in  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes sportsel-fade-out { from { opacity: 1 } to { opacity: 0 } }
+      `}</style>
     </div>
   )
 }

@@ -19495,7 +19495,7 @@ export default function AIPanel({
                 >
                   <LogoAgent agent={modelToAgent(model)} size={14} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
-                    {modelToAgent(model) === 'networks' ? 'Networks' : 'Training'}
+                    {modelToAgent(model) === 'networks' ? 'Networks' : modelToAgent(model) === 'hermes' ? 'Hermès' : 'Training'}
                   </span>
                 </button>
 

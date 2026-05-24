@@ -1,14 +1,14 @@
 'use client'
-import { modelToAgent } from './sidebar/LogoOfficial'
+import { LogoAgent, modelToAgent } from './sidebar/LogoOfficial'
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
 
-// Seuls "Training" et "Networks" sont user-facing. Hermès est interne
-// (modèle rapide) → mappé sur "Training" par défaut.
+// Label utilisateur par agent affiché (Hermès est interne mais peut apparaître
+// quand le user a choisi le modèle rapide manuellement).
 const AGENT_LABEL: Record<ReturnType<typeof modelToAgent>, string> = {
   training: 'Training',
   networks: 'Networks',
-  hermes:   'Training',
+  hermes:   'Hermès',
 }
 
 interface Props {
@@ -64,11 +64,12 @@ export default function AIHeader({
         </HeaderBtn>
       )}
 
-      {/* Agent name — texte centré, sans shuriken */}
+      {/* Agent name + logo PNG officiel — centered */}
       <div style={{
         position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'center', pointerEvents: 'none',
+        display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none',
       }}>
+        <LogoAgent agent={agent} size={18} alt={agentLabel} />
         <span style={{
           fontSize: 14, fontWeight: 600, color: '#0A0A0A',
           fontFamily: 'DM Sans,sans-serif',

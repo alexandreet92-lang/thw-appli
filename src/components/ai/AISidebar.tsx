@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { LogoAgent } from './sidebar/LogoOfficial'
 import { NavItem } from './sidebar/NavItem'
-import { ProjectsIcon, TrainingIcon, NetworksIcon, PlusIcon } from './sidebar/NavIcons'
+import { ProjectsIcon, PlusIcon } from './sidebar/NavIcons'
 import { ConvList, type ConvLike } from './sidebar/ConvList'
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
@@ -99,19 +100,19 @@ export default function AISidebar({
       {/* ── ZONE NAVIGATION — 3 items ── */}
       <nav style={{ padding: '0 12px 16px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <NavItem
-          icon={<ProjectsIcon size={16} />}
+          icon={<ProjectsIcon size={20} />}
           label="Projets"
           active={view === 'projects'}
           onClick={() => setView('projects')}
         />
         <NavItem
-          icon={<TrainingIcon size={16} />}
+          icon={<LogoAgent agent="training" size={20} />}
           label="Training"
           active={view === 'training'}
           onClick={() => setView('training')}
         />
         <NavItem
-          icon={<NetworksIcon size={16} />}
+          icon={<LogoAgent agent="networks" size={20} />}
           label="Networks"
           active={view === 'networks'}
           onClick={() => setView('networks')}

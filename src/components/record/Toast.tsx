@@ -14,12 +14,22 @@ export default function Toast({ message, onDismiss, duration = 2400 }: Props) {
   }, [onDismiss, duration])
   return (
     <div
-      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999]
-                 px-4 py-2.5 rounded-xl
-                 bg-black/85 text-white text-[13px] font-medium
-                 shadow-[0_4px_24px_rgba(0,0,0,0.35)]
-                 backdrop-blur-md
-                 animate-[record-toast-in_180ms_ease-out]"
+      style={{
+        position: 'fixed',
+        bottom: 'calc(96px + env(safe-area-inset-bottom))',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        padding: '10px 16px',
+        borderRadius: 12,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-mid)',
+        color: 'var(--text)',
+        fontFamily: 'DM Sans, sans-serif',
+        fontSize: 13, fontWeight: 500,
+        boxShadow: 'var(--shadow-card)',
+        animation: 'record-toast-in 180ms ease-out',
+      }}
       role="status"
     >
       {message}

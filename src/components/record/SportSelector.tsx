@@ -6,16 +6,18 @@ export type SportId = 'cycling' | 'running' | 'trail' | 'strength' | 'hyrox' | '
 interface Sport {
   id: SportId
   label: string
+  color: string         // accent border-on-hover
+  bg: string            // hover background tint
   icon: React.ReactNode
 }
 
 const SPORTS: Sport[] = [
-  { id: 'cycling',  label: 'Vélo',    icon: BikeIcon() },
-  { id: 'running',  label: 'Running', icon: RunIcon() },
-  { id: 'trail',    label: 'Trail',   icon: MountainIcon() },
-  { id: 'strength', label: 'Muscu',   icon: DumbbellIcon() },
-  { id: 'hyrox',    label: 'Hyrox',   icon: FireIcon() },
-  { id: 'rowing',   label: 'Aviron',  icon: RowIcon() },
+  { id: 'cycling',  label: 'Vélo',    color: '#3b82f6', bg: 'rgba(59,130,246,0.10)',  icon: BikeIcon() },
+  { id: 'running',  label: 'Running', color: '#f97316', bg: 'rgba(249,115,22,0.10)',  icon: RunIcon() },
+  { id: 'trail',    label: 'Trail',   color: '#22c55e', bg: 'rgba(34,197,94,0.10)',   icon: MountainIcon() },
+  { id: 'strength', label: 'Muscu',   color: '#8b5cf6', bg: 'rgba(139,92,246,0.10)',  icon: DumbbellIcon() },
+  { id: 'hyrox',    label: 'Hyrox',   color: '#ef4444', bg: 'rgba(239,68,68,0.10)',   icon: FireIcon() },
+  { id: 'rowing',   label: 'Aviron',  color: '#14b8a6', bg: 'rgba(20,184,166,0.10)',  icon: RowIcon() },
 ]
 
 interface Props {
@@ -33,39 +35,79 @@ export default function SportSelector({ open, onClose, onSelect }: Props) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-end justify-center">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div
-        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200
-                    ${visible ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(0,0,0,0.40)',
+          backdropFilter: 'blur(4px)',
+          opacity: visible ? 1 : 0,
+          transition: 'opacity 200ms',
+        }}
       />
       <div
-        className={`relative w-full max-w-[520px]
-                    bg-[var(--bg)] border-t border-[var(--border)]
-                    rounded-t-3xl
-                    pb-[max(20px,env(safe-area-inset-bottom))]
-                    transition-transform duration-[280ms] ease-out
-                    ${visible ? 'translate-y-0' : 'translate-y-full'}`}
-        style={{ willChange: 'transform' }}
+        style={{
+          position: 'relative',
+          width: '100%', maxWidth: 520,
+          background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border-mid)',
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          transform: visible ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 280ms cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform',
+          boxShadow: 'var(--shadow)',
+        }}
       >
-        <div className="flex justify-center pt-2 pb-1">
-          <div className="w-9 h-1 rounded-full bg-foreground/15" />
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, paddingBottom: 4 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
-        <h2 className="text-base font-semibold text-center pt-3 pb-4 text-[var(--text)]">
+        <h2 style={{
+          margin: 0, padding: '12px 0 16px',
+          textAlign: 'center',
+          fontFamily: 'Syne, sans-serif',
+          fontSize: 18, fontWeight: 700,
+          color: 'var(--text)',
+        }}>
           Choisir un sport
         </h2>
-        <div className="grid grid-cols-3 gap-2.5 px-4">
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10,
+          padding: '0 16px',
+        }}>
           {SPORTS.map(s => (
             <button
               key={s.id}
               onClick={() => onSelect(s.id)}
-              className="bg-[var(--bg-card)] rounded-2xl p-4 flex flex-col items-center gap-2
-                         border border-[var(--border)]
-                         hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-950/20
-                         transition-colors min-h-[90px]"
+              style={{
+                background: 'var(--bg-card2)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '14px 8px',
+                minHeight: 92,
+                display: 'flex', flexDirection: 'column' as const,
+                alignItems: 'center', justifyContent: 'center', gap: 8,
+                color: 'var(--text)',
+                cursor: 'pointer',
+                transition: 'background-color 120ms, border-color 120ms, transform 120ms',
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLButtonElement
+                el.style.background = s.bg
+                el.style.borderColor = s.color
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLButtonElement
+                el.style.background = 'var(--bg-card2)'
+                el.style.borderColor = 'var(--border)'
+              }}
+              onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)' }}
+              onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
             >
-              <span className="text-[var(--text)]">{s.icon}</span>
-              <span className="text-sm font-medium text-[var(--text)]">{s.label}</span>
+              <span style={{ color: s.color, display: 'flex' }}>{s.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{s.label}</span>
             </button>
           ))}
         </div>

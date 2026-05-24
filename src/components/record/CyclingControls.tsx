@@ -13,74 +13,99 @@ interface Props {
   isDark?: boolean
 }
 
+function getTheme(isDark: boolean) {
+  return {
+    bg:        isDark ? 'rgba(10,10,10,0.95)' : 'rgba(255,255,255,0.95)',
+    text:      isDark ? '#FFFFFF' : '#0A0A0A',
+    label:     isDark ? 'rgba(255,255,255,0.55)' : '#666',
+    separator: isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8',
+    btnBg:     isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
+    pauseBg:   isDark ? '#FFFFFF' : '#0A0A0A',
+    pauseText: isDark ? '#0A0A0A' : '#FFFFFF',
+  }
+}
+
 export default function CyclingControls({
   phase, gpsReady, onStart, onPause, onResume, onLap, onFinish, isDark = false,
 }: Props) {
-  const text       = isDark ? '#FFFFFF' : '#0A0A0A'
-  const labelColor = isDark ? 'rgba(255,255,255,0.60)' : '#666'
-  const zoneBg     = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'
-  const lapBg      = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)'
-  const pauseBg    = isDark ? '#FFFFFF' : '#0A0A0A'
-  const pauseText  = isDark ? '#0A0A0A' : '#FFFFFF'
+  const t = getTheme(isDark)
 
   return (
     <div style={{
-      height: 100, flexShrink: 0,
-      background: zoneBg,
+      position: 'fixed', left: 0, right: 0, bottom: 0,
+      zIndex: 9999,
+      background: t.bg,
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      borderTop: `1px solid ${t.separator}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      gap: 24, padding: '0 16px',
-      paddingBottom: 'env(safe-area-inset-bottom)',
+      gap: 32,
+      padding: '14px 24px',
+      paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
     }}>
       {phase === 'ready' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <button
             onClick={onStart}
             disabled={!gpsReady}
+            aria-label="Démarrer"
             style={{
               width: 72, height: 72, borderRadius: '50%',
               border: 'none', cursor: gpsReady ? 'pointer' : 'not-allowed',
-              background: '#FF6B00',
-              color: '#fff',
-              boxShadow: gpsReady ? '0 4px 20px rgba(255,107,0,0.40)' : 'none',
+              background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+              boxShadow: gpsReady ? '0 4px 20px rgba(6,182,212,0.40)' : 'none',
               opacity: gpsReady ? 1 : 0.5,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Syne, sans-serif',
-              fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
               transition: 'transform 0.12s',
             }}
             onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)' }}
             onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
           >
-            DÉMARRER
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
           </button>
-          {!gpsReady && (
-            <p style={{ fontSize: 11, color: labelColor, margin: 0 }}>En attente du GPS…</p>
-          )}
+          <p style={{
+            margin: 0, fontSize: 11, fontWeight: 700,
+            color: gpsReady ? '#06B6D4' : t.label, letterSpacing: '0.06em',
+          }}>
+            {gpsReady ? 'DÉMARRER' : 'EN ATTENTE DU GPS…'}
+          </p>
         </div>
       )}
 
       {phase === 'running' && (
         <>
-          <button
-            onClick={onLap}
-            style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: lapBg, color: text, border: 'none', cursor: 'pointer',
-              fontSize: 11, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
-            }}
-          >
-            LAP
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={onLap}
+              aria-label="Lap"
+              style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: t.btnBg, color: t.text, border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 12h18M14 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>LAP</p>
+          </div>
           <button
             onClick={onPause}
+            aria-label="Pause"
             style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: pauseBg, color: pauseText, border: 'none', cursor: 'pointer',
+              width: 68, height: 68, borderRadius: '50%',
+              background: t.pauseBg, color: t.pauseText, border: 'none', cursor: 'pointer',
               boxShadow: '0 4px 18px rgba(0,0,0,0.20)',
-              fontSize: 13, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            PAUSE
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor">
+              <rect x="5" y="3" width="4" height="16" rx="1"/>
+              <rect x="13" y="3" width="4" height="16" rx="1"/>
+            </svg>
           </button>
           <div style={{ width: 52 }} />
         </>
@@ -88,28 +113,37 @@ export default function CyclingControls({
 
       {phase === 'paused' && (
         <>
-          <button
-            onClick={onFinish}
-            style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: 'rgba(239,68,68,0.85)', color: '#fff',
-              border: 'none', cursor: 'pointer',
-              fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
-            }}
-          >
-            STOP
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={onFinish}
+              aria-label="Stop"
+              style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <rect x="3" y="3" width="12" height="12" rx="1.5"/>
+              </svg>
+            </button>
+            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>STOP</p>
+          </div>
           <button
             onClick={onResume}
+            aria-label="Reprendre"
             style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: '#FF6B00', color: '#fff',
-              border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(255,107,0,0.40)',
-              fontSize: 11, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+              width: 68, height: 68, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+              color: '#fff', border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(6,182,212,0.40)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            REPRENDRE
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
           </button>
           <div style={{ width: 52 }} />
         </>

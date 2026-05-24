@@ -4,11 +4,21 @@ import { createPortal } from 'react-dom'
 import { useGPSTracking } from '@/hooks/useGPSTracking'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
-import CyclingDataPage from './CyclingDataPage'
-import type { Lap } from './LapsList'
+import CyclingPage1 from './CyclingPage1'
+import CyclingPage2 from './CyclingPage2'
+import CyclingPage3 from './CyclingPage3'
+import CyclingSettings from './CyclingSettings'
 import { createClient } from '@/lib/supabase/client'
 
 const PAGES = 3
+
+interface Lap {
+  number: number
+  duration: number
+  distance: number
+  avgSpeed: number
+  timestamp: number
+}
 
 interface Props {
   onExit: () => void
@@ -18,6 +28,7 @@ interface Props {
 export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+
   const [phase, setPhase] = useState<CyclingPhase>('ready')
   const [pageIndex, setPageIndex] = useState(0)
   const [laps, setLaps] = useState<Lap[]>([])
@@ -26,11 +37,12 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [lapStartDistance, setLapStartDistance] = useState(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const gps = useGPSTracking(phase === 'running')
   const stopwatch = useStopwatch(phase === 'running')
 
-  // Track current lap timing
+  // Lap timing
   useEffect(() => {
     if (phase !== 'running') return
     const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000)
@@ -40,7 +52,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     setCurrentLapDistance(gps.distance - lapStartDistance)
   }, [gps.distance, lapStartDistance])
 
-  // Swipe pages (vertical)
+  // Swipe vertical
   const touchRef = useRef<{ y: number; t: number } | null>(null)
   const handleTouchStart = (e: React.TouchEvent) => {
     touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
@@ -55,8 +67,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
   }
 
-  const handleStart = () => { setStartedAt(Date.now()); setPhase('running') }
-  const handlePause = () => setPhase('paused')
+  const handleStart  = () => { setStartedAt(Date.now()); setPhase('running') }
+  const handlePause  = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleLap = () => {
     if (currentLapSec === 0) return
@@ -71,7 +83,6 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     setCurrentLapSec(0)
     setLapStartDistance(gps.distance)
   }
-
   const handleFinish = async () => {
     if (saving) return
     setSaving(true)
@@ -103,95 +114,123 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     }
   }
 
-  const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
-
   if (!mounted) return null
 
-  // Thème selon l'heure : sombre entre 20h et 7h, sinon clair
+  // Theme jour/nuit
   const hour = new Date().getHours()
   const isDark = hour < 7 || hour > 20
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
+  const bg         = isDark ? '#0A0A0A' : '#FFFFFF'
+  const text       = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
-  const separator = isDark ? 'rgba(255,255,255,0.10)' : '#E5E5E5'
-  const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
+  const btnBg      = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
+  const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
 
   return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        backgroundColor: bg,
-        color: text,
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100vw',
-        height: '100vh',
-        paddingTop: 'env(safe-area-inset-top)',
-      }}
-    >
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      backgroundColor: bg, color: text,
+      display: 'flex', flexDirection: 'column',
+      width: '100vw', height: '100dvh',
+      paddingTop: 'env(safe-area-inset-top)',
+    }}>
       {/* Header */}
-      <div className="h-12 flex-shrink-0 flex items-center px-3 relative">
+      <div style={{
+        height: 48, flexShrink: 0,
+        display: 'flex', alignItems: 'center', padding: '0 12px',
+        position: 'relative',
+      }}>
         <button
           onClick={onExit}
-          className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: btnBg, color: text }}
           aria-label="Quitter"
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: btnBg, color: text, border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </button>
-        <span
-          className="absolute left-1/2 -translate-x-1/2 text-sm"
-          style={{ color: labelColor }}
-        >
+        <span style={{
+          position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+          fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif',
+        }}>
           Vélo
         </span>
         <button
-          className="ml-auto w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: btnBg, color: text }}
-          aria-label="Paramètres"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Réglages"
+          style={{
+            marginLeft: 'auto',
+            width: 36, height: 36, borderRadius: '50%',
+            background: btnBg, color: text, border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
       </div>
 
-      {/* Pages */}
+      {/* Pages — padding bottom pour ne pas etre cache par les controls fixed */}
       <div
-        className="flex-1 flex flex-col relative overflow-hidden"
+        style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          position: 'relative', overflow: 'hidden',
+          paddingBottom: 'calc(120px + env(safe-area-inset-bottom))',
+        }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <CyclingDataPage
-          pageIndex={pageIndex}
-          speedKmh={gps.currentSpeed}
-          distanceM={gps.distance}
-          durationSec={stopwatch.seconds}
-          elevationGainM={gps.elevationGain}
-          laps={laps}
-          currentLapSec={currentLapSec}
-          currentLapDistance={currentLapDistance}
-          trackPoints={trackPoints}
-          isDark={isDark}
-        />
-        {/* Page indicators */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+        {/* Page courante (re-mount sur change → animation fade-in via key) */}
+        <div key={pageIndex} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {pageIndex === 0 && (
+            <CyclingPage1
+              isDark={isDark}
+              durationSec={stopwatch.seconds}
+              speedKmh={gps.currentSpeed}
+              distanceM={gps.distance}
+              elevationGainM={gps.elevationGain}
+            />
+          )}
+          {pageIndex === 1 && (
+            <CyclingPage2
+              isDark={isDark}
+              distanceM={gps.distance}
+              trackPoints={trackPoints}
+            />
+          )}
+          {pageIndex === 2 && (
+            <CyclingPage3
+              isDark={isDark}
+              currentLapSec={currentLapSec}
+              altitudeM={gps.currentAltitude}
+            />
+          )}
+        </div>
+
+        {/* Indicateurs de page */}
+        <div style={{
+          position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
           {Array.from({ length: PAGES }).map((_, i) => (
             <span
               key={i}
-              className="w-1.5 h-1.5 rounded-full transition-colors"
-              style={{ background: i === pageIndex ? text : labelColor }}
+              style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: i === pageIndex ? '#06B6D4' : labelColor,
+                transition: 'background 0.2s',
+              }}
             />
           ))}
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Controls (position fixed bottom, z-9999 — defini dans le composant) */}
       <CyclingControls
         phase={phase}
         gpsReady={gps.available}
@@ -200,6 +239,13 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onResume={handleResume}
         onLap={handleLap}
         onFinish={handleFinish}
+        isDark={isDark}
+      />
+
+      {/* Settings panel */}
+      <CyclingSettings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
         isDark={isDark}
       />
     </div>,

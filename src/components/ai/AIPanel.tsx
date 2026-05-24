@@ -20,7 +20,6 @@ import QuickActionsSheet from './QuickActionsSheet'
 import AIHeader from './AIHeader'
 import { AgentIcon } from './AgentIcon'
 import type { AgentId } from './AgentIcon'
-import { LogoOfficial } from './sidebar/LogoOfficial'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -18888,13 +18887,13 @@ export default function AIPanel({
 
             {/* ── Empty state ── */}
             {showEmpty && !activeFlow && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px', gap: 12 }}>
-                <LogoOfficial size={52} />
-                <p style={{ textAlign: 'center', margin: '4px 0 4px', fontSize: 20, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.3 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px' }}>
+                <AgentIcon agent={model as AgentId} size={48} />
+                <p style={{ textAlign: 'center', margin: '16px 0 6px', fontSize: 20, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.3 }}>
                   {mounted ? (getGreeting() === 'matin' ? 'Bonjour, bon matin !' : getGreeting() === 'après-midi' ? 'Bon après-midi !' : 'Bonsoir !') : 'Bonjour !'}
                 </p>
                 <p style={{ textAlign: 'center', fontSize: 13, color: '#8C8C8C', margin: 0 }}>
-                  Comment puis-je t&apos;aider ?
+                  Comment puis-je t'aider ?
                 </p>
               </div>
             )}

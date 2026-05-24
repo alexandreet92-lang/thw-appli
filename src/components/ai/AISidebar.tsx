@@ -82,19 +82,19 @@ function ConvItem({ c, activeId, onSelect, onDelete, onPin }: {
   }, [menu])
   const isActive = c.id === activeId
   const itemCls = isActive
-    ? 'bg-black/[0.08] dark:bg-white/10'
-    : 'hover:bg-black/5 dark:hover:bg-white/5'
+    ? 'bg-black/[0.06] dark:bg-white/10'
+    : 'hover:bg-black/[0.04] dark:hover:bg-white/5'
   return (
     <div ref={ref} className="relative mb-px">
       <button
         onClick={() => onSelect(c)}
         className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 ${itemCls}`}
       >
-        <p className="text-[13px] font-medium truncate text-[#0A0A0A] dark:text-white">
+        <p className="text-[13px] font-medium truncate text-[#0A0A0A] dark:text-white leading-snug">
           {c.isPinned && <span className="mr-1 text-[#3B82F6]">★</span>}
           {c.title || 'Nouvelle discussion'}
         </p>
-        <p className="text-[11px] text-[#8C8C8C] mt-0.5">{fmt(c.updatedAt)}</p>
+        <p className="text-[11px] text-[#999] mt-0.5">{fmt(c.updatedAt)}</p>
       </button>
       <button
         onClick={e => { e.stopPropagation(); setMenu(m => !m) }}

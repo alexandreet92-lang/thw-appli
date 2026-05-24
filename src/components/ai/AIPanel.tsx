@@ -18,6 +18,7 @@ import AISidebar from './AISidebar'
 import AIMessageBubble from './AIMessageBubble'
 import QuickActionsSheet from './QuickActionsSheet'
 import AIHeader from './AIHeader'
+import { useVoiceInput } from '@/hooks/useVoiceInput'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -17851,6 +17852,11 @@ export default function AIPanel({
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
   const [showQuickActions, setShowQuickActions] = useState(true)
 
+  // ── Voice input (Web Speech API) ──
+  const { isListening, startListening, stopListening } = useVoiceInput(
+    (transcript) => setInput(prev => (prev ? prev + ' ' : '') + transcript)
+  )
+
   const areaRef    = useRef<HTMLTextAreaElement>(null)
   const endRef     = useRef<HTMLDivElement>(null)
   const initMsgRef = useRef<string | undefined>(undefined)
@@ -19308,11 +19314,10 @@ export default function AIPanel({
           </div>
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
-          <div style={{
-            padding: '6px 10px 10px',
-            flexShrink: 0, background: 'var(--ai-bg)',
-            position: 'relative',
-          }}>
+          <div
+            className="px-4 pt-2 pb-4 bg-white dark:bg-[#0A0A0A]"
+            style={{ flexShrink: 0, position: 'relative' }}
+          >
             {/* Quick actions sheet */}
             <QuickActionsSheet
               open={plusOpen}
@@ -19335,12 +19340,14 @@ export default function AIPanel({
             <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileSelected} />
 
             {/* ── Conteneur principal de saisie ── */}
-            <div className="aip-input-wrap" style={{
-              background: 'var(--ai-bg2)',
-              borderRadius: 16,
-              boxShadow: '0 0 0 1px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.06)',
-              transition: 'box-shadow 0.15s',
-            }}>
+            <div
+              className="aip-input-wrap max-w-[680px] mx-auto
+                         bg-white dark:bg-[#1A1A1A]
+                         rounded-2xl
+                         border border-[#E8E8E8] dark:border-[#2A2A2A]
+                         shadow-[0_2px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
+              style={{ transition: 'box-shadow 0.15s' }}
+            >
 
               {/* Citation de texte sélectionné */}
               {quotedText && (
@@ -19465,19 +19472,13 @@ export default function AIPanel({
                 <button
                   onClick={() => setPlusOpen(p => !p)}
                   title="Actions"
-                  style={{
-                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                    border: 'none',
-                    background: plusOpen ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.06)',
-                    cursor: 'pointer', color: '#8C8C8C',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = plusOpen ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.06)' }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
+                             bg-[#F0F0F0] dark:bg-[#2A2A2A]
+                             hover:bg-[#E5E5E5] dark:hover:bg-[#333]
+                             text-[#666] dark:text-[#999] transition-colors"
                 >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
                   </svg>
                 </button>
 
@@ -19488,26 +19489,20 @@ export default function AIPanel({
                     const idx = order.indexOf(model)
                     setModel(order[(idx + 1) % 3])
                   }}
-                  style={{
-                    height: 28, padding: '0 10px', borderRadius: 8, flexShrink: 0,
-                    border: 'none',
-                    background: 'rgba(0,0,0,0.06)',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
+                  className="h-8 px-3 rounded-xl flex items-center gap-1.5 flex-shrink-0
+                             bg-[#F0F0F0] dark:bg-[#2A2A2A]
+                             hover:bg-[#E5E5E5] dark:hover:bg-[#333]
+                             transition-colors"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                    width={13}
-                    height={13}
+                    width={14}
+                    height={14}
                     alt=""
                     style={{ objectFit: 'contain' }}
                   />
-                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                  <span className="text-[12px] font-medium text-[#0A0A0A] dark:text-white">
                     {model === 'zeus' ? 'Networks' : 'Training'}
                   </span>
                 </button>
@@ -19515,25 +19510,20 @@ export default function AIPanel({
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
-                {/* Mic button */}
+                {/* Mic button — Web Speech API */}
                 <button
-                  title="Dictée vocale"
-                  style={{
-                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                    border: 'none',
-                    background: 'rgba(0,0,0,0.06)',
-                    cursor: 'pointer',
-                    color: '#8C8C8C',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.10)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
+                  onClick={isListening ? stopListening : startListening}
+                  title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
+                    ${isListening
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-[#F0F0F0] dark:bg-[#2A2A2A] text-[#666] dark:text-[#999] hover:bg-[#E5E5E5] dark:hover:bg-[#333]'
+                    }`}
                 >
-                  <svg width="13" height="17" viewBox="0 0 13 17" fill="none">
-                    <rect x="4" y="1" width="5" height="9" rx="2.5" stroke="currentColor" strokeWidth="1.4"/>
-                    <path d="M1 8.5c0 3.038 2.462 5.5 5.5 5.5S12 11.538 12 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    <path d="M6.5 14v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
+                    <rect x="3.5" y="0.5" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.3"/>
+                    <path d="M1 8c0 2.761 2.239 5 5 5s5-2.239 5-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    <path d="M6 13v2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                   </svg>
                 </button>
 
@@ -19556,27 +19546,26 @@ export default function AIPanel({
                     </svg>
                   </button>
                 ) : (
-                  <button
-                    onClick={() => void send()}
-                    disabled={!input.trim() && !attachment && !activeQA && !quotedText}
-                    style={{
-                      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                      border: 'none',
-                      background: (input.trim() || attachment || activeQA || quotedText)
-                        ? 'linear-gradient(135deg,#06B6D4,#2563EB)'
-                        : 'rgba(0,0,0,0.08)',
-                      cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s',
-                      boxShadow: (input.trim() || attachment || activeQA || quotedText) ? '0 2px 8px rgba(6,182,212,0.3)' : 'none',
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                      <path d="M13 1L6 8M13 1L9 13l-3-5-5-3 12-4z"
-                        stroke={(input.trim() || attachment || activeQA || quotedText) ? 'white' : '#8C8C8C'}
-                        strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
+                  (() => {
+                    const canSend = !!(input.trim() || attachment || activeQA || quotedText)
+                    return (
+                      <button
+                        onClick={() => void send()}
+                        disabled={!canSend}
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
+                          ${canSend
+                            ? 'bg-[#0A0A0A] dark:bg-white cursor-pointer'
+                            : 'bg-[#F0F0F0] dark:bg-[#2A2A2A] cursor-not-allowed'
+                          }`}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M13 1L6.5 7.5M13 1L9 13l-3-5-5-3 12-4z"
+                            stroke={canSend ? (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '#0A0A0A' : 'white') : '#999'}
+                            strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    )
+                  })()
                 )}
               </div>
             </div>

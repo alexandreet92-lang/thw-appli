@@ -11,35 +11,45 @@ export interface Lap {
 
 interface Props {
   laps: Lap[]
+  isDark?: boolean
 }
 
-export default function LapsList({ laps }: Props) {
+export default function LapsList({ laps, isDark = false }: Props) {
+  const text       = isDark ? '#FFFFFF' : '#0A0A0A'
+  const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
+  const separator  = isDark ? 'rgba(255,255,255,0.08)' : '#EFEFEF'
+
   if (laps.length === 0) {
     return (
-      <p className="text-center text-[12px] text-white/40 mt-6">
+      <p style={{ textAlign: 'center', fontSize: 12, color: labelColor, marginTop: 24 }}>
         Aucun lap enregistré
       </p>
     )
   }
   return (
-    <div className="mt-4 overflow-y-auto">
-      <div className="grid grid-cols-4 gap-2 px-3 pb-2
-                      text-[10px] uppercase tracking-widest text-white/40">
-        <span>Lap</span>
-        <span>Temps</span>
-        <span>Distance</span>
-        <span>Vit. moy.</span>
+    <div style={{ marginTop: 4 }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
+        padding: '8px 12px',
+        fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em',
+        color: labelColor, fontWeight: 700,
+      }}>
+        <span>Lap</span><span>Temps</span><span>Distance</span><span>Vit. moy.</span>
       </div>
       {[...laps].reverse().map(lap => (
         <div
           key={lap.number}
-          className="grid grid-cols-4 gap-2 px-3 py-2 text-white text-sm
-                     border-t border-white/5"
+          style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
+            padding: '10px 12px',
+            fontSize: 13, color: text, fontFamily: 'DM Mono, monospace',
+            borderTop: `1px solid ${separator}`,
+          }}
         >
-          <span className="font-mono">#{lap.number}</span>
-          <span className="font-mono">{formatSeconds(lap.duration)}</span>
-          <span className="font-mono">{(lap.distance / 1000).toFixed(2)} km</span>
-          <span className="font-mono">{lap.avgSpeed.toFixed(1)} km/h</span>
+          <span>#{lap.number}</span>
+          <span>{formatSeconds(lap.duration)}</span>
+          <span>{(lap.distance / 1000).toFixed(2)} km</span>
+          <span>{lap.avgSpeed.toFixed(1)} km/h</span>
         </div>
       ))}
     </div>

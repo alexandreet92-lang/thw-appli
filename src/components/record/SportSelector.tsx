@@ -3,21 +3,21 @@ import { useEffect, useState } from 'react'
 
 export type SportId = 'cycling' | 'running' | 'trail' | 'strength' | 'hyrox' | 'rowing'
 
+const ACCENT = '#2563EB'
+
 interface Sport {
   id: SportId
   label: string
-  color: string         // accent border-on-hover
-  bg: string            // hover background tint
   icon: React.ReactNode
 }
 
 const SPORTS: Sport[] = [
-  { id: 'cycling',  label: 'Vélo',    color: '#3b82f6', bg: 'rgba(59,130,246,0.10)',  icon: BikeIcon() },
-  { id: 'running',  label: 'Running', color: '#f97316', bg: 'rgba(249,115,22,0.10)',  icon: RunIcon() },
-  { id: 'trail',    label: 'Trail',   color: '#22c55e', bg: 'rgba(34,197,94,0.10)',   icon: MountainIcon() },
-  { id: 'strength', label: 'Muscu',   color: '#8b5cf6', bg: 'rgba(139,92,246,0.10)',  icon: DumbbellIcon() },
-  { id: 'hyrox',    label: 'Hyrox',   color: '#ef4444', bg: 'rgba(239,68,68,0.10)',   icon: FireIcon() },
-  { id: 'rowing',   label: 'Aviron',  color: '#14b8a6', bg: 'rgba(20,184,166,0.10)',  icon: RowIcon() },
+  { id: 'cycling',  label: 'Vélo',    icon: BikeIcon() },
+  { id: 'running',  label: 'Running', icon: RunIcon() },
+  { id: 'trail',    label: 'Trail',   icon: MountainIcon() },
+  { id: 'strength', label: 'Muscu',   icon: DumbbellIcon() },
+  { id: 'hyrox',    label: 'Hyrox',   icon: FireIcon() },
+  { id: 'rowing',   label: 'Aviron',  icon: RowIcon() },
 ]
 
 interface Props {
@@ -40,10 +40,8 @@ export default function SportSelector({ open, onClose, onSelect }: Props) {
         onClick={onClose}
         style={{
           position: 'absolute', inset: 0,
-          background: 'rgba(0,0,0,0.40)',
-          backdropFilter: 'blur(4px)',
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 200ms',
+          background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(4px)',
+          opacity: visible ? 1 : 0, transition: 'opacity 200ms',
         }}
       />
       <div
@@ -88,26 +86,26 @@ export default function SportSelector({ open, onClose, onSelect }: Props) {
                 minHeight: 92,
                 display: 'flex', flexDirection: 'column' as const,
                 alignItems: 'center', justifyContent: 'center', gap: 8,
-                color: 'var(--text)',
+                color: ACCENT,
                 cursor: 'pointer',
                 transition: 'background-color 120ms, border-color 120ms, transform 120ms',
                 fontFamily: 'DM Sans, sans-serif',
               }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLButtonElement
-                el.style.background = s.bg
-                el.style.borderColor = s.color
+                el.style.borderColor = ACCENT
+                el.style.background = 'rgba(37,99,235,0.08)'
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLButtonElement
-                el.style.background = 'var(--bg-card2)'
                 el.style.borderColor = 'var(--border)'
+                el.style.background = 'var(--bg-card2)'
               }}
               onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)' }}
               onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
             >
-              <span style={{ color: s.color, display: 'flex' }}>{s.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{s.label}</span>
+              <span style={{ display: 'flex' }}>{s.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{s.label}</span>
             </button>
           ))}
         </div>
@@ -116,49 +114,69 @@ export default function SportSelector({ open, onClose, onSelect }: Props) {
   )
 }
 
+const stroke = { stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' as const, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
 function BikeIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/>
-      <path d="M15 6h3l2 4M5.5 17.5l4-7h6l3 7"/>
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <circle cx="7" cy="20" r="5" {...stroke}/>
+      <circle cx="21" cy="20" r="5" {...stroke}/>
+      <path d="M7 20l5-10h4l3 10M14 10l2-4h4" {...stroke}/>
+      <path d="M7 20l7-10" {...stroke}/>
     </svg>
   )
 }
 function RunIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="13" cy="4" r="2"/>
-      <path d="M4 22l4-6 3-3 3 3v6M11 13l2-4 4 1-1 4-3-1M6 10l2-3 5 1"/>
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <circle cx="18" cy="4" r="2" {...stroke}/>
+      <path d="M15 8l-4 4-4 8h4l2-4 4 2 2 6h3l-3-8-4-2 1-3 3 3h4V8h-4l-4-3z" {...stroke}/>
     </svg>
   )
 }
 function MountainIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 20l5-9 4 6 3-4 6 7H3z"/>
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M4 24L14 6l10 18" {...stroke}/>
+      <path d="M9 16h10" {...stroke}/>
+      <path d="M14 6v18" {...stroke}/>
     </svg>
   )
 }
 function DumbbellIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6.5 6.5L3 10l3.5 3.5M17.5 17.5L21 14l-3.5-3.5M8 8l8 8M5 8l3-3M16 19l3-3"/>
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M2 14h4M22 14h4M6 14h16" {...stroke}/>
+      <rect x="5" y="11" width="3" height="6" rx="1" {...stroke}/>
+      <rect x="20" y="11" width="3" height="6" rx="1" {...stroke}/>
+      <rect x="3" y="12" width="2" height="4" rx="1" {...stroke}/>
+      <rect x="23" y="12" width="2" height="4" rx="1" {...stroke}/>
     </svg>
   )
 }
 function FireIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2c1.5 3 4 4 4 7a4 4 0 1 1-8 0c0-1.5 1-2.5 1-4 0 1 1 1.5 1.5 2C11 5 11 3 12 2z"/>
-      <path d="M9 14c0 3 1.5 5 3 6 1.5-1 3-3 3-6"/>
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M6 22L14 6l8 16" {...stroke}/>
+      <path d="M10 16h8" {...stroke}/>
+      <circle cx="14" cy="12" r="2" {...stroke}/>
     </svg>
   )
 }
 function RowIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="17" cy="5" r="2"/>
-      <path d="M3 18l4-2 4 2 5-3 5 3M7 14l4-7 3 2"/>
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M4 20c4-4 8-4 12 0s8 4 8 0" {...stroke}/>
+      <path d="M14 20V8" {...stroke}/>
+      <path d="M10 8h8" {...stroke}/>
     </svg>
   )
+}
+
+/** Petit helper pour récupérer l'icône d'un sport par ID (utilisé sur la page record). */
+export function getSportIcon(id: SportId): React.ReactNode {
+  return SPORTS.find(s => s.id === id)?.icon ?? null
+}
+export function getSportLabel(id: SportId): string {
+  return SPORTS.find(s => s.id === id)?.label ?? id
 }

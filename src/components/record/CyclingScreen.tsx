@@ -107,14 +107,23 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
 
   if (!mounted) return null
 
+  // Thème selon l'heure : sombre entre 20h et 7h, sinon clair
+  const hour = new Date().getHours()
+  const isDark = hour < 7 || hour > 20
+  const bg = isDark ? '#0A0A0A' : '#FFFFFF'
+  const text = isDark ? '#FFFFFF' : '#0A0A0A'
+  const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
+  const separator = isDark ? 'rgba(255,255,255,0.10)' : '#E5E5E5'
+  const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
+
   return createPortal(
     <div
-      className="text-white"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        backgroundColor: '#0A0A0A',
+        backgroundColor: bg,
+        color: text,
         display: 'flex',
         flexDirection: 'column',
         width: '100vw',
@@ -126,16 +135,23 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
       <div className="h-12 flex-shrink-0 flex items-center px-3 relative">
         <button
           onClick={onExit}
-          className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: btnBg, color: text }}
           aria-label="Quitter"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </button>
-        <span className="absolute left-1/2 -translate-x-1/2 text-sm text-white/60">Vélo</span>
+        <span
+          className="absolute left-1/2 -translate-x-1/2 text-sm"
+          style={{ color: labelColor }}
+        >
+          Vélo
+        </span>
         <button
-          className="ml-auto w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
+          className="ml-auto w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: btnBg, color: text }}
           aria-label="Paramètres"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -161,14 +177,15 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
           currentLapSec={currentLapSec}
           currentLapDistance={currentLapDistance}
           trackPoints={trackPoints}
+          isDark={isDark}
         />
         {/* Page indicators */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
           {Array.from({ length: PAGES }).map((_, i) => (
             <span
               key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-colors
-                          ${i === pageIndex ? 'bg-white' : 'bg-white/30'}`}
+              className="w-1.5 h-1.5 rounded-full transition-colors"
+              style={{ background: i === pageIndex ? text : labelColor }}
             />
           ))}
         </div>
@@ -183,6 +200,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onResume={handleResume}
         onLap={handleLap}
         onFinish={handleFinish}
+        isDark={isDark}
       />
     </div>,
     document.body

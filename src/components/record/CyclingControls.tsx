@@ -10,33 +10,51 @@ interface Props {
   onResume: () => void
   onLap: () => void
   onFinish: () => void
+  isDark?: boolean
 }
 
 export default function CyclingControls({
-  phase, gpsReady, onStart, onPause, onResume, onLap, onFinish,
+  phase, gpsReady, onStart, onPause, onResume, onLap, onFinish, isDark = false,
 }: Props) {
+  const text       = isDark ? '#FFFFFF' : '#0A0A0A'
+  const labelColor = isDark ? 'rgba(255,255,255,0.60)' : '#666'
+  const zoneBg     = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'
+  const lapBg      = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)'
+  const pauseBg    = isDark ? '#FFFFFF' : '#0A0A0A'
+  const pauseText  = isDark ? '#0A0A0A' : '#FFFFFF'
+
   return (
-    <div className="h-[100px] flex-shrink-0 bg-black/50 backdrop-blur-sm
-                    flex items-center justify-center gap-6 px-4
-                    pb-[env(safe-area-inset-bottom)]">
+    <div style={{
+      height: 100, flexShrink: 0,
+      background: zoneBg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 24, padding: '0 16px',
+      paddingBottom: 'env(safe-area-inset-bottom)',
+    }}>
       {phase === 'ready' && (
-        <div className="flex flex-col items-center gap-2">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <button
             onClick={onStart}
             disabled={!gpsReady}
-            className={`w-[72px] h-[72px] rounded-full
-                        flex items-center justify-center
-                        text-[13px] font-bold tracking-wide text-white
-                        bg-gradient-to-br from-cyan-500 to-blue-600
-                        transition-all duration-150
-                        ${gpsReady
-                          ? 'shadow-[0_4px_24px_rgba(6,182,212,0.45)] active:scale-95'
-                          : 'opacity-50 cursor-not-allowed'}`}
+            style={{
+              width: 72, height: 72, borderRadius: '50%',
+              border: 'none', cursor: gpsReady ? 'pointer' : 'not-allowed',
+              background: '#FF6B00',
+              color: '#fff',
+              boxShadow: gpsReady ? '0 4px 20px rgba(255,107,0,0.40)' : 'none',
+              opacity: gpsReady ? 1 : 0.5,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'Syne, sans-serif',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
+              transition: 'transform 0.12s',
+            }}
+            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)' }}
+            onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
           >
             DÉMARRER
           </button>
           {!gpsReady && (
-            <p className="text-[11px] text-white/60">En attente du GPS…</p>
+            <p style={{ fontSize: 11, color: labelColor, margin: 0 }}>En attente du GPS…</p>
           )}
         </div>
       )}
@@ -45,22 +63,26 @@ export default function CyclingControls({
         <>
           <button
             onClick={onLap}
-            className="w-[52px] h-[52px] rounded-full bg-white/10 text-white
-                       text-[11px] font-bold flex items-center justify-center
-                       active:scale-95 transition-transform"
+            style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: lapBg, color: text, border: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+            }}
           >
             LAP
           </button>
           <button
             onClick={onPause}
-            className="w-[72px] h-[72px] rounded-full bg-white text-black
-                       text-[13px] font-bold flex items-center justify-center
-                       shadow-[0_4px_18px_rgba(255,255,255,0.30)]
-                       active:scale-95 transition-transform"
+            style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: pauseBg, color: pauseText, border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 18px rgba(0,0,0,0.20)',
+              fontSize: 13, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+            }}
           >
             PAUSE
           </button>
-          <div className="w-[52px]" />
+          <div style={{ width: 52 }} />
         </>
       )}
 
@@ -68,23 +90,28 @@ export default function CyclingControls({
         <>
           <button
             onClick={onFinish}
-            className="w-[52px] h-[52px] rounded-full bg-red-500/80 text-white
-                       text-[10px] font-bold flex items-center justify-center
-                       active:scale-95 transition-transform"
+            style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'rgba(239,68,68,0.85)', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+            }}
           >
-            TERMINER
+            STOP
           </button>
           <button
             onClick={onResume}
-            className="w-[72px] h-[72px] rounded-full text-white
-                       text-[11px] font-bold flex items-center justify-center
-                       bg-gradient-to-br from-cyan-500 to-blue-600
-                       shadow-[0_4px_24px_rgba(6,182,212,0.45)]
-                       active:scale-95 transition-all"
+            style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: '#FF6B00', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(255,107,0,0.40)',
+              fontSize: 11, fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+            }}
           >
             REPRENDRE
           </button>
-          <div className="w-[52px]" />
+          <div style={{ width: 52 }} />
         </>
       )}
     </div>

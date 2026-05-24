@@ -11,13 +11,78 @@ interface Sport {
   icon: React.ReactNode
 }
 
+// Note : `stroke` doit être déclaré AVANT `SPORTS` car les fonctions Icon
+// le référencent et sont appelées immédiatement dans le tableau SPORTS.
+// Sans cet ordre → TDZ ReferenceError au chargement du module (crash client).
+const stroke = {
+  stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' as const,
+  strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
+}
+
+function BikeIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <circle cx="7" cy="20" r="5" {...stroke}/>
+      <circle cx="21" cy="20" r="5" {...stroke}/>
+      <path d="M7 20l5-10h4l3 10M14 10l2-4h4" {...stroke}/>
+      <path d="M7 20l7-10" {...stroke}/>
+    </svg>
+  )
+}
+function RunIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <circle cx="18" cy="4" r="2" {...stroke}/>
+      <path d="M15 8l-4 4-4 8h4l2-4 4 2 2 6h3l-3-8-4-2 1-3 3 3h4V8h-4l-4-3z" {...stroke}/>
+    </svg>
+  )
+}
+function MountainIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M4 24L14 6l10 18" {...stroke}/>
+      <path d="M9 16h10" {...stroke}/>
+      <path d="M14 6v18" {...stroke}/>
+    </svg>
+  )
+}
+function DumbbellIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M2 14h4M22 14h4M6 14h16" {...stroke}/>
+      <rect x="5" y="11" width="3" height="6" rx="1" {...stroke}/>
+      <rect x="20" y="11" width="3" height="6" rx="1" {...stroke}/>
+      <rect x="3" y="12" width="2" height="4" rx="1" {...stroke}/>
+      <rect x="23" y="12" width="2" height="4" rx="1" {...stroke}/>
+    </svg>
+  )
+}
+function FireIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M6 22L14 6l8 16" {...stroke}/>
+      <path d="M10 16h8" {...stroke}/>
+      <circle cx="14" cy="12" r="2" {...stroke}/>
+    </svg>
+  )
+}
+function RowIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28">
+      <path d="M4 20c4-4 8-4 12 0s8 4 8 0" {...stroke}/>
+      <path d="M14 20V8" {...stroke}/>
+      <path d="M10 8h8" {...stroke}/>
+    </svg>
+  )
+}
+
 const SPORTS: Sport[] = [
-  { id: 'cycling',  label: 'Vélo',    icon: BikeIcon() },
-  { id: 'running',  label: 'Running', icon: RunIcon() },
-  { id: 'trail',    label: 'Trail',   icon: MountainIcon() },
-  { id: 'strength', label: 'Muscu',   icon: DumbbellIcon() },
-  { id: 'hyrox',    label: 'Hyrox',   icon: FireIcon() },
-  { id: 'rowing',   label: 'Aviron',  icon: RowIcon() },
+  { id: 'cycling',  label: 'Vélo',    icon: <BikeIcon /> },
+  { id: 'running',  label: 'Running', icon: <RunIcon /> },
+  { id: 'trail',    label: 'Trail',   icon: <MountainIcon /> },
+  { id: 'strength', label: 'Muscu',   icon: <DumbbellIcon /> },
+  { id: 'hyrox',    label: 'Hyrox',   icon: <FireIcon /> },
+  { id: 'rowing',   label: 'Aviron',  icon: <RowIcon /> },
 ]
 
 interface Props {
@@ -111,65 +176,6 @@ export default function SportSelector({ open, onClose, onSelect }: Props) {
         </div>
       </div>
     </div>
-  )
-}
-
-const stroke = { stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' as const, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-
-function BikeIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28">
-      <circle cx="7" cy="20" r="5" {...stroke}/>
-      <circle cx="21" cy="20" r="5" {...stroke}/>
-      <path d="M7 20l5-10h4l3 10M14 10l2-4h4" {...stroke}/>
-      <path d="M7 20l7-10" {...stroke}/>
-    </svg>
-  )
-}
-function RunIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28">
-      <circle cx="18" cy="4" r="2" {...stroke}/>
-      <path d="M15 8l-4 4-4 8h4l2-4 4 2 2 6h3l-3-8-4-2 1-3 3 3h4V8h-4l-4-3z" {...stroke}/>
-    </svg>
-  )
-}
-function MountainIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28">
-      <path d="M4 24L14 6l10 18" {...stroke}/>
-      <path d="M9 16h10" {...stroke}/>
-      <path d="M14 6v18" {...stroke}/>
-    </svg>
-  )
-}
-function DumbbellIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28">
-      <path d="M2 14h4M22 14h4M6 14h16" {...stroke}/>
-      <rect x="5" y="11" width="3" height="6" rx="1" {...stroke}/>
-      <rect x="20" y="11" width="3" height="6" rx="1" {...stroke}/>
-      <rect x="3" y="12" width="2" height="4" rx="1" {...stroke}/>
-      <rect x="23" y="12" width="2" height="4" rx="1" {...stroke}/>
-    </svg>
-  )
-}
-function FireIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28">
-      <path d="M6 22L14 6l8 16" {...stroke}/>
-      <path d="M10 16h8" {...stroke}/>
-      <circle cx="14" cy="12" r="2" {...stroke}/>
-    </svg>
-  )
-}
-function RowIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28">
-      <path d="M4 20c4-4 8-4 12 0s8 4 8 0" {...stroke}/>
-      <path d="M14 20V8" {...stroke}/>
-      <path d="M10 8h8" {...stroke}/>
-    </svg>
   )
 }
 

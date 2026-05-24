@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useGPSTracking } from '@/hooks/useGPSTracking'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export default function CyclingScreen({ onExit, onFinished }: Props) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const [phase, setPhase] = useState<CyclingPhase>('ready')
   const [pageIndex, setPageIndex] = useState(0)
   const [laps, setLaps] = useState<Lap[]>([])
@@ -102,9 +105,23 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
 
   const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
 
-  return (
-    <div className="fixed inset-0 z-[1200] flex flex-col bg-[#0A0A0A] text-white"
-         style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+  if (!mounted) return null
+
+  return createPortal(
+    <div
+      className="text-white"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        backgroundColor: '#0A0A0A',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100vw',
+        height: '100vh',
+        paddingTop: 'env(safe-area-inset-top)',
+      }}
+    >
       {/* Header */}
       <div className="h-12 flex-shrink-0 flex items-center px-3 relative">
         <button
@@ -167,6 +184,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onLap={handleLap}
         onFinish={handleFinish}
       />
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -52,20 +52,22 @@ export default function RecordPage() {
         <MapBackground />
       </div>
 
-      {/* Panel bas — Strava style */}
+      {/* Panel bas — fond theme-aware */}
       <div
         style={{
           position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10,
           height: 132,
-          background: 'rgba(0,0,0,0.85)',
+          background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border)',
           backdropFilter: 'blur(12px)',
           borderTopLeftRadius: 28, borderTopRightRadius: 28,
           paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -8px 24px rgba(0,0,0,0.10)',
         }}
       >
         {/* Drag indicator */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.30)' }} />
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
 
         {/* 3 boutons */}
@@ -85,13 +87,13 @@ export default function RecordPage() {
           >
             <span style={{
               width: 52, height: 52, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.15)',
+              background: 'var(--bg-card2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff',
+              color: 'var(--text)',
             }}>
               {getSportIcon(sport)}
             </span>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>
               {getSportLabel(sport)}
             </span>
           </button>
@@ -102,8 +104,8 @@ export default function RecordPage() {
             aria-label="Démarrer"
             style={{
               width: 64, height: 64, borderRadius: '50%',
-              background: '#FF6B00',
-              boxShadow: '0 4px 20px rgba(255,107,0,0.50)',
+              background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+              boxShadow: '0 4px 20px rgba(6,182,212,0.40)',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'transform 0.12s',
@@ -127,9 +129,9 @@ export default function RecordPage() {
           >
             <span style={{
               width: 52, height: 52, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.15)',
+              background: 'var(--bg-card2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff',
+              color: 'var(--text)',
             }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="6" cy="6" r="2.5"/>
@@ -137,7 +139,7 @@ export default function RecordPage() {
                 <path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/>
               </svg>
             </span>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>Parcours</span>
+            <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>Parcours</span>
           </button>
         </div>
       </div>
@@ -146,6 +148,7 @@ export default function RecordPage() {
         open={sportSheetOpen}
         onClose={() => setSportSheetOpen(false)}
         onSelect={handleSelectSport}
+        selectedSport={sport}
       />
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}

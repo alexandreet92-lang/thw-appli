@@ -65,9 +65,9 @@ function LayerSelector({ layer, onChange }: {
     <div style={{
       position: 'absolute',
       right: 12,
-      bottom: 16,
-      zIndex: 500,
-      display: 'flex', flexDirection: 'column', gap: 8,
+      bottom: 140,
+      zIndex: 1000,
+      display: 'flex', flexDirection: 'column', gap: 6,
     }}>
       {items.map(it => {
         const active = layer === it.id

@@ -106,6 +106,8 @@ export default function MobileTabBar() {
   }
 
   if (hidden) return null
+  // Page /record : compteur immersif, on cache la navbar
+  if (pathname === '/record') return null
 
   const activeTab = ROUTE_TO_TAB[pathname]
   const col       = (on: boolean) => on ? ACCENT : DIM

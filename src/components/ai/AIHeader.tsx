@@ -1,13 +1,10 @@
 'use client'
-import { AgentIcon } from './AgentIcon'
-import type { AgentId } from './AgentIcon'
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
 
-const AGENT_NAMES: Record<THWModel, string> = {
-  athena: 'Athena',
-  zeus:   'Zeus',
-  hermes: 'Hermes',
+// User-facing : seuls Training et Networks apparaissent.
+function agentLabel(model: THWModel): string {
+  return model === 'zeus' ? 'Networks' : 'Training'
 }
 
 interface Props {
@@ -56,14 +53,13 @@ export default function AIHeader({ model, isDesktop, fullscr, onOpenSidebar, onN
         </HeaderBtn>
       )}
 
-      {/* Agent name — centered */}
+      {/* Agent name — texte centré, sans étoile */}
       <div style={{
         position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'center', gap: 7, pointerEvents: 'none',
+        display: 'flex', alignItems: 'center', pointerEvents: 'none',
       }}>
-        <AgentIcon agent={model as AgentId} size={16} />
-        <span style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A', fontFamily: 'DM Sans,sans-serif' }}>
-          {AGENT_NAMES[model]}
+        <span className="text-[13px] font-semibold text-[#0A0A0A] dark:text-white">
+          {agentLabel(model)}
         </span>
       </div>
 

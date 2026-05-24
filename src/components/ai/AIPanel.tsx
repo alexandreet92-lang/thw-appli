@@ -18889,8 +18889,8 @@ export default function AIPanel({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                  width={52}
-                  height={52}
+                  width={48}
+                  height={48}
                   alt=""
                   style={{ objectFit: 'contain' }}
                 />
@@ -19502,8 +19502,8 @@ export default function AIPanel({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                    width={14}
-                    height={14}
+                    width={13}
+                    height={13}
                     alt=""
                     style={{ objectFit: 'contain' }}
                   />

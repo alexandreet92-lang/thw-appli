@@ -1,14 +1,15 @@
 'use client'
-import { LogoAgent, modelToAgent } from './sidebar/LogoOfficial'
+import { LogoOfficial } from './sidebar/LogoOfficial'
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
 
-// Label utilisateur par agent affiché (Hermès est interne mais peut apparaître
-// quand le user a choisi le modèle rapide manuellement).
-const AGENT_LABEL: Record<ReturnType<typeof modelToAgent>, string> = {
-  training: 'Training',
-  networks: 'Networks',
-  hermes:   'Hermès',
+// Mapping interne → label utilisateur.
+// Les modèles internes (hermes/athena/zeus) sont des routes d'orchestration.
+// L'utilisateur ne voit que "Training" et "Networks".
+const MODEL_TO_AGENT_LABEL: Record<THWModel, string> = {
+  athena: 'Training',
+  zeus:   'Training',
+  hermes: 'Training',
 }
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
   onNewConv:            () => void
   onToggleFullscreen:   () => void
   onClose:              () => void
-  agentLabelOverride?:  string
+  agentLabelOverride?:  string  // ex: "Networks" pour le mode Networks
 }
 
 function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
@@ -46,8 +47,7 @@ export default function AIHeader({
   onOpenSidebar, onNewConv, onToggleFullscreen, onClose,
   agentLabelOverride,
 }: Props) {
-  const agent = modelToAgent(model)
-  const agentLabel = agentLabelOverride ?? AGENT_LABEL[agent]
+  const agentLabel = agentLabelOverride ?? MODEL_TO_AGENT_LABEL[model]
   return (
     <div style={{
       height: 48, padding: '0 10px',
@@ -64,12 +64,12 @@ export default function AIHeader({
         </HeaderBtn>
       )}
 
-      {/* Agent name + logo PNG officiel — centered */}
+      {/* Agent name + logo officiel — centered */}
       <div style={{
         position: 'absolute', left: '50%', transform: 'translateX(-50%)',
         display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none',
       }}>
-        <LogoAgent agent={agent} size={18} alt={agentLabel} />
+        <LogoOfficial size={16} alt={agentLabel} />
         <span style={{
           fontSize: 14, fontWeight: 600, color: '#0A0A0A',
           fontFamily: 'DM Sans,sans-serif',

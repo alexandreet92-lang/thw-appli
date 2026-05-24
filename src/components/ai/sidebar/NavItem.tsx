@@ -31,7 +31,7 @@ export function NavItem({ icon, label, onClick, active = false }: Props) {
       }}
       onMouseEnter={e => {
         if (!active) {
-          (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'
+          (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'
           ;(e.currentTarget as HTMLButtonElement).style.color = '#FFFFFF'
         }
       }}

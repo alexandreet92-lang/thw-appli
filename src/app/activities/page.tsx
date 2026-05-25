@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { SportTabs } from '@/components/ui/SportTabs'
+import { ToastProvider, useToast } from '@/components/ui/Toast'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -297,8 +298,12 @@ function useActivities() {
     }
   }, [])
 
+  const removeActivity = useCallback((id: string) => {
+    setActivities(prev => prev.filter(a => a.id !== id))
+  }, [])
+
   useEffect(() => { load() }, [load])
-  return { activities, loading, error, reload: load }
+  return { activities, loading, error, reload: load, removeActivity }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2990,17 +2995,21 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
 // ─────────────────────────────────────────────────────────────
 // SECTION: ANALYSE
 // ─────────────────────────────────────────────────────────────
-function SectionAnalyse({ activities, zones, profile, deepLinkId }: {
+function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
   deepLinkId?: string | null
+  onDelete?: (id: string) => void
 }) {
   const [view, setView]         = useState<'list'|'calendar'>('list')
   const [selected, setSelected] = useState<Activity | null>(null)
   const [search, setSearch]     = useState('')
   const [sport, setSport]       = useState<'all' | SportType>('all')
   const [raceFilter, setRaceFilter] = useState<'all'|'race'|'training'>('all')
+  const [swipedId, setSwipedId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const touchStartX = useRef<number>(0)
 
   // Deep-link : ouvre automatiquement l'activité demandée depuis Planning
   useEffect(() => {
@@ -3078,7 +3087,39 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId }: {
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden', boxShadow: T.shadow }}>
             <div style={{ maxHeight: 600, overflowY: 'auto' }}>
               {filtered.map(act => (
-                <ActivityRow key={act.id} a={act} selected={false} onClick={() => setSelected(act)} />
+                <div key={act.id} style={{ position: 'relative', overflow: 'hidden' }}>
+                  {onDelete && (
+                    <div
+                      onClick={() => setConfirmDeleteId(act.id)}
+                      style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, background: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1 }}>
+                      <span style={{ color: 'white', fontSize: 12, fontWeight: 600 }}>Supprimer</span>
+                    </div>
+                  )}
+                  <div
+                    style={{ transform: swipedId === act.id ? 'translateX(-80px)' : 'translateX(0)', transition: 'transform 200ms ease', background: T.surface, position: 'relative', zIndex: 2 }}
+                    onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+                    onTouchEnd={e => {
+                      if (!onDelete) return
+                      const delta = e.changedTouches[0].clientX - touchStartX.current
+                      if (delta < -50) setSwipedId(act.id)
+                      else if (delta > 20) setSwipedId(null)
+                    }}
+                  >
+                    <ActivityRow a={act} selected={false} onClick={() => {
+                      if (swipedId === act.id) { setSwipedId(null); return }
+                      setSelected(act)
+                    }} />
+                  </div>
+                  {confirmDeleteId === act.id && (
+                    <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.06)', borderTop: `1px solid rgba(239,68,68,0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, color: '#EF4444' }}>Supprimer cette activité ?</span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => { onDelete(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
+                        <button onClick={() => { setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: T.border, border: 'none', color: T.text, fontSize: 13, cursor: 'pointer' }}>Annuler</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
               {filtered.length === 0 && (
                 <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>Aucune activité</div>
@@ -3234,8 +3275,13 @@ interface AIPerformanceTrend { metric: string; direction: 'improving'|'stable'|'
 interface AIPerformanceResult { summary: string; trends: AIPerformanceTrend[]; strengths: string[]; weaknesses: string[]; recommendations: string[]; fitnessScore: number }
 
 export default function TrainingPage() {
+  return <ToastProvider><TrainingPageInner /></ToastProvider>
+}
+
+function TrainingPageInner() {
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
-  const { activities, loading, error, reload } = useActivities()
+  const { activities, loading, error, reload, removeActivity } = useActivities()
+  const { showToast } = useToast()
   const zones   = useTrainingZones()
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
@@ -3245,6 +3291,17 @@ export default function TrainingPage() {
   const [aiLoading,  setAiLoading]  = useState(false)
   const [aiResult,   setAiResult]   = useState<AIPerformanceResult | null>(null)
   const [aiError,    setAiError]    = useState<string | null>(null)
+
+  const handleDeleteActivity = async (actId: string) => {
+    const sb = createClient()
+    const { error: delErr } = await sb.from('activities').delete().eq('id', actId)
+    if (!delErr) {
+      removeActivity(actId)
+      showToast('Activité supprimée')
+    } else {
+      showToast('Erreur lors de la suppression')
+    }
+  }
 
   async function analyzePerformance() {
     if (activities.length === 0) return
@@ -3569,7 +3626,7 @@ export default function TrainingPage() {
 
           {/* Sections */}
           {!loading && !error && section === 'donnees'     && <ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal>}
-          {!loading && !error && section === 'analyse'     && <ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} /></ScrollReveal>}
+          {!loading && !error && section === 'analyse'     && <ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} /></ScrollReveal>}
           {!loading && !error && section === 'progression' && <ScrollReveal><SectionProgression activities={activities} /></ScrollReveal>}
         </main>
       </div>

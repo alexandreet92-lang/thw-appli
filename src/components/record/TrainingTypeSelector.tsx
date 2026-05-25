@@ -1,8 +1,6 @@
 'use client'
 
-interface TrainingType { id: string; label: string; desc: string }
-
-export const CYCLING_TYPES: TrainingType[] = [
+export const CYCLING_TYPES: { id: string; label: string; desc: string }[] = [
   { id: 'ef',      label: 'EF',      desc: 'Endurance fondamentale' },
   { id: 'pma',     label: 'PMA',     desc: 'Puissance maximale aérobie' },
   { id: 'seuil',   label: 'Seuil',   desc: 'Effort au seuil' },

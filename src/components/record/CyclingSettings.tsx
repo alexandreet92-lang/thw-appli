@@ -1,8 +1,12 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useCyclingConfig } from '@/hooks/useCyclingConfig'
+import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { fieldById, type DataPage } from '@/types/cycling'
 import PageEditor from './PageEditor'
+import CyclingSettingsNav from './CyclingSettingsNav'
+import CyclingSettingsTraining from './CyclingSettingsTraining'
+import CyclingSettingsParams from './CyclingSettingsParams'
 
 interface Props {
   open: boolean
@@ -21,17 +25,12 @@ function getTheme(isDark: boolean) {
   }
 }
 
-const SENSORS = [
-  { name: 'Fréquence cardiaque', status: 'Non connecté' },
-  { name: 'Puissance',           status: 'Non connecté' },
-  { name: 'Cadence',             status: 'Non connecté' },
-]
 
 export default function CyclingSettings({ open, onClose, isDark }: Props) {
   const t = getTheme(isDark)
   const { pages, setPages, savePages } = useCyclingConfig()
+  const { settings, updateSetting } = useCyclingSettings()
   const [closing, setClosing] = useState(false)
-  const [gpsAlert, setGpsAlert] = useState(true)
   const [editing, setEditing] = useState<DataPage | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -267,50 +266,9 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
             </div>
           ))}
 
-          {/* Capteurs */}
-          <SectionTitle t={t}>
-            Capteurs <Badge>Bientôt disponible</Badge>
-          </SectionTitle>
-          {SENSORS.map(s => (
-            <div key={s.name} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px 0', borderBottom: `1px solid ${t.separator}`,
-            }}>
-              <span style={{ fontSize: 14, color: t.text }}>{s.name}</span>
-              <span style={{ fontSize: 12, color: t.dim }}>{s.status}</span>
-            </div>
-          ))}
-          <p style={{ fontSize: 11, fontStyle: 'italic', color: t.dim, padding: '10px 0 0' }}>
-            La connexion Bluetooth sera disponible lors du lancement sur l&apos;App Store.
-          </p>
-
-          {/* Unités */}
-          <SectionTitle t={t}>Unités</SectionTitle>
-          <ToggleRow label="Métrique (km, m)" active t={t} />
-          <ToggleRow label="Impérial (miles, ft)" disabled badge="Bientôt disponible" t={t} />
-
-          {/* Alertes */}
-          <SectionTitle t={t}>Alertes</SectionTitle>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0' }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 14, color: t.text }}>Alerte fin GPS</p>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: t.dim }}>Notification si le GPS perd le signal</p>
-            </div>
-            <button
-              onClick={() => setGpsAlert(v => !v)}
-              role="switch" aria-checked={gpsAlert}
-              style={{
-                width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-                background: gpsAlert ? '#06B6D4' : t.separator,
-                position: 'relative', transition: 'background 0.2s',
-              }}>
-              <span style={{
-                position: 'absolute', top: 3, left: gpsAlert ? 21 : 3,
-                width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }}/>
-            </button>
-          </div>
+          <CyclingSettingsNav settings={settings} updateSetting={updateSetting} theme={t} />
+          <CyclingSettingsTraining theme={t} />
+          <CyclingSettingsParams settings={settings} updateSetting={updateSetting} theme={t} />
         </div>
       </div>
 
@@ -331,42 +289,3 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
   )
 }
 
-function SectionTitle({ children, t }: { children: React.ReactNode; t: ReturnType<typeof getTheme> }) {
-  return (
-    <p style={{
-      fontSize: 11, fontWeight: 700, color: t.dim,
-      padding: '20px 0 8px', margin: 0,
-      textTransform: 'uppercase', letterSpacing: '0.08em',
-      display: 'flex', alignItems: 'center', gap: 8,
-    }}>{children}</p>
-  )
-}
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-      background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
-      letterSpacing: '0.04em', textTransform: 'uppercase',
-    }}>{children}</span>
-  )
-}
-function ToggleRow({ label, active, disabled, badge, t }: {
-  label: string; active?: boolean; disabled?: boolean; badge?: string; t: ReturnType<typeof getTheme>
-}) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '12px 0', borderBottom: `1px solid ${t.separator}`, opacity: disabled ? 0.6 : 1,
-    }}>
-      <span style={{ fontSize: 14, color: t.text }}>{label}</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {badge && <Badge>{badge}</Badge>}
-        {active && (
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M3 9l4 4 8-8" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        )}
-      </div>
-    </div>
-  )
-}

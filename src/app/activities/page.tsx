@@ -3114,7 +3114,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete }: {
                     <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.06)', borderTop: `1px solid rgba(239,68,68,0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, color: '#EF4444' }}>Supprimer cette activité ?</span>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => { onDelete(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
+                        <button onClick={() => { onDelete?.(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
                         <button onClick={() => { setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: T.border, border: 'none', color: T.text, fontSize: 13, cursor: 'pointer' }}>Annuler</button>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_FIELDS, type DataPage } from '@/types/cycling'
+import { createClient } from '@/lib/supabase/client'
 import FieldPicker from './FieldPicker'
 import PagePreview from './PagePreview'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -8,8 +9,9 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 interface Props {
   open: boolean
   page: DataPage | null
+  allPages: DataPage[]
+  onPageUpdated: (updated: DataPage) => void
   onClose: () => void
-  onSave: (updated: DataPage) => void
   isDark: boolean
 }
 
@@ -34,7 +36,7 @@ export default function PageEditor(props: Props) {
   )
 }
 
-function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
+function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDark }: Props) {
   const t = getTheme(isDark)
   const { showToast } = useToast()
   const [closing, setClosing] = useState(false)
@@ -42,6 +44,11 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
   const [selectedField, setSelectedField] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [replacingFieldId, setReplacingFieldId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const allPagesRef = useRef(allPages)
+  useEffect(() => { allPagesRef.current = allPages }, [allPages])
 
   useEffect(() => { if (initial) setPage(initial) }, [initial])
 
@@ -49,8 +56,36 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
   const isMap = page.type === 'map'
   const maxForPage = isMap ? 2 : MAX_FIELDS
 
-  const updatePage = (next: DataPage) => setPage(next)
-  const setBigPosition = (pos: 'top' | 'middle') => updatePage({ ...page, bigFieldPosition: pos })
+  const autoSave = useCallback((updated: DataPage) => {
+    onPageUpdated(updated)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      setSaving(true)
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const newPages = allPagesRef.current.map(p => p.id === updated.id ? updated : p)
+        await sb.from('sport_page_configs').upsert(
+          { user_id: user.id, sport: 'cycling', pages: newPages },
+          { onConflict: 'user_id,sport' }
+        )
+        showToast('Modifications enregistrées')
+      } catch (e) {
+        console.error('[PageEditor] autoSave error:', e)
+      } finally {
+        setSaving(false)
+      }
+    }, 600)
+  }, [onPageUpdated, showToast])
+
+  const applyUpdate = useCallback((updated: DataPage) => {
+    setPage(updated)
+    autoSave(updated)
+  }, [autoSave])
+
+  const setBigPosition = (pos: 'top' | 'middle') => applyUpdate({ ...page, bigFieldPosition: pos })
+  const updateName = (name: string) => applyUpdate({ ...page, name })
 
   const addFieldSlot = () => {
     if (page.fields.length >= maxForPage) return
@@ -62,7 +97,7 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
     const last = page.fields[page.fields.length - 1]
     const next = { ...page, fields: page.fields.slice(0, -1) }
     if (page.bigFieldId === last) next.bigFieldId = next.fields[0]
-    updatePage(next)
+    applyUpdate(next)
     showToast('Champ supprimé')
   }
 
@@ -77,7 +112,7 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
     let newBig = page.bigFieldId
     if (page.bigFieldId === selectedField) newBig = fid
     else if (page.bigFieldId === fid) newBig = selectedField
-    updatePage({ ...page, fields: newFields, bigFieldId: newBig })
+    applyUpdate({ ...page, fields: newFields, bigFieldId: newBig })
     setSelectedField(null)
     showToast('Positions échangées')
   }
@@ -91,18 +126,16 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
     if (replacingFieldId) {
       const newFields = page.fields.map(f => f === replacingFieldId ? newFid : f)
       const newBig = page.bigFieldId === replacingFieldId ? newFid : page.bigFieldId
-      updatePage({ ...page, fields: newFields, bigFieldId: newBig })
+      applyUpdate({ ...page, fields: newFields, bigFieldId: newBig })
       showToast('Champ remplacé')
     } else {
       if (page.fields.length >= maxForPage) return
-      updatePage({ ...page, fields: [...page.fields, newFid] })
+      applyUpdate({ ...page, fields: [...page.fields, newFid] })
       showToast('Champ ajouté')
     }
     setPickerOpen(false)
     setReplacingFieldId(null)
   }
-
-  const handleSave = () => { onSave(page); showToast('Page sauvegardée') }
 
   return (
     <div
@@ -125,7 +158,7 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
         </button>
         <input
           value={page.name}
-          onChange={e => updatePage({ ...page, name: e.target.value })}
+          onChange={e => updateName(e.target.value)}
           maxLength={24}
           style={{
             fontSize: 18, fontWeight: 700, background: 'none', border: 'none',
@@ -133,6 +166,15 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
             flex: 1, outline: 'none', padding: '2px 4px', fontFamily: 'Syne, sans-serif',
           }}
         />
+        {saving && (
+          <div style={{
+            width: 14, height: 14, borderRadius: '50%',
+            border: '2px solid rgba(6,182,212,0.25)',
+            borderTopColor: '#06B6D4',
+            animation: 'spin 0.7s linear infinite',
+            flexShrink: 0,
+          }} />
+        )}
         <div style={{ display: 'flex', gap: 6 }}>
           <IconBtn label="−" onClick={removeLastField} disabled={page.fields.length <= 1}
             color="#EF4444" bg="rgba(239,68,68,0.15)" t={t}/>
@@ -187,22 +229,6 @@ function PageEditorInner({ page: initial, onClose, onSave, isDark }: Props) {
       </p>
 
       <div style={{ flex: 1, minHeight: 0 }} />
-
-      {/* Sauvegarder sticky */}
-      <div style={{
-        padding: '12px 16px', borderTop: `1px solid ${t.separator}`,
-        background: t.bg, paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-      }}>
-        <button onClick={handleSave}
-          style={{
-            width: '100%', height: 48, borderRadius: 14, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-            color: '#fff', fontSize: 15, fontWeight: 600,
-            fontFamily: 'Syne, sans-serif', letterSpacing: '0.02em',
-          }}>
-          Sauvegarder
-        </button>
-      </div>
 
       <FieldPicker
         open={pickerOpen}

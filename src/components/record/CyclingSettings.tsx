@@ -29,7 +29,7 @@ const SENSORS = [
 
 export default function CyclingSettings({ open, onClose, isDark }: Props) {
   const t = getTheme(isDark)
-  const { pages, savePages } = useCyclingConfig()
+  const { pages, setPages, savePages } = useCyclingConfig()
   const [closing, setClosing] = useState(false)
   const [gpsAlert, setGpsAlert] = useState(true)
   const [editing, setEditing] = useState<DataPage | null>(null)
@@ -76,9 +76,8 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
     if (pages.length <= 1) return
     void savePages(pages.filter(p => p.id !== id))
   }
-  const handleSaveEdit = (updated: DataPage) => {
-    void savePages(pages.map(p => (p.id === updated.id ? updated : p)))
-    setEditing(null)
+  const handlePageUpdated = (updated: DataPage) => {
+    setPages(prev => prev.map(p => p.id === updated.id ? updated : p))
   }
   const startRename = (page: DataPage) => { setRenamingId(page.id) }
   const finishRename = (id: string, value: string) => {
@@ -318,8 +317,9 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
       <PageEditor
         open={!!editing}
         page={editing}
+        allPages={pages}
+        onPageUpdated={handlePageUpdated}
         onClose={() => setEditing(null)}
-        onSave={handleSaveEdit}
         isDark={isDark}
       />
 

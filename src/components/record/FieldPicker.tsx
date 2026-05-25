@@ -6,7 +6,7 @@ interface ThemeColors { bg: string; text: string; dim: string; separator: string
 
 interface Props {
   open: boolean
-  excludeIds: string[]            // déjà présents dans la page
+  excludeIds: string[]
   onClose: () => void
   onSelect: (fieldId: string) => void
   theme: ThemeColors
@@ -15,17 +15,85 @@ interface Props {
 export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme }: Props) {
   const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
-  useEffect(() => { if (open) { setClosing(false); setSearch('') } }, [open])
-  if (!open) return null
-  const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
+  const [selectedCategory, setSelectedCategory] = useState<FieldCategory | null>(null)
 
-  const categories = Object.entries(FIELD_CATEGORIES) as [FieldCategory, string][]
+  useEffect(() => {
+    if (open) { setClosing(false); setSearch(''); setSelectedCategory(null) }
+  }, [open])
+  if (!open) return null
+
+  const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
+  const selectField = (id: string) => { onSelect(id); handleClose() }
+
+  const CategoryList = () => (
+    <div style={{ flex: 1, overflowY: 'auto' }}>
+      {(Object.entries(FIELD_CATEGORIES) as [FieldCategory, string][]).map(([catId, catLabel]) => {
+        const available = ALL_FIELDS.filter(f => f.category === catId && !excludeIds.includes(f.id))
+        if (available.length === 0) return null
+        return (
+          <button
+            key={catId}
+            onClick={() => setSelectedCategory(catId)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center',
+              padding: '16px 20px', background: 'none', border: 'none',
+              cursor: 'pointer', borderBottom: `1px solid ${theme.separator}`,
+              textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 16, color: theme.text, margin: 0, fontWeight: 500 }}>
+                {catLabel}
+              </p>
+              <p style={{ fontSize: 12, color: '#8C8C8C', margin: '3px 0 0' }}>
+                {available.length} champ{available.length > 1 ? 's' : ''} disponible{available.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  const FieldList = ({ catId }: { catId: FieldCategory }) => {
+    const fields = ALL_FIELDS.filter(f => f.category === catId && !excludeIds.includes(f.id))
+    return (
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {fields.map(field => (
+          <FieldRow key={field.id} field={field} theme={theme} onClick={() => selectField(field.id)} />
+        ))}
+      </div>
+    )
+  }
+
+  const SearchResults = ({ query }: { query: string }) => {
+    const q = query.toLowerCase()
+    const matched = ALL_FIELDS.filter(f =>
+      f.label.toLowerCase().includes(q) && !excludeIds.includes(f.id)
+    )
+    return (
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {matched.map(field => (
+          <FieldRow
+            key={field.id} field={field} theme={theme}
+            onClick={() => selectField(field.id)}
+            categoryLabel={FIELD_CATEGORIES[field.category as FieldCategory]}
+          />
+        ))}
+        {matched.length === 0 && (
+          <p style={{ textAlign: 'center', color: theme.dim, fontSize: 14, padding: '32px 20px' }}>
+            Aucun champ correspondant
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 10006,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-    }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10006 }}>
       <div
         onClick={handleClose}
         style={{
@@ -37,25 +105,44 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
       <div
         className={closing ? 'sheet-close' : 'sheet-open'}
         style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0,
+          position: 'fixed', bottom: 0, left: 0, right: 0,
           height: '80vh',
-          background: theme.bg, color: theme.text,
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          background: theme.bg,
+          borderRadius: '24px 24px 0 0',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
           fontFamily: 'DM Sans, sans-serif',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
         }}
       >
+        {/* Drag handle */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10 }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: theme.separator }}/>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: theme.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>
-            Choisir un champ
+
+        {/* Header dynamique */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '16px 20px 8px', gap: 12 }}>
+          {selectedCategory && (
+            <button
+              onClick={() => setSelectedCategory(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer',
+                       color: theme.text, padding: '4px 8px 4px 0', flexShrink: 0 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: 0, flex: 1, fontFamily: 'Syne, sans-serif' }}>
+            {selectedCategory ? FIELD_CATEGORIES[selectedCategory] : 'Choisir un champ'}
           </h2>
-          <button onClick={handleClose} aria-label="Fermer"
-            style={{ color: theme.dim, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>×</button>
+          <button onClick={handleClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8C8C8C', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>
+            ×
+          </button>
         </div>
+
+        {/* Barre de recherche */}
         <div style={{ padding: '0 16px 12px' }}>
           <div style={{
             background: theme.cardBg, borderRadius: 12, border: `1px solid ${theme.separator}`,
@@ -73,75 +160,71 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
             />
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {categories.map(([catId, catLabel]) => {
-            const catFields = ALL_FIELDS.filter(f =>
-              f.category === catId &&
-              f.label.toLowerCase().includes(search.toLowerCase()) &&
-              !excludeIds.includes(f.id)
-            )
-            if (catFields.length === 0) return null
-            return (
-              <div key={catId}>
-                <p style={{
-                  fontSize: 11, fontWeight: 700, color: theme.dim,
-                  padding: '14px 20px 6px', margin: 0,
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                }}>
-                  {catLabel}
-                </p>
-                {catFields.map(f => (
-                  <FieldRow key={f.id} field={f} theme={theme} onClick={() => onSelect(f.id)} />
-                ))}
-              </div>
-            )
-          })}
-        </div>
+
+        {/* Contenu selon état */}
+        {search.trim()
+          ? <SearchResults query={search} />
+          : selectedCategory
+            ? <FieldList catId={selectedCategory} />
+            : <CategoryList />
+        }
       </div>
     </div>
   )
 }
 
-function FieldRow({ field, theme, onClick }: { field: DataField; theme: ThemeColors; onClick: () => void }) {
+function FieldRow({ field, theme, onClick, categoryLabel }: {
+  field: DataField; theme: ThemeColors; onClick: () => void; categoryLabel?: string
+}) {
   return (
     <button
       onClick={onClick}
       style={{
-        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-        padding: '13px 20px', background: 'none', border: 'none', cursor: 'pointer',
-        borderBottom: `1px solid ${theme.separator}`, textAlign: 'left',
-        fontFamily: 'DM Sans, sans-serif',
+        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+        padding: '15px 20px', background: 'none', border: 'none',
+        cursor: 'pointer', borderBottom: `1px solid ${theme.separator}`,
+        textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 15, color: theme.text }}>{field.label}</span>
-        {field.unit && <span style={{ fontSize: 12, color: theme.dim, marginLeft: 6 }}>{field.unit}</span>}
-        {field.type === 'chart' && <TypePill color="#06B6D4">GRAPHIQUE</TypePill>}
-        {field.type === 'climb_profile' && <TypePill color="#8B5CF6">VISUEL</TypePill>}
+        {categoryLabel && (
+          <p style={{ fontSize: 10, color: '#8C8C8C', margin: '0 0 2px',
+                      textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {categoryLabel}
+          </p>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 15, color: theme.text, fontWeight: 400 }}>
+            {field.label}
+          </span>
+          {field.unit && <span style={{ fontSize: 12, color: '#8C8C8C' }}>{field.unit}</span>}
+          {field.type === 'chart' && (
+            <span style={{ fontSize: 10, color: '#06B6D4',
+                           border: '1px solid rgba(6,182,212,0.4)',
+                           borderRadius: 4, padding: '1px 5px' }}>GRAPHIQUE</span>
+          )}
+          {field.type === 'climb_profile' && (
+            <span style={{ fontSize: 10, color: '#8B5CF6',
+                           border: '1px solid rgba(139,92,246,0.4)',
+                           borderRadius: 4, padding: '1px 5px' }}>VISUEL</span>
+          )}
+        </div>
       </div>
-      {field.requiresSensor && <Tag color="rgba(239,68,68,0.65)" border="rgba(239,68,68,0.30)">capteur</Tag>}
-      {field.requiresRoute  && <Tag color="rgba(234,179,8,0.85)" border="rgba(234,179,8,0.35)">parcours</Tag>}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {field.requiresSensor && (
+          <span style={{ fontSize: 10, color: 'rgba(239,68,68,0.7)',
+                         border: '1px solid rgba(239,68,68,0.3)',
+                         borderRadius: 4, padding: '2px 6px' }}>capteur</span>
+        )}
+        {field.requiresRoute && (
+          <span style={{ fontSize: 10, color: 'rgba(234,179,8,0.8)',
+                         border: '1px solid rgba(234,179,8,0.3)',
+                         borderRadius: 4, padding: '2px 6px' }}>parcours</span>
+        )}
+      </div>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <path d="M5 3l4 4-4 4" stroke={theme.dim} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
       </svg>
     </button>
-  )
-}
-
-function TypePill({ color, children }: { color: string; children: React.ReactNode }) {
-  return (
-    <span style={{
-      fontSize: 9, color, marginLeft: 8,
-      border: `1px solid ${color}`, borderRadius: 4, padding: '1px 5px',
-      fontWeight: 700, letterSpacing: '0.04em',
-    }}>{children}</span>
-  )
-}
-function Tag({ color, border, children }: { color: string; border: string; children: React.ReactNode }) {
-  return (
-    <span style={{
-      fontSize: 10, color, border: `1px solid ${border}`,
-      borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap',
-    }}>{children}</span>
   )
 }

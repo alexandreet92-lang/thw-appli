@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import type { DataFont } from '@/types/cycling'
 
 export interface CyclingSettings {
   navigation: { followPosition: boolean; autoRecenter: boolean; defaultMapType: 'std'|'sat'|'hyb'; climbDetection: boolean; climbThreshold: number }
   alerts: { gpsLost: boolean; hrZone: boolean; hrMaxThreshold: number; powerHighThreshold: number; powerLowThreshold: number; hydrationInterval: number; nutritionInterval: number; vibration: boolean; sound: boolean }
-  display: { keepAwake: boolean; theme: 'auto'|'light'|'dark'; dataSize: 'small'|'normal'|'large' }
+  display: { keepAwake: boolean; theme: 'auto'|'light'|'dark'; dataSize: 'small'|'normal'|'large'; dataFont: DataFont }
   athlete: { ftp: number; maxHr: number; restHr: number }
   recording: { gpsFrequency: number|'auto'; autoPause: boolean; autoPauseThreshold: number; autoLap: number }
   units: { distance: 'metric'|'imperial'; altitude: 'm'|'ft'; temperature: 'c'|'f'; weight: 'kg'|'lbs' }
@@ -15,7 +16,7 @@ export interface CyclingSettings {
 export const DEFAULT_CYCLING_SETTINGS: CyclingSettings = {
   navigation: { followPosition: true, autoRecenter: true, defaultMapType: 'std', climbDetection: true, climbThreshold: 50 },
   alerts: { gpsLost: true, hrZone: false, hrMaxThreshold: 185, powerHighThreshold: 300, powerLowThreshold: 100, hydrationInterval: 30, nutritionInterval: 45, vibration: true, sound: false },
-  display: { keepAwake: true, theme: 'auto', dataSize: 'normal' },
+  display: { keepAwake: true, theme: 'auto', dataSize: 'normal', dataFont: 'system' },
   athlete: { ftp: 200, maxHr: 185, restHr: 55 },
   recording: { gpsFrequency: 1, autoPause: true, autoPauseThreshold: 5, autoLap: 0 },
   units: { distance: 'metric', altitude: 'm', temperature: 'c', weight: 'kg' },

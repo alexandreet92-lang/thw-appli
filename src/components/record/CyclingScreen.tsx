@@ -4,13 +4,13 @@ import { createPortal } from 'react-dom'
 import { useGPSTracking } from '@/hooks/useGPSTracking'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
-import CyclingPage1 from './CyclingPage1'
 import CyclingPage2 from './CyclingPage2'
-import CyclingPage3 from './CyclingPage3'
+import CyclingPageData from './CyclingPageData'
 import CyclingSettings from './CyclingSettings'
+import { useCyclingConfig } from '@/hooks/useCyclingConfig'
+import { useCyclingSettings } from '@/hooks/useCyclingSettings'
+import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
-
-const PAGES = 3
 
 interface Lap {
   number: number
@@ -39,8 +39,17 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [saving, setSaving] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const { pages } = useCyclingConfig('cycling')
+  const { settings } = useCyclingSettings()
+  const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
+
   const gps = useGPSTracking(phase === 'running')
   const stopwatch = useStopwatch(phase === 'running')
+
+  // Safety: reset pageIndex if pages shrink
+  useEffect(() => {
+    if (pageIndex >= pages.length) setPageIndex(Math.max(0, pages.length - 1))
+  }, [pages.length, pageIndex])
 
   // Lap timing
   useEffect(() => {
@@ -63,7 +72,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     const dt = Date.now() - touchRef.current.t
     touchRef.current = null
     if (dt > 600) return
-    if (dy < -50) setPageIndex(i => Math.min(PAGES - 1, i + 1))
+    if (dy < -50) setPageIndex(i => Math.min(pages.length - 1, i + 1))
     else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
   }
 
@@ -186,30 +195,34 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onTouchEnd={handleTouchEnd}
       >
         {/* Page courante (re-mount sur change → animation fade-in via key) */}
-        <div key={pageIndex} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {pageIndex === 0 && (
-            <CyclingPage1
-              isDark={isDark}
-              durationSec={stopwatch.seconds}
-              speedKmh={gps.currentSpeed}
-              distanceM={gps.distance}
-              elevationGainM={gps.elevationGain}
-            />
-          )}
-          {pageIndex === 1 && (
-            <CyclingPage2
-              isDark={isDark}
-              distanceM={gps.distance}
-              trackPoints={trackPoints}
-            />
-          )}
-          {pageIndex === 2 && (
-            <CyclingPage3
-              isDark={isDark}
-              currentLapSec={currentLapSec}
-              altitudeM={gps.currentAltitude}
-            />
-          )}
+        <div key={pageIndex} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto' }}>
+          {(() => {
+            const page = pages[pageIndex]
+            if (!page) return null
+            if (page.type === 'map') {
+              return (
+                <CyclingPage2
+                  isDark={isDark}
+                  distanceM={gps.distance}
+                  trackPoints={trackPoints}
+                />
+              )
+            }
+            return (
+              <CyclingPageData
+                page={page}
+                isDark={isDark}
+                durationSec={stopwatch.seconds}
+                distanceM={gps.distance}
+                speedKmh={gps.currentSpeed}
+                elevationGainM={gps.elevationGain}
+                altitudeM={gps.currentAltitude ?? 0}
+                currentLapSec={currentLapSec}
+                currentLapDistanceM={currentLapDistance}
+                dataFontFamily={dataFontFamily}
+              />
+            )
+          })()}
         </div>
 
         {/* Indicateurs de page */}
@@ -217,7 +230,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
           position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          {Array.from({ length: PAGES }).map((_, i) => (
+          {pages.map((_, i) => (
             <span
               key={i}
               style={{

@@ -7,6 +7,7 @@ import { Select } from './settings/Select'
 import { NumberInput } from './settings/NumberInput'
 import type { ThemeColors } from './settings/types'
 import type { CyclingSettings } from '@/hooks/useCyclingSettings'
+import { FONT_OPTIONS } from '@/types/cycling'
 
 interface Props {
   settings: CyclingSettings
@@ -86,8 +87,32 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme }
           right={<Toggle theme={theme} value={di.keepAwake} onChange={v => { updateSetting('display.keepAwake', v); if (v && 'wakeLock' in navigator) { (navigator as { wakeLock: { request: (t: string) => Promise<unknown> } }).wakeLock.request('screen').catch(() => {}) } }} />} />
         <SettingsRow theme={theme} label="Thème compteur"
           right={<Select theme={theme} value={di.theme} options={[{value:'auto',label:'Auto (jour/nuit)'},{value:'light',label:'Toujours jour'},{value:'dark',label:'Toujours nuit'}]} onChange={v => updateSetting('display.theme', v)} />} />
-        <SettingsRow theme={theme} label="Taille des données" last
+        <SettingsRow theme={theme} label="Taille des données"
           right={<Select theme={theme} value={di.dataSize} options={[{value:'small',label:'Petite'},{value:'normal',label:'Normale'},{value:'large',label:'Grande'}]} onChange={v => updateSetting('display.dataSize', v)} />} />
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.separator}` }}>
+          <p style={{ fontSize: 15, color: theme.text, margin: '0 0 12px' }}>Police des données</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {FONT_OPTIONS.map(font => {
+              const active = (di.dataFont ?? 'system') === font.id
+              return (
+                <button
+                  key={font.id}
+                  onClick={() => updateSetting('display.dataFont', font.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: 10,
+                    background: active ? 'rgba(6,182,212,0.08)' : 'transparent',
+                    border: `1.5px solid ${active ? '#06B6D4' : theme.separator}`,
+                    cursor: 'pointer', transition: 'all 150ms',
+                  }}
+                >
+                  <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{font.label}</span>
+                  <span style={{ fontSize: 24, fontWeight: 700, color: active ? '#06B6D4' : theme.text, fontFamily: font.fontFamily, letterSpacing: '-0.5px' }}>28.4</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </SettingsSection>
 
       {/* 4D — Profil athlète */}

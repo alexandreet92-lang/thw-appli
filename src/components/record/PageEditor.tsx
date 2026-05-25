@@ -25,8 +25,6 @@ function getTheme(isDark: boolean) {
   }
 }
 
-const ACCENT = '#06B6D4'
-
 export default function PageEditor(props: Props) {
   if (!props.open || !props.page) return null
   return (
@@ -146,6 +144,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
         display: 'flex', flexDirection: 'column',
         fontFamily: 'DM Sans, sans-serif',
         paddingTop: 'env(safe-area-inset-top)',
+        overflowY: 'auto',
       }}
     >
       {/* Header */}
@@ -175,11 +174,45 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             flexShrink: 0,
           }} />
         )}
-        <div style={{ display: 'flex', gap: 6 }}>
-          <IconBtn label="−" onClick={removeLastField} disabled={page.fields.length <= 1}
-            color="#EF4444" bg="rgba(239,68,68,0.15)" t={t}/>
-          <IconBtn label="+" onClick={addFieldSlot} disabled={page.fields.length >= maxForPage}
-            color={ACCENT} bg="rgba(6,182,212,0.15)" t={t}/>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            onClick={removeLastField}
+            disabled={page.fields.length <= 1}
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: page.fields.length <= 1 ? 'rgba(0,0,0,0.05)' : 'rgba(239,68,68,0.12)',
+              border: `1.5px solid ${page.fields.length <= 1 ? 'rgba(0,0,0,0.1)' : 'rgba(239,68,68,0.3)'}`,
+              color: page.fields.length <= 1 ? '#CCC' : '#EF4444',
+              cursor: page.fields.length <= 1 ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 150ms',
+            }}
+          >
+            <svg width="14" height="2" viewBox="0 0 14 2" fill="none">
+              <path d="M1 1h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <div style={{ fontSize: 12, fontWeight: 600, minWidth: 48, textAlign: 'center', lineHeight: 1 }}>
+            <span style={{ fontSize: 15, color: t.text }}>{page.fields.length}</span>
+            <span style={{ fontSize: 11, color: t.dim }}>/{maxForPage}</span>
+          </div>
+          <button
+            onClick={addFieldSlot}
+            disabled={page.fields.length >= maxForPage}
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: page.fields.length >= maxForPage ? 'rgba(0,0,0,0.05)' : 'rgba(6,182,212,0.12)',
+              border: `1.5px solid ${page.fields.length >= maxForPage ? 'rgba(0,0,0,0.1)' : 'rgba(6,182,212,0.35)'}`,
+              color: page.fields.length >= maxForPage ? '#CCC' : '#06B6D4',
+              cursor: page.fields.length >= maxForPage ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 150ms',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -193,8 +226,8 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
                 style={{
                   padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                   background: active ? 'rgba(6,182,212,0.20)' : 'transparent',
-                  border: `1px solid ${active ? ACCENT : t.separator}`,
-                  color: active ? ACCENT : t.dim, cursor: 'pointer',
+                  border: `1px solid ${active ? '#06B6D4' : t.separator}`,
+                  color: active ? '#06B6D4' : t.dim, cursor: 'pointer',
                   fontFamily: 'DM Sans, sans-serif',
                 }}>
                 {pos === 'top' ? 'Grand champ en haut' : 'Grand champ au centre'}
@@ -207,7 +240,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
       {/* Aperçu */}
       <div style={{
         margin: '0 16px', border: `1px solid ${t.separator}`, borderRadius: 16, overflow: 'hidden',
-        background: t.bg, height: 280, position: 'relative', flexShrink: 0,
+        background: t.bg, minHeight: 320, position: 'relative', flexShrink: 0,
       }}>
         <PagePreview
           page={page} theme={t}
@@ -241,20 +274,3 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
   )
 }
 
-function IconBtn({ label, onClick, disabled, color, bg, t }: {
-  label: string; onClick: () => void; disabled?: boolean
-  color: string; bg: string; t: ReturnType<typeof getTheme>
-}) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-      style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: disabled ? t.cardBg : bg,
-        border: 'none', color: disabled ? t.dim : color,
-        fontSize: 20, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-      }}>
-      {label}
-    </button>
-  )
-}

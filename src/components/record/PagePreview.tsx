@@ -10,6 +10,7 @@ interface Props {
   selectedField: string | null
   onFieldClick:        (fieldId: string) => void
   onFieldDoubleClick?: (fieldId: string) => void
+  dataFontFamily?: string
 }
 
 const getMockValue = (fieldId: string): string => {
@@ -27,7 +28,8 @@ const getMockValue = (fieldId: string): string => {
   return mocks[fieldId] ?? '--'
 }
 
-export default function PagePreview({ page, theme, selectedField, onFieldClick, onFieldDoubleClick }: Props) {
+export default function PagePreview({ page, theme, selectedField, onFieldClick, onFieldDoubleClick, dataFontFamily }: Props) {
+  const fontFamily = dataFontFamily ?? 'DM Mono, monospace'
   const lastTap = useRef<Record<string, number>>({})
 
   const handleCellTap = (id: string) => {
@@ -70,7 +72,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
               <p style={{ fontSize: 9, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
                 {ALL_FIELDS.find(f => f.id === id)?.label}
               </p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily: 'DM Mono, monospace' }}>
+              <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
                 {getMockValue(id)}
               </p>
               {ALL_FIELDS.find(f => f.id === id)?.unit && (
@@ -113,7 +115,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
         <p style={{ fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>
           {field?.label}
         </p>
-        <p style={{ fontSize: 48, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily: 'DM Mono, monospace' }}>
+        <p style={{ fontSize: 48, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
           {getMockValue(fieldId)}
         </p>
         {field?.unit && (
@@ -137,12 +139,13 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
           textAlign: 'center',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: 3,
+          minHeight: 70,
         }}
       >
         <p style={{ fontSize: 9, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
           {field?.label}
         </p>
-        <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily: 'DM Mono, monospace' }}>
+        <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
           {getMockValue(fieldId)}
         </p>
         {field?.unit && (
@@ -153,7 +156,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridAutoRows: 'minmax(70px, auto)', overflow: 'hidden' }}>
       {bigOnTop && renderBigCell(bigFieldId)}
       {bigOnTop && otherFields.map(renderSmallCell)}
       {!bigOnTop && otherFields.slice(0, midIndex).map(renderSmallCell)}

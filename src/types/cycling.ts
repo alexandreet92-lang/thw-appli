@@ -124,3 +124,13 @@ export const DEFAULT_PAGES: DataPage[] = [
 export function fieldById(id: string): DataField | undefined {
   return ALL_FIELDS.find(f => f.id === id)
 }
+
+export type DataFont = 'system' | 'mono' | 'rounded' | 'condensed' | 'sport'
+
+export const FONT_OPTIONS: { id: DataFont; label: string; fontFamily: string }[] = [
+  { id: 'system',    label: 'Système',    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+  { id: 'mono',      label: 'Monospace',  fontFamily: '"SF Mono", "Roboto Mono", "Courier New", monospace' },
+  { id: 'rounded',   label: 'Arrondie',   fontFamily: '"Nunito", "Varela Round", system-ui, sans-serif' },
+  { id: 'condensed', label: 'Condensée',  fontFamily: '"Barlow Condensed", "Arial Narrow", sans-serif' },
+  { id: 'sport',     label: 'Sport',      fontFamily: '"Bebas Neue", "Impact", "Arial Black", sans-serif' },
+]

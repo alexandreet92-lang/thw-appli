@@ -10,18 +10,12 @@ import GPSPrePermissionScreen from './GPSPrePermissionScreen'
 import CyclingPage2 from './CyclingPage2'
 import CyclingPageData from './CyclingPageData'
 import CyclingSettings from './CyclingSettings'
+import SessionSummary from './SessionSummary'
 import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
-
-interface Lap {
-  number: number
-  duration: number
-  distance: number
-  avgSpeed: number
-  timestamp: number
-}
+import type { FinishedSession, SessionLap } from '@/types/session'
 
 interface Props {
   onExit: () => void
@@ -44,38 +38,37 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
 
   const [phase, setPhase] = useState<CyclingPhase>('ready')
   const [pageIndex, setPageIndex] = useState(0)
-  const [laps, setLaps] = useState<Lap[]>([])
+  const [laps, setLaps] = useState<SessionLap[]>([])
   const [currentLapSec, setCurrentLapSec] = useState(0)
   const [currentLapDistance, setCurrentLapDistance] = useState(0)
   const [lapStartDistance, setLapStartDistance] = useState(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
 
   const { pages } = useCyclingConfig('cycling')
   const { settings } = useCyclingSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const { gps, resetTracking } = useGPSTracking(gpsEnabled)
+  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
   useWakeLock(phase !== 'ready')
   const stopwatch = useStopwatch(phase === 'running')
 
-  // Safety: reset pageIndex if pages shrink
   useEffect(() => {
     if (pageIndex >= pages.length) setPageIndex(Math.max(0, pages.length - 1))
   }, [pages.length, pageIndex])
 
-  // Lap timing
   useEffect(() => {
     if (phase !== 'running') return
     const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000)
     return () => clearInterval(i)
   }, [phase])
+
   useEffect(() => {
     setCurrentLapDistance(gps.distance - lapStartDistance)
   }, [gps.distance, lapStartDistance])
 
-  // Swipe vertical
   const touchRef = useRef<{ y: number; t: number } | null>(null)
   const handleTouchStart = (e: React.TouchEvent) => {
     touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
@@ -100,9 +93,11 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const handleStart  = () => { resetTracking(); setStartedAt(Date.now()); setPhase('running') }
   const handlePause  = () => setPhase('paused')
   const handleResume = () => setPhase('running')
+  const handleStop   = () => setPhase('confirming_stop')
+
   const handleLap = () => {
     if (currentLapSec === 0) return
-    const lap: Lap = {
+    const lap: SessionLap = {
       number: laps.length + 1,
       duration: currentLapSec,
       distance: currentLapDistance,
@@ -113,40 +108,85 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     setCurrentLapSec(0)
     setLapStartDistance(gps.distance)
   }
-  const handleFinish = async () => {
-    if (saving) return
+
+  const handleFinishSession = async () => {
+    stopWatching()
+    const endedAt = new Date()
+    const durationSec = stopwatch.seconds
+    const distM = Math.round(gps.distance)
+    const elevM = Math.round(gps.elevationGain)
+    const avgSpeedKmh = distM > 0 && durationSec > 0
+      ? parseFloat(((distM / 1000) / (durationSec / 3600)).toFixed(1))
+      : 0
+    const maxSpeedKmh = parseFloat(gps.maxSpeed.toFixed(1))
+    const calories = Math.round((durationSec / 3600) * 600)
+    const startedAtISO = startedAt ? new Date(startedAt).toISOString() : endedAt.toISOString()
+    const endedAtISO = endedAt.toISOString()
+    const gpsPts = gps.points
+    const lapsSnap = laps
+
     setSaving(true)
+    let savedId: string | null = null
+
     try {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (user && startedAt) {
-        await sb.from('workout_sessions').insert({
+      if (user) {
+        const { data } = await sb.from('workout_sessions').insert({
           user_id: user.id,
           sport: 'cycling',
-          started_at: new Date(startedAt).toISOString(),
-          ended_at: new Date().toISOString(),
-          duration_seconds: stopwatch.seconds,
-          distance_m: gps.distance,
-          elevation_gain_m: gps.elevationGain,
-          avg_speed_kmh: gps.distance > 0 && stopwatch.seconds > 0
-            ? (gps.distance / stopwatch.seconds) * 3.6 : 0,
-          max_speed_kmh: gps.maxSpeed,
-          gps_track: gps.points,
-          laps,
+          started_at: startedAtISO,
+          ended_at: endedAtISO,
+          duration_seconds: durationSec,
+          distance_m: distM,
+          elevation_gain_m: elevM,
+          avg_speed_kmh: avgSpeedKmh,
+          max_speed_kmh: maxSpeedKmh,
+          gps_track: gpsPts,
+          laps: lapsSnap,
+          calories,
           status: 'completed',
+        }).select('id').single()
+        savedId = data?.id ?? null
+
+        // Mirror to activities table (for training history page)
+        await sb.from('activities').insert({
+          user_id: user.id,
+          sport_type: 'bike',
+          title: 'Sortie vélo',
+          started_at: startedAtISO,
+          distance_m: distM,
+          moving_time_s: durationSec,
+          elapsed_time_s: durationSec,
+          elevation_gain_m: elevM,
+          avg_speed_ms: durationSec > 0 ? gps.distance / durationSec : 0,
+          max_speed_ms: gps.maxSpeed / 3.6,
+          calories,
         })
       }
     } catch (e) {
       console.error('[record] save error:', e)
     } finally {
       setSaving(false)
-      onFinished()
     }
+
+    setFinishedSession({
+      id: savedId,
+      started_at: startedAtISO,
+      ended_at: endedAtISO,
+      duration_seconds: durationSec,
+      distance_m: distM,
+      elevation_gain_m: elevM,
+      avg_speed_kmh: avgSpeedKmh,
+      max_speed_kmh: maxSpeedKmh,
+      calories,
+      gps_points: gpsPts,
+      laps: lapsSnap,
+    })
   }
 
   if (!mounted) return null
 
-  // Theme jour/nuit
   const hour = new Date().getHours()
   const isDark = hour < 7 || hour > 20
   const bg         = isDark ? '#0A0A0A' : '#FFFFFF'
@@ -173,15 +213,11 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         display: 'flex', alignItems: 'center', padding: '0 12px',
         position: 'relative',
       }}>
-        <button
-          onClick={onExit}
-          aria-label="Quitter"
-          style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: btnBg, color: text, border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
+        <button onClick={onExit} aria-label="Quitter" style={{
+          width: 36, height: 36, borderRadius: '50%',
+          background: btnBg, color: text, border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
@@ -190,18 +226,14 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
           position: 'absolute', left: '50%', transform: 'translateX(-50%)',
           fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif',
         }}>
-          Vélo
+          {saving ? 'Enregistrement…' : 'Vélo'}
         </span>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Réglages"
-          style={{
-            marginLeft: 'auto',
-            width: 36, height: 36, borderRadius: '50%',
-            background: btnBg, color: text, border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
+        <button onClick={() => setSettingsOpen(true)} aria-label="Réglages" style={{
+          marginLeft: 'auto',
+          width: 36, height: 36, borderRadius: '50%',
+          background: btnBg, color: text, border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -209,7 +241,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         </button>
       </div>
 
-      {/* Pages — padding bottom pour ne pas etre cache par les controls fixed */}
+      {/* Pages */}
       <div
         style={{
           flex: 1, display: 'flex', flexDirection: 'column',
@@ -219,7 +251,6 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Page courante (re-mount sur change → animation fade-in via key) */}
         <div key={pageIndex} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto' }}>
           {(() => {
             const page = pages[pageIndex]
@@ -251,25 +282,21 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
           })()}
         </div>
 
-        {/* Indicateurs de page */}
+        {/* Page dots */}
         <div style={{
           position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           {pages.map((_, i) => (
-            <span
-              key={i}
-              style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: i === pageIndex ? '#06B6D4' : labelColor,
-                transition: 'background 0.2s',
-              }}
-            />
+            <span key={i} style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: i === pageIndex ? '#06B6D4' : labelColor,
+              transition: 'background 0.2s',
+            }} />
           ))}
         </div>
       </div>
 
-      {/* Controls (position fixed bottom, z-9999 — defini dans le composant) */}
       <CyclingControls
         phase={phase}
         gpsStatus={gps.status}
@@ -278,11 +305,11 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onPause={handlePause}
         onResume={handleResume}
         onLap={handleLap}
-        onFinish={handleFinish}
+        onFinish={handleStop}
+        onConfirmFinish={handleFinishSession}
         isDark={isDark}
       />
 
-      {/* Settings panel */}
       <CyclingSettings
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -297,6 +324,14 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         <GPSPrePermissionScreen
           onAuthorize={handleGpsAuthorize}
           onDismiss={handleGpsDismiss}
+        />
+      )}
+
+      {finishedSession && (
+        <SessionSummary
+          session={finishedSession}
+          isDark={isDark}
+          onClose={onFinished}
         />
       )}
     </div>,

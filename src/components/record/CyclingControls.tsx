@@ -2,7 +2,7 @@
 import { GPSStatus } from '@/hooks/useGPSTracking'
 import GPSIndicator from './GPSIndicator'
 
-export type CyclingPhase = 'ready' | 'running' | 'paused'
+export type CyclingPhase = 'ready' | 'running' | 'paused' | 'confirming_stop'
 
 interface Props {
   phase: CyclingPhase
@@ -13,6 +13,7 @@ interface Props {
   onResume: () => void
   onLap: () => void
   onFinish: () => void
+  onConfirmFinish: () => void
   isDark?: boolean
 }
 
@@ -29,7 +30,7 @@ function getTheme(isDark: boolean) {
 }
 
 export default function CyclingControls({
-  phase, gpsStatus, gpsAccuracy, onStart, onPause, onResume, onLap, onFinish, isDark = false,
+  phase, gpsStatus, gpsAccuracy, onStart, onPause, onResume, onLap, onFinish, onConfirmFinish, isDark = false,
 }: Props) {
   const t = getTheme(isDark)
   const canStart   = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
@@ -94,31 +95,23 @@ export default function CyclingControls({
       {phase === 'running' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button
-              onClick={onLap}
-              aria-label="Lap"
-              style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: t.btnBg, color: t.text, border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
+            <button onClick={onLap} aria-label="Lap" style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: t.btnBg, color: t.text, border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M3 12h18M14 5l7 7-7 7"/>
               </svg>
             </button>
             <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>LAP</p>
           </div>
-          <button
-            onClick={onPause}
-            aria-label="Pause"
-            style={{
-              width: 68, height: 68, borderRadius: '50%',
-              background: t.pauseBg, color: t.pauseText, border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 18px rgba(0,0,0,0.20)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
+          <button onClick={onPause} aria-label="Pause" style={{
+            width: 68, height: 68, borderRadius: '50%',
+            background: t.pauseBg, color: t.pauseText, border: 'none', cursor: 'pointer',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.20)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor">
               <rect x="5" y="3" width="4" height="16" rx="1"/>
               <rect x="13" y="3" width="4" height="16" rx="1"/>
@@ -131,38 +124,74 @@ export default function CyclingControls({
       {phase === 'paused' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button
-              onClick={onFinish}
-              aria-label="Stop"
-              style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: 'rgba(239,68,68,0.15)', color: '#ef4444',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
+            <button onClick={onFinish} aria-label="Stop" style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
                 <rect x="3" y="3" width="12" height="12" rx="1.5"/>
               </svg>
             </button>
             <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>STOP</p>
           </div>
-          <button
-            onClick={onResume}
-            aria-label="Reprendre"
-            style={{
-              width: 68, height: 68, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-              color: '#fff', border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(6,182,212,0.40)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
+          <button onClick={onResume} aria-label="Reprendre" style={{
+            width: 68, height: 68, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+            color: '#fff', border: 'none', cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(6,182,212,0.40)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
               <path d="M8 5v14l11-7z"/>
             </svg>
           </button>
           <div style={{ width: 52 }} />
+        </div>
+      )}
+
+      {phase === 'confirming_stop' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={onResume}
+              style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'rgba(6,182,212,0.15)',
+                border: '2px solid rgba(6,182,212,0.4)',
+                color: '#06B6D4', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M6 4l13 8-13 8V4z" fill="#06B6D4"/>
+              </svg>
+            </button>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', letterSpacing: 0.5 }}>
+              REPRENDRE
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={onConfirmFinish}
+              style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'rgba(239,68,68,0.15)',
+                border: '2px solid rgba(239,68,68,0.4)',
+                color: '#EF4444', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <rect x="4" y="4" width="14" height="14" rx="2" fill="#EF4444"/>
+              </svg>
+            </button>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#EF4444', letterSpacing: 0.5 }}>
+              TERMINER
+            </span>
+          </div>
         </div>
       )}
     </div>

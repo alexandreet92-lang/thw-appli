@@ -96,22 +96,26 @@ function LayerSelector({ layer, onChange }: {
 
 interface Props {
   trackPoints?: { lat: number; lng: number }[]
+  currentPosition?: [number, number] | null
 }
 
-export default function MapBackground({ trackPoints }: Props) {
-  const [position, setPosition] = useState<[number, number] | null>(null)
+export default function MapBackground({ trackPoints, currentPosition }: Props) {
+  const [internalPosition, setInternalPosition] = useState<[number, number] | null>(null)
   const [layer, setLayer] = useState<LayerId>('std')
 
   useEffect(() => {
+    if (currentPosition != null) return
     if (typeof navigator === 'undefined' || !navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
-      () => setPosition(null),
+      (pos) => setInternalPosition([pos.coords.latitude, pos.coords.longitude]),
+      () => setInternalPosition(null),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     )
-  }, [])
+  }, [currentPosition])
 
+  const position: [number, number] | null = currentPosition ?? internalPosition
   const tile = TILES[layer]
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapContainer

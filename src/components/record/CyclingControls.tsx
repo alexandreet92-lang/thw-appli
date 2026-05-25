@@ -1,10 +1,13 @@
 'use client'
+import { GPSStatus } from '@/hooks/useGPSTracking'
+import GPSIndicator from './GPSIndicator'
 
 export type CyclingPhase = 'ready' | 'running' | 'paused'
 
 interface Props {
   phase: CyclingPhase
-  gpsReady: boolean
+  gpsStatus: GPSStatus
+  gpsAccuracy: number | null
   onStart: () => void
   onPause: () => void
   onResume: () => void
@@ -26,9 +29,11 @@ function getTheme(isDark: boolean) {
 }
 
 export default function CyclingControls({
-  phase, gpsReady, onStart, onPause, onResume, onLap, onFinish, isDark = false,
+  phase, gpsStatus, gpsAccuracy, onStart, onPause, onResume, onLap, onFinish, isDark = false,
 }: Props) {
   const t = getTheme(isDark)
+  const canStart   = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
+  const gpsLoading = gpsStatus === GPSStatus.requesting || gpsStatus === GPSStatus.acquiring
 
   return (
     <div style={{
@@ -38,44 +43,56 @@ export default function CyclingControls({
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
       borderTop: `1px solid ${t.separator}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      gap: 32,
-      padding: '14px 24px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '10px 24px',
       paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
     }}>
       {phase === 'ready' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <button
-            onClick={onStart}
-            disabled={!gpsReady}
-            aria-label="Démarrer"
-            style={{
-              width: 72, height: 72, borderRadius: '50%',
-              border: 'none', cursor: gpsReady ? 'pointer' : 'not-allowed',
-              background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-              boxShadow: gpsReady ? '0 4px 20px rgba(6,182,212,0.40)' : 'none',
-              opacity: gpsReady ? 1 : 0.5,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'transform 0.12s',
-            }}
-            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)' }}
-            onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </button>
-          <p style={{
-            margin: 0, fontSize: 11, fontWeight: 700,
-            color: gpsReady ? '#06B6D4' : t.label, letterSpacing: '0.06em',
-          }}>
-            {gpsReady ? 'DÉMARRER' : 'EN ATTENTE DU GPS…'}
-          </p>
-        </div>
+        <>
+          <GPSIndicator status={gpsStatus} accuracy={gpsAccuracy} isDark={isDark} />
+          <div style={{ height: 8 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={canStart ? onStart : undefined}
+              disabled={!canStart && !gpsLoading}
+              aria-label="Démarrer"
+              style={{
+                width: 72, height: 72, borderRadius: '50%',
+                border: 'none', cursor: canStart ? 'pointer' : 'not-allowed',
+                background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+                boxShadow: canStart ? '0 4px 20px rgba(6,182,212,0.40)' : 'none',
+                opacity: canStart || gpsLoading ? 1 : 0.5,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'transform 0.12s, opacity 0.2s',
+              }}
+              onMouseDown={e => { if (canStart) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)' }}
+              onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
+            >
+              {gpsLoading ? (
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  border: '3px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#fff',
+                  animation: 'spin 0.7s linear infinite',
+                }} />
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              )}
+            </button>
+            <p style={{
+              margin: 0, fontSize: 11, fontWeight: 700,
+              color: canStart ? '#06B6D4' : t.label, letterSpacing: '0.06em',
+            }}>
+              {canStart ? 'DÉMARRER' : gpsLoading ? 'ACQUISITION…' : 'GPS REQUIS'}
+            </p>
+          </div>
+        </>
       )}
 
       {phase === 'running' && (
-        <>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <button
               onClick={onLap}
@@ -108,11 +125,11 @@ export default function CyclingControls({
             </svg>
           </button>
           <div style={{ width: 52 }} />
-        </>
+        </div>
       )}
 
       {phase === 'paused' && (
-        <>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <button
               onClick={onFinish}
@@ -146,7 +163,7 @@ export default function CyclingControls({
             </svg>
           </button>
           <div style={{ width: 52 }} />
-        </>
+        </div>
       )}
     </div>
   )

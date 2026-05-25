@@ -7,6 +7,7 @@ interface Props {
   isDark: boolean
   distanceM: number
   trackPoints: { lat: number; lng: number }[]
+  currentPosition?: [number, number] | null
 }
 
 function getTheme(isDark: boolean) {
@@ -43,7 +44,7 @@ function BigCell({ label, value, unit, t }: {
   )
 }
 
-export default function CyclingPage2({ isDark, distanceM, trackPoints }: Props) {
+export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition }: Props) {
   const t = getTheme(isDark)
   const distanceKm = (distanceM / 1000).toFixed(2)
 
@@ -62,7 +63,7 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints }: Props) 
           borderRadius: 16, overflow: 'hidden',
           border: `1px solid ${t.separator}`,
         }}>
-          <MapBackground trackPoints={trackPoints} />
+          <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
         </div>
       </div>
 

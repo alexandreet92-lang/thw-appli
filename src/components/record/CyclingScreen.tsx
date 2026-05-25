@@ -1,9 +1,11 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useGPSTracking } from '@/hooks/useGPSTracking'
+import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
+import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
+import GPSPermissionScreen from './GPSPermissionScreen'
 import CyclingPage2 from './CyclingPage2'
 import CyclingPageData from './CyclingPageData'
 import CyclingSettings from './CyclingSettings'
@@ -43,7 +45,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const { settings } = useCyclingSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const gps = useGPSTracking(phase === 'running')
+  const { gps, resetTracking } = useGPSTracking(true)
+  useWakeLock(phase !== 'ready')
   const stopwatch = useStopwatch(phase === 'running')
 
   // Safety: reset pageIndex if pages shrink
@@ -76,7 +79,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
   }
 
-  const handleStart  = () => { setStartedAt(Date.now()); setPhase('running') }
+  const handleStart  = () => { resetTracking(); setStartedAt(Date.now()); setPhase('running') }
   const handlePause  = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleLap = () => {
@@ -133,6 +136,10 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg      = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
   const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
+  const currentPosition: [number, number] | null =
+    gps.currentLat != null && gps.currentLng != null
+      ? [gps.currentLat, gps.currentLng]
+      : null
 
   return createPortal(
     <div style={{
@@ -205,6 +212,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
                   isDark={isDark}
                   distanceM={gps.distance}
                   trackPoints={trackPoints}
+                  currentPosition={currentPosition}
                 />
               )
             }
@@ -246,7 +254,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
       {/* Controls (position fixed bottom, z-9999 — defini dans le composant) */}
       <CyclingControls
         phase={phase}
-        gpsReady={gps.available}
+        gpsStatus={gps.status}
+        gpsAccuracy={gps.accuracy}
         onStart={handleStart}
         onPause={handlePause}
         onResume={handleResume}
@@ -261,6 +270,10 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onClose={() => setSettingsOpen(false)}
         isDark={isDark}
       />
+
+      {gps.status === GPSStatus.denied && (
+        <GPSPermissionScreen isDark={isDark} />
+      )}
     </div>,
     document.body
   )

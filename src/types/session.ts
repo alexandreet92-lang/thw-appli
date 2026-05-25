@@ -24,4 +24,5 @@ export interface FinishedSession {
   training_types?: string[]
   rpe?: number
   comment?: string
+  sport?: string
 }

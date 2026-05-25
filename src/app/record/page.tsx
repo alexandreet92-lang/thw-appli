@@ -7,8 +7,9 @@ import Toast from '@/components/record/Toast'
 
 const MapBackground  = dynamic(() => import('@/components/record/MapBackground'),  { ssr: false })
 const CyclingScreen  = dynamic(() => import('@/components/record/CyclingScreen'),  { ssr: false })
+const RunningScreen  = dynamic(() => import('@/components/record/RunningScreen'),  { ssr: false })
 
-type View = 'home' | 'cycling'
+type View = 'home' | 'cycling' | 'running'
 
 export default function RecordPage() {
   const router = useRouter()
@@ -24,6 +25,7 @@ export default function RecordPage() {
 
   const handleStart = () => {
     if (sport === 'cycling') setView('cycling')
+    else if (sport === 'running') setView('running')
     else setToast('Bientôt disponible')
   }
 
@@ -31,6 +33,18 @@ export default function RecordPage() {
     return (
       <>
         <CyclingScreen
+          onExit={() => setView('home')}
+          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+        />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
+  if (view === 'running') {
+    return (
+      <>
+        <RunningScreen
           onExit={() => setView('home')}
           onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
         />

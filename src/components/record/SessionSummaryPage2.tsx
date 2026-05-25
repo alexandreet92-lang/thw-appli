@@ -1,5 +1,6 @@
 'use client'
 import type { FinishedSession } from '@/types/session'
+import { formatPace, speedToMinKm } from '@/types/running'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string }
 
@@ -25,7 +26,29 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
     ? Math.min(...session.gps_points.map(p => p.altitude ?? Infinity).filter(a => a !== Infinity))
     : null
 
-  const stats: { label: string; value: string; unit: string; dim?: boolean }[] = [
+  const isRunning = session.sport === 'running'
+
+  // Avg pace for running
+  const avgSpeedKmh = session.duration_seconds > 0 ? (session.distance_m / 1000) / (session.duration_seconds / 3600) : 0
+  const avgPaceVal  = speedToMinKm(avgSpeedKmh)
+  const maxPaceVal  = speedToMinKm(session.max_speed_kmh)
+
+  const runningStats: { label: string; value: string; unit: string; dim?: boolean }[] = [
+    { label: 'ALLURE MOY.',   value: avgPaceVal != null ? formatPace(avgPaceVal) : '--',   unit: 'min/km' },
+    { label: 'ALLURE MAX',    value: maxPaceVal != null ? formatPace(maxPaceVal) : '--',   unit: 'min/km' },
+    { label: 'VAP MOYENNE',   value: '--',                                                  unit: 'min/km', dim: true },
+    { label: 'FC MOYENNE',    value: '--',                                                  unit: 'bpm',    dim: true },
+    { label: 'CADENCE MOY.',  value: '--',                                                  unit: 'spm',    dim: true },
+    { label: 'VO2MAX EST.',   value: '--',                                                  unit: 'ml/kg',  dim: true },
+    { label: 'CALORIES',      value: String(session.calories),                             unit: 'kcal' },
+    { label: 'VITESSE MAX',   value: session.max_speed_kmh.toFixed(1),                    unit: 'km/h' },
+    { label: 'ALT. MAX',      value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
+    { label: 'ALT. MIN',      value: minAlt != null && isFinite(minAlt) ? String(Math.round(minAlt)) : '--', unit: 'm' },
+    { label: 'TEMPS MOV.',    value: formatDuration(session.duration_seconds),             unit: '' },
+    { label: 'FOULÉE',        value: '--',                                                  unit: 'm',      dim: true },
+  ]
+
+  const cyclingStats: { label: string; value: string; unit: string; dim?: boolean }[] = [
     { label: 'WATTS MOY.',   value: '--',                                          unit: 'w',    dim: true },
     { label: 'WATTS NOR.',   value: '--',                                          unit: 'w',    dim: true },
     { label: 'FC MOYENNE',   value: '--',                                          unit: 'bpm',  dim: true },
@@ -39,6 +62,8 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
     { label: 'TEMPS MOV.',   value: formatDuration(session.duration_seconds),     unit: '' },
     { label: 'CADENCE',      value: '--',                                          unit: 'rpm',  dim: true },
   ]
+
+  const stats = isRunning ? runningStats : cyclingStats
 
   const hasDimStats = stats.some(s => s.dim)
 

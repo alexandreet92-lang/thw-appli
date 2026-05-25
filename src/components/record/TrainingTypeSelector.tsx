@@ -11,19 +11,22 @@ export const CYCLING_TYPES: TrainingType[] = [
   { id: 'recup',   label: 'Récup',   desc: 'Récupération active' },
 ]
 
+export type TrainingType = { id: string; label: string; desc: string }
+
 interface Props {
   selected: string[]
   onChange: (ids: string[]) => void
   isDark?: boolean
+  types?: TrainingType[]
 }
 
-export default function TrainingTypeSelector({ selected, onChange, isDark = false }: Props) {
+export default function TrainingTypeSelector({ selected, onChange, isDark = false, types = CYCLING_TYPES }: Props) {
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id])
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      {CYCLING_TYPES.map(t => {
+      {types.map(t => {
         const active = selected.includes(t.id)
         return (
           <button

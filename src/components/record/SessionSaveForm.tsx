@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import RPESlider from './RPESlider'
 import TrainingTypeSelector from './TrainingTypeSelector'
+import { RUNNING_TYPES } from '@/types/running'
+import { CYCLING_TYPES } from './TrainingTypeSelector'
 
 export interface SessionFormData {
   title: string
@@ -23,7 +25,7 @@ function getAutoTitle(sport: string, startedAt: string): string {
   const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
   const num = d.getDate()
   const month = d.toLocaleDateString('fr-FR', { month: 'long' })
-  const label = sport === 'cycling' ? 'Sortie vélo' : 'Running'
+  const label = sport === 'running' ? 'Sortie running' : 'Sortie vélo'
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   return `${label} · ${cap(day)} ${num} ${month}`
 }
@@ -122,7 +124,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
         {/* Type d'entraînement */}
         <div style={{ marginBottom: 28 }}>
           <p style={{ ...LABEL_STYLE, color: t.muted }}>Type d'entraînement</p>
-          <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} />
+          <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : CYCLING_TYPES} />
         </div>
 
         {/* RPE */}

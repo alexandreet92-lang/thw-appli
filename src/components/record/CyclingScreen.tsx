@@ -11,15 +11,30 @@ import CyclingPage2 from './CyclingPage2'
 import CyclingPageData from './CyclingPageData'
 import CyclingSettings from './CyclingSettings'
 import SessionSummary from './SessionSummary'
+import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
 import type { FinishedSession, SessionLap } from '@/types/session'
+import type { GPSPoint } from '@/hooks/useGPSTracking'
 
 interface Props {
   onExit: () => void
   onFinished: () => void
+}
+
+interface SessionSnap {
+  startedAtISO: string
+  endedAtISO: string
+  durationSec: number
+  distM: number
+  elevM: number
+  avgSpeedKmh: number
+  maxSpeedKmh: number
+  calories: number
+  gpsPts: GPSPoint[]
+  lapsSnap: SessionLap[]
 }
 
 export default function CyclingScreen({ onExit, onFinished }: Props) {
@@ -43,9 +58,10 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [currentLapDistance, setCurrentLapDistance] = useState(0)
   const [lapStartDistance, setLapStartDistance] = useState(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
+  const snapRef = useRef<SessionSnap | null>(null)
 
   const { pages } = useCyclingConfig('cycling')
   const { settings } = useCyclingSettings()
@@ -109,8 +125,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     setLapStartDistance(gps.distance)
   }
 
-  const handleFinishSession = async () => {
-    stopWatching()
+  // TERMINER pressed → snapshot GPS state, stop tracking, show form
+  const handleOpenSaveForm = () => {
     const endedAt = new Date()
     const durationSec = stopwatch.seconds
     const distM = Math.round(gps.distance)
@@ -121,13 +137,32 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     const maxSpeedKmh = parseFloat(gps.maxSpeed.toFixed(1))
     const calories = Math.round((durationSec / 3600) * 600)
     const startedAtISO = startedAt ? new Date(startedAt).toISOString() : endedAt.toISOString()
-    const endedAtISO = endedAt.toISOString()
-    const gpsPts = gps.points
-    const lapsSnap = laps
+    snapRef.current = {
+      startedAtISO,
+      endedAtISO: endedAt.toISOString(),
+      durationSec,
+      distM,
+      elevM,
+      avgSpeedKmh,
+      maxSpeedKmh,
+      calories,
+      gpsPts: [...gps.points],
+      lapsSnap: [...laps],
+    }
+    stopWatching()
+    setPhase('paused')
+    setShowSaveForm(true)
+  }
 
-    setSaving(true)
+  const handleBackFromForm = () => {
+    setShowSaveForm(false)
+  }
+
+  const handleSaveSession = async (formData: SessionFormData) => {
+    const snap = snapRef.current
+    if (!snap) return
+
     let savedId: string | null = null
-
     try {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
@@ -135,53 +170,59 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         const { data } = await sb.from('workout_sessions').insert({
           user_id: user.id,
           sport: 'cycling',
-          started_at: startedAtISO,
-          ended_at: endedAtISO,
-          duration_seconds: durationSec,
-          distance_m: distM,
-          elevation_gain_m: elevM,
-          avg_speed_kmh: avgSpeedKmh,
-          max_speed_kmh: maxSpeedKmh,
-          gps_track: gpsPts,
-          laps: lapsSnap,
-          calories,
+          started_at: snap.startedAtISO,
+          ended_at: snap.endedAtISO,
+          duration_seconds: snap.durationSec,
+          distance_m: snap.distM,
+          elevation_gain_m: snap.elevM,
+          avg_speed_kmh: snap.avgSpeedKmh,
+          max_speed_kmh: snap.maxSpeedKmh,
+          gps_track: snap.gpsPts,
+          laps: snap.lapsSnap,
+          calories: snap.calories,
           status: 'completed',
+          title: formData.title,
+          training_types: formData.trainingTypes,
+          rpe: formData.rpe,
+          comment: formData.comment,
         }).select('id').single()
         savedId = data?.id ?? null
 
-        // Mirror to activities table (for training history page)
         await sb.from('activities').insert({
           user_id: user.id,
           sport_type: 'bike',
-          title: 'Sortie vélo',
-          started_at: startedAtISO,
-          distance_m: distM,
-          moving_time_s: durationSec,
-          elapsed_time_s: durationSec,
-          elevation_gain_m: elevM,
-          avg_speed_ms: durationSec > 0 ? gps.distance / durationSec : 0,
-          max_speed_ms: gps.maxSpeed / 3.6,
-          calories,
+          title: formData.title,
+          started_at: snap.startedAtISO,
+          distance_m: snap.distM,
+          moving_time_s: snap.durationSec,
+          elapsed_time_s: snap.durationSec,
+          elevation_gain_m: snap.elevM,
+          avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0,
+          max_speed_ms: snap.maxSpeedKmh / 3.6,
+          calories: snap.calories,
         })
       }
     } catch (e) {
       console.error('[record] save error:', e)
-    } finally {
-      setSaving(false)
     }
 
+    setShowSaveForm(false)
     setFinishedSession({
       id: savedId,
-      started_at: startedAtISO,
-      ended_at: endedAtISO,
-      duration_seconds: durationSec,
-      distance_m: distM,
-      elevation_gain_m: elevM,
-      avg_speed_kmh: avgSpeedKmh,
-      max_speed_kmh: maxSpeedKmh,
-      calories,
-      gps_points: gpsPts,
-      laps: lapsSnap,
+      started_at: snap.startedAtISO,
+      ended_at: snap.endedAtISO,
+      duration_seconds: snap.durationSec,
+      distance_m: snap.distM,
+      elevation_gain_m: snap.elevM,
+      avg_speed_kmh: snap.avgSpeedKmh,
+      max_speed_kmh: snap.maxSpeedKmh,
+      calories: snap.calories,
+      gps_points: snap.gpsPts,
+      laps: snap.lapsSnap,
+      title: formData.title,
+      training_types: formData.trainingTypes,
+      rpe: formData.rpe,
+      comment: formData.comment,
     })
   }
 
@@ -198,6 +239,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     gps.currentLat != null && gps.currentLng != null
       ? [gps.currentLat, gps.currentLng]
       : null
+
+  const startedAtISO = startedAt ? new Date(startedAt).toISOString() : new Date().toISOString()
 
   return createPortal(
     <div style={{
@@ -226,7 +269,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
           position: 'absolute', left: '50%', transform: 'translateX(-50%)',
           fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif',
         }}>
-          {saving ? 'Enregistrement…' : 'Vélo'}
+          Vélo
         </span>
         <button onClick={() => setSettingsOpen(true)} aria-label="Réglages" style={{
           marginLeft: 'auto',
@@ -306,7 +349,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         onResume={handleResume}
         onLap={handleLap}
         onFinish={handleStop}
-        onConfirmFinish={handleFinishSession}
+        onConfirmFinish={handleOpenSaveForm}
         isDark={isDark}
       />
 
@@ -324,6 +367,16 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         <GPSPrePermissionScreen
           onAuthorize={handleGpsAuthorize}
           onDismiss={handleGpsDismiss}
+        />
+      )}
+
+      {showSaveForm && (
+        <SessionSaveForm
+          sport="cycling"
+          startedAt={startedAtISO}
+          onBack={handleBackFromForm}
+          onSave={handleSaveSession}
+          isDark={isDark}
         />
       )}
 

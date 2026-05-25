@@ -20,4 +20,8 @@ export interface FinishedSession {
   calories: number
   gps_points: GPSPoint[]
   laps: SessionLap[]
+  title?: string
+  training_types?: string[]
+  rpe?: number
+  comment?: string
 }

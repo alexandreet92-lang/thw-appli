@@ -109,7 +109,7 @@ function SessionSummaryInner({ session, isDark, onClose }: Props) {
             {formatDate(session.started_at)} · {formatTime(session.started_at)}
           </p>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: t.text, margin: '2px 0 0', fontFamily: 'Syne, sans-serif' }}>
-            Sortie vélo
+            {session.title ?? 'Sortie vélo'}
           </h2>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>

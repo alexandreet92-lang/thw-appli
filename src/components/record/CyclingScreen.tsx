@@ -6,6 +6,7 @@ import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
 import GPSPermissionScreen from './GPSPermissionScreen'
+import GPSPrePermissionScreen from './GPSPrePermissionScreen'
 import CyclingPage2 from './CyclingPage2'
 import CyclingPageData from './CyclingPageData'
 import CyclingSettings from './CyclingSettings'
@@ -29,7 +30,17 @@ interface Props {
 
 export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [gpsEnabled, setGpsEnabled] = useState(false)
+  const [showPrePermission, setShowPrePermission] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    if (localStorage.getItem('gps_permission_explained')) {
+      setGpsEnabled(true)
+    } else {
+      setShowPrePermission(true)
+    }
+  }, [])
 
   const [phase, setPhase] = useState<CyclingPhase>('ready')
   const [pageIndex, setPageIndex] = useState(0)
@@ -45,7 +56,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const { settings } = useCyclingSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const { gps, resetTracking } = useGPSTracking(true)
+  const { gps, resetTracking } = useGPSTracking(gpsEnabled)
   useWakeLock(phase !== 'ready')
   const stopwatch = useStopwatch(phase === 'running')
 
@@ -78,6 +89,13 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     if (dy < -50) setPageIndex(i => Math.min(pages.length - 1, i + 1))
     else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
   }
+
+  const handleGpsAuthorize = () => {
+    localStorage.setItem('gps_permission_explained', 'true')
+    setShowPrePermission(false)
+    setGpsEnabled(true)
+  }
+  const handleGpsDismiss = () => setShowPrePermission(false)
 
   const handleStart  = () => { resetTracking(); setStartedAt(Date.now()); setPhase('running') }
   const handlePause  = () => setPhase('paused')
@@ -273,6 +291,13 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
 
       {gps.status === GPSStatus.denied && (
         <GPSPermissionScreen isDark={isDark} />
+      )}
+
+      {showPrePermission && (
+        <GPSPrePermissionScreen
+          onAuthorize={handleGpsAuthorize}
+          onDismiss={handleGpsDismiss}
+        />
       )}
     </div>,
     document.body

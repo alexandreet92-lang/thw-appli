@@ -163,7 +163,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
   if (!open) return null
 
   const ACCENT = '#06B6D4'
-  const handleClose = () => { setClosing(true); setTimeout(onClose, 210) }
+  const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
   const filteredCats = SPORT_CATEGORIES.map(c => ({
     ...c,
     sports: c.sports.filter(s => s.label.toLowerCase().includes(search.toLowerCase())),

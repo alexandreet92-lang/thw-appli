@@ -17,7 +17,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
   const [search, setSearch] = useState('')
   useEffect(() => { if (open) { setClosing(false); setSearch('') } }, [open])
   if (!open) return null
-  const handleClose = () => { setClosing(true); setTimeout(onClose, 210) }
+  const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
 
   const categories = Object.entries(FIELD_CATEGORIES) as [FieldCategory, string][]
 

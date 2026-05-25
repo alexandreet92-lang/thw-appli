@@ -1,6 +1,7 @@
 'use client'
-import { ALL_FIELDS, type DataPage } from '@/types/cycling'
+import { ALL_FIELDS, FONT_OPTIONS, type DataPage } from '@/types/cycling'
 import { useRef } from 'react'
+import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string; cardBg: string }
 
@@ -29,7 +30,9 @@ const getMockValue = (fieldId: string): string => {
 }
 
 export default function PagePreview({ page, theme, selectedField, onFieldClick, onFieldDoubleClick, dataFontFamily }: Props) {
-  const fontFamily = dataFontFamily ?? 'DM Mono, monospace'
+  const { settings } = useCyclingSettings()
+  const settingsFont = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
+  const fontFamily = dataFontFamily ?? settingsFont
   const lastTap = useRef<Record<string, number>>({})
 
   const handleCellTap = (id: string) => {

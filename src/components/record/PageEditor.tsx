@@ -148,11 +148,11 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px 8px', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${t.separator}`, flexShrink: 0 }}>
         <button onClick={handleClose} aria-label="Retour"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.text, padding: 4 }}>
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <path d="M14 5l-7 6 7 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.text, padding: 4, flexShrink: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
         </button>
         <input
@@ -160,57 +160,55 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
           onChange={e => updateName(e.target.value)}
           maxLength={24}
           style={{
-            fontSize: 18, fontWeight: 700, background: 'none', border: 'none',
+            flex: 1, fontSize: 17, fontWeight: 700, background: 'none', border: 'none',
             borderBottom: `1px solid ${t.separator}`, color: t.text,
-            flex: 1, outline: 'none', padding: '2px 4px', fontFamily: 'Syne, sans-serif',
+            outline: 'none', padding: '2px 4px', fontFamily: 'Syne, sans-serif', minWidth: 0,
           }}
         />
-        {saving && (
-          <div style={{
-            width: 14, height: 14, borderRadius: '50%',
-            border: '2px solid rgba(6,182,212,0.25)',
-            borderTopColor: '#06B6D4',
-            animation: 'spin 0.7s linear infinite',
-            flexShrink: 0,
-          }} />
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {saving && (
+            <div style={{
+              width: 12, height: 12, borderRadius: '50%',
+              border: '2px solid rgba(6,182,212,0.25)',
+              borderTopColor: '#06B6D4',
+              animation: 'spin 0.7s linear infinite',
+            }} />
+          )}
           <button
             onClick={removeLastField}
             disabled={page.fields.length <= 1}
             style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: page.fields.length <= 1 ? 'rgba(0,0,0,0.05)' : 'rgba(239,68,68,0.12)',
-              border: `1.5px solid ${page.fields.length <= 1 ? 'rgba(0,0,0,0.1)' : 'rgba(239,68,68,0.3)'}`,
-              color: page.fields.length <= 1 ? '#CCC' : '#EF4444',
+              width: 32, height: 32, borderRadius: 8, padding: 0,
+              background: page.fields.length <= 1 ? t.cardBg : 'rgba(239,68,68,0.12)',
+              border: `1.5px solid ${page.fields.length <= 1 ? t.separator : 'rgba(239,68,68,0.3)'}`,
+              color: page.fields.length <= 1 ? t.dim : '#EF4444',
               cursor: page.fields.length <= 1 ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 150ms',
             }}
           >
-            <svg width="14" height="2" viewBox="0 0 14 2" fill="none">
-              <path d="M1 1h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg width="12" height="2" viewBox="0 0 12 2" fill="none">
+              <path d="M1 1h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
-          <div style={{ fontSize: 12, fontWeight: 600, minWidth: 48, textAlign: 'center', lineHeight: 1 }}>
-            <span style={{ fontSize: 15, color: t.text }}>{page.fields.length}</span>
-            <span style={{ fontSize: 11, color: t.dim }}>/{maxForPage}</span>
-          </div>
+          <span style={{ fontSize: 12, color: t.dim, minWidth: 32, textAlign: 'center', lineHeight: 1 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>{page.fields.length}</span>/{maxForPage}
+          </span>
           <button
             onClick={addFieldSlot}
             disabled={page.fields.length >= maxForPage}
             style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: page.fields.length >= maxForPage ? 'rgba(0,0,0,0.05)' : 'rgba(6,182,212,0.12)',
-              border: `1.5px solid ${page.fields.length >= maxForPage ? 'rgba(0,0,0,0.1)' : 'rgba(6,182,212,0.35)'}`,
-              color: page.fields.length >= maxForPage ? '#CCC' : '#06B6D4',
+              width: 32, height: 32, borderRadius: 8, padding: 0,
+              background: page.fields.length >= maxForPage ? t.cardBg : 'rgba(6,182,212,0.12)',
+              border: `1.5px solid ${page.fields.length >= maxForPage ? t.separator : 'rgba(6,182,212,0.35)'}`,
+              color: page.fields.length >= maxForPage ? t.dim : '#06B6D4',
               cursor: page.fields.length >= maxForPage ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 150ms',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
         </div>

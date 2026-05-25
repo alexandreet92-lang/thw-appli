@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { fieldById, type DataPage } from '@/types/cycling'
@@ -7,11 +7,79 @@ import PageEditor from './PageEditor'
 import CyclingSettingsNav from './CyclingSettingsNav'
 import CyclingSettingsTraining from './CyclingSettingsTraining'
 import CyclingSettingsParams from './CyclingSettingsParams'
+import { ToastProvider, useToast } from '@/components/ui/Toast'
 
 interface Props {
   open: boolean
   onClose: () => void
   isDark: boolean
+}
+
+const SECTION_ICONS: Record<string, ReactElement> = {
+  pages: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="1" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+      <rect x="10" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+      <rect x="1" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+      <rect x="10" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+    </svg>
+  ),
+  navigation: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M9 1.5v3M9 13.5v3M1.5 9h3M13.5 9h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="9" cy="9" r="2" fill="currentColor"/>
+    </svg>
+  ),
+  training: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M1 9h2M15 9h2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+      <rect x="3" y="6.5" width="2.5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4"/>
+      <rect x="12.5" y="6.5" width="2.5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M5.5 9h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  ),
+  alerts: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M9 2C5.5 2 3 5 3 8v4l-1.5 2h15L15 12V8c0-3-2.5-6-6-6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M7 14a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  ),
+  sensors: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M2 9a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M5 9a4 4 0 0 1 8 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="9" cy="9" r="1.5" fill="currentColor"/>
+    </svg>
+  ),
+  display: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="9" cy="9" r="3" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.2 3.2l1.4 1.4M13.4 13.4l1.4 1.4M3.2 14.8l1.4-1.4M13.4 4.6l1.4-1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  ),
+  athlete: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="9" cy="5" r="3" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  ),
+  recording: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.4"/>
+      <circle cx="9" cy="9" r="3" fill="currentColor"/>
+    </svg>
+  ),
+  units: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M3 15L15 3M6 3h9v9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  postride: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M9 1l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    </svg>
+  ),
 }
 
 function getTheme(isDark: boolean) {
@@ -38,10 +106,20 @@ const SECTIONS = [
   { id: 'postride',   label: 'Après la séance',    desc: 'Upload Strava, résumé' },
 ]
 
-export default function CyclingSettings({ open, onClose, isDark }: Props) {
+export default function CyclingSettings(props: Props) {
+  if (!props.open) return null
+  return (
+    <ToastProvider>
+      <CyclingSettingsInner {...props} />
+    </ToastProvider>
+  )
+}
+
+function CyclingSettingsInner({ open, onClose, isDark }: Props) {
+  const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, setPages, savePages } = useCyclingConfig()
-  const { settings, updateSetting } = useCyclingSettings()
+  const { settings, updateSetting } = useCyclingSettings(() => showToast('Enregistré'))
   const [closing, setClosing] = useState(false)
   const [editing, setEditing] = useState<DataPage | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
@@ -61,8 +139,6 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
   }, [menuOpenId])
-
-  if (!open) return null
 
   const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
 
@@ -210,7 +286,7 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
           {/* Main tiles list */}
           <div style={{ height: '100%', overflowY: 'auto', paddingBottom: 24 }}>
-            {SECTIONS.map((sec, i) => (
+            {SECTIONS.map(sec => (
               <button
                 key={sec.id}
                 onClick={() => openSection(sec.id)}
@@ -224,10 +300,11 @@ export default function CyclingSettings({ open, onClose, isDark }: Props) {
                 <div style={{
                   width: 36, height: 36, borderRadius: 10,
                   background: 'rgba(6,182,212,0.10)',
+                  color: '#06B6D4',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, fontSize: 17,
+                  flexShrink: 0,
                 }}>
-                  {['📄','🗺','🏋️','🔔','📡','☀️','👤','⏺','📏','🏁'][i]}
+                  {SECTION_ICONS[sec.id]}
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 15, fontWeight: 500, color: t.text, margin: 0 }}>{sec.label}</p>

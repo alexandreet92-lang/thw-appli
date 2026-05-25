@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { DataFont } from '@/types/cycling'
 
@@ -23,52 +23,73 @@ export const DEFAULT_CYCLING_SETTINGS: CyclingSettings = {
   postRide: { autoStrava: false, showSummary: true },
 }
 
-function setNested<T extends object>(obj: T, path: string, value: unknown): T {
-  const [head, ...rest] = path.split('.')
-  if (rest.length === 0) return { ...obj, [head]: value }
-  return { ...obj, [head]: setNested((obj as Record<string, unknown>)[head] as object, rest.join('.'), value) }
+function deepSet<T>(obj: T, path: string, value: unknown): T {
+  const result = JSON.parse(JSON.stringify(obj)) as Record<string, unknown>
+  const keys = path.split('.')
+  let current = result
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (!current[keys[i]]) current[keys[i]] = {}
+    current = current[keys[i]] as Record<string, unknown>
+  }
+  current[keys[keys.length - 1]] = value
+  return result as T
 }
 
-export function useCyclingSettings() {
+export function useCyclingSettings(onSaved?: () => void) {
+  const supabase = createClient()
   const [settings, setSettings] = useState<CyclingSettings>(DEFAULT_CYCLING_SETTINGS)
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const settingsRef = useRef(settings)
-  useEffect(() => { settingsRef.current = settings }, [settings])
+  const latestRef = useRef<CyclingSettings>(DEFAULT_CYCLING_SETTINGS)
+  const onSavedRef = useRef(onSaved)
+  useEffect(() => { onSavedRef.current = onSaved }, [onSaved])
 
   useEffect(() => {
     void (async () => {
       try {
-        const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        const { data } = await sb.from('cycling_settings').select('settings').eq('user_id', user.id).maybeSingle()
+        const { data } = await supabase
+          .from('cycling_settings').select('settings').eq('user_id', user.id).maybeSingle()
         if (data?.settings) {
-          setSettings(data.settings as CyclingSettings)
+          const merged = { ...DEFAULT_CYCLING_SETTINGS, ...(data.settings as Partial<CyclingSettings>) } as CyclingSettings
+          setSettings(merged)
+          latestRef.current = merged
         } else {
-          await sb.from('cycling_settings').upsert({ user_id: user.id, settings: DEFAULT_CYCLING_SETTINGS }, { onConflict: 'user_id' })
+          await supabase.from('cycling_settings').upsert(
+            { user_id: user.id, settings: DEFAULT_CYCLING_SETTINGS },
+            { onConflict: 'user_id' }
+          )
         }
-      } catch { /* table absente — fallback */ }
-      finally { setLoading(false) }
+      } catch { /* table absent — fallback */ }
+      finally { setLoaded(true) }
     })()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const persistSettings = useCallback(async (next: CyclingSettings) => {
+    setSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('cycling_settings').upsert(
+        { user_id: user.id, settings: next, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      )
+      if (!error) onSavedRef.current?.()
+    } catch (e) { console.error('[useCyclingSettings]', e) }
+    finally { setSaving(false) }
+  }, [supabase])
 
   const updateSetting = useCallback((path: string, value: unknown) => {
     setSettings(prev => {
-      const next = setNested(prev, path, value)
-      settingsRef.current = next
+      const next = deepSet(prev, path, value)
+      latestRef.current = next
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      saveTimer.current = setTimeout(() => { void persistSettings(latestRef.current) }, 500)
       return next
     })
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      try {
-        const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
-        await sb.from('cycling_settings').upsert({ user_id: user.id, settings: settingsRef.current }, { onConflict: 'user_id' })
-      } catch (e) { console.error('[useCyclingSettings]', e) }
-    }, 500)
-  }, [])
+  }, [persistSettings])
 
-  return { settings, updateSetting, loading }
+  return { settings, updateSetting, saving, loaded }
 }

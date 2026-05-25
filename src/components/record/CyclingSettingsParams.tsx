@@ -10,6 +10,7 @@ import { NumberInput } from './settings/NumberInput'
 import type { ThemeColors } from './settings/types'
 import type { CyclingSettings } from '@/hooks/useCyclingSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
+import { useStravaConnection } from '@/hooks/useStravaConnection'
 
 interface Props {
   settings: CyclingSettings
@@ -38,15 +39,8 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
   const un = settings.units
   const po = settings.postRide
 
-  const [stravaConnected, setStravaConnected] = useState(false)
+  const { stravaConnected } = useStravaConnection()
   const [bikeZones, setBikeZones] = useState<BikeZones | null>(null)
-
-  useEffect(() => {
-    fetch('/api/strava/connected')
-      .then(r => r.json())
-      .then(d => setStravaConnected(!!d.connected))
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -229,9 +223,14 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
       <SettingsRow theme={theme} label="Upload automatique Strava" description="Envoie la séance sur Strava dès qu'elle est terminée"
         disabled={!stravaConnected}
         right={<Toggle theme={theme} value={po.autoStrava} onChange={v => updateSetting('postRide.autoStrava', v)} disabled={!stravaConnected} />} />
-      {!stravaConnected && (
+      {stravaConnected ? (
+        <div style={{ padding: '4px 16px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+          <span style={{ fontSize: 12, color: '#10B981' }}>Strava connecté</span>
+        </div>
+      ) : (
         <p style={{ fontSize: 12, color: '#8C8C8C', padding: '4px 16px 8px', margin: 0 }}>
-          <a href="/connections" style={{ color: '#06B6D4', textDecoration: 'none' }}>Connecte Strava</a> dans la page Connexions pour activer cette option.
+          <a href="/connections" style={{ color: '#06B6D4', textDecoration: 'none' }}>Connecte Strava</a> dans la page Connexions pour activer.
         </p>
       )}
       <SettingsRow theme={theme} label="Résumé en fin de séance" description="Affiche le résumé détaillé automatiquement" last

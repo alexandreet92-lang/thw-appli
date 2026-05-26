@@ -33,7 +33,16 @@ export default function RecordPage() {
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [launcherOpen, setLauncherOpen] = useState(false)
+  const [activeLauncherSport, setActiveLauncherSport] = useState<'gym' | 'hyrox' | null>(null)
+
+  const openLauncher = (sport: 'gym' | 'hyrox') => {
+    if (activeLauncherSport && activeLauncherSport !== sport) {
+      setActiveLauncherSport(null)
+      setTimeout(() => setActiveLauncherSport(sport), 280)
+    } else {
+      setActiveLauncherSport(sport)
+    }
+  }
   const [freeModeOpen, setFreeModeOpen] = useState(false)
   const [freeModesSport, setFreeModesSport] = useState<'gym' | 'hyrox'>('gym')
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
@@ -55,7 +64,7 @@ export default function RecordPage() {
     else if (sport === 'mtb')     setView('mtb')
     else if (sport === 'swim')    setView('swimming')
     else if (sport === 'rowing')  setView('rowing')
-    else if (sport === 'strength' || sport === 'hyrox') setLauncherOpen(true)
+    else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
     else setToast('Bientôt disponible')
   }
 
@@ -127,7 +136,7 @@ export default function RecordPage() {
         sport={sport === 'strength' ? 'gym' : 'hyrox'}
         exercises={workoutExercises}
         planTitle={workoutTitle}
-        onClose={() => { setView('home'); setLauncherOpen(false) }}
+        onClose={() => { setView('home'); setActiveLauncherSport(null) }}
         isDark={isDark}
       />
     )
@@ -284,13 +293,14 @@ export default function RecordPage() {
         />
       )}
 
-      {(sport === 'strength' || sport === 'hyrox') && (
+      {activeLauncherSport && (
         <WorkoutLauncher
-          sport={sport === 'strength' ? 'gym' : 'hyrox'}
-          open={launcherOpen}
-          onClose={() => setLauncherOpen(false)}
-          onStart={(exs, title) => { setWorkoutExercises(exs); setWorkoutTitle(title); setLauncherOpen(false); setView('workout') }}
-          onFreeMode={(s) => { setFreeModesSport(s); setLauncherOpen(false); setFreeModeOpen(true) }}
+          key={activeLauncherSport}
+          sport={activeLauncherSport}
+          open={true}
+          onClose={() => setActiveLauncherSport(null)}
+          onStart={(exs, title) => { setWorkoutExercises(exs); setWorkoutTitle(title); setActiveLauncherSport(null); setView('workout') }}
+          onFreeMode={(s) => { setFreeModesSport(s); setActiveLauncherSport(null); setFreeModeOpen(true) }}
           isDark={isDark}
         />
       )}

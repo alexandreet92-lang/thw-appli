@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { WorkoutExercise } from '@/types/workout'
 import { DEFAULT_GYM_EXERCISES, DEFAULT_HYROX_EXERCISES } from '@/types/workout'
@@ -36,10 +36,12 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
   const [closing, setClosing] = useState(false)
   const [thisWeek, setThisWeek] = useState<PlannedSession[]>([])
   const [allSessions, setAllSessions] = useState<PlannedSession[]>([])
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const accent = sport === 'gym' ? '#8B5CF6' : '#EF4444'
   const label = sport === 'gym' ? 'Muscu' : 'Hyrox'
 
   useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { return () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current) } }, [])
 
   useEffect(() => {
     if (!open) return
@@ -58,7 +60,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
 
   if (!mounted || !open) return null
 
-  const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
+  const handleClose = () => { setClosing(true); closeTimerRef.current = setTimeout(onClose, 230) }
 
   const sectionLabel = (text: string) => (
     <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }}>{text}</p>

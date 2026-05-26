@@ -23,8 +23,14 @@ interface Props {
 }
 
 export default function SessionSummaryPage1({ session, theme, isDark, dataFontFamily }: Props) {
+  const isNoGps = session.sport === 'gym' || session.sport === 'hyrox'
   const isTrail = session.sport === 'trail' || session.sport === 'hiking' || session.sport === 'mtb'
-  const stats = isTrail
+  const stats = isNoGps
+    ? [
+        { label: 'DURÉE',     value: formatDuration(session.duration_seconds), unit: '' },
+        { label: 'CALORIES',  value: String(Math.round(session.calories ?? 0)), unit: 'kcal' },
+      ]
+    : isTrail
     ? [
         { label: 'DISTANCE', value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
         { label: 'DURÉE',    value: formatDuration(session.duration_seconds), unit: '' },
@@ -62,29 +68,33 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
         ))}
       </div>
 
-      {/* Carte du tracé */}
-      <div style={{
-        height: 200, margin: '16px 16px 0',
-        borderRadius: 16, overflow: 'hidden',
-        border: `1px solid ${theme.separator}`,
-      }}>
-        <SessionTraceMap points={session.gps_points} isDark={isDark} />
-      </div>
+      {!isNoGps && (
+        <>
+          {/* Carte du tracé */}
+          <div style={{
+            height: 200, margin: '16px 16px 0',
+            borderRadius: 16, overflow: 'hidden',
+            border: `1px solid ${theme.separator}`,
+          }}>
+            <SessionTraceMap points={session.gps_points} isDark={isDark} />
+          </div>
 
-      {/* Profil d'altitude */}
-      <div style={{
-        margin: '12px 16px 0',
-        borderRadius: 12, overflow: 'hidden',
-        border: `1px solid ${theme.separator}`,
-        background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFAFA',
-      }}>
-        <div style={{ padding: '8px 12px 4px' }}>
-          <p style={{ margin: 0, fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
-            Profil d&apos;altitude
-          </p>
-        </div>
-        <ElevationProfile points={session.gps_points} isDark={isDark} height={90} />
-      </div>
+          {/* Profil d'altitude */}
+          <div style={{
+            margin: '12px 16px 0',
+            borderRadius: 12, overflow: 'hidden',
+            border: `1px solid ${theme.separator}`,
+            background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFAFA',
+          }}>
+            <div style={{ padding: '8px 12px 4px' }}>
+              <p style={{ margin: 0, fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+                Profil d&apos;altitude
+              </p>
+            </div>
+            <ElevationProfile points={session.gps_points} isDark={isDark} height={90} />
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -4,17 +4,20 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
 import Toast from '@/components/record/Toast'
+import type { WorkoutExercise } from '@/types/workout'
 
-const MapBackground  = dynamic(() => import('@/components/record/MapBackground'),  { ssr: false })
-const CyclingScreen  = dynamic(() => import('@/components/record/CyclingScreen'),  { ssr: false })
-const RunningScreen  = dynamic(() => import('@/components/record/RunningScreen'),  { ssr: false })
-const TrailScreen    = dynamic(() => import('@/components/record/TrailScreen'),    { ssr: false })
-const HikingScreen   = dynamic(() => import('@/components/record/HikingScreen'),  { ssr: false })
-const MTBScreen      = dynamic(() => import('@/components/record/MTBScreen'),      { ssr: false })
-const SwimmingForm   = dynamic(() => import('@/components/record/SwimmingForm'),   { ssr: false })
-const RowingForm     = dynamic(() => import('@/components/record/RowingForm'),     { ssr: false })
+const MapBackground    = dynamic(() => import('@/components/record/MapBackground'),    { ssr: false })
+const CyclingScreen    = dynamic(() => import('@/components/record/CyclingScreen'),    { ssr: false })
+const RunningScreen    = dynamic(() => import('@/components/record/RunningScreen'),    { ssr: false })
+const TrailScreen      = dynamic(() => import('@/components/record/TrailScreen'),      { ssr: false })
+const HikingScreen     = dynamic(() => import('@/components/record/HikingScreen'),    { ssr: false })
+const MTBScreen        = dynamic(() => import('@/components/record/MTBScreen'),        { ssr: false })
+const SwimmingForm     = dynamic(() => import('@/components/record/SwimmingForm'),     { ssr: false })
+const RowingForm       = dynamic(() => import('@/components/record/RowingForm'),       { ssr: false })
+const WorkoutLauncher  = dynamic(() => import('@/components/record/WorkoutLauncher'), { ssr: false })
+const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSession'),  { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout'
 
 export default function RecordPage() {
   const router = useRouter()
@@ -22,6 +25,10 @@ export default function RecordPage() {
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [launcherOpen, setLauncherOpen] = useState(false)
+  const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
+  const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
+  const isDark = true
 
   const handleSelectSport = (s: SportId) => {
     setSport(s)
@@ -36,6 +43,7 @@ export default function RecordPage() {
     else if (sport === 'mtb')     setView('mtb')
     else if (sport === 'swim')    setView('swimming')
     else if (sport === 'rowing')  setView('rowing')
+    else if (sport === 'strength' || sport === 'hyrox') setLauncherOpen(true)
     else setToast('Bientôt disponible')
   }
 
@@ -99,6 +107,18 @@ export default function RecordPage() {
 
   if (view === 'rowing') {
     return <RowingForm onClose={() => setView('home')} />
+  }
+
+  if (view === 'workout') {
+    return (
+      <WorkoutSession
+        sport={sport === 'strength' ? 'gym' : 'hyrox'}
+        exercises={workoutExercises}
+        planTitle={workoutTitle}
+        onClose={() => { setView('home'); setLauncherOpen(false) }}
+        isDark={isDark}
+      />
+    )
   }
 
   return (
@@ -235,6 +255,16 @@ export default function RecordPage() {
         onSelect={handleSelectSport}
         selectedSport={sport}
       />
+
+      {(sport === 'strength' || sport === 'hyrox') && (
+        <WorkoutLauncher
+          sport={sport === 'strength' ? 'gym' : 'hyrox'}
+          open={launcherOpen}
+          onClose={() => setLauncherOpen(false)}
+          onStart={(exs, title) => { setWorkoutExercises(exs); setWorkoutTitle(title); setLauncherOpen(false); setView('workout') }}
+          isDark={isDark}
+        />
+      )}
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>

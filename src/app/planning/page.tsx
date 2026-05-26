@@ -5244,12 +5244,12 @@ function GPSMapInner({ trace, accent, hoveredKm, elevationProfile }: {
       mapInstanceRef.current = map
 
       // Layers
-      const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
-      const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })
-      const hybridLayer = L.layerGroup([
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
-      ])
+      const mtKey = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
+      const mtAttr = '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+      const mtOpts = { maxZoom: 20, tileSize: 512, zoomOffset: -1, attribution: mtAttr }
+      const osmLayer = L.tileLayer(`https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${mtKey}`, mtOpts)
+      const satLayer = L.tileLayer(`https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${mtKey}`, mtOpts)
+      const hybridLayer = L.tileLayer(`https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${mtKey}`, mtOpts)
       osmLayer.addTo(map)
       L.control.layers({ 'Standard': osmLayer, 'Satellite': satLayer, 'Hybride': hybridLayer }, {}, { position: 'topright', collapsed: false }).addTo(map)
 

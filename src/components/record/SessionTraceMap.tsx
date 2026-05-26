@@ -35,10 +35,11 @@ export default function SessionTraceMap({ points, isDark = false }: Props) {
       })
       mapRef.current = map
 
-      const tileUrl = isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-      L.tileLayer(tileUrl, { maxZoom: 19, subdomains: ['a','b','c','d'] }).addTo(map)
+      const key = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
+      L.tileLayer(
+        `https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${key}`,
+        { maxZoom: 19, tileSize: 512, zoomOffset: -1, attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>' }
+      ).addTo(map)
 
       const polyline = L.polyline(latlngs, { color: '#06B6D4', weight: 3, opacity: 0.9 })
       polyline.addTo(map)

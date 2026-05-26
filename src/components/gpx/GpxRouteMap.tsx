@@ -41,7 +41,7 @@ export default function GpxRouteMap({ fileUrl, height = 220 }: Props) {
           scrollWheelZoom: false,
         })
         map = m
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m)
+        L.tileLayer(`https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''}`, { tileSize: 512, zoomOffset: -1, attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>' }).addTo(m)
         const poly = L.polyline(
           trace.map(p => [p.lat, p.lon] as [number, number]),
           { color: '#00c8e0', weight: 3, opacity: 0.9 },

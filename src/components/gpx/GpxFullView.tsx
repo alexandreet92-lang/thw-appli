@@ -64,7 +64,7 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
         }
         const m = L.map(mapDivRef.current, { zoomControl: false, attributionControl: false, scrollWheelZoom: false })
         leafMap = m
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m)
+        L.tileLayer(`https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''}`, { tileSize: 512, zoomOffset: -1, attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>' }).addTo(m)
         const poly = L.polyline(parsed.map(p => [p.lat, p.lon] as [number, number]), { color: '#00c8e0', weight: 3, opacity: 0.9 }).addTo(m)
         m.fitBounds(poly.getBounds(), { padding: [10, 10] })
         const mk = L.circleMarker([parsed[0].lat, parsed[0].lon], { radius: 5, color: '#fff', fillColor: '#00c8e0', fillOpacity: 0, opacity: 0, weight: 2 }).addTo(m)

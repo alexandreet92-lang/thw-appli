@@ -5,21 +5,21 @@ import L from 'leaflet'
 
 const PARIS: [number, number] = [48.8566, 2.3522]
 
+const KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
+const ATTRIBUTION = '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+
 const TILES = {
   std: {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    sub: ['a', 'b', 'c', 'd'] as string[],
+    url: `https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${KEY}`,
     overlay: null as string | null,
   },
   sat: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    sub: undefined as string[] | undefined,
+    url: `https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${KEY}`,
     overlay: null as string | null,
   },
   hyb: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    sub: undefined as string[] | undefined,
-    overlay: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    url: `https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${KEY}`,
+    overlay: null as string | null,
   },
 }
 type LayerId = keyof typeof TILES
@@ -125,8 +125,8 @@ export default function MapBackground({ trackPoints, currentPosition }: Props) {
         attributionControl={false}
         style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer url={tile.url} subdomains={tile.sub} maxZoom={19} />
-        {tile.overlay && <TileLayer url={tile.overlay} maxZoom={19} opacity={1} />}
+        <TileLayer url={tile.url} maxZoom={20} tileSize={512} zoomOffset={-1} attribution={ATTRIBUTION} />
+        {tile.overlay && <TileLayer url={tile.overlay} maxZoom={20} tileSize={512} zoomOffset={-1} attribution={ATTRIBUTION} />}
         {position && <Marker position={position} icon={gpsIcon} />}
         <FlyToPosition position={position} />
         {trackPoints && trackPoints.length > 1 && <TrackPolyline points={trackPoints} />}

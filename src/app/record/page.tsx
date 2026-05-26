@@ -16,6 +16,7 @@ const SwimmingForm     = dynamic(() => import('@/components/record/SwimmingForm'
 const RowingForm       = dynamic(() => import('@/components/record/RowingForm'),       { ssr: false })
 const WorkoutLauncher  = dynamic(() => import('@/components/record/WorkoutLauncher'), { ssr: false })
 const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSession'),  { ssr: false })
+const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout'
 
@@ -28,6 +29,8 @@ export default function RecordPage() {
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
   const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
+  const [routeCreatorOpen, setRouteCreatorOpen] = useState(false)
+  const [activeRoutePoints, setActiveRoutePoints] = useState<{ lat: number; lng: number }[]>([])
   const isDark = true
 
   const handleSelectSport = (s: SportId) => {
@@ -133,7 +136,7 @@ export default function RecordPage() {
     >
       {/* Carte plein écran */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <MapBackground />
+        <MapBackground trackPoints={activeRoutePoints.length > 1 ? activeRoutePoints : undefined} />
       </div>
 
       {/* Bouton retour — top-left, par-dessus la carte */}
@@ -225,7 +228,7 @@ export default function RecordPage() {
 
           {/* DROITE — Parcours */}
           <button
-            onClick={() => setToast('Bientôt disponible')}
+            onClick={() => setRouteCreatorOpen(true)}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               background: 'transparent', border: 'none', cursor: 'pointer',
@@ -255,6 +258,14 @@ export default function RecordPage() {
         onSelect={handleSelectSport}
         selectedSport={sport}
       />
+
+      {routeCreatorOpen && (
+        <RouteCreator
+          isDark={isDark}
+          onClose={() => setRouteCreatorOpen(false)}
+          onLoadRoute={pts => { setActiveRoutePoints(pts); setRouteCreatorOpen(false) }}
+        />
+      )}
 
       {(sport === 'strength' || sport === 'hyrox') && (
         <WorkoutLauncher

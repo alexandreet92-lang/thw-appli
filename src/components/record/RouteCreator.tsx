@@ -46,8 +46,17 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [layer, setLayer] = useState<Layer>('std')
   const [showSave, setShowSave] = useState(false)
   const [snapping, setSnapping] = useState(false)
+  const [panelState, setPanelState] = useState<'collapsed' | 'expanded'>('expanded')
   const mapRef = useRef<L.Map | null>(null)
-  const PANEL_H = 270
+  const dragStartY = useRef(0)
+  const PANEL_H = panelState === 'expanded' ? 270 : 80
+
+  const handleDragStart = (e: React.TouchEvent) => { dragStartY.current = e.touches[0].clientY }
+  const handleDragEnd = (e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientY - dragStartY.current
+    if (delta > 40) setPanelState('collapsed')
+    if (delta < -40) setPanelState('expanded')
+  }
 
   const doSnap = useCallback(async (pts: Waypoint[], sp: string) => {
     if (pts.length < 2) return
@@ -123,7 +132,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'DM Sans, sans-serif', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <MapContainer center={[48.8566, 2.3522]} zoom={13} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
-        <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} maxZoom={20} attribution={ATTR} />
+        <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} maxZoom={20} maxNativeZoom={18} attribution={ATTR} />
         <MapClickHandler onAdd={addWaypoint} />
         <MapReady mapRef={mapRef} />
         {displayPts.length > 1 && (
@@ -165,9 +174,19 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
         ))}
       </div>
 
-      {/* Bottom panel */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, height: PANEL_H, background: isDark ? '#0A0A0A' : '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, flexShrink: 0 }}><div style={{ width: 40, height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB' }} /></div>
+      {/* Bottom panel — draggable */}
+      <div
+        onTouchStart={handleDragStart}
+        onTouchEnd={handleDragEnd}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, height: PANEL_H, background: isDark ? '#0A0A0A' : '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)', transition: 'height 300ms cubic-bezier(0.16, 1, 0.3, 1)', overflow: 'hidden' }}
+      >
+        {/* Drag indicator — click to toggle */}
+        <div onClick={() => setPanelState(p => p === 'expanded' ? 'collapsed' : 'expanded')}
+          style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, flexShrink: 0, cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.3)' : '#D1D5DB' }} />
+        </div>
+
+        {/* Stats bar — always visible */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '6px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'}`, flexShrink: 0 }}>
           <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF' }}>{snapping ? 'Calcul…' : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
           <div style={{ flex: 1 }} />
@@ -178,15 +197,21 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
             </div>
           ))}
         </div>
-        <div style={{ flex: 1, padding: '4px 16px 0', overflow: 'hidden' }}>
-          <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} />
-        </div>
-        <div style={{ padding: '6px 16px 8px', flexShrink: 0 }}>
-          <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
-            style={{ width: '100%', height: 44, borderRadius: 14, background: waypoints.length < 2 ? (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6') : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: waypoints.length < 2 ? '#8C8C8C' : '#fff', fontSize: 14, fontWeight: 600, cursor: waypoints.length < 2 ? 'default' : 'pointer' }}>
-            Enregistrer
-          </button>
-        </div>
+
+        {/* Elevation + save — hidden when collapsed */}
+        {panelState === 'expanded' && (
+          <>
+            <div style={{ flex: 1, padding: '4px 16px 0', overflow: 'hidden' }}>
+              <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} />
+            </div>
+            <div style={{ padding: '6px 16px 8px', flexShrink: 0 }}>
+              <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
+                style={{ width: '100%', height: 44, borderRadius: 14, background: waypoints.length < 2 ? (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6') : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: waypoints.length < 2 ? '#8C8C8C' : '#fff', fontSize: 14, fontWeight: 600, cursor: waypoints.length < 2 ? 'default' : 'pointer' }}>
+                Enregistrer
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}

@@ -18,6 +18,24 @@ const SURFACE_LABELS: Record<string, string> = {
 
 const W = 360
 const PAD = { top: 18, bottom: 20, left: 34, right: 8 }
+const MAX_PTS = 150
+
+function downsample<T>(arr: T[], max: number): T[] {
+  if (arr.length <= max) return arr
+  const step = arr.length / max
+  return Array.from({ length: max }, (_, i) => arr[Math.round(i * step)])
+}
+
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1], curr = pts[i]
+    const cpx = ((prev.x + curr.x) / 2).toFixed(1)
+    d += ` C ${cpx} ${prev.y.toFixed(1)}, ${cpx} ${curr.y.toFixed(1)}, ${curr.x.toFixed(1)} ${curr.y.toFixed(1)}`
+  }
+  return d
+}
 
 export default function ElevationChart({ data, surfaces, height = 100, isDark = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -26,10 +44,11 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const cW = W - PAD.left - PAD.right
   const cH = height - PAD.top - PAD.bottom
 
-  const alts = data.map(d => d.altitudeM)
+  const pts = downsample(data, MAX_PTS)
+  const alts = pts.map(d => d.altitudeM)
   const minA = Math.min(...alts), maxA = Math.max(...alts)
   const rng = maxA - minA || 1
-  const n = Math.max(data.length - 1, 1)
+  const n = Math.max(pts.length - 1, 1)
 
   const getX = (i: number) => PAD.left + (i / n) * cW
   const getY = (alt: number) => PAD.top + (1 - (alt - minA) / rng) * cH
@@ -43,14 +62,16 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
     setCursor({ svgX: PAD.left + frac * cW, point: data[idx] })
   }, [data, cW])
 
-  if (data.length < 2) return (
+  if (pts.length < 2) return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ fontSize: 11, color: dim, margin: 0 }}>Tracez un parcours pour voir le profil</p>
     </div>
   )
 
-  const pathD = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${getX(i).toFixed(1)},${getY(d.altitudeM).toFixed(1)}`).join(' ')
-  const areaD = `${pathD} L${getX(data.length - 1).toFixed(1)},${(PAD.top + cH).toFixed(1)} L${PAD.left},${(PAD.top + cH).toFixed(1)} Z`
+  const xyPts = pts.map((d, i) => ({ x: getX(i), y: getY(d.altitudeM) }))
+  const pathD = smoothPath(xyPts)
+  const last = xyPts[xyPts.length - 1]
+  const areaD = `${pathD} L${last.x.toFixed(1)},${(PAD.top + cH).toFixed(1)} L${PAD.left},${(PAD.top + cH).toFixed(1)} Z`
 
   return (
     <div style={{ position: 'relative' }}>
@@ -70,8 +91,8 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
           <text key={i} x={PAD.left - 3} y={getY(alt) + 4} textAnchor="end" fontSize={8} fill={dim}>{Math.round(alt)}m</text>
         ))}
         {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
-          const idx = Math.round(pct * (data.length - 1))
-          return <text key={i} x={getX(idx)} y={PAD.top + cH + 13} textAnchor="middle" fontSize={8} fill={dim}>{(data[idx].distanceM / 1000).toFixed(1)}km</text>
+          const idx = Math.round(pct * (pts.length - 1))
+          return <text key={i} x={getX(idx)} y={PAD.top + cH + 13} textAnchor="middle" fontSize={8} fill={dim}>{(pts[idx].distanceM / 1000).toFixed(1)}km</text>
         })}
         {cursor && <line x1={cursor.svgX} y1={PAD.top} x2={cursor.svgX} y2={PAD.top + cH} stroke="#06B6D4" strokeWidth={1.5} strokeDasharray="3 2" />}
       </svg>

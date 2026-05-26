@@ -19,8 +19,9 @@ const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSessio
 const FreeModeScreen   = dynamic(() => import('@/components/record/FreeModeScreen'),  { ssr: false })
 const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
 const ElevationChart   = dynamic(() => import('@/components/record/ElevationChart'),  { ssr: false })
+const SkiScreen        = dynamic(() => import('@/components/record/SkiScreen'),       { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski'
 
 interface ActiveRoute {
   snapped_points: { lat: number; lng: number }[]
@@ -64,6 +65,7 @@ export default function RecordPage() {
     else if (sport === 'mtb')     setView('mtb')
     else if (sport === 'swim')    setView('swimming')
     else if (sport === 'rowing')  setView('rowing')
+    else if (sport === 'ski')     setView('ski')
     else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
     else setToast('Bientôt disponible')
   }
@@ -117,6 +119,18 @@ export default function RecordPage() {
     return (
       <>
         <MTBScreen onExit={() => setView('home')} onFinished={() => { setToast('Séance enregistrée'); setView('home') }} />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
+  if (view === 'ski') {
+    return (
+      <>
+        <SkiScreen
+          onExit={() => setView('home')}
+          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+        />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )

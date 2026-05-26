@@ -6,6 +6,7 @@ export type SportId =
   | 'running' | 'trail' | 'hiking'
   | 'strength' | 'hyrox'
   | 'rowing' | 'swim'
+  | 'ski'
 
 // ── Icons (déclarés AVANT SPORT_CATEGORIES — leçon TDZ V2) ────
 const stroke = {
@@ -93,6 +94,15 @@ function SwimIcon() {
     </svg>
   )
 }
+function SkiIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24">
+      <path d="M3 17l5-10 4 6 3-4 6 8" {...stroke}/>
+      <circle cx="15" cy="5" r="1.5" {...stroke}/>
+      <path d="M2 19h20" {...stroke}/>
+    </svg>
+  )
+}
 
 // ── Data ──────────────────────────────────────────────────────
 interface Sport {
@@ -129,6 +139,12 @@ const SPORT_CATEGORIES: { name: string; sports: Sport[] }[] = [
     sports: [
       { id: 'rowing', label: 'Aviron',   icon: <RowingIcon /> },
       { id: 'swim',   label: 'Natation', icon: <SwimIcon /> },
+    ],
+  },
+  {
+    name: 'Sports de glisse',
+    sports: [
+      { id: 'ski', label: 'Ski / Snowboard', icon: <SkiIcon /> },
     ],
   },
 ]

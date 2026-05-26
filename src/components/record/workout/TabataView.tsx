@@ -18,10 +18,10 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
   const [round, setRound] = useState(0)
   const [phase, setPhase] = useState<Phase>('idle')
   const [remaining, setRemaining] = useState(workSec)
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'
-  const surface = isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
+  const text = 'var(--text)'
+  const dim = 'var(--text-mid)'
+  const surface = 'var(--bg-card2)'
+  const separator = 'var(--border)'
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const clearTimer = () => { if (timerRef.current) clearInterval(timerRef.current) }
@@ -70,7 +70,7 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ position: 'relative', width: 120, height: 120 }}>
           <svg width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx="60" cy="60" r="50" fill="none" stroke={isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'} strokeWidth="7" />
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" strokeWidth="7" />
             {phase !== 'idle' && phase !== 'done' && (
               <circle cx="60" cy="60" r="50" fill="none" stroke={phaseColor} strokeWidth="7"
                 strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progress)}

@@ -29,12 +29,11 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
 
   const progress = remaining / seconds
   const circumference = 2 * Math.PI * 44
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.25)' : '#D1D5DB'
+  const text = 'var(--text)'
+  const dim = 'var(--border-mid)'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 20px', gap: 24, background: bg }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 20px', gap: 24, background: 'var(--bg-card)' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: dim, margin: 0 }}>Repos</p>
       <div style={{ position: 'relative', width: 110, height: 110 }}>
         <svg width="110" height="110" style={{ transform: 'rotate(-90deg)' }}>

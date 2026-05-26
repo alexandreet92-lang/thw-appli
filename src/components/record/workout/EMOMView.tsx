@@ -16,10 +16,10 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
   const completedThisMinuteRef = useRef(false)
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'
-  const surface = isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
+  const text = 'var(--text)'
+  const dim = 'var(--text-mid)'
+  const surface = 'var(--bg-card2)'
+  const separator = 'var(--border)'
 
   useEffect(() => {
     if (!running || done) return

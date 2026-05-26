@@ -16,6 +16,7 @@ const SwimmingForm     = dynamic(() => import('@/components/record/SwimmingForm'
 const RowingForm       = dynamic(() => import('@/components/record/RowingForm'),       { ssr: false })
 const WorkoutLauncher  = dynamic(() => import('@/components/record/WorkoutLauncher'), { ssr: false })
 const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSession'),  { ssr: false })
+const FreeModeScreen   = dynamic(() => import('@/components/record/FreeModeScreen'),  { ssr: false })
 const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout'
@@ -27,6 +28,8 @@ export default function RecordPage() {
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [launcherOpen, setLauncherOpen] = useState(false)
+  const [freeModeOpen, setFreeModeOpen] = useState(false)
+  const [freeModesSport, setFreeModesSport] = useState<'gym' | 'hyrox'>('gym')
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
   const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
   const [routeCreatorOpen, setRouteCreatorOpen] = useState(false)
@@ -273,6 +276,15 @@ export default function RecordPage() {
           open={launcherOpen}
           onClose={() => setLauncherOpen(false)}
           onStart={(exs, title) => { setWorkoutExercises(exs); setWorkoutTitle(title); setLauncherOpen(false); setView('workout') }}
+          onFreeMode={(s) => { setFreeModesSport(s); setLauncherOpen(false); setFreeModeOpen(true) }}
+          isDark={isDark}
+        />
+      )}
+
+      {freeModeOpen && (
+        <FreeModeScreen
+          sport={freeModesSport}
+          onClose={() => setFreeModeOpen(false)}
           isDark={isDark}
         />
       )}

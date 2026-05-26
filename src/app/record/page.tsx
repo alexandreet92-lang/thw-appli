@@ -9,8 +9,9 @@ const MapBackground  = dynamic(() => import('@/components/record/MapBackground')
 const CyclingScreen  = dynamic(() => import('@/components/record/CyclingScreen'),  { ssr: false })
 const RunningScreen  = dynamic(() => import('@/components/record/RunningScreen'),  { ssr: false })
 const TrailScreen    = dynamic(() => import('@/components/record/TrailScreen'),    { ssr: false })
+const SwimmingForm   = dynamic(() => import('@/components/record/SwimmingForm'),   { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'swimming'
 
 export default function RecordPage() {
   const router = useRouter()
@@ -28,6 +29,7 @@ export default function RecordPage() {
     if (sport === 'cycling') setView('cycling')
     else if (sport === 'running') setView('running')
     else if (sport === 'trail')   setView('trail')
+    else if (sport === 'swim')    setView('swimming')
     else setToast('Bientôt disponible')
   }
 
@@ -65,6 +67,10 @@ export default function RecordPage() {
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
+  }
+
+  if (view === 'swimming') {
+    return <SwimmingForm onClose={() => setView('home')} />
   }
 
   return (

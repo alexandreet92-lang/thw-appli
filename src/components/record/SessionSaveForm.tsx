@@ -9,6 +9,7 @@ import { HIKING_TYPES } from '@/types/hiking'
 import { MTB_TYPES } from '@/types/mtb'
 import { ROWING_TYPES } from '@/types/rowing'
 import { STRENGTH_TYPES, HYROX_TYPES } from '@/types/workout'
+import { YOGA_TYPES } from '@/types/yoga'
 
 export interface SessionFormData {
   title: string
@@ -30,7 +31,7 @@ function getAutoTitle(sport: string, startedAt: string): string {
   const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
   const num = d.getDate()
   const month = d.toLocaleDateString('fr-FR', { month: 'long' })
-  const label = sport === 'running' ? 'Sortie running' : sport === 'trail' ? 'Sortie trail' : sport === 'hiking' ? 'Randonnée' : sport === 'mtb' ? 'Sortie VTT' : sport === 'rowing' ? 'Aviron' : sport === 'gym' ? 'Séance muscu' : sport === 'hyrox' ? 'Séance Hyrox' : 'Sortie vélo'
+  const label = sport === 'running' ? 'Sortie running' : sport === 'trail' ? 'Sortie trail' : sport === 'hiking' ? 'Randonnée' : sport === 'mtb' ? 'Sortie VTT' : sport === 'rowing' ? 'Aviron' : sport === 'gym' ? 'Séance muscu' : sport === 'hyrox' ? 'Séance Hyrox' : sport === 'yoga' ? 'Séance yoga' : 'Sortie vélo'
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   return `${label} · ${cap(day)} ${num} ${month}`
 }
@@ -129,7 +130,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
         {/* Type d'entraînement */}
         <div style={{ marginBottom: 28 }}>
           <p style={{ ...LABEL_STYLE, color: t.muted }}>Type d'entraînement</p>
-          <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : sport === 'trail' ? TRAIL_TYPES : sport === 'hiking' ? HIKING_TYPES : sport === 'mtb' ? MTB_TYPES : sport === 'rowing' ? ROWING_TYPES : sport === 'gym' ? STRENGTH_TYPES : sport === 'hyrox' ? HYROX_TYPES : CYCLING_TYPES} />
+          <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : sport === 'trail' ? TRAIL_TYPES : sport === 'hiking' ? HIKING_TYPES : sport === 'mtb' ? MTB_TYPES : sport === 'rowing' ? ROWING_TYPES : sport === 'gym' ? STRENGTH_TYPES : sport === 'hyrox' ? HYROX_TYPES : sport === 'yoga' ? YOGA_TYPES : CYCLING_TYPES} />
         </div>
 
         {/* RPE */}

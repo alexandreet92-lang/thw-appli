@@ -18,10 +18,12 @@ const WorkoutLauncher  = dynamic(() => import('@/components/record/WorkoutLaunch
 const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSession'),  { ssr: false })
 const FreeModeScreen   = dynamic(() => import('@/components/record/FreeModeScreen'),  { ssr: false })
 const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
+const YogaLauncher     = dynamic(() => import('@/components/record/YogaLauncher'),    { ssr: false })
+const YogaSession      = dynamic(() => import('@/components/record/YogaSession'),     { ssr: false })
 const ElevationChart   = dynamic(() => import('@/components/record/ElevationChart'),  { ssr: false })
 const SkiScreen        = dynamic(() => import('@/components/record/SkiScreen'),       { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga'
 
 interface ActiveRoute {
   snapped_points: { lat: number; lng: number }[]
@@ -50,6 +52,10 @@ export default function RecordPage() {
   const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
   const [routeCreatorOpen, setRouteCreatorOpen] = useState(false)
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null)
+  const [yogaLauncherOpen, setYogaLauncherOpen] = useState(false)
+  const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
+  const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
+  const [yogaTitle, setYogaTitle] = useState('')
   const isDark = true
 
   const handleSelectSport = (s: SportId) => {
@@ -67,6 +73,7 @@ export default function RecordPage() {
     else if (sport === 'rowing')  setView('rowing')
     else if (sport === 'ski')     setView('ski')
     else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
+    else if (sport === 'yoga')    setYogaLauncherOpen(true)
     else setToast('Bientôt disponible')
   }
 
@@ -324,6 +331,24 @@ export default function RecordPage() {
           sport={freeModesSport}
           onClose={() => setFreeModeOpen(false)}
           isDark={isDark}
+        />
+      )}
+
+      {yogaLauncherOpen && (
+        <YogaLauncher
+          open={yogaLauncherOpen}
+          onClose={() => setYogaLauncherOpen(false)}
+          onStart={(exs, title) => { setYogaExercises(exs); setYogaTitle(title); setYogaLauncherOpen(false); setYogaSessionOpen(true) }}
+          isDark={isDark}
+        />
+      )}
+
+      {yogaSessionOpen && (
+        <YogaSession
+          exercises={yogaExercises}
+          title={yogaTitle}
+          isDark={isDark}
+          onClose={() => setYogaSessionOpen(false)}
         />
       )}
 

@@ -51,12 +51,18 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
 
   const doSnap = useCallback(async (pts: Waypoint[], sp: string) => {
     if (pts.length < 2) return
+    console.log('Snapping with waypoints:', pts, 'sport:', sp, 'ORS key present:', !!process.env.NEXT_PUBLIC_ORS_KEY)
     setSnapping(true)
     try {
       const r = await snapRoute(pts, sp)
+      console.log('ORS response: snappedPoints', r.snappedPoints.length, 'distanceM', r.distanceM)
       setSnappedPoints(r.snappedPoints); setDistanceM(r.distanceM)
       setElevGain(r.elevGain); setSurfaces(r.surfaces); setElevationProfile(r.elevationProfile)
-    } catch { /* ORS not configured or error — skip silently */ }
+    } catch (err) {
+      console.log('ORS error:', err, '— falling back to straight-line segments')
+      // Fallback: draw straight lines between waypoints when ORS is unavailable
+      setSnappedPoints(pts.map(p => ({ ...p, altitude: 0 })))
+    }
     setSnapping(false)
   }, [])
 
@@ -100,7 +106,12 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   }
 
   const fb: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-  const polyPts = snappedPoints.map(p => [p.lat, p.lng] as [number, number])
+  // Use snapped route if available, otherwise draw straight lines between waypoints as fallback
+  const displayPts: [number, number][] = snappedPoints.length >= 2
+    ? snappedPoints.map(p => [p.lat, p.lng])
+    : waypoints.length >= 2
+    ? waypoints.map(p => [p.lat, p.lng])
+    : []
 
   if (view === 'library') return createPortal(
     <RouteLibrary isDark={isDark} onClose={() => setView('creating')}
@@ -115,7 +126,9 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
         <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} maxZoom={20} attribution={ATTR} />
         <MapClickHandler onAdd={addWaypoint} />
         <MapReady mapRef={mapRef} />
-        {polyPts.length > 1 && <Polyline positions={polyPts} color="#06B6D4" weight={4} opacity={0.9} />}
+        {displayPts.length > 1 && (
+          <Polyline positions={displayPts} pathOptions={{ color: '#06B6D4', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }} />
+        )}
         {waypoints.map((wp, i) => (
           <CircleMarker key={i} center={[wp.lat, wp.lng]} radius={7}
             pathOptions={{ fillColor: i === 0 ? '#10B981' : i === waypoints.length - 1 ? '#EF4444' : '#2563EB', fillOpacity: 1, color: 'white', weight: 2 }} />

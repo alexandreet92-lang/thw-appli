@@ -23,12 +23,20 @@ interface Props {
 }
 
 export default function SessionSummaryPage1({ session, theme, isDark, dataFontFamily }: Props) {
-  const stats = [
-    { label: 'DISTANCE',     value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
-    { label: 'DURÉE',        value: formatDuration(session.duration_seconds), unit: '' },
-    { label: 'D+',           value: String(Math.round(session.elevation_gain_m)), unit: 'm' },
-    { label: 'VITESSE MOY.', value: session.avg_speed_kmh.toFixed(1), unit: 'km/h' },
-  ]
+  const isTrail = session.sport === 'trail'
+  const stats = isTrail
+    ? [
+        { label: 'DISTANCE', value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
+        { label: 'DURÉE',    value: formatDuration(session.duration_seconds), unit: '' },
+        { label: 'D+',       value: String(Math.round(session.elevation_gain_m)), unit: 'm' },
+        { label: 'D-',       value: String(Math.round(session.elevation_loss_m ?? 0)), unit: 'm' },
+      ]
+    : [
+        { label: 'DISTANCE',     value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
+        { label: 'DURÉE',        value: formatDuration(session.duration_seconds), unit: '' },
+        { label: 'D+',           value: String(Math.round(session.elevation_gain_m)), unit: 'm' },
+        { label: 'VITESSE MOY.', value: session.avg_speed_kmh.toFixed(1), unit: 'km/h' },
+      ]
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 24 }}>

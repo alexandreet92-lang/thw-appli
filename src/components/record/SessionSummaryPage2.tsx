@@ -26,7 +26,8 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
     ? Math.min(...session.gps_points.map(p => p.altitude ?? Infinity).filter(a => a !== Infinity))
     : null
 
-  const isRunning = session.sport === 'running'
+  const isRunning = session.sport === 'running' || session.sport === 'trail'
+  const isTrail   = session.sport === 'trail'
 
   // Avg pace for running
   const avgSpeedKmh = session.duration_seconds > 0 ? (session.distance_m / 1000) / (session.duration_seconds / 3600) : 0
@@ -63,7 +64,46 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
     { label: 'CADENCE',      value: '--',                                          unit: 'rpm',  dim: true },
   ]
 
-  const stats = isRunning ? runningStats : cyclingStats
+  // Trail-specific uphill/downhill pace from GPS points
+  let uphillPaceVal: number | null = null
+  let downhillPaceVal: number | null = null
+  if (isTrail && session.gps_points.length > 1) {
+    let uphillSpeedSum = 0, uphillCount = 0, downhillSpeedSum = 0, downhillCount = 0
+    for (let i = 1; i < session.gps_points.length; i++) {
+      const prev = session.gps_points[i - 1], cur = session.gps_points[i]
+      if (prev.altitude == null || cur.altitude == null || cur.speed == null || cur.speed <= 0) continue
+      const dt = (cur.timestamp - prev.timestamp) / 1000
+      if (dt <= 0 || dt > 30) continue
+      const dAlt = cur.altitude - prev.altitude
+      const dLat = (cur.lat - prev.lat) * 111000
+      const dLng = (cur.lng - prev.lng) * 111000 * Math.cos(cur.lat * Math.PI / 180)
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng)
+      if (dist < 1) continue
+      const gradient = (dAlt / dist) * 100
+      const speedKmh = cur.speed * 3.6
+      if (gradient > 2) { uphillSpeedSum += speedKmh; uphillCount++ }
+      if (gradient < -2) { downhillSpeedSum += speedKmh; downhillCount++ }
+    }
+    if (uphillCount > 0) uphillPaceVal = speedToMinKm(uphillSpeedSum / uphillCount)
+    if (downhillCount > 0) downhillPaceVal = speedToMinKm(downhillSpeedSum / downhillCount)
+  }
+
+  const trailStats: { label: string; value: string; unit: string; dim?: boolean }[] = [
+    { label: 'ALLURE MOY.',    value: avgPaceVal != null ? formatPace(avgPaceVal) : '--',          unit: 'min/km' },
+    { label: 'VAP MOYENNE',    value: '--',                                                         unit: 'min/km', dim: true },
+    { label: 'ALLURE MONTÉE',  value: uphillPaceVal != null ? formatPace(uphillPaceVal) : '--',    unit: 'min/km' },
+    { label: 'ALLURE DESCENTE',value: downhillPaceVal != null ? formatPace(downhillPaceVal) : '--', unit: 'min/km' },
+    { label: 'FC MOYENNE',     value: '--',                                                         unit: 'bpm',    dim: true },
+    { label: 'FC MAX',         value: '--',                                                         unit: 'bpm',    dim: true },
+    { label: 'ALT. MAX',       value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
+    { label: 'CALORIES',       value: String(session.calories),                                    unit: 'kcal' },
+    { label: 'D+ TOTAL',       value: String(Math.round(session.elevation_gain_m)),                unit: 'm' },
+    { label: 'D- TOTAL',       value: String(Math.round(session.elevation_loss_m ?? 0)),           unit: 'm' },
+    { label: 'TEMPS MOV.',     value: formatDuration(session.duration_seconds),                    unit: '' },
+    { label: 'VITESSE MAX',    value: session.max_speed_kmh.toFixed(1),                           unit: 'km/h' },
+  ]
+
+  const stats = isTrail ? trailStats : isRunning ? runningStats : cyclingStats
 
   const hasDimStats = stats.some(s => s.dim)
 

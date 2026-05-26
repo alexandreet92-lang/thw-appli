@@ -25,4 +25,5 @@ export interface FinishedSession {
   rpe?: number
   comment?: string
   sport?: string
+  elevation_loss_m?: number
 }

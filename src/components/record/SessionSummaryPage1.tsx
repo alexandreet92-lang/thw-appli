@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function SessionSummaryPage1({ session, theme, isDark, dataFontFamily }: Props) {
-  const isTrail = session.sport === 'trail'
+  const isTrail = session.sport === 'trail' || session.sport === 'hiking' || session.sport === 'mtb'
   const stats = isTrail
     ? [
         { label: 'DISTANCE', value: (session.distance_m / 1000).toFixed(2), unit: 'km' },

@@ -9,9 +9,12 @@ const MapBackground  = dynamic(() => import('@/components/record/MapBackground')
 const CyclingScreen  = dynamic(() => import('@/components/record/CyclingScreen'),  { ssr: false })
 const RunningScreen  = dynamic(() => import('@/components/record/RunningScreen'),  { ssr: false })
 const TrailScreen    = dynamic(() => import('@/components/record/TrailScreen'),    { ssr: false })
+const HikingScreen   = dynamic(() => import('@/components/record/HikingScreen'),  { ssr: false })
+const MTBScreen      = dynamic(() => import('@/components/record/MTBScreen'),      { ssr: false })
 const SwimmingForm   = dynamic(() => import('@/components/record/SwimmingForm'),   { ssr: false })
+const RowingForm     = dynamic(() => import('@/components/record/RowingForm'),     { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail' | 'swimming'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing'
 
 export default function RecordPage() {
   const router = useRouter()
@@ -29,7 +32,10 @@ export default function RecordPage() {
     if (sport === 'cycling') setView('cycling')
     else if (sport === 'running') setView('running')
     else if (sport === 'trail')   setView('trail')
+    else if (sport === 'hiking')  setView('hiking')
+    else if (sport === 'mtb')     setView('mtb')
     else if (sport === 'swim')    setView('swimming')
+    else if (sport === 'rowing')  setView('rowing')
     else setToast('Bientôt disponible')
   }
 
@@ -69,8 +75,30 @@ export default function RecordPage() {
     )
   }
 
+  if (view === 'hiking') {
+    return (
+      <>
+        <HikingScreen onExit={() => setView('home')} onFinished={() => { setToast('Séance enregistrée'); setView('home') }} />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
+  if (view === 'mtb') {
+    return (
+      <>
+        <MTBScreen onExit={() => setView('home')} onFinished={() => { setToast('Séance enregistrée'); setView('home') }} />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
   if (view === 'swimming') {
     return <SwimmingForm onClose={() => setView('home')} />
+  }
+
+  if (view === 'rowing') {
+    return <RowingForm onClose={() => setView('home')} />
   }
 
   return (

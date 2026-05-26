@@ -51,7 +51,12 @@ function GeolocateOnMount({ onPosition }: { onPosition: (pos: [number, number]) 
   return null
 }
 
-interface Props { onClose: () => void; onLoadRoute: (pts: { lat: number; lng: number }[]) => void; isDark: boolean }
+interface ActiveRoute {
+  snapped_points: { lat: number; lng: number }[]
+  elevation_profile: { distanceM: number; altitudeM: number }[]
+}
+
+interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean }
 
 export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
@@ -139,7 +144,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
 
   if (view === 'library') return createPortal(
     <RouteLibrary isDark={isDark} onClose={() => setView('creating')}
-      onUseRoute={pts => { onLoadRoute(pts); onClose() }} />,
+      onUseRoute={route => { onLoadRoute(route); onClose() }} />,
     document.body
   )
 

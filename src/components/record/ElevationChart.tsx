@@ -26,13 +26,18 @@ function downsample<T>(arr: T[], max: number): T[] {
   return Array.from({ length: max }, (_, i) => arr[Math.round(i * step)])
 }
 
-function smoothPath(pts: { x: number; y: number }[]): string {
-  if (pts.length < 2) return ''
-  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
-  for (let i = 1; i < pts.length; i++) {
-    const prev = pts[i - 1], curr = pts[i]
-    const cpx = ((prev.x + curr.x) / 2).toFixed(1)
-    d += ` C ${cpx} ${prev.y.toFixed(1)}, ${cpx} ${curr.y.toFixed(1)}, ${curr.x.toFixed(1)} ${curr.y.toFixed(1)}`
+function buildSmoothPath(
+  data: { distanceM: number; altitudeM: number }[],
+  getX: (i: number) => number,
+  getY: (alt: number) => number
+): string {
+  if (data.length < 2) return ''
+  const points = data.map((d, i) => ({ x: getX(i), y: getY(d.altitudeM) }))
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+  for (let i = 1; i < points.length; i++) {
+    const p0 = points[i - 1], p1 = points[i]
+    const cpx = ((p0.x + p1.x) / 2).toFixed(1)
+    d += ` C ${cpx} ${p0.y.toFixed(1)}, ${cpx} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`
   }
   return d
 }
@@ -68,10 +73,10 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
     </div>
   )
 
-  const xyPts = pts.map((d, i) => ({ x: getX(i), y: getY(d.altitudeM) }))
-  const pathD = smoothPath(xyPts)
-  const last = xyPts[xyPts.length - 1]
-  const areaD = `${pathD} L${last.x.toFixed(1)},${(PAD.top + cH).toFixed(1)} L${PAD.left},${(PAD.top + cH).toFixed(1)} Z`
+  const pathD = buildSmoothPath(pts, getX, getY)
+  const lastX = getX(pts.length - 1).toFixed(1)
+  const baseY = (PAD.top + cH).toFixed(1)
+  const areaD = `${pathD} L${lastX},${baseY} L${PAD.left},${baseY} Z`
 
   return (
     <div style={{ position: 'relative' }}>

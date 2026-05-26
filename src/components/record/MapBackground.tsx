@@ -10,15 +10,15 @@ const ATTRIBUTION = '<a href="https://www.maptiler.com/copyright/" target="_blan
 
 const TILES = {
   std: {
-    url: `https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${KEY}`,
+    url: `https://api.maptiler.com/maps/outdoor-v2/256/{z}/{x}/{y}.png?key=${KEY}`,
     overlay: null as string | null,
   },
   sat: {
-    url: `https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${KEY}`,
+    url: `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${KEY}`,
     overlay: null as string | null,
   },
   hyb: {
-    url: `https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${KEY}`,
+    url: `https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=${KEY}`,
     overlay: null as string | null,
   },
 }
@@ -125,8 +125,8 @@ export default function MapBackground({ trackPoints, currentPosition }: Props) {
         attributionControl={false}
         style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer url={tile.url} maxZoom={20} maxNativeZoom={18} tileSize={512} zoomOffset={-1} attribution={ATTRIBUTION} />
-        {tile.overlay && <TileLayer url={tile.overlay} maxZoom={20} maxNativeZoom={18} tileSize={512} zoomOffset={-1} attribution={ATTRIBUTION} />}
+        <TileLayer url={tile.url} tileSize={256} maxZoom={19} attribution={ATTRIBUTION} />
+        {tile.overlay && <TileLayer url={tile.overlay} tileSize={256} maxZoom={19} attribution={ATTRIBUTION} />}
         {position && <Marker position={position} icon={gpsIcon} />}
         <FlyToPosition position={position} />
         {trackPoints && trackPoints.length > 1 && <TrackPolyline points={trackPoints} />}

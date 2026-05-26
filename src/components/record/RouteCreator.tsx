@@ -12,11 +12,11 @@ import RouteSaveForm from './RouteSaveForm'
 import RouteLibrary from './RouteLibrary'
 
 const KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
-const ATTR = '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a>'
+const ATTR = 'MapTiler | OpenStreetMap'
 const TILES = {
-  std: `https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${KEY}`,
-  sat: `https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${KEY}`,
-  hyb: `https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${KEY}`,
+  std: `https://api.maptiler.com/maps/outdoor-v2/256/{z}/{x}/{y}.png?key=${KEY}`,
+  sat: `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${KEY}`,
+  hyb: `https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=${KEY}`,
 }
 type Layer = keyof typeof TILES
 
@@ -46,17 +46,10 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [layer, setLayer] = useState<Layer>('std')
   const [showSave, setShowSave] = useState(false)
   const [snapping, setSnapping] = useState(false)
-  const [panelState, setPanelState] = useState<'collapsed' | 'expanded'>('expanded')
+  const [panelExpanded, setPanelExpanded] = useState(true)
   const mapRef = useRef<L.Map | null>(null)
-  const dragStartY = useRef(0)
-  const PANEL_H = panelState === 'expanded' ? 270 : 80
-
-  const handleDragStart = (e: React.TouchEvent) => { dragStartY.current = e.touches[0].clientY }
-  const handleDragEnd = (e: React.TouchEvent) => {
-    const delta = e.changedTouches[0].clientY - dragStartY.current
-    if (delta > 40) setPanelState('collapsed')
-    if (delta < -40) setPanelState('expanded')
-  }
+  const touchStartY = useRef(0)
+  const panelH = panelExpanded ? '45vh' : '70px'
 
   const doSnap = useCallback(async (pts: Waypoint[], sp: string) => {
     if (pts.length < 2) return
@@ -132,7 +125,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'DM Sans, sans-serif', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <MapContainer center={[48.8566, 2.3522]} zoom={13} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
-        <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} maxZoom={20} maxNativeZoom={18} attribution={ATTR} />
+        <TileLayer url={TILES[layer]} tileSize={256} maxZoom={19} attribution={ATTR} />
         <MapClickHandler onAdd={addWaypoint} />
         <MapReady mapRef={mapRef} />
         {displayPts.length > 1 && (
@@ -158,7 +151,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
       </div>
 
       {/* Floating buttons */}
-      <div style={{ position: 'absolute', bottom: PANEL_H + 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: 10 }}>
+      <div style={{ position: 'absolute', bottom: `calc(${panelH} + 16px)`, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: 10 }}>
         <button onClick={undo} disabled={!waypoints.length} style={{ ...fb, opacity: waypoints.length ? 1 : 0.4 }}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/><path d="M3 5v4h4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
         <label style={fb}><input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} /><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 14h12" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></label>
         <button onClick={() => navigator.geolocation.getCurrentPosition(p => mapRef.current?.setView([p.coords.latitude, p.coords.longitude], 15))} style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3" fill="white"/><path d="M9 1v3M9 14v3M1 9h3M14 9h3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
@@ -166,7 +159,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
       </div>
 
       {/* Layer selector */}
-      <div style={{ position: 'absolute', right: 12, bottom: PANEL_H + 60, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ position: 'absolute', right: 12, bottom: `calc(${panelH} + 60px)`, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {(['std', 'sat', 'hyb'] as Layer[]).map(l => (
           <button key={l} onClick={() => setLayer(l)} style={{ width: 42, height: 42, borderRadius: '50%', border: 'none', cursor: 'pointer', background: layer === l ? '#fff' : 'rgba(0,0,0,0.55)', color: layer === l ? '#0A0A0A' : '#fff', backdropFilter: 'blur(8px)', fontSize: 11, fontWeight: 700 }}>
             {l === 'std' ? 'Std' : l === 'sat' ? 'Sat' : 'Hyb'}
@@ -176,15 +169,17 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
 
       {/* Bottom panel — draggable */}
       <div
-        onTouchStart={handleDragStart}
-        onTouchEnd={handleDragEnd}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, height: PANEL_H, background: isDark ? '#0A0A0A' : '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)', transition: 'height 300ms cubic-bezier(0.16, 1, 0.3, 1)', overflow: 'hidden' }}
+        onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY }}
+        onTouchEnd={(e) => {
+          const delta = e.changedTouches[0].clientY - touchStartY.current
+          if (delta > 50) setPanelExpanded(false)
+          if (delta < -50) setPanelExpanded(true)
+        }}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, height: panelH, background: isDark ? '#0A0A0A' : '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)', transition: 'height 350ms cubic-bezier(0.16, 1, 0.3, 1)', overflow: 'hidden' }}
       >
         {/* Drag indicator — click to toggle */}
-        <div onClick={() => setPanelState(p => p === 'expanded' ? 'collapsed' : 'expanded')}
-          style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, flexShrink: 0, cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.3)' : '#D1D5DB' }} />
-        </div>
+        <div onClick={() => setPanelExpanded(p => !p)}
+          style={{ width: 40, height: 5, borderRadius: 3, background: 'rgba(150,150,150,0.5)', margin: '8px auto', cursor: 'pointer', flexShrink: 0 }} />
 
         {/* Stats bar — always visible */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '6px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'}`, flexShrink: 0 }}>
@@ -198,8 +193,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
           ))}
         </div>
 
-        {/* Elevation + save — hidden when collapsed */}
-        {panelState === 'expanded' && (
+        {/* Elevation + save — masqués si collapsed */}
+        {panelExpanded && (
           <>
             <div style={{ flex: 1, padding: '4px 16px 0', overflow: 'hidden' }}>
               <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} />

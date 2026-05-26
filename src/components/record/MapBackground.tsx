@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, CircleMarker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 
 const PARIS: [number, number] = [48.8566, 2.3522]
@@ -38,6 +38,22 @@ function FlyToPosition({ position }: { position: [number, number] | null }) {
   useEffect(() => {
     if (position) map.setView(position, 15, { animate: true })
   }, [map, position])
+  return null
+}
+
+interface ActiveRoute {
+  snapped_points: { lat: number; lng: number }[]
+  elevation_profile: { distanceM: number; altitudeM: number }[]
+}
+
+function FitBounds({ activeRoute }: { activeRoute: ActiveRoute | null | undefined }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!activeRoute || activeRoute.snapped_points.length < 2) return
+    const bounds = activeRoute.snapped_points.map(p => [p.lat, p.lng] as [number, number])
+    map.fitBounds(bounds, { padding: [40, 40] })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoute])
   return null
 }
 
@@ -97,9 +113,10 @@ function LayerSelector({ layer, onChange }: {
 interface Props {
   trackPoints?: { lat: number; lng: number }[]
   currentPosition?: [number, number] | null
+  activeRoute?: ActiveRoute | null
 }
 
-export default function MapBackground({ trackPoints, currentPosition }: Props) {
+export default function MapBackground({ trackPoints, currentPosition, activeRoute }: Props) {
   const [internalPosition, setInternalPosition] = useState<[number, number] | null>(null)
   const [layer, setLayer] = useState<LayerId>('std')
 
@@ -130,6 +147,25 @@ export default function MapBackground({ trackPoints, currentPosition }: Props) {
         {position && <Marker position={position} icon={gpsIcon} />}
         <FlyToPosition position={position} />
         {trackPoints && trackPoints.length > 1 && <TrackPolyline points={trackPoints} />}
+        {activeRoute && activeRoute.snapped_points.length > 1 && (
+          <>
+            <Polyline
+              positions={activeRoute.snapped_points.map(p => [p.lat, p.lng] as [number, number])}
+              pathOptions={{ color: '#06B6D4', weight: 3, opacity: 0.8 }}
+            />
+            <CircleMarker
+              center={[activeRoute.snapped_points[0].lat, activeRoute.snapped_points[0].lng]}
+              radius={6}
+              pathOptions={{ fillColor: '#10B981', fillOpacity: 1, color: 'white', weight: 2 }}
+            />
+            <CircleMarker
+              center={[activeRoute.snapped_points[activeRoute.snapped_points.length - 1].lat, activeRoute.snapped_points[activeRoute.snapped_points.length - 1].lng]}
+              radius={6}
+              pathOptions={{ fillColor: '#EF4444', fillOpacity: 1, color: 'white', weight: 2 }}
+            />
+            <FitBounds activeRoute={activeRoute} />
+          </>
+        )}
       </MapContainer>
       <LayerSelector layer={layer} onChange={setLayer} />
     </div>

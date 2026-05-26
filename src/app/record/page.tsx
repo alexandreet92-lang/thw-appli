@@ -18,8 +18,14 @@ const WorkoutLauncher  = dynamic(() => import('@/components/record/WorkoutLaunch
 const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSession'),  { ssr: false })
 const FreeModeScreen   = dynamic(() => import('@/components/record/FreeModeScreen'),  { ssr: false })
 const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
+const ElevationChart   = dynamic(() => import('@/components/record/ElevationChart'),  { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout'
+
+interface ActiveRoute {
+  snapped_points: { lat: number; lng: number }[]
+  elevation_profile: { distanceM: number; altitudeM: number }[]
+}
 
 export default function RecordPage() {
   const router = useRouter()
@@ -33,7 +39,7 @@ export default function RecordPage() {
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
   const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
   const [routeCreatorOpen, setRouteCreatorOpen] = useState(false)
-  const [activeRoutePoints, setActiveRoutePoints] = useState<{ lat: number; lng: number }[]>([])
+  const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null)
   const isDark = true
 
   const handleSelectSport = (s: SportId) => {
@@ -139,7 +145,7 @@ export default function RecordPage() {
     >
       {/* Carte plein écran */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <MapBackground trackPoints={activeRoutePoints.length > 1 ? activeRoutePoints : undefined} />
+        <MapBackground activeRoute={activeRoute} />
       </div>
 
       {/* Bouton retour — top-left, par-dessus la carte */}
@@ -167,19 +173,27 @@ export default function RecordPage() {
       <div
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 999,
-          height: 132,
+          height: activeRoute && activeRoute.elevation_profile.length > 1 ? 238 : 132,
           background: 'var(--bg-card)',
           borderTop: '1px solid var(--border)',
           backdropFilter: 'blur(12px)',
           borderTopLeftRadius: 28, borderTopRightRadius: 28,
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -8px 24px rgba(0,0,0,0.10)',
+          transition: 'height 350ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         {/* Drag indicator */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
+
+        {/* Profil altimétrique si parcours chargé */}
+        {activeRoute && activeRoute.elevation_profile.length > 1 && (
+          <div style={{ padding: '8px 16px 0' }}>
+            <ElevationChart data={activeRoute.elevation_profile} height={90} isDark={isDark} />
+          </div>
+        )}
 
         {/* 3 boutons */}
         <div style={{
@@ -266,7 +280,7 @@ export default function RecordPage() {
         <RouteCreator
           isDark={isDark}
           onClose={() => setRouteCreatorOpen(false)}
-          onLoadRoute={pts => { setActiveRoutePoints(pts); setRouteCreatorOpen(false) }}
+          onLoadRoute={route => { setActiveRoute(route); setRouteCreatorOpen(false) }}
         />
       )}
 

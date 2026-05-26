@@ -8,12 +8,18 @@ interface Route {
   distance_m: number | null; elevation_gain_m: number | null
   surfaces: { type: string; percent: number }[] | null
   snapped_points: SnappedPoint[] | null; waypoints: { lat: number; lng: number }[]
+  elevation_profile: { distanceM: number; altitudeM: number }[] | null
   created_at: string
+}
+
+interface ActiveRoute {
+  snapped_points: { lat: number; lng: number }[]
+  elevation_profile: { distanceM: number; altitudeM: number }[]
 }
 
 interface Props {
   onClose: () => void
-  onUseRoute: (pts: { lat: number; lng: number }[]) => void
+  onUseRoute: (route: ActiveRoute) => void
   isDark: boolean
 }
 
@@ -97,7 +103,7 @@ export default function RouteLibrary({ onClose, onUseRoute, isDark }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', borderTop: `1px solid ${separator}` }}>
-              <button onClick={() => onUseRoute((route.snapped_points ?? route.waypoints).map(p => ({ lat: p.lat, lng: p.lng })))}
+              <button onClick={() => onUseRoute({ snapped_points: (route.snapped_points ?? route.waypoints).map(p => ({ lat: p.lat, lng: p.lng })), elevation_profile: route.elevation_profile ?? [] })}
                 style={{ flex: 1, padding: '10px', background: 'none', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Utiliser</button>
               <button onClick={() => handleDelete(route.id)}
                 style={{ padding: '10px 16px', background: 'none', border: 'none', borderLeft: `1px solid ${separator}`, color: dim, fontSize: 13, cursor: 'pointer' }}>Supprimer</button>

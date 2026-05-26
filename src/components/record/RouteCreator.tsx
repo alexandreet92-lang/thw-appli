@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from 'react-leaflet'
 import type L from 'leaflet'
@@ -30,6 +30,27 @@ function MapReady({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) 
   return null
 }
 
+function GeolocateOnMount({ onPosition }: { onPosition: (pos: [number, number]) => void }) {
+  const map = useMap()
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      map.setView([46.603354, 1.888334], 6)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const p: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+        map.setView(p, 14)
+        onPosition(p)
+      },
+      () => map.setView([46.603354, 1.888334], 6),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return null
+}
+
 interface Props { onClose: () => void; onLoadRoute: (pts: { lat: number; lng: number }[]) => void; isDark: boolean }
 
 export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
@@ -47,9 +68,10 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [showSave, setShowSave] = useState(false)
   const [snapping, setSnapping] = useState(false)
   const [panelExpanded, setPanelExpanded] = useState(true)
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const touchStartY = useRef(0)
-  const panelH = panelExpanded ? '45vh' : '70px'
+  const panelH = panelExpanded ? '45vh' : '72px'
 
   const doSnap = useCallback(async (pts: Waypoint[], sp: string) => {
     if (pts.length < 2) return
@@ -128,6 +150,15 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
         <TileLayer url={TILES[layer]} tileSize={256} maxZoom={19} attribution={ATTR} />
         <MapClickHandler onAdd={addWaypoint} />
         <MapReady mapRef={mapRef} />
+        <GeolocateOnMount onPosition={setUserPosition} />
+        {userPosition && (
+          <>
+            <CircleMarker center={userPosition} radius={16}
+              pathOptions={{ fillColor: '#06B6D4', fillOpacity: 0.2, color: 'transparent', weight: 0 }} />
+            <CircleMarker center={userPosition} radius={8}
+              pathOptions={{ fillColor: '#06B6D4', fillOpacity: 1, color: 'white', weight: 2 }} />
+          </>
+        )}
         {displayPts.length > 1 && (
           <Polyline positions={displayPts} pathOptions={{ color: '#06B6D4', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }} />
         )}
@@ -154,7 +185,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
       <div style={{ position: 'absolute', bottom: `calc(${panelH} + 16px)`, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: 10 }}>
         <button onClick={undo} disabled={!waypoints.length} style={{ ...fb, opacity: waypoints.length ? 1 : 0.4 }}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/><path d="M3 5v4h4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
         <label style={fb}><input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} /><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 14h12" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></label>
-        <button onClick={() => navigator.geolocation.getCurrentPosition(p => mapRef.current?.setView([p.coords.latitude, p.coords.longitude], 15))} style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3" fill="white"/><path d="M9 1v3M9 14v3M1 9h3M14 9h3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
+        <button onClick={() => navigator.geolocation.getCurrentPosition(p => { const pos: [number, number] = [p.coords.latitude, p.coords.longitude]; mapRef.current?.setView(pos, 15); setUserPosition(pos) })} style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3" fill="white"/><path d="M9 1v3M9 14v3M1 9h3M14 9h3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
         <button onClick={redo} disabled={!redoStack.length} style={{ ...fb, opacity: redoStack.length ? 1 : 0.4 }}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
       </div>
 
@@ -179,7 +210,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
       >
         {/* Drag indicator — click to toggle */}
         <div onClick={() => setPanelExpanded(p => !p)}
-          style={{ width: 40, height: 5, borderRadius: 3, background: 'rgba(150,150,150,0.5)', margin: '8px auto', cursor: 'pointer', flexShrink: 0 }} />
+          style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(150,150,150,0.4)', margin: '8px auto', cursor: 'pointer', flexShrink: 0 }} />
 
         {/* Stats bar — always visible */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '6px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'}`, flexShrink: 0 }}>
@@ -197,7 +228,9 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
         {panelExpanded && (
           <>
             <div style={{ flex: 1, padding: '4px 16px 0', overflow: 'hidden' }}>
-              <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} />
+              <div style={{ opacity: 1, transition: 'opacity 200ms' }}>
+                <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} />
+              </div>
             </div>
             <div style={{ padding: '6px 16px 8px', flexShrink: 0 }}>
               <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}

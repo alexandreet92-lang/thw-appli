@@ -4,87 +4,153 @@ import { createClient } from '@/lib/supabase/client'
 import type { WorkoutExercise } from '@/types/workout'
 import { DEFAULT_GYM_EXERCISES, DEFAULT_HYROX_EXERCISES } from '@/types/workout'
 
-interface PlannedSession { id: string; title: string; sport: string; blocks: WorkoutExercise[] }
+const DAY = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+function getMondayStr() {
+  const now = new Date()
+  const d = new Date(now)
+  d.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  return d.toISOString().split('T')[0]
+}
+
+interface PlannedSession {
+  id: string
+  title: string
+  sport: string
+  blocks: WorkoutExercise[]
+  week_start?: string
+  day_index?: number
+}
 
 interface Props {
   sport: 'gym' | 'hyrox'
   open: boolean
   onClose: () => void
   onStart: (exercises: WorkoutExercise[], title?: string) => void
+  onFreeMode?: (sport: 'gym' | 'hyrox') => void
   isDark: boolean
 }
 
-function getTheme(isDark: boolean) {
-  return { bg: isDark?'#0A0A0A':'#FFFFFF', text: isDark?'#FFFFFF':'#0A0A0A', dim: isDark?'rgba(255,255,255,0.35)':'#8C8C8C', separator: isDark?'rgba(255,255,255,0.08)':'#E8E8E8', surface: isDark?'rgba(255,255,255,0.05)':'#F9FAFB', border: isDark?'rgba(255,255,255,0.10)':'#E5E7EB' }
-}
-
-export default function WorkoutLauncher({ sport, open, onClose, onStart, isDark }: Props) {
-  const t = getTheme(isDark)
+export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeMode, isDark }: Props) {
+  const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [sessions, setSessions] = useState<PlannedSession[]>([])
+  const [thisWeek, setThisWeek] = useState<PlannedSession[]>([])
+  const [allSessions, setAllSessions] = useState<PlannedSession[]>([])
   const accent = sport === 'gym' ? '#8B5CF6' : '#EF4444'
+  const label = sport === 'gym' ? 'Muscu' : 'Hyrox'
+
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (!open) return
+    const monday = getMondayStr()
     const supabase = createClient()
-    supabase.from('planned_sessions').select('id, title, sport, blocks').eq('sport', sport).limit(10)
-      .then(({ data }) => setSessions((data ?? []).map(d => ({ ...d, blocks: (d.blocks ?? []) as WorkoutExercise[] }))))
+    supabase.from('planned_sessions')
+      .select('id, title, sport, blocks, week_start, day_index')
+      .eq('sport', sport)
+      .order('day_index', { ascending: true })
+      .then(({ data }) => {
+        const all = (data ?? []).map(d => ({ ...d, blocks: (d.blocks ?? []) as WorkoutExercise[] }))
+        setAllSessions(all)
+        setThisWeek(all.filter(s => s.week_start === monday))
+      })
   }, [open, sport])
 
-  if (!open) return null
+  if (!mounted || !open) return null
+
   const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
-  const defaultExercises = sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES
-  const label = sport === 'gym' ? 'Muscu' : 'Hyrox'
+
+  const sectionLabel = (text: string) => (
+    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }}>{text}</p>
+  )
+
+  const SessionRow = ({ s }: { s: PlannedSession }) => (
+    <button onClick={() => { handleClose(); onStart(s.blocks, s.title) }}
+      style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{s.title}</p>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '3px 0 0' }}>
+          {s.day_index != null ? DAY[s.day_index] : ''}
+          {s.blocks.length > 0 ? ` · ${s.blocks.length} exercice${s.blocks.length !== 1 ? 's' : ''}` : ''}
+        </p>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M5 3l4 4-4 4" stroke="var(--text-mid)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  )
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-      <div onClick={handleClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.50)', backdropFilter:'blur(4px)', animation: closing?'fade-out 200ms ease-in forwards':'fade-in 200ms ease-out forwards' }} />
-      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, maxHeight:'78vh', background:t.bg, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily:'DM Sans, sans-serif', boxShadow:'0 -8px 32px rgba(0,0,0,0.18)' }}>
-        <div style={{ display:'flex', justifyContent:'center', paddingTop:10 }}><div style={{ width:40, height:4, borderRadius:2, background:t.separator }} /></div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px 12px' }}>
-          <h2 style={{ fontSize:18, fontWeight:700, color:t.text, margin:0, fontFamily:'Syne, sans-serif' }}>{label}</h2>
-          <button onClick={handleClose} style={{ color:t.dim, background:'none', border:'none', fontSize:22, cursor:'pointer', lineHeight:1, padding:'4px 8px' }}>×</button>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={handleClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)', animation: closing ? 'fade-out 200ms ease-in forwards' : 'fade-in 200ms ease-out forwards' }} />
+      <div className={closing ? 'sheet-close' : 'sheet-open'} style={{ position: 'fixed', left: 0, right: 0, bottom: 0, maxHeight: '82vh', background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 -8px 32px rgba(0,0,0,0.20)' }}>
+
+        {/* Drag indicator */}
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, flexShrink: 0 }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
 
-        {/* Conseil box */}
-        <div style={{ margin:'0 16px 16px', background:`${accent}12`, border:`1px solid ${accent}30`, borderRadius:14, padding:'12px 14px' }}>
-          <p style={{ fontSize:13, color: isDark ? `${accent}ee` : accent, margin:0, lineHeight:1.5 }}>
-            {sport === 'gym' ? '💪 Sélectionne un plan existant ou démarre en mode libre avec les exercices par défaut.' : '🏅 Lance un circuit Hyrox complet ou sélectionne une simulation planifiée.'}
-          </p>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', flexShrink: 0 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'Syne, sans-serif' }}>{label}</h2>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
 
-        <div style={{ flex:1, overflowY:'auto', paddingBottom:24 }}>
-          {/* Mode libre */}
-          <div style={{ padding:'0 16px 16px' }}>
-            <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:t.dim, margin:'0 0 10px' }}>Mode libre</p>
-            <button onClick={() => onStart(defaultExercises)}
-              style={{ width:'100%', padding:'14px 16px', background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', borderRadius:16, display:'flex', alignItems:'center', gap:12, cursor:'pointer', color:'#fff', textAlign:'left' }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,0.20)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
-                {sport === 'gym' ? '🏋️' : '🏅'}
-              </div>
-              <div>
-                <p style={{ fontSize:15, fontWeight:600, margin:0 }}>{label} — exercices par défaut</p>
-                <p style={{ fontSize:12, margin:'2px 0 0', opacity:0.75 }}>{defaultExercises.length} exercices</p>
-              </div>
-            </button>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px' }}>
+
+          {/* SECTION 1 — TRAINING PLANNING */}
+          <div style={{ marginBottom: 20 }}>
+            {sectionLabel('Training Planning')}
+            {thisWeek.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, padding: '8px 0' }}>Aucune séance planifiée cette semaine</p>
+            ) : (
+              thisWeek.map(s => <SessionRow key={s.id} s={s} />)
+            )}
           </div>
 
-          {/* Séances planifiées */}
-          {sessions.length > 0 && (
-            <div style={{ padding:'0 16px' }}>
-              <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:t.dim, margin:'0 0 10px' }}>Plans existants</p>
-              {sessions.map((s, idx) => (
-                <button key={s.id} onClick={() => onStart(s.blocks, s.title)}
-                  style={{ width:'100%', padding:'14px 16px', background:t.surface, border:`1px solid ${t.border}`, borderRadius:14, display:'flex', alignItems:'center', gap:12, cursor:'pointer', marginBottom: idx < sessions.length - 1 ? 8 : 0, textAlign:'left' }}>
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontSize:15, fontWeight:500, color:t.text, margin:0 }}>{s.title}</p>
-                    <p style={{ fontSize:12, color:t.dim, margin:'2px 0 0' }}>{s.blocks.length} exercices</p>
-                  </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke={t.dim} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              ))}
+          {/* SECTION 2 — TRAINING SESSION */}
+          {allSessions.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              {sectionLabel('Training Session')}
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {allSessions.map(s => <SessionRow key={s.id} s={s} />)}
+              </div>
             </div>
           )}
+
+          {/* SECTION 3 — NO TRAINING */}
+          <div>
+            {sectionLabel('No Training')}
+            <div style={{ display: 'flex', gap: 10 }}>
+
+              {/* Créer une séance */}
+              <button onClick={() => { handleClose(); onStart([], undefined) }}
+                style={{ flex: 1, padding: '14px 12px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', textAlign: 'center' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(6,182,212,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M9 2v14M2 9h14" stroke="#06B6D4" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Créer une séance</p>
+                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>Définir les exercices</p>
+              </button>
+
+              {/* Lancer sans programme */}
+              <button onClick={() => { handleClose(); onFreeMode ? onFreeMode(sport) : onStart(sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES) }}
+                style={{ flex: 1, padding: '14px 12px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', textAlign: 'center' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(6,182,212,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle cx="9" cy="9" r="7" stroke="#06B6D4" strokeWidth="1.4"/>
+                    <path d="M9 5v4l3 2" stroke="#06B6D4" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Lancer</p>
+                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>Sans programme</p>
+              </button>
+
+            </div>
+          </div>
+
         </div>
       </div>
       <style>{`@keyframes fade-in{from{opacity:0}to{opacity:1}}@keyframes fade-out{from{opacity:1}to{opacity:0}}`}</style>

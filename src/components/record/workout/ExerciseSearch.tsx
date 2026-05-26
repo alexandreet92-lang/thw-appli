@@ -13,12 +13,12 @@ interface Props {
 export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props) {
   const [query, setQuery] = useState('')
   const pool = sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF'
-  const surface = isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const border = isDark ? 'rgba(255,255,255,0.10)' : '#E5E7EB'
-  const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
+  const text = 'var(--text)'
+  const dim = 'var(--text-mid)'
+  const bg = 'var(--bg-card)'
+  const surface = 'var(--bg-card2)'
+  const border = 'var(--border-mid)'
+  const separator = 'var(--border)'
 
   const filtered = useMemo(() => {
     if (!query.trim()) return pool

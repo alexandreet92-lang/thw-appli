@@ -4,21 +4,23 @@ import { createClient } from '@/lib/supabase/client'
 import type { DataFont } from '@/types/cycling'
 
 export interface RunningSettings {
-  display:   { keepAwake: boolean; theme: 'auto'|'light'|'dark'; dataSize: 'small'|'normal'|'large'; dataFont: DataFont; paceUnit: 'min/km'|'min/mile' }
-  alerts:    { gpsLost: boolean; hrZone: boolean; hrMaxThreshold: number; vibration: boolean; sound: boolean }
-  athlete:   { vma: number; maxHr: number; restHr: number; pace5k: string; pace10k: string; paceHalf: string; paceMarathon: string }
-  recording: { gpsFrequency: number|'auto'; autoPause: boolean; autoPauseThreshold: number; autoLap: number }
-  units:     { distance: 'metric'|'imperial'; altitude: 'm'|'ft' }
-  postRun:   { autoStrava: boolean; showSummary: boolean }
+  display:    { keepAwake: boolean; theme: 'auto'|'light'|'dark'; dataSize: 'small'|'normal'|'large'; dataFont: DataFont; paceUnit: 'min/km'|'min/mile' }
+  alerts:     { gpsLost: boolean; hrZone: boolean; hrMaxThreshold: number; hydrationInterval: number; nutritionInterval: number; vibration: boolean; sound: boolean }
+  athlete:    { vma: number; maxHr: number; restHr: number; pace5k: string; pace10k: string; paceHalf: string; paceMarathon: string }
+  recording:  { gpsFrequency: number|'auto'; autoPause: boolean; autoPauseThreshold: number; autoLap: number }
+  units:      { distance: 'metric'|'imperial'; altitude: 'm'|'ft' }
+  postRun:    { autoStrava: boolean; showSummary: boolean }
+  navigation: { followPosition: boolean; autoRecenter: boolean; defaultMapType: 'std'|'sat'|'hyb'; climbDetection: boolean; climbThreshold: number }
 }
 
 export const DEFAULT_RUNNING_SETTINGS: RunningSettings = {
-  display:   { keepAwake: true, theme: 'auto', dataSize: 'normal', dataFont: 'system', paceUnit: 'min/km' },
-  alerts:    { gpsLost: true, hrZone: false, hrMaxThreshold: 185, vibration: true, sound: false },
-  athlete:   { vma: 16, maxHr: 185, restHr: 55, pace5k: '4:30', pace10k: '4:45', paceHalf: '5:00', paceMarathon: '5:15' },
-  recording: { gpsFrequency: 1, autoPause: true, autoPauseThreshold: 0.5, autoLap: 0 },
-  units:     { distance: 'metric', altitude: 'm' },
-  postRun:   { autoStrava: false, showSummary: true },
+  display:    { keepAwake: true, theme: 'auto', dataSize: 'normal', dataFont: 'system', paceUnit: 'min/km' },
+  alerts:     { gpsLost: true, hrZone: false, hrMaxThreshold: 185, hydrationInterval: 0, nutritionInterval: 0, vibration: true, sound: false },
+  athlete:    { vma: 16, maxHr: 185, restHr: 55, pace5k: '4:30', pace10k: '4:45', paceHalf: '5:00', paceMarathon: '5:15' },
+  recording:  { gpsFrequency: 1, autoPause: true, autoPauseThreshold: 0.5, autoLap: 0 },
+  units:      { distance: 'metric', altitude: 'm' },
+  postRun:    { autoStrava: false, showSummary: true },
+  navigation: { followPosition: true, autoRecenter: true, defaultMapType: 'std', climbDetection: true, climbThreshold: 50 },
 }
 
 function deepSet<T>(obj: T, path: string, value: unknown): T {

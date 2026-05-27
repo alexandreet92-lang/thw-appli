@@ -10,6 +10,7 @@ import { parseGPX } from '@/lib/gpxParser'
 import ElevationChart from './ElevationChart'
 import RouteSaveForm from './RouteSaveForm'
 import RouteLibrary from './RouteLibrary'
+import SegmentSaveForm from '../segments/SegmentSaveForm'
 
 const KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
 const ATTR = 'MapTiler | OpenStreetMap'
@@ -58,6 +59,14 @@ interface ActiveRoute {
 
 interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean }
 
+function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [snappedPoints, setSnappedPoints] = useState<SnappedPoint[]>([])
@@ -67,6 +76,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [elevationProfile, setElevationProfile] = useState<ElevPoint[]>([])
   const [redoStack, setRedoStack] = useState<Waypoint[]>([])
   const [view, setView] = useState<'creating' | 'library'>('creating')
+  const [mode, setMode] = useState<'route' | 'segment'>('route')
   const [sport, setSport] = useState('cycling')
   const [routeName, setRouteName] = useState('')
   const [layer, setLayer] = useState<Layer>('std')
@@ -97,8 +107,16 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
 
   const addWaypoint = useCallback(async (p: Waypoint) => {
     const next = [...waypoints, p]; setWaypoints(next); setRedoStack([])
-    await doSnap(next, sport)
-  }, [waypoints, sport, doSnap])
+    if (mode === 'segment') {
+      // Skip ORS — compute straight-line distance between waypoints
+      let d = 0
+      for (let i = 1; i < next.length; i++) d += haversineM(next[i-1].lat, next[i-1].lng, next[i].lat, next[i].lng)
+      setDistanceM(d)
+      setSnappedPoints(next.map(pt => ({ ...pt, altitude: 0 })))
+    } else {
+      await doSnap(next, sport)
+    }
+  }, [waypoints, sport, mode, doSnap])
 
   const undo = useCallback(() => {
     if (!waypoints.length) return
@@ -126,11 +144,19 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const handleSave = async (name: string, isPublic: boolean) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
-    await supabase.from('routes').insert({
-      user_id: user.id, name, sport, is_public: isPublic,
-      distance_m: distanceM, elevation_gain_m: elevGain,
-      waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
-    })
+    if (mode === 'segment') {
+      await supabase.from('segments').insert({
+        user_id: user.id, name, sport, is_public: isPublic,
+        distance_m: distanceM, elevation_gain_m: elevGain,
+        points: waypoints,
+      })
+    } else {
+      await supabase.from('routes').insert({
+        user_id: user.id, name, sport, is_public: isPublic,
+        distance_m: distanceM, elevation_gain_m: elevGain,
+        waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
+      })
+    }
     setShowSave(false); onClose()
   }
 
@@ -176,8 +202,16 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
       {/* Header */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={onClose} style={fb}><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 1l14 14M15 1L1 15" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg></button>
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>{routeName || 'Nouveau parcours'}</span>
+        <div style={{ flex: 1, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 2, gap: 2 }}>
+            {(['route', 'segment'] as const).map(m => (
+              <button key={m} onClick={() => { setMode(m); setWaypoints([]); setSnappedPoints([]); setDistanceM(0); setElevGain(0) }}
+                style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: mode === m ? 'white' : 'transparent', color: mode === m ? '#0A0A0A' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}>
+                {m === 'route' ? 'Parcours' : 'Segment'}
+              </button>
+            ))}
+          </div>
           <select value={sport} onChange={e => setSport(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
             <option value="cycling">Vélo</option><option value="mtb">VTT</option>
             <option value="trail">Trail</option><option value="hiking">Randonnée</option>
@@ -240,14 +274,15 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
             <div style={{ padding: '6px 16px 8px', flexShrink: 0 }}>
               <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
                 style={{ width: '100%', height: 44, borderRadius: 14, background: waypoints.length < 2 ? (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6') : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: waypoints.length < 2 ? '#8C8C8C' : '#fff', fontSize: 14, fontWeight: 600, cursor: waypoints.length < 2 ? 'default' : 'pointer' }}>
-                Enregistrer
+                {mode === 'segment' ? 'Créer le segment' : 'Enregistrer'}
               </button>
             </div>
           </>
         )}
       </div>
 
-      {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
+      {showSave && mode === 'route' && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
+      {showSave && mode === 'segment' && <SegmentSaveForm sport={sport} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
     </div>
   )
 

@@ -3,12 +3,15 @@ import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import MobileTabBar from '@/components/MobileTabBar'
+import OfflineIndicator from '@/components/shared/OfflineIndicator'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'THW Coaching',
   description: 'Application de coaching sportif premium',
+  manifest: '/manifest.json',
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent' },
 }
 
 export function generateViewport(): Viewport {
@@ -72,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Bottom tab bar — mobile only, position:fixed */}
         <MobileTabBar />
+        <OfflineIndicator />
 
       </body>
     </html>

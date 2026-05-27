@@ -14,6 +14,7 @@ import TrailPage4 from './TrailPage4'
 import TrailSettings from './TrailSettings'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
+import { savePendingSession } from '@/lib/offlineStorage'
 import { useTrailConfig } from '@/hooks/useTrailConfig'
 import { useTrailSettings } from '@/hooks/useTrailSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
@@ -128,15 +129,23 @@ export default function TrailScreen({ onExit, onFinished }: Props) {
     const snap = snapRef.current
     if (!snap) return
     let savedId: string | null = null
-    try {
-      const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (user) {
-        const { data } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: 'trail', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
-        savedId = data?.id ?? null
-        await sb.from('activities').insert({ user_id: user.id, sport_type: 'trail', title: formData.title, started_at: snap.startedAtISO, distance_m: snap.distM, moving_time_s: snap.durationSec, elapsed_time_s: snap.durationSec, elevation_gain_m: snap.elevM, avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0, max_speed_ms: snap.maxSpeedKmh / 3.6, calories: snap.calories })
-      }
-    } catch (e) { console.error('[trail] save error:', e) }
+    if (!navigator.onLine) {
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (user) savePendingSession({ user_id: user.id, sport: 'trail', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment, activity_sport_type: 'trail', avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0, max_speed_ms: snap.maxSpeedKmh / 3.6 })
+      } catch (e) { console.error('[trail] offline save error:', e) }
+    } else {
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (user) {
+          const { data } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: 'trail', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
+          savedId = data?.id ?? null
+          await sb.from('activities').insert({ user_id: user.id, sport_type: 'trail', title: formData.title, started_at: snap.startedAtISO, distance_m: snap.distM, moving_time_s: snap.durationSec, elapsed_time_s: snap.durationSec, elevation_gain_m: snap.elevM, avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0, max_speed_ms: snap.maxSpeedKmh / 3.6, calories: snap.calories })
+        }
+      } catch (e) { console.error('[trail] save error:', e) }
+    }
     setShowSaveForm(false)
     setFinishedSession({ id: savedId, started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, elevation_loss_m: snap.elevLossM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, calories: snap.calories, gps_points: snap.gpsPts, laps: snap.lapsSnap, title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment, sport: 'trail' })
   }

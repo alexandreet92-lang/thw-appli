@@ -4,7 +4,7 @@ import { Sidebar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
-import OnboardingWrapper from '@/components/shared/OnboardingWrapper'
+import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Bottom tab bar — mobile only, position:fixed */}
         <MobileTabBar />
         <OfflineIndicator />
-        <OnboardingWrapper />
+        <GlobalOnboardingWrapper />
 
       </body>
     </html>

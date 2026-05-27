@@ -63,6 +63,9 @@ export default function RunningScreen({ onExit, onFinished }: Props) {
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
   useWakeLock(phase !== 'ready')
   const stopwatch = useStopwatch(phase === 'running')
+  const { activeEffort, completedEfforts } = useSegmentDetection(
+    gps.currentLat ?? null, gps.currentLng ?? null, 'running', phase === 'running'
+  )
 
   useEffect(() => {
     if (pageIndex >= pages.length) setPageIndex(Math.max(0, pages.length - 1))
@@ -187,6 +190,20 @@ export default function RunningScreen({ onExit, onFinished }: Props) {
         </div>
       </div>
 
+      {/* Active segment effort bandeau */}
+      {activeEffort && (
+        <div style={{ position: 'fixed', top: 'calc(56px + env(safe-area-inset-top))', left: 16, right: 16, zIndex: 1000, background: 'rgba(6,182,212,0.92)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1s infinite' }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{activeEffort.segmentName}</span>
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
+            {String(Math.floor(activeEffort.elapsedSeconds / 60)).padStart(2, '0')}:{String(activeEffort.elapsedSeconds % 60).padStart(2, '0')}
+          </span>
+        </div>
+      )}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+
       {(phase === 'running' || phase === 'paused') && (
         <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>
           <PhotoButton ref={photoRef} onPreview={url => setPreviewUrl(url)} currentLat={gps.currentLat ?? undefined} currentLng={gps.currentLng ?? undefined} />
@@ -199,7 +216,7 @@ export default function RunningScreen({ onExit, onFinished }: Props) {
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}
       {showSaveForm && <SessionSaveForm sport="running" startedAt={startedAtISO} onBack={() => setShowSaveForm(false)} onSave={handleSaveSession} isDark={isDark} />}
-      {finishedSession && <SessionSummary session={finishedSession} isDark={isDark} onClose={onFinished} />}
+      {finishedSession && <SessionSummary session={finishedSession} isDark={isDark} onClose={onFinished} completedEfforts={completedEfforts} />}
     </div>,
     document.body
   )

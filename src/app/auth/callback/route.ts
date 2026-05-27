@@ -24,5 +24,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=lien_invalide_ou_expire`)
+  return NextResponse.redirect(`${origin}/auth?error=lien_invalide_ou_expire`)
 }

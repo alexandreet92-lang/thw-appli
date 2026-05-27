@@ -23,22 +23,19 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
+  // Racine — la page gère elle-même la session et le redirect
+  if (path === '/') return response
+
   // Routes publiques — toujours accessibles
-  const publicRoutes = ['/login', '/onboarding', '/access-expired']
-  if (publicRoutes.some(r => path.startsWith(r))) {
-    // Si déjà connecté et va sur /login → redirige vers home
-    if (path === '/login' && user) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-    return response
-  }
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired']
+  if (publicRoutes.some(r => path.startsWith(r))) return response
 
   // Routes API — jamais bloquées
   if (path.startsWith('/api')) return response
 
-  // Pas connecté → login
+  // Pas connecté → auth
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL('/auth', request.url))
   }
 
   // Vérifier le statut de l'abonnement

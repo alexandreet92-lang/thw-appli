@@ -8,6 +8,7 @@ import { FONT_OPTIONS } from '@/types/cycling'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import SessionSummaryPage1 from './SessionSummaryPage1'
 import SessionSummaryPage2 from './SessionSummaryPage2'
+import ActivityPhotos from '@/components/summary/ActivityPhotos'
 
 interface Props {
   session: FinishedSession
@@ -195,6 +196,9 @@ function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Pro
           />
         ))}
       </div>
+
+      {/* Photos */}
+      {session.id && <ActivityPhotos sessionId={session.id} />}
 
       {/* Segments */}
       {completedEfforts && completedEfforts.length > 0 && (

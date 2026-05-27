@@ -14,6 +14,8 @@ import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { useSegmentDetection } from '@/hooks/useSegmentDetection'
 import { savePendingSession } from '@/lib/offlineStorage'
+import PhotoButton, { type PhotoButtonHandle } from './PhotoButton'
+import PhotoPreviewToast from './PhotoPreviewToast'
 import { useRunningConfig } from '@/hooks/useRunningConfig'
 import { useRunningSettings } from '@/hooks/useRunningSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
@@ -51,6 +53,8 @@ export default function RunningScreen({ onExit, onFinished }: Props) {
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
   const snapRef = useRef<SessionSnap | null>(null)
+  const photoRef = useRef<PhotoButtonHandle>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const { pages } = useRunningConfig('running')
   const { settings } = useRunningSettings()
@@ -129,6 +133,7 @@ export default function RunningScreen({ onExit, onFinished }: Props) {
         if (user) {
           const { data } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: 'running', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
           savedId = data?.id ?? null
+          if (savedId) await photoRef.current?.flushToSession(savedId, gps.currentLat ?? undefined, gps.currentLng ?? undefined)
           await sb.from('activities').insert({ user_id: user.id, sport_type: 'running', title: formData.title, started_at: snap.startedAtISO, distance_m: snap.distM, moving_time_s: snap.durationSec, elapsed_time_s: snap.durationSec, elevation_gain_m: snap.elevM, avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0, max_speed_ms: snap.maxSpeedKmh / 3.6, calories: snap.calories })
         }
       } catch (e) { console.error('[running] save error:', e) }
@@ -176,6 +181,12 @@ export default function RunningScreen({ onExit, onFinished }: Props) {
         </div>
       </div>
 
+      {(phase === 'running' || phase === 'paused') && (
+        <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>
+          <PhotoButton ref={photoRef} onPreview={url => setPreviewUrl(url)} currentLat={gps.currentLat ?? undefined} currentLng={gps.currentLng ?? undefined} />
+        </div>
+      )}
+      {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
       <RunningSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} />
 

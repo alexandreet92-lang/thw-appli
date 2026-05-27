@@ -14,6 +14,8 @@ import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { useSegmentDetection } from '@/hooks/useSegmentDetection'
 import { savePendingSession } from '@/lib/offlineStorage'
+import PhotoButton, { type PhotoButtonHandle } from './PhotoButton'
+import PhotoPreviewToast from './PhotoPreviewToast'
 import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
@@ -64,6 +66,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
   const snapRef = useRef<SessionSnap | null>(null)
+  const photoRef = useRef<PhotoButtonHandle>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const { pages } = useCyclingConfig('cycling')
   const { settings } = useCyclingSettings()
@@ -206,6 +210,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
             rpe: formData.rpe, comment: formData.comment,
           }).select('id').single()
           savedId = data?.id ?? null
+          if (savedId) await photoRef.current?.flushToSession(savedId, gps.currentLat ?? undefined, gps.currentLng ?? undefined)
           await sb.from('activities').insert({
             user_id: user.id, sport_type: 'bike', title: formData.title,
             started_at: snap.startedAtISO, distance_m: snap.distM,
@@ -365,6 +370,14 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         </div>
       )}
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+
+      {/* Photo button — visible during recording */}
+      {(phase === 'running' || phase === 'paused') && (
+        <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>
+          <PhotoButton ref={photoRef} onPreview={url => setPreviewUrl(url)} currentLat={gps.currentLat ?? undefined} currentLng={gps.currentLng ?? undefined} />
+        </div>
+      )}
+      {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
 
       <CyclingControls
         phase={phase}

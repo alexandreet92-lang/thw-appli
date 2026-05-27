@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { PageOnboardingConfig } from './types'
 import { OnboardingVisual } from './OnboardingVisual'
+import { AnimatedBackground } from './AnimatedBackground'
+import { ProgressBar } from './ProgressBar'
 
 interface Props { config: PageOnboardingConfig; onDismiss: () => void }
 
@@ -16,11 +18,11 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
   const slides = config.slides
   const slide = slides[current]
 
-  const goTo = (idx: number) => setCurrent(idx)
+  const goTo = (idx: number) => setCurrent(Math.max(0, Math.min(slides.length - 1, idx)))
 
   const handleDismiss = () => {
     setExiting(true)
-    setTimeout(onDismiss, 250)
+    setTimeout(onDismiss, 280)
   }
 
   useEffect(() => {
@@ -36,92 +38,171 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
   if (!mounted) return null
 
   const content = (
-    <div
-      onClick={handleDismiss}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 99998,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
-        background: 'rgba(0,0,0,0.72)',
-        backdropFilter: 'blur(4px)',
-        animation: exiting ? 'fade-out 250ms forwards' : 'fade-in 300ms forwards',
-      }}
-    >
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 99998,
+      background: 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      fontFamily: 'DM Sans, sans-serif',
+      animation: exiting ? 'ob-fade-out 280ms ease-in forwards' : 'ob-fade-in 350ms ease-out forwards',
+    }}>
       <style>{`
-        @keyframes fade-in  { from{opacity:0} to{opacity:1} }
-        @keyframes fade-out { from{opacity:1} to{opacity:0} }
-        @keyframes scale-in  { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
-        @keyframes scale-out { from{transform:scale(1);opacity:1} to{transform:scale(0.9);opacity:0} }
-        @keyframes count-up  { from{transform:translateY(10px);opacity:0} to{transform:translateY(0);opacity:1} }
-        @keyframes stagger-in{ from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
-        @keyframes fade-in-up{ from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes ob-fade-in  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes ob-fade-out { from { opacity: 1 } to { opacity: 0 } }
+        @keyframes ob-slide-up { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes ob-stagger  { from { transform: scale(0.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+        @keyframes ob-count-up { from { transform: translateY(10px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes stagger-in  { from { transform: scale(0.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+        @keyframes count-up    { from { transform: translateY(10px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
       `}</style>
 
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%', maxWidth: 380,
-          background: 'var(--card, #111827)',
-          borderRadius: 24, overflow: 'hidden',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-          animation: exiting ? 'scale-out 250ms forwards' : 'scale-in 300ms cubic-bezier(0.34,1.56,0.64,1) forwards',
-        }}
-      >
-        {/* Visual */}
-        <div style={{ height: 220, background: 'linear-gradient(135deg,#0A0A1A,#0F1A2E)', position: 'relative', overflow: 'hidden' }}>
-          <OnboardingVisual slide={slide} key={slide.id} />
-        </div>
+      <AnimatedBackground />
+      <ProgressBar current={current} total={slides.length} />
 
-        {/* Content */}
-        <div style={{ padding: '20px 24px 24px' }}>
-          <p style={{ fontSize: 11, color: '#8C8C8C', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1, fontFamily: 'DM Sans, sans-serif' }}>
-            {current + 1} / {slides.length}
-          </p>
+      {/* Passer — top right */}
+      <button onClick={handleDismiss} style={{
+        position: 'absolute', top: 16, right: 20,
+        padding: '5px 12px', borderRadius: 20,
+        background: 'rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12, cursor: 'pointer', zIndex: 10,
+        fontFamily: 'DM Sans, sans-serif',
+      }}>
+        Passer
+      </button>
 
-          <h3
-            key={slide.id + '_title'}
-            style={{ fontSize: 20, fontWeight: 700, color: 'var(--foreground, #fff)', margin: '0 0 10px', fontFamily: 'Syne, sans-serif', animation: 'fade-in-up 0.3s ease' }}
-          >
-            {slide.title}
-          </h3>
+      {/* Visual zone — 58vh */}
+      <div style={{ height: '58vh', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
+        <OnboardingVisual slide={slide} key={slide.id} />
+      </div>
 
-          <p
-            key={slide.id + '_desc'}
-            style={{ fontSize: 14, color: 'var(--muted-foreground, rgba(255,255,255,0.6))', lineHeight: 1.6, margin: '0 0 20px', fontFamily: 'DM Sans, sans-serif', animation: 'fade-in-up 0.3s 0.05s ease both' }}
-          >
-            {slide.description}
-          </p>
+      {/* Content zone */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        padding: '20px 28px 32px',
+        background: 'linear-gradient(to top, rgba(5,8,18,1) 80%, transparent)',
+        overflow: 'hidden',
+      }}>
+        {/* Badge */}
+        {slide.badge && (
+          <div style={{
+            alignSelf: 'flex-start',
+            padding: '3px 10px', borderRadius: 20,
+            background: 'rgba(6,182,212,0.15)',
+            border: '1px solid rgba(6,182,212,0.3)',
+            marginBottom: 10,
+          }}>
+            <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
+              {slide.badge}
+            </span>
+          </div>
+        )}
 
-          {/* Navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* Dots */}
-            <div style={{ display: 'flex', gap: 6 }}>
-              {slides.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goTo(i)}
-                  style={{ width: i === current ? 20 : 6, height: 6, borderRadius: 3, background: i === current ? '#06B6D4' : 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 300ms cubic-bezier(0.16,1,0.3,1)' }}
-                />
-              ))}
-            </div>
+        {/* Title */}
+        <h2
+          key={slide.id + '_t'}
+          style={{
+            fontSize: 24, fontWeight: 800, color: 'white',
+            margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.3px',
+            fontFamily: 'Syne, sans-serif',
+            animation: 'ob-slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both',
+          }}
+        >
+          {slide.title}
+        </h2>
 
-            {/* Buttons */}
-            <div style={{ display: 'flex', gap: 8 }}>
-              {current < slides.length - 1 ? (
-                <>
-                  <button onClick={handleDismiss} style={{ padding: '8px 14px', borderRadius: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                    Passer
-                  </button>
-                  <button onClick={() => goTo(current + 1)} style={{ padding: '8px 18px', borderRadius: 10, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                    Suivant →
-                  </button>
-                </>
-              ) : (
-                <button onClick={handleDismiss} style={{ padding: '10px 24px', borderRadius: 12, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                  C&apos;est parti
-                </button>
-              )}
-            </div>
+        {/* Description */}
+        <p
+          key={slide.id + '_d'}
+          style={{
+            fontSize: 14, color: 'rgba(255,255,255,0.6)',
+            lineHeight: 1.65, margin: 0,
+            animation: 'ob-slide-up 0.4s 0.06s cubic-bezier(0.16,1,0.3,1) both',
+          }}
+        >
+          {slide.description}
+        </p>
+
+        {/* Key points */}
+        {slide.keyPoints && slide.keyPoints.length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {slide.keyPoints.map((point, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+                animation: `ob-slide-up 0.4s ${0.1 + i * 0.06}s both`,
+              }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: '50%',
+                  background: 'rgba(6,182,212,0.2)',
+                  border: '1px solid rgba(6,182,212,0.5)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, marginTop: 2,
+                }}>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#06B6D4' }} />
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                  {point}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+          {/* Dots */}
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {slides.map((_, i) => (
+              <button key={i} onClick={() => goTo(i)} style={{
+                width: i === current ? 22 : 5,
+                height: 5, borderRadius: 3,
+                background: i === current ? '#06B6D4' : 'rgba(255,255,255,0.2)',
+                border: 'none', cursor: 'pointer', padding: 0,
+                transition: 'all 350ms cubic-bezier(0.16,1,0.3,1)',
+              }} />
+            ))}
+          </div>
+
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {current > 0 && (
+              <button onClick={() => goTo(current - 1)} style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.6)',
+                cursor: 'pointer', fontSize: 16,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                ←
+              </button>
+            )}
+            {current < slides.length - 1 ? (
+              <button onClick={() => goTo(current + 1)} style={{
+                padding: '9px 20px', borderRadius: 24,
+                background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+                border: 'none', color: 'white',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(6,182,212,0.35)',
+                fontFamily: 'DM Sans, sans-serif',
+              }}>
+                Suivant →
+              </button>
+            ) : (
+              <button onClick={handleDismiss} style={{
+                padding: '10px 24px', borderRadius: 24,
+                background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
+                border: 'none', color: 'white',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(6,182,212,0.4)',
+                fontFamily: 'DM Sans, sans-serif',
+              }}>
+                C&apos;est parti ✦
+              </button>
+            )}
           </div>
         </div>
       </div>

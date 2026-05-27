@@ -1,10 +1,13 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AuthInput } from '@/components/auth/AuthInput'
+import { ErrorMessage } from '@/components/auth/ErrorMessage'
+import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
+import { getAuthError } from '@/lib/auth/errors'
 
 const BG = 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)'
 
@@ -20,30 +23,41 @@ const primaryBtn: React.CSSProperties = {
 
 export default function ResetPasswordPage() {
   const router = useRouter()
-  const [password,        setPassword]        = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading,         setLoading]         = useState(false)
-  const [error,           setError]           = useState<string | null>(null)
-  const [success,         setSuccess]         = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirm,  setConfirm]  = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [success,  setSuccess]  = useState(false)
 
-  async function handleSubmit() {
-    if (!password || !confirmPassword) return
-    if (password !== confirmPassword) { setError('Les mots de passe ne correspondent pas.'); return }
-    if (password.length < 6) { setError('Le mot de passe doit contenir au moins 6 caractères.'); return }
-    setLoading(true); setError(null)
-    const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ password })
+  useEffect(() => {
+    const sb = createClient()
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Token valide — l'utilisateur peut maintenant changer son mot de passe
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const isDisabled = password !== confirm || password.length < 6
+
+  async function handleReset() {
+    if (isDisabled) return
+    setLoading(true); setError('')
+    const sb = createClient()
+    const { error: e } = await sb.auth.updateUser({ password })
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (e) { setError(getAuthError(e)); return }
+    localStorage.setItem('last_auth_date', Date.now().toString())
     setSuccess(true)
-    setTimeout(() => router.replace('/activities'), 2000)
+    setTimeout(() => router.replace('/'), 2000)
   }
 
   return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
+      <style>{`@keyframes scale-in{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
       <div style={{ width: '100%', maxWidth: 380, padding: '0 24px' }}>
 
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <img src="/logos/logo_4bras.png" alt="Hybrid" style={{ width: 40, height: 40 }} />
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '10px 0 4px', letterSpacing: '-0.5px', fontFamily: 'Syne, sans-serif' }}>
@@ -51,32 +65,54 @@ export default function ResetPasswordPage() {
           </h2>
         </div>
 
-        <h3 style={{ color: 'white', fontSize: 20, fontWeight: 700, margin: '0 0 8px', fontFamily: 'Syne, sans-serif' }}>
-          Nouveau mot de passe
-        </h3>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: '0 0 24px', fontFamily: 'DM Sans, sans-serif' }}>
-          Choisis un nouveau mot de passe pour ton compte.
-        </p>
-
         {success ? (
-          <div style={{ padding: '16px', borderRadius: 12, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', textAlign: 'center' }}>
-            <p style={{ color: '#10B981', fontSize: 15, fontWeight: 600, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>
-              Mot de passe mis à jour ! Redirection…
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: 80, height: 80, margin: '0 auto 24px', borderRadius: '50%',
+              background: 'rgba(16,185,129,0.15)', border: '2px solid rgba(16,185,129,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+            }}>
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                <path d="M8 18l7 7 13-14" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3 style={{ fontSize: 22, fontWeight: 700, color: 'white', margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
+              Mot de passe modifié
+            </h3>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>
+              Redirection en cours…
             </p>
           </div>
         ) : (
           <>
-            <AuthInput label="Nouveau mot de passe" type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
-            <AuthInput label="Confirmer le mot de passe" type="password" placeholder="••••••••" value={confirmPassword} onChange={setConfirmPassword} showToggle />
+            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
+              Nouveau mot de passe
+            </h3>
+            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
+              Choisis un mot de passe sécurisé d&apos;au moins 6 caractères.
+            </p>
 
-            {error && (
-              <p style={{ textAlign: 'center', color: '#EF4444', fontSize: 13, margin: '0 0 12px', fontFamily: 'DM Sans, sans-serif' }}>
-                {error}
+            <AuthInput label="Nouveau mot de passe" type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
+            <PasswordStrengthBar password={password} />
+            <div style={{ height: 16 }} />
+            <AuthInput label="Confirmer le mot de passe" type="password" placeholder="••••••••" value={confirm} onChange={setConfirm} showToggle />
+
+            {confirm && password !== confirm && (
+              <p style={{ fontSize: 12, color: '#EF4444', margin: '4px 0 0', fontFamily: 'DM Sans, sans-serif' }}>
+                Les mots de passe ne correspondent pas.
               </p>
             )}
 
-            <button onClick={handleSubmit} disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+            <ErrorMessage error={error} />
+            <div style={{ height: 24 }} />
+
+            <button
+              onClick={handleReset}
+              disabled={loading || isDisabled}
+              style={{ ...primaryBtn, opacity: loading || isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+            >
+              {loading ? 'Modification…' : 'Modifier le mot de passe'}
             </button>
           </>
         )}

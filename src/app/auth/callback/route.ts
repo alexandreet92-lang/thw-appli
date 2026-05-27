@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as 'recovery' | 'signup' | 'email' | null
-  const next = searchParams.get('next') ?? '/profile'
+  const next = searchParams.get('next') ?? '/'
 
   const supabase = await createClient()
 

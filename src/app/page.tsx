@@ -29,6 +29,13 @@ export default function RootPage() {
       return
     }
 
+    // Check profile completed
+    const profileDone = localStorage.getItem('profile_completed')
+    if (!profileDone) {
+      router.replace('/auth/profile')
+      return
+    }
+
     router.replace('/activities')
   }, [router])
 

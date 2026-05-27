@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
   if (path === '/') return response
 
   // Routes publiques — toujours accessibles
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired']
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal']
   if (publicRoutes.some(r => path.startsWith(r))) return response
 
   // Routes API — jamais bloquées

@@ -70,7 +70,7 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const { pages } = useCyclingConfig('cycling')
-  const { settings } = useCyclingSettings()
+  const { settings, updateSetting } = useCyclingSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
@@ -400,6 +400,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         isDark={isDark}
+        settings={settings}
+        updateSetting={updateSetting}
       />
 
       {gps.status === GPSStatus.denied && (

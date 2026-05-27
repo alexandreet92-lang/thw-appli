@@ -61,7 +61,7 @@ export default function TrailScreen({ onExit, onFinished }: Props) {
   const lapPrevAltRef = useRef<number | null>(null)
 
   const { pages } = useTrailConfig('trail')
-  const { settings } = useTrailSettings()
+  const { settings, updateSetting } = useTrailSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
@@ -192,7 +192,7 @@ export default function TrailScreen({ onExit, onFinished }: Props) {
       </div>
 
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
-      <TrailSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} />
+      <TrailSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

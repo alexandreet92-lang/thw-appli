@@ -1,7 +1,7 @@
 'use client'
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useTrailConfig } from '@/hooks/useTrailConfig'
-import { useTrailSettings } from '@/hooks/useTrailSettings'
+import type { TrailSettings as TrailSettingsData } from '@/hooks/useTrailSettings'
 import { trailFieldById } from '@/types/trail'
 import type { DataPage } from '@/types/cycling'
 import TrailSettingsNav from './TrailSettingsNav'
@@ -9,7 +9,7 @@ import CyclingSettingsTraining from './CyclingSettingsTraining'
 import TrailSettingsParams from './TrailSettingsParams'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 
-interface Props { open: boolean; onClose: () => void; isDark: boolean }
+interface Props { open: boolean; onClose: () => void; isDark: boolean; settings: TrailSettingsData; updateSetting: (path: string, value: unknown) => void }
 
 const SECTION_ICONS: Record<string, ReactElement> = {
   pages:      (<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="1" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>),
@@ -46,11 +46,14 @@ export default function TrailSettings(props: Props) {
   return <ToastProvider><TrailSettingsInner {...props} /></ToastProvider>
 }
 
-function TrailSettingsInner({ open, onClose, isDark }: Props) {
+function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, savePages } = useTrailConfig('trail')
-  const { settings, updateSetting } = useTrailSettings(() => showToast('Enregistré'))
+  const updateSetting = useCallback((path: string, value: unknown) => {
+    updateSetting_prop(path, value)
+    showToast('Modification enregistrée')
+  }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)

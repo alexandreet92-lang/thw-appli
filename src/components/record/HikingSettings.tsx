@@ -1,7 +1,7 @@
 'use client'
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useHikingConfig } from '@/hooks/useHikingConfig'
-import { useHikingSettings } from '@/hooks/useHikingSettings'
+import type { HikingSettings as HikingSettingsData } from '@/hooks/useHikingSettings'
 import { hikingFieldById } from '@/types/hiking'
 import type { DataPage } from '@/types/cycling'
 import TrailSettingsNav from './TrailSettingsNav'
@@ -15,7 +15,7 @@ import { NumberInput } from './settings/NumberInput'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import type { TrailSettings } from '@/hooks/useTrailSettings'
 
-interface Props { open: boolean; onClose: () => void; isDark: boolean }
+interface Props { open: boolean; onClose: () => void; isDark: boolean; settings: HikingSettingsData; updateSetting: (path: string, value: unknown) => void }
 
 const ACCENT = '#22C55E'
 
@@ -54,11 +54,14 @@ export default function HikingSettings(props: Props) {
   return <ToastProvider><HikingSettingsInner {...props} /></ToastProvider>
 }
 
-function HikingSettingsInner({ open, onClose, isDark }: Props) {
+function HikingSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, savePages } = useHikingConfig('hiking')
-  const { settings, updateSetting } = useHikingSettings(() => showToast('Enregistré'))
+  const updateSetting = useCallback((path: string, value: unknown) => {
+    updateSetting_prop(path, value)
+    showToast('Modification enregistrée')
+  }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)

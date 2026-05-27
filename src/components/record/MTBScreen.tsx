@@ -65,7 +65,7 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
   const lapPrevAltRef = useRef<number | null>(null)
 
   const { pages } = useMTBConfig('mtb')
-  const { settings } = useMTBSettings()
+  const { settings, updateSetting } = useMTBSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
@@ -202,7 +202,7 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
       )}
       {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
-      <MTBSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} />
+      <MTBSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

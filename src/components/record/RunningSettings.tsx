@@ -1,7 +1,7 @@
 'use client'
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useRunningConfig } from '@/hooks/useRunningConfig'
-import { useRunningSettings } from '@/hooks/useRunningSettings'
+import type { RunningSettings as RunningSettingsData } from '@/hooks/useRunningSettings'
 import { runningFieldById } from '@/types/running'
 import type { DataPage as RunningDataPage } from '@/types/cycling'
 import RunningSettingsNav from './RunningSettingsNav'
@@ -13,6 +13,8 @@ interface Props {
   open: boolean
   onClose: () => void
   isDark: boolean
+  settings: RunningSettingsData
+  updateSetting: (path: string, value: unknown) => void
 }
 
 const SECTION_ICONS: Record<string, ReactElement> = {
@@ -115,11 +117,14 @@ export default function RunningSettings(props: Props) {
   )
 }
 
-function RunningSettingsInner({ open, onClose, isDark }: Props) {
+function RunningSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, savePages } = useRunningConfig('running')
-  const { settings, updateSetting } = useRunningSettings(() => showToast('Enregistré'))
+  const updateSetting = useCallback((path: string, value: unknown) => {
+    updateSetting_prop(path, value)
+    showToast('Modification enregistrée')
+  }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)

@@ -46,7 +46,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const { pages } = useSkiConfig()
-  const { settings } = useSkiSettings()
+  const { settings, updateSetting } = useSkiSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
@@ -170,7 +170,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
       )}
       {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={() => {}} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
-      <SkiSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} />
+      <SkiSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

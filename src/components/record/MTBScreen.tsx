@@ -106,8 +106,8 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
     const dt = Date.now() - touchRef.current.t
     touchRef.current = null
     if (dt > 600) return
-    if (dy < -50) setPageIndex(i => Math.min(PAGE_COUNT - 1, i + 1))
-    else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
+    if (dy < -50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i + 1) % n })
+    else if (dy > 50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i - 1 + n) % n })
   }
 
   const handleStart = () => { resetTracking(); setElevationLossM(0); setMaxGradient(0); prevAltRef.current = null; lapPrevAltRef.current = null; setStartedAt(Date.now()); setPhase('running') }

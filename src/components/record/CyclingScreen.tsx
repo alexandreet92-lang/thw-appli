@@ -104,8 +104,8 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
     const dt = Date.now() - touchRef.current.t
     touchRef.current = null
     if (dt > 600) return
-    if (dy < -50) setPageIndex(i => Math.min(pages.length - 1, i + 1))
-    else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
+    if (dy < -50) setPageIndex(i => { const n = pages.length; return n === 0 ? i : (i + 1) % n })
+    else if (dy > 50) setPageIndex(i => { const n = pages.length; return n === 0 ? i : (i - 1 + n) % n })
   }
 
   const handleGpsAuthorize = () => {

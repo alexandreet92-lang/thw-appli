@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, CircleMarker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 
@@ -119,21 +119,6 @@ interface Props {
 export default function MapBackground({ trackPoints, currentPosition, activeRoute }: Props) {
   const [internalPosition, setInternalPosition] = useState<[number, number] | null>(null)
   const [layer, setLayer] = useState<LayerId>('std')
-  const mapWrapRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = mapWrapRef.current
-    if (!el) return
-    const stop = (e: TouchEvent) => e.stopPropagation()
-    el.addEventListener('touchstart', stop, { passive: true })
-    el.addEventListener('touchmove',  stop, { passive: true })
-    el.addEventListener('touchend',   stop, { passive: true })
-    return () => {
-      el.removeEventListener('touchstart', stop)
-      el.removeEventListener('touchmove',  stop)
-      el.removeEventListener('touchend',   stop)
-    }
-  }, [])
 
   useEffect(() => {
     if (currentPosition != null) return
@@ -149,7 +134,7 @@ export default function MapBackground({ trackPoints, currentPosition, activeRout
   const tile = TILES[layer]
 
   return (
-    <div ref={mapWrapRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapContainer
         center={position ?? PARIS}
         zoom={15}

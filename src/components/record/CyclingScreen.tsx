@@ -95,10 +95,14 @@ export default function CyclingScreen({ onExit, onFinished }: Props) {
   }, [gps.distance, lapStartDistance])
 
   const touchRef = useRef<{ y: number; t: number } | null>(null)
+  const swipeFromMap = useRef(false)
   const handleTouchStart = (e: React.TouchEvent) => {
+    swipeFromMap.current = !!(e.target as HTMLElement)?.closest?.('.leaflet-container')
+    if (swipeFromMap.current) return
     touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
   }
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (swipeFromMap.current) { swipeFromMap.current = false; return }
     if (!touchRef.current) return
     const dy = e.changedTouches[0].clientY - touchRef.current.y
     const dt = Date.now() - touchRef.current.t

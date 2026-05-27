@@ -22,8 +22,11 @@ const YogaLauncher     = dynamic(() => import('@/components/record/YogaLauncher'
 const YogaSession      = dynamic(() => import('@/components/record/YogaSession'),     { ssr: false })
 const ElevationChart   = dynamic(() => import('@/components/record/ElevationChart'),  { ssr: false })
 const SkiScreen        = dynamic(() => import('@/components/record/SkiScreen'),       { ssr: false })
+const PadelForm        = dynamic(() => import('@/components/record/PadelForm'),        { ssr: false })
+const OpenWaterScreen  = dynamic(() => import('@/components/record/OpenWaterScreen'), { ssr: false })
+const HomeTrainerScreen = dynamic(() => import('@/components/record/HomeTrainerScreen'), { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer'
 
 interface ActiveRoute {
   snapped_points: { lat: number; lng: number }[]
@@ -73,7 +76,10 @@ export default function RecordPage() {
     else if (sport === 'rowing')  setView('rowing')
     else if (sport === 'ski')     setView('ski')
     else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
-    else if (sport === 'yoga')    setYogaLauncherOpen(true)
+    else if (sport === 'yoga')        setYogaLauncherOpen(true)
+    else if (sport === 'padel')       setView('padel')
+    else if (sport === 'openwater')   setView('openwater')
+    else if (sport === 'hometrainer') setView('hometrainer')
     else setToast('Bientôt disponible')
   }
 
@@ -149,6 +155,34 @@ export default function RecordPage() {
 
   if (view === 'rowing') {
     return <RowingForm onClose={() => setView('home')} />
+  }
+
+  if (view === 'padel') {
+    return <PadelForm onClose={() => setView('home')} />
+  }
+
+  if (view === 'openwater') {
+    return (
+      <>
+        <OpenWaterScreen
+          onExit={() => setView('home')}
+          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+        />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
+  if (view === 'hometrainer') {
+    return (
+      <>
+        <HomeTrainerScreen
+          onExit={() => setView('home')}
+          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+        />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
   }
 
   if (view === 'workout') {

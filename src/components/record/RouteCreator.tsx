@@ -84,6 +84,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [snapping, setSnapping] = useState(false)
   const [panelExpanded, setPanelExpanded] = useState(true)
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
+  const [scrubPosition, setScrubPosition] = useState<{ lat: number; lng: number } | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const touchStartY = useRef(0)
   const panelH = panelExpanded ? '45vh' : '72px'
@@ -197,6 +198,13 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
           <CircleMarker key={i} center={[wp.lat, wp.lng]} radius={7}
             pathOptions={{ fillColor: i === 0 ? '#10B981' : i === waypoints.length - 1 ? '#EF4444' : '#2563EB', fillOpacity: 1, color: 'white', weight: 2 }} />
         ))}
+        {scrubPosition && (
+          <CircleMarker
+            center={[scrubPosition.lat, scrubPosition.lng]}
+            radius={8}
+            pathOptions={{ fillColor: '#EF4444', fillOpacity: 1, color: '#fff', weight: 2.5 }}
+          />
+        )}
       </MapContainer>
 
       {/* Header */}
@@ -268,7 +276,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
           <>
             <div style={{ flex: 1, padding: '4px 16px 0', overflow: 'hidden' }}>
               <div style={{ opacity: 1, transition: 'opacity 200ms' }}>
-                <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} />
+                <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
               </div>
             </div>
             <div style={{ padding: '6px 16px 8px', flexShrink: 0 }}>

@@ -14,6 +14,8 @@ import type { RaceStage, NutritionItem } from './components/types'
 import { sanitizeFileName } from '@/lib/utils'
 import ClockView, { type ClockEvent } from './components/ClockView'
 import DayModal from './components/DayModal'
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
 
 // ── Types ─────────────────────────────────────────
 type CalTab        = 'race' | 'pro' | 'perso' | 'all'
@@ -1467,6 +1469,7 @@ export default function CalendarPage() {
 
   return (
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
+      <PageHelp config={CALENDAR_ONBOARDING} />
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>

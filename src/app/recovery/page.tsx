@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
 
 // ── Types pour l'analyse IA ───────────────────────────────────
 interface AIReadinessResult {
@@ -718,6 +720,7 @@ export default function RecoveryPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
+      <PageHelp config={RECOVERY_ONBOARDING} />
 
       {/* Header page */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>

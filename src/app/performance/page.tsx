@@ -16,6 +16,8 @@ import {
 } from './PerformanceTestLevels'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 
 // ── Types ───────────────────────────────────────────────────────
 type PerfTab = 'profil' | 'datas' | 'tests'
@@ -2437,6 +2439,7 @@ export default function PerformancePage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
+      <PageHelp config={PERFORMANCE_ONBOARDING} />
       {/* ── En-tête ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>
         <div>

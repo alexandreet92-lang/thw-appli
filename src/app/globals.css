@@ -5,6 +5,27 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes scale-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes scale-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(0.9); opacity: 0; }
+}
+@keyframes count-up {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: var(--path-length); }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes stagger-in {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
 :root {
   /* ── Sport colors — fixes, immuables ─────────── */
   --sport-run:    #f97316;

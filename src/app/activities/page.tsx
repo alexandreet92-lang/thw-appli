@@ -9,6 +9,7 @@ import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/
 import { SportTabs } from '@/components/ui/SportTabs'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
 
 // ─────────────────────────────────────────────────────────────
@@ -3284,6 +3285,7 @@ function TrainingPageInner() {
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, loading, error, reload, removeActivity } = useActivities()
   const { showToast } = useToast()
+  const { show: showHelp, dismiss: dismissHelp, reopen: reopenHelp } = usePageOnboarding(TRAINING_ONBOARDING.pageId, TRAINING_ONBOARDING.version)
   const zones   = useTrainingZones()
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
@@ -3422,6 +3424,7 @@ function TrainingPageInner() {
           >
             ↻
           </button>
+          <button onClick={reopenHelp} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
         </div>
       </div>
 
@@ -3633,7 +3636,7 @@ function TrainingPageInner() {
         </main>
       </div>
 
-      <PageHelp config={TRAINING_ONBOARDING} />
+      <PageHelp config={TRAINING_ONBOARDING} show={showHelp} onDismiss={dismissHelp} />
 
       <style>{`
         * { box-sizing: border-box; }

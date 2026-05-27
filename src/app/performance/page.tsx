@@ -17,6 +17,7 @@ import {
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 
 // ── Types ───────────────────────────────────────────────────────
@@ -2344,6 +2345,7 @@ const HYROX_TEST_URL_MAP: Record<string, string> = {
 export default function PerformancePage() {
   const [tab, setTab]                   = useState<PerfTab>('profil')
   const [profile, setProfile]           = useState({ ...INIT_PROFILE })
+  const { show, dismiss, reopen }       = usePageOnboarding(PERFORMANCE_ONBOARDING.pageId, PERFORMANCE_ONBOARDING.version)
   const [selectedDatum, setSelectedDatum] = useState<SelectedDatum | null>(null)
   const [aiOpen, setAiOpen]             = useState(false)
   const [aiPrefill, setAiPrefill]       = useState('')
@@ -2439,13 +2441,14 @@ export default function PerformancePage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
-      <PageHelp config={PERFORMANCE_ONBOARDING} />
+      <PageHelp config={PERFORMANCE_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* ── En-tête ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
           <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records · Tests</p>
         </div>
+        <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:4 }}>?</button>
       </div>
 
       {/* ── Tab bar ── */}

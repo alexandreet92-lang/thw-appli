@@ -23,6 +23,7 @@ const FoodSearchSheet = dynamicImport(
   { ssr: false }
 )
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { NUTRITION_ONBOARDING } from '@/onboarding/configs/nutrition.config'
 
 // ══════════════════════════════════════════════════════════════════
@@ -823,6 +824,7 @@ function MealTemplatesSection({
 // ══════════════════════════════════════════════════════════════════
 export default function NutritionPage() {
   const today = new Date().toISOString().split('T')[0]
+  const { show, dismiss, reopen } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
 
   const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog } = useNutrition()
   const { templates, loading: templatesLoading, addTemplate, updateTemplate, deleteTemplate } = useNutritionTemplates()
@@ -1066,7 +1068,7 @@ export default function NutritionPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding: '0 0 80px' }}>
-      <PageHelp config={NUTRITION_ONBOARDING} />
+      <PageHelp config={NUTRITION_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
       {scannerOpen && (
         <BarcodeScanner
@@ -1114,6 +1116,7 @@ export default function NutritionPage() {
               <path d="M7 3v18M11 3v18M15 3v18M3 11h18"/>
             </svg>
           </button>
+          <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
           <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
         </div>
       </div>

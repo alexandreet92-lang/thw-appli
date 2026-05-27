@@ -8,6 +8,7 @@ import { SportTabs } from '@/components/ui/SportTabs'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { SESSION_ONBOARDING } from '@/onboarding/configs/session.config'
 
 // ══════════════════════════════════════════════════════════════════
@@ -2050,6 +2051,7 @@ export default function SessionPage() {
   const [execTarget,    setExecTarget]    = useState<SessionTemplate|undefined>()
   const { zones }                         = useTrainingZones()
   const { races }                         = usePlanning()
+  const { show, dismiss, reopen }         = usePageOnboarding(SESSION_ONBOARDING.pageId, SESSION_ONBOARDING.version)
 
   // Charger les séances depuis session_library (IA)
   useEffect(() => {
@@ -2112,7 +2114,7 @@ export default function SessionPage() {
 
   return (
     <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
-      <PageHelp config={SESSION_ONBOARDING} />
+      <PageHelp config={SESSION_ONBOARDING} show={show} onDismiss={dismiss} />
       <style>{`
         @media (max-width:767px) {
           .session-header { flex-direction: column !important; gap: 12px !important; }
@@ -2136,6 +2138,7 @@ export default function SessionPage() {
               ← Bibliotheque
             </button>
           )}
+          <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
         </div>
       </div>
 

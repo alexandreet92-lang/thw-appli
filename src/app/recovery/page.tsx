@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
 
 // ── Types pour l'analyse IA ───────────────────────────────────
@@ -667,6 +668,7 @@ export default function RecoveryPage() {
   const [aiLoading,  setAiLoading]    = useState(false)
   const [aiResult,   setAiResult]     = useState<AIReadinessResult | null>(null)
   const [aiError,    setAiError]      = useState<string | null>(null)
+  const { show, dismiss, reopen }     = usePageOnboarding(RECOVERY_ONBOARDING.pageId, RECOVERY_ONBOARDING.version)
 
   async function handleAIAnalysis() {
     setAiLoading(true); setAiResult(null); setAiError(null)
@@ -720,7 +722,7 @@ export default function RecoveryPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
-      <PageHelp config={RECOVERY_ONBOARDING} />
+      <PageHelp config={RECOVERY_ONBOARDING} show={show} onDismiss={dismiss} />
 
       {/* Header page */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
@@ -730,22 +732,25 @@ export default function RecoveryPage() {
             {new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
           </p>
         </div>
-        <AIAssistantButton
-          agent="readiness"
-          context={{
-            page:        'recovery',
-            readiness:   todayData.readiness,
-            hrv:         todayData.hrv,
-            restingHr:   todayData.restingHr,
-            fatigue:     todayData.fatigue,
-            energy:      todayData.energy,
-            stress:      todayData.stress,
-            motivation:  todayData.motivation,
-            pain:        todayData.pain,
-            sleep:       todayData.sleep,
-            trends:      todayData.trends,
-          }}
-        />
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
+          <AIAssistantButton
+            agent="readiness"
+            context={{
+              page:        'recovery',
+              readiness:   todayData.readiness,
+              hrv:         todayData.hrv,
+              restingHr:   todayData.restingHr,
+              fatigue:     todayData.fatigue,
+              energy:      todayData.energy,
+              stress:      todayData.stress,
+              motivation:  todayData.motivation,
+              pain:        todayData.pain,
+              sleep:       todayData.sleep,
+              trends:      todayData.trends,
+            }}
+          />
+        </div>
       </div>
 
       <SectionToday    data={todayData} onCheckIn={() => setShowCheckIn(true)} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>

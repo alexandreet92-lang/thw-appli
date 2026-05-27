@@ -15,6 +15,7 @@ import type { ParsedSegment } from '@/lib/gpx/parser'
 import nDynamic from 'next/dynamic'
 const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 
 // ── Types ─────────────────────────────────────────
@@ -11331,6 +11332,7 @@ export default function PlanningPage() {
   const [tab, setTab] = useState<PlanningTab>('training')
   const { sessions, races, intensities, weekStart } = usePlanning()
   const { zones } = useTrainingZones()
+  const { show, dismiss, reopen } = usePageOnboarding(PLANNING_ONBOARDING.pageId, PLANNING_ONBOARDING.version)
 
   const TABS: [PlanningTab,string,string,string,string][] = [
     ['training','Planning Training','Training','#00c8e0','rgba(0,200,224,0.10)'],
@@ -11370,12 +11372,13 @@ export default function PlanningPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
-      <PageHelp config={PLANNING_ONBOARDING} />
+      <PageHelp config={PLANNING_ONBOARDING} show={show} onDismiss={dismiss} />
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
         </div>
+        <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
       </div>
 
       <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' as const }}>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { PageOnboardingConfig } from './types'
 import { OnboardingVisual } from './OnboardingVisual'
@@ -12,6 +12,8 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
   const [current, setCurrent] = useState(0)
   const [exiting, setExiting] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -35,16 +37,33 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
     return () => window.removeEventListener('keydown', handler)
   })
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0 && current < slides.length - 1) goTo(current + 1)
+      if (dx > 0 && current > 0) goTo(current - 1)
+    }
+  }
+
   if (!mounted) return null
 
   const content = (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 99998,
-      background: 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)',
-      display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      fontFamily: 'DM Sans, sans-serif',
-      animation: exiting ? 'ob-fade-out 280ms ease-in forwards' : 'ob-fade-in 350ms ease-out forwards',
-    }}>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99998,
+        background: 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        fontFamily: 'DM Sans, sans-serif',
+        animation: exiting ? 'ob-fade-out 280ms ease-in forwards' : 'ob-fade-in 350ms ease-out forwards',
+      }}>
       <style>{`
         @keyframes ob-fade-in  { from { opacity: 0 } to { opacity: 1 } }
         @keyframes ob-fade-out { from { opacity: 1 } to { opacity: 0 } }
@@ -81,8 +100,9 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
         flex: 1, display: 'flex', flexDirection: 'column',
         padding: '20px 28px 32px',
         background: 'linear-gradient(to top, rgba(5,8,18,1) 80%, transparent)',
-        overflow: 'hidden',
-      }}>
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+      } as React.CSSProperties}>
         {/* Badge */}
         {slide.badge && (
           <div style={{

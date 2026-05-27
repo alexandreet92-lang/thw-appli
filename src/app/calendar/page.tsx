@@ -15,6 +15,7 @@ import { sanitizeFileName } from '@/lib/utils'
 import ClockView, { type ClockEvent } from './components/ClockView'
 import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
 
 // ── Types ─────────────────────────────────────────
@@ -1443,6 +1444,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 export default function CalendarPage() {
   const [tab, setTab] = useState<CalTab>('race')
   const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { show, dismiss, reopen } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
   const TABS: { id: CalTab; label: string; short: string; color: string; bg: string }[] = [
     { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
@@ -1469,13 +1471,14 @@ export default function CalendarPage() {
 
   return (
     <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
-      <PageHelp config={CALENDAR_ONBOARDING} />
+      <PageHelp config={CALENDAR_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
         </div>
+        <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
       </div>
 
       {/* Tab pills */}

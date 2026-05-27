@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { PageHelp } from '@/onboarding/system/PageHelp'
+import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CONNECTIONS_ONBOARDING } from '@/onboarding/configs/connections.config'
 
 // ── Types ───────────────────────────────────────────────────────
@@ -515,6 +516,7 @@ function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 
 
 function ConnectionsInner() {
   const searchParams = useSearchParams()
+  const { show, dismiss, reopen } = usePageOnboarding(CONNECTIONS_ONBOARDING.pageId, CONNECTIONS_ONBOARDING.version)
 
   const [connections, setConnections] = useState<ConnectionInfo[]>([])
   const [loadingStatus, setLoadingStatus] = useState(true)
@@ -738,7 +740,7 @@ function ConnectionsInner() {
       `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-        <PageHelp config={CONNECTIONS_ONBOARDING} />
+        <PageHelp config={CONNECTIONS_ONBOARDING} show={show} onDismiss={dismiss} />
 
         {/* ── Header ───────────────────────────────────────────── */}
         <div style={{ padding: isMobile ? '24px 16px 0' : '32px 32px 0', background: 'var(--bg)' }}>
@@ -760,26 +762,30 @@ function ConnectionsInner() {
               )}
             </div>
 
-            {/* Sync All */}
-            <button onClick={handleSyncAll} disabled={syncingAll || loadingStatus || connectedCount === 0}
-              onMouseEnter={() => setSyncAllHov(true)} onMouseLeave={() => setSyncAllHov(false)}
-              style={{
-                padding: isMobile ? '8px 14px' : '10px 18px',
-                height: isMobile ? 44 : 'auto',
-                width: isMobile ? '100%' : 'auto',
-                borderRadius: 10, border: 'none',
-                background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? '#4a5bef' : ACCENT,
-                color: (syncingAll || connectedCount === 0) ? 'var(--text-dim)' : '#fff',
-                fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13,
-                cursor: (syncingAll || connectedCount === 0) ? 'default' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: (syncingAll || connectedCount === 0) ? 'none' : '0 2px 16px rgba(91,111,255,0.30)',
-                transition: 'background 0.18s',
-                whiteSpace: 'nowrap', flexShrink: 0,
-              }}>
-              <RefreshIcon size={13} spinning={syncingAll} />
-              {syncingAll ? 'Synchronisation...' : 'Synchroniser tout'}
-            </button>
+            {/* Right actions */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+              <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
+              {/* Sync All */}
+              <button onClick={handleSyncAll} disabled={syncingAll || loadingStatus || connectedCount === 0}
+                onMouseEnter={() => setSyncAllHov(true)} onMouseLeave={() => setSyncAllHov(false)}
+                style={{
+                  padding: isMobile ? '8px 14px' : '10px 18px',
+                  height: isMobile ? 44 : 'auto',
+                  width: isMobile ? '100%' : 'auto',
+                  borderRadius: 10, border: 'none',
+                  background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? '#4a5bef' : ACCENT,
+                  color: (syncingAll || connectedCount === 0) ? 'var(--text-dim)' : '#fff',
+                  fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13,
+                  cursor: (syncingAll || connectedCount === 0) ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: (syncingAll || connectedCount === 0) ? 'none' : '0 2px 16px rgba(91,111,255,0.30)',
+                  transition: 'background 0.18s',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}>
+                <RefreshIcon size={13} spinning={syncingAll} />
+                {syncingAll ? 'Synchronisation...' : 'Synchroniser tout'}
+              </button>
+            </div>
           </div>
 
           {/* ── Search + filters (sticky bar) ─────────────────── */}

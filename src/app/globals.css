@@ -5,6 +5,27 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes scale-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes scale-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(0.9); opacity: 0; }
+}
+@keyframes count-up {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: var(--path-length); }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes stagger-in {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
 :root {
   /* ── Sport colors — fixes, immuables ─────────── */
   --sport-run:    #f97316;
@@ -360,3 +381,23 @@ button:active { transform: scale(0.97); }
 
 /* ── GPS indicator — blinking dot ────────────────────────────── */
 @keyframes gps-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* ── Onboarding V2 — animations ──────────────────────────────── */
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%       { transform: scale(1.15); opacity: 0.7; }
+}
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0)    translateX(0);   }
+  33%       { transform: translateY(-20px) translateX(8px);  }
+  66%       { transform: translateY(10px)  translateX(-6px); }
+}
+@keyframes draw-path {
+  from { stroke-dashoffset: 1000; opacity: 0; }
+  to   { stroke-dashoffset: 0;    opacity: 1; }
+}
+@keyframes counter-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  70%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
+}

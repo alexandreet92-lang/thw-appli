@@ -1,7 +1,7 @@
 'use client'
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useMTBConfig } from '@/hooks/useMTBConfig'
-import { useMTBSettings } from '@/hooks/useMTBSettings'
+import type { MTBSettings as MTBSettingsData } from '@/hooks/useMTBSettings'
 import { mtbFieldById } from '@/types/mtb'
 import type { DataPage } from '@/types/cycling'
 import TrailSettingsNav from './TrailSettingsNav'
@@ -16,7 +16,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import type { TrailSettings } from '@/hooks/useTrailSettings'
 import type { CyclingSettings } from '@/hooks/useCyclingSettings'
 
-interface Props { open: boolean; onClose: () => void; isDark: boolean }
+interface Props { open: boolean; onClose: () => void; isDark: boolean; settings: MTBSettingsData; updateSetting: (path: string, value: unknown) => void }
 
 const ACCENT = '#F97316'
 
@@ -55,11 +55,14 @@ export default function MTBSettings(props: Props) {
   return <ToastProvider><MTBSettingsInner {...props} /></ToastProvider>
 }
 
-function MTBSettingsInner({ open, onClose, isDark }: Props) {
+function MTBSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, savePages } = useMTBConfig('mtb')
-  const { settings, updateSetting } = useMTBSettings(() => showToast('Enregistré'))
+  const updateSetting = useCallback((path: string, value: unknown) => {
+    updateSetting_prop(path, value)
+    showToast('Modification enregistrée')
+  }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)

@@ -22,6 +22,8 @@ const FoodSearchSheet = dynamicImport(
   () => import('@/components/nutrition/FoodSearchSheet').then(m => ({ default: m.FoodSearchSheet })),
   { ssr: false }
 )
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { NUTRITION_ONBOARDING } from '@/onboarding/configs/nutrition.config'
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -1064,6 +1066,7 @@ export default function NutritionPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding: '0 0 80px' }}>
+      <PageHelp config={NUTRITION_ONBOARDING} />
       {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
       {scannerOpen && (
         <BarcodeScanner

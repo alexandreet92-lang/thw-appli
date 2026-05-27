@@ -7,6 +7,10 @@ export type SportId =
   | 'strength' | 'hyrox'
   | 'rowing' | 'swim'
   | 'ski'
+  | 'yoga'
+  | 'padel'
+  | 'openwater'
+  | 'hometrainer'
 
 // ── Icons (déclarés AVANT SPORT_CATEGORIES — leçon TDZ V2) ────
 const stroke = {
@@ -103,6 +107,43 @@ function SkiIcon() {
     </svg>
   )
 }
+function YogaIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="12" cy="4" r="1.5" {...stroke}/>
+      <path d="M9 8c0 0-3 2-3 5h6M15 8c0 0 3 2 3 5h-6" {...stroke}/>
+      <path d="M12 13v5M9 21l3-3 3 3" {...stroke}/>
+    </svg>
+  )
+}
+function PadelIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="9" cy="9" r="5" {...stroke}/>
+      <path d="M13.5 13.5L20 20" {...stroke}/>
+      <path d="M7 9h4M9 7v4" {...stroke}/>
+    </svg>
+  )
+}
+function OpenWaterIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24">
+      <path d="M2 16c2-3 4-3 6 0s4 3 6 0 4-3 6 0" {...stroke}/>
+      <circle cx="17" cy="7" r="1.6" {...stroke}/>
+      <path d="M6 11l4-3 4 3" {...stroke}/>
+    </svg>
+  )
+}
+function HomeTrainerIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24">
+      <ellipse cx="7" cy="18" rx="3" ry="2" {...stroke}/>
+      <ellipse cx="17" cy="18" rx="3" ry="2" {...stroke}/>
+      <path d="M10 18h4M7 16l4-8 3 5M14 13l3 3" {...stroke}/>
+      <path d="M12 8V4" {...stroke}/>
+    </svg>
+  )
+}
 
 // ── Data ──────────────────────────────────────────────────────
 interface Sport {
@@ -145,6 +186,30 @@ const SPORT_CATEGORIES: { name: string; sports: Sport[] }[] = [
     name: 'Sports de glisse',
     sports: [
       { id: 'ski', label: 'Ski / Snowboard', icon: <SkiIcon /> },
+    ],
+  },
+  {
+    name: 'Bien-être',
+    sports: [
+      { id: 'yoga', label: 'Yoga / Mobilité', icon: <YogaIcon /> },
+    ],
+  },
+  {
+    name: 'Raquettes',
+    sports: [
+      { id: 'padel', label: 'Padel / Tennis', icon: <PadelIcon /> },
+    ],
+  },
+  {
+    name: 'Natation',
+    sports: [
+      { id: 'openwater', label: 'Eau libre', icon: <OpenWaterIcon /> },
+    ],
+  },
+  {
+    name: 'Cyclisme indoor',
+    sports: [
+      { id: 'hometrainer', label: 'Home Trainer', icon: <HomeTrainerIcon /> },
     ],
   },
 ]

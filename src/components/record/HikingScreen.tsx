@@ -19,6 +19,8 @@ import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
 import type { FinishedSession, SessionLap } from '@/types/session'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
+import PhotoButton, { type PhotoButtonHandle } from './PhotoButton'
+import PhotoPreviewToast from './PhotoPreviewToast'
 
 interface Props { onExit: () => void; onFinished: () => void }
 
@@ -54,9 +56,11 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
   const snapRef = useRef<SessionSnap | null>(null)
   const prevAltRef = useRef<number | null>(null)
+  const photoRef = useRef<PhotoButtonHandle>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const { pages } = useHikingConfig('hiking')
-  const { settings } = useHikingSettings()
+  const { settings, updateSetting } = useHikingSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
@@ -78,15 +82,21 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
   }, [gps.currentAltitude, phase])
 
   const touchRef = useRef<{ y: number; t: number } | null>(null)
-  const handleTouchStart = (e: React.TouchEvent) => { touchRef.current = { y: e.touches[0].clientY, t: Date.now() } }
+  const swipeFromMap = useRef(false)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    swipeFromMap.current = !!(e.target as HTMLElement)?.closest?.('.leaflet-container')
+    if (swipeFromMap.current) return
+    touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
+  }
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (swipeFromMap.current) { swipeFromMap.current = false; return }
     if (!touchRef.current) return
     const dy = e.changedTouches[0].clientY - touchRef.current.y
     const dt = Date.now() - touchRef.current.t
     touchRef.current = null
     if (dt > 600) return
-    if (dy < -50) setPageIndex(i => Math.min(PAGE_COUNT - 1, i + 1))
-    else if (dy > 50) setPageIndex(i => Math.max(0, i - 1))
+    if (dy < -50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i + 1) % n })
+    else if (dy > 50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i - 1 + n) % n })
   }
 
   const handleStart = () => { resetTracking(); setElevationLossM(0); prevAltRef.current = null; setStartedAt(Date.now()); setPhase('running') }
@@ -123,6 +133,7 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
       if (user) {
         const { data } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: 'hiking', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
         savedId = data?.id ?? null
+        if (savedId) await photoRef.current?.flushToSession(savedId, gps.currentLat ?? undefined, gps.currentLng ?? undefined)
         await sb.from('activities').insert({ user_id: user.id, sport_type: 'hiking', title: formData.title, started_at: snap.startedAtISO, distance_m: snap.distM, moving_time_s: snap.durationSec, elapsed_time_s: snap.durationSec, elevation_gain_m: snap.elevM, avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0, max_speed_ms: snap.maxSpeedKmh / 3.6, calories: snap.calories })
       }
     } catch (e) { console.error('[hiking] save error:', e) }
@@ -164,8 +175,14 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
         </div>
       </div>
 
+      {(phase === 'running' || phase === 'paused') && (
+        <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>
+          <PhotoButton ref={photoRef} onPreview={url => setPreviewUrl(url)} currentLat={gps.currentLat ?? undefined} currentLng={gps.currentLng ?? undefined} />
+        </div>
+      )}
+      {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
-      <HikingSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} />
+      <HikingSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

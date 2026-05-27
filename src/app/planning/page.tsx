@@ -14,6 +14,8 @@ import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import nDynamic from 'next/dynamic'
 const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 
 // ── Types ─────────────────────────────────────────
 type PlanningTab   = 'training' | 'week'
@@ -11368,6 +11370,7 @@ export default function PlanningPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
+      <PageHelp config={PLANNING_ONBOARDING} />
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>

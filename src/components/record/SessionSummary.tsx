@@ -1,17 +1,20 @@
 'use client'
 import { useRef, useState } from 'react'
 import type { FinishedSession } from '@/types/session'
+import type { CompletedEffortLocal } from '@/types/segment'
 import { useStravaConnection } from '@/hooks/useStravaConnection'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import SessionSummaryPage1 from './SessionSummaryPage1'
 import SessionSummaryPage2 from './SessionSummaryPage2'
+import ActivityPhotos from '@/components/summary/ActivityPhotos'
 
 interface Props {
   session: FinishedSession
   isDark: boolean
   onClose: () => void
+  completedEfforts?: CompletedEffortLocal[]
 }
 
 function getTheme(isDark: boolean) {
@@ -38,7 +41,12 @@ export default function SessionSummary(props: Props) {
   )
 }
 
-function SessionSummaryInner({ session, isDark, onClose }: Props) {
+function fmtDur(s: number) {
+  const m = Math.floor(s / 60), sec = s % 60
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+}
+
+function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Props) {
   const t = getTheme(isDark)
   const { showToast } = useToast()
   const { stravaConnected } = useStravaConnection()
@@ -172,7 +180,7 @@ function SessionSummaryInner({ session, isDark, onClose }: Props) {
       {/* Page dots */}
       <div style={{
         display: 'flex', justifyContent: 'center', gap: 8,
-        padding: '12px 0', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+        padding: '12px 0',
         flexShrink: 0,
       }}>
         {[0, 1].map(i => (
@@ -188,6 +196,27 @@ function SessionSummaryInner({ session, isDark, onClose }: Props) {
           />
         ))}
       </div>
+
+      {/* Photos */}
+      {session.id && <ActivityPhotos sessionId={session.id} />}
+
+      {/* Segments */}
+      {completedEfforts && completedEfforts.length > 0 && (
+        <div style={{ flexShrink: 0, borderTop: `1px solid ${t.separator}`, padding: '14px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),16px)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: t.dim, margin: '0 0 10px' }}>Segments</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {completedEfforts.map((e, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#06B6D4', flexShrink: 0 }} />
+                  <p style={{ fontSize: 14, fontWeight: 500, color: t.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.segmentName}</p>
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#06B6D4', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: 12 }}>{fmtDur(e.durationSeconds)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { CONNECTIONS_ONBOARDING } from '@/onboarding/configs/connections.config'
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -736,6 +738,7 @@ function ConnectionsInner() {
       `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+        <PageHelp config={CONNECTIONS_ONBOARDING} />
 
         {/* ── Header ───────────────────────────────────────────── */}
         <div style={{ padding: isMobile ? '24px 16px 0' : '32px 32px 0', background: 'var(--bg)' }}>

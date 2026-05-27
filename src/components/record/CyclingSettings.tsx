@@ -1,7 +1,7 @@
 'use client'
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useCyclingConfig } from '@/hooks/useCyclingConfig'
-import { useCyclingSettings } from '@/hooks/useCyclingSettings'
+import type { CyclingSettings as CyclingSettingsData } from '@/hooks/useCyclingSettings'
 import { fieldById, type DataPage } from '@/types/cycling'
 import PageEditor from './PageEditor'
 import CyclingSettingsNav from './CyclingSettingsNav'
@@ -13,6 +13,8 @@ interface Props {
   open: boolean
   onClose: () => void
   isDark: boolean
+  settings: CyclingSettingsData
+  updateSetting: (path: string, value: unknown) => void
 }
 
 const SECTION_ICONS: Record<string, ReactElement> = {
@@ -115,11 +117,14 @@ export default function CyclingSettings(props: Props) {
   )
 }
 
-function CyclingSettingsInner({ open, onClose, isDark }: Props) {
+function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, setPages, savePages } = useCyclingConfig()
-  const { settings, updateSetting } = useCyclingSettings(() => showToast('Enregistré'))
+  const updateSetting = useCallback((path: string, value: unknown) => {
+    updateSetting_prop(path, value)
+    showToast('Modification enregistrée')
+  }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [editing, setEditing] = useState<DataPage | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)

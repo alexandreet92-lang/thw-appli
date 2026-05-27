@@ -1,13 +1,13 @@
 'use client'
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useSkiConfig } from '@/hooks/useSkiConfig'
-import { useSkiSettings } from '@/hooks/useSkiSettings'
+import type { SkiSettings as SkiSettingsData } from '@/hooks/useSkiSettings'
 import { skiFieldById } from '@/types/ski'
 import type { DataPage } from '@/types/cycling'
 import CyclingSettingsTraining from './CyclingSettingsTraining'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 
-interface Props { open: boolean; onClose: () => void; isDark: boolean }
+interface Props { open: boolean; onClose: () => void; isDark: boolean; settings: SkiSettingsData; updateSetting: (path: string, value: unknown) => void }
 
 const SECTION_ICONS: Record<string, ReactElement> = {
   pages:     (<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="1" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>),
@@ -59,11 +59,14 @@ function Row({ label, children, t, last }: { label: string; children: React.Reac
   )
 }
 
-function SkiSettingsInner({ open, onClose, isDark }: Props) {
+function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
   const t = getTheme(isDark)
   const { pages, savePages } = useSkiConfig()
-  const { settings, updateSetting } = useSkiSettings(() => showToast('Enregistré'))
+  const updateSetting = useCallback((path: string, value: unknown) => {
+    updateSetting_prop(path, value)
+    showToast('Modification enregistrée')
+  }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)

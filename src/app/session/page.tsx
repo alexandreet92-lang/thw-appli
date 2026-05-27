@@ -7,6 +7,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { SESSION_ONBOARDING } from '@/onboarding/configs/session.config'
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES
@@ -2110,6 +2112,7 @@ export default function SessionPage() {
 
   return (
     <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
+      <PageHelp config={SESSION_ONBOARDING} />
       <style>{`
         @media (max-width:767px) {
           .session-header { flex-direction: column !important; gap: 12px !important; }

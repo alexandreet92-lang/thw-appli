@@ -8,6 +8,8 @@ import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
+import { PageHelp } from '@/onboarding/system/PageHelp'
+import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -3630,6 +3632,8 @@ function TrainingPageInner() {
           {!loading && !error && section === 'progression' && <ScrollReveal><SectionProgression activities={activities} /></ScrollReveal>}
         </main>
       </div>
+
+      <PageHelp config={TRAINING_ONBOARDING} />
 
       <style>{`
         * { box-sizing: border-box; }

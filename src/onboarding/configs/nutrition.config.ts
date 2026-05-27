@@ -1,0 +1,100 @@
+import type { PageOnboardingConfig } from '../system/types'
+
+export const NUTRITION_ONBOARDING: PageOnboardingConfig = {
+  pageId: 'nutrition',
+  version: 2,
+  slides: [
+    {
+      id: 'nutrition_today',
+      badge: "Aujourd'hui",
+      title: 'Ton bilan nutritionnel du jour',
+      description: "Les anneaux colorés montrent ta progression vers tes objectifs calories et macros. Le badge du jour (Low/Mid/Hard) adapte automatiquement les objectifs selon l'intensité de ta séance.",
+      keyPoints: [
+        'Anneau principal : calories consommées / objectif',
+        'Mini anneaux : protéines, glucides, lipides',
+        'Badge Low/Mid/Hard selon la séance du jour',
+        'Mise à jour en temps réel à chaque repas saisi',
+      ],
+      visual: 'mockup',
+      visualConfig: { type: 'nutrition_rings' },
+      features: ['daily_intake', 'macro_rings', 'day_badge'],
+    },
+    {
+      id: 'nutrition_log',
+      badge: 'Saisie',
+      title: "4 façons d'ajouter un repas",
+      description: "Scan du code-barres, photo analysée par IA, repas types sauvegardés ou saisie manuelle. Pour chaque aliment, ajuste la quantité et les macros se calculent automatiquement.",
+      keyPoints: [
+        'Scan code-barres via Open Food Facts (500k+ produits)',
+        'Photo → analyse IA des ingrédients en secondes',
+        'Repas types : tes repas habituels en 1 tap',
+        'Saisie manuelle avec base de données alimentaire',
+      ],
+      visual: 'icon_grid',
+      visualConfig: {
+        icons: [
+          { label: 'Scan', color: '#06B6D4' },
+          { label: 'Photo IA', color: '#8B5CF6' },
+          { label: 'Repas types', color: '#10B981' },
+          { label: 'Manuel', color: '#F59E0B' },
+        ],
+      },
+      features: ['barcode_scan', 'ai_photo', 'meal_templates', 'manual_entry'],
+    },
+    {
+      id: 'nutrition_schedule',
+      badge: 'Repas',
+      title: '6 créneaux repas organisés',
+      description: "La journée est divisée en 6 créneaux : petit-déjeuner, collation matin, déjeuner, goûter, dîner, collation soir. Chaque créneau a un score de qualité nutritionnelle.",
+      keyPoints: [
+        '6 créneaux couvrent toute la journée',
+        'Score qualité : vert, ambre ou rouge par repas',
+        'Historique de chaque créneau sur les jours passés',
+      ],
+      visual: 'mockup',
+      visualConfig: { type: 'meal_slots' },
+      features: ['meal_slots', 'quality_score', 'meal_history'],
+    },
+    {
+      id: 'nutrition_history',
+      badge: 'Historique',
+      title: 'Tendances sur 7 à 30 jours',
+      description: "Analyse ton apport calorique moyen, ta répartition de macros et tes patterns alimentaires sur la durée. Identifie les jours où tu sous-manges ou surmangeas.",
+      keyPoints: [
+        'Vue 7j / 2 semaines / 1 mois',
+        'Bilan hebdomadaire généré par IA',
+        'Comparaison objectif vs réalisé',
+        'Calendrier mensuel coloré par jour',
+      ],
+      visual: 'chart',
+      visualConfig: {
+        type: 'bar_with_target',
+        data: [1820, 2100, 1950, 2300, 1780, 2050, 1900],
+        target: 2000,
+        color: '#06B6D4',
+        label: 'Calories / jour',
+      },
+      features: ['nutrition_history', 'weekly_summary_ai', 'month_calendar'],
+    },
+    {
+      id: 'nutrition_body',
+      badge: 'Composition',
+      title: 'Poids et composition corporelle',
+      description: "Suis l'évolution de ton poids, ta masse grasse, ta masse musculaire et ton IMC. Glisse entre les métriques, les courbes s'adaptent.",
+      keyPoints: [
+        'Courbe avec gradient sous la ligne',
+        'Sélection de la métrique affichée',
+        'Tableau historique éditable directement',
+        'Auto-save à chaque modification',
+      ],
+      visual: 'chart',
+      visualConfig: {
+        type: 'weight_area',
+        data: [79.5, 79.2, 78.8, 79.0, 78.5, 78.2, 77.8, 78.0, 77.5, 77.2],
+        color: '#10B981',
+        label: 'Poids (kg)',
+      },
+      features: ['weight_tracking', 'body_composition', 'metric_selector'],
+    },
+  ],
+}

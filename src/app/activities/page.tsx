@@ -1901,45 +1901,54 @@ function SectionDonnees({ activities, zones, profile }: {
         <StatCard label="RPE moyen" value={meanRpe ? `${meanRpe}/10` : '—'} />
       </div>
 
-      {/* CTL / ATL / TSB */}
-      <div className="mx-4 mb-4 p-4 bg-card rounded-2xl border border-border/40">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-3">Fitness</p>
-        <div className="flex gap-3">
+      {/* CTL / ATL / TSB — 3 cartes séparées */}
+      <div style={{ paddingLeft: 16, paddingRight: 16, marginBottom: 16 }}>
 
-          {/* Carte CTL */}
-          <div className="flex-1 bg-muted rounded-xl p-3 flex flex-col items-center justify-between min-h-[100px]">
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">CTL</span>
-              <button onClick={() => setOpenSheet('CTL')} className="text-muted-foreground">
-                <HelpCircle size={12} />
+        {/* Titre de section */}
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8', margin: '0 0 12px' }}>
+          Fitness
+        </p>
+
+        {/* Les 3 cartes — flex row, AUCUNE bordure sur le conteneur */}
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
+
+          {/* ═══ CARTE CTL ═══ */}
+          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>CTL</span>
+              <button type="button" onClick={() => setOpenSheet('CTL')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
               </button>
             </div>
-            <span className="text-3xl font-bold text-cyan-500 mt-2">{ctl.toFixed(1)}</span>
+            <span style={{ fontSize: 30, fontWeight: 800, color: '#06B6D4', textAlign: 'center', lineHeight: 1, marginTop: 'auto' }}>
+              {typeof ctl === 'number' ? ctl.toFixed(1) : '—'}
+            </span>
           </div>
 
-          {/* Carte ATL */}
-          <div className="flex-1 bg-muted rounded-xl p-3 flex flex-col items-center justify-between min-h-[100px]">
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">ATL</span>
-              <button onClick={() => setOpenSheet('ATL')} className="text-muted-foreground">
-                <HelpCircle size={12} />
+          {/* ═══ CARTE ATL ═══ */}
+          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>ATL</span>
+              <button type="button" onClick={() => setOpenSheet('ATL')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
               </button>
             </div>
-            <span className="text-3xl font-bold text-orange-500 mt-2">{atl.toFixed(1)}</span>
+            <span style={{ fontSize: 30, fontWeight: 800, color: '#F97316', textAlign: 'center', lineHeight: 1, marginTop: 'auto' }}>
+              {typeof atl === 'number' ? atl.toFixed(1) : '—'}
+            </span>
           </div>
 
-          {/* Carte TSB */}
-          <div className="flex-1 bg-muted rounded-xl p-3 flex flex-col items-center justify-between min-h-[100px]">
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">TSB</span>
-              <button onClick={() => setOpenSheet('TSB')} className="text-muted-foreground">
-                <HelpCircle size={12} />
+          {/* ═══ CARTE TSB ═══ */}
+          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>TSB</span>
+              <button type="button" onClick={() => setOpenSheet('TSB')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
               </button>
             </div>
-            {tsb < 0
-              ? <span className="text-3xl font-bold text-red-500 mt-2">{tsb.toFixed(1)}</span>
-              : <span className="text-3xl font-bold text-green-500 mt-2">{tsb.toFixed(1)}</span>
-            }
+            <span style={{ fontSize: 30, fontWeight: 800, textAlign: 'center', lineHeight: 1, marginTop: 'auto', color: typeof tsb === 'number' && tsb < 0 ? '#EF4444' : '#10B981' }}>
+              {typeof tsb === 'number' ? tsb.toFixed(1) : '—'}
+            </span>
           </div>
 
         </div>

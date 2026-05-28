@@ -961,6 +961,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   powerZones?: ParsedZone[]
   paceZones?: ParsedZone[]
 }) {
+  void powerZones; void paceZones
   const s = activity.streams
   if (!s) return null
 
@@ -1021,7 +1022,6 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     const range = mx - mn || 1
     const pts = data.map((v, i) => {
       const x = (i / (N - 1)) * 1000
-      // invertY: high value → top (low y). Used for pace where low s/km = fast = should be high
       const norm = invertY ? (mx - v) / range : (v - mn) / range
       const y = H - pad - norm * (H - pad * 2)
       return `${x.toFixed(1)},${y.toFixed(1)}`
@@ -1043,7 +1043,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   }
 
   function getHrColor(hr: number, zones?: ParsedZone[]): string {
-    if (!zones) return '#ef4444'
+    if (!zones) return '#F87171'
     for (const z of zones) if (hr >= z.min && hr <= z.max) return z.color
     return ZONE_COLORS[4]
   }
@@ -1062,27 +1062,73 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   const cadence  = s.cadence   ? smooth(s.cadence)  : null
   const hr       = s.heartrate ? smooth(s.heartrate): null
   const alt      = s.altitude  ?? null
+  const temp     = s.temp      ?? null
   const laps     = activity.laps ?? []
 
+  // Vitesse km/h (cyclisme + course)
+  const speedKmh = (isBike || isRun) && velocity
+    ? velocity.map(v => v * 3.6)
+    : null
+
   type Track = {
-    label: string; data: number[]; color: string; unit: string; H: number
-    isHr?: boolean; isAlt?: boolean; invertY?: boolean; formatY?: (v: number) => string
+    label: string; data: number[]; color: string; fill: string; unit: string; H: number
+    isHr?: boolean; isAlt?: boolean; invertY?: boolean
+    formatY?: (v: number) => string; formatVal?: (v: number) => string
   }
 
+  // ── FIX 1 : couleurs exactes + nouvelles courbes ──
   const tracks: Track[] = ([
-    alt    ? { label: 'Altitude', data: alt, color: '#94a3b8', unit: 'm',     H: 64, isAlt: true, formatY: (v: number) => `${Math.round(v)} m` } : null,
-    hr     ? { label: 'FC',       data: hr,  color: '#ef4444', unit: 'bpm',   H: 64, isHr: true,  formatY: (v: number) => `${Math.round(v)} bpm` } : null,
-    isBike && watts    ? { label: 'Puissance', data: watts,    color: '#5b6fff', unit: 'W',     H: 72, formatY: (v: number) => `${Math.round(v)} W` } : null,
-    isRun  && velocity ? { label: 'Allure',    data: velocity.map(v => v > 0 ? (1000/v) : 0), color: '#f97316', unit: 's/km', H: 72, invertY: true, formatY: (v: number) => fmtPace(v) } : null,
-    cadence ? { label: 'Cadence', data: cadence, color: '#00c8e0', unit: 'rpm', H: 48, formatY: (v: number) => `${Math.round(v)} rpm` } : null,
+    alt ? {
+      label: 'Altitude', data: alt, color: '#94A3B8', fill: 'rgba(148,163,184,0.15)',
+      unit: 'm', H: 64, isAlt: true,
+      formatY: (v: number) => `${Math.round(v)} m`,
+      formatVal: (v: number) => `${Math.round(v)}`,
+    } : null,
+    hr ? {
+      label: 'FC', data: hr, color: '#F87171', fill: 'rgba(248,113,113,0.10)',
+      unit: 'bpm', H: 64, isHr: true,
+      formatY: (v: number) => `${Math.round(v)} bpm`,
+      formatVal: (v: number) => `${Math.round(v)}`,
+    } : null,
+    isBike && watts ? {
+      label: 'Puissance', data: watts, color: '#818CF8', fill: 'rgba(129,140,248,0.10)',
+      unit: 'W', H: 72,
+      formatY: (v: number) => `${Math.round(v)} W`,
+      formatVal: (v: number) => `${Math.round(v)}`,
+    } : null,
+    isRun && velocity ? {
+      label: 'Allure', data: velocity.map(v => v > 0 ? (1000/v) : 0),
+      color: '#f97316', fill: 'rgba(249,115,22,0.10)',
+      unit: 's/km', H: 72, invertY: true,
+      formatY: (v: number) => fmtPace(v),
+      formatVal: (v: number) => fmtPace(v),
+    } : null,
+    cadence ? {
+      label: 'Cadence', data: cadence, color: '#F472B6', fill: 'rgba(244,114,182,0.10)',
+      unit: 'rpm', H: 48,
+      formatY: (v: number) => `${Math.round(v)} rpm`,
+      formatVal: (v: number) => `${Math.round(v)}`,
+    } : null,
+    // ── FIX 2 : courbe vitesse ──
+    speedKmh ? {
+      label: 'Vitesse', data: speedKmh, color: '#60A5FA', fill: 'rgba(96,165,250,0.10)',
+      unit: 'km/h', H: 48,
+      formatY: (v: number) => `${v.toFixed(1)} km/h`,
+      formatVal: (v: number) => v.toFixed(1),
+    } : null,
+    // ── FIX 2 : courbe température ──
+    (isBike || isRun) && temp ? {
+      label: 'Température', data: temp, color: '#6EE7B7', fill: 'rgba(110,231,183,0.10)',
+      unit: '°C', H: 48,
+      formatY: (v: number) => `${Math.round(v)} °C`,
+      formatVal: (v: number) => `${Math.round(v)}`,
+    } : null,
   ] as (Track|null)[]).filter((t): t is Track => t !== null)
 
   if (!tracks.length) return null
 
-  // Max intensity for lap coloring
   const maxIntensity = watts ? Math.max(...watts) : hr ? Math.max(...hr) : 1
 
-  // Selection stats
   const selStats = selection ? (() => {
     const [i1, i2] = selection
     const dur = time[i2] - time[i1]
@@ -1094,8 +1140,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     const dPlus  = altSlice ? altSlice.reduce((acc, v, idx) => idx > 0 && v > altSlice[idx-1] ? acc + (v - altSlice[idx-1]) : acc, 0) : null
     const cadSlice = cadence ? cadence.slice(i1, i2+1) : null
     return {
-      dur,
-      dist: sliceDist,
+      dur, dist: sliceDist,
       hrMoy: hrSlice ? Math.round(avg(hrSlice)) : null,
       hrMax: hrSlice ? Math.round(Math.max(...hrSlice)) : null,
       watts: wSlice ? Math.round(avg(wSlice)) : null,
@@ -1109,22 +1154,34 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
 
   return (
     <div>
-      {/* Cursor values bar */}
+      {/* ── CSS responsive ── */}
+      <style>{`
+        .sync-mobile-header { display: flex !important; }
+        .sync-left-col      { display: none  !important; }
+        .sync-right-val     { display: none  !important; }
+        @media (min-width: 768px) {
+          .sync-mobile-header { display: none  !important; }
+          .sync-left-col      { display: block !important; }
+          .sync-right-val     { display: flex  !important; }
+        }
+      `}</style>
+
+      {/* Cursor values bar (mobile summary) */}
       {cursor !== null && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 10, flexWrap: 'wrap', minHeight: 20,
           background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          {hr     && <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>FC {Math.round(hr[cursor])} bpm</span>}
-          {isBike && watts && <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(watts[cursor])} W</span>}
+          {hr     && <span style={{ fontSize: 11, color: '#F87171', fontWeight: 600, fontFamily: T.fontMono }}>FC {Math.round(hr[cursor])} bpm</span>}
+          {isBike && watts && <span style={{ fontSize: 11, color: '#818CF8', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(watts[cursor])} W</span>}
           {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>{fmtPace(1000/velocity[cursor])}</span>}
-          {cadence && <span style={{ fontSize: 11, color: '#00c8e0', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(cadence[cursor])} rpm</span>}
-          {alt && <span style={{ fontSize: 11, color: T.textSub, fontWeight: 500, fontFamily: T.fontMono }}>{Math.round(alt[cursor])} m</span>}
+          {cadence && <span style={{ fontSize: 11, color: '#F472B6', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(cadence[cursor])} rpm</span>}
+          {alt && <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500, fontFamily: T.fontMono }}>{Math.round(alt[cursor])} m</span>}
           <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 'auto', fontFamily: T.fontMono }}>
             {(() => { const t = time[cursor] - time[0]; const m = Math.floor(t/60); const sec = t%60; return `${m}:${String(sec).padStart(2,'0')}` })()}
           </span>
         </div>
       )}
 
-      {/* Chart container — mouse + touch tracking on this div */}
+      {/* Chart container */}
       <div
         ref={containerRef}
         style={{ position: 'relative', userSelect: 'none', cursor: 'crosshair' }}
@@ -1136,7 +1193,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
         onTouchMove={e => { e.preventDefault(); handleMove(e.touches[0].clientX) }}
         onTouchEnd={handleUp}
       >
-        {/* Continuous vertical cursor line as overlay div */}
+        {/* Cursor line */}
         {cursorPct !== null && (
           <div style={{
             position: 'absolute', top: 0, bottom: 0, left: `${cursorPct * 100}%`,
@@ -1164,8 +1221,10 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
           const inv = track.invertY ?? false
           const fillPath = buildFillPath(track.data, track.H, 4, inv)
           const linePath = buildLinePath(track.data, track.H, 4, inv)
+          const meanVal  = track.data.reduce((a, b) => a + b, 0) / track.data.length
+          const maxVal   = inv ? mn : mx   // display max (for pace, "max" is slowest = mn in raw s/km)
+          const avgVal   = meanVal
 
-          // Cursor y position — respect invertY
           const cursorY = cursor !== null
             ? (() => {
                 const v = track.data[cursor]
@@ -1174,98 +1233,137 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
               })()
             : null
 
-          // Range label — for inverted pace, show fast → slow (ascending label)
+          // Range label for mobile header
           const rangeLabel = track.formatY
             ? inv
-              ? `${track.formatY(mx)} – ${track.formatY(mn)}`   // slowest – fastest (axis direction)
+              ? `${track.formatY(mx)} – ${track.formatY(mn)}`
               : `${track.formatY(mn)} – ${track.formatY(mx)}`
             : `${Math.round(mn)} – ${Math.round(mx)} ${track.unit}`
 
+          // Hover value for desktop right column
+          const hoverRaw = cursor !== null ? track.data[cursor] : avgVal
+          const hoverStr = track.formatVal ? track.formatVal(hoverRaw) : Math.round(hoverRaw).toString()
+
+          // Left col Max/Moy display
+          const maxStr = track.formatVal ? track.formatVal(maxVal) : Math.round(maxVal).toString()
+          const avgStr = track.formatVal ? track.formatVal(avgVal) : Math.round(avgVal).toString()
+
           return (
-            <div key={track.label} style={{ marginBottom: 4 }}>
-              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+            <div key={track.label} style={{ marginBottom: 6 }}>
+              {/* Mobile header: label + range (hidden on desktop) */}
+              <div className="sync-mobile-header" style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, justifyContent: 'space-between' }}>
                 <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
                 <span>{rangeLabel}</span>
               </div>
-              <svg
-                viewBox={`0 0 1000 ${track.H}`}
-                style={{ width: '100%', height: track.H, display: 'block', overflow: 'visible' }}
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id={`fill-${track.label}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={track.color} stopOpacity="0.3"/>
-                    <stop offset="100%" stopColor={track.color} stopOpacity="0.03"/>
-                  </linearGradient>
-                </defs>
 
-                {/* Lap rectangles on altitude track */}
-                {track.isAlt && laps.map((lap, li) => {
-                  const si = lap.start_index ?? 0
-                  const ei = lap.end_index ?? (li < laps.length - 1 ? (laps[li+1].start_index ?? N-1) : N-1)
-                  const lx1 = (si / (N-1)) * 1000
-                  const lx2 = (ei / (N-1)) * 1000
-                  const lapIntensity = lap.avg_watts ?? lap.avg_hr ?? 0
-                  const lapColor = getIntensityColor(Number(lapIntensity), maxIntensity)
-                  const barH = 12
-                  return (
-                    <rect key={li}
-                      x={lx1} y={track.H - barH} width={Math.max(2, lx2 - lx1)} height={barH}
-                      fill={lapColor} fillOpacity="0.7"
-                      onClick={() => setSelectedLap(selectedLap === li ? null : li)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                  )
-                })}
+              {/* FIX 3: row = [left col desktop] [chart] [right val desktop] */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
 
-                {/* HR segments (zone-colored line) */}
-                {track.isHr && hr && (() => {
-                  const segments: { x1: number; x2: number; color: string; y1: number; y2: number }[] = []
-                  for (let i = 1; i < hr.length; i++) {
-                    const sx1 = ((i-1) / (N-1)) * 1000
-                    const sx2 = (i / (N-1)) * 1000
-                    const sy1 = track.H - 4 - ((hr[i-1] - mn) / range) * (track.H - 8)
-                    const sy2 = track.H - 4 - ((hr[i] - mn) / range) * (track.H - 8)
-                    segments.push({ x1: sx1, x2: sx2, color: getHrColor(hr[i], hrZones), y1: sy1, y2: sy2 })
-                  }
-                  return (
-                    <>
-                      {/* Fill under HR line */}
-                      <path d={fillPath} fill={`url(#fill-${track.label})`} />
-                      {/* Colored line segments */}
-                      {segments.map((seg, si) => (
-                        <line key={si} x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
-                          stroke={seg.color} strokeWidth="2" />
-                      ))}
-                      {/* Average dashed line */}
-                      {(() => {
-                        const mean = hr.reduce((a, b) => a + b, 0) / hr.length
-                        const y = track.H - 4 - ((mean - mn) / range) * (track.H - 8)
-                        return <line x1={0} y1={y} x2={1000} y2={y} stroke="#ef4444" strokeWidth="1" strokeDasharray="6,4" opacity="0.4" />
-                      })()}
-                    </>
-                  )
-                })()}
+                {/* Left col — desktop only */}
+                <div className="sync-left-col" style={{ width: 140, flexShrink: 0, paddingRight: 12, paddingTop: 4 }}>
+                  <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: track.color, lineHeight: 1 }}>
+                    {track.label}
+                  </p>
+                  <p style={{ margin: '0 0 1px', fontSize: 11, color: '#94A3B8' }}>
+                    Max {maxStr} {track.unit}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11, color: '#94A3B8' }}>
+                    Moy. {avgStr} {track.unit}
+                  </p>
+                </div>
 
-                {/* Other tracks — filled area */}
-                {!track.isHr && (
-                  <>
-                    <path d={fillPath} fill={`url(#fill-${track.label})`} />
-                    <path d={linePath} fill="none" stroke={track.color} strokeWidth="2" strokeLinejoin="round" />
-                  </>
-                )}
+                {/* Chart */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <svg
+                    viewBox={`0 0 1000 ${track.H}`}
+                    style={{ width: '100%', height: track.H, display: 'block', overflow: 'visible' }}
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id={`fill-${track.label}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={track.color} stopOpacity="0.12"/>
+                        <stop offset="100%" stopColor={track.color} stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
 
-                {/* Horizontal crosshair line */}
-                {cursorY !== null && (
-                  <line x1={0} y1={cursorY} x2={1000} y2={cursorY} stroke={T.text} strokeWidth="0.8" strokeDasharray="4,3" opacity="0.6" />
-                )}
-              </svg>
+                    {/* Lap rectangles on altitude track */}
+                    {track.isAlt && laps.map((lap, li) => {
+                      const si = lap.start_index ?? 0
+                      const ei = lap.end_index ?? (li < laps.length - 1 ? (laps[li+1].start_index ?? N-1) : N-1)
+                      const lx1 = (si / (N-1)) * 1000
+                      const lx2 = (ei / (N-1)) * 1000
+                      const lapIntensity = lap.avg_watts ?? lap.avg_hr ?? 0
+                      const lapColor = getIntensityColor(Number(lapIntensity), maxIntensity)
+                      return (
+                        <rect key={li}
+                          x={lx1} y={track.H - 12} width={Math.max(2, lx2 - lx1)} height={12}
+                          fill={lapColor} fillOpacity="0.7"
+                          onClick={() => setSelectedLap(selectedLap === li ? null : li)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      )
+                    })}
+
+                    {/* HR — zone-colored segments */}
+                    {track.isHr && hr && (() => {
+                      const segments: { x1: number; x2: number; color: string; y1: number; y2: number }[] = []
+                      for (let i = 1; i < hr.length; i++) {
+                        const sx1 = ((i-1) / (N-1)) * 1000
+                        const sx2 = (i / (N-1)) * 1000
+                        const sy1 = track.H - 4 - ((hr[i-1] - mn) / range) * (track.H - 8)
+                        const sy2 = track.H - 4 - ((hr[i] - mn) / range) * (track.H - 8)
+                        segments.push({ x1: sx1, x2: sx2, color: getHrColor(hr[i], hrZones), y1: sy1, y2: sy2 })
+                      }
+                      return (
+                        <>
+                          <path d={fillPath} fill={`url(#fill-${track.label})`} />
+                          {segments.map((seg, si) => (
+                            <line key={si} x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+                              stroke={seg.color} strokeWidth="1.5" />
+                          ))}
+                          {(() => {
+                            const mean = hr.reduce((a, b) => a + b, 0) / hr.length
+                            const y = track.H - 4 - ((mean - mn) / range) * (track.H - 8)
+                            return <line x1={0} y1={y} x2={1000} y2={y} stroke="#F87171" strokeWidth="1" strokeDasharray="6,4" opacity="0.35" />
+                          })()}
+                        </>
+                      )
+                    })()}
+
+                    {/* Other tracks */}
+                    {!track.isHr && (
+                      <>
+                        <path d={fillPath} fill={`url(#fill-${track.label})`} />
+                        <path d={linePath} fill="none" stroke={track.color} strokeWidth="1.5" strokeLinejoin="round" />
+                      </>
+                    )}
+
+                    {/* Horizontal crosshair */}
+                    {cursorY !== null && (
+                      <line x1={0} y1={cursorY} x2={1000} y2={cursorY} stroke={T.text} strokeWidth="0.8" strokeDasharray="4,3" opacity="0.5" />
+                    )}
+                  </svg>
+                </div>
+
+                {/* Right hover value — desktop only */}
+                <div className="sync-right-val" style={{
+                  width: 60, flexShrink: 0, paddingLeft: 8,
+                  flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center',
+                  minHeight: track.H,
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: track.color, lineHeight: 1 }}>
+                    {hoverStr}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1 }}>{track.unit}</span>
+                </div>
+
+              </div>
             </div>
           )
         })}
       </div>
 
-      {/* Laps row */}
+      {/* Laps */}
       {laps.length > 1 && (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 5 }}>Intervalles</div>
@@ -1284,12 +1382,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
               )
             })}
           </div>
-
           {selLap && (
             <div style={{ marginTop: 10, background: T.bg, borderRadius: 7, padding: '12px 14px', border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>
-                Intervalle #{selectedLap! + 1}
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>Intervalle #{selectedLap! + 1}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12 }}>
                 {selLap.distance_m > 0 && <span><span style={{ color: T.textMuted }}>Dist. </span>{fmtDist(selLap.distance_m)}</span>}
                 <span><span style={{ color: T.textMuted }}>Durée </span>{fmtDur(selLap.moving_time_s)}</span>
@@ -1304,10 +1399,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
 
       {/* Selection modal */}
       {showSelModal && selStats && selection && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 500,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 500,
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => setShowSelModal(false)}
         >
           <div style={{ background: T.surface, borderRadius: 12, padding: '24px 28px', minWidth: 280, maxWidth: 380,
@@ -1315,57 +1408,17 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
-                Sélection — {fmtDur(selStats.dur)}
-              </div>
-              <button onClick={() => setShowSelModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18 }}>
-                ✕
-              </button>
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Sélection — {fmtDur(selStats.dur)}</div>
+              <button onClick={() => setShowSelModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18 }}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              {selStats.dist != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>Distance</span>
-                  <span style={{ fontWeight: 600 }}>{fmtDist(selStats.dist)}</span>
-                </div>
-              )}
-              {selStats.hrMoy != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>FC moyenne</span>
-                  <span style={{ fontWeight: 600 }}>{selStats.hrMoy} bpm</span>
-                </div>
-              )}
-              {selStats.hrMax != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>FC max.</span>
-                  <span style={{ fontWeight: 600 }}>{selStats.hrMax} bpm</span>
-                </div>
-              )}
-              {selStats.watts != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>Watts moy.</span>
-                  <span style={{ fontWeight: 600 }}>{selStats.watts} W</span>
-                </div>
-              )}
-              {selStats.pace != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>Allure moy.</span>
-                  <span style={{ fontWeight: 600 }}>{fmtPace(selStats.pace)}</span>
-                </div>
-              )}
-              {selStats.dPlus != null && selStats.dPlus > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>D+</span>
-                  <span style={{ fontWeight: 600 }}>+{selStats.dPlus} m</span>
-                </div>
-              )}
-              {selStats.cad != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: T.textMuted }}>Cadence moy.</span>
-                  <span style={{ fontWeight: 600 }}>{selStats.cad} rpm</span>
-                </div>
-              )}
+              {selStats.dist != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Distance</span><span style={{ fontWeight: 600 }}>{fmtDist(selStats.dist)}</span></div>}
+              {selStats.hrMoy != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>FC moyenne</span><span style={{ fontWeight: 600 }}>{selStats.hrMoy} bpm</span></div>}
+              {selStats.hrMax != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>FC max.</span><span style={{ fontWeight: 600 }}>{selStats.hrMax} bpm</span></div>}
+              {selStats.watts != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Watts moy.</span><span style={{ fontWeight: 600 }}>{selStats.watts} W</span></div>}
+              {selStats.pace != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Allure moy.</span><span style={{ fontWeight: 600 }}>{fmtPace(selStats.pace)}</span></div>}
+              {selStats.dPlus != null && selStats.dPlus > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>D+</span><span style={{ fontWeight: 600 }}>+{selStats.dPlus} m</span></div>}
+              {selStats.cad != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Cadence moy.</span><span style={{ fontWeight: 600 }}>{selStats.cad} rpm</span></div>}
             </div>
           </div>
         </div>
@@ -2215,9 +2268,56 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const pctFtp = a.avg_watts && a.ftp_at_time
     ? Math.round((Number(a.avg_watts) / a.ftp_at_time) * 100) : null
 
-  // Pw/FC effectiveness
+  // Pw/FC effectiveness (legacy)
   const pwHr = a.avg_watts && a.avg_hr
     ? (Number(a.avg_watts) / Number(a.avg_hr)).toFixed(2) : null
+
+  // ── FIX 4 : nouvelles données ──
+
+  // Durée Z2 : secondes passées en FC zone 2 (120-150 bpm par défaut)
+  const z2DurationS = useMemo(() => {
+    const hrStream = a.streams?.heartrate
+    if (!hrStream || !hrStream.length) return null
+    const z2 = hrZones[1] // index 1 = Z2
+    return hrStream.filter(v => v >= z2.min && v < z2.max).length
+  }, [a.streams?.heartrate])
+
+  // NP calculé depuis stream puissance si non stocké (RMS 30s)
+  const computedNp = useMemo(() => {
+    if (a.normalized_watts) return Number(a.normalized_watts)
+    const w = a.streams?.watts
+    if (!w || w.length < 30) return null
+    const WINDOW = 30
+    const rolling = w.map((_, i) => {
+      const sl = w.slice(Math.max(0, i - WINDOW + 1), i + 1)
+      return sl.reduce((acc, v) => acc + v, 0) / sl.length
+    })
+    const sq = rolling.map(v => v * v)
+    const meanSq = sq.reduce((acc, v) => acc + v, 0) / sq.length
+    return Math.round(Math.sqrt(meanSq))
+  }, [a.normalized_watts, a.streams?.watts])
+
+  // Roue libre (freewheeling) : vel > 2 km/h ET puissance < 10 W
+  const freewheelPowerS = useMemo(() => {
+    const vel = a.streams?.velocity, w = a.streams?.watts
+    if (!vel || !w || !isBike) return null
+    let count = 0
+    const len = Math.min(vel.length, w.length)
+    for (let i = 0; i < len; i++) {
+      if (vel[i] * 3.6 > 2 && w[i] < 10) count++
+    }
+    return count > 0 ? count : null
+  }, [a.streams?.velocity, a.streams?.watts, isBike])
+
+  // Temp max depuis stream
+  const maxTempStream = useMemo(() => {
+    const t = a.streams?.temp
+    return t && t.length ? Math.round(Math.max(...t)) : null
+  }, [a.streams?.temp])
+
+  // EF = NP / FC_moy
+  const efVal = computedNp && a.avg_hr
+    ? (computedNp / Number(a.avg_hr)).toFixed(2) : null
 
   // VAP from zone row
   const runZoneRowLocal = zones.find(z => z.sport === 'run')
@@ -2311,6 +2411,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null), value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
               { label: 'TSS', value: a.tss ? Math.round(Number(a.tss)).toString() : null },
               { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null },
+              // ── FIX 4 : nouvelles données ──
+              { label: 'Durée Z2', value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
+              { label: 'W. Norm.', value: (isBike && computedNp) ? `${computedNp} W` : null },
+              { label: 'Cad. Max', value: a.max_cadence ? `${a.max_cadence} rpm` : null },
+              { label: 'Roue libre', value: (isBike && freewheelPowerS && freewheelPowerS > 60) ? fmtDur(freewheelPowerS) : null },
+              { label: 'Temp. Max', value: maxTempStream != null ? `${maxTempStream} °C` : null },
+              { label: 'EF', value: (isBike && efVal) ? efVal : null },
             ].filter(k => k.label && k.value).map(k => (
               <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>

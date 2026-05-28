@@ -8,12 +8,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { FitnessCards } from '@/components/training/FitnessCards'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { Info, HelpCircle, ChevronDown } from 'lucide-react'
+import { HelpCircle, ChevronDown } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -1655,7 +1656,6 @@ function SectionDonnees({ activities, zones, profile }: {
   const [filter, setFilter] = useState<TimeFilter>('4w')
   const [dataTab, setDataTab] = useState<'general' | 'specific'>('general')
   const [selectedWeek, setSelectedWeek] = useState<null | { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }>(null)
-  const [openSheet, setOpenSheet] = useState<'CTL'|'ATL'|'TSB'|null>(null)
   const dbMetrics = useMetricsDaily()
   const cutoff = cutoffDate(filter)
   const inRange = useMemo(() =>
@@ -1901,110 +1901,8 @@ function SectionDonnees({ activities, zones, profile }: {
         <StatCard label="RPE moyen" value={meanRpe ? `${meanRpe}/10` : '—'} />
       </div>
 
-      {/* CTL / ATL / TSB — 3 cartes séparées */}
-      <div style={{ paddingLeft: 16, paddingRight: 16, marginBottom: 16 }}>
-
-        {/* Titre de section */}
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8', margin: '0 0 12px' }}>
-          Fitness
-        </p>
-
-        {/* Les 3 cartes — flex row, AUCUNE bordure sur le conteneur */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
-
-          {/* ═══ CARTE CTL ═══ */}
-          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>CTL</span>
-              <button type="button" onClick={() => setOpenSheet('CTL')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
-              </button>
-            </div>
-            <span style={{ fontSize: 30, fontWeight: 800, color: '#06B6D4', textAlign: 'center', lineHeight: 1, marginTop: 'auto' }}>
-              {typeof ctl === 'number' ? ctl.toFixed(1) : '—'}
-            </span>
-          </div>
-
-          {/* ═══ CARTE ATL ═══ */}
-          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>ATL</span>
-              <button type="button" onClick={() => setOpenSheet('ATL')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
-              </button>
-            </div>
-            <span style={{ fontSize: 30, fontWeight: 800, color: '#F97316', textAlign: 'center', lineHeight: 1, marginTop: 'auto' }}>
-              {typeof atl === 'number' ? atl.toFixed(1) : '—'}
-            </span>
-          </div>
-
-          {/* ═══ CARTE TSB ═══ */}
-          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>TSB</span>
-              <button type="button" onClick={() => setOpenSheet('TSB')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
-              </button>
-            </div>
-            <span style={{ fontSize: 30, fontWeight: 800, textAlign: 'center', lineHeight: 1, marginTop: 'auto', color: typeof tsb === 'number' && tsb < 0 ? '#EF4444' : '#10B981' }}>
-              {typeof tsb === 'number' ? tsb.toFixed(1) : '—'}
-            </span>
-          </div>
-
-        </div>
-      </div>
-
-      <BottomSheet
-        isOpen={openSheet === 'CTL'}
-        onClose={() => setOpenSheet(null)}
-        title="CTL — Charge Chronique"
-        icon={<Info size={16} />}
-      >
-        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p>Chronic Training Load sur <strong className="text-foreground">42 jours</strong>.</p>
-          <p>Mesure votre forme à long terme. C&apos;est la moyenne exponentielle de votre TSS quotidien sur 42 jours.</p>
-          <p>Plus la valeur est élevée, meilleure est votre condition physique de base.</p>
-          <div className="bg-muted rounded-xl p-4 mt-2">
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2">Formule</p>
-            <p>Moyenne exponentielle du TSS quotidien, constante de temps 42 jours.</p>
-          </div>
-        </div>
-      </BottomSheet>
-
-      <BottomSheet
-        isOpen={openSheet === 'ATL'}
-        onClose={() => setOpenSheet(null)}
-        title="ATL — Charge Aiguë"
-        icon={<Info size={16} />}
-      >
-        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p>Acute Training Load sur <strong className="text-foreground">7 jours</strong>.</p>
-          <p>Mesure la fatigue accumulée récemment. Calculée comme la moyenne exponentielle du TSS quotidien sur 7 jours.</p>
-          <p>Plus la valeur est élevée, plus la fatigue récente est importante.</p>
-          <div className="bg-muted rounded-xl p-4 mt-2">
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2">Formule</p>
-            <p>Moyenne exponentielle du TSS quotidien, constante de temps 7 jours.</p>
-          </div>
-        </div>
-      </BottomSheet>
-
-      <BottomSheet
-        isOpen={openSheet === 'TSB'}
-        onClose={() => setOpenSheet(null)}
-        title="TSB — Forme du Moment"
-        icon={<Info size={16} />}
-      >
-        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p><strong className="text-foreground">TSB = CTL − ATL</strong></p>
-          <p>Balance entre forme et fatigue.</p>
-          <p><strong className="text-green-500">&gt; 0</strong> : la forme dépasse la fatigue — bonne période pour performer.</p>
-          <p><strong className="text-red-500">&lt; 0</strong> : la fatigue dépasse la forme — récupération conseillée.</p>
-          <div className="bg-muted rounded-xl p-4 mt-2">
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2">Zone idéale compétition</p>
-            <p>Entre <strong className="text-foreground">+5 et +25</strong>.</p>
-          </div>
-        </div>
-      </BottomSheet>
+      {/* CTL / ATL / TSB — composant FitnessCards */}
+      <FitnessCards ctl={ctl} atl={atl} tsb={tsb} />
 
       {/* Weekly volume chart */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>

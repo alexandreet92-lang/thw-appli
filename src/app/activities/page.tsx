@@ -1678,16 +1678,28 @@ function SectionDonnees({ activities, zones, profile }: {
   const atl = dbMetrics.atl ?? localMetrics.atl
   const tsb = dbMetrics.tsb ?? localMetrics.tsb
 
-  const nWeeks = numWeeks(filter)
+  // Requête dédiée graphe — indépendante de la pagination, toujours 12 semaines
+  const [weeklyActs, setWeeklyActs] = useState<{ started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]>([])
+  useEffect(() => {
+    const start = new Date(); start.setDate(start.getDate() - 12 * 7)
+    createClient()
+      .from('activities')
+      .select('started_at, moving_time_s, distance_m, sport_type')
+      .gte('started_at', start.toISOString())
+      .order('started_at', { ascending: true })
+      .then(({ data }) => setWeeklyActs((data ?? []) as { started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]))
+  }, [])
+
+  const CHART_WEEKS = 12
   const weeks = useMemo(() => {
     const now = new Date()
     const map = new Map<string, { total: number; time: number; dist: number; count: number; sports: Map<string, number> }>()
-    for (let i = nWeeks - 1; i >= 0; i--) {
+    for (let i = CHART_WEEKS - 1; i >= 0; i--) {
       const d = new Date(now); d.setDate(d.getDate() - i * 7)
       const k = isoWeek(d)
       if (!map.has(k)) map.set(k, { total: 0, time: 0, dist: 0, count: 0, sports: new Map() })
     }
-    for (const a of inRange) {
+    for (const a of weeklyActs) {
       const k = isoWeek(new Date(a.started_at))
       if (map.has(k)) {
         const w = map.get(k)!
@@ -1700,7 +1712,7 @@ function SectionDonnees({ activities, zones, profile }: {
       }
     }
     return Array.from(map.entries()).map(([week, v]) => ({ week, ...v }))
-  }, [inRange, nWeeks])
+  }, [weeklyActs])
 
   const maxTime = Math.max(...weeks.map(w => w.total), 1)
 
@@ -1890,31 +1902,46 @@ function SectionDonnees({ activities, zones, profile }: {
       </div>
 
       {/* CTL / ATL / TSB */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(6,182,212,0.07) 0%, rgba(6,182,212,0.02) 100%)',
-        border: `1px solid rgba(6,182,212,0.18)`,
-        borderRadius: 20, padding: '18px 20px', marginBottom: 16,
-      }}>
-        <SectionTitle>Fitness</SectionTitle>
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {([
-            { key: 'CTL' as const, val: ctl,  valColor: 'text-cyan-500' },
-            { key: 'ATL' as const, val: atl,  valColor: 'text-orange-500' },
-            { key: 'TSB' as const, val: tsb,  valColor: tsb >= 0 ? 'text-green-500' : 'text-red-500' },
-          ]).map(({ key, val, valColor }) => (
-            <div key={key} className="flex-1 bg-card rounded-2xl p-4 flex flex-col items-center justify-between min-h-[108px] border border-border/40">
-              <div className="flex items-center justify-between w-full mb-2">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{key}</span>
-                <button
-                  onClick={() => setOpenSheet(key)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <HelpCircle size={13} />
-                </button>
-              </div>
-              <span className={`text-[38px] font-bold leading-none ${valColor}`}>{val}</span>
+      <div className="mx-4 mb-4 p-4 bg-card rounded-2xl border border-border/40">
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-3">Fitness</p>
+        <div className="flex gap-3">
+
+          {/* Carte CTL */}
+          <div className="flex-1 bg-muted rounded-xl p-3 flex flex-col items-center justify-between min-h-[100px]">
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">CTL</span>
+              <button onClick={() => setOpenSheet('CTL')} className="text-muted-foreground">
+                <HelpCircle size={12} />
+              </button>
             </div>
-          ))}
+            <span className="text-3xl font-bold text-cyan-500 mt-2">{ctl.toFixed(1)}</span>
+          </div>
+
+          {/* Carte ATL */}
+          <div className="flex-1 bg-muted rounded-xl p-3 flex flex-col items-center justify-between min-h-[100px]">
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">ATL</span>
+              <button onClick={() => setOpenSheet('ATL')} className="text-muted-foreground">
+                <HelpCircle size={12} />
+              </button>
+            </div>
+            <span className="text-3xl font-bold text-orange-500 mt-2">{atl.toFixed(1)}</span>
+          </div>
+
+          {/* Carte TSB */}
+          <div className="flex-1 bg-muted rounded-xl p-3 flex flex-col items-center justify-between min-h-[100px]">
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">TSB</span>
+              <button onClick={() => setOpenSheet('TSB')} className="text-muted-foreground">
+                <HelpCircle size={12} />
+              </button>
+            </div>
+            {tsb < 0
+              ? <span className="text-3xl font-bold text-red-500 mt-2">{tsb.toFixed(1)}</span>
+              : <span className="text-3xl font-bold text-green-500 mt-2">{tsb.toFixed(1)}</span>
+            }
+          </div>
+
         </div>
       </div>
 

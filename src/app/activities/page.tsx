@@ -275,38 +275,67 @@ function computeFitness(activities: Activity[]): { ctl: number; atl: number; tsb
 }
 
 // ─────────────────────────────────────────────────────────────
-// HOOK: useActivities
+// HOOK: useActivities — pagination par lots de 50
 // ─────────────────────────────────────────────────────────────
-function useActivities() {
-  const [activities, setActivities] = useState<Activity[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const PAGE_SIZE = 50
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+function useActivities() {
+  const [activities, setActivities]   = useState<Activity[]>([])
+  const [totalCount, setTotalCount]   = useState<number | null>(null)
+  const [loading, setLoading]         = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore]         = useState(true)
+  const [error, setError]             = useState<string | null>(null)
+  const pageRef = useRef(0)
+  const busyRef = useRef(false)
+
+  const fetchPage = useCallback(async (pageNum: number, reset: boolean) => {
+    if (busyRef.current) return
+    busyRef.current = true
+    if (reset) { setLoading(true); setError(null) }
+    else setLoadingMore(true)
     try {
       const sb = createClient()
-      const { data, error: err } = await sb
+      const from = pageNum * PAGE_SIZE
+      const { data, error: err, count } = await sb
         .from('activities')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('started_at', { ascending: false })
-        .limit(500)
+        .range(from, from + PAGE_SIZE - 1)
       if (err) throw err
-      setActivities((data ?? []) as unknown as Activity[])
+      const items = (data ?? []) as unknown as Activity[]
+      if (reset) setActivities(items)
+      else setActivities(prev => [...prev, ...items])
+      if (count !== null) setTotalCount(count)
+      setHasMore(items.length === PAGE_SIZE)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
-      setLoading(false)
+      busyRef.current = false
+      if (reset) setLoading(false)
+      else setLoadingMore(false)
     }
   }, [])
 
+  const load = useCallback(async () => {
+    pageRef.current = 0
+    setHasMore(true)
+    await fetchPage(0, true)
+  }, [fetchPage])
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || busyRef.current) return
+    pageRef.current += 1
+    await fetchPage(pageRef.current, false)
+  }, [fetchPage, hasMore, loadingMore])
+
   const removeActivity = useCallback((id: string) => {
     setActivities(prev => prev.filter(a => a.id !== id))
+    setTotalCount(prev => prev !== null ? prev - 1 : null)
   }, [])
 
   useEffect(() => { load() }, [load])
-  return { activities, loading, error, reload: load, removeActivity }
+  return { activities, totalCount, loading, loadingMore, hasMore, error, reload: load, loadMore, removeActivity }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -399,6 +428,43 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
       textTransform: 'uppercase', letterSpacing: 0.9, fontFamily: T.fontDisplay }}>
       {children}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// BOTTOM SHEET — slide-up depuis le bas (CTL/ATL/TSB)
+// ─────────────────────────────────────────────────────────────
+function BottomSheet({ title, text, onClose }: { title: string; text: string; onClose: () => void }) {
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 800 }}
+      />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: 'rgba(18,18,26,0.97)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: '20px 20px 0 0',
+        padding: '0 20px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
+        zIndex: 801,
+        maxHeight: '70vh',
+        overflowY: 'auto',
+        animation: 'bs_up 0.25s cubic-bezier(0.32,0.72,0,1)',
+      }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: '#52525b', margin: '14px auto 20px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.3, fontFamily: T.fontDisplay }}>{title}</span>
+        </div>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, margin: '0 0 4px', whiteSpace: 'pre-line', fontFamily: T.fontBody }}>{text}</p>
+      </div>
+      <style>{`@keyframes bs_up{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+    </>
   )
 }
 
@@ -1622,6 +1688,7 @@ function SectionDonnees({ activities, zones, profile }: {
   const [filter, setFilter] = useState<TimeFilter>('4w')
   const [dataTab, setDataTab] = useState<'general' | 'specific'>('general')
   const [selectedWeek, setSelectedWeek] = useState<null | { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }>(null)
+  const [openSheet, setOpenSheet] = useState<'CTL'|'ATL'|'TSB'|null>(null)
   const dbMetrics = useMetricsDaily()
   const cutoff = cutoffDate(filter)
   const inRange = useMemo(() =>
@@ -1775,23 +1842,40 @@ function SectionDonnees({ activities, zones, profile }: {
       </div>
 
       {/* CTL / ATL / TSB */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 20px', marginBottom: 16 }}>
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(6,182,212,0.07) 0%, rgba(6,182,212,0.02) 100%)',
+        border: `1px solid rgba(6,182,212,0.18)`,
+        borderRadius: 20, padding: '18px 20px', marginBottom: 16,
+      }}>
         <SectionTitle>Fitness</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {([
-            { key: 'CTL', val: ctl, color: '#00c8e0', tip: 'CTL (Chronic Training Load)\n\nCharge chronique sur 42 jours.\nMesure votre forme à long terme.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 42j.\n\nPlus c\'est élevé : meilleure forme.' },
-            { key: 'ATL', val: atl, color: '#ff5f5f', tip: 'ATL (Acute Training Load)\n\nCharge aiguë sur 7 jours.\nMesure la fatigue récente.\n\nFormule : moyenne exponentielle\ndu TSS quotidien, constante 7j.\n\nPlus c\'est élevé : plus de fatigue.' },
-            { key: 'TSB', val: tsb, color: tsb >= 0 ? '#5b6fff' : '#ff5f5f', tip: 'TSB (Training Stress Balance)\n\nTSB = CTL - ATL\n\nBalance forme/fatigue.\n\n> 0 : forme supérieure à la fatigue.\n< 0 : fatigue supérieure à la forme.\nIdéal compét. : entre +5 et +25.' },
-          ] as { key: string; val: number; color: string; tip: string }[]).map(({ key, val, color, tip }) => (
-            <div key={key} style={{ background: T.bgAlt, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6, display: 'flex', alignItems: 'center', fontFamily: T.fontDisplay, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-                {key}<TooltipInfo text={tip} />
+            { key: 'CTL' as const, val: ctl, color: '#00c8e0' },
+            { key: 'ATL' as const, val: atl, color: atl > 80 ? '#f97316' : '#ff5f5f' },
+            { key: 'TSB' as const, val: tsb, color: tsb >= 0 ? '#22c55e' : '#ef4444' },
+          ]).map(({ key, val, color }) => (
+            <div key={key} style={{ background: 'rgba(0,0,0,0.18)', borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid rgba(255,255,255,0.05)` }}>
+              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: T.fontDisplay, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                {key}
+                <button
+                  onClick={() => setOpenSheet(key)}
+                  style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', color: '#06b6d4', cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                >?</button>
               </div>
-              <div style={{ fontSize: 26, fontWeight: 700, color, fontFamily: T.fontDisplay, lineHeight: 1 }}>{val}</div>
+              <div style={{ fontSize: 32, fontWeight: 800, color, fontFamily: T.fontDisplay, lineHeight: 1 }}>{val}</div>
             </div>
           ))}
         </div>
       </div>
+      {openSheet && (() => {
+        const sheets: Record<'CTL'|'ATL'|'TSB', { title: string; text: string }> = {
+          CTL: { title: 'CTL — Charge Chronique', text: 'Chronic Training Load sur 42 jours.\n\nMesure votre forme à long terme. C\'est la moyenne exponentielle de votre TSS quotidien sur 42 jours.\n\nPlus la valeur est élevée, meilleure est votre condition physique de fond.' },
+          ATL: { title: 'ATL — Charge Aiguë', text: 'Acute Training Load sur 7 jours.\n\nMesure la fatigue accumulée récemment. Calculée comme la moyenne exponentielle du TSS quotidien sur 7 jours.\n\nUne valeur élevée indique une charge récente importante.' },
+          TSB: { title: 'TSB — Balance Forme/Fatigue', text: 'Training Stress Balance = CTL − ATL\n\nBalance entre forme et fatigue.\n\n> 0 : la forme dépasse la fatigue — bonne période pour performer.\n< 0 : la fatigue dépasse la forme — récupération conseillée.\n\nIdéal avant compétition : entre +5 et +25.' },
+        }
+        const s = sheets[openSheet]
+        return <BottomSheet title={s.title} text={s.text} onClose={() => setOpenSheet(null)} />
+      })()}
 
       {/* Weekly volume chart */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
@@ -2998,12 +3082,15 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
 // ─────────────────────────────────────────────────────────────
 // SECTION: ANALYSE
 // ─────────────────────────────────────────────────────────────
-function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete }: {
+function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, loadMore, hasMore, loadingMore }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
   deepLinkId?: string | null
   onDelete?: (id: string) => void
+  loadMore?: () => void
+  hasMore?: boolean
+  loadingMore?: boolean
 }) {
   const [view, setView]         = useState<'list'|'calendar'>('list')
   const [selected, setSelected] = useState<Activity | null>(null)
@@ -3013,6 +3100,16 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete }: {
   const [swipedId, setSwipedId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const touchStartX = useRef<number>(0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!sentinelRef.current || !loadMore) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore) loadMore()
+    }, { threshold: 0.1 })
+    obs.observe(sentinelRef.current)
+    return () => obs.disconnect()
+  }, [loadMore, hasMore, loadingMore])
 
   // Deep-link : ouvre automatiquement l'activité demandée depuis Planning
   useEffect(() => {
@@ -3129,6 +3226,11 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete }: {
               )}
             </div>
           </div>
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} style={{ height: 1 }} />
+          {loadingMore && (
+            <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>Chargement…</div>
+          )}
         </div>
       )}
     </div>
@@ -3273,9 +3375,6 @@ const NAV: { id: Section; label: string; desc: string }[] = [
 // ─────────────────────────────────────────────────────────────
 // PAGE ROOT
 // ─────────────────────────────────────────────────────────────
-// ── Types pour l'analyse IA ───────────────────────────────────
-interface AIPerformanceTrend { metric: string; direction: 'improving'|'stable'|'declining'; change: string }
-interface AIPerformanceResult { summary: string; trends: AIPerformanceTrend[]; strengths: string[]; weaknesses: string[]; recommendations: string[]; fitnessScore: number }
 
 export default function TrainingPage() {
   return <ToastProvider><TrainingPageInner /></ToastProvider>
@@ -3283,7 +3382,7 @@ export default function TrainingPage() {
 
 function TrainingPageInner() {
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
-  const { activities, loading, error, reload, removeActivity } = useActivities()
+  const { activities, totalCount, loading, loadingMore, hasMore, error, reload, loadMore, removeActivity } = useActivities()
   const { showToast } = useToast()
   const { show: showHelp, dismiss: dismissHelp, reopen: reopenHelp } = usePageOnboarding(TRAINING_ONBOARDING.pageId, TRAINING_ONBOARDING.version)
   const zones   = useTrainingZones()
@@ -3292,9 +3391,8 @@ function TrainingPageInner() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [syncing, setSyncing]       = useState(false)
   const [syncMsg, setSyncMsg]       = useState<string | null>(null)
-  const [aiLoading,  setAiLoading]  = useState(false)
-  const [aiResult,   setAiResult]   = useState<AIPerformanceResult | null>(null)
-  const [aiError,    setAiError]    = useState<string | null>(null)
+  const [importing, setImporting]   = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDeleteActivity = async (actId: string) => {
     const sb = createClient()
@@ -3307,38 +3405,62 @@ function TrainingPageInner() {
     }
   }
 
-  async function analyzePerformance() {
-    if (activities.length === 0) return
-    setAiLoading(true); setAiResult(null); setAiError(null)
-    try {
-      const recent = activities.slice(0, 30)
-      const res = await fetch('/api/coach-engine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'analyze_performance',
-          payload: {
-            activities: recent.map(a => ({
-              sport: a.sport_type,
-              date: a.started_at,
-              durationMin: Math.round((a.moving_time_s ?? 0) / 60),
-              distance: a.distance_m ?? undefined,
-              avgWatts: a.avg_watts ?? undefined,
-              tss: a.tss ?? 0,
-              hrAvg: a.avg_hr ?? undefined,
-            })),
-            metrics: {},
-            period: '30d',
-          },
-        }),
+  // Polar auto-sync on mount — cooldown 5 min
+  useEffect(() => {
+    const COOLDOWN_MS = 5 * 60 * 1000
+    const last = localStorage.getItem('polar_last_sync')
+    if (last && Date.now() - Number(last) < COOLDOWN_MS) return
+    setSyncMsg('Polar…')
+    fetch('/api/sync/polar', { method: 'POST' })
+      .then(r => r.json())
+      .then((json: { exercises_synced?: number }) => {
+        localStorage.setItem('polar_last_sync', String(Date.now()))
+        if ((json.exercises_synced ?? 0) > 0) {
+          setSyncMsg(`+${json.exercises_synced} Polar`)
+          reload()
+        } else {
+          setSyncMsg(null)
+        }
       })
-      const data = await res.json()
-      if (!data.ok) throw new Error(data.error ?? 'Erreur agent')
-      setAiResult(data.result)
+      .catch(() => { setSyncMsg(null) })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/parse-activity-file', { method: 'POST', body: formData })
+      const json = await res.json() as { activity?: { name?: string; date?: string; duration_seconds?: number; distance_km?: number; elevation_gain_m?: number; hr_avg?: number; hr_max?: number; calories?: number; tss?: number }; error?: string }
+      if (!res.ok || !json.activity) throw new Error(json.error ?? 'Erreur import')
+      const a = json.activity
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+      const { error: insErr } = await sb.from('activities').insert({
+        user_id: user.id,
+        title: a.name ?? file.name,
+        started_at: a.date ?? new Date().toISOString(),
+        moving_time_s: a.duration_seconds ?? null,
+        distance_m: a.distance_km != null ? Math.round(a.distance_km * 1000) : null,
+        elevation_gain_m: a.elevation_gain_m ?? null,
+        avg_hr: a.hr_avg ?? null,
+        max_hr: a.hr_max ?? null,
+        calories: a.calories ?? null,
+        tss: a.tss ?? null,
+        sport_type: 'other',
+        provider: 'manual_import',
+      })
+      if (insErr) throw insErr
+      showToast('Activité importée')
+      await reload()
     } catch (e: unknown) {
-      setAiError(e instanceof Error ? e.message : 'Erreur inconnue')
+      showToast(e instanceof Error ? e.message : 'Erreur import')
     } finally {
-      setAiLoading(false)
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
   const width   = useWindowWidth()
@@ -3376,10 +3498,9 @@ function TrainingPageInner() {
       {/* ── TOP BAR ── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 100,
-        background: T.surface, borderBottom: `1px solid ${T.border}`,
+        background: T.bg,
         height: T.topH, display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', padding: '0 20px',
-        boxShadow: T.shadow,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.3, fontFamily: T.fontDisplay }}>Training</span>
@@ -3387,24 +3508,28 @@ function TrainingPageInner() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
-          {!loading && !error && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>{activities.length} activités</span>}
+          {!loading && !error && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>{totalCount ?? activities.length} activités</span>}
           {syncMsg && (
             <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg === 'À jour' ? T.textMuted : '#ef4444',
               fontFamily: T.fontBody, fontWeight: 600 }}>{syncMsg}</span>
           )}
-          {!loading && activities.length > 0 && (
-            <button
-              onClick={analyzePerformance}
-              disabled={aiLoading}
-              title="Analyser mes performances avec l'IA"
-              style={{ background: aiLoading ? T.bgAlt : 'rgba(91,111,255,0.10)', border: '1px solid rgba(91,111,255,0.35)', borderRadius: T.radiusSm,
-                color: aiLoading ? T.textMuted : '#5b6fff', cursor: aiLoading ? 'default' : 'pointer',
-                padding: '5px 12px', fontSize: 12, fontWeight: 700, fontFamily: T.fontDisplay,
-                opacity: aiLoading ? 0.6 : 1, whiteSpace: 'nowrap' as const }}
-            >
-              {aiLoading ? 'Analyse…' : 'Analyser'}
-            </button>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".fit,.gpx"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            title="Importer une activité FIT ou GPX"
+            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
+              color: importing ? T.textMuted : T.textSub, cursor: importing ? 'default' : 'pointer',
+              padding: '5px 10px', fontSize: 12, fontWeight: 600, fontFamily: T.fontDisplay, opacity: importing ? 0.6 : 1 }}
+          >
+            {importing ? '…' : 'Import'}
+          </button>
           <button
             onClick={syncStrava}
             disabled={syncing}
@@ -3537,77 +3662,6 @@ function TrainingPageInner() {
             </div>
           )}
 
-          {/* ── Panneau analyse IA ── */}
-          {aiError && (
-            <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: T.radius, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 12 }}>
-              {aiError}
-            </div>
-          )}
-          {aiResult && (
-            <div style={{ marginBottom: 20, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 20, boxShadow: T.shadow }}>
-              {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap' as const, gap: 10 }}>
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, color: T.textMuted, margin: 0, fontFamily: T.fontDisplay }}>Intelligence artificielle</p>
-                  <h3 style={{ fontFamily: T.fontDisplay, fontSize: 16, fontWeight: 700, margin: '3px 0 4px', color: T.text }}>Analyse de tes performances</h3>
-                  <p style={{ fontSize: 12, color: T.textSub, margin: 0, fontFamily: T.fontBody, lineHeight: 1.5 }}>{aiResult.summary}</p>
-                </div>
-                <div style={{ textAlign: 'center' as const, flexShrink: 0 }}>
-                  <p style={{ fontFamily: T.fontMono, fontSize: 34, fontWeight: 800, margin: 0, lineHeight: 1,
-                    color: aiResult.fitnessScore >= 75 ? '#22c55e' : aiResult.fitnessScore >= 50 ? '#f97316' : '#ef4444' }}>
-                    {aiResult.fitnessScore}
-                  </p>
-                  <p style={{ fontSize: 9, color: T.textMuted, margin: '2px 0 0', fontFamily: T.fontBody }}>score fitness / 100</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 14 }}>
-                {/* Tendances */}
-                {aiResult.trends.length > 0 && (
-                  <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: T.textMuted, margin: '0 0 8px', fontFamily: T.fontDisplay }}>Tendances</p>
-                    {aiResult.trends.map((t, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: t.direction === 'improving' ? '#22c55e' : t.direction === 'declining' ? '#ef4444' : 'var(--text-dim)' }}>{ t.direction === 'improving' ? '↑' : t.direction === 'declining' ? '↓' : '→' }</span>
-                        <div>
-                          <p style={{ fontSize: 11, fontWeight: 600, margin: 0, color: T.text }}>{t.metric}</p>
-                          <p style={{ fontSize: 10, color: T.textMuted, margin: 0, fontFamily: T.fontBody }}>{t.change}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Forces / Faiblesses */}
-                <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
-                  {aiResult.strengths.length > 0 && (
-                    <>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#22c55e', margin: '0 0 6px', fontFamily: T.fontDisplay }}>Forces</p>
-                      {aiResult.strengths.map((s, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 3px', fontFamily: T.fontBody }}>• {s}</p>)}
-                    </>
-                  )}
-                  {aiResult.weaknesses.length > 0 && (
-                    <>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#f97316', margin: '10px 0 6px', fontFamily: T.fontDisplay }}>Points à travailler</p>
-                      {aiResult.weaknesses.map((w, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 3px', fontFamily: T.fontBody }}>• {w}</p>)}
-                    </>
-                  )}
-                </div>
-
-                {/* Recommandations */}
-                {aiResult.recommendations.length > 0 && (
-                  <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: T.bg, border: `1px solid ${T.border}` }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, color: '#5b6fff', margin: '0 0 8px', fontFamily: T.fontDisplay }}>Recommandations</p>
-                    {aiResult.recommendations.map((r, i) => <p key={i} style={{ fontSize: 11, color: T.text, margin: '0 0 5px', fontFamily: T.fontBody }}>• {r}</p>)}
-                  </div>
-                )}
-              </div>
-
-              <button onClick={() => setAiResult(null)} style={{ padding: '5px 12px', borderRadius: T.radiusSm, background: T.bgAlt, border: `1px solid ${T.border}`, color: T.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: T.fontBody, display: 'block', marginLeft: 'auto' }}>
-                ✕ Fermer
-              </button>
-            </div>
-          )}
 
           {/* Error */}
           {error && (
@@ -3631,7 +3685,7 @@ function TrainingPageInner() {
 
           {/* Sections */}
           {!loading && !error && section === 'donnees'     && <ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal>}
-          {!loading && !error && section === 'analyse'     && <ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} /></ScrollReveal>}
+          {!loading && !error && section === 'analyse'     && <ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal>}
           {!loading && !error && section === 'progression' && <ScrollReveal><SectionProgression activities={activities} /></ScrollReveal>}
         </main>
       </div>

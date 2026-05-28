@@ -5,6 +5,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
 import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
+import SplashScreen from '@/components/shared/SplashScreen'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MobileTabBar />
         <OfflineIndicator />
         <GlobalOnboardingWrapper />
+        <SplashScreen />
 
       </body>
     </html>

@@ -3,14 +3,17 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
+import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
+import { Info, HelpCircle, ChevronDown } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -431,42 +434,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-// BOTTOM SHEET — slide-up depuis le bas (CTL/ATL/TSB)
-// ─────────────────────────────────────────────────────────────
-function BottomSheet({ title, text, onClose }: { title: string; text: string; onClose: () => void }) {
-  return (
-    <>
-      <div
-        onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 800 }}
-      />
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(18,18,26,0.97)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '20px 20px 0 0',
-        padding: '0 20px',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
-        zIndex: 801,
-        maxHeight: '70vh',
-        overflowY: 'auto',
-        animation: 'bs_up 0.25s cubic-bezier(0.32,0.72,0,1)',
-      }}>
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: '#52525b', margin: '14px auto 20px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span style={{ fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.3, fontFamily: T.fontDisplay }}>{title}</span>
-        </div>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, margin: '0 0 4px', whiteSpace: 'pre-line', fontFamily: T.fontBody }}>{text}</p>
-      </div>
-      <style>{`@keyframes bs_up{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-    </>
-  )
-}
 
 function TooltipInfo({ text }: { text: string }) {
   const [show, setShow] = useState(false)
@@ -1822,10 +1789,91 @@ function SectionDonnees({ activities, zones, profile }: {
         </div>
       </div>
 
-      {/* Modal semaine */}
-      {selectedWeek && (
-        <WeekDetailModal week={selectedWeek} activities={activities} onClose={() => setSelectedWeek(null)} />
-      )}
+      {/* Détail semaine — BottomSheet */}
+      {selectedWeek && (() => {
+        const ws = new Date(selectedWeek.week)
+        const we = new Date(ws); we.setDate(we.getDate() + 6)
+        const label = ws.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' – ' + we.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+        const weekActs = activities.filter(a => { const d = new Date(a.started_at); return d >= ws && d <= we })
+        const totalTss  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
+        const totalElev = weekActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
+        const hrVals    = weekActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
+        const meanHr    = hrVals.length ? Math.round(hrVals.reduce((a,b)=>a+b,0)/hrVals.length) : null
+        const sportEntries = Array.from(selectedWeek.sports.entries()).sort((a, b) => b[1] - a[1])
+        const totalSport   = sportEntries.reduce((s, [,t]) => s + t, 0)
+        return (
+          <BottomSheet isOpen onClose={() => setSelectedWeek(null)}>
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-foreground">Semaine du {label}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">{selectedWeek.count} séance{selectedWeek.count !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {[
+                { label: 'TEMPS',    value: fmtDur(selectedWeek.time) },
+                { label: 'DISTANCE', value: fmtDist(selectedWeek.dist) },
+                { label: 'D+',       value: totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—' },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-muted rounded-xl p-3 flex flex-col gap-1">
+                  <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{label}</span>
+                  <span className="text-base font-bold text-foreground leading-tight">{value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {[
+                { label: 'TSS',     value: totalTss ? Math.round(totalTss).toString() : '—' },
+                { label: 'FC MOY.', value: meanHr ? `${meanHr} bpm` : '—' },
+                { label: 'SÉANCES', value: selectedWeek.count.toString() },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-muted rounded-xl p-3 flex flex-col gap-1">
+                  <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{label}</span>
+                  <span className="text-base font-bold text-foreground">{value}</span>
+                </div>
+              ))}
+            </div>
+            {sportEntries.length > 0 && (
+              <div className="mb-5">
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-3">Répartition</p>
+                {sportEntries.map(([sport, time]) => {
+                  const col = SPORT_COLOR[sport as SportType] ?? '#888'
+                  const pct = totalSport > 0 ? (time / totalSport) * 100 : 0
+                  return (
+                    <div key={sport} className="flex items-center gap-3 mb-2.5">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col }} />
+                      <span className="text-sm text-foreground w-16 flex-shrink-0">{SPORT_LABEL[sport as SportType] ?? sport}</span>
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: col }} />
+                      </div>
+                      <span className="text-sm font-medium text-foreground w-10 text-right flex-shrink-0">{fmtDur(time)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {weekActs.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-3">Activités</p>
+                {weekActs.map(act => {
+                  const col = SPORT_COLOR[act.sport_type] ?? '#888'
+                  return (
+                    <div key={act.id} className="flex items-start py-3 border-b border-border last:border-0">
+                      <div className="w-1 self-stretch rounded-full mr-3 flex-shrink-0 min-h-[36px]" style={{ background: col }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{act.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{new Date(act.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        {act.distance_m && <p className="text-sm font-semibold text-foreground">{fmtDist(act.distance_m)}</p>}
+                        <p className="text-xs text-muted-foreground">{fmtDur(act.moving_time_s)}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </BottomSheet>
+        )
+      })()}
 
       {/* === DONNÉES GÉNÉRALES === */}
       {dataTab === 'general' && (
@@ -1848,34 +1896,79 @@ function SectionDonnees({ activities, zones, profile }: {
         borderRadius: 20, padding: '18px 20px', marginBottom: 16,
       }}>
         <SectionTitle>Fitness</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div className="flex gap-3 overflow-x-auto pb-1">
           {([
-            { key: 'CTL' as const, val: ctl, color: '#00c8e0' },
-            { key: 'ATL' as const, val: atl, color: atl > 80 ? '#f97316' : '#ff5f5f' },
-            { key: 'TSB' as const, val: tsb, color: tsb >= 0 ? '#22c55e' : '#ef4444' },
-          ]).map(({ key, val, color }) => (
-            <div key={key} style={{ background: 'rgba(0,0,0,0.18)', borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid rgba(255,255,255,0.05)` }}>
-              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: T.fontDisplay, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                {key}
+            { key: 'CTL' as const, val: ctl,  valColor: 'text-cyan-500' },
+            { key: 'ATL' as const, val: atl,  valColor: 'text-orange-500' },
+            { key: 'TSB' as const, val: tsb,  valColor: tsb >= 0 ? 'text-green-500' : 'text-red-500' },
+          ]).map(({ key, val, valColor }) => (
+            <div key={key} className="flex-1 bg-card rounded-2xl p-4 flex flex-col items-center justify-between min-h-[108px] border border-border/40">
+              <div className="flex items-center justify-between w-full mb-2">
+                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{key}</span>
                 <button
                   onClick={() => setOpenSheet(key)}
-                  style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', color: '#06b6d4', cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
-                >?</button>
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <HelpCircle size={13} />
+                </button>
               </div>
-              <div style={{ fontSize: 32, fontWeight: 800, color, fontFamily: T.fontDisplay, lineHeight: 1 }}>{val}</div>
+              <span className={`text-[38px] font-bold leading-none ${valColor}`}>{val}</span>
             </div>
           ))}
         </div>
       </div>
-      {openSheet && (() => {
-        const sheets: Record<'CTL'|'ATL'|'TSB', { title: string; text: string }> = {
-          CTL: { title: 'CTL — Charge Chronique', text: 'Chronic Training Load sur 42 jours.\n\nMesure votre forme à long terme. C\'est la moyenne exponentielle de votre TSS quotidien sur 42 jours.\n\nPlus la valeur est élevée, meilleure est votre condition physique de fond.' },
-          ATL: { title: 'ATL — Charge Aiguë', text: 'Acute Training Load sur 7 jours.\n\nMesure la fatigue accumulée récemment. Calculée comme la moyenne exponentielle du TSS quotidien sur 7 jours.\n\nUne valeur élevée indique une charge récente importante.' },
-          TSB: { title: 'TSB — Balance Forme/Fatigue', text: 'Training Stress Balance = CTL − ATL\n\nBalance entre forme et fatigue.\n\n> 0 : la forme dépasse la fatigue — bonne période pour performer.\n< 0 : la fatigue dépasse la forme — récupération conseillée.\n\nIdéal avant compétition : entre +5 et +25.' },
-        }
-        const s = sheets[openSheet]
-        return <BottomSheet title={s.title} text={s.text} onClose={() => setOpenSheet(null)} />
-      })()}
+
+      <BottomSheet
+        isOpen={openSheet === 'CTL'}
+        onClose={() => setOpenSheet(null)}
+        title="CTL — Charge Chronique"
+        icon={<Info size={16} />}
+      >
+        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+          <p>Chronic Training Load sur <strong className="text-foreground">42 jours</strong>.</p>
+          <p>Mesure votre forme à long terme. C&apos;est la moyenne exponentielle de votre TSS quotidien sur 42 jours.</p>
+          <p>Plus la valeur est élevée, meilleure est votre condition physique de base.</p>
+          <div className="bg-muted rounded-xl p-4 mt-2">
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2">Formule</p>
+            <p>Moyenne exponentielle du TSS quotidien, constante de temps 42 jours.</p>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        isOpen={openSheet === 'ATL'}
+        onClose={() => setOpenSheet(null)}
+        title="ATL — Charge Aiguë"
+        icon={<Info size={16} />}
+      >
+        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+          <p>Acute Training Load sur <strong className="text-foreground">7 jours</strong>.</p>
+          <p>Mesure la fatigue accumulée récemment. Calculée comme la moyenne exponentielle du TSS quotidien sur 7 jours.</p>
+          <p>Plus la valeur est élevée, plus la fatigue récente est importante.</p>
+          <div className="bg-muted rounded-xl p-4 mt-2">
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2">Formule</p>
+            <p>Moyenne exponentielle du TSS quotidien, constante de temps 7 jours.</p>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        isOpen={openSheet === 'TSB'}
+        onClose={() => setOpenSheet(null)}
+        title="TSB — Forme du Moment"
+        icon={<Info size={16} />}
+      >
+        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+          <p><strong className="text-foreground">TSB = CTL − ATL</strong></p>
+          <p>Balance entre forme et fatigue.</p>
+          <p><strong className="text-green-500">&gt; 0</strong> : la forme dépasse la fatigue — bonne période pour performer.</p>
+          <p><strong className="text-red-500">&lt; 0</strong> : la fatigue dépasse la forme — récupération conseillée.</p>
+          <div className="bg-muted rounded-xl p-4 mt-2">
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-2">Zone idéale compétition</p>
+            <p>Entre <strong className="text-foreground">+5 et +25</strong>.</p>
+          </div>
+        </div>
+      </BottomSheet>
 
       {/* Weekly volume chart */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
@@ -3389,10 +3482,33 @@ function TrainingPageInner() {
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [syncing, setSyncing]       = useState(false)
-  const [syncMsg, setSyncMsg]       = useState<string | null>(null)
-  const [importing, setImporting]   = useState(false)
+  const [syncing, setSyncing]         = useState(false)
+  const [syncMsg, setSyncMsg]         = useState<string | null>(null)
+  const [importing, setImporting]     = useState(false)
+  const [appMenuOpen, setAppMenuOpen] = useState(false)
+  const [menuPos, setMenuPos]         = useState({ top: 0, right: 0 })
+  const [connectedProviders, setConnectedProviders] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const appBtnRef    = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    fetch('/api/oauth/status').then(r => r.json())
+      .then((json: { connected?: { provider: string }[] }) => {
+        setConnectedProviders((json.connected ?? []).map(c => c.provider))
+      }).catch(() => {})
+  }, [])
+
+  const stravaConnected = connectedProviders.includes('strava')
+  const polarConnected  = connectedProviders.includes('polar')
+  const garminConnected = connectedProviders.includes('garmin')
+
+  function handleAppBtn() {
+    if (appBtnRef.current) {
+      const r = appBtnRef.current.getBoundingClientRect()
+      setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right })
+    }
+    setAppMenuOpen(v => !v)
+  }
 
   const handleDeleteActivity = async (actId: string) => {
     const sb = createClient()
@@ -3476,8 +3592,7 @@ function TrainingPageInner() {
   }, [])
 
   async function syncStrava() {
-    setSyncing(true)
-    setSyncMsg(null)
+    setSyncing(true); setSyncMsg(null)
     try {
       const res  = await fetch('/api/sync/strava', { method: 'POST' })
       const json = await res.json() as { synced?: number; error?: string }
@@ -3487,10 +3602,23 @@ function TrainingPageInner() {
     } catch (e) {
       setSyncMsg(e instanceof Error ? e.message : 'Erreur')
     } finally {
-      setSyncing(false)
-      setTimeout(() => setSyncMsg(null), 4000)
+      setSyncing(false); setTimeout(() => setSyncMsg(null), 4000)
     }
   }
+
+  async function syncPolar() {
+    setSyncMsg('Polar…')
+    try {
+      const res  = await fetch('/api/sync/polar', { method: 'POST' })
+      const json = await res.json() as { exercises_synced?: number }
+      localStorage.setItem('polar_last_sync', String(Date.now()))
+      if ((json.exercises_synced ?? 0) > 0) { setSyncMsg(`+${json.exercises_synced} Polar`); await reload() }
+      else setSyncMsg('Polar à jour')
+    } catch { setSyncMsg('Erreur Polar') }
+    finally { setTimeout(() => setSyncMsg(null), 4000) }
+  }
+
+  function handleFileImport() { fileInputRef.current?.click() }
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
@@ -3521,26 +3649,42 @@ function TrainingPageInner() {
             onChange={handleImportFile}
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            title="Importer une activité FIT ou GPX"
-            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
-              color: importing ? T.textMuted : T.textSub, cursor: importing ? 'default' : 'pointer',
-              padding: '5px 10px', fontSize: 12, fontWeight: 600, fontFamily: T.fontDisplay, opacity: importing ? 0.6 : 1 }}
+            ref={appBtnRef}
+            onClick={handleAppBtn}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
           >
-            {importing ? '…' : 'Import'}
+            App
+            <ChevronDown size={13} className="text-muted-foreground" />
           </button>
-          <button
-            onClick={syncStrava}
-            disabled={syncing}
-            title="Synchroniser les nouvelles activités depuis Strava"
-            style={{ background: syncing ? T.bgAlt : T.accent, border: 'none', borderRadius: T.radiusSm,
-              color: syncing ? T.textMuted : '#fff', cursor: syncing ? 'not-allowed' : 'pointer',
-              padding: '5px 12px', fontSize: 12, fontWeight: 600, fontFamily: T.fontDisplay,
-              transition: 'all 0.15s', opacity: syncing ? 0.7 : 1 }}
-          >
-            {syncing ? 'Sync…' : 'Strava'}
-          </button>
+          {appMenuOpen && createPortal(
+            <div className="fixed inset-0 z-[9999]" onClick={() => setAppMenuOpen(false)}>
+              <div
+                className="absolute w-52 bg-background border border-border rounded-2xl shadow-2xl overflow-hidden"
+                style={{ top: menuPos.top, right: menuPos.right }}
+                onClick={e => e.stopPropagation()}
+              >
+                {[
+                  { name: 'Strava',  color: '#FC4C02', connected: stravaConnected,  onPress: () => syncStrava() },
+                  { name: 'Garmin',  color: '#007DC5', connected: garminConnected,  onPress: () => handleFileImport() },
+                  { name: 'Polar',   color: '#D0021B', connected: polarConnected,   onPress: () => syncPolar() },
+                ].map((svc, i, arr) => (
+                  <button
+                    key={svc.name}
+                    onClick={() => { svc.onPress(); setAppMenuOpen(false) }}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors text-left${i < arr.length - 1 ? ' border-b border-border' : ''}`}
+                  >
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: svc.color }} />
+                    <span className="text-sm font-medium text-foreground flex-1">{svc.name}</span>
+                    {svc.connected
+                      ? <span className="text-[11px] font-medium text-green-500">Connecté</span>
+                      : <span className="text-[11px] text-muted-foreground">{svc.name === 'Garmin' ? 'Importer' : 'Non connecté'}</span>
+                    }
+                  </button>
+                ))}
+              </div>
+            </div>,
+            document.body
+          )}
           <button
             onClick={reload}
             title="Recharger depuis la base"

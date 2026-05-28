@@ -16,6 +16,18 @@ module.exports = {
           deep:    '#0099b8',
           purple:  '#5b6fff',
         },
+        // CSS variable mappings — resolvent les classes bg-background, bg-card, etc.
+        background:  'var(--bg)',
+        foreground:  'var(--text)',
+        card: {
+          DEFAULT:    'var(--bg-card)',
+          foreground: 'var(--text)',
+        },
+        muted: {
+          DEFAULT:    'var(--bg-alt)',
+          foreground: 'var(--text-mid)',
+        },
+        border: 'var(--border)',
       },
       fontFamily: {
         display: ['Syne', 'sans-serif'],

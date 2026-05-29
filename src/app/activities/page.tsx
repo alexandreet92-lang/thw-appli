@@ -2561,6 +2561,26 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const width    = useWindowWidth()
   const isMobile = width < 768
   const col = SPORT_COLOR[a.sport_type] ?? T.accent
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting,        setIsDeleting]        = useState(false)
+  const [deleteError,       setDeleteError]       = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      const sb = createClient()
+      const { error } = await sb.from('activities').delete().eq('id', a.id)
+      if (error) throw error
+      setShowDeleteConfirm(false)
+      onClose()
+    } catch (err) {
+      console.error('Erreur suppression:', err)
+      setDeleteError('Erreur lors de la suppression. Réessayez.')
+      setIsDeleting(false)
+    }
+  }
   const isBike = ['bike','virtual_bike'].includes(a.sport_type)
   const isRun  = ['run','trail_run'].includes(a.sport_type)
   const isSwim = a.sport_type === 'swim'
@@ -2777,6 +2797,23 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 {a.gear_name && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>{a.gear_name}</span>}
               </div>
             </div>
+            {/* Bouton supprimer */}
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                flexShrink: 0,
+                background: 'none',
+                border: '1px solid #EF4444',
+                color: '#EF4444',
+                borderRadius: 8,
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Supprimer
+            </button>
           </div>
 
           {/* KPI hero strip — 5 métriques clés uniquement */}
@@ -3256,6 +3293,50 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           }}
         />
       )}
+
+      {/* ── Confirmation suppression ── */}
+      <BottomSheet
+        isOpen={showDeleteConfirm}
+        onClose={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
+        title="Supprimer l'activité"
+      >
+        <p style={{ fontSize: 14, color: 'var(--text-body)', lineHeight: 1.7, marginBottom: 16 }}>
+          Cette action est irréversible. L&apos;activité sera supprimée
+          définitivement de THW Coaching.
+          Elle restera présente sur Strava et Polar.
+        </p>
+        {deleteError && (
+          <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12 }}>{deleteError}</p>
+        )}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
+            disabled={isDeleting}
+            style={{
+              flex: 1, padding: '12px 0',
+              borderRadius: 12, border: '1px solid var(--info-border)',
+              background: 'transparent', color: 'var(--text-body)',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              opacity: isDeleting ? 0.5 : 1,
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              flex: 1, padding: '12px 0',
+              borderRadius: 12, border: 'none',
+              background: '#EF4444', color: 'white',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              opacity: isDeleting ? 0.7 : 1,
+            }}
+          >
+            {isDeleting ? 'Suppression…' : 'Supprimer'}
+          </button>
+        </div>
+      </BottomSheet>
     </div>
   )
 }

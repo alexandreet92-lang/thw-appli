@@ -98,7 +98,7 @@ async function fetchStreams(
     const streams: Record<string, number[]> = {}
     if (data.time)             streams.time             = data.time.data
     if (data.heartrate)        streams.heartrate        = data.heartrate.data
-    if (data.velocity_smooth)  streams.velocity_smooth  = data.velocity_smooth.data
+    if (data.velocity_smooth)  streams.velocity         = data.velocity_smooth.data
     if (data.altitude)         streams.altitude         = data.altitude.data
     if (data.cadence)          streams.cadence          = data.cadence.data
     if (data.watts)            streams.watts            = data.watts.data

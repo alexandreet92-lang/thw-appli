@@ -508,3 +508,52 @@ button:active { transform: scale(0.97); }
     color: #f8fafc !important;
   }
 }
+
+/* ── Variables de thème pour les boîtes de contenu ── */
+:root {
+  --info-bg:           #F8FAFC;
+  --info-border:       #E2E8F0;
+  --zone-good-bg:      #F0FDF4;
+  --zone-good-border:  #BBF7D0;
+  --zone-med-bg:       #FEFCE8;
+  --zone-med-border:   #FDE68A;
+  --zone-bad-bg:       #FEF2F2;
+  --zone-bad-border:   #FECACA;
+  --text-title:        #0F172A;
+  --text-body:         #475569;
+  --text-muted:        #64748B;
+  --text-label:        #94A3B8;
+  --text-value:        #1E293B;
+}
+.dark {
+  --info-bg:           #1E293B;
+  --info-border:       #334155;
+  --zone-good-bg:      rgba(20, 83, 45, 0.35);
+  --zone-good-border:  #166534;
+  --zone-med-bg:       rgba(120, 53, 15, 0.35);
+  --zone-med-border:   #92400E;
+  --zone-bad-bg:       rgba(127, 29, 29, 0.35);
+  --zone-bad-border:   #991B1B;
+  --text-title:        #F8FAFC;
+  --text-body:         #CBD5E1;
+  --text-muted:        #94A3B8;
+  --text-label:        #64748B;
+  --text-value:        #F1F5F9;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --info-bg:           #1E293B;
+    --info-border:       #334155;
+    --zone-good-bg:      rgba(20, 83, 45, 0.35);
+    --zone-good-border:  #166534;
+    --zone-med-bg:       rgba(120, 53, 15, 0.35);
+    --zone-med-border:   #92400E;
+    --zone-bad-bg:       rgba(127, 29, 29, 0.35);
+    --zone-bad-border:   #991B1B;
+    --text-title:        #F8FAFC;
+    --text-body:         #CBD5E1;
+    --text-muted:        #94A3B8;
+    --text-label:        #64748B;
+    --text-value:        #F1F5F9;
+  }
+}

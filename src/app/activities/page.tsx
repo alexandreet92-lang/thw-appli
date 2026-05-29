@@ -1102,35 +1102,35 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
       <div style={{
         marginTop: 20,
         padding: '20px 24px',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'var(--info-bg)',
         borderRadius: 16,
-        border: '1px solid #E2E8F0',
+        border: '1px solid var(--info-border)',
       }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 16px' }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-title)', margin: '0 0 16px' }}>
           Qu&apos;est-ce que la dérive cardiaque ?
         </h3>
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '0 0 12px' }}>
-          La <strong style={{ color: '#0F172A' }}>dérive cardiaque</strong> mesure dans quelle mesure votre fréquence cardiaque augmente
+        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
+          La <strong style={{ color: 'var(--text-title)' }}>dérive cardiaque</strong> mesure dans quelle mesure votre fréquence cardiaque augmente
           par rapport à votre production de puissance au cours d&apos;un effort. À puissance constante, si votre cœur doit battre de
           plus en plus vite pour maintenir le même effort, la dérive est positive. C&apos;est un indicateur clé de la qualité de votre
           endurance aérobie fondamentale.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, margin: '16px 0' }}>
-          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#16A34A', margin: '0 0 4px' }}>{'< 5%'}</p>
             <p style={{ fontSize: 11, color: '#166534', margin: 0, lineHeight: 1.5 }}>Excellent. Endurance aérobie bien développée.</p>
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: '#FEFCE8', border: '1px solid #FDE68A' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#D97706', margin: '0 0 4px' }}>5 – 8%</p>
             <p style={{ fontSize: 11, color: '#92400E', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties. Marge de progression.</p>
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', margin: '0 0 4px' }}>{'>  8%'}</p>
             <p style={{ fontSize: 11, color: '#991B1B', margin: 0, lineHeight: 1.5 }}>Dérive importante. Base aérobie à renforcer.</p>
           </div>
         </div>
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '12px 0 0' }}>
-          🌡️ <strong style={{ color: '#0F172A' }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
+        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '12px 0 0' }}>
+          🌡️ <strong style={{ color: 'var(--text-title)' }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
           le flux sanguin vers la peau pour dissiper la chaleur. Le volume d&apos;éjection cardiaque diminue, et le cœur
           s&apos;emballe pour compenser. Des études en conditions chaudes (35°C) montrent une augmentation de FC de{' '}
           <strong>+11%</strong> et une chute du VO2max de <strong>-15%</strong> sur 45 minutes comparé à 22°C. Une dérive élevée
@@ -1260,25 +1260,25 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
       <div style={{
         marginTop: 20,
         padding: '20px 24px',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'var(--info-bg)',
         borderRadius: 16,
-        border: '1px solid #E2E8F0',
+        border: '1px solid var(--info-border)',
       }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 12px' }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-title)', margin: '0 0 12px' }}>
           Durée cumulée par fréquence cardiaque
         </h3>
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '0 0 12px' }}>
-          Ce graphique montre le temps total passé <strong style={{ color: '#0F172A' }}>à atteindre ou dépasser</strong> chaque
+        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
+          Ce graphique montre le temps total passé <strong style={{ color: 'var(--text-title)' }}>à atteindre ou dépasser</strong> chaque
           niveau de fréquence cardiaque. La courbe descend de gauche à droite : plus la FC est élevée, moins vous y avez passé de temps.
         </p>
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '0 0 12px' }}>
-          🎯 <strong style={{ color: '#0F172A' }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
+        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
+          🎯 <strong style={{ color: 'var(--text-title)' }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
           d&apos;intensité que le système cardiovasculaire est soumis à sa plus forte sollicitation, forçant les adaptations
           qui font progresser le VO2max. Les athlètes d&apos;endurance intègrent des séances d&apos;intervalles spécifiquement pour
           accumuler du temps dans cette zone.
         </p>
-        <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.75, margin: 0 }}>
-          <strong style={{ color: '#0F172A' }}>Lecture :</strong> si le point à 160 bpm indique 1h30, vous avez pédalé
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.75, margin: 0 }}>
+          <strong style={{ color: 'var(--text-title)' }}>Lecture :</strong> si le point à 160 bpm indique 1h30, vous avez pédalé
           1 heure 30 à 160 bpm <em>ou plus</em>. Suivez l&apos;évolution de ce chiffre à 90%+ FCmax d&apos;une séance
           à l&apos;autre pour quantifier vos gains de VO2max.
         </p>
@@ -1581,10 +1581,10 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
                   <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: track.color, lineHeight: 1 }}>
                     {track.label}
                   </p>
-                  <p style={{ margin: '0 0 1px', fontSize: 11, color: '#94A3B8' }}>
+                  <p style={{ margin: '0 0 1px', fontSize: 11, color: 'var(--text-label)' }}>
                     Max {maxStr} {track.unit}
                   </p>
-                  <p style={{ margin: 0, fontSize: 11, color: '#94A3B8' }}>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-label)' }}>
                     Moy. {avgStr} {track.unit}
                   </p>
                 </div>

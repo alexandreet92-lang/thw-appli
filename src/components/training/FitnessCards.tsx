@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
-import { Info } from 'lucide-react'
 
 interface FitnessCardsProps {
   ctl: number | null
@@ -10,115 +9,161 @@ interface FitnessCardsProps {
 }
 
 export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
-  const [openSheet, setOpenSheet] = useState<'CTL' | 'ATL' | 'TSB' | null>(null)
+  const [sheet, setSheet] = useState<'CTL'|'ATL'|'TSB'|null>(null)
+  const fmt = (v: number | null) => v != null ? v.toFixed(1) : '—'
+
+  /* Valeur max approximative pour les barres de progression */
+  const ctlPct  = Math.min(100, ((ctl  ?? 0) / 120) * 100)
+  const atlPct  = Math.min(100, ((atl  ?? 0) / 150) * 100)
+  const tsbPct  = Math.min(100, (((tsb ?? 0) + 100) / 200) * 100)
+
+  const metrics = [
+    {
+      key: 'CTL' as const,
+      value: fmt(ctl),
+      pct: ctlPct,
+      color: '#06B6D4',
+      subtitle: 'Charge chronique',
+      hint: '42 jours',
+    },
+    {
+      key: 'ATL' as const,
+      value: fmt(atl),
+      pct: atlPct,
+      color: '#F97316',
+      subtitle: 'Charge aiguë',
+      hint: '7 jours',
+    },
+    {
+      key: 'TSB' as const,
+      value: fmt(tsb),
+      pct: tsbPct,
+      color: (tsb ?? 0) < 0 ? '#EF4444' : '#10B981',
+      subtitle: 'Forme du moment',
+      hint: 'CTL – ATL',
+    },
+  ]
 
   return (
     <>
-      {/* Titre de section */}
-      <div style={{ paddingLeft: 16, paddingRight: 16, marginBottom: 16 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8', margin: '0 0 12px' }}>
-          Fitness
-        </p>
+      {/* Titre section */}
+      <p style={{
+        fontSize: 11, fontWeight: 700,
+        letterSpacing: '0.1em', textTransform: 'uppercase',
+        color: 'var(--text-label)',
+        marginBottom: 12, paddingLeft: 16,
+      }}>
+        Fitness
+      </p>
 
-        {/* Les 3 cartes — flex row, aucune bordure sur le conteneur */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
-
-          {/* ═══ CARTE CTL ═══ */}
-          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>CTL</span>
-              <button type="button" onClick={() => setOpenSheet('CTL')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
+      {/* Bande des 3 métriques */}
+      <div style={{
+        marginBottom: 20,
+        border: '1px solid var(--info-border)',
+        borderRadius: 16,
+        overflow: 'hidden',
+        display: 'flex',
+      }}>
+        {metrics.map((m, i) => (
+          <div
+            key={m.key}
+            style={{
+              flex: 1,
+              padding: '16px 20px',
+              borderRight: i < 2
+                ? '1px solid var(--info-border)'
+                : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              /* fond transparent = même que la page */
+              backgroundColor: 'transparent',
+            }}
+          >
+            {/* Label + bouton ? */}
+            <div style={{ display:'flex', justifyContent:'space-between',
+                          alignItems:'center' }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: 'var(--text-label)',
+              }}>
+                {m.key}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSheet(m.key)}
+                style={{
+                  background: 'none', border: 'none',
+                  cursor: 'pointer', padding: 0,
+                  color: 'var(--text-label)',
+                  fontSize: 13, lineHeight: 1,
+                }}
+              >
+                ?
               </button>
             </div>
-            <span style={{ fontSize: 30, fontWeight: 800, color: '#06B6D4', textAlign: 'center', lineHeight: 1, marginTop: 'auto' }}>
-              {typeof ctl === 'number' ? ctl.toFixed(1) : '—'}
-            </span>
-          </div>
 
-          {/* ═══ CARTE ATL ═══ */}
-          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>ATL</span>
-              <button type="button" onClick={() => setOpenSheet('ATL')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
-              </button>
+            {/* Valeur grande et colorée */}
+            <span style={{
+              fontSize: 34, fontWeight: 800,
+              color: m.color, lineHeight: 1,
+              letterSpacing: '-0.02em',
+            }}>
+              {m.value}
+            </span>
+
+            {/* Sous-titre : nom de l'indicateur */}
+            <span style={{
+              fontSize: 11, color: 'var(--text-muted)',
+              lineHeight: 1.3,
+            }}>
+              {m.subtitle}
+            </span>
+
+            {/* Barre de progression colorée */}
+            <div style={{
+              height: 3, borderRadius: 2,
+              backgroundColor: 'var(--info-border)',
+              marginTop: 4,
+            }}>
+              <div style={{
+                width: `${m.pct}%`,
+                height: '100%',
+                borderRadius: 2,
+                backgroundColor: m.color,
+                transition: 'width 600ms ease',
+              }} />
             </div>
-            <span style={{ fontSize: 30, fontWeight: 800, color: '#F97316', textAlign: 'center', lineHeight: 1, marginTop: 'auto' }}>
-              {typeof atl === 'number' ? atl.toFixed(1) : '—'}
+
+            {/* Hint : période de calcul */}
+            <span style={{ fontSize: 10, color: 'var(--text-label)' }}>
+              {m.hint}
             </span>
           </div>
-
-          {/* ═══ CARTE TSB ═══ */}
-          <div style={{ flex: 1, borderRadius: 16, background: '#f1f5f9', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>TSB</span>
-              <button type="button" onClick={() => setOpenSheet('TSB')} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', lineHeight: 1 }}>?</span>
-              </button>
-            </div>
-            <span style={{ fontSize: 30, fontWeight: 800, textAlign: 'center', lineHeight: 1, marginTop: 'auto', color: typeof tsb === 'number' && tsb < 0 ? '#EF4444' : '#10B981' }}>
-              {typeof tsb === 'number' ? tsb.toFixed(1) : '—'}
-            </span>
-          </div>
-
-        </div>
+        ))}
       </div>
 
-      {/* BottomSheet CTL */}
-      <BottomSheet
-        isOpen={openSheet === 'CTL'}
-        onClose={() => setOpenSheet(null)}
-        title="CTL — Charge Chronique"
-        icon={<Info size={16} />}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontSize: 14, color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
-          <p style={{ margin: 0 }}>Chronic Training Load sur <strong style={{ color: 'var(--foreground)' }}>42 jours</strong>.</p>
-          <p style={{ margin: 0 }}>Mesure votre forme à long terme. C&apos;est la moyenne exponentielle de votre TSS quotidien sur 42 jours.</p>
-          <p style={{ margin: 0 }}>Plus la valeur est élevée, meilleure est votre condition physique de base.</p>
-          <div style={{ background: 'var(--muted)', borderRadius: 12, padding: 16, marginTop: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted-foreground)', margin: '0 0 8px' }}>Formule</p>
-            <p style={{ margin: 0 }}>Moyenne exponentielle du TSS quotidien, constante de temps 42 jours.</p>
-          </div>
-        </div>
-      </BottomSheet>
-
-      {/* BottomSheet ATL */}
-      <BottomSheet
-        isOpen={openSheet === 'ATL'}
-        onClose={() => setOpenSheet(null)}
-        title="ATL — Charge Aiguë"
-        icon={<Info size={16} />}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontSize: 14, color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
-          <p style={{ margin: 0 }}>Acute Training Load sur <strong style={{ color: 'var(--foreground)' }}>7 jours</strong>.</p>
-          <p style={{ margin: 0 }}>Mesure la fatigue accumulée récemment. Calculée comme la moyenne exponentielle du TSS quotidien sur 7 jours.</p>
-          <p style={{ margin: 0 }}>Plus la valeur est élevée, plus la fatigue récente est importante.</p>
-          <div style={{ background: 'var(--muted)', borderRadius: 12, padding: 16, marginTop: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted-foreground)', margin: '0 0 8px' }}>Formule</p>
-            <p style={{ margin: 0 }}>Moyenne exponentielle du TSS quotidien, constante de temps 7 jours.</p>
-          </div>
-        </div>
-      </BottomSheet>
-
-      {/* BottomSheet TSB */}
-      <BottomSheet
-        isOpen={openSheet === 'TSB'}
-        onClose={() => setOpenSheet(null)}
-        title="TSB — Forme du Moment"
-        icon={<Info size={16} />}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontSize: 14, color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
-          <p style={{ margin: 0 }}><strong style={{ color: 'var(--foreground)' }}>TSB = CTL − ATL</strong></p>
-          <p style={{ margin: 0 }}>Balance entre forme et fatigue.</p>
-          <p style={{ margin: 0 }}><strong style={{ color: '#10B981' }}>&gt; 0</strong> : la forme dépasse la fatigue — bonne période pour performer.</p>
-          <p style={{ margin: 0 }}><strong style={{ color: '#EF4444' }}>&lt; 0</strong> : la fatigue dépasse la forme — récupération conseillée.</p>
-          <div style={{ background: 'var(--muted)', borderRadius: 12, padding: 16, marginTop: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted-foreground)', margin: '0 0 8px' }}>Zone idéale compétition</p>
-            <p style={{ margin: 0 }}>Entre <strong style={{ color: 'var(--foreground)' }}>+5 et +25</strong>.</p>
-          </div>
-        </div>
-      </BottomSheet>
+      {/* Bottom sheets inchangés */}
+      {(['CTL','ATL','TSB'] as const).map(k => (
+        <BottomSheet key={k} isOpen={sheet===k}
+                     onClose={() => setSheet(null)}
+                     title={
+                       k==='CTL' ? 'CTL — Charge Chronique' :
+                       k==='ATL' ? 'ATL — Charge Aiguë' :
+                                   'TSB — Forme du Moment'
+                     }>
+          <p style={{ fontSize:14, lineHeight:1.7,
+                      color:'var(--text-body)' }}>
+            {k==='CTL' &&
+              'Chronic Training Load sur 42 jours. Mesure votre forme à long terme via la moyenne exponentielle du TSS quotidien. Plus la valeur est haute, meilleure est votre condition de base.'}
+            {k==='ATL' &&
+              'Acute Training Load sur 7 jours. Mesure la fatigue récente. Plus la valeur est haute, plus vous êtes fatigué. Surveiller quand ATL dépasse largement CTL.'}
+            {k==='TSB' &&
+              'Training Stress Balance = CTL – ATL. Positif = forme fraîche. Négatif = fatigue accumulée. Zone idéale pour la compétition : entre +5 et +25.'}
+          </p>
+        </BottomSheet>
+      ))}
     </>
   )
 }

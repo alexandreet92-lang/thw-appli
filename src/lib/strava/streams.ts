@@ -51,9 +51,11 @@ export async function fetchAndStoreStreams(
 
   if (!activity) return null
 
-  // 2. Streams déjà stockés → retourner directement (cache)
-  if (activity.streams && Object.keys(activity.streams).length > 0) {
-    return activity.streams as StreamData
+  // 2. Streams déjà stockés → retourner directement si complets (velocity présent)
+  const cached = activity.streams as StreamData | null
+  const hasVelocity = cached && (cached.velocity != null || (cached as Record<string,unknown>).velocity_smooth != null)
+  if (cached && Object.keys(cached).length > 0 && hasVelocity) {
+    return cached
   }
 
   // 3. Seulement pour les activités Strava

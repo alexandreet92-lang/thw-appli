@@ -18,6 +18,7 @@ import { HelpCircle, ChevronDown } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
 import { PageLoader } from '@/components/ui/PageLoader'
+import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -2555,6 +2556,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   a: Activity; onClose: () => void
   zones: TrainingZoneRow[]; profile: Profile
 }) {
+  const width    = useWindowWidth()
+  const isMobile = width < 768
   const col = SPORT_COLOR[a.sport_type] ?? T.accent
   const isBike = ['bike','virtual_bike'].includes(a.sport_type)
   const isRun  = ['run','trail_run'].includes(a.sport_type)
@@ -2741,6 +2744,12 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     <div style={{ background: T.surface, borderRadius: T.radius, boxShadow: T.shadowCard }}>
       <div style={{ padding: '20px 22px' }}>
 
+        {/* ── HERO + MAP (flex desktop / column mobile) ── */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
+
+        {/* LEFT — Hero + 5 data blocks */}
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 0 65%', minWidth: 0 }}>
+
         {/* ── HERO ── */}
         <div style={{ marginBottom: 24 }}>
           {/* Sport + Title + Date row */}
@@ -2787,7 +2796,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         </div>
 
         {/* ── 5 DATA BLOCKS ── */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: 0, flexWrap: 'wrap' }}>
 
           {/* BLOC 1 — Volume */}
           <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
@@ -3052,6 +3061,16 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               </div>
             )}
           </div>
+        </div>
+        {/* END LEFT column */}
+        </div>
+
+        {/* RIGHT — carte GPS */}
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 0 35%', minWidth: 0 }}>
+          <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={isMobile} />
+        </div>
+
+        {/* END flex container HERO + MAP */}
         </div>
 
         {/* ── COURBES ── */}

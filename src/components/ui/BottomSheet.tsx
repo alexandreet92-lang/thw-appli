@@ -58,9 +58,9 @@ export function BottomSheet({
 
       {/* Panel */}
       <div
+        className="bg-white dark:bg-slate-950"
         style={{
           position: 'relative', width: '100%',
-          background: 'var(--background)',
           borderRadius: '24px 24px 0 0',
           maxHeight: '88vh',
           display: 'flex', flexDirection: 'column',

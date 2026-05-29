@@ -40,6 +40,7 @@ interface StravaActivityDetail {
   commute:              boolean
   average_temp:         number | null
   workout_type:         number | null
+  map?:                 { summary_polyline?: string | null; polyline?: string | null } | null
 }
 
 interface StravaStream {
@@ -186,6 +187,7 @@ export async function POST(req: Request) {
     avg_temp_c:        activity.average_temp            ?? null,
     is_race:           activity.workout_type === 1,
     streams:           Object.values(streams).some(v => v !== null) ? streams : null,
+    summary_polyline:  activity.map?.summary_polyline ?? activity.map?.polyline ?? null,
   }
 
   const { error } = await supabase

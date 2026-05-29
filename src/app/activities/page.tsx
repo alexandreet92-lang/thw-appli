@@ -95,6 +95,8 @@ interface Activity {
   pace_curve:       number[] | null
   streams:          StreamData | null
   laps:             LapData[] | null
+  summary_polyline: string | null
+  raw_data:         Record<string, unknown> | null
   [key: string]:    unknown
 }
 

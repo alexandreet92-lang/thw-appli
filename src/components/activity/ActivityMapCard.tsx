@@ -52,13 +52,17 @@ function decodePolyline(encoded: string): LatLng[] {
 
 // ── Extraction du tracé depuis l'activité ────────────────────────────────────
 function extractPoints(activity: Record<string, unknown>): LatLng[] | null {
-  // Cas 1 : snapped_points déjà en array [{lat,lng}]
+  // Cas 1 : colonne dédiée summary_polyline (priorité — toujours présente après backfill)
+  const col = activity.summary_polyline as string | null | undefined
+  if (col && col.length > 0) return decodePolyline(col)
+
+  // Cas 2 : snapped_points déjà en array [{lat,lng}]
   const snapped = activity.snapped_points
   if (Array.isArray(snapped) && snapped.length > 0) {
     return snapped as LatLng[]
   }
 
-  // Cas 2 : Google polyline encodé dans raw_data.map (Strava)
+  // Cas 3 : Google polyline encodé dans raw_data.map (import complet)
   const rawData = activity.raw_data as Record<string, unknown> | null | undefined
   const mapObj  = rawData?.map as Record<string, unknown> | null | undefined
   const encoded = (mapObj?.polyline ?? mapObj?.summary_polyline) as string | null | undefined

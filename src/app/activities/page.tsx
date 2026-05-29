@@ -487,6 +487,120 @@ function ZoneBars({ zones, timesS }: { zones: ParsedZone[]; timesS: number[] }) 
   )
 }
 
+const ZONE_DESCRIPTIONS: Record<string, string> = {
+  'Z1': 'Récupération — effort très léger, fréquence cardiaque basse. Idéal pour récupérer entre les séances.',
+  'Z2': 'Endurance — base aérobie fondamentale. Effort où une conversation est encore possible. Zone clé du volume d\'entraînement.',
+  'Z3': 'Tempo — allure soutenue, légèrement inconfortable. Améliore l\'endurance lactique.',
+  'Z4': 'Seuil — effort intense, proche du seuil lactique. Impossible de tenir plus de 20–60 min.',
+  'Z5': 'VO2max — sprint, effort maximal court. Stimule la puissance aérobie maximale.',
+}
+
+// ─────────────────────────────────────────────────────────────
+// DONUT CHART
+// ─────────────────────────────────────────────────────────────
+function DonutChart({ zones, timesS, onZoneClick }: {
+  zones: ParsedZone[]; timesS: number[]; onZoneClick?: (zone: ParsedZone) => void
+}) {
+  const total = timesS.reduce((a, b) => a + b, 0)
+  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée de zone</div>
+
+  const R = 36, strokeW = 10, C = 2 * Math.PI * R
+  let offset = 0
+  const segments = zones.map((z, i) => {
+    const pct = total > 0 ? timesS[i] / total : 0
+    const dash = pct * C
+    const seg = { zone: z, time: timesS[i], pct, dash, offset }
+    offset += dash
+    return seg
+  })
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <svg width={90} height={90} viewBox="0 0 90 90">
+        <circle cx={45} cy={45} r={R} fill="none" stroke={T.border} strokeWidth={strokeW} />
+        {segments.map((seg, i) => (
+          <circle key={i} cx={45} cy={45} r={R}
+            fill="none"
+            stroke={seg.zone.color}
+            strokeWidth={strokeW}
+            strokeDasharray={`${seg.dash} ${C - seg.dash}`}
+            strokeDashoffset={C / 4 - seg.offset}
+            style={{ cursor: onZoneClick ? 'pointer' : 'default', transition: 'opacity 0.15s' }}
+            onMouseEnter={e => { (e.target as SVGCircleElement).style.opacity = '0.7' }}
+            onMouseLeave={e => { (e.target as SVGCircleElement).style.opacity = '1' }}
+            onClick={() => onZoneClick?.(seg.zone)}
+          />
+        ))}
+      </svg>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {segments.map((seg, i) => (
+          <div key={i}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: onZoneClick ? 'pointer' : 'default' }}
+            onClick={() => onZoneClick?.(seg.zone)}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: seg.zone.color, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: T.textSub, minWidth: 24 }}>{seg.zone.label}</span>
+            <span style={{ fontSize: 11, color: T.text, fontWeight: 600, fontFamily: T.fontMono }}>{fmtDur(seg.time)}</span>
+            <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(seg.pct * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Zones with toggle (Jauges / Donuts)
+function ZonesSection({ label, zones, timesS }: { label: string; zones: ParsedZone[]; timesS: number[] }) {
+  const [view, setView] = useState<'jauges' | 'donuts'>('jauges')
+  const [activeZone, setActiveZone] = useState<ParsedZone | null>(null)
+
+  return (
+    <div style={{ flex: '1 1 200px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: T.textMuted }}>{label}</div>
+        <div style={{ display: 'flex', gap: 2 }}>
+          {(['jauges','donuts'] as const).map(v => (
+            <button key={v} onClick={() => setView(v)} style={{
+              fontSize: 10, padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+              background: view === v ? T.accent : T.surface,
+              color: view === v ? '#fff' : T.textMuted,
+              border: `1px solid ${view === v ? T.accent : T.border}`,
+              transition: 'all 0.15s',
+            }}>
+              {v === 'jauges' ? 'Jauges' : 'Donuts'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === 'jauges'
+        ? <ZoneBars zones={zones} timesS={timesS} />
+        : <DonutChart zones={zones} timesS={timesS} onZoneClick={z => setActiveZone(z)} />
+      }
+      {/* Zone description bottom sheet */}
+      <BottomSheet
+        isOpen={activeZone !== null}
+        onClose={() => setActiveZone(null)}
+        title={activeZone?.label ?? ''}
+      >
+        {activeZone && (
+          <div style={{ paddingTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <span style={{ width: 14, height: 14, borderRadius: 4, background: activeZone.color, display: 'inline-block' }} />
+              <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{activeZone.label}</span>
+            </div>
+            <p style={{ fontSize: 13, color: T.text, lineHeight: 1.6, margin: 0 }}>
+              {ZONE_DESCRIPTIONS[activeZone.label] ?? 'Zone d\'entraînement.'}
+            </p>
+            <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, color: T.textMuted }}>
+              {activeZone.min > 0 && <span>Plage : {activeZone.min} – {activeZone.max === Infinity ? '∞' : activeZone.max}</span>}
+            </div>
+          </div>
+        )}
+      </BottomSheet>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────
 // ALTITUDE SPARKLINE
 // ─────────────────────────────────────────────────────────────
@@ -569,49 +683,103 @@ function useCrosshairSvg(
 // ─────────────────────────────────────────────────────────────
 // POWER CURVE CHART — vélo uniquement
 // ─────────────────────────────────────────────────────────────
-function PowerCurveChart({ watts }: { watts: number[] }) {
-  const svgRef = useRef<SVGSVGElement | null>(null)
-  const N = watts.length
-  if (N < 60) return null
+const MMP_DURATIONS = [5,10,30,60,180,300,600,1200,1800,3600,5400,7200,10800,14400]
+const MMP_LABELS    = ["5s","10s","30s","1'","3'","5'","10'","20'","30'","1h","1h30","2h","3h","4h"]
 
-  // Compute MMP using prefix sums (O(N) per duration)
-  const DURATIONS = [5,10,30,60,120,180,300,480,600,720,1200,1800,2700,3600,7200,10800]
-    .filter(d => d <= N)
-
-  const prefix = useMemo(() => {
-    const p = new Array(N + 1).fill(0)
-    for (let i = 0; i < N; i++) p[i + 1] = p[i] + watts[i]
-    return p
-  }, [watts, N])
-
-  const mmp = useMemo(() => DURATIONS.map(d => {
+function computeMmpCurve(wStream: number[], durations: number[]): number[] {
+  const N = wStream.length
+  const prefix = new Array(N + 1).fill(0)
+  for (let i = 0; i < N; i++) prefix[i + 1] = prefix[i] + wStream[i]
+  return durations.map(d => {
+    if (d > N) return 0
     let max = 0
     for (let i = 0; i <= N - d; i++) {
       const avg = (prefix[i + d] - prefix[i]) / d
       if (avg > max) max = avg
     }
     return Math.round(max)
-  }), [prefix, N, DURATIONS])
+  })
+}
+
+function PowerCurveChart({ watts }: { watts: number[] }) {
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const N = watts.length
+  if (N < 60) return null
+
+  const DURATIONS = MMP_DURATIONS.filter(d => d <= N)
+  const LABELS    = MMP_LABELS.filter((_, i) => MMP_DURATIONS[i] <= N)
+
+  const mmp = useMemo(() => computeMmpCurve(watts, DURATIONS), [watts, DURATIONS])
+
+  // PR curve — fetch last 24 months of bike activities
+  const [prMmp, setPrMmp]         = useState<number[] | null>(null)
+  const [prLoading, setPrLoading] = useState(false)
+
+  useEffect(() => {
+    setPrLoading(true)
+    const since24m = new Date(Date.now() - 24 * 30 * 86_400_000).toISOString()
+    createClient()
+      .from('activities')
+      .select('streams')
+      .in('sport_type', ['bike','virtual_bike'])
+      .gte('started_at', since24m)
+      .not('streams', 'is', null)
+      .then(({ data }) => {
+        if (!data || !data.length) { setPrMmp(null); return }
+        // Aggregate MMP across all activities
+        const bestPerDur = DURATIONS.map(() => 0)
+        for (const row of data) {
+          const s = (row as { streams: StreamData | null }).streams
+          if (!s?.watts?.length) continue
+          const actMmp = computeMmpCurve(s.watts, DURATIONS)
+          actMmp.forEach((v, i) => { if (v > bestPerDur[i]) bestPerDur[i] = v })
+        }
+        setPrMmp(bestPerDur)
+        setPrLoading(false)
+      }, () => setPrLoading(false))
+  }, [])
 
   const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
 
-  const W = 1000, H = 80, pad = 6
-  const minV = Math.min(...mmp) * 0.9
-  const maxV = Math.max(...mmp) * 1.05
+  const W = 1000, H = 220, pad = 10
+
+  // Log scale helpers
+  const logMin = Math.log(DURATIONS[0])
+  const logMax = Math.log(DURATIONS[DURATIONS.length - 1])
+  function logX(d: number): number {
+    return ((Math.log(d) - logMin) / (logMax - logMin)) * W
+  }
+
+  // Combined min/max for Y scale
+  const allVals = [...mmp, ...(prMmp ?? [])]
+  const minV = Math.min(...allVals.filter(v => v > 0)) * 0.88
+  const maxV = Math.max(...allVals) * 1.07
   const range = maxV - minV || 1
 
-  const pts = mmp.map((v, i) => {
-    const x = DURATIONS.length > 1 ? (i / (DURATIONS.length - 1)) * W : W / 2
-    const y = H - pad - ((v - minV) / range) * (H - pad * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-  const fillPath = `M0,${H}L${pts.join('L')}L${W},${H}Z`
-  const linePath = `M${pts.join('L')}`
+  function yOf(v: number): number {
+    return H - pad - ((v - minV) / range) * (H - pad * 2)
+  }
+
+  function buildCurvePaths(vals: number[]): { fill: string; line: string } {
+    const pts = DURATIONS.map((d, i) => `${logX(d).toFixed(1)},${yOf(vals[i]).toFixed(1)}`)
+    return {
+      fill: `M${logX(DURATIONS[0]).toFixed(1)},${H}L${pts.join('L')}L${logX(DURATIONS[DURATIONS.length-1]).toFixed(1)},${H}Z`,
+      line: `M${pts.join('L')}`,
+    }
+  }
+
+  const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
+  const prPaths = prMmp ? buildCurvePaths(prMmp) : null
+
+  // Cursor X position (log scale → pixel)
+  const cursorX = pct !== null ? pct * W : null
+  const avgW = watts.reduce((a, b) => a + b, 0) / N
 
   function fmtDuration(s: number): string {
     if (s < 60)   return `${s}s`
-    if (s < 3600) return `${s / 60}'`
-    return `${s / 3600}h`
+    if (s < 3600) { const m = Math.floor(s/60); const sec = s%60; return sec ? `${m}'${String(sec).padStart(2,'0')}` : `${m}'` }
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60)
+    return m ? `${h}h${String(m).padStart(2,'0')}` : `${h}h`
   }
 
   return (
@@ -619,14 +787,17 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
         Courbe de puissance (MMP)
+        {prLoading && <span style={{ marginLeft: 8, fontSize: 10, color: T.textMuted, fontWeight: 400 }}>Calcul des records…</span>}
       </div>
 
       {/* Hover bar */}
       {idx !== null && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[idx]} W</span>
-          <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontMono }}>{fmtDuration(DURATIONS[idx])}</span>
-          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[idx] / (watts.reduce((a,b)=>a+b,0)/N)).toFixed(2)}× moy.</span>
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[idx]} W · {fmtDuration(DURATIONS[idx])}</span>
+          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[idx] / avgW).toFixed(2)}× moy.</span>
+          {prMmp && prMmp[idx] > 0 && (
+            <span style={{ fontSize: 10, color: '#EF4444', fontFamily: T.fontMono }}>Record 24m: {prMmp[idx]} W</span>
+          )}
         </div>
       )}
 
@@ -637,29 +808,52 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <defs>
             <linearGradient id="mmpFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#5b6fff" stopOpacity="0.3"/>
+              <stop offset="0%" stopColor="#5b6fff" stopOpacity="0.25"/>
               <stop offset="100%" stopColor="#5b6fff" stopOpacity="0.02"/>
             </linearGradient>
           </defs>
+
+          {/* PR curve (background) */}
+          {prPaths && (
+            <>
+              <path d={prPaths.fill} fill="rgba(239,68,68,0.05)"/>
+              <path d={prPaths.line} fill="none" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="5,3" strokeLinejoin="round"/>
+            </>
+          )}
+
+          {/* This activity curve */}
           <path d={fillPath} fill="url(#mmpFill)"/>
           <path d={linePath} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
-          {pct !== null && (
-            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+
+          {cursorX !== null && (
+            <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
-          {idx !== null && (() => {
-            const cx = DURATIONS.length > 1 ? (idx / (DURATIONS.length - 1)) * W : W / 2
-            const cy = H - pad - ((mmp[idx] - minV) / range) * (H - pad * 2)
-            return <circle cx={cx} cy={cy} r="3" fill="#5b6fff"/>
-          })()}
+          {idx !== null && (
+            <circle cx={logX(DURATIONS[idx])} cy={yOf(mmp[idx])} r="4" fill="#5b6fff"/>
+          )}
         </svg>
       </div>
 
       {/* X axis labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-        {DURATIONS.filter((_, i) => i === 0 || i === Math.floor(DURATIONS.length/4) || i === Math.floor(DURATIONS.length/2) || i === Math.floor(3*DURATIONS.length/4) || i === DURATIONS.length-1)
-          .map(d => (
-            <span key={d} style={{ fontSize: 9, color: T.textMuted, fontFamily: T.fontMono }}>{fmtDuration(d)}</span>
-          ))}
+      <div style={{ position: 'relative', height: 16, marginTop: 2 }}>
+        {DURATIONS.map((d, i) => (
+          <span key={d} style={{
+            position: 'absolute',
+            left: `${(logX(d) / W) * 100}%`,
+            transform: 'translateX(-50%)',
+            fontSize: 9, color: T.textMuted, fontFamily: T.fontMono, whiteSpace: 'nowrap',
+          }}>{LABELS[i]}</span>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+          <span style={{ width: 12, height: 2, background: '#5b6fff', display: 'inline-block', borderRadius: 1 }}/>Cette séance
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+          <span style={{ width: 12, height: 2, background: '#EF4444', display: 'inline-block', borderRadius: 1 }}/>Record 24 mois
+        </div>
       </div>
     </div>
   )
@@ -785,6 +979,8 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
   watts: number[]; heartrate: number[]; decouplingPct: number | null
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null)
+  const decoupContainerRef = useRef<HTMLDivElement>(null)
+  const [decoupMousePos, setDecoupMousePos] = useState<{ x: number; y: number } | null>(null)
   const N = Math.min(watts.length, heartrate.length)
   if (N < 120) return null
 
@@ -805,7 +1001,12 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
   const hRange = hMax - hMin || 1
 
   const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, N)
-  const W = 1000, H = 72, pad = 4
+  const W = 1000, H = 180, pad = 4
+
+  const decoupColor = decouplingPct == null ? T.textSub
+    : decouplingPct < 5 ? '#22c55e'
+    : decouplingPct < 8 ? '#eab308'
+    : '#ef4444'
 
   function buildNormPath(data: number[], mn: number, rng: number, fill: boolean): string {
     const pts = data.map((v, i) => {
@@ -817,29 +1018,30 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
     return `M${pts.join('L')}`
   }
 
+  function handleDecoupMove(e: React.MouseEvent) {
+    if (!decoupContainerRef.current) return
+    const rect = decoupContainerRef.current.getBoundingClientRect()
+    setDecoupMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    onMove(e)
+  }
+  function handleDecoupLeave() { setDecoupMousePos(null); onLeave() }
+
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
         Découplage puissance / FC
         {decouplingPct != null && (
-          <span style={{ marginLeft: 8, fontSize: 11, color: decouplingPct < 5 ? '#22c55e' : decouplingPct < 10 ? T.textSub : '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>
+          <span style={{ marginLeft: 8, fontSize: 11, color: decoupColor, fontWeight: 600, fontFamily: T.fontMono }}>
             {decouplingPct.toFixed(1)}%
           </span>
         )}
       </div>
 
-      {idx !== null && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(sWatts[idx])} W</span>
-          <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(sHr[idx])} bpm</span>
-        </div>
-      )}
-
-      <div style={{ position: 'relative', cursor: 'crosshair' }}>
+      <div ref={decoupContainerRef} style={{ position: 'relative', cursor: 'crosshair' }}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
           preserveAspectRatio="none"
-          onMouseMove={onMove} onMouseLeave={onLeave}
+          onMouseMove={handleDecoupMove} onMouseLeave={handleDecoupLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <path d={buildNormPath(sWatts, wMin, wRange, false)} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
           <path d={buildNormPath(sHr, hMin, hRange, false)} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeDasharray="6,3"/>
@@ -847,6 +1049,26 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
             <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
         </svg>
+
+        {/* Cursor tooltip positioned at mouse */}
+        {idx !== null && decoupMousePos && (
+          <div style={{
+            position: 'absolute',
+            left: Math.min(decoupMousePos.x + 12, 999),
+            top: Math.max(0, decoupMousePos.y - 52),
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 7,
+            padding: '5px 10px',
+            pointerEvents: 'none',
+            zIndex: 20,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{ fontSize: 12, color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>{Math.round(sWatts[idx])} W</div>
+            <div style={{ fontSize: 11, color: '#ef4444', fontFamily: T.fontMono }}>{Math.round(sHr[idx])} bpm</div>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
@@ -857,6 +1079,15 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
           <span style={{ width: 12, height: 2, background: '#ef4444', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #ef4444' }}/>FC (normalisée)
         </div>
       </div>
+
+      {/* Explanation text */}
+      <div style={{ marginTop: 8, fontSize: 11, color: T.textMuted, lineHeight: 1.55, fontFamily: T.fontBody,
+        background: T.bgAlt, borderRadius: 7, padding: '8px 12px', border: `1px solid ${T.border}` }}>
+        Le découplage mesure la dérive cardiaque relative à la puissance.{' '}
+        <span style={{ color: '#22c55e', fontWeight: 600 }}>{'< 5%'} : excellent</span> (bonne résistance aérobie) ·{' '}
+        <span style={{ color: '#eab308', fontWeight: 600 }}>5–8%</span> : normal sur les longues sorties ·{' '}
+        <span style={{ color: '#ef4444', fontWeight: 600 }}>{'> 8%'}</span> : fatigue ou base aérobie insuffisante
+      </div>
     </div>
   )
 }
@@ -866,6 +1097,8 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
 // ─────────────────────────────────────────────────────────────
 function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHrEst: number }) {
   const svgRef = useRef<SVGSVGElement | null>(null)
+  const containerRef2 = useRef<HTMLDivElement>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
   const N = heartrate.length
   if (N < 60) return null
 
@@ -907,10 +1140,18 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
 
   function fmtCumTime(s: number): string {
     if (s < 60)   return `${s}s`
-    if (s < 3600) return `${Math.round(s/60)}'`
+    if (s < 3600) return `${Math.floor(s/60)}'${(s%60).toString().padStart(2,'0')}`
     const h = Math.floor(s/3600), m = Math.floor((s%3600)/60)
     return `${h}h${String(m).padStart(2,'0')}`
   }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!containerRef2.current) return
+    const rect = containerRef2.current.getBoundingClientRect()
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    onMove(e)
+  }
+  function handleMouseLeave() { setMousePos(null); onLeave() }
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -919,18 +1160,10 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
         Durée cumulée par FC
       </div>
 
-      {idx !== null && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, fontFamily: T.fontMono }}>{bpmRange[idx]} bpm</span>
-          <span style={{ fontSize: 11, color: T.text, fontWeight: 600, fontFamily: T.fontMono }}>{fmtCumTime(cumulative[idx])}</span>
-          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>({Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% FC max)</span>
-        </div>
-      )}
-
-      <div style={{ position: 'relative', cursor: 'crosshair' }}>
+      <div ref={containerRef2} style={{ position: 'relative', cursor: 'crosshair' }}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
           preserveAspectRatio="none"
-          onMouseMove={onMove} onMouseLeave={onLeave}
+          onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <defs>
             <linearGradient id="hrCumFill" x1="0" y1="0" x2="0" y2="1">
@@ -944,6 +1177,27 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
             <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
         </svg>
+
+        {/* Cursor tooltip positioned at mouse */}
+        {idx !== null && mousePos && (
+          <div style={{
+            position: 'absolute',
+            left: Math.min(mousePos.x + 12, 999),
+            top: Math.max(0, mousePos.y - 52),
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 7,
+            padding: '5px 10px',
+            pointerEvents: 'none',
+            zIndex: 20,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 700, fontFamily: T.fontMono }}>{bpmRange[idx]} bpm</div>
+            <div style={{ fontSize: 11, color: T.text, fontFamily: T.fontMono }}>{fmtCumTime(cumulative[idx])}</div>
+            <div style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% FC max</div>
+          </div>
+        )}
       </div>
 
       {/* X axis — bpm labels */}
@@ -951,6 +1205,12 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
         {[minHr, ...Array.from({length:4},(_,i)=>Math.round(minHr+(maxHr-minHr)*(i+1)/5)), maxHr].map(bpm => (
           <span key={bpm} style={{ fontSize: 9, color: T.textMuted, fontFamily: T.fontMono }}>{bpm}</span>
         ))}
+      </div>
+
+      {/* Explanation */}
+      <div style={{ marginTop: 8, fontSize: 11, color: T.textMuted, lineHeight: 1.5, fontFamily: T.fontBody }}>
+        Durée cumulée passée à ou au-dessus de chaque fréquence cardiaque.{' '}
+        <span style={{ color: T.textSub }}>Exemple : si 1h30 s'affiche à 140 bpm, vous avez pédalé 1h30 à ≥ 140 bpm.</span>
       </div>
     </div>
   )
@@ -1107,18 +1367,18 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
       formatY: (v: number) => fmtPace(v),
       formatVal: (v: number) => fmtPace(v),
     } : null,
-    cadence ? {
-      label: 'Cadence', data: cadence, color: '#F472B6', fill: 'rgba(244,114,182,0.10)',
-      unit: 'rpm', H: 48,
-      formatY: (v: number) => `${Math.round(v)} rpm`,
-      formatVal: (v: number) => `${Math.round(v)}`,
-    } : null,
-    // ── FIX 2 : courbe vitesse ──
+    // ── courbe vitesse (avant cadence) ──
     speedKmh ? {
       label: 'Vitesse', data: speedKmh, color: '#60A5FA', fill: 'rgba(96,165,250,0.10)',
       unit: 'km/h', H: 48,
       formatY: (v: number) => `${v.toFixed(1)} km/h`,
       formatVal: (v: number) => v.toFixed(1),
+    } : null,
+    cadence ? {
+      label: 'Cadence', data: cadence, color: '#F472B6', fill: 'rgba(244,114,182,0.10)',
+      unit: 'rpm', H: 48,
+      formatY: (v: number) => `${Math.round(v)} rpm`,
+      formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     // ── FIX 2 : courbe température ──
     (isBike || isRun) && temp ? {
@@ -2534,6 +2794,30 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
               </div>
             )}
+            {a.avg_hr != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                  {Math.round(Number(a.avg_hr))} bpm
+                </span>
+              </div>
+            )}
+            {(a.max_hr ?? maxHrStream) != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                  {a.max_hr ?? maxHrStream} bpm
+                </span>
+              </div>
+            )}
+            {a.aerobic_decoupling != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Découplage P/FC</span>
+                <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
+                  color: Number(a.aerobic_decoupling) < 5 ? '#22c55e' : Number(a.aerobic_decoupling) < 8 ? '#eab308' : '#ef4444',
+                }}>{Number(a.aerobic_decoupling).toFixed(1)}%</span>
+              </div>
+            )}
           </div>
 
           {/* BLOC 3 — Sport-specific */}
@@ -2718,22 +3002,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
               {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-                <div style={{ flex: '1 1 200px' }}>
-                  <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Puissance</div>
-                  <ZoneBars zones={bikeZones} timesS={powerTimesZ} />
-                </div>
+                <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
               )}
               {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-                <div style={{ flex: '1 1 200px' }}>
-                  <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Allure</div>
-                  <ZoneBars zones={runZones} timesS={paceTimesZ} />
-                </div>
+                <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
               )}
               {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-                <div style={{ flex: '1 1 200px' }}>
-                  <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Fréquence cardiaque</div>
-                  <ZoneBars zones={hrZones} timesS={hrTimesZ} />
-                </div>
+                <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
               )}
             </div>
           </div>

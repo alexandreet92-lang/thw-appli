@@ -2326,6 +2326,23 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const efVal = computedNp && a.avg_hr
     ? (computedNp / Number(a.avg_hr)).toFixed(2) : null
 
+  // Cadence max (stockée ou max du stream)
+  const maxCadStream = a.streams?.cadence?.length
+    ? Math.round(Math.max(...a.streams.cadence)) : null
+  const maxCad = a.max_cadence ?? maxCadStream
+
+  // FC max stream fallback
+  const maxHrStream = a.streams?.heartrate?.length
+    ? Math.round(Math.max(...a.streams.heartrate)) : null
+
+  // Roue libre % (watts-based)
+  const freewheelPowerPct = freewheelPowerS && a.moving_time_s
+    ? ((freewheelPowerS / a.moving_time_s) * 100).toFixed(1) : null
+
+  // W/kg moyen (avg_watts / poids)
+  const wkgMoy = a.avg_watts && profile.weight_kg
+    ? (Number(a.avg_watts) / Number(profile.weight_kg)).toFixed(2) : null
+
   // VAP from zone row
   const runZoneRowLocal = zones.find(z => z.sport === 'run')
   const vap = runZoneRowLocal?.vma_ms
@@ -2409,22 +2426,15 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
           </div>
 
-          {/* KPI hero strip */}
+          {/* KPI hero strip — 5 métriques clés uniquement */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[
-              { label: 'Distance', value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
-              { label: 'Durée', value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-              { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-              { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null), value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
-              { label: 'TSS', value: a.tss ? Math.round(Number(a.tss)).toString() : null },
-              { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null },
-              // ── FIX 4 : nouvelles données ──
-              { label: 'Durée Z2', value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
-              { label: 'W. Norm.', value: (isBike && computedNp) ? `${computedNp} W` : null },
-              { label: 'Cad. Max', value: a.max_cadence ? `${a.max_cadence} rpm` : null },
-              { label: 'Roue libre', value: (isBike && freewheelPowerS && freewheelPowerS > 60) ? fmtDur(freewheelPowerS) : null },
-              { label: 'Temp. Max', value: maxTempStream != null ? `${maxTempStream} °C` : null },
-              { label: 'EF', value: (isBike && efVal) ? efVal : null },
+              { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
+              { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+              { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+              { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null),
+                value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
+              { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
             ].filter(k => k.label && k.value).map(k => (
               <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
@@ -2515,6 +2525,15 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.trimp))}</span>
               </div>
             )}
+            {z2DurationS != null && z2DurationS > 60 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>
+                  Durée Z2
+                  <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({hrZones[1].min}–{hrZones[1].max} bpm)</span>
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
+              </div>
+            )}
           </div>
 
           {/* BLOC 3 — Sport-specific */}
@@ -2529,10 +2548,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                     </span>
                   </div>
                 )}
-                {a.normalized_watts != null && (
+                {computedNp != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>NP</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{a.normalized_watts} W</span>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Watts norm.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{computedNp} W</span>
                   </div>
                 )}
                 {vi != null && (
@@ -2550,7 +2569,31 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 {a.avg_cadence != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_cadence))} rpm</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} rpm</span>
+                  </div>
+                )}
+                {maxCad != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} rpm</span>
+                  </div>
+                )}
+                {freewheelPowerS != null && freewheelPowerS > 60 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelPowerS)} ({freewheelPowerPct}%)</span>
+                  </div>
+                )}
+                {efVal != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>EF</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{efVal}</span>
+                  </div>
+                )}
+                {wkgMoy != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>W/kg</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{wkgMoy} w/kg</span>
                   </div>
                 )}
               </>
@@ -2566,7 +2609,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 {a.avg_cadence != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{Math.round(Number(a.avg_cadence))} spm</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} spm</span>
+                  </div>
+                )}
+                {maxCad != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} spm</span>
                   </div>
                 )}
               </>
@@ -2587,12 +2636,12 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                     </span>
                   </div>
                 )}
-                {a.max_hr != null && (
+                {(a.max_hr ?? maxHrStream) != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>FC max.</span>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                      {a.max_hr} bpm
-                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.max_hr)/maxHrEst)*100)}%)</span>
+                      {a.max_hr ?? maxHrStream} bpm
+                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)</span>
                     </span>
                   </div>
                 )}
@@ -2607,49 +2656,44 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           })()}
 
           {/* BLOC 5 — Contexte */}
-          {(() => {
-            const maxTemp = a.streams?.temp?.length
-              ? Math.round(Math.max(...a.streams.temp)) : null
-            return (
-              <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
-                {(a.elevation_gain_m ?? 0) > 5 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
-                  </div>
-                )}
-                {maxAlt != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
-                  </div>
-                )}
-                {avgAlt != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
-                  </div>
-                )}
-                {a.avg_temp_c != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Temp. moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                      {Math.round(Number(a.avg_temp_c))}°C
-                      {maxTemp != null && maxTemp !== Math.round(Number(a.avg_temp_c)) && (
-                        <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>(max {maxTemp}°C)</span>
-                      )}
-                    </span>
-                  </div>
-                )}
-                {a.calories != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.calories))} kcal</span>
-                  </div>
-                )}
+          <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
+            {(a.elevation_gain_m ?? 0) > 5 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
               </div>
-            )
-          })()}
+            )}
+            {maxAlt != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
+              </div>
+            )}
+            {avgAlt != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
+              </div>
+            )}
+            {a.avg_temp_c != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Temp. moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_temp_c))} °C</span>
+              </div>
+            )}
+            {maxTempStream != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Temp. max</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxTempStream} °C</span>
+              </div>
+            )}
+            {a.calories != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.calories))} kcal</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── COURBES ── */}

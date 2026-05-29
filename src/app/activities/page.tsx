@@ -1515,10 +1515,10 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
         onTouchEnd={handleUp}
       >
         {/* Cursor line */}
-        {cursorPct !== null && (
+        {cursorPct !== null && mousePos !== null && (
           <div style={{
-            position: 'absolute', top: 0, bottom: 0, left: `${cursorPct * 100}%`,
-            width: 1, background: T.text, pointerEvents: 'none', zIndex: 10,
+            position: 'absolute', top: 0, bottom: 0, left: mousePos.x,
+            width: 1, background: T.text, pointerEvents: 'none', zIndex: 50,
           }} />
         )}
 
@@ -1671,9 +1671,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
         {cursor !== null && mousePos !== null && (
           <div style={{
             position: 'absolute',
-            left: (cursorPct ?? 0) > 0.6 ? mousePos.x - 160 : mousePos.x + 14,
-            top: Math.max(0, mousePos.y - 10),
-            transform: 'translateY(-50%)',
+            left: (cursorPct ?? 0) > 0.75 ? mousePos.x - 160 : mousePos.x + 12,
+            top: 80,
             pointerEvents: 'none',
             zIndex: 200,
             backgroundColor: 'rgba(15,23,42,0.92)',

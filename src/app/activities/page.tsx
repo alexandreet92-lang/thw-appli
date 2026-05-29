@@ -1454,7 +1454,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
       formatY: (v: number) => `${Math.round(v)} rpm`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
-    // ── FIX 2 : courbe température ──
+    // streams.temp sera disponible après l'ajout de 'temp' dans STREAM_KEYS (voir PROMPT_TEMP_STREAM)
     (isBike || isRun) && temp ? {
       label: 'Température', data: temp, color: '#6EE7B7', fill: 'rgba(110,231,183,0.10)',
       unit: '°C', H: 48,

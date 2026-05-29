@@ -5,7 +5,7 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { syncStravaActivities, syncMissingStreams } from '@/lib/sync/strava'
+import { syncStravaActivities, syncMissingStreams, syncTempBackfill } from '@/lib/sync/strava'
 import { syncWahooWorkouts } from '@/lib/sync/wahoo'
 import { syncWithingsBodyMetrics, syncWithingsSleep } from '@/lib/sync/withings'
 import {
@@ -57,7 +57,10 @@ export async function POST(
     switch (provider) {
       case 'strava': {
         const streamsOnly = req.nextUrl.searchParams.get('streams') === 'true'
-        if (streamsOnly) {
+        const tempOnly    = req.nextUrl.searchParams.get('temp')    === 'true'
+        if (tempOnly) {
+          count = await syncTempBackfill(userId)
+        } else if (streamsOnly) {
           count = await syncMissingStreams(userId)
         } else {
           count = await syncStravaActivities(userId)

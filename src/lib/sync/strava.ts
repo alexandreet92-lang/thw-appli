@@ -16,7 +16,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken }       from '@/lib/oauth/tokens'
 
 const STRAVA_API  = 'https://www.strava.com/api/v3'
-const STREAM_KEYS = 'time,distance,altitude,heartrate,velocity_smooth,watts,cadence'
+const STREAM_KEYS = 'time,distance,altitude,heartrate,velocity_smooth,watts,cadence,temp'
 
 // ── Types ─────────────────────────────────────────────────────────
 interface StravaActivity {
@@ -103,6 +103,7 @@ async function fetchStreams(
     if (data.cadence)          streams.cadence          = data.cadence.data
     if (data.watts)            streams.watts            = data.watts.data
     if (data.distance)         streams.distance         = data.distance.data
+    if (data.temp)             streams.temp             = data.temp.data
     return streams
   } catch {
     return {}
@@ -286,6 +287,52 @@ export async function syncMissingStreams(userId: string): Promise<number> {
     await new Promise(r => setTimeout(r, 200))
   }
 
+  return synced
+}
+
+// ── Backfill stream temp sur activités existantes ─────────────────
+
+/**
+ * Re-fetche les streams des activités Strava qui ont déjà des streams
+ * mais manquent le champ `temp` (car il n'était pas dans STREAM_KEYS avant).
+ * Limité aux 2 dernières années pour rester dans les quotas Strava.
+ * Appelé via POST /api/sync/strava?temp=true
+ */
+export async function syncTempBackfill(userId: string): Promise<number> {
+  const token = await getValidToken(userId, 'strava')
+  if (!token) throw new Error('No valid Strava token')
+
+  const supabase = createServiceClient()
+  const since2y  = new Date(Date.now() - 2 * 365 * 86_400_000).toISOString()
+
+  // Activités avec streams déjà présents, dans les 2 dernières années
+  const { data: activities } = await supabase
+    .from('activities')
+    .select('id, provider_id')
+    .eq('user_id', userId)
+    .eq('provider', 'strava')
+    .not('provider_id', 'is', null)
+    .not('streams', 'is', null)
+    .gte('started_at', since2y)
+    .order('started_at', { ascending: false })
+
+  if (!activities?.length) return 0
+
+  let synced = 0
+  for (const act of activities) {
+    if (!act.provider_id) continue
+    const streams = await fetchStreams(Number(act.provider_id), token)
+    if (Object.keys(streams).length > 0) {
+      await supabase
+        .from('activities')
+        .update({ streams })
+        .eq('id', act.id)
+      synced++
+    }
+    await new Promise(r => setTimeout(r, 200))
+  }
+
+  console.log(`[strava-sync] temp backfill : ${synced}/${activities.length} activités mises à jour`)
   return synced
 }
 

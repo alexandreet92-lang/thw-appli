@@ -103,7 +103,6 @@ interface StreamData {
   altitude?:         number[]
   heartrate?:        number[]
   velocity?:         number[]
-  velocity_smooth?:  number[]  // clé brute Strava (activités syncées avant le fix)
   watts?:            number[]
   cadence?:          number[]
   temp?:             number[]
@@ -1397,8 +1396,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   }
 
   const watts    = s.watts     ? smooth(s.watts)    : null
-  const velRaw   = s.velocity ?? s.velocity_smooth ?? null
-  const velocity = velRaw      ? smooth(velRaw)     : null
+  const velocity = s.velocity  ? smooth(s.velocity) : null
   const cadence  = s.cadence   ? smooth(s.cadence)  : null
   const hr       = s.heartrate ? smooth(s.heartrate): null
   const alt      = s.altitude  ?? null

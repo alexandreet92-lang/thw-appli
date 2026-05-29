@@ -58,16 +58,17 @@ export function BottomSheet({
 
       {/* Panel */}
       <div
-        className="bg-white dark:bg-slate-950"
+        data-sheet-panel=""
         style={{
           position: 'relative', width: '100%',
-          borderRadius: '24px 24px 0 0',
+          borderRadius: '20px 20px 0 0',
           maxHeight: '88vh',
           display: 'flex', flexDirection: 'column',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
           paddingBottom: 'env(safe-area-inset-bottom, 20px)',
           transform: animIn ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)',
+          transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)',
+          /* PAS DE backgroundColor ICI — géré par globals.css */
         }}
       >
         {/* Drag handle */}

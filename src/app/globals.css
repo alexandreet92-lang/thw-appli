@@ -447,3 +447,16 @@ button:active { transform: scale(0.97); }
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
+
+/* BottomSheet — fond opaque garanti, bypasse oklch / Tailwind */
+[data-sheet-panel] {
+  background-color: #ffffff !important;
+}
+.dark [data-sheet-panel] {
+  background-color: #0f172a !important;
+}
+@media (prefers-color-scheme: dark) {
+  [data-sheet-panel] {
+    background-color: #0f172a !important;
+  }
+}

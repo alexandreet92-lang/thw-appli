@@ -1131,7 +1131,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
           </div>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '12px 0 0' }}>
-          🌡️ <strong style={{ color: 'var(--text-title)' }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
+          <strong style={{ color: 'var(--text-title)' }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
           le flux sanguin vers la peau pour dissiper la chaleur. Le volume d&apos;éjection cardiaque diminue, et le cœur
           s&apos;emballe pour compenser. Des études en conditions chaudes (35°C) montrent une augmentation de FC de{' '}
           <strong>+11%</strong> et une chute du VO2max de <strong>-15%</strong> sur 45 minutes comparé à 22°C. Une dérive élevée
@@ -1273,7 +1273,7 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
           niveau de fréquence cardiaque. La courbe descend de gauche à droite : plus la FC est élevée, moins vous y avez passé de temps.
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
-          🎯 <strong style={{ color: 'var(--text-title)' }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
+          <strong style={{ color: 'var(--text-title)' }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
           d&apos;intensité que le système cardiovasculaire est soumis à sa plus forte sollicitation, forçant les adaptations
           qui font progresser le VO2max. Les athlètes d&apos;endurance intègrent des séances d&apos;intervalles spécifiquement pour
           accumuler du temps dans cette zone.

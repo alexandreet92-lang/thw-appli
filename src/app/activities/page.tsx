@@ -687,6 +687,20 @@ function useCrosshairSvg(
 const MMP_DURATIONS = [5,10,30,60,180,300,600,1200,1800,3600,5400,7200,10800,14400]
 const MMP_LABELS    = ["5s","10s","30s","1'","3'","5'","10'","20'","30'","1h","1h30","2h","3h","4h"]
 
+function calculateDecoupling(watts: number[], heartrate: number[]): number | null {
+  const n = Math.min(watts.length, heartrate.length)
+  if (n < 120) return null
+  const mid = Math.floor(n / 2)
+  const avgW1 = watts.slice(0, mid).reduce((a, b) => a + b, 0) / mid
+  const avgHr1 = heartrate.slice(0, mid).reduce((a, b) => a + b, 0) / mid
+  const avgW2 = watts.slice(mid, n).reduce((a, b) => a + b, 0) / (n - mid)
+  const avgHr2 = heartrate.slice(mid, n).reduce((a, b) => a + b, 0) / (n - mid)
+  const ef1 = avgHr1 > 0 ? avgW1 / avgHr1 : 0
+  const ef2 = avgHr2 > 0 ? avgW2 / avgHr2 : 0
+  if (ef1 === 0) return null
+  return ((ef1 - ef2) / ef1) * 100
+}
+
 function computeMmpCurve(wStream: number[], durations: number[]): number[] {
   const N = wStream.length
   const prefix = new Array(N + 1).fill(0)
@@ -732,9 +746,13 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
         for (const row of data) {
           const s = (row as { streams: StreamData | null }).streams
           if (!s?.watts?.length) continue
+          // Skip activities with corrupted watts (spikes > 1200W)
+          const maxW = Math.max(...s.watts)
+          if (maxW > 1200) continue
           const actMmp = computeMmpCurve(s.watts, DURATIONS)
           actMmp.forEach((v, i) => { if (v > bestPerDur[i]) bestPerDur[i] = v })
         }
+        console.log('[MMP PR] Top 3 durations:', DURATIONS.slice(0, 3).map((d, i) => `${d}s=${bestPerDur[i]}W`))
         setPrMmp(bestPerDur)
         setPrLoading(false)
       }, () => setPrLoading(false))
@@ -1081,13 +1099,44 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
         </div>
       </div>
 
-      {/* Explanation text */}
-      <div style={{ marginTop: 8, fontSize: 11, color: T.textMuted, lineHeight: 1.55, fontFamily: T.fontBody,
-        background: T.bgAlt, borderRadius: 7, padding: '8px 12px', border: `1px solid ${T.border}` }}>
-        Le découplage mesure la dérive cardiaque relative à la puissance.{' '}
-        <span style={{ color: '#22c55e', fontWeight: 600 }}>{'< 5%'} : excellent</span> (bonne résistance aérobie) ·{' '}
-        <span style={{ color: '#eab308', fontWeight: 600 }}>5–8%</span> : normal sur les longues sorties ·{' '}
-        <span style={{ color: '#ef4444', fontWeight: 600 }}>{'> 8%'}</span> : fatigue ou base aérobie insuffisante
+      <div style={{
+        marginTop: 20,
+        padding: '20px 24px',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+        border: '1px solid #E2E8F0',
+      }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 16px' }}>
+          Qu&apos;est-ce que la dérive cardiaque ?
+        </h3>
+        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '0 0 12px' }}>
+          La <strong style={{ color: '#0F172A' }}>dérive cardiaque</strong> mesure dans quelle mesure votre fréquence cardiaque augmente
+          par rapport à votre production de puissance au cours d&apos;un effort. À puissance constante, si votre cœur doit battre de
+          plus en plus vite pour maintenir le même effort, la dérive est positive. C&apos;est un indicateur clé de la qualité de votre
+          endurance aérobie fondamentale.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, margin: '16px 0' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#16A34A', margin: '0 0 4px' }}>{'< 5%'}</p>
+            <p style={{ fontSize: 11, color: '#166534', margin: 0, lineHeight: 1.5 }}>Excellent. Endurance aérobie bien développée.</p>
+          </div>
+          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: '#FEFCE8', border: '1px solid #FDE68A' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#D97706', margin: '0 0 4px' }}>5 – 8%</p>
+            <p style={{ fontSize: 11, color: '#92400E', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties. Marge de progression.</p>
+          </div>
+          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', margin: '0 0 4px' }}>{'>  8%'}</p>
+            <p style={{ fontSize: 11, color: '#991B1B', margin: 0, lineHeight: 1.5 }}>Dérive importante. Base aérobie à renforcer.</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '12px 0 0' }}>
+          🌡️ <strong style={{ color: '#0F172A' }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
+          le flux sanguin vers la peau pour dissiper la chaleur. Le volume d&apos;éjection cardiaque diminue, et le cœur
+          s&apos;emballe pour compenser. Des études en conditions chaudes (35°C) montrent une augmentation de FC de{' '}
+          <strong>+11%</strong> et une chute du VO2max de <strong>-15%</strong> sur 45 minutes comparé à 22°C. Une dérive élevée
+          par forte chaleur n&apos;est donc pas le signe d&apos;un manque d&apos;endurance — c&apos;est une réponse physiologique normale.
+          La déshydratation produit le même effet en réduisant le volume sanguin.
+        </p>
       </div>
     </div>
   )
@@ -1208,10 +1257,31 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
         ))}
       </div>
 
-      {/* Explanation */}
-      <div style={{ marginTop: 8, fontSize: 11, color: T.textMuted, lineHeight: 1.5, fontFamily: T.fontBody }}>
-        Durée cumulée passée à ou au-dessus de chaque fréquence cardiaque.{' '}
-        <span style={{ color: T.textSub }}>Exemple : si 1h30 s'affiche à 140 bpm, vous avez pédalé 1h30 à ≥ 140 bpm.</span>
+      <div style={{
+        marginTop: 20,
+        padding: '20px 24px',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+        border: '1px solid #E2E8F0',
+      }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 12px' }}>
+          Durée cumulée par fréquence cardiaque
+        </h3>
+        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '0 0 12px' }}>
+          Ce graphique montre le temps total passé <strong style={{ color: '#0F172A' }}>à atteindre ou dépasser</strong> chaque
+          niveau de fréquence cardiaque. La courbe descend de gauche à droite : plus la FC est élevée, moins vous y avez passé de temps.
+        </p>
+        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.75, margin: '0 0 12px' }}>
+          🎯 <strong style={{ color: '#0F172A' }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
+          d&apos;intensité que le système cardiovasculaire est soumis à sa plus forte sollicitation, forçant les adaptations
+          qui font progresser le VO2max. Les athlètes d&apos;endurance intègrent des séances d&apos;intervalles spécifiquement pour
+          accumuler du temps dans cette zone.
+        </p>
+        <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.75, margin: 0 }}>
+          <strong style={{ color: '#0F172A' }}>Lecture :</strong> si le point à 160 bpm indique 1h30, vous avez pédalé
+          1 heure 30 à 160 bpm <em>ou plus</em>. Suivez l&apos;évolution de ce chiffre à 90%+ FCmax d&apos;une séance
+          à l&apos;autre pour quantifier vos gains de VO2max.
+        </p>
       </div>
     </div>
   )
@@ -1238,6 +1308,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   if (N < 2) return null
 
   const [cursorPct, setCursorPct] = useState<number | null>(null)
+  const [mousePos, setMousePos]   = useState<{x:number;y:number}|null>(null)
   const [selection, setSelection]  = useState<[number,number] | null>(null)
   const [dragStartPct, setDragStartPct] = useState<number | null>(null)
   const [selectedLap, setSelectedLap]   = useState<number | null>(null)
@@ -1251,8 +1322,10 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
     return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
   }
 
-  function handleMove(clientX: number) {
+  function handleMove(clientX: number, clientY: number) {
     if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    setMousePos({ x: clientX - rect.left, y: clientY - rect.top })
     const pct = getPct(clientX, containerRef.current)
     setCursorPct(pct)
     if (dragStartPct !== null) {
@@ -1423,39 +1496,22 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
       <style>{`
         .sync-mobile-header { display: flex !important; }
         .sync-left-col      { display: none  !important; }
-        .sync-right-val     { display: none  !important; }
         @media (min-width: 768px) {
           .sync-mobile-header { display: none  !important; }
           .sync-left-col      { display: block !important; }
-          .sync-right-val     { display: flex  !important; }
         }
       `}</style>
-
-      {/* Cursor values bar (mobile summary) */}
-      {cursor !== null && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 10, flexWrap: 'wrap', minHeight: 20,
-          background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          {hr     && <span style={{ fontSize: 11, color: '#F87171', fontWeight: 600, fontFamily: T.fontMono }}>FC {Math.round(hr[cursor])} bpm</span>}
-          {isBike && watts && <span style={{ fontSize: 11, color: '#818CF8', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(watts[cursor])} W</span>}
-          {isRun && velocity && velocity[cursor] > 0 && <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>{fmtPace(1000/velocity[cursor])}</span>}
-          {cadence && <span style={{ fontSize: 11, color: '#F472B6', fontWeight: 600, fontFamily: T.fontMono }}>{Math.round(cadence[cursor])} rpm</span>}
-          {alt && <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500, fontFamily: T.fontMono }}>{Math.round(alt[cursor])} m</span>}
-          <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 'auto', fontFamily: T.fontMono }}>
-            {(() => { const t = time[cursor] - time[0]; const m = Math.floor(t/60); const sec = t%60; return `${m}:${String(sec).padStart(2,'0')}` })()}
-          </span>
-        </div>
-      )}
 
       {/* Chart container */}
       <div
         ref={containerRef}
         style={{ position: 'relative', userSelect: 'none', cursor: 'crosshair' }}
-        onMouseMove={e => handleMove(e.clientX)}
-        onMouseLeave={() => setCursorPct(null)}
+        onMouseMove={e => handleMove(e.clientX, e.clientY)}
+        onMouseLeave={() => { setCursorPct(null); setMousePos(null) }}
         onMouseDown={e => handleDown(e.clientX)}
         onMouseUp={handleUp}
         onTouchStart={e => { e.preventDefault(); handleDown(e.touches[0].clientX) }}
-        onTouchMove={e => { e.preventDefault(); handleMove(e.touches[0].clientX) }}
+        onTouchMove={e => { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY) }}
         onTouchEnd={handleUp}
       >
         {/* Cursor line */}
@@ -1504,10 +1560,6 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
               ? `${track.formatY(mx)} – ${track.formatY(mn)}`
               : `${track.formatY(mn)} – ${track.formatY(mx)}`
             : `${Math.round(mn)} – ${Math.round(mx)} ${track.unit}`
-
-          // Hover value for desktop right column
-          const hoverRaw = cursor !== null ? track.data[cursor] : avgVal
-          const hoverStr = track.formatVal ? track.formatVal(hoverRaw) : Math.round(hoverRaw).toString()
 
           // Left col Max/Moy display
           const maxStr = track.formatVal ? track.formatVal(maxVal) : Math.round(maxVal).toString()
@@ -1610,22 +1662,43 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
                   </svg>
                 </div>
 
-                {/* Right hover value — desktop only */}
-                <div className="sync-right-val" style={{
-                  width: 60, flexShrink: 0, paddingLeft: 8,
-                  flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center',
-                  minHeight: track.H,
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: track.color, lineHeight: 1 }}>
-                    {hoverStr}
-                  </span>
-                  <span style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1 }}>{track.unit}</span>
-                </div>
-
               </div>
             </div>
           )
         })}
+
+        {/* Unified cursor tooltip */}
+        {cursor !== null && mousePos !== null && (
+          <div style={{
+            position: 'absolute',
+            left: (cursorPct ?? 0) > 0.6 ? mousePos.x - 160 : mousePos.x + 14,
+            top: Math.max(0, mousePos.y - 10),
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+            zIndex: 200,
+            backgroundColor: 'rgba(15,23,42,0.92)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: 10,
+            padding: '8px 12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            minWidth: 140,
+          }}>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '0 0 6px', fontWeight: 500 }}>
+              {(() => { const t = time[cursor] - time[0]; const m = Math.floor(t/60); const sec = t%60; return `${m}:${String(sec).padStart(2,'0')}` })()}
+            </p>
+            {tracks.map(track => {
+              const v = track.data[cursor]
+              const label = track.formatVal ? track.formatVal(v) : Math.round(v).toString()
+              return (
+                <div key={track.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, margin: '2px 0' }}>
+                  <span style={{ fontSize: 11, color: track.color }}>{track.label}</span>
+                  <span style={{ fontSize: 11, color: 'white', fontWeight: 600 }}>{label} {track.unit}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Laps */}
@@ -2510,7 +2583,12 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const vi = a.normalized_watts && a.avg_watts && Number(a.avg_watts) > 0
     ? (Number(a.normalized_watts) / Number(a.avg_watts)).toFixed(2) : null
 
-  const decoupling = a.aerobic_decoupling != null ? Number(a.aerobic_decoupling) : null
+  const decoupling = useMemo(() => {
+    if (a.aerobic_decoupling != null) return Number(a.aerobic_decoupling)
+    const w = a.streams?.watts, hr = a.streams?.heartrate
+    if (!w || !hr) return null
+    return calculateDecoupling(w, hr)
+  }, [a.aerobic_decoupling, a.streams?.watts, a.streams?.heartrate])
 
   // Freewheeling (coasting): cadence == 0 while velocity > 0.5 m/s
   const freewheelS = useMemo(() => {
@@ -2591,6 +2669,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const maxCadStream = a.streams?.cadence?.length
     ? Math.round(Math.max(...a.streams.cadence)) : null
   const maxCad = a.max_cadence ?? maxCadStream
+
+  // Puissance max (stockée ou max du stream)
+  const maxWattsStream = a.streams?.watts?.length ? Math.round(Math.max(...a.streams.watts)) : null
+  const maxWatts = a.max_watts != null ? Number(a.max_watts) : maxWattsStream
 
   // FC max stream fallback
   const maxHrStream = a.streams?.heartrate?.length
@@ -2795,28 +2877,12 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
               </div>
             )}
-            {a.avg_hr != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                  {Math.round(Number(a.avg_hr))} bpm
-                </span>
-              </div>
-            )}
-            {(a.max_hr ?? maxHrStream) != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                  {a.max_hr ?? maxHrStream} bpm
-                </span>
-              </div>
-            )}
-            {a.aerobic_decoupling != null && (
+            {decoupling != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Découplage P/FC</span>
                 <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
-                  color: Number(a.aerobic_decoupling) < 5 ? '#22c55e' : Number(a.aerobic_decoupling) < 8 ? '#eab308' : '#ef4444',
-                }}>{Number(a.aerobic_decoupling).toFixed(1)}%</span>
+                  color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
+                }}>{decoupling.toFixed(1)}%</span>
               </div>
             )}
           </div>
@@ -2837,6 +2903,12 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: T.textMuted }}>Watts norm.</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{computedNp} W</span>
+                  </div>
+                )}
+                {maxWatts != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>Watts max</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxWatts} W</span>
                   </div>
                 )}
                 {vi != null && (
@@ -2912,15 +2984,6 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             const maxHrEst = estimateMaxHr(profile.birth_date)
             return (
               <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-                {a.avg_hr != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                      {Math.round(Number(a.avg_hr))} bpm
-                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.avg_hr)/maxHrEst)*100)}%)</span>
-                    </span>
-                  </div>
-                )}
                 {(a.max_hr ?? maxHrStream) != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
@@ -2930,10 +2993,21 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                     </span>
                   </div>
                 )}
-                {a.aerobic_decoupling != null && (
+                {a.avg_hr != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                      {Math.round(Number(a.avg_hr))} bpm
+                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.avg_hr)/maxHrEst)*100)}%)</span>
+                    </span>
+                  </div>
+                )}
+                {decoupling != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Number(a.aerobic_decoupling).toFixed(1)}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
+                      color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
+                    }}>{decoupling.toFixed(1)}%</span>
                   </div>
                 )}
               </div>

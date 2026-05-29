@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from '@/lib/marketing/types'
+import { PageLoader } from '@/components/ui/PageLoader'
 
 // ── Marketing constants ────────────────────────────────────────
 const MKT_PILLAR_COLORS: Record<string, string> = {
@@ -602,23 +603,7 @@ export default function BriefingPage() {
 
   // ── Render : états préliminaires ─────────────────────────
   if (loading) {
-    return (
-      <div style={page}>
-        <div style={{ ...card, textAlign: 'center', padding: 40 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            border: '3px solid rgba(0,200,224,0.18)',
-            borderTopColor: '#00c8e0',
-            margin: '0 auto 14px',
-            animation: 'thw_spin 0.8s linear infinite',
-          }} />
-          <style>{`@keyframes thw_spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ margin: 0, color: 'var(--text-mid)', fontSize: 13 }}>
-            Chargement du briefing…
-          </p>
-        </div>
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (error === 'auth') {

@@ -16,7 +16,8 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
 import { HelpCircle, ChevronDown } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
-import { SkeletonTrainingPage, SkeletonFitnessCards } from '@/components/ui/Skeleton'
+import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
+import { PageLoader } from '@/components/ui/PageLoader'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -4189,8 +4190,8 @@ function TrainingPageInner() {
             </div>
           )}
 
-          {/* Loading skeleton */}
-          {loading && !error && <SkeletonTrainingPage />}
+          {/* Loading */}
+          {loading && !error && <PageLoader />}
 
           {/* Sections */}
           {!loading && !error && section === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}

@@ -169,6 +169,54 @@ export function SkeletonProfileHeader() {
   )
 }
 
+// ── Fitness cards skeleton (CTL / ATL / TSB) ─────────────────────
+export function SkeletonFitnessCards() {
+  return (
+    <div style={{ paddingLeft: 16, paddingRight: 16, marginBottom: 16 }}>
+      <Skeleton height={10} width={48} borderRadius={4} style={{ marginBottom: 12 }} />
+      <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
+        {[0, 1, 2].map(i => (
+          <div
+            key={i}
+            style={{
+              flex: 1, borderRadius: 16, padding: 12,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              minHeight: 96, gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between' }}>
+              <Skeleton height={10} width={28} borderRadius={4} />
+              <Skeleton height={20} width={20} borderRadius={10} />
+            </div>
+            <Skeleton height={30} width={56} borderRadius={8} style={{ marginTop: 'auto' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Training page full skeleton (replaces 4-row generic placeholder) ──
+export function SkeletonTrainingPage() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 0 24px' }}>
+      {/* Stat cards row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '0 16px' }}>
+        <SkeletonStat />
+        <SkeletonStat />
+        <SkeletonStat />
+        <SkeletonStat />
+      </div>
+      {/* Fitness cards */}
+      <SkeletonFitnessCards />
+      {/* Chart area */}
+      <Skeleton height={180} borderRadius={16} style={{ margin: '0 16px' }} />
+      {/* Activity list */}
+      <SkeletonActivityList rows={4} />
+    </div>
+  )
+}
+
 // ── Calendar grid skeleton ────────────────────────────────────────
 export function SkeletonCalendarGrid() {
   return (

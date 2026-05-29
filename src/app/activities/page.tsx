@@ -15,6 +15,8 @@ import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
 import { HelpCircle, ChevronDown } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
+import { SkeletonTrainingPage, SkeletonFitnessCards } from '@/components/ui/Skeleton'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -381,8 +383,9 @@ function estimateMaxHr(birth_date: string | null): number {
 }
 
 // Reads CTL/ATL/TSB from metrics_daily if rows exist (more accurate than client-side)
-function useMetricsDaily(): { ctl: number | null; atl: number | null; tsb: number | null } {
+function useMetricsDaily(): { ctl: number | null; atl: number | null; tsb: number | null; loading: boolean } {
   const [metrics, setMetrics] = useState<{ ctl: number | null; atl: number | null; tsb: number | null }>({ ctl: null, atl: null, tsb: null })
+  const [loading, setLoading] = useState(true)
   useEffect(() => {
     createClient().from('metrics_daily').select('ctl,atl,tsb,date')
       .order('date', { ascending: false }).limit(1).single()
@@ -391,9 +394,10 @@ function useMetricsDaily(): { ctl: number | null; atl: number | null; tsb: numbe
           const d = data as { ctl: number; atl: number; tsb: number }
           setMetrics({ ctl: Math.round(d.ctl * 10) / 10, atl: Math.round(d.atl * 10) / 10, tsb: Math.round(d.tsb * 10) / 10 })
         }
-      })
+        setLoading(false)
+      }, () => { setLoading(false) })
   }, [])
-  return metrics
+  return { ...metrics, loading }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1954,8 +1958,11 @@ function SectionDonnees({ activities, zones, profile }: {
         <StatCard label="RPE moyen" value={meanRpe ? `${meanRpe}/10` : '—'} />
       </div>
 
-      {/* CTL / ATL / TSB — composant FitnessCards */}
-      <FitnessCards ctl={ctl} atl={atl} tsb={tsb} />
+      {/* CTL / ATL / TSB — skeleton pendant chargement Supabase */}
+      {dbMetrics.loading
+        ? <SkeletonFitnessCards />
+        : <FitnessCards ctl={ctl} atl={atl} tsb={tsb} />
+      }
 
       {/* Weekly volume chart */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
@@ -3523,8 +3530,9 @@ function TrainingPageInner() {
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [syncing, setSyncing]         = useState(false)
-  const [syncMsg, setSyncMsg]         = useState<string | null>(null)
+  const [syncing, setSyncing]           = useState(false)
+  const [syncingPolar, setSyncingPolar] = useState(false)
+  const [syncMsg, setSyncMsg]           = useState<string | null>(null)
   const [importing, setImporting]     = useState(false)
   const [appMenuOpen, setAppMenuOpen] = useState(false)
   const [menuPos, setMenuPos]         = useState({ top: 0, right: 0 })
@@ -3648,7 +3656,7 @@ function TrainingPageInner() {
   }
 
   async function syncPolar() {
-    setSyncMsg('Polar…')
+    setSyncingPolar(true); setSyncMsg(null)
     try {
       const res  = await fetch('/api/sync/polar', { method: 'POST' })
       const json = await res.json() as { exercises_synced?: number }
@@ -3656,7 +3664,7 @@ function TrainingPageInner() {
       if ((json.exercises_synced ?? 0) > 0) { setSyncMsg(`+${json.exercises_synced} Polar`); await reload() }
       else setSyncMsg('Polar à jour')
     } catch { setSyncMsg('Erreur Polar') }
-    finally { setTimeout(() => setSyncMsg(null), 4000) }
+    finally { setSyncingPolar(false); setTimeout(() => setSyncMsg(null), 4000) }
   }
 
   function handleFileImport() { fileInputRef.current?.click() }
@@ -3678,8 +3686,10 @@ function TrainingPageInner() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
           {!loading && !error && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>{totalCount ?? activities.length} activités</span>}
-          {syncMsg && (
-            <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg === 'À jour' ? T.textMuted : '#ef4444',
+          {syncing && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#FC4C02', fontWeight: 600 }}><Spinner size={12} color="#FC4C02" /> Strava</span>}
+          {syncingPolar && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#D0021B', fontWeight: 600 }}><Spinner size={12} color="#D0021B" /> Polar</span>}
+          {syncMsg && !syncing && !syncingPolar && (
+            <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg.includes('jour') ? T.textMuted : '#ef4444',
               fontFamily: T.fontBody, fontWeight: 600 }}>{syncMsg}</span>
           )}
           <input
@@ -3730,9 +3740,10 @@ function TrainingPageInner() {
             onClick={reload}
             title="Recharger depuis la base"
             style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
-              color: T.textSub, cursor: 'pointer', padding: '5px 9px', fontSize: 13 }}
+              color: T.textSub, cursor: 'pointer', padding: '5px 9px', fontSize: 13,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 28 }}
           >
-            ↻
+            {loading ? <Spinner size={13} color={T.textSub} /> : '↻'}
           </button>
           <button onClick={reopenHelp} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
         </div>
@@ -3860,18 +3871,12 @@ function TrainingPageInner() {
           )}
 
           {/* Loading skeleton */}
-          {loading && !error && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[80, 120, 80, 100].map((h, i) => (
-                <div key={i} className="skeleton-shimmer" style={{ borderRadius: T.radius, height: h }} />
-              ))}
-            </div>
-          )}
+          {loading && !error && <SkeletonTrainingPage />}
 
           {/* Sections */}
-          {!loading && !error && section === 'donnees'     && <ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal>}
-          {!loading && !error && section === 'analyse'     && <ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal>}
-          {!loading && !error && section === 'progression' && <ScrollReveal><SectionProgression activities={activities} /></ScrollReveal>}
+          {!loading && !error && section === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
+          {!loading && !error && section === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
+          {!loading && !error && section === 'progression' && <div className="fade-up"><ScrollReveal><SectionProgression activities={activities} /></ScrollReveal></div>}
         </main>
       </div>
 

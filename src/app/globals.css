@@ -432,3 +432,18 @@ button:active { transform: scale(0.97); }
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* ── .fade-up — section reveal après chargement ──────────────── */
+.fade-up { animation: fadeUp 0.35s ease-out forwards; }
+
+/* ── .shimmer — alias plus court pour skeleton-shimmer ─────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card)  25%,
+    var(--bg-card2) 50%,
+    var(--bg-card)  75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}

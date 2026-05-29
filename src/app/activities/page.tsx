@@ -3923,6 +3923,7 @@ function TrainingPageInner() {
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [syncing, setSyncing]           = useState(false)
   const [syncingPolar, setSyncingPolar] = useState(false)
   const [syncMsg, setSyncMsg]           = useState<string | null>(null)
@@ -4033,6 +4034,18 @@ function TrainingPageInner() {
     if (id) { setDeepLinkId(id); setSection('analyse') }
   }, [])
 
+  // Sidebar collapse — restore from localStorage (mobile always closed)
+  useEffect(() => {
+    if (isMobile) { setSidebarOpen(false); return }
+    const saved = localStorage.getItem('sidebar_open')
+    if (saved !== null) setSidebarOpen(saved === 'true')
+  }, [isMobile])
+
+  // Sidebar collapse — persist to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebar_open', String(sidebarOpen))
+  }, [sidebarOpen])
+
   async function syncStrava() {
     setSyncing(true); setSyncMsg(null)
     try {
@@ -4142,61 +4155,98 @@ function TrainingPageInner() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ display: 'flex', maxWidth: 1400, margin: '0 auto', position: 'relative' }}>
 
         {/* ── SIDEBAR (desktop) ── */}
         {!isMobile && (
-          <aside style={{
-            width: T.sidebarW, flexShrink: 0,
-            background: T.sidebar, borderRight: `1px solid ${T.border}`,
-            padding: '20px 12px',
-            position: 'sticky', top: T.topH, height: `calc(100vh - ${T.topH}px)`,
-            overflowY: 'auto',
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, paddingLeft: 10, marginBottom: 10, fontFamily: T.fontDisplay }}>
-              NAVIGATION
-            </div>
-            {NAV.map(n => {
-              const isActive = n.id === section
-              return (
-                <button
-                  key={n.id}
-                  onClick={() => setSection(n.id)}
-                  style={{
-                    width: '100%', textAlign: 'left', border: 'none',
-                    borderRadius: T.radiusSm, padding: '10px 12px', cursor: 'pointer', marginBottom: 3,
-                    background: isActive ? T.accentBg : 'transparent',
-                    borderLeft: `3px solid ${isActive ? T.accent : 'transparent'}`,
-                    transition: 'background 0.12s',
-                  }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? T.accent : T.text, fontFamily: T.fontDisplay }}>
-                    {n.label}
-                  </div>
-                  <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: T.fontBody }}>{n.desc}</div>
-                </button>
-              )
-            })}
+          <>
+            {/* Collapsible wrapper */}
+            <div style={{
+              width: sidebarOpen ? T.sidebarW : 0,
+              minWidth: sidebarOpen ? T.sidebarW : 0,
+              overflow: 'hidden',
+              transition: 'width 250ms ease, min-width 250ms ease',
+              flexShrink: 0,
+            }}>
+              <aside style={{
+                width: T.sidebarW,
+                background: T.sidebar, borderRight: `1px solid ${T.border}`,
+                padding: '20px 12px',
+                position: 'sticky', top: T.topH, height: `calc(100vh - ${T.topH}px)`,
+                overflowY: 'auto',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, paddingLeft: 10, marginBottom: 10, fontFamily: T.fontDisplay }}>
+                  NAVIGATION
+                </div>
+                {NAV.map(n => {
+                  const isActive = n.id === section
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => setSection(n.id)}
+                      style={{
+                        width: '100%', textAlign: 'left', border: 'none',
+                        borderRadius: T.radiusSm, padding: '10px 12px', cursor: 'pointer', marginBottom: 3,
+                        background: isActive ? T.accentBg : 'transparent',
+                        borderLeft: `3px solid ${isActive ? T.accent : 'transparent'}`,
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
+                      onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? T.accent : T.text, fontFamily: T.fontDisplay }}>
+                        {n.label}
+                      </div>
+                      <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: T.fontBody }}>{n.desc}</div>
+                    </button>
+                  )
+                })}
 
-            {/* Sidebar summary */}
-            {!loading && activities.length > 0 && (
-              <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, paddingLeft: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, marginBottom: 10, fontFamily: T.fontDisplay }}>RÉSUMÉ</div>
-                {[
-                  { label: 'Total',         value: activities.length },
-                  { label: 'Cette semaine', value: activities.filter(a => isoWeek(new Date(a.started_at)) === isoWeek(new Date())).length },
-                  { label: 'Compétitions',  value: activities.filter(a => a.is_race).length },
-                ].map(s => (
-                  <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-                    <span style={{ color: T.textSub, fontFamily: T.fontBody }}>{s.label}</span>
-                    <span style={{ color: T.text, fontWeight: 700, fontFamily: T.fontMono }}>{s.value}</span>
+                {/* Sidebar summary */}
+                {!loading && activities.length > 0 && (
+                  <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, paddingLeft: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, marginBottom: 10, fontFamily: T.fontDisplay }}>RÉSUMÉ</div>
+                    {[
+                      { label: 'Total',         value: activities.length },
+                      { label: 'Cette semaine', value: activities.filter(a => isoWeek(new Date(a.started_at)) === isoWeek(new Date())).length },
+                      { label: 'Compétitions',  value: activities.filter(a => a.is_race).length },
+                    ].map(s => (
+                      <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
+                        <span style={{ color: T.textSub, fontFamily: T.fontBody }}>{s.label}</span>
+                        <span style={{ color: T.text, fontWeight: 700, fontFamily: T.fontMono }}>{s.value}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </aside>
+                )}
+              </aside>
+            </div>
+
+            {/* Toggle button */}
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              style={{
+                position: 'absolute',
+                left: sidebarOpen ? T.sidebarW - 8 : 0,
+                top: 16,
+                zIndex: 10,
+                width: 20,
+                height: 40,
+                backgroundColor: 'var(--info-bg)',
+                border: '1px solid var(--info-border)',
+                borderRadius: '0 6px 6px 0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'left 250ms ease',
+                color: 'var(--text-muted)',
+                fontSize: 10,
+                padding: 0,
+              }}
+            >
+              {sidebarOpen ? '‹' : '›'}
+            </button>
+          </>
         )}
 
         {/* ── CONTENT ── */}

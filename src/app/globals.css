@@ -382,6 +382,29 @@ button:active { transform: scale(0.97); }
 .toast-slide-in  { animation: toast-slide-in  220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .toast-slide-out { animation: toast-slide-out 220ms cubic-bezier(0.4, 0, 1, 1)   forwards; }
 
+/* ── Chart tooltip — thème clair / sombre ────────────────────── */
+[data-chart-tooltip] {
+  background-color: rgba(255,255,255,0.97) !important;
+  color:            #0f172a !important;
+  border:           1px solid #e2e8f0 !important;
+  box-shadow:       0 4px 20px rgba(0,0,0,0.12) !important;
+  backdrop-filter:  blur(8px);
+}
+.dark [data-chart-tooltip] {
+  background-color: rgba(15,23,42,0.94) !important;
+  color:            #eef2f7 !important;
+  border:           1px solid rgba(255,255,255,0.10) !important;
+  box-shadow:       0 4px 20px rgba(0,0,0,0.40) !important;
+}
+@media (prefers-color-scheme: dark) {
+  [data-chart-tooltip] {
+    background-color: rgba(15,23,42,0.94) !important;
+    color:            #eef2f7 !important;
+    border:           1px solid rgba(255,255,255,0.10) !important;
+    box-shadow:       0 4px 20px rgba(0,0,0,0.40) !important;
+  }
+}
+
 /* ── GPS indicator — blinking dot ────────────────────────────── */
 @keyframes gps-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 

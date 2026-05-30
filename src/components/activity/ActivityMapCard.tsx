@@ -4,6 +4,7 @@
 // Si absent, le composant retourne null silencieusement.
 
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import dynamic from 'next/dynamic'
 
 type LayerId = 'std' | 'sat' | 'hyb'
@@ -77,27 +78,27 @@ function extractPoints(activity: Record<string, unknown>): LatLng[] | null {
 interface Props {
   activity: Record<string, unknown>
   isMobile?: boolean
+  expanded?: boolean
+  onToggle?: () => void
+  hoverGps?: { lat: number; lng: number } | null
 }
 
-export function ActivityMapCard({ activity, isMobile = false }: Props) {
-  const [expanded, setExpanded] = useState(false)
-  const [layer, setLayer]       = useState<LayerId>('std')
+export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps }: Props) {
+  const [layer, setLayer] = useState<LayerId>('std')
 
   const points = extractPoints(activity)
   if (!points || points.length < 2) return null
 
-  const cardStyle: React.CSSProperties = expanded
+  const cardStyle: CSSProperties = expanded
     ? {
-        position: 'fixed',
-        top: 60,
-        right: 16,
-        width: 'min(600px, calc(100vw - 32px))',
-        height: '70vh',
+        position: 'relative',
+        width: '100%',
+        height: 420,
         borderRadius: 16,
         overflow: 'hidden',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
-        zIndex: 500,
-        transition: 'all 300ms ease',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
+        zIndex: 1,
+        transition: 'height 300ms ease',
       }
     : {
         position: 'relative',
@@ -107,27 +108,29 @@ export function ActivityMapCard({ activity, isMobile = false }: Props) {
         overflow: 'hidden',
         boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
         zIndex: 1,
-        transition: 'all 300ms ease',
+        transition: 'height 300ms ease',
       }
 
   return (
     <div style={cardStyle}>
-      <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} />
+      <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} />
 
-      {/* Bouton agrandir / réduire */}
-      <button
-        onClick={() => setExpanded(e => !e)}
-        style={{
-          position: 'absolute', top: 8, right: expanded ? 56 : 8, zIndex: 10,
-          backgroundColor: 'rgba(0,0,0,0.62)',
-          border: 'none', borderRadius: 8, padding: '5px 9px',
-          color: 'white', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-          backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', gap: 4,
-        }}
-      >
-        {expanded ? '⤡ Réduire' : '⤢ Agrandir'}
-      </button>
+      {/* Bouton agrandir / réduire — masqué sur mobile */}
+      {!isMobile && onToggle && (
+        <button
+          onClick={onToggle}
+          style={{
+            position: 'absolute', top: 8, right: expanded ? 56 : 8, zIndex: 10,
+            backgroundColor: 'rgba(0,0,0,0.62)',
+            border: 'none', borderRadius: 8, padding: '5px 9px',
+            color: 'white', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          {expanded ? '⤡ Réduire' : '⤢ Agrandir'}
+        </button>
+      )}
     </div>
   )
 }

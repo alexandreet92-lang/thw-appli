@@ -1291,13 +1291,69 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
 }
 
 // ─────────────────────────────────────────────────────────────
+// POLYLINE — décodage Google Polyline encodé
+// ─────────────────────────────────────────────────────────────
+interface LatLngPoint { lat: number; lng: number }
+
+function decodePolyline(encoded: string): LatLngPoint[] {
+  const points: LatLngPoint[] = []
+  let lat = 0, lng = 0, i = 0
+  while (i < encoded.length) {
+    let b: number, shift = 0, result = 0
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 32)
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1)
+    shift = 0; result = 0
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 32)
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1)
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 })
+  }
+  return points
+}
+
+/** Trouve le point GPS sur le tracé à une distance donnée (mètres depuis le départ) */
+function findGpsAtDistance(
+  distMeters: number,
+  polyPoints: LatLngPoint[],
+  cumDist: number[],
+): LatLngPoint | null {
+  if (!polyPoints || polyPoints.length < 2 || !cumDist.length) return null
+  const total = cumDist[cumDist.length - 1]
+  const d = Math.min(distMeters, total)
+  for (let i = 1; i < cumDist.length; i++) {
+    if (cumDist[i] >= d) {
+      const seg = cumDist[i] - cumDist[i - 1]
+      const t   = seg > 0 ? (d - cumDist[i - 1]) / seg : 0
+      return {
+        lat: polyPoints[i - 1].lat + t * (polyPoints[i].lat - polyPoints[i - 1].lat),
+        lng: polyPoints[i - 1].lng + t * (polyPoints[i].lng - polyPoints[i - 1].lng),
+      }
+    }
+  }
+  return polyPoints[polyPoints.length - 1]
+}
+
+/** Calcule les distances cumulées (mètres) le long d'un tracé polyline */
+function buildCumDist(pts: LatLngPoint[]): number[] {
+  const cum = [0]
+  for (let i = 1; i < pts.length; i++) {
+    const cosLat = Math.cos(pts[i - 1].lat * Math.PI / 180)
+    const dx = (pts[i].lng - pts[i - 1].lng) * cosLat * 111320
+    const dy = (pts[i].lat - pts[i - 1].lat) * 111320
+    cum.push(cum[i - 1] + Math.sqrt(dx * dx + dy * dy))
+  }
+  return cum
+}
+
+// ─────────────────────────────────────────────────────────────
 // SYNC CHARTS (crosshair, HR zone coloring, laps)
 // ─────────────────────────────────────────────────────────────
-function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
+function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, onHoverGps }: {
   activity: Activity
   hrZones?: ParsedZone[]
   powerZones?: ParsedZone[]
   paceZones?: ParsedZone[]
+  polylinePoints?: LatLngPoint[] | null
+  onHoverGps?: (gps: LatLngPoint | null) => void
 }) {
   void powerZones; void paceZones
   const s = activity.streams
@@ -1310,13 +1366,20 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
   const N = time.length
   if (N < 2) return null
 
-  const [cursorPct, setCursorPct] = useState<number | null>(null)
-  const [mousePos, setMousePos]   = useState<{x:number;y:number}|null>(null)
-  const [selection, setSelection]  = useState<[number,number] | null>(null)
+  const [cursorPct, setCursorPct]   = useState<number | null>(null)
+  const [mousePos, setMousePos]     = useState<{x:number;y:number}|null>(null)
+  const [isOverCharts, setIsOverCharts] = useState(false)
+  const [selection, setSelection]   = useState<[number,number] | null>(null)
   const [dragStartPct, setDragStartPct] = useState<number | null>(null)
   const [selectedLap, setSelectedLap]   = useState<number | null>(null)
   const [showSelModal, setShowSelModal]  = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Distances cumulées le long du tracé polyline (pour mapping curseur → GPS)
+  const polyCumDist = useMemo(
+    () => polylinePoints && polylinePoints.length > 1 ? buildCumDist(polylinePoints) : null,
+    [polylinePoints],
+  )
 
   const cursor = cursorPct !== null ? Math.min(N-1, Math.max(0, Math.round(cursorPct * (N-1)))) : null
 
@@ -1335,6 +1398,15 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
       const i1 = Math.round(dragStartPct * (N-1))
       const i2 = Math.round(pct * (N-1))
       setSelection([Math.min(i1,i2), Math.max(i1,i2)])
+    }
+    // Mapping curseur → GPS si polyline disponible
+    if (polylinePoints && polyCumDist && s?.distance) {
+      const idx = Math.min(N-1, Math.max(0, Math.round(pct * (N-1))))
+      const distM = s.distance[idx]
+      if (typeof distM === 'number') {
+        const gps = findGpsAtDistance(distM, polylinePoints, polyCumDist)
+        onHoverGps?.(gps)
+      }
     }
   }
 
@@ -1509,8 +1581,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
       <div
         ref={containerRef}
         style={{ position: 'relative', userSelect: 'none', cursor: 'crosshair' }}
+        onMouseEnter={() => setIsOverCharts(true)}
         onMouseMove={e => handleMove(e.clientX, e.clientY)}
-        onMouseLeave={() => { setCursorPct(null); setMousePos(null) }}
+        onMouseLeave={() => { setIsOverCharts(false); setCursorPct(null); setMousePos(null); onHoverGps?.(null) }}
         onMouseDown={e => handleDown(e.clientX)}
         onMouseUp={handleUp}
         onTouchStart={e => { e.preventDefault(); handleDown(e.touches[0].clientX) }}
@@ -1518,7 +1591,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
         onTouchEnd={handleUp}
       >
         {/* Cursor line */}
-        {cursorPct !== null && mousePos !== null && (
+        {isOverCharts && cursorPct !== null && mousePos !== null && (
           <div style={{
             position: 'absolute', top: 0, bottom: 0, left: mousePos.x,
             width: 1, background: T.text, pointerEvents: 'none', zIndex: 50,
@@ -1671,22 +1744,21 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
         })}
 
         {/* Unified cursor tooltip */}
-        {cursor !== null && mousePos !== null && (
-          <div style={{
-            position: 'absolute',
-            left: (cursorPct ?? 0) > 0.75 ? mousePos.x - 160 : mousePos.x + 12,
-            top: 80,
-            pointerEvents: 'none',
-            zIndex: 200,
-            backgroundColor: 'rgba(15,23,42,0.92)',
-            backdropFilter: 'blur(8px)',
-            borderRadius: 10,
-            padding: '8px 12px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            minWidth: 140,
-          }}>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '0 0 6px', fontWeight: 500 }}>
+        {isOverCharts && cursor !== null && mousePos !== null && (
+          <div
+            data-chart-tooltip=""
+            style={{
+              position: 'absolute',
+              left: (cursorPct ?? 0) > 0.75 ? mousePos.x - 160 : mousePos.x + 12,
+              top: 80,
+              pointerEvents: 'none',
+              zIndex: 200,
+              borderRadius: 10,
+              padding: '8px 12px',
+              minWidth: 140,
+            }}
+          >
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 6px', fontWeight: 500 }}>
               {(() => { const t = time[cursor] - time[0]; const m = Math.floor(t/60); const sec = t%60; return `${m}:${String(sec).padStart(2,'0')}` })()}
             </p>
             {tracks.map(track => {
@@ -1695,7 +1767,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones }: {
               return (
                 <div key={track.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, margin: '2px 0' }}>
                   <span style={{ fontSize: 11, color: track.color }}>{track.label}</span>
-                  <span style={{ fontSize: 11, color: 'white', fontWeight: 600 }}>{label} {track.unit}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600 }}>{label} {track.unit}</span>
                 </div>
               )
             })}
@@ -2565,6 +2637,17 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting,        setIsDeleting]        = useState(false)
   const [deleteError,       setDeleteError]       = useState<string | null>(null)
+  const [mapExpanded,       setMapExpanded]       = useState(false)
+  const [hoverGps,          setHoverGps]          = useState<LatLngPoint | null>(null)
+
+  // Tracé GPS décodé (pour mapping curseur → point sur la carte)
+  const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
+    const encoded = (a.summary_polyline as string | null)
+      ?? ((a.raw_data as Record<string, unknown> | null)?.map as Record<string, unknown> | null)
+        ?.summary_polyline as string | null
+    if (!encoded || encoded.length < 2) return null
+    return decodePolyline(encoded)
+  }, [a.summary_polyline, a.raw_data])
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -2770,7 +2853,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
 
         {/* LEFT — Hero + 5 data blocks */}
-        <div style={{ flex: isMobile ? '1 1 100%' : '0 0 65%', minWidth: 0 }}>
+        <div style={{ flex: isMobile ? '1 1 100%' : (mapExpanded ? '1 1 100%' : '0 0 65%'), minWidth: 0 }}>
 
         {/* ── HERO ── */}
         <div style={{ marginBottom: 24 }}>
@@ -3104,13 +3187,34 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         {/* END LEFT column */}
         </div>
 
-        {/* RIGHT — carte GPS */}
-        <div style={{ flex: isMobile ? '1 1 100%' : '0 0 35%', minWidth: 0 }}>
-          <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={isMobile} />
-        </div>
+        {/* RIGHT — carte GPS (compact, masquée sur desktop quand expanded) */}
+        {(!mapExpanded || isMobile) && (
+          <div style={{ flex: isMobile ? '1 1 100%' : '0 0 35%', minWidth: 0 }}>
+            <ActivityMapCard
+              activity={a as unknown as Record<string, unknown>}
+              isMobile={isMobile}
+              expanded={false}
+              onToggle={isMobile ? undefined : () => setMapExpanded(true)}
+              hoverGps={hoverGps}
+            />
+          </div>
+        )}
 
         {/* END flex container HERO + MAP */}
         </div>
+
+        {/* ── CARTE GPS EXPANDED (desktop uniquement, full-width) ── */}
+        {mapExpanded && !isMobile && (
+          <div style={{ marginBottom: 20 }}>
+            <ActivityMapCard
+              activity={a as unknown as Record<string, unknown>}
+              isMobile={false}
+              expanded={true}
+              onToggle={() => setMapExpanded(false)}
+              hoverGps={hoverGps}
+            />
+          </div>
+        )}
 
         {/* ── COURBES ── */}
         {a.streams && (
@@ -3119,7 +3223,14 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Courbes
             </div>
-            <SyncCharts activity={a} hrZones={hrZones} powerZones={bikeZones ?? undefined} paceZones={runZones ?? undefined} />
+            <SyncCharts
+              activity={a}
+              hrZones={hrZones}
+              powerZones={bikeZones ?? undefined}
+              paceZones={runZones ?? undefined}
+              polylinePoints={polylinePoints}
+              onHoverGps={setHoverGps}
+            />
           </div>
         )}
 

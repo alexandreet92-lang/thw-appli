@@ -66,9 +66,10 @@ interface Props {
   points: LatLng[]
   layer: keyof typeof TILES
   onLayerChange: (l: keyof typeof TILES) => void
+  hoverGps?: { lat: number; lng: number } | null
 }
 
-export default function ActivityMapInner({ points, layer, onLayerChange }: Props) {
+export default function ActivityMapInner({ points, layer, onLayerChange, hoverGps }: Props) {
   const positions = points.map(p => [p.lat, p.lng] as [number, number])
   const center: [number, number] = points.length
     ? [points[Math.floor(points.length / 2)].lat, points[Math.floor(points.length / 2)].lng]
@@ -105,6 +106,14 @@ export default function ActivityMapInner({ points, layer, onLayerChange }: Props
             />
             <FitBounds points={points} />
           </>
+        )}
+        {/* Point curseur — suit la position de la souris sur les courbes */}
+        {hoverGps && (
+          <CircleMarker
+            center={[hoverGps.lat, hoverGps.lng]}
+            radius={8}
+            pathOptions={{ fillColor: '#FF4444', fillOpacity: 1, color: 'white', weight: 2.5 }}
+          />
         )}
       </MapContainer>
       <LayerSelector layer={layer} onChange={onLayerChange} />

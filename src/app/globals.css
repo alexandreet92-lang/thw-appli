@@ -599,3 +599,14 @@ button:active { transform: scale(0.97); }
   from { transform: translateY(60px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+
+/* ── Page activité plein écran mobile ─────────────────────── */
+@media (max-width: 767px) {
+  body:has([data-fullscreen-activity]) [data-app-header] {
+    display: none !important;
+  }
+  body:has([data-fullscreen-activity]) main {
+    margin-top: 0 !important;
+    height: 100vh !important;
+  }
+}

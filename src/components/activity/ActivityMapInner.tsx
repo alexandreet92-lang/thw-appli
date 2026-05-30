@@ -84,13 +84,19 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
         attributionControl={false}
         style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer url={TILES[layer]} tileSize={256} maxZoom={19} attribution={ATTRIBUTION} />
+        <TileLayer url={TILES[layer]} tileSize={512} detectRetina={true} maxZoom={19} attribution={ATTRIBUTION} />
 
         {points.length > 1 && (
           <>
+            {/* Contour blanc — effet "pop" Strava */}
             <Polyline
               positions={positions}
-              pathOptions={{ color: '#06B6D4', weight: 3, opacity: 0.9 }}
+              pathOptions={{ color: 'white', weight: 7, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }}
+            />
+            {/* Tracé principal cyan */}
+            <Polyline
+              positions={positions}
+              pathOptions={{ color: '#06B6D4', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
             />
             {/* Départ — vert */}
             <CircleMarker

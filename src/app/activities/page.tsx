@@ -1685,9 +1685,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         onMouseLeave={() => { setIsOverCharts(false); setCursorPct(null); setMousePos(null); onHoverGps?.(null) }}
         onMouseDown={e => handleDown(e.clientX)}
         onMouseUp={handleUp}
-        onTouchStart={e => { e.preventDefault(); handleDown(e.touches[0].clientX) }}
-        onTouchMove={e => { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY) }}
-        onTouchEnd={handleUp}
+        onTouchStart={e => { e.preventDefault(); setIsOverCharts(true); handleDown(e.touches[0].clientX) }}
+        onTouchMove={e => { e.preventDefault(); setIsOverCharts(true); handleMove(e.touches[0].clientX, e.touches[0].clientY) }}
+        onTouchEnd={() => { setIsOverCharts(false); setCursorPct(null); setMousePos(null); handleUp() }}
       >
         {/* Cursor line */}
         {isOverCharts && cursorPct !== null && mousePos !== null && (
@@ -3297,13 +3297,14 @@ function ActivityDetail({ a, onClose, zones, profile }: {
        MOBILE — layout Strava
     ══════════════════════════════════════════ */
     <>
-      <div style={{ position: 'relative', minHeight: '100vh' }}>
+      <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
 
         {/* ── CARTE HERO ── */}
         <div style={{
           position: 'sticky', top: 0,
           height: 'calc(55vh - 60px)',
-          width: '100%', zIndex: 1, overflow: 'hidden',
+          width: '100vw', left: 0, margin: 0,
+          zIndex: 1, overflow: 'hidden',
         }}>
           {polylinePoints && polylinePoints.length >= 2 ? (
             <ActivityMapCard
@@ -3364,45 +3365,99 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </p>
           </div>
 
-          {/* Stats 2 colonnes */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr',
-            borderTop: '1px solid var(--info-border)',
-            borderLeft: '1px solid var(--info-border)',
-            margin: '0 0 24px',
-          }}>
-            {[
-              { label: 'Distance', value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
-              { label: 'Durée', value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-              { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : 'Effort'),
-                value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null)
-                              : (isRun && paceS ? fmtPace(paceS) : null) },
-              { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-              { label: 'TSS', value: a.tss ? Math.round(Number(a.tss)).toString() : null },
-              { label: 'Vitesse', value: (isBike || isRun) && a.avg_speed_ms ? `${(Number(a.avg_speed_ms)*3.6).toFixed(1)} km/h` : null },
-            ].filter(k => k.value).map(k => (
-              <div key={k.label} style={{
-                padding: '14px 16px',
-                borderRight: '1px solid var(--info-border)',
+          {/* Stats 3×2 compact */}
+          {(() => {
+            const km = a.distance_m ? (Number(a.distance_m)/1000).toFixed(2) : null
+            const avgSpeedKmh = a.avg_speed_ms ? (Number(a.avg_speed_ms)*3.6).toFixed(1) : null
+            const avgWattsVal = a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null
+            const elevGainVal = (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null
+            const tssVal = a.tss ? Math.round(Number(a.tss)).toString() : null
+            const STATS = [
+              { label: 'Distance',   value: !isGym && km ? `${km} km` : null },
+              { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+              { label: 'Vitesse',    value: (isBike || isRun) && avgSpeedKmh ? `${avgSpeedKmh} km/h` : null },
+              { label: 'Watts moy.', value: isBike ? avgWattsVal : (isRun && paceS ? fmtPace(paceS) : null) },
+              { label: 'D+',         value: elevGainVal },
+              { label: 'TSS',        value: tssVal },
+            ].filter(s => s.value)
+            return (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                padding: '16px 20px',
+                gap: 0,
                 borderBottom: '1px solid var(--info-border)',
+                marginBottom: 24,
               }}>
-                <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', color: T.textMuted, margin: '0 0 4px' }}>
-                  {k.label}
-                </p>
-                <p style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: 0 }}>
-                  {k.value}
-                </p>
+                {STATS.map((s, i) => (
+                  <div key={s.label} style={{
+                    padding: '10px 0',
+                    paddingRight: i % 3 !== 2 ? 12 : 0,
+                    borderRight: i % 3 !== 2 ? '1px solid var(--info-border)' : 'none',
+                    paddingLeft: i % 3 !== 0 ? 12 : 0,
+                    marginBottom: i < 3 ? 8 : 0,
+                  }}>
+                    <p style={{
+                      fontSize: 10, fontWeight: 700,
+                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                      color: 'var(--text-muted)', margin: '0 0 3px',
+                    }}>
+                      {s.label}
+                    </p>
+                    <p style={{
+                      fontSize: 18, fontWeight: 700,
+                      color: 'var(--text)', margin: 0, lineHeight: 1.2,
+                    }}>
+                      {s.value}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )
+          })()}
 
           {/* ── SECTIONS dans le sheet ── */}
           <div style={{ padding: '0 16px' }}>
 
             {/* DONNÉES */}
             <Section title="Données">
-              {dataBlocks}
+              {(() => {
+                const maxHrEst = estimateMaxHr(profile.birth_date)
+                const rows: { label: string; value: string | null }[] = [
+                  { label: 'Watts moy.',    value: isBike && a.avg_watts ? `${Math.round(Number(a.avg_watts))} W${pctFtp ? ` (${pctFtp}% FTP)` : ''}` : null },
+                  { label: 'Watts norm.',   value: isBike && computedNp ? `${computedNp} W` : null },
+                  { label: 'Watts max',     value: isBike && maxWatts ? `${maxWatts} W` : null },
+                  { label: 'Cadence moy.',  value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} ${isBike ? 'rpm' : 'spm'}` : null },
+                  { label: 'Cadence max',   value: maxCad ? `${Math.round(Number(maxCad))} ${isBike ? 'rpm' : 'spm'}` : null },
+                  { label: 'W/kg',          value: wkgMoy ? `${wkgMoy} w/kg` : null },
+                  { label: 'Roue libre',    value: isBike && freewheelPowerS && freewheelPowerS > 60 ? `${fmtDur(freewheelPowerS)} (${freewheelPowerPct}%)` : null },
+                  { label: 'Durée Z2',      value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
+                  { label: 'Découplage P/FC', value: decoupling != null ? `${decoupling.toFixed(1)}%` : null },
+                  { label: 'FC max',        value: (a.max_hr ?? maxHrStream) != null ? `${a.max_hr ?? maxHrStream} bpm (${Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)` : null },
+                  { label: 'D+',            value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                  { label: 'Alt. max.',     value: maxAlt != null ? `${maxAlt} m` : null },
+                  { label: 'Alt. moy.',     value: avgAlt != null ? `${avgAlt} m` : null },
+                  { label: 'Temp. moy.',    value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : null },
+                  { label: 'Temp. max',     value: maxTempStream != null ? `${maxTempStream} °C` : null },
+                  { label: 'Calories',      value: a.calories != null ? `${Math.round(Number(a.calories))} kcal` : null },
+                ].filter(r => r.value)
+                return (
+                  <div style={{ margin: '0 -16px' }}>
+                    {rows.map(r => (
+                      <div key={r.label} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 20px',
+                        borderBottom: '1px solid var(--info-border)',
+                      }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{r.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </Section>
 
             {/* COURBES */}
@@ -3426,22 +3481,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               <Section title="Zones">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-                    <div>
-                      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Puissance</div>
-                      <ZoneBars zones={bikeZones} timesS={powerTimesZ} />
-                    </div>
+                    <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
                   )}
                   {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-                    <div>
-                      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Allure</div>
-                      <ZoneBars zones={runZones} timesS={paceTimesZ} />
-                    </div>
+                    <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
                   )}
                   {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-                    <div>
-                      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Fréquence cardiaque</div>
-                      <ZoneBars zones={hrZones} timesS={hrTimesZ} />
-                    </div>
+                    <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
                   )}
                 </div>
               </Section>

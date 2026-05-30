@@ -636,6 +636,7 @@ export function Sidebar() {
 
       {/* Top bar — hamburger | logo | spacer | logo IA | avatar */}
       <div
+        data-app-header=""
         className="md:hidden"
         style={{
           position: 'fixed', top: 0, left: 0, right: 0,

@@ -50,6 +50,17 @@ const SPORT_DS_COLOR: Record<string, string> = {
   other:    '#9ca3af',
 }
 
+// ── Responsive hook ──────────────────────────────────────────────
+function useWindowWidth(): number {
+  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
+  useEffect(() => {
+    const fn = () => setW(window.innerWidth)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return w
+}
+
 // ── Power Curve: couleurs par rang (plus récent = index 0) ──────
 const PC_COLORS = ['#60B4FF', '#2563EB', '#EAB308', '#F97316', '#EF4444'] as const
 function getPCColor(yr: string, sortedDesc: string[]): string {
@@ -2899,6 +2910,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   onNavigateToTests?: () => void
 }) {
   const [sport, setSport] = useState<RecordSport>('bike')
+  const isMobile = useWindowWidth() < 768
   // ── Année globale (pills DS §16) ─────────────────────────────────
   const [recordYear, setRecordYear] = useState('All Time')
   const [hiddenYears, setHiddenYears] = useState<Set<string>>(new Set())
@@ -3623,7 +3635,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <SectionHeader label="Records muscu" gradient="linear-gradient(180deg,#fb923c,#f97316)" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }} className="md:grid-cols-2">
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
             {GYM_MOVES.map(m => (
               <Card key={m.name} style={{ padding: 16 }}>
                 <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: '#f97316' }}>{m.name}</h3>

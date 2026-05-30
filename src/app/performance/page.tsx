@@ -119,6 +119,16 @@ function TInput({ label, value, onChange, placeholder }: { label:string; value:s
   )
 }
 
+// ── Responsive hook ──────────────────────────────────────────────
+function useWindowWidth(): number {
+  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
+  useEffect(() => {
+    const fn = () => setW(window.innerWidth)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return w
+}
 
 // ── Floating bubble ──────────────────────────────────────────────
 function SelectedDatumBubble({ datum, onClear, onAsk }: {
@@ -341,6 +351,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   const [analyzing,    setAnalyzing]    = useState(false)
   const [profLoading,  setProfLoading]  = useState(true)
   const [profileEmpty, setProfileEmpty] = useState(false)
+  const isMobile = useWindowWidth() < 768
 
   // Profil Spécifique
   const [specSport,  setSpecSport]  = useState<SportSpecId>('running')
@@ -558,7 +569,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           </div>
         </div>
         {editing ? (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="md:grid-cols-3">
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap:10 }}>
             <NInput label="FTP" unit="W" value={p.ftp} onChange={v => setP({...p,ftp:v})}/>
             <NInput label="Poids" unit="kg" value={p.weight} onChange={v => setP({...p,weight:v})} step={0.5}/>
             <NInput label="Age" value={p.age} onChange={v => setP({...p,age:v})}/>
@@ -571,7 +582,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
             <TInput label="CSS" value={p.css} onChange={v => setP({...p,css:v})} placeholder="1:28"/>
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="md:grid-cols-4">
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap:10 }}>
             <PremiumStatCard label="FTP"          value={p.ftp}           unit="W"         sub={`${wkg} W/kg`}  color="#3B82F6" onSelect={() => onSelect('FTP', `${p.ftp} W`)}                   selected={isSel('FTP', p.ftp, 'W')}                         onAnalyze={() => onSelect('FTP', `${p.ftp} W`)}/>
             <PremiumStatCard label="Allure seuil" value={p.thresholdPace} unit="/km"                            color="#10B981" onSelect={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)} selected={selectedDatum?.label==='Allure seuil'}             onAnalyze={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)}/>
             <PremiumStatCard label="VMA"           value={p.vma}           unit="km/h"                           color="#8B5CF6" onSelect={() => onSelect('VMA', `${p.vma} km/h`)}                 selected={isSel('VMA', p.vma, 'km/h')}                      onAnalyze={() => onSelect('VMA', `${p.vma} km/h`)}/>
@@ -698,7 +709,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           }
 
           return (
-            <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:20, marginBottom:16, alignItems:'start' }} className="sm:grid-cols-1">
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr', gap:20, marginBottom:16, alignItems:'start' }}>
               {/* Left: radar + label */}
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, padding:'12px 16px', background:'var(--bg-card2)', borderRadius:12, border:'1px solid var(--border)' }}>
                 <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.08em', color:'#9CA3AF', margin:0 }}>En un coup d&apos;œil</p>
@@ -730,7 +741,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
                 </div>
 
                 {/* Benchmarks clés */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:7 }}>
+                <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:7 }}>
                   {benchmarks[specSport].map(b => (
                     <div key={b.label} style={{ padding:'10px 12px', background:'var(--bg-card2)', borderRadius:10, border:'1px solid var(--border)', textAlign:'center' as const }}>
                       <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.05em', color:'#9CA3AF', margin:'0 0 4px' }}>{b.label}</p>
@@ -747,7 +758,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
         {/* Fields grid */}
         <div style={{ borderTop:'1px solid var(--border)', paddingTop:14, marginBottom:4 }}>
           <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 10px' }}>Renseigner les benchmarks</p>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:9 }} className="md:grid-cols-3">
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap:9 }}>
             {SPORT_SPEC_FIELDS[specSport].map(f => (
               <div key={f.key} style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 <label style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)' }}>
@@ -780,7 +791,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#8B5CF6,#EC4899)' }}/>
           <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Niveau estimé</h2>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:10 }}>
           <div
             onClick={() => onSelect('W/kg', `${wkg} W/kg`)}
             style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'W/kg' ? '#3B82F610' : undefined, border:`1px solid ${ selectedDatum?.label === 'W/kg' ? '#3B82F655' : 'transparent'}`, transition:'all 0.15s' }}
@@ -2253,6 +2264,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
   const [testSport,      setTestSport]      = useState<TestSport>(initialSport ?? 'running')
   const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
   const [showHistorique, setShowHistorique] = useState(false)
+  const isMobile = useWindowWidth() < 768
 
   // Open specific test on mount when navigated via URL params
   useEffect(() => {
@@ -2317,7 +2329,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
       </div>
 
       {/* Cards grid */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(1,1fr)', gap:12 }} className="md:grid-cols-2">
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap:12 }}>
         {tests.map(test => (
           <TestCard key={test.id} test={test} accentColor={cfg.color} onOpen={() => setOpenTest({ sport:testSport, test })}/>
         ))}
@@ -2352,6 +2364,7 @@ export default function PerformancePage() {
   const [aiInitLabel, setAiInitLabel]   = useState<string | undefined>(undefined)
   const [aiInitMsg,   setAiInitMsg]     = useState<string | undefined>(undefined)
   const [initialTest, setInitialTest]   = useState<{ sport: TestSport; testId: string } | null>(null)
+  const isMobile = useWindowWidth() < 768
 
   // Read URL params on first mount — navigate to specific test if needed
   useEffect(() => {
@@ -2440,7 +2453,7 @@ export default function PerformancePage() {
   ]
 
   return (
-    <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
+    <div style={{ padding: isMobile ? '16px 12px' : '24px 28px' }}>
       <PageHelp config={PERFORMANCE_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* ── En-tête ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>

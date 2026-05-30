@@ -14,7 +14,8 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal } from 'lucide-react'
+import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
 import { PageLoader } from '@/components/ui/PageLoader'
@@ -2746,11 +2747,14 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const isMobile = width < 768
   const col = SPORT_COLOR[a.sport_type] ?? T.accent
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isDeleting,        setIsDeleting]        = useState(false)
-  const [deleteError,       setDeleteError]       = useState<string | null>(null)
-  const [mapExpanded,       setMapExpanded]       = useState(false)
-  const [hoverGps,          setHoverGps]          = useState<LatLngPoint | null>(null)
+  const [showDeleteConfirm,    setShowDeleteConfirm]    = useState(false)
+  const [isDeleting,           setIsDeleting]           = useState(false)
+  const [deleteError,          setDeleteError]          = useState<string | null>(null)
+  const [mapExpanded,          setMapExpanded]          = useState(false)
+  const [hoverGps,             setHoverGps]             = useState<LatLngPoint | null>(null)
+  // Mobile — sections repliables
+  const [showDecoupling,       setShowDecoupling]       = useState(false)
+  const [showHrCumulative,     setShowHrCumulative]     = useState(false)
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
@@ -2958,8 +2962,36 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   )
 
   return (
-    <div style={{ background: T.surface, borderRadius: T.radius, boxShadow: T.shadowCard }}>
-      <div style={{ padding: '20px 22px' }}>
+    <div style={{ background: T.surface, borderRadius: isMobile ? 0 : T.radius, boxShadow: isMobile ? 'none' : T.shadowCard }}>
+
+      {/* ── HEADER FIXE MOBILE ── */}
+      {isMobile && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, height: 52, zIndex: 100,
+          backgroundColor: T.bg, borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', padding: '0 8px', gap: 4,
+        }}>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px',
+              color: T.text, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ActivityTitle activityId={a.id} initialName={a.title} />
+          </div>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px',
+              color: T.text, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+          >
+            <MoreHorizontal size={20} />
+          </button>
+        </div>
+      )}
+
+      <div style={{ padding: isMobile ? '12px 16px' : '20px 22px', paddingTop: isMobile ? 64 : 20 }}>
 
         {/* ── HERO + MAP (flex desktop / column mobile) ── */}
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
@@ -2968,8 +3000,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         <div style={{ flex: isMobile ? '1 1 100%' : (mapExpanded ? '1 1 100%' : '0 0 65%'), minWidth: 0, overflow: 'hidden' }}>
 
         {/* ── HERO ── */}
-        <div style={{ marginBottom: 24 }}>
-          {/* Sport + Title + Date row */}
+        <div style={{ marginBottom: isMobile ? 12 : 24 }}>
+          {/* Sport + Title + Date row — masqué sur mobile (title dans le header fixe) */}
+          {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 12, flexShrink: 0,
@@ -2992,7 +3025,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 {a.gear_name && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>{a.gear_name}</span>}
               </div>
             </div>
-            {/* Bouton supprimer */}
+            {/* Bouton supprimer — desktop uniquement */}
             <button
               onClick={() => setShowDeleteConfirm(true)}
               style={{
@@ -3010,28 +3043,50 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               Supprimer
             </button>
           </div>
+          )}
 
-          {/* KPI hero strip — 5 métriques clés uniquement */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {[
-              { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
-              { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-              { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-              { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null),
-                value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
-              { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
-            ].filter(k => k.label && k.value).map(k => (
-              <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
-                <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
-              </div>
-            ))}
-          </div>
+          {/* KPI — strip desktop / grille 2×3 mobile */}
+          {isMobile ? (
+            /* ── Grille 2×3 mobile ── */
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
+                { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+                { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : 'Effort'),
+                  value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
+                { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
+                { label: 'Vitesse',    value: (isBike || isRun) && a.avg_speed_ms ? `${(Number(a.avg_speed_ms)*3.6).toFixed(1)} km/h` : null },
+              ].filter(k => k.value).map(k => (
+                <div key={k.label} style={{ background: T.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${T.border}` }}>
+                  <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* ── Strip desktop ── */
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
+                { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+                { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null),
+                  value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
+                { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
+              ].filter(k => k.label && k.value).map(k => (
+                <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
+                  <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ── CARTE GPS MOBILE — sous les KPIs, pleine largeur ── */}
+        {/* ── CARTE GPS MOBILE — pleine largeur, borderRadius:0 (géré dans ActivityMapCard) ── */}
         {isMobile && (
-          <div style={{ marginTop: 12, marginBottom: 16 }}>
+          <div style={{ marginTop: 16, marginLeft: -16, marginRight: -16, marginBottom: 0 }}>
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
               isMobile={true}
@@ -3042,6 +3097,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         )}
 
         {/* ── 5 DATA BLOCKS ── */}
+        {isMobile && (
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+            textTransform: 'uppercase', marginTop: 20, marginBottom: 10,
+            borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+            Données
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 0, marginBottom: 0, flexWrap: 'wrap' }}>
 
           {/* BLOC 1 — Volume */}
@@ -3369,13 +3431,19 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
               {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-                <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
+                isMobile
+                  ? <div style={{ flex: '1 1 100%' }}><div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Puissance</div><ZoneBars zones={bikeZones} timesS={powerTimesZ} /></div>
+                  : <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
               )}
               {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-                <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
+                isMobile
+                  ? <div style={{ flex: '1 1 100%' }}><div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Allure</div><ZoneBars zones={runZones} timesS={paceTimesZ} /></div>
+                  : <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
               )}
               {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-                <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
+                isMobile
+                  ? <div style={{ flex: '1 1 100%' }}><div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Fréquence cardiaque</div><ZoneBars zones={hrZones} timesS={hrTimesZ} /></div>
+                  : <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
               )}
             </div>
           </div>
@@ -3446,24 +3514,67 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 <PowerCurveChart watts={s.watts} />
               )}
               {/* GAP — course à pied */}
-              {isRun && s.velocity && s.altitude && s.distance &&
+              {!isMobile && isRun && s.velocity && s.altitude && s.distance &&
                s.velocity.length > 60 && (
                 <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
               )}
               {/* Decoupling chart — vélo */}
               {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
-                <DecouplingChart
-                  watts={s.watts}
-                  heartrate={s.heartrate}
-                  decouplingPct={decoupling}
-                  altitude={s.altitude}
-                  temp={s.temp}
-                  time={s.time}
-                />
+                isMobile ? (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+                      textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5,
+                      fontFamily: T.fontDisplay, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      Découplage
+                      <button onClick={() => setShowDecoupling(v => !v)} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 10,
+                        color: T.accent, fontWeight: 600, padding: 0 }}>
+                        {showDecoupling ? 'Masquer' : 'Voir le graphique'}
+                      </button>
+                    </div>
+                    {showDecoupling && (
+                      <DecouplingChart
+                        watts={s.watts}
+                        heartrate={s.heartrate}
+                        decouplingPct={decoupling}
+                        altitude={s.altitude}
+                        temp={s.temp}
+                        time={s.time}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <DecouplingChart
+                    watts={s.watts}
+                    heartrate={s.heartrate}
+                    decouplingPct={decoupling}
+                    altitude={s.altitude}
+                    temp={s.temp}
+                    time={s.time}
+                  />
+                )
               )}
               {/* HR Cumulative — vélo + course */}
               {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
-                <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
+                isMobile ? (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+                      textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5,
+                      fontFamily: T.fontDisplay, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      Durée cumulée
+                      <button onClick={() => setShowHrCumulative(v => !v)} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 10,
+                        color: T.accent, fontWeight: 600, padding: 0 }}>
+                        {showHrCumulative ? 'Masquer' : 'Voir le graphique'}
+                      </button>
+                    </div>
+                    {showHrCumulative && (
+                      <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
+                    )}
+                  </div>
+                ) : (
+                  <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
+                )
               )}
             </>
           )
@@ -3517,6 +3628,21 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+        {/* ── Bouton Supprimer mobile (bas de page) ── */}
+        {isMobile && (
+          <div style={{ marginTop: 32, paddingBottom: 24 }}>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                width: '100%', padding: '14px 0', borderRadius: 12,
+                background: 'none', border: '1.5px solid #EF4444',
+                color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Supprimer l&apos;activité
+            </button>
           </div>
         )}
       </div>
@@ -3970,6 +4096,8 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
   hasMore?: boolean
   loadingMore?: boolean
 }) {
+  const saWidth    = useWindowWidth()
+  const isMobileSA = saWidth < 768
   const [view, setView]         = useState<'list'|'calendar'>('list')
   const [selected, setSelected] = useState<Activity | null>(null)
   const [search, setSearch]     = useState('')
@@ -4012,12 +4140,15 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
   if (selected) {
     return (
       <div>
-        <button
-          onClick={() => setSelected(null)}
-          style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', cursor: 'pointer', color: T.textSub, fontSize: 13, padding: 0 }}>
-          <span style={{ fontSize: 16 }}>←</span> Retour à la liste
-        </button>
+        {/* Bouton retour masqué sur mobile — remplacé par le header fixe dans ActivityDetail */}
+        {!isMobileSA && (
+          <button
+            onClick={() => setSelected(null)}
+            style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
+              background: 'none', border: 'none', cursor: 'pointer', color: T.textSub, fontSize: 13, padding: 0 }}>
+            <span style={{ fontSize: 16 }}>←</span> Retour à la liste
+          </button>
+        )}
         <ActivityDetail a={selected} onClose={() => setSelected(null)} zones={zones} profile={profile} />
       </div>
     )

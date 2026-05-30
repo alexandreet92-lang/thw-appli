@@ -85,38 +85,84 @@ interface Props {
 }
 
 export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps }: Props) {
-  const [layer, setLayer] = useState<LayerId>('std')
+  const [layer,           setLayer]           = useState<LayerId>('std')
+  const [mobileFullscreen, setMobileFullscreen] = useState(false)
 
   const points = extractPoints(activity)
   if (!points || points.length < 2) return null
 
-  const cardStyle: CSSProperties = expanded
-    ? {
-        position: 'relative',
-        width: '100%',
-        height: 420,
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
-        zIndex: 1,
-        transition: 'height 300ms ease',
-      }
-    : {
-        position: 'relative',
-        width: '100%',
-        height: isMobile ? 180 : 220,
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-        zIndex: 1,
-        transition: 'height 300ms ease',
-      }
+  // ── Style de la carte selon le contexte ──────────────────────────────────────
+  let cardStyle: CSSProperties
+  if (isMobile && mobileFullscreen) {
+    // Plein écran mobile : recouvre tout l'écran
+    cardStyle = {
+      position: 'fixed',
+      inset: 0,
+      width: '100%',
+      height: '100dvh',
+      borderRadius: 0,
+      overflow: 'hidden',
+      zIndex: 999,
+    }
+  } else if (isMobile) {
+    // Mobile normal : 340px, pas de borderRadius
+    cardStyle = {
+      position: 'relative',
+      width: '100%',
+      height: 340,
+      borderRadius: 0,
+      overflow: 'hidden',
+      zIndex: 1,
+    }
+  } else if (expanded) {
+    // Desktop étendu
+    cardStyle = {
+      position: 'relative',
+      width: '100%',
+      height: 420,
+      borderRadius: 16,
+      overflow: 'hidden',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
+      zIndex: 1,
+      transition: 'height 300ms ease',
+    }
+  } else {
+    // Desktop normal
+    cardStyle = {
+      position: 'relative',
+      width: '100%',
+      height: 220,
+      borderRadius: 16,
+      overflow: 'hidden',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+      zIndex: 1,
+      transition: 'height 300ms ease',
+    }
+  }
 
   return (
     <div style={cardStyle}>
       <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} />
 
-      {/* Bouton agrandir / réduire — masqué sur mobile */}
+      {/* Bouton plein écran mobile */}
+      {isMobile && (
+        <button
+          onClick={() => setMobileFullscreen(fs => !fs)}
+          style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 10,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            border: 'none', borderRadius: 6, padding: 6,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+          }}
+        >
+          {mobileFullscreen
+            ? <Minimize2 size={14} color="white" />
+            : <Maximize2 size={14} color="white" />
+          }
+        </button>
+      )}
+
+      {/* Bouton agrandir / réduire — desktop uniquement */}
       {!isMobile && onToggle && (
         <button
           onClick={onToggle}

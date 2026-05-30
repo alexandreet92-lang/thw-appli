@@ -580,3 +580,22 @@ button:active { transform: scale(0.97); }
     --text-value:        #F1F5F9;
   }
 }
+
+/* ── Bottom sheet — thème mobile activité ─────────────────── */
+[data-bottom-sheet] {
+  background-color: #ffffff !important;
+}
+.dark [data-bottom-sheet] {
+  background-color: #020617 !important;
+}
+@media (prefers-color-scheme: dark) {
+  [data-bottom-sheet] {
+    background-color: #020617 !important;
+  }
+}
+
+/* ── Animation bottom sheet ────────────────────────────────── */
+@keyframes slideUpSheet {
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}

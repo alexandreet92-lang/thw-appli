@@ -2961,436 +2961,700 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     </div>
   )
 
-  return (
-    <div style={{ background: T.surface, borderRadius: isMobile ? 0 : T.radius, boxShadow: isMobile ? 'none' : T.shadowCard }}>
-
-      {/* ── HEADER FIXE MOBILE ── */}
-      {isMobile && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, height: 52, zIndex: 100,
-          backgroundColor: T.bg, borderBottom: `1px solid ${T.border}`,
-          display: 'flex', alignItems: 'center', padding: '0 8px', gap: 4,
-        }}>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px',
-              color: T.text, display: 'flex', alignItems: 'center', flexShrink: 0 }}
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <ActivityTitle activityId={a.id} initialName={a.title} />
-          </div>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px',
-              color: T.text, display: 'flex', alignItems: 'center', flexShrink: 0 }}
-          >
-            <MoreHorizontal size={20} />
-          </button>
-        </div>
+  // ── Shared modals JSX (used by both mobile and desktop paths) ──
+  const sharedModals = (
+    <>
+      {showRpeModal && (
+        <RpeModal
+          activityId={a.id}
+          initialRpe={localRpe}
+          initialSensation={localSensation}
+          onClose={() => setShowRpeModal(false)}
+          onSave={(rpe, sens) => {
+            setLocalRpe(rpe)
+            setLocalSensation(sens)
+            setShowRpeModal(false)
+          }}
+        />
       )}
-
-      <div style={{ padding: isMobile ? '12px 16px' : '20px 22px', paddingTop: isMobile ? 64 : 20 }}>
-
-        {/* ── HERO + MAP (flex desktop / column mobile) ── */}
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
-
-        {/* LEFT — Hero + 5 data blocks */}
-        <div style={{ flex: isMobile ? '1 1 100%' : (mapExpanded ? '1 1 100%' : '0 0 65%'), minWidth: 0, overflow: 'hidden' }}>
-
-        {/* ── HERO ── */}
-        <div style={{ marginBottom: isMobile ? 12 : 24 }}>
-          {/* Sport + Title + Date row — masqué sur mobile (title dans le header fixe) */}
-          {!isMobile && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-              background: col + '18', border: `2px solid ${col}40`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{ width: 18, height: 18, borderRadius: 4, background: col }} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {a.title}
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '18', padding: '2px 9px', borderRadius: 20, fontFamily: T.fontDisplay }}>
-                  {SPORT_LABEL[a.sport_type]}
-                </span>
-                <span style={{ fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{fmtDate(a.started_at)}</span>
-                {a.is_race && <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 9px', borderRadius: 20 }}>Compétition</span>}
-                {a.trainer && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>Intérieur</span>}
-                {a.gear_name && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>{a.gear_name}</span>}
-              </div>
-            </div>
-            {/* Bouton supprimer — desktop uniquement */}
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              style={{
-                flexShrink: 0,
-                background: 'none',
-                border: '1px solid #EF4444',
-                color: '#EF4444',
-                borderRadius: 8,
-                padding: '6px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Supprimer
-            </button>
-          </div>
-          )}
-
-          {/* KPI — strip desktop / grille 2×3 mobile */}
-          {isMobile ? (
-            /* ── Grille 2×3 mobile ── */
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
-                { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-                { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : 'Effort'),
-                  value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
-                { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
-                { label: 'Vitesse',    value: (isBike || isRun) && a.avg_speed_ms ? `${(Number(a.avg_speed_ms)*3.6).toFixed(1)} km/h` : null },
-              ].filter(k => k.value).map(k => (
-                <div key={k.label} style={{ background: T.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${T.border}` }}>
-                  <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* ── Strip desktop ── */
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
-                { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-                { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null),
-                  value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
-                { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
-              ].filter(k => k.label && k.value).map(k => (
-                <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
-                  <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
+      <BottomSheet
+        isOpen={showDeleteConfirm}
+        onClose={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
+        title="Supprimer l'activité"
+      >
+        <p style={{ fontSize: 14, color: 'var(--text-body)', lineHeight: 1.7, marginBottom: 16 }}>
+          Cette action est irréversible. L&apos;activité sera supprimée
+          définitivement de THW Coaching.
+          Elle restera présente sur Strava et Polar.
+        </p>
+        {deleteError && (
+          <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12 }}>{deleteError}</p>
+        )}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
+            disabled={isDeleting}
+            style={{
+              flex: 1, padding: '12px 0',
+              borderRadius: 12, border: '1px solid var(--info-border)',
+              background: 'transparent', color: 'var(--text-body)',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              opacity: isDeleting ? 0.5 : 1,
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              flex: 1, padding: '12px 0',
+              borderRadius: 12, border: 'none',
+              background: '#EF4444', color: 'white',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              opacity: isDeleting ? 0.7 : 1,
+            }}
+          >
+            {isDeleting ? 'Suppression…' : 'Supprimer'}
+          </button>
         </div>
+      </BottomSheet>
+    </>
+  )
 
-        {/* ── CARTE GPS MOBILE — pleine largeur, borderRadius:0 (géré dans ActivityMapCard) ── */}
-        {isMobile && (
-          <div style={{ marginTop: 16, marginLeft: -16, marginRight: -16, marginBottom: 0 }}>
-            <ActivityMapCard
-              activity={a as unknown as Record<string, unknown>}
-              isMobile={true}
-              expanded={false}
-              hoverGps={hoverGps}
-            />
+  // ── Shared data blocks JSX (5 blocs) ──
+  const dataBlocks = (
+    <div style={{ display: 'flex', gap: 0, marginBottom: 0, flexWrap: 'wrap' }}>
+
+      {/* BLOC 1 — Volume */}
+      <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+        {!isGym && a.distance_m != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Distance</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDist(a.distance_m)}</span>
           </div>
         )}
-
-        {/* ── 5 DATA BLOCKS ── */}
-        {isMobile && (
-          <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-            textTransform: 'uppercase', marginTop: 20, marginBottom: 10,
-            borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-            Données
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: T.textMuted }}>Durée</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(a.moving_time_s)}</span>
+        </div>
+        {isBike && a.avg_speed_ms != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse moy.</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h</span>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 0, flexWrap: 'wrap' }}>
+        {isBike && a.max_speed_ms != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse max.</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.max_speed_ms) * 3.6).toFixed(1)} km/h</span>
+          </div>
+        )}
+        {(isRun || isSwim) && paceS != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Allure moy.</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtPace(paceS)}</span>
+          </div>
+        )}
+        {isBike && freewheelS != null && freewheelS > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelS)} ({freewheelPct}%)</span>
+          </div>
+        )}
+      </div>
 
-          {/* BLOC 1 — Volume */}
-          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-            {!isGym && a.distance_m != null && (
+      {/* BLOC 2 — Charge / ressenti */}
+      <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <span style={{ fontSize: 11, color: T.textMuted }}>Ressenti</span>
+          <button onClick={() => setShowRpeModal(true)} style={{
+            background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
+            padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
+          }}>+ Saisir</button>
+        </div>
+        {localSensation != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
+            <span style={{ fontSize: 12, fontWeight: 600,
+              color: Number(localSensation) <= 2 ? '#ef4444' : Number(localSensation) <= 3 ? '#f97316' : '#22c55e',
+              fontFamily: T.fontMono }}>{Number(localSensation).toFixed(1)}/5</span>
+          </div>
+        )}
+        {localRpe != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>RPE</span>
+            <span style={{ fontSize: 12, fontWeight: 600,
+              color: Number(localRpe) >= 8 ? '#ef4444' : Number(localRpe) >= 5 ? '#f97316' : '#22c55e',
+              fontFamily: T.fontMono }}>{Number(localRpe).toFixed(1)}/10</span>
+          </div>
+        )}
+        {a.tss != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
+              TSS<TooltipInfo text={'TSS (Training Stress Score)\n\nMesure la charge d\'une séance.\n\nTSS = (durée × NP × IF)² / FTP²\n\n< 150 → récupération rapide\n150–300 → fatigant\n> 300 → très éprouvant'} />
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.tss))}</span>
+          </div>
+        )}
+        {a.trimp != null && !a.tss && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>TRIMP</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.trimp))}</span>
+          </div>
+        )}
+        {z2DurationS != null && z2DurationS > 60 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>
+              Durée Z2
+              <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({hrZones[1].min}–{hrZones[1].max} bpm)</span>
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
+          </div>
+        )}
+        {decoupling != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Découplage P/FC</span>
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
+              color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
+            }}>{decoupling.toFixed(1)}%</span>
+          </div>
+        )}
+      </div>
+
+      {/* BLOC 3 — Sport-specific */}
+      <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
+        {isBike && (
+          <>
+            {a.avg_watts != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Distance</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDist(a.distance_m)}</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Watts moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
+                  {Math.round(Number(a.avg_watts))} W{pctFtp ? ` (${pctFtp}% FTP)` : ''}
+                </span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: T.textMuted }}>Durée</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(a.moving_time_s)}</span>
-            </div>
-            {isBike && a.avg_speed_ms != null && (
+            {computedNp != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Watts norm.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{computedNp} W</span>
               </div>
             )}
-            {isBike && a.max_speed_ms != null && (
+            {maxWatts != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse max.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.max_speed_ms) * 3.6).toFixed(1)} km/h</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Watts max</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxWatts} W</span>
               </div>
             )}
-            {(isRun || isSwim) && paceS != null && (
+            {vi != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Allure moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtPace(paceS)}</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Variabilité (VI)</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vi}</span>
               </div>
             )}
-            {isBike && freewheelS != null && freewheelS > 0 && (
+            {pwHr != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Pw/FC</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{pwHr}</span>
+              </div>
+            )}
+            {a.avg_cadence != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} rpm</span>
+              </div>
+            )}
+            {maxCad != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} rpm</span>
+              </div>
+            )}
+            {freewheelPowerS != null && freewheelPowerS > 60 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelS)} ({freewheelPct}%)</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelPowerS)} ({freewheelPowerPct}%)</span>
               </div>
             )}
-          </div>
+            {efVal != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>EF</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{efVal}</span>
+              </div>
+            )}
+            {wkgMoy != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>W/kg</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{wkgMoy} w/kg</span>
+              </div>
+            )}
+          </>
+        )}
+        {isRun && (
+          <>
+            {vap != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>VAP</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vap}</span>
+              </div>
+            )}
+            {a.avg_cadence != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} spm</span>
+              </div>
+            )}
+            {maxCad != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} spm</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
-          {/* BLOC 2 — Charge / ressenti */}
+      {/* BLOC 4 — Cardio */}
+      {(() => {
+        const maxHrEst = estimateMaxHr(profile.birth_date)
+        return (
           <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-            {/* RPE input button */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: T.textMuted }}>Ressenti</span>
-              <button onClick={() => setShowRpeModal(true)} style={{
-                background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
-                padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
-              }}>+ Saisir</button>
-            </div>
-            {localSensation != null && (
+            {(a.max_hr ?? maxHrStream) != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
-                <span style={{ fontSize: 12, fontWeight: 600,
-                  color: Number(localSensation) <= 2 ? '#ef4444' : Number(localSensation) <= 3 ? '#f97316' : '#22c55e',
-                  fontFamily: T.fontMono }}>{Number(localSensation).toFixed(1)}/5</span>
-              </div>
-            )}
-            {localRpe != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>RPE</span>
-                <span style={{ fontSize: 12, fontWeight: 600,
-                  color: Number(localRpe) >= 8 ? '#ef4444' : Number(localRpe) >= 5 ? '#f97316' : '#22c55e',
-                  fontFamily: T.fontMono }}>{Number(localRpe).toFixed(1)}/10</span>
-              </div>
-            )}
-            {a.tss != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
-                  TSS<TooltipInfo text={'TSS (Training Stress Score)\n\nMesure la charge d\'une séance.\n\nTSS = (durée × NP × IF)² / FTP²\n\n< 150 → récupération rapide\n150–300 → fatigant\n> 300 → très éprouvant'} />
+                <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                  {a.max_hr ?? maxHrStream} bpm
+                  <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)</span>
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.tss))}</span>
               </div>
             )}
-            {a.trimp != null && !a.tss && (
+            {a.avg_hr != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>TRIMP</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.trimp))}</span>
-              </div>
-            )}
-            {z2DurationS != null && z2DurationS > 60 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>
-                  Durée Z2
-                  <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({hrZones[1].min}–{hrZones[1].max} bpm)</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
+                  {Math.round(Number(a.avg_hr))} bpm
+                  <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.avg_hr)/maxHrEst)*100)}%)</span>
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
               </div>
             )}
             {decoupling != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Découplage P/FC</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
                 <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
                   color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
                 }}>{decoupling.toFixed(1)}%</span>
               </div>
             )}
           </div>
+        )
+      })()}
 
-          {/* BLOC 3 — Sport-specific */}
-          <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-            {isBike && (
-              <>
-                {a.avg_watts != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Watts moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
-                      {Math.round(Number(a.avg_watts))} W{pctFtp ? ` (${pctFtp}% FTP)` : ''}
-                    </span>
-                  </div>
-                )}
-                {computedNp != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Watts norm.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{computedNp} W</span>
-                  </div>
-                )}
-                {maxWatts != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Watts max</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxWatts} W</span>
-                  </div>
-                )}
-                {vi != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Variabilité (VI)</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vi}</span>
-                  </div>
-                )}
-                {pwHr != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Pw/FC</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{pwHr}</span>
-                  </div>
-                )}
-                {a.avg_cadence != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} rpm</span>
-                  </div>
-                )}
-                {maxCad != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} rpm</span>
-                  </div>
-                )}
-                {freewheelPowerS != null && freewheelPowerS > 60 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelPowerS)} ({freewheelPowerPct}%)</span>
-                  </div>
-                )}
-                {efVal != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>EF</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{efVal}</span>
-                  </div>
-                )}
-                {wkgMoy != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>W/kg</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{wkgMoy} w/kg</span>
-                  </div>
-                )}
-              </>
-            )}
-            {isRun && (
-              <>
-                {vap != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>VAP</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vap}</span>
-                  </div>
-                )}
-                {a.avg_cadence != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} spm</span>
-                  </div>
-                )}
-                {maxCad != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} spm</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* BLOC 4 — Cardio */}
-          {(() => {
-            const maxHrEst = estimateMaxHr(profile.birth_date)
-            return (
-              <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
-                {(a.max_hr ?? maxHrStream) != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                      {a.max_hr ?? maxHrStream} bpm
-                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)</span>
-                    </span>
-                  </div>
-                )}
-                {a.avg_hr != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
-                      {Math.round(Number(a.avg_hr))} bpm
-                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.avg_hr)/maxHrEst)*100)}%)</span>
-                    </span>
-                  </div>
-                )}
-                {decoupling != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
-                      color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
-                    }}>{decoupling.toFixed(1)}%</span>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-
-          {/* BLOC 5 — Contexte */}
-          <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
-            {(a.elevation_gain_m ?? 0) > 5 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
-              </div>
-            )}
-            {maxAlt != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
-              </div>
-            )}
-            {avgAlt != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
-              </div>
-            )}
-            {a.avg_temp_c != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Temp. moy.</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_temp_c))} °C</span>
-              </div>
-            )}
-            {maxTempStream != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Temp. max</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxTempStream} °C</span>
-              </div>
-            )}
-            {a.calories != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.calories))} kcal</span>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* END LEFT column */}
-        </div>
-
-        {/* RIGHT — carte GPS (desktop uniquement, masquée quand expanded) */}
-        {!isMobile && !mapExpanded && (
-          <div style={{ flex: '0 0 35%', minWidth: 0 }}>
-            <ActivityMapCard
-              activity={a as unknown as Record<string, unknown>}
-              isMobile={false}
-              expanded={false}
-              onToggle={() => setMapExpanded(true)}
-              hoverGps={hoverGps}
-            />
+      {/* BLOC 5 — Contexte */}
+      <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
+        {(a.elevation_gain_m ?? 0) > 5 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
           </div>
         )}
+        {maxAlt != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
+          </div>
+        )}
+        {avgAlt != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
+          </div>
+        )}
+        {a.avg_temp_c != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Temp. moy.</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_temp_c))} °C</span>
+          </div>
+        )}
+        {maxTempStream != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Temp. max</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxTempStream} °C</span>
+          </div>
+        )}
+        {a.calories != null && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.calories))} kcal</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
-        {/* END flex container HERO + MAP */}
+  // ── Two-path return: mobile (Strava) vs desktop (unchanged) ──
+  return isMobile ? (
+    /* ══════════════════════════════════════════
+       MOBILE — layout Strava
+    ══════════════════════════════════════════ */
+    <>
+      <div style={{ position: 'relative', minHeight: '100vh' }}>
+
+        {/* ── CARTE HERO ── */}
+        <div style={{
+          position: 'sticky', top: 0,
+          height: 'calc(55vh - 60px)',
+          width: '100%', zIndex: 1, overflow: 'hidden',
+        }}>
+          {polylinePoints && polylinePoints.length >= 2 ? (
+            <ActivityMapCard
+              activity={a as unknown as Record<string, unknown>}
+              mobileHero={true}
+              hoverGps={hoverGps}
+            />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%',
+              background: `linear-gradient(135deg, ${col}33 0%, ${col}11 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
+            </div>
+          )}
+          {/* Bouton retour overlay */}
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: 16, left: 16, zIndex: 10,
+              width: 36, height: 36, borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.88)',
+              backdropFilter: 'blur(8px)',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}
+          >
+            <ChevronLeft size={20} color="#0f172a" />
+          </button>
         </div>
 
+        {/* ── BOTTOM SHEET ── */}
+        <div
+          data-bottom-sheet=""
+          style={{
+            position: 'relative', zIndex: 2,
+            borderRadius: '20px 20px 0 0',
+            marginTop: '-20px',
+            paddingBottom: 120,
+            animation: 'slideUpSheet 0.45s cubic-bezier(0.32,0.72,0,1) both',
+          }}
+        >
+          {/* Handle bar */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
+          </div>
+
+          {/* Nom + sport + date */}
+          <div style={{ padding: '0 16px 16px' }}>
+            <ActivityTitle activityId={a.id} initialName={a.title} />
+            <p style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
+              {SPORT_LABEL[a.sport_type]}
+              {' · '}
+              {fmtDate(a.started_at)}
+              {a.is_race ? ' · Compétition' : ''}
+            </p>
+          </div>
+
+          {/* Stats 2 colonnes */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr',
+            borderTop: '1px solid var(--info-border)',
+            borderLeft: '1px solid var(--info-border)',
+            margin: '0 0 24px',
+          }}>
+            {[
+              { label: 'Distance', value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
+              { label: 'Durée', value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+              { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : 'Effort'),
+                value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null)
+                              : (isRun && paceS ? fmtPace(paceS) : null) },
+              { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+              { label: 'TSS', value: a.tss ? Math.round(Number(a.tss)).toString() : null },
+              { label: 'Vitesse', value: (isBike || isRun) && a.avg_speed_ms ? `${(Number(a.avg_speed_ms)*3.6).toFixed(1)} km/h` : null },
+            ].filter(k => k.value).map(k => (
+              <div key={k.label} style={{
+                padding: '14px 16px',
+                borderRight: '1px solid var(--info-border)',
+                borderBottom: '1px solid var(--info-border)',
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', color: T.textMuted, margin: '0 0 4px' }}>
+                  {k.label}
+                </p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: 0 }}>
+                  {k.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── SECTIONS dans le sheet ── */}
+          <div style={{ padding: '0 16px' }}>
+
+            {/* DONNÉES */}
+            <Section title="Données">
+              {dataBlocks}
+            </Section>
+
+            {/* COURBES */}
+            {a.streams && (
+              <Section title="Courbes">
+                <SyncCharts
+                  activity={a}
+                  hrZones={hrZones}
+                  powerZones={bikeZones ?? undefined}
+                  paceZones={runZones ?? undefined}
+                  polylinePoints={polylinePoints}
+                  onHoverGps={setHoverGps}
+                />
+              </Section>
+            )}
+
+            {/* ZONES */}
+            {((isBike && bikeZones && powerTimesZ?.some(t => t > 0)) ||
+              (isRun && runZones && paceTimesZ?.some(t => t > 0)) ||
+              hrTimesZ?.some(t => t > 0)) && (
+              <Section title="Zones">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Puissance</div>
+                      <ZoneBars zones={bikeZones} timesS={powerTimesZ} />
+                    </div>
+                  )}
+                  {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Allure</div>
+                      <ZoneBars zones={runZones} timesS={paceTimesZ} />
+                    </div>
+                  )}
+                  {hrTimesZ && hrTimesZ.some(t => t > 0) && (
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Fréquence cardiaque</div>
+                      <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+                    </div>
+                  )}
+                </div>
+              </Section>
+            )}
+
+            {/* GRAPHIQUES AVANCÉS */}
+            {a.streams && (() => {
+              const s = a.streams
+              const maxHrEst = estimateMaxHr(profile.birth_date)
+              return (
+                <>
+                  {isBike && s.watts && s.watts.length > 60 && (
+                    <Section title="Courbe de puissance">
+                      <PowerCurveChart watts={s.watts} />
+                    </Section>
+                  )}
+                  {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
+                    <Section title="Découplage">
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                        <button onClick={() => setShowDecoupling(v => !v)} style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: 11, color: T.accent, fontWeight: 600, padding: 0 }}>
+                          {showDecoupling ? 'Masquer' : 'Voir le graphique'}
+                        </button>
+                      </div>
+                      {showDecoupling && (
+                        <DecouplingChart
+                          watts={s.watts} heartrate={s.heartrate}
+                          decouplingPct={decoupling} altitude={s.altitude}
+                          temp={s.temp} time={s.time}
+                        />
+                      )}
+                    </Section>
+                  )}
+                  {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
+                    <Section title="Durée cumulée">
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                        <button onClick={() => setShowHrCumulative(v => !v)} style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: 11, color: T.accent, fontWeight: 600, padding: 0 }}>
+                          {showHrCumulative ? 'Masquer' : 'Voir le graphique'}
+                        </button>
+                      </div>
+                      {showHrCumulative && (
+                        <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
+                      )}
+                    </Section>
+                  )}
+                </>
+              )
+            })()}
+
+            {/* NOTES */}
+            {(a.notes || a.description) && (
+              <Section title="Commentaire">
+                <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
+              </Section>
+            )}
+
+            {/* LAPS */}
+            {a.laps && a.laps.length > 1 && (
+              <Section title={`Intervalles — ${a.laps.length} tours`}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', color: T.textMuted }}>
+                        {['#','Dist.','Durée', isBike ? 'Watts' : 'Allure', 'FC'].map(h => (
+                          <th key={h} style={{ padding: '3px 8px 6px 0', fontWeight: 500, fontSize: 10 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {a.laps.map((lap, i) => {
+                        const lp = lap.moving_time_s && lap.distance_m > 0 ? (lap.moving_time_s / lap.distance_m) * 1000 : null
+                        return (
+                          <tr key={i} style={{ borderTop: `1px solid ${T.border}` }}>
+                            <td style={{ padding: '5px 8px 5px 0', color: T.textMuted }}>{i+1}</td>
+                            <td style={{ padding: '5px 8px 5px 0' }}>{!isGym ? fmtDist(lap.distance_m) : '—'}</td>
+                            <td style={{ padding: '5px 8px 5px 0' }}>{fmtDur(lap.moving_time_s)}</td>
+                            <td style={{ padding: '5px 8px 5px 0' }}>
+                              {isBike ? (lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—')
+                                : (isRun||isSwim) ? fmtPace(lp)
+                                : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'}
+                            </td>
+                            <td style={{ padding: '5px 8px 5px 0' }}>{lap.avg_hr ? `${Math.round(lap.avg_hr)} bpm` : '—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
+            )}
+
+            {/* DELETE */}
+            <div style={{ marginTop: 32, paddingBottom: 8 }}>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  width: '100%', padding: '14px 0', borderRadius: 12,
+                  background: 'none', border: '1.5px solid #EF4444',
+                  color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Supprimer l&apos;activité
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {sharedModals}
+    </>
+  ) : (
+    /* ══════════════════════════════════════════
+       DESKTOP — layout existant inchangé
+    ══════════════════════════════════════════ */
+    <div style={{ background: T.surface, borderRadius: T.radius, boxShadow: T.shadowCard }}>
+      <div style={{ padding: '20px 22px' }}>
+
+        {/* ── HERO + MAP (flex desktop) ── */}
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
+
+          {/* LEFT — Hero + 5 data blocks */}
+          <div style={{ flex: mapExpanded ? '1 1 100%' : '0 0 65%', minWidth: 0, overflow: 'hidden' }}>
+
+            {/* ── HERO ── */}
+            <div style={{ marginBottom: 24 }}>
+              {/* Sport + Title + Date row */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                  background: col + '18', border: `2px solid ${col}40`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 4, background: col }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.title}
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '18', padding: '2px 9px', borderRadius: 20, fontFamily: T.fontDisplay }}>
+                      {SPORT_LABEL[a.sport_type]}
+                    </span>
+                    <span style={{ fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{fmtDate(a.started_at)}</span>
+                    {a.is_race && <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 9px', borderRadius: 20 }}>Compétition</span>}
+                    {a.trainer && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>Intérieur</span>}
+                    {a.gear_name && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>{a.gear_name}</span>}
+                  </div>
+                </div>
+                {/* Bouton supprimer */}
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  style={{
+                    flexShrink: 0,
+                    background: 'none',
+                    border: '1px solid #EF4444',
+                    color: '#EF4444',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Supprimer
+                </button>
+              </div>
+
+              {/* KPI strip desktop */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
+                  { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+                  { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                  { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null),
+                    value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
+                  { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
+                ].filter(k => k.label && k.value).map(k => (
+                  <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
+                    <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── 5 DATA BLOCKS ── */}
+            {dataBlocks}
+
+          </div>
+          {/* END LEFT column */}
+
+          {/* RIGHT — carte GPS (desktop uniquement, masquée quand expanded) */}
+          {!mapExpanded && (
+            <div style={{ flex: '0 0 35%', minWidth: 0 }}>
+              <ActivityMapCard
+                activity={a as unknown as Record<string, unknown>}
+                isMobile={false}
+                expanded={false}
+                onToggle={() => setMapExpanded(true)}
+                hoverGps={hoverGps}
+              />
+            </div>
+          )}
+
+        </div>
+        {/* END flex container HERO + MAP */}
+
         {/* ── CARTE GPS EXPANDED (desktop uniquement, full-width) ── */}
-        {mapExpanded && !isMobile && (
+        {mapExpanded && (
           <div style={{ marginBottom: 20 }}>
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
@@ -3421,9 +3685,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         )}
 
         {/* ── ZONES ── */}
-        {(isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
-         (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
-         (hrTimesZ && hrTimesZ.some(t => t > 0)) ? (
+        {((isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
+          (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
+          (hrTimesZ && hrTimesZ.some(t => t > 0))) ? (
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
@@ -3431,19 +3695,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
               {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-                isMobile
-                  ? <div style={{ flex: '1 1 100%' }}><div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Puissance</div><ZoneBars zones={bikeZones} timesS={powerTimesZ} /></div>
-                  : <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
+                <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
               )}
               {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-                isMobile
-                  ? <div style={{ flex: '1 1 100%' }}><div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Allure</div><ZoneBars zones={runZones} timesS={paceTimesZ} /></div>
-                  : <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
+                <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
               )}
               {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-                isMobile
-                  ? <div style={{ flex: '1 1 100%' }}><div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6 }}>Fréquence cardiaque</div><ZoneBars zones={hrZones} timesS={hrTimesZ} /></div>
-                  : <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
+                <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
               )}
             </div>
           </div>
@@ -3509,72 +3767,25 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           const maxHrEst = estimateMaxHr(profile.birth_date)
           return (
             <>
-              {/* Power Curve — vélo uniquement */}
               {isBike && s.watts && s.watts.length > 60 && (
                 <PowerCurveChart watts={s.watts} />
               )}
-              {/* GAP — course à pied */}
-              {!isMobile && isRun && s.velocity && s.altitude && s.distance &&
+              {isRun && s.velocity && s.altitude && s.distance &&
                s.velocity.length > 60 && (
                 <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
               )}
-              {/* Decoupling chart — vélo */}
               {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
-                isMobile ? (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-                      textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5,
-                      fontFamily: T.fontDisplay, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      Découplage
-                      <button onClick={() => setShowDecoupling(v => !v)} style={{
-                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 10,
-                        color: T.accent, fontWeight: 600, padding: 0 }}>
-                        {showDecoupling ? 'Masquer' : 'Voir le graphique'}
-                      </button>
-                    </div>
-                    {showDecoupling && (
-                      <DecouplingChart
-                        watts={s.watts}
-                        heartrate={s.heartrate}
-                        decouplingPct={decoupling}
-                        altitude={s.altitude}
-                        temp={s.temp}
-                        time={s.time}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <DecouplingChart
-                    watts={s.watts}
-                    heartrate={s.heartrate}
-                    decouplingPct={decoupling}
-                    altitude={s.altitude}
-                    temp={s.temp}
-                    time={s.time}
-                  />
-                )
+                <DecouplingChart
+                  watts={s.watts}
+                  heartrate={s.heartrate}
+                  decouplingPct={decoupling}
+                  altitude={s.altitude}
+                  temp={s.temp}
+                  time={s.time}
+                />
               )}
-              {/* HR Cumulative — vélo + course */}
               {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
-                isMobile ? (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-                      textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5,
-                      fontFamily: T.fontDisplay, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      Durée cumulée
-                      <button onClick={() => setShowHrCumulative(v => !v)} style={{
-                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 10,
-                        color: T.accent, fontWeight: 600, padding: 0 }}>
-                        {showHrCumulative ? 'Masquer' : 'Voir le graphique'}
-                      </button>
-                    </div>
-                    {showHrCumulative && (
-                      <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
-                    )}
-                  </div>
-                ) : (
-                  <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
-                )
+                <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
               )}
             </>
           )
@@ -3630,81 +3841,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
           </div>
         )}
-        {/* ── Bouton Supprimer mobile (bas de page) ── */}
-        {isMobile && (
-          <div style={{ marginTop: 32, paddingBottom: 24 }}>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              style={{
-                width: '100%', padding: '14px 0', borderRadius: 12,
-                background: 'none', border: '1.5px solid #EF4444',
-                color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              Supprimer l&apos;activité
-            </button>
-          </div>
-        )}
+
       </div>
 
-      {/* RPE Modal */}
-      {showRpeModal && (
-        <RpeModal
-          activityId={a.id}
-          initialRpe={localRpe}
-          initialSensation={localSensation}
-          onClose={() => setShowRpeModal(false)}
-          onSave={(rpe, sens) => {
-            setLocalRpe(rpe)
-            setLocalSensation(sens)
-            setShowRpeModal(false)
-          }}
-        />
-      )}
-
-      {/* ── Confirmation suppression ── */}
-      <BottomSheet
-        isOpen={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
-        title="Supprimer l'activité"
-      >
-        <p style={{ fontSize: 14, color: 'var(--text-body)', lineHeight: 1.7, marginBottom: 16 }}>
-          Cette action est irréversible. L&apos;activité sera supprimée
-          définitivement de THW Coaching.
-          Elle restera présente sur Strava et Polar.
-        </p>
-        {deleteError && (
-          <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12 }}>{deleteError}</p>
-        )}
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
-            disabled={isDeleting}
-            style={{
-              flex: 1, padding: '12px 0',
-              borderRadius: 12, border: '1px solid var(--info-border)',
-              background: 'transparent', color: 'var(--text-body)',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              opacity: isDeleting ? 0.5 : 1,
-            }}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            style={{
-              flex: 1, padding: '12px 0',
-              borderRadius: 12, border: 'none',
-              background: '#EF4444', color: 'white',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              opacity: isDeleting ? 0.7 : 1,
-            }}
-          >
-            {isDeleting ? 'Suppression…' : 'Supprimer'}
-          </button>
-        </div>
-      </BottomSheet>
+      {sharedModals}
     </div>
   )
 }

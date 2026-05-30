@@ -82,9 +82,10 @@ interface Props {
   expanded?: boolean
   onToggle?: () => void
   hoverGps?: { lat: number; lng: number } | null
+  mobileHero?: boolean
 }
 
-export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps }: Props) {
+export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false }: Props) {
   const [layer,           setLayer]           = useState<LayerId>('std')
   const [mobileFullscreen, setMobileFullscreen] = useState(false)
 
@@ -93,7 +94,16 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
 
   // ── Style de la carte selon le contexte ──────────────────────────────────────
   let cardStyle: CSSProperties
-  if (isMobile && mobileFullscreen) {
+  if (mobileHero) {
+    // Hero mobile Strava : occupe tout l'espace du conteneur parent
+    cardStyle = {
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      borderRadius: 0,
+      overflow: 'hidden',
+    }
+  } else if (isMobile && mobileFullscreen) {
     // Plein écran mobile : recouvre tout l'écran
     cardStyle = {
       position: 'fixed',
@@ -144,8 +154,8 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
     <div style={cardStyle}>
       <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} />
 
-      {/* Bouton plein écran mobile */}
-      {isMobile && (
+      {/* Bouton plein écran mobile — masqué en mode mobileHero */}
+      {isMobile && !mobileHero && (
         <button
           onClick={() => setMobileFullscreen(fs => !fs)}
           style={{

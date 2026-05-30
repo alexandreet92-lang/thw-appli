@@ -706,8 +706,10 @@ function calculateDecoupling(watts: number[], heartrate: number[]): number | nul
 
 function computeMmpCurve(wStream: number[], durations: number[]): number[] {
   const N = wStream.length
+  // Cap spikes at 1500W avant le calcul
+  const cleaned = wStream.map(w => Math.min(w, 1500))
   const prefix = new Array(N + 1).fill(0)
-  for (let i = 0; i < N; i++) prefix[i + 1] = prefix[i] + wStream[i]
+  for (let i = 0; i < N; i++) prefix[i + 1] = prefix[i] + cleaned[i]
   return durations.map(d => {
     if (d > N) return 0
     let max = 0
@@ -727,7 +729,12 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
   const DURATIONS = MMP_DURATIONS.filter(d => d <= N)
   const LABELS    = MMP_LABELS.filter((_, i) => MMP_DURATIONS[i] <= N)
 
-  const mmp = useMemo(() => computeMmpCurve(watts, DURATIONS), [watts, DURATIONS])
+  const mmp = useMemo(() => {
+    const result = computeMmpCurve(watts, DURATIONS)
+    // Debug : valeurs clés pour vérification
+    console.log('[MMP] 5s:', result[0], '30s:', result[2], '5min:', result[5] ?? '-', '20min:', result[7] ?? '-', '1h:', result[9] ?? '-')
+    return result
+  }, [watts, DURATIONS])
 
   // PR curve — fetch last 24 months of bike activities
   const [prMmp, setPrMmp]         = useState<number[] | null>(null)
@@ -765,22 +772,24 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
 
   const W = 1000, H = 220, pad = 10
 
-  // Log scale helpers
-  const logMin = Math.log(DURATIONS[0])
-  const logMax = Math.log(DURATIONS[DURATIONS.length - 1])
+  // Log10 scale helpers (échelle logarithmique base 10)
+  const logMin = Math.log10(DURATIONS[0])
+  const logMax = Math.log10(DURATIONS[DURATIONS.length - 1])
   function logX(d: number): number {
-    return ((Math.log(d) - logMin) / (logMax - logMin)) * W
+    return ((Math.log10(d) - logMin) / (logMax - logMin)) * W
   }
 
-  // Combined min/max for Y scale
+  // Y scale 0-based avec gridlines à 200W
   const allVals = [...mmp, ...(prMmp ?? [])]
-  const minV = Math.min(...allVals.filter(v => v > 0)) * 0.88
-  const maxV = Math.max(...allVals) * 1.07
-  const range = maxV - minV || 1
+  const maxYWatts = Math.ceil(Math.max(...allVals.filter(v => v > 0), 200) / 200) * 200
 
   function yOf(v: number): number {
-    return H - pad - ((v - minV) / range) * (H - pad * 2)
+    return H - (v / maxYWatts) * H
   }
+
+  // Gridlines à 200W d'intervalle
+  const yGridlines: number[] = []
+  for (let w = 0; w <= maxYWatts; w += 200) yGridlines.push(w)
 
   function buildCurvePaths(vals: number[]): { fill: string; line: string } {
     const pts = DURATIONS.map((d, i) => `${logX(d).toFixed(1)},${yOf(vals[i]).toFixed(1)}`)
@@ -823,8 +832,8 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
         </div>
       )}
 
-      <div style={{ position: 'relative', cursor: 'crosshair' }}>
-        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
+      <div style={{ position: 'relative', cursor: 'crosshair', paddingLeft: 32 }}>
+        <svg ref={svgRef} viewBox={`-32 0 ${W + 32} ${H}`} style={{ width: '100%', height: H, display: 'block', overflow: 'visible' }}
           preserveAspectRatio="none"
           onMouseMove={onMove} onMouseLeave={onLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
@@ -834,6 +843,17 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
               <stop offset="100%" stopColor="#5b6fff" stopOpacity="0.02"/>
             </linearGradient>
           </defs>
+
+          {/* Gridlines Y tous les 200W */}
+          {yGridlines.filter(w => w > 0).map(w => {
+            const y = yOf(w)
+            return (
+              <g key={w}>
+                <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3"/>
+                <text x={-6} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}W</text>
+              </g>
+            )
+          })}
 
           {/* PR curve (background) */}
           {prPaths && (
@@ -997,8 +1017,41 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
 // ─────────────────────────────────────────────────────────────
 // DECOUPLING CHART — Vélo uniquement (puissance normalisée vs FC)
 // ─────────────────────────────────────────────────────────────
-function DecouplingChart({ watts, heartrate, decouplingPct }: {
+// ─────────────────────────────────────────────────────────────
+// TIMELINE BAR — barre de temps sous les graphiques
+// ─────────────────────────────────────────────────────────────
+function TimelineBar({ totalS, cursorPct }: { totalS: number; cursorPct: number | null }) {
+  if (totalS < 120) return null
+  const tickIntervalS = 1800 // 30 min
+  const ticks: number[] = []
+  for (let t = tickIntervalS; t < totalS; t += tickIntervalS) ticks.push(t)
+
+  function fmtTick(s: number): string {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    if (h === 0) return `${m}'`
+    if (m === 0) return `${h}h`
+    return `${h}h${String(m).padStart(2, '0')}`
+  }
+
+  return (
+    <div style={{ position: 'relative', height: 28, backgroundColor: 'var(--info-bg)', borderTop: `1px solid var(--info-border)`, marginTop: 2 }}>
+      {ticks.map(t => (
+        <div key={t} style={{ position: 'absolute', left: `${(t / totalS) * 100}%`, top: 0, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ width: 1, height: 6, backgroundColor: 'var(--border-mid)' }} />
+          <span style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{fmtTick(t)}</span>
+        </div>
+      ))}
+      {cursorPct !== null && (
+        <div style={{ position: 'absolute', left: `${cursorPct * 100}%`, top: 0, bottom: 0, width: 1, backgroundColor: 'var(--text)', opacity: 0.5, pointerEvents: 'none' }} />
+      )}
+    </div>
+  )
+}
+
+function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time }: {
   watts: number[]; heartrate: number[]; decouplingPct: number | null
+  altitude?: number[] | null; temp?: number[] | null; time?: number[] | null
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const decoupContainerRef = useRef<HTMLDivElement>(null)
@@ -1015,12 +1068,26 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
 
   const sWatts = useMemo(() => smooth(watts.slice(0, N)), [watts, N])
   const sHr    = useMemo(() => smooth(heartrate.slice(0, N)), [heartrate, N])
+  const sTemp  = useMemo(() => temp?.length ? smooth(temp.slice(0, N), 10) : null, [temp, N])
 
   // Normalize both 0–1
   const wMin = Math.min(...sWatts), wMax = Math.max(...sWatts)
   const hMin = Math.min(...sHr),    hMax = Math.max(...sHr)
   const wRange = wMax - wMin || 1
   const hRange = hMax - hMin || 1
+
+  // Temp normalization (if available)
+  const tMin = sTemp ? Math.min(...sTemp) : 0
+  const tMax = sTemp ? Math.max(...sTemp) : 1
+  const tRange = tMax - tMin || 1
+
+  // Pre-compute avgEF for cursor découplage
+  const avgW  = sWatts.reduce((a, b) => a + b, 0) / N
+  const avgHr = sHr.reduce((a, b) => a + b, 0) / N
+  const avgEF = avgHr > 0 ? avgW / avgHr : 0
+
+  // Total time for timeline bar
+  const totalS = time?.length ? (time[Math.min(N-1, time.length-1)] - time[0]) : N
 
   const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, N)
   const W = 1000, H = 180, pad = 4
@@ -1067,6 +1134,9 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <path d={buildNormPath(sWatts, wMin, wRange, false)} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
           <path d={buildNormPath(sHr, hMin, hRange, false)} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeDasharray="6,3"/>
+          {sTemp && (
+            <path d={buildNormPath(sTemp, tMin, tRange, false)} fill="none" stroke="#6EE7B7" strokeWidth="1.5" strokeLinejoin="round" opacity="0.7"/>
+          )}
           {pct !== null && (
             <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
@@ -1074,24 +1144,44 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
 
         {/* Cursor tooltip positioned at mouse */}
         {idx !== null && decoupMousePos && (
-          <div style={{
+          <div data-chart-tooltip="" style={{
             position: 'absolute',
             left: Math.min(decoupMousePos.x + 12, 999),
-            top: Math.max(0, decoupMousePos.y - 52),
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            borderRadius: 7,
-            padding: '5px 10px',
+            top: Math.max(0, decoupMousePos.y - 80),
+            borderRadius: 8,
+            padding: '6px 10px',
             pointerEvents: 'none',
             zIndex: 20,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
             whiteSpace: 'nowrap',
           }}>
+            {/* Temps */}
+            {time && time[idx] != null && (
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>
+                {(() => { const t = time[idx] - time[0]; const m = Math.floor(t/60); const s = t%60; return `${m}:${String(s).padStart(2,'0')}` })()}
+              </div>
+            )}
             <div style={{ fontSize: 12, color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>{Math.round(sWatts[idx])} W</div>
             <div style={{ fontSize: 11, color: '#ef4444', fontFamily: T.fontMono }}>{Math.round(sHr[idx])} bpm</div>
+            {altitude?.[idx] != null && (
+              <div style={{ fontSize: 11, color: '#94A3B8', fontFamily: T.fontMono }}>{Math.round(altitude[idx])} m</div>
+            )}
+            {sTemp?.[idx] != null && (
+              <div style={{ fontSize: 11, color: '#6EE7B7', fontFamily: T.fontMono }}>{Math.round(sTemp[idx])} °C</div>
+            )}
+            {avgEF > 0 && sHr[idx] > 0 && (() => {
+              const efNow = sWatts[idx] / sHr[idx]
+              const d = ((efNow - avgEF) / avgEF) * 100
+              return (
+                <div style={{ fontSize: 11, color: d >= 0 ? '#22c55e' : '#ef4444', fontFamily: T.fontMono }}>
+                  {d >= 0 ? '+' : ''}{d.toFixed(1)}% EF
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
+
+      <TimelineBar totalS={totalS} cursorPct={pct} />
 
       <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
@@ -1100,6 +1190,11 @@ function DecouplingChart({ watts, heartrate, decouplingPct }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
           <span style={{ width: 12, height: 2, background: '#ef4444', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #ef4444' }}/>FC (normalisée)
         </div>
+        {sTemp && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+            <span style={{ width: 12, height: 2, background: '#6EE7B7', display: 'inline-block', borderRadius: 1 }}/>Température
+          </div>
+        )}
       </div>
 
       <div style={{
@@ -1373,7 +1468,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const [dragStartPct, setDragStartPct] = useState<number | null>(null)
   const [selectedLap, setSelectedLap]   = useState<number | null>(null)
   const [showSelModal, setShowSelModal]  = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef   = useRef<HTMLDivElement>(null)
+  const tracksAreaRef  = useRef<HTMLDivElement>(null)
 
   // Distances cumulées le long du tracé polyline (pour mapping curseur → GPS)
   const polyCumDist = useMemo(
@@ -1392,7 +1488,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     setMousePos({ x: clientX - rect.left, y: clientY - rect.top })
-    const pct = getPct(clientX, containerRef.current)
+    // pct calculé sur la zone charts (sans le left-col label)
+    const chartEl = tracksAreaRef.current ?? containerRef.current
+    const pct = getPct(clientX, chartEl)
     setCursorPct(pct)
     if (dragStartPct !== null) {
       const i1 = Math.round(dragStartPct * (N-1))
@@ -1411,8 +1509,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   }
 
   function handleDown(clientX: number) {
-    if (!containerRef.current) return
-    setDragStartPct(getPct(clientX, containerRef.current))
+    const chartEl = tracksAreaRef.current ?? containerRef.current
+    if (!chartEl) return
+    setDragStartPct(getPct(clientX, chartEl))
     setSelection(null)
     setShowSelModal(false)
   }
@@ -1581,7 +1680,6 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
       <div
         ref={containerRef}
         style={{ position: 'relative', userSelect: 'none', cursor: 'crosshair' }}
-        onMouseEnter={() => setIsOverCharts(true)}
         onMouseMove={e => handleMove(e.clientX, e.clientY)}
         onMouseLeave={() => { setIsOverCharts(false); setCursorPct(null); setMousePos(null); onHoverGps?.(null) }}
         onMouseDown={e => handleDown(e.clientX)}
@@ -1611,7 +1709,12 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
           )
         })()}
 
-        {/* Tracks */}
+        {/* Tracks — onMouseEnter/Leave ici uniquement pour isOverCharts */}
+        <div
+          ref={tracksAreaRef}
+          onMouseEnter={() => setIsOverCharts(true)}
+          onMouseLeave={() => setIsOverCharts(false)}
+        >
         {tracks.map((track) => {
           const mn = Math.min(...track.data), mx = Math.max(...track.data)
           const range = mx - mn || 1
@@ -1742,6 +1845,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
             </div>
           )
         })}
+        </div>{/* end tracksAreaRef */}
 
         {/* Unified cursor tooltip */}
         {isOverCharts && cursor !== null && mousePos !== null && (
@@ -1774,6 +1878,14 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
           </div>
         )}
       </div>
+
+      {/* Timeline */}
+      {time.length > 0 && (
+        <TimelineBar
+          totalS={time[time.length - 1] - time[0]}
+          cursorPct={isOverCharts ? cursorPct : null}
+        />
+      )}
 
       {/* Laps */}
       {laps.length > 1 && (
@@ -2853,7 +2965,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
 
         {/* LEFT — Hero + 5 data blocks */}
-        <div style={{ flex: isMobile ? '1 1 100%' : (mapExpanded ? '1 1 100%' : '0 0 65%'), minWidth: 0 }}>
+        <div style={{ flex: isMobile ? '1 1 100%' : (mapExpanded ? '1 1 100%' : '0 0 65%'), minWidth: 0, overflow: 'hidden' }}>
 
         {/* ── HERO ── */}
         <div style={{ marginBottom: 24 }}>
@@ -2916,6 +3028,18 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             ))}
           </div>
         </div>
+
+        {/* ── CARTE GPS MOBILE — sous les KPIs, pleine largeur ── */}
+        {isMobile && (
+          <div style={{ marginTop: 12, marginBottom: 16 }}>
+            <ActivityMapCard
+              activity={a as unknown as Record<string, unknown>}
+              isMobile={true}
+              expanded={false}
+              hoverGps={hoverGps}
+            />
+          </div>
+        )}
 
         {/* ── 5 DATA BLOCKS ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: 0, flexWrap: 'wrap' }}>
@@ -3187,14 +3311,14 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         {/* END LEFT column */}
         </div>
 
-        {/* RIGHT — carte GPS (compact, masquée sur desktop quand expanded) */}
-        {(!mapExpanded || isMobile) && (
-          <div style={{ flex: isMobile ? '1 1 100%' : '0 0 35%', minWidth: 0 }}>
+        {/* RIGHT — carte GPS (desktop uniquement, masquée quand expanded) */}
+        {!isMobile && !mapExpanded && (
+          <div style={{ flex: '0 0 35%', minWidth: 0 }}>
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
-              isMobile={isMobile}
+              isMobile={false}
               expanded={false}
-              onToggle={isMobile ? undefined : () => setMapExpanded(true)}
+              onToggle={() => setMapExpanded(true)}
               hoverGps={hoverGps}
             />
           </div>
@@ -3328,7 +3452,14 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               )}
               {/* Decoupling chart — vélo */}
               {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
-                <DecouplingChart watts={s.watts} heartrate={s.heartrate} decouplingPct={decoupling} />
+                <DecouplingChart
+                  watts={s.watts}
+                  heartrate={s.heartrate}
+                  decouplingPct={decoupling}
+                  altitude={s.altitude}
+                  temp={s.temp}
+                  time={s.time}
+                />
               )}
               {/* HR Cumulative — vélo + course */}
               {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (

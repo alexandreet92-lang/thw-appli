@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import dynamic from 'next/dynamic'
+import { Maximize2, Minimize2 } from 'lucide-react'
 
 type LayerId = 'std' | 'sat' | 'hyb'
 
@@ -103,7 +104,7 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
     : {
         position: 'relative',
         width: '100%',
-        height: isMobile ? 200 : 220,
+        height: isMobile ? 180 : 220,
         borderRadius: 16,
         overflow: 'hidden',
         boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
@@ -120,15 +121,16 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
         <button
           onClick={onToggle}
           style={{
-            position: 'absolute', top: 8, right: expanded ? 56 : 8, zIndex: 10,
-            backgroundColor: 'rgba(0,0,0,0.62)',
-            border: 'none', borderRadius: 8, padding: '5px 9px',
-            color: 'white', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-            backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', gap: 4,
+            position: 'absolute', top: 8, right: 8, zIndex: 10,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            border: 'none', borderRadius: 6, padding: 6,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
           }}
         >
-          {expanded ? '⤡ Réduire' : '⤢ Agrandir'}
+          {expanded
+            ? <Minimize2 size={14} color="white" />
+            : <Maximize2 size={14} color="white" />
+          }
         </button>
       )}
     </div>

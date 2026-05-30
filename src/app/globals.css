@@ -384,25 +384,11 @@ button:active { transform: scale(0.97); }
 
 /* ── Chart tooltip — thème clair / sombre ────────────────────── */
 [data-chart-tooltip] {
-  background-color: rgba(255,255,255,0.97) !important;
-  color:            #0f172a !important;
-  border:           1px solid #e2e8f0 !important;
-  box-shadow:       0 4px 20px rgba(0,0,0,0.12) !important;
+  background-color: var(--bg-card) !important;
+  color:            var(--text) !important;
+  border:           1px solid var(--border-mid) !important;
+  box-shadow:       var(--shadow) !important;
   backdrop-filter:  blur(8px);
-}
-.dark [data-chart-tooltip] {
-  background-color: rgba(15,23,42,0.94) !important;
-  color:            #eef2f7 !important;
-  border:           1px solid rgba(255,255,255,0.10) !important;
-  box-shadow:       0 4px 20px rgba(0,0,0,0.40) !important;
-}
-@media (prefers-color-scheme: dark) {
-  [data-chart-tooltip] {
-    background-color: rgba(15,23,42,0.94) !important;
-    color:            #eef2f7 !important;
-    border:           1px solid rgba(255,255,255,0.10) !important;
-    box-shadow:       0 4px 20px rgba(0,0,0,0.40) !important;
-  }
 }
 
 /* ── GPS indicator — blinking dot ────────────────────────────── */
@@ -473,15 +459,8 @@ button:active { transform: scale(0.97); }
 
 /* BottomSheet — fond opaque garanti, bypasse oklch / Tailwind */
 [data-sheet-panel] {
-  background-color: #ffffff !important;
-}
-.dark [data-sheet-panel] {
-  background-color: #0f172a !important;
-}
-@media (prefers-color-scheme: dark) {
-  [data-sheet-panel] {
-    background-color: #0f172a !important;
-  }
+  background-color: var(--bg-card) !important;
+  color:            var(--text) !important;
 }
 
 /* ── Animation shuriken : tourne, s'arrête, reprend ── */
@@ -495,41 +474,17 @@ button:active { transform: scale(0.97); }
 
 /* ── Fond du PageLoader ── */
 [data-page-loader] {
-  background-color: #f8fafc !important;
-}
-.dark [data-page-loader] {
-  background-color: #020617 !important;
-}
-@media (prefers-color-scheme: dark) {
-  [data-page-loader] {
-    background-color: #020617 !important;
-  }
+  background-color: var(--bg-card) !important;
 }
 
 /* ── Fond du SplashScreen ── */
 [data-splash-screen] {
-  background-color: #f8fafc !important;
-}
-.dark [data-splash-screen] {
-  background-color: #020617 !important;
-}
-@media (prefers-color-scheme: dark) {
-  [data-splash-screen] {
-    background-color: #020617 !important;
-  }
+  background-color: var(--bg-card) !important;
 }
 
 /* ── Texte du SplashScreen ── */
 [data-splash-title] {
-  color: #0f172a !important;
-}
-.dark [data-splash-title] {
-  color: #f8fafc !important;
-}
-@media (prefers-color-scheme: dark) {
-  [data-splash-title] {
-    color: #f8fafc !important;
-  }
+  color: var(--text-title) !important;
 }
 
 /* ── Variables de thème pour les boîtes de contenu ── */
@@ -583,15 +538,18 @@ button:active { transform: scale(0.97); }
 
 /* ── Bottom sheet — thème mobile activité ─────────────────── */
 [data-bottom-sheet] {
-  background-color: #ffffff !important;
+  background-color: var(--bg-card) !important;
+  color:            var(--text) !important;
 }
-.dark [data-bottom-sheet] {
-  background-color: #020617 !important;
+[data-bottom-sheet] [data-stat-label] {
+  color: var(--text-muted) !important;
 }
-@media (prefers-color-scheme: dark) {
-  [data-bottom-sheet] {
-    background-color: #020617 !important;
-  }
+[data-bottom-sheet] [data-stat-value],
+[data-bottom-sheet] [data-activity-title] {
+  color: var(--text-title) !important;
+}
+[data-bottom-sheet] [data-activity-subtitle] {
+  color: var(--text-muted) !important;
 }
 
 /* ── Animation bottom sheet ────────────────────────────────── */

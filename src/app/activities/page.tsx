@@ -2787,33 +2787,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const [showHrCumulative,     setShowHrCumulative]     = useState(false)
 
   // ── FIX 1 : masque le header app sur mobile ──────────────────
-  const sheetRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (window.innerWidth >= 768) return
     document.body.classList.add('hide-app-header')
     return () => document.body.classList.remove('hide-app-header')
-  }, [])
-
-  // ── FIX 2 : force les couleurs de la sheet en dark mode ──────
-  useEffect(() => {
-    const el = sheetRef.current
-    if (!el) return
-    const isDark =
-      document.documentElement.classList.contains('dark') ||
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-    el.style.setProperty('background-color', isDark ? '#020617' : '#ffffff', 'important')
-    el.querySelectorAll('[data-stat-label]').forEach(e => {
-      (e as HTMLElement).style.setProperty('color', isDark ? '#64748B' : '#94A3B8', 'important')
-    })
-    el.querySelectorAll('[data-stat-value]').forEach(e => {
-      (e as HTMLElement).style.setProperty('color', isDark ? '#F8FAFC' : '#0F172A', 'important')
-    })
-    el.querySelectorAll('[data-activity-title]').forEach(e => {
-      (e as HTMLElement).style.setProperty('color', isDark ? '#F8FAFC' : '#0F172A', 'important')
-    })
-    el.querySelectorAll('[data-activity-subtitle]').forEach(e => {
-      (e as HTMLElement).style.setProperty('color', isDark ? '#64748B' : '#94A3B8', 'important')
-    })
   }, [])
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
@@ -3401,7 +3378,6 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
         {/* ── BOTTOM SHEET ── */}
         <div
-          ref={sheetRef}
           data-bottom-sheet=""
           style={{
             position: 'relative', zIndex: 2,

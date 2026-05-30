@@ -2786,6 +2786,36 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const [showDecoupling,       setShowDecoupling]       = useState(false)
   const [showHrCumulative,     setShowHrCumulative]     = useState(false)
 
+  // ── FIX 1 : masque le header app sur mobile ──────────────────
+  const sheetRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (window.innerWidth >= 768) return
+    document.body.classList.add('hide-app-header')
+    return () => document.body.classList.remove('hide-app-header')
+  }, [])
+
+  // ── FIX 2 : force les couleurs de la sheet en dark mode ──────
+  useEffect(() => {
+    const el = sheetRef.current
+    if (!el) return
+    const isDark =
+      document.documentElement.classList.contains('dark') ||
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    el.style.setProperty('background-color', isDark ? '#020617' : '#ffffff', 'important')
+    el.querySelectorAll('[data-stat-label]').forEach(e => {
+      (e as HTMLElement).style.setProperty('color', isDark ? '#64748B' : '#94A3B8', 'important')
+    })
+    el.querySelectorAll('[data-stat-value]').forEach(e => {
+      (e as HTMLElement).style.setProperty('color', isDark ? '#F8FAFC' : '#0F172A', 'important')
+    })
+    el.querySelectorAll('[data-activity-title]').forEach(e => {
+      (e as HTMLElement).style.setProperty('color', isDark ? '#F8FAFC' : '#0F172A', 'important')
+    })
+    el.querySelectorAll('[data-activity-subtitle]').forEach(e => {
+      (e as HTMLElement).style.setProperty('color', isDark ? '#64748B' : '#94A3B8', 'important')
+    })
+  }, [])
+
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
     const encoded = (a.summary_polyline as string | null)
@@ -3371,6 +3401,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
         {/* ── BOTTOM SHEET ── */}
         <div
+          ref={sheetRef}
           data-bottom-sheet=""
           style={{
             position: 'relative', zIndex: 2,
@@ -3387,8 +3418,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
           {/* Nom + sport + date */}
           <div style={{ padding: '0 16px 16px' }}>
-            <ActivityTitle activityId={a.id} initialName={a.title} />
-            <p style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
+            <div data-activity-title="">
+              <ActivityTitle activityId={a.id} initialName={a.title} />
+            </div>
+            <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
               {SPORT_LABEL[a.sport_type]}
               {' · '}
               {fmtDate(a.started_at)}
@@ -3434,14 +3467,14 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                     paddingLeft: i % 3 !== 0 ? 12 : 0,
                     marginBottom: i < 3 ? 8 : 0,
                   }}>
-                    <p style={{
+                    <p data-stat-label="" style={{
                       fontSize: 10, fontWeight: 700,
                       letterSpacing: '0.08em', textTransform: 'uppercase',
                       color: 'var(--text-muted)', margin: '0 0 3px',
                     }}>
                       {s.label}
                     </p>
-                    <p style={{
+                    <p data-stat-value="" style={{
                       fontSize: 18, fontWeight: 700,
                       color: 'var(--text)', margin: 0, lineHeight: 1.2,
                     }}>

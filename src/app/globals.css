@@ -602,6 +602,7 @@ button:active { transform: scale(0.97); }
 
 /* ── Page activité plein écran mobile ─────────────────────── */
 @media (max-width: 767px) {
+  /* Approche body:has() (navigateurs modernes) */
   body:has([data-fullscreen-activity]) [data-app-header] {
     display: none !important;
   }
@@ -609,6 +610,24 @@ button:active { transform: scale(0.97); }
     display: none !important;
   }
   body:has([data-fullscreen-activity]) main {
+    margin-top: 0 !important;
+    padding: 0 !important;
+    height: 100vh !important;
+  }
+
+  /* Approche className (fallback fiable via useEffect) */
+  body.hide-app-header [data-app-header],
+  body.hide-app-header header,
+  body.hide-app-header nav[role="navigation"]:first-of-type {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  body.hide-app-header [data-mobile-nav] {
+    display: none !important;
+  }
+  body.hide-app-header main {
     margin-top: 0 !important;
     padding: 0 !important;
     height: 100vh !important;

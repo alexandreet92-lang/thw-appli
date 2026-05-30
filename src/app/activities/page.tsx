@@ -1471,6 +1471,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const [showSelModal, setShowSelModal]  = useState(false)
   const containerRef   = useRef<HTMLDivElement>(null)
   const tracksAreaRef  = useRef<HTMLDivElement>(null)
+  const handleMoveRef  = useRef<(clientX: number, clientY: number) => void>(() => {})
 
   // Distances cumulées le long du tracé polyline (pour mapping curseur → GPS)
   const polyCumDist = useMemo(
@@ -1508,6 +1509,36 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
       }
     }
   }
+
+  // Ref always points to latest handleMove — used by native touch listener
+  handleMoveRef.current = handleMove
+
+  // Native touchmove with passive:false — bloque le scroll pendant le scrub
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const t = e.touches[0]
+      if (!t) return
+      setIsOverCharts(true)
+      handleMoveRef.current(t.clientX, t.clientY)
+    }
+    const onTouchEndCancel = () => {
+      setIsOverCharts(false)
+      setCursorPct(null)
+      setMousePos(null)
+    }
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEndCancel)
+    el.addEventListener('touchcancel', onTouchEndCancel)
+    return () => {
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEndCancel)
+      el.removeEventListener('touchcancel', onTouchEndCancel)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleDown(clientX: number) {
     const chartEl = tracksAreaRef.current ?? containerRef.current
@@ -1685,9 +1716,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         onMouseLeave={() => { setIsOverCharts(false); setCursorPct(null); setMousePos(null); onHoverGps?.(null) }}
         onMouseDown={e => handleDown(e.clientX)}
         onMouseUp={handleUp}
-        onTouchStart={e => { e.preventDefault(); setIsOverCharts(true); handleDown(e.touches[0].clientX) }}
-        onTouchMove={e => { e.preventDefault(); setIsOverCharts(true); handleMove(e.touches[0].clientX, e.touches[0].clientY) }}
-        onTouchEnd={() => { setIsOverCharts(false); setCursorPct(null); setMousePos(null); handleUp() }}
+        onTouchStart={e => { setIsOverCharts(true); handleDown(e.touches[0].clientX) }}
+        onTouchEnd={() => { handleUp() }}
       >
         {/* Cursor line */}
         {isOverCharts && cursorPct !== null && mousePos !== null && (
@@ -3321,20 +3351,21 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
             </div>
           )}
-          {/* Bouton retour overlay */}
+          {/* Bouton retour overlay — fond sombre visible sur toute carte */}
           <button
             onClick={onClose}
             style={{
-              position: 'absolute', top: 16, left: 16, zIndex: 10,
+              position: 'absolute', top: 16, left: 12, zIndex: 20,
               width: 36, height: 36, borderRadius: '50%',
-              backgroundColor: 'rgba(255,255,255,0.88)',
+              backgroundColor: 'rgba(0,0,0,0.55)',
               backdropFilter: 'blur(8px)',
-              border: 'none', cursor: 'pointer',
+              border: '1.5px solid rgba(255,255,255,0.25)',
+              cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
             }}
           >
-            <ChevronLeft size={20} color="#0f172a" />
+            <ChevronLeft size={18} color="white" strokeWidth={2.5} />
           </button>
         </div>
 
@@ -3368,7 +3399,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           {/* Stats 3×2 compact */}
           {(() => {
             const km = a.distance_m ? (Number(a.distance_m)/1000).toFixed(2) : null
-            const avgSpeedKmh = a.avg_speed_ms ? (Number(a.avg_speed_ms)*3.6).toFixed(1) : null
+            const avgSpeedKmh = a.avg_speed_ms
+              ? (Number(a.avg_speed_ms)*3.6).toFixed(1)
+              : (a.avg_pace_s_km && Number(a.avg_pace_s_km) > 0)
+                ? (3600 / Number(a.avg_pace_s_km)).toFixed(1)
+                : (a.moving_time_s && a.distance_m && Number(a.distance_m) > 100)
+                  ? ((Number(a.distance_m) / Number(a.moving_time_s)) * 3.6).toFixed(1)
+                  : null
             const avgWattsVal = a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null
             const elevGainVal = (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null
             const tssVal = a.tss ? Math.round(Number(a.tss)).toString() : null
@@ -3505,7 +3542,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                     </Section>
                   )}
                   {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
-                    <Section title="Découplage">
+                    <div style={{ marginBottom: 18 }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
                         <button onClick={() => setShowDecoupling(v => !v)} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
@@ -3520,10 +3557,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                           temp={s.temp} time={s.time}
                         />
                       )}
-                    </Section>
+                    </div>
                   )}
                   {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
-                    <Section title="Durée cumulée">
+                    <div style={{ marginBottom: 18 }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
                         <button onClick={() => setShowHrCumulative(v => !v)} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
@@ -3534,7 +3571,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                       {showHrCumulative && (
                         <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
                       )}
-                    </Section>
+                    </div>
                   )}
                 </>
               )

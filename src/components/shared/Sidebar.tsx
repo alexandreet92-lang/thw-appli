@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useProfile } from '@/hooks/useProfile'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -165,17 +165,6 @@ const NAV = [
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
         <path d="M12 8v4M12 16h.01"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/athletes',
-    label: 'Athlètes',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
       </svg>
     ),
   },
@@ -556,6 +545,8 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
 export function Sidebar() {
   const [aiOpen, setAiOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { profile } = useProfile()
   const pathname = usePathname()
 
@@ -565,23 +556,75 @@ export function Sidebar() {
   return (
     <>
       {/* ════════════════════════════════════════════════════
-          DESKTOP — sidebar statique 240px, toujours visible
-          Elle s'insère dans le flex row du layout.tsx et
-          prend 240px ; la <main> prend le reste (flex:1).
+          DESKTOP — hamburger fixe + sidebar overlay
+          Le hamburger (hover → ouvre, click → toggle).
+          La sidebar est un overlay fixe qui glisse sur le contenu.
           ════════════════════════════════════════════════════ */}
+
+      {/* Hamburger desktop */}
+      <button
+        className="hidden md:flex"
+        onClick={() => setDesktopOpen(o => !o)}
+        onMouseEnter={() => {
+          if (window.innerWidth < 768) return
+          if (closeTimer.current) clearTimeout(closeTimer.current)
+          setDesktopOpen(true)
+        }}
+        aria-label="Menu"
+        style={{
+          position: 'fixed', top: 12, left: 12, zIndex: 100,
+          flexDirection: 'column', justifyContent: 'center',
+          alignItems: 'center', gap: 5,
+          width: 36, height: 36,
+          background: 'var(--nav-bg)',
+          border: '1px solid var(--nav-border)',
+          borderRadius: 8,
+          cursor: 'pointer',
+          padding: 0,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        }}
+      >
+        <span style={{ display: 'block', width: 16, height: 1.5, background: 'var(--text)', borderRadius: 2 }} />
+        <span style={{ display: 'block', width: 16, height: 1.5, background: 'var(--text)', borderRadius: 2 }} />
+        <span style={{ display: 'block', width: 16, height: 1.5, background: 'var(--text)', borderRadius: 2 }} />
+      </button>
+
+      {/* Overlay backdrop desktop */}
+      <div
+        className="hidden md:block"
+        onClick={() => setDesktopOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 89,
+          background: 'rgba(0,0,0,0.25)',
+          opacity: desktopOpen ? 1 : 0,
+          pointerEvents: desktopOpen ? 'auto' : 'none',
+          transition: 'opacity 0.25s ease',
+        }}
+      />
+
+      {/* Desktop sidebar — fixed overlay */}
       <aside
         className="hidden md:flex"
+        onMouseEnter={() => {
+          if (closeTimer.current) clearTimeout(closeTimer.current)
+        }}
+        onMouseLeave={() => {
+          closeTimer.current = setTimeout(() => setDesktopOpen(false), 250)
+        }}
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
           width: 240,
-          flexShrink: 0,
           height: '100vh',
           background: 'var(--nav-bg)',
           borderRight: '1px solid var(--nav-border)',
           flexDirection: 'column',
           overflow: 'hidden',
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
+          zIndex: 90,
+          transform: desktopOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+          boxShadow: desktopOpen ? '4px 0 24px rgba(0,0,0,0.15)' : 'none',
         }}
       >
         <SidebarContent onOpenAI={() => setAiOpen(o => !o)} />

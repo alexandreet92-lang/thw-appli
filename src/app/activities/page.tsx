@@ -4629,7 +4629,7 @@ function TrainingPageInner() {
   const zones   = useTrainingZones()
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [sectionOpen, setSectionOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [syncing, setSyncing]           = useState(false)
   const [syncingPolar, setSyncingPolar] = useState(false)
@@ -4638,8 +4638,9 @@ function TrainingPageInner() {
   const [appMenuOpen, setAppMenuOpen] = useState(false)
   const [menuPos, setMenuPos]         = useState({ top: 0, right: 0 })
   const [connectedProviders, setConnectedProviders] = useState<string[]>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const appBtnRef    = useRef<HTMLButtonElement>(null)
+  const fileInputRef       = useRef<HTMLInputElement>(null)
+  const appBtnRef          = useRef<HTMLButtonElement>(null)
+  const sectionDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('/api/oauth/status').then(r => r.json())
@@ -4782,83 +4783,127 @@ function TrainingPageInner() {
 
   function handleFileImport() { fileInputRef.current?.click() }
 
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (sectionDropdownRef.current && !sectionDropdownRef.current.contains(e.target as Node)) {
+        setSectionOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
 
-      {/* ── TOP BAR ── */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        background: T.bg,
-        height: T.topH, display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', padding: '0 20px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.3, fontFamily: T.fontDisplay }}>Training</span>
-          {!isMobile && <span style={{ fontSize: 12, color: T.textMuted }}>/ {active.label}</span>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
-          {!loading && !error && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>{totalCount ?? activities.length} activités</span>}
-          {syncing && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#FC4C02', fontWeight: 600 }}><Spinner size={12} color="#FC4C02" /> Strava</span>}
-          {syncingPolar && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#D0021B', fontWeight: 600 }}><Spinner size={12} color="#D0021B" /> Polar</span>}
-          {syncMsg && !syncing && !syncingPolar && (
-            <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg.includes('jour') ? T.textMuted : '#ef4444',
-              fontFamily: T.fontBody, fontWeight: 600 }}>{syncMsg}</span>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".fit,.gpx"
-            style={{ display: 'none' }}
-            onChange={handleImportFile}
-          />
-          <button
-            ref={appBtnRef}
-            onClick={handleAppBtn}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            App
-            <ChevronDown size={13} className="text-muted-foreground" />
-          </button>
-          {appMenuOpen && createPortal(
-            <div className="fixed inset-0 z-[9999]" onClick={() => setAppMenuOpen(false)}>
-              <div
-                className="absolute w-52 bg-background border border-border rounded-2xl shadow-2xl overflow-hidden"
-                style={{ top: menuPos.top, right: menuPos.right }}
-                onClick={e => e.stopPropagation()}
+      {/* ── TOP BAR — section dropdown + boutons ── */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--border)',
+        }}>
+          {/* Gauche : dropdown de section animé */}
+          <div ref={sectionDropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setSectionOpen(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{active.label}</span>
+              {!isMobile && (
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{active.desc}</span>
+              )}
+              <svg width="12" height="12" viewBox="0 0 12 12"
+                style={{ transform: sectionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 250ms ease', flexShrink: 0 }}
               >
-                {[
-                  { name: 'Strava',  color: '#FC4C02', connected: stravaConnected,  onPress: () => syncStrava() },
-                  { name: 'Garmin',  color: '#007DC5', connected: garminConnected,  onPress: () => handleFileImport() },
-                  { name: 'Polar',   color: '#D0021B', connected: polarConnected,   onPress: () => syncPolar() },
-                ].map((svc, i, arr) => (
-                  <button
-                    key={svc.name}
-                    onClick={() => { svc.onPress(); setAppMenuOpen(false) }}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors text-left${i < arr.length - 1 ? ' border-b border-border' : ''}`}
-                  >
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: svc.color }} />
-                    <span className="text-sm font-medium text-foreground flex-1">{svc.name}</span>
-                    {svc.connected
-                      ? <span className="text-[11px] font-medium text-green-500">Connecté</span>
-                      : <span className="text-[11px] text-muted-foreground">{svc.name === 'Garmin' ? 'Importer' : 'Non connecté'}</span>
-                    }
-                  </button>
-                ))}
-              </div>
-            </div>,
-            document.body
-          )}
-          <button
-            onClick={reload}
-            title="Recharger depuis la base"
-            style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
-              color: T.textSub, cursor: 'pointer', padding: '5px 9px', fontSize: 13,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 28 }}
-          >
-            {loading ? <Spinner size={13} color={T.textSub} /> : '↻'}
-          </button>
-          <button onClick={reopenHelp} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
+                <path d="M2 4l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+              </svg>
+            </button>
+            {/* Menu déroulant animé */}
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, minWidth: 220, zIndex: 200,
+              backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
+              maxHeight: sectionOpen ? '300px' : '0px',
+              opacity: sectionOpen ? 1 : 0,
+              transition: 'max-height 300ms cubic-bezier(0.32,0.72,0,1), opacity 200ms ease',
+              pointerEvents: sectionOpen ? 'auto' : 'none',
+            }}>
+              {NAV.map(n => (
+                <button key={n.id}
+                  onClick={() => { setSection(n.id); setSectionOpen(false) }}
+                  style={{
+                    width: '100%', padding: '14px 16px',
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                    textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
+                    backgroundColor: n.id === section ? 'rgba(6,182,212,0.08)' : 'transparent',
+                    borderLeft: n.id === section ? '3px solid #06B6D4' : '3px solid transparent',
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{n.label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{n.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Droite : statuts de sync + boutons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
+            {syncing && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#FC4C02', fontWeight: 600 }}><Spinner size={12} color="#FC4C02" /> Strava</span>}
+            {syncingPolar && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#D0021B', fontWeight: 600 }}><Spinner size={12} color="#D0021B" /> Polar</span>}
+            {syncMsg && !syncing && !syncingPolar && (
+              <span style={{ fontSize: 11, color: syncMsg.startsWith('+') ? '#22c55e' : syncMsg.includes('jour') ? T.textMuted : '#ef4444', fontFamily: T.fontBody, fontWeight: 600 }}>{syncMsg}</span>
+            )}
+            <input ref={fileInputRef} type="file" accept=".fit,.gpx" style={{ display: 'none' }} onChange={handleImportFile} />
+            <button
+              ref={appBtnRef}
+              onClick={handleAppBtn}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              App
+              <ChevronDown size={13} className="text-muted-foreground" />
+            </button>
+            {appMenuOpen && createPortal(
+              <div className="fixed inset-0 z-[9999]" onClick={() => setAppMenuOpen(false)}>
+                <div
+                  className="absolute w-52 bg-background border border-border rounded-2xl shadow-2xl overflow-hidden"
+                  style={{ top: menuPos.top, right: menuPos.right }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {[
+                    { name: 'Strava', color: '#FC4C02', connected: stravaConnected,  onPress: () => syncStrava() },
+                    { name: 'Garmin', color: '#007DC5', connected: garminConnected,  onPress: () => handleFileImport() },
+                    { name: 'Polar',  color: '#D0021B', connected: polarConnected,   onPress: () => syncPolar() },
+                  ].map((svc, i, arr) => (
+                    <button
+                      key={svc.name}
+                      onClick={() => { svc.onPress(); setAppMenuOpen(false) }}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors text-left${i < arr.length - 1 ? ' border-b border-border' : ''}`}
+                    >
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: svc.color }} />
+                      <span className="text-sm font-medium text-foreground flex-1">{svc.name}</span>
+                      {svc.connected
+                        ? <span className="text-[11px] font-medium text-green-500">Connecté</span>
+                        : <span className="text-[11px] text-muted-foreground">{svc.name === 'Garmin' ? 'Importer' : 'Non connecté'}</span>
+                      }
+                    </button>
+                  ))}
+                </div>
+              </div>,
+              document.body
+            )}
+            <button
+              onClick={reload}
+              title="Recharger depuis la base"
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
+                color: T.textSub, cursor: 'pointer', padding: '5px 9px', fontSize: 13,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 28 }}
+            >
+              {loading ? <Spinner size={13} color={T.textSub} /> : '↻'}
+            </button>
+            <button onClick={reopenHelp} style={{ width:28, height:28, borderRadius:'50%', background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.25)', color:'#06B6D4', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>?</button>
+          </div>
         </div>
       </div>
 
@@ -4958,56 +5003,6 @@ function TrainingPageInner() {
 
         {/* ── CONTENT ── */}
         <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '14px 12px' : '22px 28px' }}>
-
-          {/* Mobile nav */}
-          {isMobile && (
-            <div data-mobile-nav="" style={{ marginBottom: 16 }}>
-              <button
-                onClick={() => setMobileOpen(o => !o)}
-                style={{
-                  width: '100%', background: T.surface, border: `1px solid ${T.border}`,
-                  borderRadius: T.radius, padding: '10px 14px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  color: T.text,
-                }}
-              >
-                <div>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{active.label}</span>
-                  <span style={{ fontSize: 11, color: T.textMuted, marginLeft: 8 }}>{active.desc}</span>
-                </div>
-                <span style={{ fontSize: 11, color: T.textMuted, transform: mobileOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              </button>
-              {mobileOpen && (
-                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, marginTop: 6, overflow: 'hidden' }}>
-                  {NAV.map(n => {
-                    const isActive = n.id === section
-                    return (
-                      <button
-                        key={n.id}
-                        onClick={() => { setSection(n.id); setMobileOpen(false) }}
-                        style={{
-                          width: '100%', textAlign: 'left', background: isActive ? T.accentBg : T.surface,
-                          border: 'none', padding: '11px 16px', cursor: 'pointer', borderBottom: `1px solid ${T.border}`,
-                        }}
-                      >
-                        <div style={{ fontSize: 13, color: isActive ? T.accentText : T.text, fontWeight: isActive ? 600 : 400 }}>{n.label}</div>
-                        <div style={{ fontSize: 11, color: T.textMuted }}>{n.desc}</div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Page heading */}
-          {!isMobile && (
-            <div style={{ marginBottom: 20 }}>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>{active.label}</h1>
-              <p style={{ margin: '3px 0 0', fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{active.desc}</p>
-            </div>
-          )}
-
 
           {/* Error */}
           {error && (

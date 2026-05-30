@@ -3373,13 +3373,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             const elevGainVal = (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null
             const tssVal = a.tss ? Math.round(Number(a.tss)).toString() : null
             const STATS = [
-              { label: 'Distance',   value: !isGym && km ? `${km} km` : null },
-              { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-              { label: 'Vitesse',    value: (isBike || isRun) && avgSpeedKmh ? `${avgSpeedKmh} km/h` : null },
-              { label: 'Watts moy.', value: isBike ? avgWattsVal : (isRun && paceS ? fmtPace(paceS) : null) },
-              { label: 'D+',         value: elevGainVal },
-              { label: 'TSS',        value: tssVal },
-            ].filter(s => s.value)
+              { label: 'Distance',   value: !isGym && km ? `${km} km` : '—' },
+              { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+              { label: 'Vitesse',    value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
+              { label: isBike ? 'Watts moy.' : 'Allure', value: isBike ? (avgWattsVal ?? '—') : (paceS ? fmtPace(paceS) : '—') },
+              { label: 'D+',         value: elevGainVal ?? '—' },
+              { label: 'TSS',        value: tssVal ?? '—' },
+            ]
             return (
               <div style={{
                 display: 'grid',
@@ -4915,7 +4915,7 @@ function TrainingPageInner() {
 
           {/* Mobile nav */}
           {isMobile && (
-            <div style={{ marginBottom: 16 }}>
+            <div data-mobile-nav="" style={{ marginBottom: 16 }}>
               <button
                 onClick={() => setMobileOpen(o => !o)}
                 style={{

@@ -113,12 +113,12 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
             <FitBounds points={points} />
           </>
         )}
-        {/* Point curseur — suit la position de la souris sur les courbes */}
+        {/* Point curseur — suit la position du doigt/souris sur les courbes (blanc = distinct de l'arrivée rouge) */}
         {hoverGps && (
           <CircleMarker
             center={[hoverGps.lat, hoverGps.lng]}
             radius={8}
-            pathOptions={{ fillColor: '#FF4444', fillOpacity: 1, color: 'white', weight: 2.5 }}
+            pathOptions={{ fillColor: '#ffffff', fillOpacity: 1, color: '#0f172a', weight: 2.5 }}
           />
         )}
       </MapContainer>

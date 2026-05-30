@@ -605,8 +605,12 @@ button:active { transform: scale(0.97); }
   body:has([data-fullscreen-activity]) [data-app-header] {
     display: none !important;
   }
+  body:has([data-fullscreen-activity]) [data-mobile-nav] {
+    display: none !important;
+  }
   body:has([data-fullscreen-activity]) main {
     margin-top: 0 !important;
+    padding: 0 !important;
     height: 100vh !important;
   }
 }

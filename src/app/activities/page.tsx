@@ -20,6 +20,8 @@ import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
+import { LapsChart } from '@/components/activity/LapsChart'
+import { LapsTable } from '@/components/activity/LapsTable'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -114,14 +116,18 @@ interface StreamData {
 }
 
 interface LapData {
-  lap_index?:    number
-  start_index?:  number
-  end_index?:    number
-  distance_m:    number
-  moving_time_s: number
-  avg_hr?:       number | null
-  avg_speed_ms?: number | null
-  avg_watts?:    number | null
+  lap_index?:       number
+  start_index?:     number
+  end_index?:       number
+  distance_m:       number
+  moving_time_s:    number
+  elapsed_time_s?:  number | null
+  avg_hr?:          number | null
+  max_heartrate?:   number | null
+  avg_speed_ms?:    number | null
+  avg_watts?:       number | null
+  max_watts?:       number | null
+  avg_cadence?:     number | null
 }
 
 interface TrainingZoneRow {
@@ -2785,6 +2791,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   // Mobile — sections repliables
   const [showDecoupling,       setShowDecoupling]       = useState(false)
   const [showHrCumulative,     setShowHrCumulative]     = useState(false)
+  const [hoveredLapBar,        setHoveredLapBar]        = useState<number | null>(null)
 
   // ── FIX 1 : masque le header app sur mobile ──────────────────
   useEffect(() => {
@@ -3899,6 +3906,31 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           </div>
         )}
 
+        {/* ── LAPS ── */}
+        {a.laps && a.laps.length > 1 && (
+          <div style={{ marginBottom: 32, paddingTop: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+              Laps · {a.laps.length} tours
+            </div>
+            <LapsChart
+              laps={a.laps}
+              streams={a.streams}
+              avgWatts={a.avg_watts}
+              hoveredLap={hoveredLapBar}
+              onHoverLap={setHoveredLapBar}
+            />
+            <LapsTable
+              laps={a.laps}
+              streams={a.streams}
+              sport={a.sport_type}
+              maxHrEst={estimateMaxHr(profile.birth_date)}
+              hoveredLap={hoveredLapBar}
+              onHoverLap={setHoveredLapBar}
+            />
+          </div>
+        )}
+
         {/* ── ZONES ── */}
         {((isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
           (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
@@ -4027,45 +4059,6 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           </div>
         )}
 
-        {/* ── LAPS TABLE ── */}
-        {a.laps && a.laps.length > 1 && (
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-              textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-              Intervalles — {a.laps.length} tours
-            </div>
-            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ textAlign: 'left', color: T.textMuted }}>
-                    {['#','Dist.','Durée', isBike ? 'Watts' : 'Allure', 'FC'].map(h => (
-                      <th key={h} style={{ padding: '3px 8px 6px 0', fontWeight: 500, fontSize: 10 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {a.laps.map((lap, i) => {
-                    const lp = lap.moving_time_s && lap.distance_m > 0 ? (lap.moving_time_s / lap.distance_m) * 1000 : null
-                    return (
-                      <tr key={i} style={{ borderTop: `1px solid ${T.border}` }}>
-                        <td style={{ padding: '5px 8px 5px 0', color: T.textMuted }}>{i+1}</td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>{!isGym ? fmtDist(lap.distance_m) : '—'}</td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>{fmtDur(lap.moving_time_s)}</td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>
-                          {isBike
-                            ? (lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—')
-                            : (isRun||isSwim) ? fmtPace(lp)
-                            : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'}
-                        </td>
-                        <td style={{ padding: '5px 8px 5px 0' }}>{lap.avg_hr ? `${Math.round(lap.avg_hr)} bpm` : '—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
       </div>
 

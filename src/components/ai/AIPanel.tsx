@@ -18890,7 +18890,7 @@ export default function AIPanel({
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, animation: 'ai_slidein 0.25s ease', padding: '40px 20px' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                  src={model === 'zeus' ? '/logos/logo_6bras.png' : model === 'hermes' ? '/logos/logo_3bras.png' : '/logos/logo_4bras.png'}
                   width={48}
                   height={48}
                   alt=""
@@ -19484,7 +19484,7 @@ export default function AIPanel({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                    src={model === 'zeus' ? '/logos/logo_6bras.png' : model === 'hermes' ? '/logos/logo_3bras.png' : '/logos/logo_4bras.png'}
                     width={14}
                     height={14}
                     alt=""

@@ -17851,6 +17851,7 @@ export default function AIPanel({
   const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
   const [showQuickActions, setShowQuickActions] = useState(true)
+  const [activeAgent,      setActiveAgent]      = useState<'training' | 'networks'>('training')
 
   // ── Voice input (Web Speech API) ──
   const { isListening, startListening, stopListening } = useVoiceInput(
@@ -18692,37 +18693,29 @@ export default function AIPanel({
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* CSS variables — palette reduite Claude.ai style */
+        /* CSS variables — héritées du thème global */
         .aip-root {
-          --ai-bg:          #ffffff;
-          --ai-bg2:         #F7F7F7;
-          --ai-border:      rgba(0,0,0,0.06);
-          --ai-text:        #0A0A0A;
-          --ai-mid:         #8C8C8C;
-          --ai-dim:         #8C8C8C;
-          --ai-accent:      #2563EB;
-          --ai-accent-dim:  rgba(37,99,235,0.10);
-          --ai-accent-soft: rgba(37,99,235,0.06);
-          --ai-accent-line: rgba(37,99,235,0.40);
+          --ai-bg:          var(--bg);
+          --ai-bg2:         var(--bg-card);
+          --ai-border:      var(--border);
+          --ai-text:        var(--text);
+          --ai-mid:         var(--text-mid);
+          --ai-dim:         var(--text-dim);
+          --ai-accent:      #06B6D4;
+          --ai-accent-dim:  rgba(6,182,212,0.10);
+          --ai-accent-soft: rgba(6,182,212,0.06);
+          --ai-accent-line: rgba(6,182,212,0.40);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
           /* Quick actions sheet vars */
-          --aiq-bg:          #ffffff;
-          --aiq-sidebar-bg:  #F7F7F7;
+          --aiq-bg:          var(--bg);
+          --aiq-sidebar-bg:  var(--bg-alt);
         }
         html.dark .aip-root {
-          --ai-bg:          #0A0A0A;
-          --ai-bg2:         #141414;
-          --ai-border:      rgba(255,255,255,0.07);
-          --ai-text:        #FAFAFA;
-          --ai-mid:         #8C8C8C;
-          --ai-dim:         #8C8C8C;
-          --ai-accent:      #2563EB;
-          --ai-accent-dim:  rgba(37,99,235,0.15);
-          --ai-accent-soft: rgba(37,99,235,0.08);
-          --ai-accent-line: rgba(37,99,235,0.45);
+          --ai-accent:      #06B6D4;
+          --ai-accent-dim:  rgba(6,182,212,0.15);
+          --ai-accent-soft: rgba(6,182,212,0.08);
+          --ai-accent-line: rgba(6,182,212,0.45);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
-          --aiq-bg:          #0A0A0A;
-          --aiq-sidebar-bg:  #1A1A1A;
         }
 
         /* Panneau */
@@ -18899,9 +18892,48 @@ export default function AIPanel({
                 <p style={{ textAlign: 'center', margin: '16px 0 6px', fontSize: 20, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.3 }}>
                   {mounted ? (getGreeting() === 'matin' ? 'Bonjour, bon matin !' : getGreeting() === 'après-midi' ? 'Bon après-midi !' : 'Bonsoir !') : 'Bonjour !'}
                 </p>
-                <p style={{ textAlign: 'center', fontSize: 13, color: '#8C8C8C', margin: 0 }}>
-                  Comment puis-je t'aider ?
+                <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--ai-dim)', margin: 0 }}>
+                  Comment puis-je t&apos;aider ?
                 </p>
+
+                {/* Chips de suggestions */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 32, width: '100%', maxWidth: 380 }}>
+                  {[
+                    'Analyse ma dernière séance',
+                    'Crée un plan d\'entraînement semaine',
+                    'Comment améliorer mon FTP ?',
+                    'Évalue ma charge d\'entraînement',
+                  ].map((chip, i) => (
+                    <button
+                      key={chip}
+                      disabled={activeAgent === 'networks'}
+                      onClick={() => {
+                        if (activeAgent === 'networks') return
+                        setInput(chip)
+                        setTimeout(() => areaRef.current?.focus(), 50)
+                      }}
+                      style={{
+                        background: 'var(--ai-bg2)',
+                        border: '1px solid var(--ai-border)',
+                        borderRadius: 12,
+                        padding: '12px 14px',
+                        fontSize: 13,
+                        color: 'var(--ai-mid)',
+                        cursor: activeAgent === 'networks' ? 'not-allowed' : 'pointer',
+                        textAlign: 'left' as const,
+                        lineHeight: 1.4,
+                        opacity: activeAgent === 'networks' ? 0.4 : 1,
+                        transition: 'border-color 200ms, background 200ms',
+                        animation: `ai_slidein 0.3s ease ${0.1 + i * 0.08}s both`,
+                        fontFamily: 'DM Sans, sans-serif',
+                      }}
+                      onMouseEnter={e => { if (activeAgent !== 'networks') (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)' }}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -19311,8 +19343,8 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           <div
-            className="px-4 pt-2 pb-6 bg-white dark:bg-[#0A0A0A]"
-            style={{ flexShrink: 0, position: 'relative' }}
+            className="px-4 pt-2 pb-6"
+            style={{ flexShrink: 0, position: 'relative', background: 'var(--ai-bg)' }}
           >
             {/* Quick actions sheet */}
             <QuickActionsSheet
@@ -19337,12 +19369,12 @@ export default function AIPanel({
 
             {/* ── Conteneur principal de saisie ── */}
             <div
-              className="aip-input-wrap max-w-[680px] mx-auto
-                         bg-white dark:bg-[#1E1E1E]
-                         rounded-2xl
-                         border border-[#E8E8E8] dark:border-[#2A2A2A]
-                         shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
-              style={{ transition: 'box-shadow 0.15s' }}
+              className="aip-input-wrap max-w-[760px] mx-auto rounded-2xl"
+              style={{
+                transition: 'box-shadow 0.15s, border-color 0.2s',
+                background: 'var(--ai-bg2)',
+                border: '1.5px solid var(--ai-border)',
+              }}
             >
 
               {/* Citation de texte sélectionné */}
@@ -19445,13 +19477,12 @@ export default function AIPanel({
                   ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
                   : 'Pose ta question…'}
                 rows={1}
-                className="w-full px-4 pt-4 pb-2 bg-transparent resize-none
-                           text-[15px] leading-relaxed
-                           text-[#0A0A0A] dark:text-white
-                           placeholder:text-[#BABABA] dark:placeholder:text-[#555]
+                className="aip-textarea w-full px-4 pt-4 pb-2 bg-transparent resize-none
+                           text-[14px] leading-relaxed
                            focus:outline-none
-                           min-h-[56px] max-h-[180px] overflow-y-auto
+                           min-h-[44px] max-h-[120px] overflow-y-auto
                            border-0 font-[DM_Sans,sans-serif]"
+                style={{ color: 'var(--ai-text)' }}
               />
 
               {/* Ligne basse : + · agent · [spacer] · micro · envoyer */}
@@ -19470,30 +19501,46 @@ export default function AIPanel({
                   </svg>
                 </button>
 
-                {/* Agent pill */}
+                {/* Agent pills — Training (actif) / Networks (désactivé) */}
                 <button
-                  onClick={() => {
-                    const order: THWModel[] = ['athena', 'zeus', 'hermes']
-                    const idx = order.indexOf(model)
-                    setModel(order[(idx + 1) % 3])
+                  onClick={() => setActiveAgent('training')}
+                  style={{
+                    height: 32, padding: '0 14px',
+                    borderRadius: 20, border: activeAgent === 'training' ? '1px solid #06B6D4' : '1px solid var(--ai-border)',
+                    background: activeAgent === 'training' ? 'rgba(6,182,212,0.12)' : 'transparent',
+                    color: activeAgent === 'training' ? '#06B6D4' : 'var(--ai-dim)',
+                    fontWeight: activeAgent === 'training' ? 600 : 400,
+                    fontSize: 13, cursor: 'pointer', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all 150ms', fontFamily: 'DM Sans, sans-serif',
                   }}
-                  className="h-8 px-3 rounded-xl flex items-center gap-2 flex-shrink-0
-                             bg-[#F2F2F2] dark:bg-[#2A2A2A]
-                             hover:bg-[#E8E8E8] dark:hover:bg-[#333]
-                             transition-colors"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                    width={14}
-                    height={14}
-                    alt=""
-                    style={{ objectFit: 'contain' }}
-                  />
-                  <span className="text-[12px] font-medium text-[#0A0A0A] dark:text-white">
-                    {model === 'zeus' ? 'Networks' : 'Training'}
-                  </span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  Training
                 </button>
+                <div title="Bientôt disponible" style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    disabled
+                    style={{
+                      height: 32, padding: '0 14px',
+                      borderRadius: 20, border: '1px solid var(--ai-border)',
+                      background: 'transparent',
+                      color: 'var(--ai-dim)',
+                      fontWeight: 400, fontSize: 13,
+                      cursor: 'not-allowed', opacity: 0.45,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M2 12h20M12 2c-2.7 3.2-4 6.3-4 10s1.3 6.8 4 10M12 2c2.7 3.2 4 6.3 4 10s-1.3 6.8-4 10"/>
+                    </svg>
+                    Networks
+                  </button>
+                </div>
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
@@ -19502,11 +19549,15 @@ export default function AIPanel({
                 <button
                   onClick={isListening ? stopListening : startListening}
                   title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
-                    ${isListening
-                      ? 'bg-red-500 text-white animate-pulse'
-                      : 'bg-[#F2F2F2] dark:bg-[#2A2A2A] text-[#555] dark:text-[#999] hover:bg-[#E8E8E8] dark:hover:bg-[#333]'
-                    }`}
+                  style={{
+                    width: 32, height: 32, borderRadius: 12, flexShrink: 0,
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isListening ? '#EF4444' : 'transparent',
+                    color: isListening ? '#ffffff' : 'var(--ai-dim)',
+                    animation: isListening ? 'pulse-red 1.2s ease-in-out infinite' : 'none',
+                    transition: 'background 150ms, color 150ms',
+                  }}
                 >
                   <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
                     <rect x="3.5" y="0.5" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.3"/>
@@ -19540,16 +19591,21 @@ export default function AIPanel({
                       <button
                         onClick={() => void send()}
                         disabled={!canSend}
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
-                          ${canSend
-                            ? 'bg-[#0A0A0A] dark:bg-white text-white dark:text-[#0A0A0A] shadow-sm cursor-pointer'
-                            : 'bg-[#F2F2F2] dark:bg-[#2A2A2A] text-[#999] cursor-not-allowed'
-                          }`}
+                        style={{
+                          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                          border: 'none',
+                          background: canSend ? '#06B6D4' : 'var(--ai-border)',
+                          color: canSend ? '#ffffff' : 'var(--ai-dim)',
+                          cursor: canSend ? 'pointer' : 'not-allowed',
+                          opacity: canSend ? 1 : 0.5,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'opacity 150ms, transform 150ms, background 150ms',
+                        }}
+                        onMouseEnter={e => { if (canSend) (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = canSend ? '1' : '0.5' }}
                       >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M13 1L6.5 7.5M13 1L9 13l-2.5-5L1 5.5 13 1z"
-                            stroke="currentColor"
-                            strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 19V5M5 12l7-7 7 7"/>
                         </svg>
                       </button>
                     )

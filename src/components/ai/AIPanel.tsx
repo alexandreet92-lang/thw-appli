@@ -11259,6 +11259,11 @@ function actionIcon(flow: FlowId | undefined): React.ReactNode {
     case 'app_guide':         return <HelpCircle size={sz} color="var(--ai-mid)" />
     case 'analyze_training':  return <Activity size={sz} color="var(--ai-mid)" />
     case 'strategie_course':  return <MapIcon size={sz} color="var(--ai-mid)" />
+    case 'sessionbuilder':    return <Dumbbell size={sz} color="var(--ai-mid)" />
+    case 'analyser_semaine':  return <Activity size={sz} color="var(--ai-mid)" />
+    case 'analyser_recuperation': return <Activity size={sz} color="var(--ai-mid)" />
+    case 'conseils_sommeil':  return <Brain size={sz} color="var(--ai-mid)" />
+    case 'analyzetest':       return <Search size={sz} color="var(--ai-mid)" />
     default:                  return <Zap size={sz} color="var(--ai-mid)" />
   }
 }
@@ -11842,7 +11847,7 @@ function HistoryDrawer({
 }
 
 // ══════════════════════════════════════════════════════════════
-// QUICK ACTIONS — 5 actions principales
+// QUICK ACTIONS — toutes les actions rapides (flows fonctionnels)
 // ══════════════════════════════════════════════════════════════
 
 interface QuickAction {
@@ -11890,6 +11895,36 @@ const QUICK_ACTIONS: QuickAction[] = [
     sub: 'Plan de course personnalisé allures, nutrition, Plan B',
     flow: 'strategie_course' as FlowId,
     model: 'athena',
+  },
+  {
+    label: 'Créer une séance',
+    sub: 'Séance sur mesure selon ton sport et ta forme',
+    model: 'athena',
+    flow: 'sessionbuilder' as FlowId,
+  },
+  {
+    label: 'Analyser ma semaine',
+    sub: 'Bilan de charge, équilibre et risques de la semaine',
+    model: 'athena',
+    flow: 'analyser_semaine' as FlowId,
+  },
+  {
+    label: 'Analyser ma récupération',
+    sub: 'État de forme, HRV, sommeil et fatigue',
+    model: 'athena',
+    flow: 'analyser_recuperation' as FlowId,
+  },
+  {
+    label: 'Conseils sommeil',
+    sub: 'Recommandations pour mieux récupérer la nuit',
+    model: 'hermes',
+    flow: 'conseils_sommeil' as FlowId,
+  },
+  {
+    label: 'Analyser un test',
+    sub: 'Interprétation d\'un test de performance',
+    model: 'athena',
+    flow: 'analyzetest' as FlowId,
   },
 ]
 

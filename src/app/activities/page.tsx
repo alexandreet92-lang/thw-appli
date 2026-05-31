@@ -872,10 +872,13 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
 
   const W = 1000, H = 220
 
-  // Log scale: minSec=5, maxSec=activity duration (comme TrainingPeaks / intervals.icu)
+  // Sqrt scale: T_MIN=5s, T_MAX=activity duration
+  // Donne plus d'espace aux efforts longs que l'échelle log
   const actMax = Math.max(activityDurationS, DURATIONS.length > 0 ? DURATIONS[DURATIONS.length - 1] : 5, 5)
-  function logX(d: number): number {
-    return (Math.log(d) - Math.log(5)) / (Math.log(actMax) - Math.log(5)) * W
+  const sqrtMin = Math.sqrt(5)
+  const sqrtMax = Math.sqrt(actMax)
+  function sqrtX(t: number): number {
+    return (Math.sqrt(t) - sqrtMin) / (sqrtMax - sqrtMin) * W
   }
 
   const allVals = [...mmp, ...(recordCurve ?? [])]
@@ -889,9 +892,9 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   for (let w = 0; w <= maxYWatts; w += 200) yGridlines.push(w)
 
   function buildCurvePaths(vals: number[]): { fill: string; line: string } {
-    const pts = DURATIONS.map((d, i) => `${logX(d).toFixed(1)},${yOf(vals[i]).toFixed(1)}`)
+    const pts = DURATIONS.map((d, i) => `${sqrtX(d).toFixed(1)},${yOf(vals[i]).toFixed(1)}`)
     return {
-      fill: `M${logX(DURATIONS[0]).toFixed(1)},${H}L${pts.join('L')}L${logX(DURATIONS[DURATIONS.length-1]).toFixed(1)},${H}Z`,
+      fill: `M${sqrtX(DURATIONS[0]).toFixed(1)},${H}L${pts.join('L')}L${sqrtX(DURATIONS[DURATIONS.length-1]).toFixed(1)},${H}Z`,
       line: `M${pts.join('L')}`,
     }
   }
@@ -899,16 +902,17 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
   const recPaths = recordCurve ? buildCurvePaths(recordCurve) : null
 
-  // Log-aware hit detection: find nearest DURATION to cursor position in log space
-  const logIdx = useMemo((): number | null => {
+  // Sqrt-aware hit detection: find nearest DURATION to cursor position in sqrt space
+  const sqrtIdx = useMemo((): number | null => {
     if (pct === null || DURATIONS.length === 0) return null
     // SVG viewBox is "-32 0 {W+32} {H}", so svgX = -32 + pct*(W+32)
     const svgX = -32 + pct * (W + 32)
     const xClamped = Math.max(0, Math.min(W, svgX))
-    const dCursor = 5 * Math.exp(xClamped / W * Math.log(actMax / 5))
+    const sqrtT = xClamped / W * (sqrtMax - sqrtMin) + sqrtMin
+    const dCursor = sqrtT * sqrtT
     let best = 0, bestDist = Infinity
     DURATIONS.forEach((d, i) => {
-      const dist = Math.abs(Math.log(d) - Math.log(dCursor))
+      const dist = Math.abs(Math.sqrt(d) - Math.sqrt(dCursor))
       if (dist < bestDist) { bestDist = dist; best = i }
     })
     return best
@@ -936,16 +940,16 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
       </div>
 
       {/* Hover bar */}
-      {logIdx !== null && (
+      {sqrtIdx !== null && (
         <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[logIdx!]} W · {fmtDuration(DURATIONS[logIdx!])}</span>
-          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[logIdx!] / avgW).toFixed(2)}× moy.</span>
-          {recordCurve && recordCurve[logIdx!] > 0 && (
+          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[sqrtIdx!]} W · {fmtDuration(DURATIONS[sqrtIdx!])}</span>
+          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[sqrtIdx!] / avgW).toFixed(2)}× moy.</span>
+          {recordCurve && recordCurve[sqrtIdx!] > 0 && (
             <span style={{ fontSize: 10, color: '#EF4444', fontFamily: T.fontMono }}>
-              Record: {recordCurve[logIdx!]} W
+              Record: {recordCurve[sqrtIdx!]} W
             </span>
           )}
-          {recordStars.includes(logIdx!) && (
+          {recordStars.includes(sqrtIdx!) && (
             <span style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700 }}>★ Record !</span>
           )}
         </div>
@@ -988,7 +992,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
 
           {/* Key moment markers — rendered before cursor so cursor stays on top */}
           {keyMoments.map(({ d, label: kmLabel, watts: kmW, altY }) => {
-            const x  = logX(d)
+            const x  = sqrtX(d)
             const cy = yOf(kmW)
             const ly = altY ? cy - 24 : cy - 10
             return (
@@ -1008,15 +1012,15 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
 
           {/* Stars where session beats record */}
           {recordStars.map(i => (
-            <text key={i} x={logX(DURATIONS[i])} y={yOf(mmp[i]) - 6}
+            <text key={i} x={sqrtX(DURATIONS[i])} y={yOf(mmp[i]) - 6}
               textAnchor="middle" fontSize="13" fill="#F59E0B">★</text>
           ))}
 
-          {/* X axis labels in SVG — aligned with curve points, no HTML div offset issues */}
+          {/* X axis labels in SVG — sqrt-aware spacing */}
           {DURATIONS.map((d, i) => {
-            const x = logX(d)
+            const x = sqrtX(d)
             // Avoid crowding: show label only if enough horizontal room from neighbors
-            if (i > 0 && logX(DURATIONS[i-1]) > x - 28) return null
+            if (i > 0 && sqrtX(DURATIONS[i-1]) > x - 28) return null
             return (
               <text key={d} x={x} y={H + 14} textAnchor="middle"
                 fontSize="8" fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
@@ -1028,16 +1032,16 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
           {cursorX !== null && (
             <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
-          {logIdx !== null && (
-            <circle cx={logX(DURATIONS[logIdx])} cy={yOf(mmp[logIdx])} r="4" fill="#5b6fff"/>
+          {sqrtIdx !== null && (
+            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(mmp[sqrtIdx])} r="4" fill="#5b6fff"/>
           )}
-          {logIdx !== null && recordCurve && recordCurve[logIdx] > 0 && (
-            <circle cx={logX(DURATIONS[logIdx])} cy={yOf(recordCurve[logIdx])} r="3.5" fill="#EF4444" opacity="0.8"/>
+          {sqrtIdx !== null && recordCurve && recordCurve[sqrtIdx] > 0 && (
+            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(recordCurve[sqrtIdx])} r="3.5" fill="#EF4444" opacity="0.8"/>
           )}
         </svg>
 
         {/* MMP tooltip */}
-        {logIdx !== null && mmpMousePos && (
+        {sqrtIdx !== null && mmpMousePos && (
           <div style={{
             position: 'absolute',
             left: mmpMousePos.x > 300 ? mmpMousePos.x - 155 : mmpMousePos.x + 14,
@@ -1053,17 +1057,17 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             whiteSpace: 'nowrap',
           }}>
             <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4, fontFamily: T.fontMono }}>
-              {fmtDuration(DURATIONS[logIdx])}
+              {fmtDuration(DURATIONS[sqrtIdx])}
             </div>
             <div style={{ color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>
-              {mmp[logIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
+              {mmp[sqrtIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
             </div>
-            {recordCurve && recordCurve[logIdx] > 0 && (
+            {recordCurve && recordCurve[sqrtIdx] > 0 && (
               <div style={{ color: '#EF4444', fontFamily: T.fontMono, marginTop: 2 }}>
-                {recordCurve[logIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
+                {recordCurve[sqrtIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
               </div>
             )}
-            {recordStars.includes(logIdx) && (
+            {recordStars.includes(sqrtIdx) && (
               <div style={{ color: '#F59E0B', fontWeight: 700, marginTop: 3 }}>★ Nouveau record !</div>
             )}
           </div>

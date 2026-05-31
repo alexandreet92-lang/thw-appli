@@ -11370,6 +11370,7 @@ function PlusMenu({
       maxHeight: '72vh',
       overflowY: 'auto',
       padding: '0 0 8px',
+      animation: 'ai_slidein 0.18s ease-out',
     }}>
       {/* Handle */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 14px' }}>
@@ -11476,6 +11477,8 @@ function HistoryDrawer({
   onPin,
   onClose,
   persistent = false,
+  activeAgent,
+  onAgentChange,
 }: {
   convs: AIConv[]
   activeId: string | null
@@ -11485,12 +11488,14 @@ function HistoryDrawer({
   onPin: (id: string) => void
   onClose: () => void
   persistent?: boolean
+  activeAgent: 'training' | 'networks'
+  onAgentChange: (a: 'training' | 'networks') => void
 }) {
   const [menuId,   setMenuId]   = useState<string | null>(null)
   const [renId,    setRenId]    = useState<string | null>(null)
   const [renVal,   setRenVal]   = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [searchQ, setSearchQ]     = useState('')
+  const [searchQ]                 = useState('')
   // Gate SSR-safety pour fmtDate() qui utilise Date.now() au render.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -11507,58 +11512,102 @@ function HistoryDrawer({
 
   // ── Contenu partagé (header + liste + settings) ─────────────
 
+  const sectionLabelStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 600, letterSpacing: '1.2px',
+    textTransform: 'uppercase' as const, color: 'var(--text-dim)',
+    margin: '10px 0 4px', padding: '0 8px',
+  }
+  const dividerStyle: React.CSSProperties = {
+    height: 1, background: 'var(--border)', margin: '8px 12px',
+  }
+
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div style={{
-        padding: '12px 10px 8px',
-        borderBottom: '1px solid var(--ai-border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', fontFamily: 'Syne,sans-serif', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Conversations
+      {/* Titre Hybrid */}
+      <div style={{ padding: '18px 16px 8px', flexShrink: 0 }}>
+        <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
+          Hybrid
         </span>
-        <button
-          onClick={onNew}
-          title="Nouvelle conversation"
-          style={{
-            width: 28, height: 28, borderRadius: 8, border: 'none',
-            background: 'var(--ai-accent)',
-            opacity: 0.85,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
       </div>
 
-      {/* Search input (F1) */}
-      <div style={{ padding: '6px 8px', flexShrink: 0 }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
-            style={{ position: 'absolute', left: 8, pointerEvents: 'none', flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+      {/* Nouvelle conversation + Projets */}
+      <div style={{ padding: '0 8px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <button
+          onClick={onNew}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 8,
+            border: '0.5px solid var(--border)', background: 'transparent',
+            color: 'var(--text)', fontSize: 14, fontWeight: 400, cursor: 'pointer',
+            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            transition: 'background 0.12s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+            <path d="M12 5v14M5 12h14" />
           </svg>
-          <input
-            id="aip-conv-search"
-            type="text"
-            placeholder="Rechercher..."
-            value={searchQ}
-            onChange={e => setSearchQ(e.target.value)}
-            style={{
-              width: '100%', padding: '5px 8px 5px 26px', borderRadius: 6,
-              border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-              color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 11,
-              outline: 'none', boxSizing: 'border-box',
-            }}
-          />
+          Nouvelle conversation
+        </button>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 8,
+            color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          </svg>
+          Projets
         </div>
+      </div>
+
+      <div style={dividerStyle} />
+
+      {/* AGENTS */}
+      <div style={{ padding: '0 8px', flexShrink: 0 }}>
+        <div style={sectionLabelStyle}>Agents</div>
+        <button
+          onClick={() => onAgentChange('training')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 9,
+            width: '100%', padding: '8px 8px', borderRadius: 8,
+            border: 'none',
+            background: activeAgent === 'training' ? 'var(--bg-hover)' : 'transparent',
+            color: 'var(--text)', fontSize: 14,
+            fontWeight: activeAgent === 'training' ? 500 : 400,
+            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            transition: 'background 0.12s',
+          }}
+          onMouseEnter={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06B6D4', flexShrink: 0 }} />
+          Training
+        </button>
+        <div
+          title="Bientôt disponible"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 9,
+            width: '100%', padding: '8px 8px', borderRadius: 8,
+            color: 'var(--text)', fontSize: 14, fontWeight: 400,
+            fontFamily: 'DM Sans,sans-serif',
+            opacity: 0.38, cursor: 'not-allowed', pointerEvents: 'none',
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EC4899', flexShrink: 0 }} />
+          Networks
+        </div>
+      </div>
+
+      <div style={dividerStyle} />
+
+      {/* DISCUSSIONS label */}
+      <div style={{ padding: '0 8px', flexShrink: 0 }}>
+        <div style={sectionLabelStyle}>Discussions</div>
       </div>
 
       {/* Conversation list */}
@@ -11703,17 +11752,17 @@ function HistoryDrawer({
       </div>
 
       {/* ── Settings ── */}
-      <div style={{ borderTop: '1px solid var(--ai-border)', padding: '6px 8px 8px', flexShrink: 0 }}>
+      <div style={{ borderTop: '1px solid var(--border)', padding: '6px 8px 8px', flexShrink: 0 }}>
         <a
           href="/profile"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '12px 16px', borderRadius: 8,
-            color: '#374151', textDecoration: 'none',
-            fontFamily: 'DM Sans,sans-serif', fontSize: 13,
+            padding: '10px 12px', borderRadius: 8,
+            color: 'var(--text-mid)', textDecoration: 'none',
+            fontFamily: 'DM Sans,sans-serif', fontSize: 14,
             transition: 'background 0.12s',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#F5F5F5' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -11730,9 +11779,9 @@ function HistoryDrawer({
   if (persistent) {
     return (
       <div style={{
-        width: 190, flexShrink: 0,
-        borderRight: '1px solid var(--border-mid)',
-        background: 'var(--bg-alt)',
+        width: 240, flexShrink: 0,
+        borderRight: '0.5px solid var(--border)',
+        background: 'var(--bg-card)',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}>
@@ -11750,8 +11799,8 @@ function HistoryDrawer({
       />
       <div style={{
         position: 'absolute', top: 0, left: 0, bottom: 0,
-        width: 260, background: 'var(--bg-alt)',
-        borderRight: '1px solid var(--border-mid)',
+        width: 260, background: 'var(--bg-card)',
+        borderRight: '0.5px solid var(--border)',
         zIndex: 26, display: 'flex', flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.16)',
       }}>
@@ -19065,16 +19114,7 @@ export default function AIPanel({
 
         /* Textarea font — 16px toujours (évite zoom Safari sur iOS) */
         .aip-textarea { font-size: 16px !important; }
-
-        /* Focus : bordure du conteneur input */
-        .aip-input-wrap:focus-within {
-          border-color: rgba(0,200,224,0.45) !important;
-          box-shadow: 0 0 0 3px rgba(0,200,224,0.08) !important;
-        }
-        html.dark .aip-input-wrap:focus-within {
-          border-color: rgba(0,200,224,0.5) !important;
-          box-shadow: 0 0 0 3px rgba(0,200,224,0.1) !important;
-        }
+        .aip-textarea:focus { outline: none !important; box-shadow: none !important; }
         /* Icon buttons in header — hover effect */
         .aip-icon-btn {
           background: transparent !important;
@@ -19143,21 +19183,23 @@ export default function AIPanel({
           padding: 0 16px 16px !important;
         }
 
-        /* B2 — Input wrap: boîte avec présence visuelle (thème global) */
+        /* B2 — Input wrap: boîte centrée max 680px, sans glow au focus */
         .aip-input-wrap {
+          max-width: 680px !important;
+          margin: 0 auto !important;
+          width: 100% !important;
           border-radius: 14px !important;
           background: var(--bg-card) !important;
-          border: 1.5px solid var(--border-mid) !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
-          transition: border-color 200ms, box-shadow 200ms !important;
+          border: 0.5px solid var(--border-mid) !important;
+          box-shadow: none !important;
         }
         .aip-input-wrap:focus-within {
-          border-color: var(--primary) !important;
-          box-shadow: 0 0 0 3px rgba(0,200,224,0.12) !important;
+          border-color: var(--border-mid) !important;
+          box-shadow: none !important;
         }
         html.dark .aip-input-wrap:focus-within {
-          border-color: var(--primary) !important;
-          box-shadow: 0 0 0 3px rgba(0,200,224,0.12) !important;
+          border-color: var(--border-mid) !important;
+          box-shadow: none !important;
         }
 
         /* B4 — 3-dot bounce thinking animation */
@@ -19181,202 +19223,114 @@ export default function AIPanel({
 
         {/* ══ HEADER ════════════════════════════════════════ */}
         <div style={{
-          height: 50, padding: '0 12px',
-          borderBottom: '1px solid var(--ai-border)',
-          display: 'flex', alignItems: 'center', gap: 10,
+          height: 50, padding: '10px 12px 10px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           flexShrink: 0, background: 'var(--ai-bg)',
         }}>
-          {/* ── Agent Selector ──────────────────────────────── */}
-          <div ref={agentDropRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            <button
-              onClick={() => setAgentDropOpen(o => !o)}
-              aria-label="Sélectionner un agent IA"
-              aria-haspopup="menu"
-              aria-expanded={agentDropOpen}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                background: 'none', border: 'none', padding: 0,
-                cursor: 'pointer', maxWidth: '100%',
-              }}
-            >
-              <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--ai-text)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
-                {activeAgent === 'training' ? 'Hybrid Training' : 'Hybrid Networks'}
-              </span>
-              <svg
-                width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="var(--ai-dim)" strokeWidth="2.5" strokeLinecap="round"
-                style={{ flexShrink: 0, transition: 'transform 0.15s', transform: agentDropOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-              >
-                <path d="M6 9l6 6 6-6"/>
-              </svg>
-            </button>
+          {/* Titre = nom de la conversation active */}
+          <span style={{
+            fontSize: 14, fontWeight: 500, color: 'var(--text)',
+            fontFamily: 'DM Sans,sans-serif', lineHeight: 1.2,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            flex: 1, minWidth: 0,
+          }}>
+            {active ? active.title : 'Hybrid Training'}
+          </span>
 
-            {!agentDropOpen && active && (
-              <div style={{ fontSize: 12, color: 'var(--ai-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, maxWidth: '220px' }}>
-                {active.title}
-              </div>
-            )}
+          {/* Actions droite */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
 
-            {/* Dropdown menu */}
-            {agentDropOpen && (
-              <div
-                role="menu"
+            {/* History — mobile uniquement (ouvre la sidebar overlay) */}
+            {!isDesktop && (
+              <button
+                onClick={() => setHistOpen(h => !h)}
+                title="Conversations"
                 style={{
-                  position: 'absolute', top: 'calc(100% + 8px)', left: 0,
-                  background: 'var(--ai-bg)',
-                  border: '1px solid var(--ai-border)',
-                  borderRadius: 12,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
-                  minWidth: 240, zIndex: 9999,
-                  overflow: 'hidden',
-                  animation: 'ai_slidein 0.15s ease',
+                  width: 26, height: 26, borderRadius: 8,
+                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0, position: 'relative',
+                  transition: 'background 150ms',
                 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
               >
-                {/* Hybrid Training */}
-                <button
-                  role="menuitem"
-                  onClick={() => { setActiveAgent('training'); setAgentDropOpen(false) }}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 11,
-                    width: '100%', padding: '12px 14px',
-                    background: activeAgent === 'training' ? 'rgba(0,200,224,0.06)' : 'none',
-                    border: 'none', borderBottom: '1px solid var(--ai-border)',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'rgba(0,200,224,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                    {/* Zap icon */}
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00c8e0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)' }}>Hybrid Training</span>
-                      {activeAgent === 'training' && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 2 }}>Entraînement · Nutrition</div>
-                  </div>
-                </button>
-
-                {/* Hybrid Networks */}
-                <button
-                  role="menuitem"
-                  onClick={() => { setActiveAgent('networks'); setAgentDropOpen(false) }}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 11,
-                    width: '100%', padding: '12px 14px',
-                    background: activeAgent === 'networks' ? 'rgba(91,111,255,0.06)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                    {/* Globe icon */}
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="2" y1="12" x2="22" y2="12"/>
-                      <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--ai-text)' }}>Hybrid Networks</span>
-                      {activeAgent === 'networks' && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginTop: 2 }}>Instagram · Marketing</div>
-                  </div>
-                </button>
-              </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                {convs.length > 0 && (
+                  <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#06B6D4' }} />
+                )}
+              </button>
             )}
-          </div>
 
-          {/* Spacer between title and actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-
-          {/* History button */}
-          <button
-            onClick={() => setHistOpen(h => !h)}
-            title="Conversations"
-            className="aip-icon-btn"
-            style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: histOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, position: 'relative',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-            </svg>
-            {convs.length > 0 && (
-              <div style={{
-                position: 'absolute', top: 5, right: 5,
-                width: 5, height: 5, borderRadius: '50%',
-                background: '#00c8e0',
-              }} />
+            {/* Export Markdown (si conversation active) */}
+            {active && (
+              <button
+                onClick={exportMarkdown}
+                title="Exporter en Markdown"
+                style={{
+                  width: 26, height: 26, borderRadius: 8,
+                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+              </button>
             )}
-          </button>
 
-          {/* Export (G2) */}
-          {active && (
+            {/* Plein écran — desktop uniquement */}
+            {isDesktop && (
+              <button
+                onClick={() => setFullscr(f => !f)}
+                title={fullscr ? 'Réduire' : 'Plein écran'}
+                style={{
+                  width: 26, height: 26, borderRadius: 8,
+                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              >
+                {fullscr ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                  </svg>
+                )}
+              </button>
+            )}
+
+            {/* Fermer */}
             <button
-              onClick={exportMarkdown}
-              title="Exporter en Markdown"
-              className="aip-icon-btn"
-              style={{ width: 32, height: 32, borderRadius: 6, color: 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              onClick={onClose}
+              title="Fermer"
+              style={{
+                width: 26, height: 26, borderRadius: 8,
+                border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                transition: 'background 150ms',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
-          )}
-
-          {/* Fullscreen */}
-          <button
-            onClick={() => setFullscr(f => !f)}
-            title={fullscr ? 'Réduire' : 'Plein écran'}
-            className="aip-icon-btn"
-            style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            {fullscr ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
-              </svg>
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              </svg>
-            )}
-          </button>
-
-          {/* Close */}
-          <button
-            onClick={onClose}
-            className="aip-icon-btn"
-            style={{
-              width: 32, height: 32, borderRadius: 6,
-              color: 'var(--ai-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-          </div>{/* /actions flex */}
+          </div>{/* /actions */}
         </div>
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
@@ -19393,6 +19347,8 @@ export default function AIPanel({
               onNew={newConv}
               onPin={pinConv}
               onClose={() => setHistOpen(false)}
+              activeAgent={activeAgent}
+              onAgentChange={setActiveAgent}
             />
           )}
 
@@ -19406,6 +19362,8 @@ export default function AIPanel({
               onNew={newConv}
               onPin={pinConv}
               onClose={() => setHistOpen(false)}
+              activeAgent={activeAgent}
+              onAgentChange={setActiveAgent}
             />
           )}
 
@@ -20353,27 +20311,30 @@ export default function AIPanel({
                       <rect x="4" y="4" width="16" height="16" rx="2" />
                     </svg>
                   </button>
-                ) : (
+                ) : (() => {
+                    const canSend = !!(input.trim() || attachment || activeQA || quotedText)
+                    return (
                   <button
                     onClick={() => void send()}
-                    disabled={!input.trim() && !attachment && !activeQA && !quotedText}
+                    disabled={!canSend}
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
-                      background: '#00c8e0',
-                      opacity: (input.trim() || attachment || activeQA || quotedText) ? 1 : 0.35,
-                      cursor: (input.trim() || attachment || activeQA || quotedText) ? 'pointer' : 'not-allowed',
+                      background: canSend ? '#06B6D4' : 'var(--border)',
+                      color: canSend ? '#fff' : 'var(--text-dim)',
+                      cursor: canSend ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'opacity 0.15s',
+                      transition: 'background 0.15s',
                     }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                      stroke="#fff"
+                      stroke="currentColor"
                       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
                     </svg>
                   </button>
-                )}
+                    )
+                  })()}
               </div>
             </div>
 

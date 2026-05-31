@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal, Sparkles } from 'lucide-react'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -25,6 +25,8 @@ import { LapsTable } from '@/components/activity/LapsTable'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
+import { AIBubble } from '@/components/activity/AIBubble'
+import { useAIAnalysis } from '@/hooks/useAIAnalysis'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -2865,6 +2867,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const [showDecoupling,       setShowDecoupling]       = useState(false)
   const [showHrCumulative,     setShowHrCumulative]     = useState(false)
   const [hoveredLapBar,        setHoveredLapBar]        = useState<number | null>(null)
+  const globalAI  = useAIAnalysis()
+  const decoupAI  = useAIAnalysis()
 
   // ── FIX 1 : masque le header app sur mobile ──────────────────
   useEffect(() => {
@@ -3052,6 +3056,78 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     if (!a.streams?.heartrate) return null
     return calcTimeInZones(a.streams.heartrate, hrZones)
   }, [a.streams?.heartrate])
+
+  // ── IA prompt builders ───────────────────────────────────────
+  const buildDecouplingPrompt = () => {
+    const hr = a.streams?.heartrate ?? []
+    const half = Math.floor(hr.length / 2)
+    const fc1 = half > 0 ? Math.round(hr.slice(0, half).reduce((s, v) => s + v, 0) / half) : null
+    const fc2 = half > 0 ? Math.round(hr.slice(half).reduce((s, v) => s + v, 0) / (hr.length - half)) : null
+    const tempArr = a.streams?.temp ?? []
+    const tempMoy = tempArr.length ? Math.round(tempArr.reduce((s, v) => s + v, 0) / tempArr.length) : null
+    const tempMax = tempArr.length ? Math.round(Math.max(...tempArr)) : null
+    const ftp = a.ftp_at_time ?? null
+    const np = computedNp
+    const ifVal = np && ftp ? (np / ftp).toFixed(2) : null
+    return `Tu es l'agent d'analyse de performance de THW Coaching.
+Analyse le découplage puissance/FC de cette séance.
+
+DONNÉES DE LA SÉANCE :
+- Découplage P/FC : ${decoupling?.toFixed(1) ?? '—'}%
+- Durée : ${fmtDur(a.moving_time_s)}
+- Watts moy. : ${a.avg_watts ? Math.round(Number(a.avg_watts)) : '—'}W | Watts norm. : ${np ?? '—'}W
+- FC moy. (1ère moitié) : ${fc1 ?? '—'}bpm | FC moy. (2ème moitié) : ${fc2 ?? '—'}bpm
+- Température moy. : ${tempMoy ?? '—'}°C | Température max : ${tempMax ?? '—'}°C
+- TSS : ${a.tss ? Math.round(Number(a.tss)) : '—'} | IF : ${ifVal ?? '—'}
+- FTP athlète : ${ftp ?? '—'}W
+
+Fournis une analyse en deux parties séparées par "---EN CLAIR---" :
+
+PARTIE 1 (TECHNIQUE) : analyse scientifique du découplage,
+interprétation de chaque donnée, facteurs physiologiques,
+influence de la chaleur si temp > 28°C.
+
+PARTIE 2 (EN CLAIR) : explique en langage simple ce que ça veut
+dire pour cet athlète, ce qu'il faut retenir, quoi travailler.`
+  }
+
+  const buildGlobalPrompt = () => {
+    const km = a.distance_m ? (Number(a.distance_m) / 1000).toFixed(2) : '—'
+    const speed = a.avg_speed_ms ? (Number(a.avg_speed_ms) * 3.6).toFixed(1) : '—'
+    const ftp = a.ftp_at_time ?? null
+    const np = computedNp
+    const ifVal = np && ftp ? (np / ftp).toFixed(2) : null
+    const maxHrEst = estimateMaxHr(profile.birth_date)
+    const maxHrVal = a.max_hr ?? maxHrStream
+    const hrMaxPct = maxHrVal ? Math.round((Number(maxHrVal) / maxHrEst) * 100) : null
+    const tempArr = a.streams?.temp ?? []
+    const tempMoy = tempArr.length ? Math.round(tempArr.reduce((s, v) => s + v, 0) / tempArr.length) : null
+    const lapsLine = a.laps && a.laps.length > 1
+      ? `- Laps : ${a.laps.map(l => (l.avg_watts ? `${Math.round(l.avg_watts)}W` : `${fmtDur(l.moving_time_s)}`)).join(' / ')}`
+      : ''
+    return `Tu es l'agent d'analyse de performance de THW Coaching.
+Analyse complète de cette séance d'entraînement.
+
+DONNÉES COMPLÈTES :
+- Activité : ${a.title ?? 'Sans titre'} | Sport : ${a.sport_type} | Date : ${fmtDate(a.started_at)}
+- Distance : ${km}km | Durée : ${fmtDur(a.moving_time_s)} | D+ : ${a.elevation_gain_m ? Math.round(Number(a.elevation_gain_m)) : '—'}m
+- Watts moy : ${a.avg_watts ? Math.round(Number(a.avg_watts)) : '—'}W | NP : ${np ?? '—'}W | VI : ${vi ?? '—'}
+- FC max : ${maxHrVal ?? '—'}bpm (${hrMaxPct ?? '—'}% FCmax) | FC moy : ${a.avg_hr ? Math.round(Number(a.avg_hr)) : '—'}bpm
+- TSS : ${a.tss ? Math.round(Number(a.tss)) : '—'} | IF : ${ifVal ?? '—'} | Découp. : ${decoupling?.toFixed(1) ?? '—'}%
+- Cadence moy : ${a.avg_cadence ? Math.round(Number(a.avg_cadence)) : '—'}rpm | Vitesse moy : ${speed}km/h
+- Temp moy : ${tempMoy ?? '—'}°C | Calories : ${a.calories ? Math.round(Number(a.calories)) : '—'}kcal
+- FTP : ${ftp ?? '—'}W | W/kg : ${wkgMoy ?? '—'}
+${lapsLine}
+
+Analyse en deux parties séparées par "---EN CLAIR---" :
+
+PARTIE 1 (TECHNIQUE) : qualité de l'effort, pacing, zones,
+cohérence puissance/FC, points forts et axes d'amélioration,
+analyse physiologique complète.
+
+PARTIE 2 (EN CLAIR) : résumé accessible, ce qu'il faut retenir,
+conseil pour la prochaine séance similaire.`
+  }
 
   function StatBlock({ items }: { items: { label: string; v: string | null | undefined }[] }) {
     const visible = items.filter(s => s.v && s.v !== '—')
@@ -3543,6 +3619,25 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             )
           })()}
 
+          {/* ── BOUTON IA GLOBAL (mobile) ── */}
+          <div style={{ padding: '0 16px 20px' }}>
+            <button
+              onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
+                ? globalAI.run(buildGlobalPrompt())
+                : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                width: '100%', padding: '10px 16px', borderRadius: 8,
+                background: 'none', border: '1px solid var(--border)',
+                color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              <Sparkles size={14} color="#06B6D4" />
+              Analyse complète de la séance par l&apos;IA
+            </button>
+            <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
+          </div>
+
           {/* ── SECTIONS dans le sheet ── */}
           <div style={{ padding: '0 16px' }}>
 
@@ -3651,6 +3746,24 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                           temp={s.temp} time={s.time}
                         />
                       )}
+                      {/* IA Découplage */}
+                      <div style={{ marginTop: 12 }}>
+                        <button
+                          onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
+                            ? decoupAI.run(buildDecouplingPrompt())
+                            : undefined}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '6px 14px', borderRadius: 20,
+                            background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
+                            border: 'none', color: 'white',
+                            fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                          }}
+                        >
+                          <Sparkles size={14} /> Analyser avec l&apos;IA
+                        </button>
+                        <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
+                      </div>
                     </div>
                   )}
                   {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
@@ -3848,6 +3961,25 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
           </div>
         )}
+
+        {/* ── IA ANALYSE GLOBALE (desktop) ── */}
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
+              ? globalAI.run(buildGlobalPrompt())
+              : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 8,
+              background: 'none', border: '1px solid var(--border)',
+              color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            <Sparkles size={14} color="#06B6D4" />
+            Analyse complète de la séance par l&apos;IA
+          </button>
+          <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
+        </div>
 
         {/* ── PARTIE 4 : Données détaillées — 4 colonnes ── */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 20 }}>
@@ -4137,21 +4269,42 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 const showHrCum = (isBike || isRun) && !!s.heartrate && s.heartrate.length > 60
                 if (!showDec && !showHrCum) return null
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: showDec ? 12 : 20 }}>
+                      {showDec && (
+                        <DecouplingChart
+                          watts={s.watts!}
+                          heartrate={s.heartrate!}
+                          decouplingPct={decoupling}
+                          altitude={s.altitude}
+                          temp={s.temp}
+                          time={s.time}
+                        />
+                      )}
+                      {showHrCum && (
+                        <HrCumulativeChart heartrate={s.heartrate!} maxHrEst={maxHrEst} />
+                      )}
+                    </div>
                     {showDec && (
-                      <DecouplingChart
-                        watts={s.watts!}
-                        heartrate={s.heartrate!}
-                        decouplingPct={decoupling}
-                        altitude={s.altitude}
-                        temp={s.temp}
-                        time={s.time}
-                      />
+                      <div style={{ marginBottom: 20 }}>
+                        <button
+                          onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
+                            ? decoupAI.run(buildDecouplingPrompt())
+                            : undefined}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '6px 14px', borderRadius: 20,
+                            background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
+                            border: 'none', color: 'white',
+                            fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                          }}
+                        >
+                          <Sparkles size={14} /> Analyser avec l&apos;IA
+                        </button>
+                        <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
+                      </div>
                     )}
-                    {showHrCum && (
-                      <HrCumulativeChart heartrate={s.heartrate!} maxHrEst={maxHrEst} />
-                    )}
-                  </div>
+                  </>
                 )
               })()}
             </>

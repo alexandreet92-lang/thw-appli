@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 
 // ── Colonnes activities — source de vérité unique ──────────────
@@ -11271,6 +11271,30 @@ function actionIcon(flow: FlowId | undefined): React.ReactNode {
   }
 }
 
+// ── Actions rapides : thèmes (colonne gauche du sous-écran) ──
+type QuickActionTheme = 'entrainement' | 'course' | 'nutrition' | 'recuperation' | 'plan' | 'application'
+
+const QA_THEMES: { id: QuickActionTheme; label: string; flows: FlowId[] }[] = [
+  { id: 'entrainement', label: 'Entraînement', flows: ['sessionbuilder', 'analyze_training', 'analyser_semaine', 'analyser_progression', 'weakpoints'] },
+  { id: 'course',       label: 'Course',       flows: ['strategie_course', 'estimer_zones', 'analyzetest'] },
+  { id: 'nutrition',    label: 'Nutrition',    flows: ['nutrition', 'recharge'] },
+  { id: 'recuperation', label: 'Récupération', flows: ['analyser_recuperation', 'conseils_sommeil'] },
+  { id: 'plan',         label: 'Plan',         flows: ['training_plan'] },
+  { id: 'application',  label: 'Application',  flows: ['app_guide'] },
+]
+
+function themeIcon(id: QuickActionTheme): React.ReactNode {
+  const sz = 15
+  switch (id) {
+    case 'entrainement': return <Zap size={sz} />
+    case 'course':       return <Flag size={sz} />
+    case 'nutrition':    return <Apple size={sz} />
+    case 'recuperation': return <Moon size={sz} />
+    case 'plan':         return <Calendar size={sz} />
+    case 'application':  return <BookOpen size={sz} />
+  }
+}
+
 function PlusMenu({
   onPrepare,
   onEnriched,
@@ -11290,6 +11314,7 @@ function PlusMenu({
   const [isMobile, setIsMobile] = useState(false)
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
+  const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('entrainement')
 
   useEffect(() => { setIsMobile(window.innerWidth < 768) }, [])
 
@@ -11402,39 +11427,76 @@ function PlusMenu({
 
       {/* ════ SOUS-ÉCRAN : ACTIONS RAPIDES ════ */}
       {activeScreen === 'actions' && (
-        <div key="actions" style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto', animation: 'aip_slide_in_right 0.22s ease-out' }}>
-          <div style={subHeaderStyle}>
+        <div key="actions" style={{ animation: 'aip_slide_in_right 0.22s ease-out' }}>
+          {/* Header retour */}
+          <div style={{ ...subHeaderStyle, marginBottom: 0, padding: '6px 8px 8px', borderBottom: '1px solid var(--border)' }}>
             <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
               <ArrowLeft size={14} color="var(--text-mid)" />
             </button>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Actions rapides</span>
           </div>
-          {QUICK_ACTIONS.map((qa, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                onClose()
-                if (qa.flow) onFlow(qa.flow)
-                else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
-                else if (qa.prompt) onPrepare(qa.label, qa.prompt)
-              }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                width: '100%', padding: '8px 10px', borderRadius: 10,
-                border: '0.5px solid var(--border)', marginBottom: 4,
-                background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                fontSize: 12, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif',
-                transition: 'background 150ms',
-              }}
-              onMouseEnter={hoverOn} onMouseLeave={hoverOff}
-            >
-              <span style={{ flexShrink: 0, display: 'flex' }}>{actionIcon(qa.flow)}</span>
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
-              <span style={{ fontSize: 10, color: 'var(--text-dim)', border: '0.5px solid var(--border)', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
-                {MODEL_CONFIGS[qa.model].name}
-              </span>
-            </button>
-          ))}
+
+          {/* 2 colonnes : thèmes | actions */}
+          <div style={{ display: 'flex', minWidth: 420, maxHeight: 360 }}>
+            {/* Colonne gauche — thèmes */}
+            <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
+              {QA_THEMES.map(t => {
+                const active = t.id === activeTheme
+                return (
+                  <button
+                    key={t.id}
+                    onMouseEnter={() => setActiveTheme(t.id)}
+                    onClick={() => setActiveTheme(t.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      width: '100%', padding: '8px 10px', borderRadius: 8,
+                      fontSize: 13, cursor: 'pointer', border: 'none', textAlign: 'left',
+                      fontFamily: 'DM Sans,sans-serif',
+                      transition: 'background 120ms, color 120ms',
+                      background: active ? 'var(--bg-hover)' : 'transparent',
+                      color: active ? 'var(--text)' : 'var(--text-mid)',
+                    }}
+                  >
+                    <span style={{ flexShrink: 0, display: 'flex' }}>{themeIcon(t.id)}</span>
+                    <span style={{ flex: 1 }}>{t.label}</span>
+                    <ChevronRight size={12} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Colonne droite — actions du thème actif */}
+            <div key={activeTheme} style={{ flex: 1, padding: 6, overflowY: 'auto', animation: 'aip_fade_in 0.15s ease-out' }}>
+              {(QA_THEMES.find(t => t.id === activeTheme)?.flows ?? [])
+                .map(f => QUICK_ACTIONS.find(qa => qa.flow === f))
+                .filter((qa): qa is QuickAction => !!qa)
+                .map((qa, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      onClose()
+                      if (qa.flow) onFlow(qa.flow)
+                      else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
+                      else if (qa.prompt) onPrepare(qa.label, qa.prompt)
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      width: '100%', padding: '8px 10px', borderRadius: 8, marginBottom: 2,
+                      fontSize: 13, color: 'var(--text)', cursor: 'pointer',
+                      border: 'none', background: 'transparent', textAlign: 'left',
+                      fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
+                    }}
+                    onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+                  >
+                    <span style={{ flexShrink: 0, display: 'flex' }}>{actionIcon(qa.flow)}</span>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', border: '0.5px solid var(--border)', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
+                      {MODEL_CONFIGS[qa.model].name}
+                    </span>
+                  </button>
+                ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -19143,6 +19205,10 @@ export default function AIPanel({
         }
         @keyframes aip_slide_in_right {
           from { opacity:0; transform:translateX(20px); }
+          to   { opacity:1; transform:translateX(0); }
+        }
+        @keyframes aip_fade_in {
+          from { opacity:0; transform:translateX(4px); }
           to   { opacity:1; transform:translateX(0); }
         }
         @keyframes aip_toggle_pulse {

@@ -1217,15 +1217,15 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, margin: '16px 0' }}>
           <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#16A34A', margin: '0 0 4px' }}>{'< 5%'}</p>
-            <p style={{ fontSize: 11, color: '#166534', margin: 0, lineHeight: 1.5 }}>Excellent. Endurance aérobie bien développée.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Excellent. Endurance aérobie bien développée.</p>
           </div>
           <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#D97706', margin: '0 0 4px' }}>5 – 8%</p>
-            <p style={{ fontSize: 11, color: '#92400E', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties. Marge de progression.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties. Marge de progression.</p>
           </div>
           <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', margin: '0 0 4px' }}>{'>  8%'}</p>
-            <p style={{ fontSize: 11, color: '#991B1B', margin: 0, lineHeight: 1.5 }}>Dérive importante. Base aérobie à renforcer.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Dérive importante. Base aérobie à renforcer.</p>
           </div>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '12px 0 0' }}>
@@ -1776,7 +1776,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
           const avgStr = track.formatVal ? track.formatVal(avgVal) : Math.round(avgVal).toString()
 
           return (
-            <div key={track.label} style={{ marginBottom: 6 }}>
+            <div key={track.label} style={{ marginBottom: 20 }}>
               {/* Mobile header: label + range (hidden on desktop) */}
               <div className="sync-mobile-header" style={{ fontSize: 10, color: T.textMuted, marginBottom: 2, justifyContent: 'space-between' }}>
                 <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
@@ -1787,7 +1787,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
 
                 {/* Left col — desktop only */}
-                <div className="sync-left-col" style={{ width: 140, flexShrink: 0, paddingRight: 12, paddingTop: 4 }}>
+                <div className="sync-left-col" style={{ width: 140, minWidth: 48, flexShrink: 0, paddingRight: 12, paddingTop: 4 }}>
                   <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: track.color, lineHeight: 1 }}>
                     {track.label}
                   </p>
@@ -3883,9 +3883,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
         {/* ── COURBES ── */}
         {a.streams && (
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Courbes
             </div>
             <SyncCharts
@@ -3903,9 +3903,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         {((isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
           (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
           (hrTimesZ && hrTimesZ.some(t => t > 0))) ? (
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-              textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Zones
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -3953,9 +3953,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           }
           if (!insights.length) return null
           return (
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 32, paddingTop: 24 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-                textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+                textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
                 Analyse automatique
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>

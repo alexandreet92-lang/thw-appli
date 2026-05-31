@@ -11680,12 +11680,12 @@ function HistoryDrawer({
                 onClick={() => { onSelect(conv); if (!persistent) onClose() }}
                 style={{
                   padding: '7px 8px 7px 10px', borderRadius: 8, cursor: 'pointer',
-                  background: conv.id === activeId ? 'rgba(0,0,0,0.06)' : 'transparent',
+                  background: conv.id === activeId ? 'rgba(255,255,255,0.08)' : 'transparent',
                   border: 'none',
                   display: 'flex', alignItems: 'center', gap: 6,
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = '#F5F5F5' }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)' }}
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -18080,6 +18080,10 @@ export default function AIPanel({
   // ── Voice recording (B3) ─────────────────────────────────────
   const [recording,    setRecording]    = useState(false)
   const [recSecs,      setRecSecs]      = useState(0)
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [liveInterim,    setLiveInterim]    = useState('')
+  const finalTranscriptRef = useRef('')
+  const interimRef         = useRef('')
   const recIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18709,6 +18713,10 @@ export default function AIPanel({
     speechRef.current = null
     setRecording(false)
     setRecSecs(0)
+    setLiveTranscript('')
+    setLiveInterim('')
+    finalTranscriptRef.current = ''
+    interimRef.current = ''
     if (transcript) {
       setInput(prev => (prev ? prev + ' ' : '') + transcript.trim())
       setTimeout(() => areaRef.current?.focus(), 80)
@@ -18717,24 +18725,40 @@ export default function AIPanel({
 
   const cancelVoice = useCallback(() => stopVoice(''), [stopVoice])
 
+  // Valider la dictée : transfère le texte transcrit dans le champ
+  const confirmVoice = useCallback(() => {
+    const text = (finalTranscriptRef.current + interimRef.current).trim()
+    stopVoice(text)
+  }, [stopVoice])
+
   const startVoice = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) return
     setRecording(true)
     setRecSecs(0)
+    setLiveTranscript('')
+    setLiveInterim('')
+    finalTranscriptRef.current = ''
+    interimRef.current = ''
     recIntervalRef.current = setInterval(() => setRecSecs(s => s + 1), 1000)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec: any = new SR()
     rec.lang = 'fr-FR'
     rec.continuous = true
-    rec.interimResults = false
+    rec.interimResults = true
     speechRef.current = rec
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
-      const transcript = Array.from(e.results as ArrayLike<{ [index: number]: { transcript: string } }>)
-        .map((r: { [index: number]: { transcript: string } }) => r[0].transcript).join(' ')
-      stopVoice(transcript)
+      let interim = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript
+        if (e.results[i].isFinal) finalTranscriptRef.current += t + ' '
+        else interim += t
+      }
+      interimRef.current = interim
+      setLiveTranscript(finalTranscriptRef.current)
+      setLiveInterim(interim)
     }
     rec.onerror = () => stopVoice('')
     rec.start()
@@ -20256,27 +20280,40 @@ export default function AIPanel({
 
               {/* Recording overlay — B3 */}
               {recording && (
-                <div style={{ padding: '14px 16px 6px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 52 }}>
-                  {/* Cancel X */}
-                  <button onClick={cancelVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#374151', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>✕</button>
-                  {/* Sound wave — 20 bars */}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, height: 28, overflow: 'hidden' }}>
-                    {Array.from({ length: 20 }, (_, i) => (
-                      <span key={i} style={{
-                        display: 'inline-block', width: '4%', maxWidth: 4, height: '100%',
-                        borderRadius: 2, background: 'var(--ai-dim)', flexShrink: 0,
-                        animation: `ai_voice_bar ${0.6 + (i % 5) * 0.1}s ease-in-out infinite alternate`,
-                        animationDelay: `${(i * 0.05) % 0.5}s`,
-                        transformOrigin: 'bottom',
-                      }} />
-                    ))}
+                <div style={{ padding: '12px 16px 8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 52 }}>
+                    {/* Cancel X */}
+                    <button onClick={cancelVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#374151', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>✕</button>
+                    {/* Sound wave — 20 bars */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, height: 28, overflow: 'hidden' }}>
+                      {Array.from({ length: 20 }, (_, i) => (
+                        <span key={i} style={{
+                          display: 'inline-block', width: '4%', maxWidth: 4, height: '100%',
+                          borderRadius: 2, background: 'var(--ai-dim)', flexShrink: 0,
+                          animation: `ai_voice_bar ${0.6 + (i % 5) * 0.1}s ease-in-out infinite alternate`,
+                          animationDelay: `${(i * 0.05) % 0.5}s`,
+                          transformOrigin: 'bottom',
+                        }} />
+                      ))}
+                    </div>
+                    {/* Timer */}
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--ai-dim)', flexShrink: 0 }}>
+                      {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
+                    </span>
+                    {/* Confirm ✓ — transfère la transcription */}
+                    <button onClick={confirmVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
                   </div>
-                  {/* Timer + confirm */}
-                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--ai-dim)', flexShrink: 0 }}>
-                    {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
-                  </span>
-                  {/* Confirm ✓ */}
-                  <button onClick={() => { try { speechRef.current?.stop() } catch { stopVoice('') } }} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
+                  {/* Transcription temps réel */}
+                  <div style={{ marginTop: 6, maxHeight: 60, overflowY: 'auto', padding: '4px 0' }}>
+                    {!liveTranscript && !liveInterim ? (
+                      <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: 14 }}>À l&apos;écoute…</span>
+                    ) : (
+                      <span style={{ fontSize: 14, lineHeight: 1.5 }}>
+                        <span style={{ color: 'var(--text)' }}>{liveTranscript}</span>
+                        <span style={{ color: 'var(--text-mid)' }}>{liveInterim}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 

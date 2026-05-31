@@ -22,6 +22,8 @@ import { PageLoader } from '@/components/ui/PageLoader'
 import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
+import { PowerDistribution } from '@/components/activity/PowerDistribution'
+import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -4007,6 +4009,35 @@ function ActivityDetail({ a, onClose, zones, profile }: {
             </div>
           )
         })()}
+
+        {/* ── DISTRIBUTION DE PUISSANCE ── */}
+        {isBike && a.streams?.watts && a.streams.watts.length > 120 && (
+          <div style={{ marginBottom: 32, paddingTop: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+              Distribution de puissance
+            </div>
+            <PowerDistribution
+              watts={a.streams.watts}
+              ftp={a.ftp_at_time}
+            />
+          </div>
+        )}
+
+        {/* ── EFFICACITÉ AÉROBIE ── */}
+        {isBike && a.streams?.watts && a.streams?.heartrate && a.streams.watts.length > 400 && (
+          <div style={{ marginBottom: 32, paddingTop: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+              Efficacité aérobie
+            </div>
+            <AerobicEfficiency
+              watts={a.streams.watts}
+              heartrate={a.streams.heartrate}
+              time={a.streams.time}
+            />
+          </div>
+        )}
 
         {/* ── GRAPHIQUES D'ANALYSE AVANCÉE ── */}
         {a.streams && (() => {

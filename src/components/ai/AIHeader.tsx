@@ -2,9 +2,10 @@
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
 
-// User-facing : seuls Training et Networks apparaissent.
-function agentLabel(model: THWModel): string {
-  return model === 'zeus' ? 'Networks' : 'Training'
+const MODEL_NAMES: Record<THWModel, string> = {
+  hermes: 'Hermès',
+  athena: 'Athéna',
+  zeus:   'Zeus',
 }
 
 interface Props {
@@ -58,8 +59,8 @@ export default function AIHeader({ model, isDesktop, fullscr, onOpenSidebar, onN
         position: 'absolute', left: '50%', transform: 'translateX(-50%)',
         display: 'flex', alignItems: 'center', pointerEvents: 'none',
       }}>
-        <span className="text-[13px] font-semibold text-[#0A0A0A] dark:text-white">
-          {agentLabel(model)}
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+          {MODEL_NAMES[model]}
         </span>
       </div>
 

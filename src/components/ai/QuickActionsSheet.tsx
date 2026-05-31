@@ -86,7 +86,7 @@ export default function QuickActionsSheet({ open, onClose, onInject, isMobile, o
         </div>
 
         <div style={{ padding: '0 16px 8px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8C8C8C', margin: '0 0 10px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 10px' }}>
             Joindre
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -96,14 +96,14 @@ export default function QuickActionsSheet({ open, onClose, onInject, isMobile, o
                 onClick={item.onClick}
                 style={{
                   flex: 1, padding: '10px 8px', borderRadius: 12,
-                  background: 'rgba(0,0,0,0.04)',
-                  border: 'none', cursor: 'pointer',
-                  fontSize: 12, fontWeight: 600, color: '#0A0A0A',
+                  background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                  cursor: 'pointer',
+                  fontSize: 12, fontWeight: 600, color: 'var(--ai-text)',
                   fontFamily: 'DM Sans,sans-serif',
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.08)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.04)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-border)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
               >
                 {item.label}
               </button>
@@ -112,7 +112,7 @@ export default function QuickActionsSheet({ open, onClose, onInject, isMobile, o
         </div>
 
         <div style={{ padding: '12px 16px 4px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8C8C8C', margin: '0 0 8px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
             Actions rapides
           </p>
         </div>
@@ -129,16 +129,16 @@ export default function QuickActionsSheet({ open, onClose, onInject, isMobile, o
               fontFamily: 'DM Sans,sans-serif',
               transition: 'background 0.1s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.04)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
           >
             <AgentIcon agent={action.agent} size={18} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#0A0A0A' }}>{action.label}</p>
-              <p style={{ margin: '1px 0 0', fontSize: 11, color: '#8C8C8C' }}>{action.desc}</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--ai-text)' }}>{action.label}</p>
+              <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--ai-dim)' }}>{action.desc}</p>
             </div>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--ai-dim)' }}/>
             </svg>
           </button>
         ))}

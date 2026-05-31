@@ -172,15 +172,13 @@ export default function AISidebar({
 
   const panel = (
     <aside
-      style={{ width: persistent ? 240 : 280 }}
-      className="h-full flex flex-col overflow-hidden
-                 bg-[#F7F7F7] dark:bg-[#1A1A1A]
-                 font-[DM_Sans,sans-serif]"
+      style={{ width: persistent ? 240 : 280, background: 'var(--bg-alt)', borderRight: '1px solid var(--border)' }}
+      className="h-full flex flex-col overflow-hidden font-[DM_Sans,sans-serif]"
     >
       {/* Zone haute */}
       <div className="px-4 pt-5 pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-[26px] font-semibold tracking-tight text-[#0A0A0A] dark:text-white">
+          <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', margin: 0, color: 'var(--text)' }}>
             Hybrid
           </h1>
           <div
@@ -235,14 +233,15 @@ export default function AISidebar({
       <div className="px-3 pb-5 pt-2 flex-shrink-0">
         <button
           onClick={onNew}
-          className="w-full h-11 rounded-full
-                     bg-white text-[#0A0A0A]
-                     flex items-center justify-center gap-2
-                     text-[13px] font-semibold
-                     shadow-[0_1px_4px_rgba(0,0,0,0.15)]
-                     hover:bg-[#F5F5F5]
-                     active:scale-[0.98]
-                     transition-all duration-150"
+          style={{
+            width: '100%', height: 44, borderRadius: 22,
+            background: 'var(--bg-card)', color: 'var(--text)',
+            border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
+            transition: 'all 150ms',
+          }}
         >
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>

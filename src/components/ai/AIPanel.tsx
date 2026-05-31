@@ -19444,39 +19444,44 @@ export default function AIPanel({
                 {/* + button */}
                 <button
                   onClick={() => setPlusOpen(p => !p)}
-                  title="Actions"
-                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
-                             bg-[#F2F2F2] dark:bg-[#2A2A2A]
-                             hover:bg-[#E8E8E8] dark:hover:bg-[#333]
-                             text-[#555] dark:text-[#999] transition-colors"
+                  title="Actions rapides"
+                  style={{
+                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                    color: 'var(--ai-mid)', cursor: 'pointer', transition: 'background 150ms',
+                  }}
                 >
                   <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                     <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
                   </svg>
                 </button>
 
-                {/* Agent pill */}
+                {/* Agent pill — affiche le vrai nom du modèle (Hermès/Athéna/Zeus) */}
                 <button
                   onClick={() => {
                     const order: THWModel[] = ['athena', 'zeus', 'hermes']
                     const idx = order.indexOf(model)
                     setModel(order[(idx + 1) % 3])
                   }}
-                  className="h-8 px-3 rounded-xl flex items-center gap-2 flex-shrink-0
-                             bg-[#F2F2F2] dark:bg-[#2A2A2A]
-                             hover:bg-[#E8E8E8] dark:hover:bg-[#333]
-                             transition-colors"
+                  title={`Changer de modèle (${MODEL_CONFIGS[model].hint})`}
+                  style={{
+                    height: 32, padding: '0 12px', borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                    cursor: 'pointer', transition: 'background 150ms',
+                  }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={model === 'zeus' ? '/logos/logo_6bras.png' : model === 'hermes' ? '/logos/logo_3bras.png' : '/logos/logo_4bras.png'}
-                    width={14}
-                    height={14}
+                    width={15}
+                    height={15}
                     alt=""
                     style={{ objectFit: 'contain' }}
                   />
-                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)' }}>
-                    {model === 'zeus' ? 'Networks' : 'Training'}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: MODEL_CONFIGS[model].color }}>
+                    {MODEL_CONFIGS[model].name}
                   </span>
                 </button>
 
@@ -19487,11 +19492,14 @@ export default function AIPanel({
                 <button
                   onClick={isListening ? stopListening : startListening}
                   title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
-                    ${isListening
-                      ? 'bg-red-500 text-white animate-pulse'
-                      : 'bg-[#F2F2F2] dark:bg-[#2A2A2A] text-[#555] dark:text-[#999] hover:bg-[#E8E8E8] dark:hover:bg-[#333]'
-                    }`}
+                  style={{
+                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: 'none', cursor: 'pointer', transition: 'all 150ms',
+                    background: isListening ? '#ef4444' : 'var(--ai-bg2)',
+                    color: isListening ? '#ffffff' : 'var(--ai-mid)',
+                    animation: isListening ? 'pulse-red 1.2s ease-in-out infinite' : 'none',
+                  }}
                 >
                   <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
                     <rect x="3.5" y="0.5" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.3"/>
@@ -19525,11 +19533,15 @@ export default function AIPanel({
                       <button
                         onClick={() => void send()}
                         disabled={!canSend}
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150
-                          ${canSend
-                            ? 'bg-[#0A0A0A] dark:bg-white text-white dark:text-[#0A0A0A] shadow-sm cursor-pointer'
-                            : 'bg-[#F2F2F2] dark:bg-[#2A2A2A] text-[#999] cursor-not-allowed'
-                          }`}
+                        style={{
+                          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                          border: 'none', cursor: canSend ? 'pointer' : 'not-allowed',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: canSend ? 'var(--ai-text)' : 'var(--ai-bg2)',
+                          color: canSend ? 'var(--ai-bg)' : 'var(--ai-dim)',
+                          opacity: canSend ? 1 : 0.5,
+                          transition: 'all 150ms',
+                        }}
                       >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                           <path d="M13 1L6.5 7.5M13 1L9 13l-2.5-5L1 5.5 13 1z"

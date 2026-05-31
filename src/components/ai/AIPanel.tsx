@@ -366,10 +366,10 @@ function TypedText({ text, isStreaming, fontFamily }: { text: string; isStreamin
     ? <span style={{
         display:         'inline',
         marginLeft:      1,
-        color:           'var(--ai-accent)',
+        color:           'var(--text-dim)',
         animation:       'ai_cursor 1s step-start infinite',
         userSelect:      'none',
-      }}>▍</span>
+      }}>▋</span>
     : null
 
   return (
@@ -19904,7 +19904,7 @@ export default function AIPanel({
                 flow a créé une conv via onRecordConv. Le flow reprend la
                 main tout seul. */}
             {active && active.msgs.length > 0 && !activeFlow && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24, maxWidth: 680, width: '100%', margin: '0 auto' }}>
                 {active.msgs.map((msg, idx) => (
                   <div
                     key={msg.id}
@@ -19917,39 +19917,37 @@ export default function AIPanel({
                     <div style={{
                       display: 'flex',
                       justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start', gap: 12,
+                      alignItems: 'flex-start', gap: 10,
                     }}>
-                      {/* Avatar IA — logo modèle */}
-                      {msg.role === 'assistant' && (() => {
-                        const m = msg.modelId ?? 'athena'
-                        const isStreaming = loading && idx === active.msgs.length - 1
-                        const logoSrc = m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'
-                        return (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={logoSrc}
-                            alt={m}
-                            className={isStreaming ? 'ai-logo-spinning' : undefined}
-                            style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, marginTop: 0 }}
-                          />
-                        )
-                      })()}
+                      {/* Avatar IA — Zap dans cercle cyan */}
+                      {msg.role === 'assistant' && (
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                          background: 'rgba(6,182,212,0.12)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          marginTop: 2,
+                        }}>
+                          <Zap size={14} color="#06B6D4" />
+                        </div>
+                      )}
 
-                      {/* Bulle user / texte IA libre */}
+                      {/* Bulle user / bulle IA */}
                       {msg.role === 'user' ? (
                         <>
                           <div style={{
-                            maxWidth: '78%',
+                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: '70%',
+                            background: '#06B6D4', color: '#ffffff',
+                            borderRadius: '18px 18px 4px 18px',
                             padding: '10px 16px',
-                            borderRadius: 18,
-                            background: '#3B8FD4',
-                            color: '#fff',
+                            fontSize: 14, lineHeight: 1.5,
+                            wordBreak: 'break-word',
+                            animation: 'fadeUp 0.2s ease-out',
                           }}>
-                            <span style={{ fontSize: 16, lineHeight: 1.6, fontWeight: 400, display: 'block' }}>{msg.content}</span>
+                            {msg.content}
                           </div>
-                          {/* User avatar (D2) */}
+                          {/* User avatar */}
                           <div style={{
-                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0, marginTop: 2,
                             background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {userInitials ? (
@@ -19963,13 +19961,32 @@ export default function AIPanel({
                         </>
                       ) : (() => {
                         const isStreamingMsg = loading && idx === active.msgs.length - 1
+                        const showThinking = isStreamingMsg && !msg.content.trim()
                         return (
                           <div style={{
                             flex: 1, minWidth: 0,
-                            padding: '4px 0',
-                            animation: 'ai_msg_in 0.15s ease both',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '4px 18px 18px 18px',
+                            padding: '12px 16px',
+                            fontSize: 14, lineHeight: 1.65,
+                            color: 'var(--text)',
+                            wordBreak: 'break-word',
+                            animation: 'fadeUp 0.2s ease-out',
                           }}>
-                            <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
+                            {showThinking ? (
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '4px 2px' }}>
+                                {[0, 1, 2].map(i => (
+                                  <span key={i} style={{
+                                    width: 7, height: 7, borderRadius: '50%',
+                                    background: 'var(--text-dim)',
+                                    animation: `dotPulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                                  }} />
+                                ))}
+                              </div>
+                            ) : (
+                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
+                            )}
                           </div>
                         )
                       })()}

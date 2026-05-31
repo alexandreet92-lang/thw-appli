@@ -735,6 +735,26 @@ function computeMmpCurve(wStream: number[], durations: number[]): number[] {
   })
 }
 
+// Mapping distance_label (personal_records) → index dans MMP_TABLE_DURATIONS
+const BIKE_DUR_TO_IDX: Record<string, number> = {
+  'Pmax':  0,  // 1s
+  '10s':   2,  // 10s
+  '30s':   3,  // 30s
+  '1min':  4,  // 60s
+  '3min':  5,  // 180s
+  '5min':  6,  // 300s
+  '8min':  7,  // 480s
+  '10min': 8,  // 600s
+  '15min': 9,  // 900s
+  '20min': 10, // 1200s
+  '30min': 11, // 1800s
+  '1h':    13, // 3600s
+  '90min': 14, // 5400s
+  '2h':    15, // 7200s
+  '3h':    16, // 10800s
+  '6h':    17, // 21600s
+}
+
 function PowerCurveChart({ watts, activityId, activityDurationS }: {
   watts:             number[]
   activityId:        string
@@ -767,41 +787,53 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   useEffect(() => {
     setPrLoading(true)
     const since24m  = new Date(Date.now() - 24 * 30 * 86_400_000).toISOString()
-    const since3y   = new Date(Date.now() - 36 * 30 * 86_400_000).toISOString()
     const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
 
     type MmpRow = { id: string; streams: StreamData | null }
+    type RecRow = { distance_label: string; performance: string; achieved_at: string }
 
-    function aggregate(rows: MmpRow[]): { prBest: number[]; tableBest: number[] } {
-      const prBest    = DURATIONS.map(() => 0)
-      const tableBest = MMP_TABLE_DURATIONS.map(() => 0)
+    // PR curve (visuelle, 14 points) — calculée depuis les streams 24 mois
+    const streamsFetch = createClient()
+      .from('activities')
+      .select('id, streams')
+      .in('sport_type', ['bike', 'virtual_bike'])
+      .not('streams', 'is', null)
+      .gte('started_at', since24m)
+
+    // Records tableau — même source que page Performance
+    const recsFetch = createClient()
+      .from('personal_records')
+      .select('distance_label, performance, achieved_at')
+      .eq('sport', 'bike')
+      .order('achieved_at', { ascending: false })
+
+    Promise.all([streamsFetch, recsFetch]).then(([streamsRes, recsRes]) => {
+      // prMmp : courbe de référence sur le graphique (24 mois)
+      const rows = (streamsRes.data ?? []) as MmpRow[]
+      const prBest = DURATIONS.map(() => 0)
       for (const row of rows) {
         if (row.id === activityId) continue
         const s = row.streams
         if (!s?.watts?.length) continue
         if (Math.max(...s.watts) > 1200) continue
         computeMmpCurve(s.watts, DURATIONS).forEach((v, i) => { if (v > prBest[i]) prBest[i] = v })
-        computeMmpCurve(s.watts, MMP_TABLE_DURATIONS).forEach((v, i) => { if (v > tableBest[i]) tableBest[i] = v })
       }
-      return { prBest, tableBest }
-    }
-
-    const base = createClient().from('activities').select('id, streams')
-      .in('sport_type', ['bike','virtual_bike']).not('streams', 'is', null)
-
-    Promise.all([
-      base.gte('started_at', since24m),
-      base.gte('started_at', yearStart),
-      base.gte('started_at', since3y),
-    ]).then(([r24m, ryear, r3y]) => {
-      const { prBest, tableBest: table24 } = aggregate((r24m.data  ?? []) as MmpRow[])
-      const { tableBest: tableYear }        = aggregate((ryear.data ?? []) as MmpRow[])
-      const { tableBest: tableAll  }        = aggregate((r3y.data   ?? []) as MmpRow[])
-
       setPrMmp(prBest.some(v => v > 0) ? prBest : null)
-      setYearMmp(tableYear)
-      setAllTimeMmp(tableAll)
-      void table24 // computed but superseded by alltime for the table
+
+      // yearMmp / allTimeMmp : tableau de comparaison depuis personal_records
+      const recs = (recsRes.data ?? []) as RecRow[]
+      const yearBest    = MMP_TABLE_DURATIONS.map(() => 0)
+      const allBest     = MMP_TABLE_DURATIONS.map(() => 0)
+      for (const rec of recs) {
+        const idx = BIKE_DUR_TO_IDX[rec.distance_label]
+        if (idx === undefined) continue
+        const w = parseInt(rec.performance) || 0
+        if (w <= 0) continue
+        if (w > allBest[idx]) allBest[idx] = w
+        if (rec.achieved_at >= yearStart && w > yearBest[idx]) yearBest[idx] = w
+      }
+      setYearMmp(yearBest)
+      setAllTimeMmp(allBest)
       setPrLoading(false)
     }).catch(() => setPrLoading(false))
   }, [activityId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1175,6 +1207,54 @@ function TimelineBar({ totalS, cursorPct }: { totalS: number; cursorPct: number 
   )
 }
 
+// ─────────────────────────────────────────────────────────────
+// INFO ACCORDION — boîte d'explication repliable
+// ─────────────────────────────────────────────────────────────
+function InfoAccordion({ title, summary, children }: {
+  title:    string
+  summary:  string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{
+      marginTop: 20,
+      padding: '14px 18px',
+      background: 'var(--bg-card2)',
+      border: '1px solid var(--border)',
+      borderRadius: 10,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{title}</span>
+        <button
+          onClick={() => setOpen(v => !v)}
+          style={{
+            fontSize: 12, color: '#06B6D4', background: 'none', border: 'none',
+            cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+        >
+          {open ? '▴ Réduire' : '▾ En savoir plus'}
+        </button>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-body)', margin: '4px 0 0', lineHeight: 1.55 }}>
+        {summary}
+      </p>
+      {open && (
+        <div style={{
+          borderTop: '1px solid var(--border)',
+          marginTop: 10,
+          paddingTop: 10,
+          fontSize: 13,
+          color: 'var(--text-body)',
+          lineHeight: 1.6,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time }: {
   watts: number[]; heartrate: number[]; decouplingPct: number | null
   altitude?: number[] | null; temp?: number[] | null; time?: number[] | null
@@ -1326,45 +1406,37 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
         )}
       </div>
 
-      <div style={{
-        marginTop: 20,
-        padding: '20px 24px',
-        backgroundColor: 'var(--info-bg)',
-        borderRadius: 16,
-        border: '1px solid var(--info-border)',
-      }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-title)', margin: '0 0 16px' }}>
-          Qu&apos;est-ce que la dérive cardiaque ?
-        </h3>
-        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
-          La <strong style={{ color: 'var(--text-title)' }}>dérive cardiaque</strong> mesure dans quelle mesure votre fréquence cardiaque augmente
+      <InfoAccordion
+        title="Dérive cardiaque"
+        summary="Mesure comment votre FC évolue par rapport à votre puissance au fil de l'effort. Moins c'est élevé, meilleure est votre endurance aérobie."
+      >
+        <p style={{ margin: '0 0 12px' }}>
+          La <strong style={{ color: 'var(--text)', fontWeight: 600 }}>dérive cardiaque</strong> mesure dans quelle mesure votre fréquence cardiaque augmente
           par rapport à votre production de puissance au cours d&apos;un effort. À puissance constante, si votre cœur doit battre de
-          plus en plus vite pour maintenir le même effort, la dérive est positive. C&apos;est un indicateur clé de la qualité de votre
-          endurance aérobie fondamentale.
+          plus en plus vite pour maintenir le même effort, la dérive est positive.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, margin: '16px 0' }}>
-          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#16A34A', margin: '0 0 4px' }}>{'< 5%'}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, margin: '12px 0' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', margin: '0 0 3px' }}>{'< 5%'}</p>
             <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Excellent. Endurance aérobie bien développée.</p>
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#D97706', margin: '0 0 4px' }}>5 – 8%</p>
-            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties. Marge de progression.</p>
+          <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#D97706', margin: '0 0 3px' }}>5 – 8%</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties.</p>
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', margin: '0 0 4px' }}>{'>  8%'}</p>
+          <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#DC2626', margin: '0 0 3px' }}>{'>  8%'}</p>
             <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Dérive importante. Base aérobie à renforcer.</p>
           </div>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '12px 0 0' }}>
-          <strong style={{ color: 'var(--text-title)' }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
-          le flux sanguin vers la peau pour dissiper la chaleur. Le volume d&apos;éjection cardiaque diminue, et le cœur
-          s&apos;emballe pour compenser. Des études en conditions chaudes (35°C) montrent une augmentation de FC de{' '}
-          <strong>+11%</strong> et une chute du VO2max de <strong>-15%</strong> sur 45 minutes comparé à 22°C. Une dérive élevée
-          par forte chaleur n&apos;est donc pas le signe d&apos;un manque d&apos;endurance — c&apos;est une réponse physiologique normale.
-          La déshydratation produit le même effet en réduisant le volume sanguin.
+        <p style={{ margin: '10px 0 0' }}>
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
+          le flux sanguin vers la peau. Une dérive élevée par forte chaleur n&apos;est pas le signe d&apos;un manque d&apos;endurance — c&apos;est
+          une réponse physiologique normale. Des études en conditions chaudes (35°C) montrent une augmentation de FC de{' '}
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>+11%</strong> et une chute du VO2max de{' '}
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>-15%</strong> sur 45 minutes comparé à 22°C.
         </p>
-      </div>
+      </InfoAccordion>
     </div>
   )
 }
@@ -1484,32 +1556,25 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
         ))}
       </div>
 
-      <div style={{
-        marginTop: 20,
-        padding: '20px 24px',
-        backgroundColor: 'var(--info-bg)',
-        borderRadius: 16,
-        border: '1px solid var(--info-border)',
-      }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-title)', margin: '0 0 12px' }}>
-          Durée cumulée par fréquence cardiaque
-        </h3>
-        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
-          Ce graphique montre le temps total passé <strong style={{ color: 'var(--text-title)' }}>à atteindre ou dépasser</strong> chaque
+      <InfoAccordion
+        title="Durée cumulée par FC"
+        summary="Temps total passé à chaque niveau de fréquence cardiaque. Plus la courbe descend lentement, plus vous avez accumulé de temps à haute intensité."
+      >
+        <p style={{ margin: '0 0 10px' }}>
+          Ce graphique montre le temps total passé{' '}
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>à atteindre ou dépasser</strong> chaque
           niveau de fréquence cardiaque. La courbe descend de gauche à droite : plus la FC est élevée, moins vous y avez passé de temps.
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.75, margin: '0 0 12px' }}>
-          <strong style={{ color: 'var(--text-title)' }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
-          d&apos;intensité que le système cardiovasculaire est soumis à sa plus forte sollicitation, forçant les adaptations
-          qui font progresser le VO2max. Les athlètes d&apos;endurance intègrent des séances d&apos;intervalles spécifiquement pour
-          accumuler du temps dans cette zone.
+        <p style={{ margin: '0 0 10px' }}>
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
+          que le système cardiovasculaire est soumis à sa plus forte sollicitation, forçant les adaptations
+          qui font progresser le VO2max.
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.75, margin: 0 }}>
-          <strong style={{ color: 'var(--text-title)' }}>Lecture :</strong> si le point à 160 bpm indique 1h30, vous avez pédalé
-          1 heure 30 à 160 bpm <em>ou plus</em>. Suivez l&apos;évolution de ce chiffre à 90%+ FCmax d&apos;une séance
-          à l&apos;autre pour quantifier vos gains de VO2max.
+        <p style={{ margin: 0 }}>
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Lecture :</strong> si le point à 160 bpm indique 1h30, vous avez passé
+          1h30 à 160 bpm <em>ou plus</em>. Suivez ce chiffre à 90%+ FCmax d&apos;une séance à l&apos;autre pour quantifier vos gains de VO2max.
         </p>
-      </div>
+      </InfoAccordion>
     </div>
   )
 }

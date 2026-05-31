@@ -31,7 +31,7 @@ export function PowerDistribution({ watts, ftp }: Props) {
   const [mode, setMode] = useState<'abs' | 'pct'>('abs')
 
   const { bins, zoneTime, totalActive } = useMemo(() => {
-    const BIN = 10
+    const BIN = 25
     const maxW = Math.max(...watts, 0)
     const numBins = Math.ceil(maxW / BIN) + 1
     const counts = new Array<number>(numBins).fill(0)
@@ -64,8 +64,8 @@ export function PowerDistribution({ watts, ftp }: Props) {
   const maxCount = Math.max(...bins.map(b => b.count), 1)
 
   // Horizontal bar dimensions
-  const BAR_H    = 11
-  const BAR_GAP  = 2
+  const BAR_H    = 14
+  const BAR_GAP  = 3
   const LABEL_W  = 58
   const BAR_AREA = 600
   const SVG_W    = LABEL_W + BAR_AREA
@@ -108,10 +108,10 @@ export function PowerDistribution({ watts, ftp }: Props) {
       </div>
 
       {/* Histogram */}
-      <div style={{ overflowY: 'auto', maxHeight: 420, minHeight: 280 }}>
+      <div style={{ overflowY: 'auto', maxHeight: 420, minHeight: 320 }}>
         <svg
           viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-          style={{ width: '100%', height: Math.max(280, Math.min(SVG_H, 420)), display: 'block' }}
+          style={{ width: '100%', height: Math.max(320, Math.min(SVG_H, 420)), display: 'block' }}
           preserveAspectRatio="xMinYMin meet"
         >
           {binsDesc.map((bin, i) => {
@@ -120,24 +120,28 @@ export function PowerDistribution({ watts, ftp }: Props) {
             const barW   = (val / maxVal) * BAR_AREA
             const color  = ftp ? ZONE_COLORS[bin.zoneIdx] : '#94A3B8'
             const y      = i * (BAR_H + BAR_GAP)
+            // Show label only every 50W to avoid clutter
+            const showLabel = (bin.midW - 12.5) % 50 === 0
 
             return (
               <g key={bin.label}>
-                <text
-                  x={LABEL_W - 5} y={y + BAR_H - 1}
-                  textAnchor="end" fontSize="8" fill="var(--text-dim)"
-                >
-                  {bin.label}W
-                </text>
+                {showLabel && (
+                  <text
+                    x={LABEL_W - 5} y={y + BAR_H - 2}
+                    textAnchor="end" fontSize="11" fill="var(--text-dim)"
+                  >
+                    {Math.round(bin.midW - 12.5)}W
+                  </text>
+                )}
                 <rect
                   x={LABEL_W} y={y}
                   width={Math.max(2, barW)} height={BAR_H}
-                  fill={color} opacity={0.82} rx="1"
+                  fill={color} opacity={0.85} rx="2"
                 />
-                {barW > 36 && (
+                {barW > 20 && (
                   <text
-                    x={LABEL_W + barW - 4} y={y + BAR_H - 2}
-                    textAnchor="end" fontSize="8" fill="#fff" fontWeight="700"
+                    x={LABEL_W + barW - 4} y={y + BAR_H - 3}
+                    textAnchor="end" fontSize="10" fill="#fff" fontWeight="700"
                   >
                     {mode === 'abs' ? fmtTimeShort(bin.count) : `${val.toFixed(1)}%`}
                   </text>

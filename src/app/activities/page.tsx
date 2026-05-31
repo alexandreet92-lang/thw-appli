@@ -3308,25 +3308,37 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     const np = computedNp
     const ifVal = np && ftp ? (np / ftp).toFixed(2) : null
     return `Tu es l'agent d'analyse de performance de THW Coaching.
-Analyse le découplage puissance/FC de cette séance.
+Analyse le découplage puissance/FC. Sois CONCIS (max 300 mots). Utilise du markdown.
 
-DONNÉES DE LA SÉANCE :
+Données :
 - Découplage P/FC : ${decoupling?.toFixed(1) ?? '—'}%
-- Durée : ${fmtDur(a.moving_time_s)}
-- Watts moy. : ${a.avg_watts ? Math.round(Number(a.avg_watts)) : '—'}W | Watts norm. : ${np ?? '—'}W
-- FC moy. (1ère moitié) : ${fc1 ?? '—'}bpm | FC moy. (2ème moitié) : ${fc2 ?? '—'}bpm
-- Température moy. : ${tempMoy ?? '—'}°C | Température max : ${tempMax ?? '—'}°C
-- TSS : ${a.tss ? Math.round(Number(a.tss)) : '—'} | IF : ${ifVal ?? '—'}
-- FTP athlète : ${ftp ?? '—'}W
+- Durée : ${fmtDur(a.moving_time_s)} | TSS : ${a.tss ? Math.round(Number(a.tss)) : '—'} | IF : ${ifVal ?? '—'}
+- Watts moy : ${a.avg_watts ? Math.round(Number(a.avg_watts)) : '—'}W | NP : ${np ?? '—'}W | FTP : ${ftp ?? '—'}W
+- FC 1ère moitié : ${fc1 ?? '—'}bpm | FC 2ème moitié : ${fc2 ?? '—'}bpm
+- Température moy : ${tempMoy ?? '—'}°C | Température max : ${tempMax ?? '—'}°C
 
-Fournis une analyse en deux parties séparées par "---EN CLAIR---" :
+Structure ta réponse EXACTEMENT ainsi :
 
-PARTIE 1 (TECHNIQUE) : analyse scientifique du découplage,
-interprétation de chaque donnée, facteurs physiologiques,
-influence de la chaleur si temp > 28°C.
+## PARTIE 1 : ANALYSE TECHNIQUE
 
-PARTIE 2 (EN CLAIR) : explique en langage simple ce que ça veut
-dire pour cet athlète, ce qu'il faut retenir, quoi travailler.`
+### Découplage ${decoupling?.toFixed(1) ?? '—'}%
+2-3 phrases d'interprétation maximum.
+
+| Paramètre | Valeur | Interprétation |
+|-----------|--------|----------------|
+| Puissance moy | ${a.avg_watts ? Math.round(Number(a.avg_watts)) : '—'}W | ... |
+| FC 1ère moitié | ${fc1 ?? '—'}bpm | ... |
+| FC 2ème moitié | ${fc2 ?? '—'}bpm | ... |
+
+### Facteurs clés
+3 points maximum, une phrase chacun.
+
+---EN CLAIR---
+
+2-3 phrases simples. Ce que ça veut dire concrètement.
+1 conseil pratique.
+
+**Score : X/10** — une phrase de conclusion.`
   }
 
   const buildGlobalPrompt = () => {

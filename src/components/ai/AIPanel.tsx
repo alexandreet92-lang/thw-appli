@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Image as ImageIcon, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 
 // ── Colonnes activities — source de vérité unique ──────────────
@@ -11269,7 +11269,6 @@ function PlusMenu({
   onFlow,
   onClose,
   onCamera,
-  onPhotos,
   onFiles,
 }: {
   onPrepare:  (label: string, apiPrompt: string) => void
@@ -11277,7 +11276,6 @@ function PlusMenu({
   onFlow:     (f: FlowId) => void
   onClose:    () => void
   onCamera:   () => void
-  onPhotos:   () => void
   onFiles:    () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -11309,25 +11307,6 @@ function PlusMenu({
   }
 
   // ── Styles partagés ──
-  const attachBtnStyle: React.CSSProperties = {
-    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    padding: '10px 6px', borderRadius: 10,
-    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
-    fontSize: 11, color: 'var(--text-mid)', cursor: 'pointer',
-    fontFamily: 'DM Sans,sans-serif', transition: 'background 150ms',
-  }
-  const navItemStyle: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 10,
-    width: '100%', padding: '9px 10px', borderRadius: 10,
-    border: '0.5px solid var(--border)', marginBottom: 5,
-    background: 'transparent', cursor: 'pointer', textAlign: 'left',
-    transition: 'background 150ms', fontFamily: 'DM Sans,sans-serif',
-  }
-  const labelStyle: React.CSSProperties = {
-    fontSize: 10, fontWeight: 700, letterSpacing: '1px',
-    textTransform: 'uppercase' as const, color: 'var(--text-dim)',
-    margin: '0 0 8px', padding: '0 2px',
-  }
   const subHeaderStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
   }
@@ -11335,70 +11314,81 @@ function PlusMenu({
   function hoverOn(e: React.MouseEvent)  { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }
   function hoverOff(e: React.MouseEvent) { (e.currentTarget as HTMLElement).style.background = 'transparent' }
 
+  // Item compact de l'écran principal
+  const rowStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    width: '100%', padding: '8px 10px', borderRadius: 8,
+    fontSize: 13, color: 'var(--text)', cursor: 'pointer',
+    border: 'none', background: 'transparent', textAlign: 'left',
+    fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
+  }
+  const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: '4px 0' }
+
   return (
-    <div ref={ref} style={{
-      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, right: 0,
-      maxWidth: 680, margin: '0 auto',
-      background: 'var(--bg-card)',
-      border: '0.5px solid var(--border-mid)',
-      borderRadius: 14,
-      boxShadow: 'var(--shadow)',
-      zIndex: 30,
+    <div ref={ref} className="aip-plus-menu" style={{
+      position: 'absolute', bottom: 'calc(100% + 6px)', left: 0,
+      minWidth: 260,
+      borderRadius: 12,
+      padding: 6,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+      zIndex: 100,
       maxHeight: '72vh', overflow: 'hidden',
-      animation: 'aip_menu_up 0.2s ease-out',
+      animation: 'aip_menu_up 0.18s ease-out',
     }}>
 
       {/* ════ ÉCRAN PRINCIPAL ════ */}
       {activeScreen === 'main' && (
-        <div style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto' }}>
-          {/* JOINDRE */}
-          <p style={labelStyle}>Joindre</p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            <button style={attachBtnStyle} onClick={() => { onClose(); setTimeout(onPhotos, 80) }}
-              onMouseEnter={hoverOn} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }}>
-              <ImageIcon size={18} color="var(--text-mid)" />
-              Photos
+        <div style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+          {/* 1. Ajouter des fichiers */}
+          <button style={rowStyle} onClick={() => { onClose(); setTimeout(onFiles, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Paperclip size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            Ajouter des fichiers…
+          </button>
+
+          {/* 2. Prendre une photo — mobile only */}
+          {isMobile && (
+            <button style={rowStyle} onClick={() => { onClose(); setTimeout(onCamera, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+              <Camera size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              Prendre une photo
             </button>
-            <button style={attachBtnStyle} onClick={() => { onClose(); setTimeout(onFiles, 80) }}
-              onMouseEnter={hoverOn} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }}>
-              <Paperclip size={18} color="var(--text-mid)" />
-              Fichiers
-            </button>
-            {isMobile && (
-              <button style={{ ...attachBtnStyle, borderStyle: 'dashed', opacity: 0.5 }} onClick={() => { onClose(); setTimeout(onCamera, 80) }}>
-                <Camera size={18} color="var(--text-mid)" />
-                Caméra
-              </button>
-            )}
+          )}
+
+          <div style={sepStyle} />
+
+          {/* 4. Actions rapides */}
+          <button style={rowStyle} onClick={() => goTo('actions')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Zap size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Actions rapides</span>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+
+          {/* 5. Connecteurs */}
+          <button style={rowStyle} onClick={() => goTo('connecteurs')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Plug size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Connecteurs</span>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+
+          {/* 6. Compétences */}
+          <button style={rowStyle} onClick={() => goTo('competences')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Compétences</span>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+
+          <div style={sepStyle} />
+
+          {/* 8. Recherche — inactif */}
+          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' }}>
+            <Search size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            Recherche
           </div>
 
-          {/* Items navigables */}
-          <button style={navItemStyle} onClick={() => goTo('actions')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-            <Zap size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: 'var(--text)' }}>Actions rapides</div>
-              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séance, analyse, stratégie…</div>
-            </div>
-            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-          </button>
-
-          <button style={navItemStyle} onClick={() => goTo('connecteurs')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-            <Plug size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: 'var(--text)' }}>Connecteurs</div>
-              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Strava, Polar, Garmin…</div>
-            </div>
-            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-          </button>
-
-          <button style={{ ...navItemStyle, marginBottom: 0 }} onClick={() => goTo('competences')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-            <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: 'var(--text)' }}>Compétences</div>
-              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Former tes agents</div>
-            </div>
-            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-          </button>
+          {/* 9. Recherche Web — inactif */}
+          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' }}>
+            <Globe size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            Recherche Web
+          </div>
         </div>
       )}
 
@@ -19237,23 +19227,41 @@ export default function AIPanel({
           padding: 0 16px 16px !important;
         }
 
-        /* B2 — Input wrap: boîte centrée max 680px, sans glow au focus */
+        /* B2 — Input wrap: contraste fort, centré max 680px, sans glow au focus */
         .aip-input-wrap {
           max-width: 680px !important;
           margin: 0 auto !important;
           width: 100% !important;
-          border-radius: 14px !important;
-          background: var(--bg-card) !important;
-          border: 0.5px solid var(--border-mid) !important;
-          box-shadow: none !important;
+          border-radius: 16px !important;
+          background: #FFFFFF !important;
+          border: 1px solid rgba(0,0,0,0.15) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+          transition: border-color 200ms !important;
         }
+        html.dark .aip-input-wrap {
+          background: #1C2333 !important;
+          border: 1px solid #2E3A4E !important;
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.06) !important;
+        }
+        /* Pas de changement de couleur au focus */
         .aip-input-wrap:focus-within {
-          border-color: var(--border-mid) !important;
-          box-shadow: none !important;
+          border-color: rgba(0,0,0,0.15) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
         }
         html.dark .aip-input-wrap:focus-within {
-          border-color: var(--border-mid) !important;
-          box-shadow: none !important;
+          border-color: #2E3A4E !important;
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.06) !important;
+        }
+        .aip-input-wrap *:focus-visible { outline: none !important; }
+
+        /* Menu + — liste compacte */
+        .aip-plus-menu {
+          background: #FFFFFF;
+          border: 1px solid rgba(0,0,0,0.12);
+        }
+        html.dark .aip-plus-menu {
+          background: #1C2333;
+          border: 1px solid #2E3A4E;
         }
 
         /* B4 — 3-dot bounce thinking animation */
@@ -20141,7 +20149,6 @@ export default function AIPanel({
                 onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
                 onClose={() => setPlusOpen(false)}
                 onCamera={() => cameraRef.current?.click()}
-                onPhotos={() => photosRef.current?.click()}
                 onFiles={() => filesRef.current?.click()}
               />
             )}

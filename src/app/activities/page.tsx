@@ -788,12 +788,13 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
     type RecRow = { distance_label: string; performance: string; achieved_at: string }
 
-    createClient()
-      .from('personal_records')
-      .select('distance_label, performance, achieved_at')
-      .eq('sport', 'bike')
-      .order('achieved_at', { ascending: false })
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await createClient()
+          .from('personal_records')
+          .select('distance_label, performance, achieved_at')
+          .eq('sport', 'bike')
+          .order('achieved_at', { ascending: false })
         const recs = (data ?? []) as RecRow[]
         const yearBest = MMP_TABLE_DURATIONS.map(() => 0)
         const allBest  = MMP_TABLE_DURATIONS.map(() => 0)
@@ -808,7 +809,8 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
         setYearMmp(yearBest)
         setAllTimeMmp(allBest)
         setPrLoading(false)
-      }).catch(() => setPrLoading(false))
+      } catch { setPrLoading(false) }
+    })()
   }, [activityId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Red curve: built from personal_records, follows recordFilter toggle

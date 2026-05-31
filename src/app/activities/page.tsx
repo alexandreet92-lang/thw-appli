@@ -24,6 +24,7 @@ import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
+import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -696,8 +697,10 @@ function useCrosshairSvg(
 // ─────────────────────────────────────────────────────────────
 // POWER CURVE CHART — vélo uniquement
 // ─────────────────────────────────────────────────────────────
-const MMP_DURATIONS = [5,10,30,60,180,300,600,1200,1800,3600,5400,7200,10800,14400]
-const MMP_LABELS    = ["5s","10s","30s","1'","3'","5'","10'","20'","30'","1h","1h30","2h","3h","4h"]
+const MMP_DURATIONS   = [5,10,30,60,180,300,600,1200,1800,3600,5400,7200,10800,14400]
+const MMP_LABELS      = ["5s","10s","30s","1'","3'","5'","10'","20'","30'","1h","1h30","2h","3h","4h"]
+const KEY_MOMENT_DURS = [300, 1200, 1800, 2700, 3600] // 5' 20' 30' 45' 1h
+const KEY_MOMENT_LBLS = ["5'", "20'", "30'", "45'", "1h"]
 
 function calculateDecoupling(watts: number[], heartrate: number[]): number | null {
   const n = Math.min(watts.length, heartrate.length)
@@ -730,7 +733,11 @@ function computeMmpCurve(wStream: number[], durations: number[]): number[] {
   })
 }
 
-function PowerCurveChart({ watts }: { watts: number[] }) {
+function PowerCurveChart({ watts, activityId, activityDurationS }: {
+  watts:             number[]
+  activityId:        string
+  activityDurationS: number
+}) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const N = watts.length
   if (N < 60) return null
@@ -739,56 +746,88 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
   const LABELS    = MMP_LABELS.filter((_, i) => MMP_DURATIONS[i] <= N)
 
   const mmp = useMemo(() => {
-    const result = computeMmpCurve(watts, DURATIONS)
-    // Debug : valeurs clés pour vérification
-    console.log('[MMP] 5s:', result[0], '30s:', result[2], '5min:', result[5] ?? '-', '20min:', result[7] ?? '-', '1h:', result[9] ?? '-')
-    return result
+    return computeMmpCurve(watts, DURATIONS)
   }, [watts, DURATIONS])
 
-  // PR curve — fetch last 24 months of bike activities
-  const [prMmp, setPrMmp]         = useState<number[] | null>(null)
-  const [prLoading, setPrLoading] = useState(false)
+  // Session MMP for all table durations (including non-standard ones like 45')
+  const sessionMmpTable = useMemo(() =>
+    computeMmpCurve(watts, MMP_TABLE_DURATIONS),
+    [watts]
+  )
+
+  // PR curve (chart background) + year + alltime records for the table
+  const [prMmp,        setPrMmp]        = useState<number[] | null>(null)
+  const [yearMmp,      setYearMmp]      = useState<number[] | null>(null)
+  const [allTimeMmp,   setAllTimeMmp]   = useState<number[] | null>(null)
+  const [recordFilter, setRecordFilter] = useState<'year' | 'alltime'>('alltime')
+  const [prLoading,    setPrLoading]    = useState(false)
 
   useEffect(() => {
     setPrLoading(true)
-    const since24m = new Date(Date.now() - 24 * 30 * 86_400_000).toISOString()
-    createClient()
-      .from('activities')
-      .select('streams')
-      .in('sport_type', ['bike','virtual_bike'])
-      .gte('started_at', since24m)
-      .not('streams', 'is', null)
-      .then(({ data }) => {
-        if (!data || !data.length) { setPrMmp(null); return }
-        // Aggregate MMP across all activities
-        const bestPerDur = DURATIONS.map(() => 0)
-        for (const row of data) {
-          const s = (row as { streams: StreamData | null }).streams
-          if (!s?.watts?.length) continue
-          // Skip activities with corrupted watts (spikes > 1200W)
-          const maxW = Math.max(...s.watts)
-          if (maxW > 1200) continue
-          const actMmp = computeMmpCurve(s.watts, DURATIONS)
-          actMmp.forEach((v, i) => { if (v > bestPerDur[i]) bestPerDur[i] = v })
-        }
-        console.log('[MMP PR] Top 3 durations:', DURATIONS.slice(0, 3).map((d, i) => `${d}s=${bestPerDur[i]}W`))
-        setPrMmp(bestPerDur)
-        setPrLoading(false)
-      }, () => setPrLoading(false))
-  }, [])
+    const since24m  = new Date(Date.now() - 24 * 30 * 86_400_000).toISOString()
+    const since3y   = new Date(Date.now() - 36 * 30 * 86_400_000).toISOString()
+    const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
+
+    type MmpRow = { id: string; streams: StreamData | null }
+
+    function aggregate(rows: MmpRow[]): { prBest: number[]; tableBest: number[] } {
+      const prBest    = DURATIONS.map(() => 0)
+      const tableBest = MMP_TABLE_DURATIONS.map(() => 0)
+      for (const row of rows) {
+        if (row.id === activityId) continue
+        const s = row.streams
+        if (!s?.watts?.length) continue
+        if (Math.max(...s.watts) > 1200) continue
+        computeMmpCurve(s.watts, DURATIONS).forEach((v, i) => { if (v > prBest[i]) prBest[i] = v })
+        computeMmpCurve(s.watts, MMP_TABLE_DURATIONS).forEach((v, i) => { if (v > tableBest[i]) tableBest[i] = v })
+      }
+      return { prBest, tableBest }
+    }
+
+    const base = createClient().from('activities').select('id, streams')
+      .in('sport_type', ['bike','virtual_bike']).not('streams', 'is', null)
+
+    Promise.all([
+      base.gte('started_at', since24m),
+      base.gte('started_at', yearStart),
+      base.gte('started_at', since3y),
+    ]).then(([r24m, ryear, r3y]) => {
+      const { prBest, tableBest: table24 } = aggregate((r24m.data  ?? []) as MmpRow[])
+      const { tableBest: tableYear }        = aggregate((ryear.data ?? []) as MmpRow[])
+      const { tableBest: tableAll  }        = aggregate((r3y.data   ?? []) as MmpRow[])
+
+      setPrMmp(prBest.some(v => v > 0) ? prBest : null)
+      setYearMmp(tableYear)
+      setAllTimeMmp(tableAll)
+      void table24 // computed but superseded by alltime for the table
+      setPrLoading(false)
+    }).catch(() => setPrLoading(false))
+  }, [activityId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Key moment markers (5' 20' 30' 45' 1h) — only if duration in range
+  const keyMoments = useMemo(() => {
+    return KEY_MOMENT_DURS
+      .filter(d => d <= N)
+      .map((d, i) => {
+        const ti = MMP_TABLE_DURATIONS.indexOf(d)
+        const w  = ti >= 0 ? sessionMmpTable[ti] : 0
+        return { d, label: KEY_MOMENT_LBLS[KEY_MOMENT_DURS.indexOf(d)], watts: w, altY: i % 2 === 1 }
+      })
+      .filter(m => m.watts > 0)
+  }, [sessionMmpTable, N])
 
   const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
 
   const W = 1000, H = 220, pad = 10
+  void pad
 
-  // Log10 scale helpers (échelle logarithmique base 10)
+  // Log10 scale helpers
   const logMin = Math.log10(DURATIONS[0])
   const logMax = Math.log10(DURATIONS[DURATIONS.length - 1])
   function logX(d: number): number {
     return ((Math.log10(d) - logMin) / (logMax - logMin)) * W
   }
 
-  // Y scale 0-based avec gridlines à 200W
   const allVals = [...mmp, ...(prMmp ?? [])]
   const maxYWatts = Math.ceil(Math.max(...allVals.filter(v => v > 0), 200) / 200) * 200
 
@@ -796,7 +835,6 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
     return H - (v / maxYWatts) * H
   }
 
-  // Gridlines à 200W d'intervalle
   const yGridlines: number[] = []
   for (let w = 0; w <= maxYWatts; w += 200) yGridlines.push(w)
 
@@ -811,7 +849,6 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
   const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
   const prPaths = prMmp ? buildCurvePaths(prMmp) : null
 
-  // Cursor X position (log scale → pixel)
   const cursorX = pct !== null ? pct * W : null
   const avgW = watts.reduce((a, b) => a + b, 0) / N
 
@@ -821,6 +858,8 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
     const h = Math.floor(s/3600), m = Math.floor((s%3600)/60)
     return m ? `${h}h${String(m).padStart(2,'0')}` : `${h}h`
   }
+
+  const recordMmp = recordFilter === 'year' ? yearMmp : allTimeMmp
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -876,6 +915,26 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
           <path d={fillPath} fill="url(#mmpFill)"/>
           <path d={linePath} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
 
+          {/* Key moment markers — rendered before cursor so cursor stays on top */}
+          {keyMoments.map(({ d, label: kmLabel, watts: kmW, altY }) => {
+            const x  = logX(d)
+            const cy = yOf(kmW)
+            const ly = altY ? cy - 24 : cy - 10
+            return (
+              <g key={d}>
+                <line x1={x} y1={0} x2={x} y2={H} stroke="#94A3B8" strokeWidth="0.7" strokeDasharray="3 2" opacity="0.65"/>
+                <rect x={x - 22} y={ly - 11} width={44} height={12} rx={2}
+                  fill="var(--bg-card)" stroke="#94A3B8" strokeWidth="0.7" opacity="0.95"/>
+                <text x={x} y={ly - 2} textAnchor="middle"
+                  fontSize="9" fill="var(--text-mid)" fontWeight="700"
+                  style={{ fontFamily: 'DM Mono, monospace' }}>
+                  {kmW}W
+                </text>
+                <circle cx={x} cy={cy} r="2.5" fill="#94A3B8" opacity="0.8"/>
+              </g>
+            )
+          })}
+
           {cursorX !== null && (
             <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
@@ -906,6 +965,18 @@ function PowerCurveChart({ watts }: { watts: number[] }) {
           <span style={{ width: 12, height: 2, background: '#EF4444', display: 'inline-block', borderRadius: 1 }}/>Record 24 mois
         </div>
       </div>
+
+      {/* Records vs Session table */}
+      <MmpTable
+        sessionMmp={sessionMmpTable}
+        recordMmp={recordMmp}
+        durations={MMP_TABLE_DURATIONS}
+        labels={MMP_TABLE_LABELS}
+        sessionN={activityDurationS}
+        filter={recordFilter}
+        onFilter={setRecordFilter}
+        loading={prLoading}
+      />
     </div>
   )
 }
@@ -3557,7 +3628,11 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                 <>
                   {isBike && s.watts && s.watts.length > 60 && (
                     <Section title="Courbe de puissance">
-                      <PowerCurveChart watts={s.watts} />
+                      <PowerCurveChart
+                        watts={s.watts}
+                        activityId={a.id}
+                        activityDurationS={a.moving_time_s ?? s.watts.length}
+                      />
                     </Section>
                   )}
                   {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
@@ -4046,7 +4121,11 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           return (
             <>
               {isBike && s.watts && s.watts.length > 60 && (
-                <PowerCurveChart watts={s.watts} />
+                <PowerCurveChart
+                  watts={s.watts}
+                  activityId={a.id}
+                  activityDurationS={a.moving_time_s ?? s.watts.length}
+                />
               )}
               {isRun && s.velocity && s.altitude && s.distance &&
                s.velocity.length > 60 && (

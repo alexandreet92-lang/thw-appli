@@ -11326,12 +11326,12 @@ function PlusMenu({
 
   return (
     <div ref={ref} className="aip-plus-menu" style={{
-      position: 'absolute', bottom: 'calc(100% + 6px)', left: 0,
+      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
       minWidth: 260,
       borderRadius: 12,
       padding: 6,
       boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
-      zIndex: 100,
+      zIndex: 200,
       maxHeight: '72vh', overflow: 'hidden',
       animation: 'aip_menu_up 0.18s ease-out',
     }}>
@@ -19227,41 +19227,28 @@ export default function AIPanel({
           padding: 0 16px 16px !important;
         }
 
-        /* B2 — Input wrap: contraste fort, centré max 680px, sans glow au focus */
+        /* B2 — Input wrap: via variables thème, centré max 680px, sans glow au focus */
         .aip-input-wrap {
           max-width: 680px !important;
           margin: 0 auto !important;
           width: 100% !important;
           border-radius: 16px !important;
-          background: #FFFFFF !important;
-          border: 1px solid rgba(0,0,0,0.15) !important;
+          background: var(--input-bg) !important;
+          border: 1px solid var(--border-mid) !important;
           box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
           transition: border-color 200ms !important;
         }
-        html.dark .aip-input-wrap {
-          background: #1C2333 !important;
-          border: 1px solid #2E3A4E !important;
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.06) !important;
-        }
         /* Pas de changement de couleur au focus */
         .aip-input-wrap:focus-within {
-          border-color: rgba(0,0,0,0.15) !important;
+          border-color: var(--border-mid) !important;
           box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-        }
-        html.dark .aip-input-wrap:focus-within {
-          border-color: #2E3A4E !important;
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.06) !important;
         }
         .aip-input-wrap *:focus-visible { outline: none !important; }
 
         /* Menu + — liste compacte */
         .aip-plus-menu {
-          background: #FFFFFF;
-          border: 1px solid rgba(0,0,0,0.12);
-        }
-        html.dark .aip-plus-menu {
-          background: #1C2333;
-          border: 1px solid #2E3A4E;
+          background: var(--bg-card);
+          border: 1px solid var(--border-mid);
         }
 
         /* B4 — 3-dot bounce thinking animation */
@@ -20141,18 +20128,6 @@ export default function AIPanel({
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
-            {/* Plus menu */}
-            {plusOpen && (
-              <PlusMenu
-                onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
-                onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
-                onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
-                onClose={() => setPlusOpen(false)}
-                onCamera={() => cameraRef.current?.click()}
-                onFiles={() => filesRef.current?.click()}
-              />
-            )}
-
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
@@ -20310,21 +20285,34 @@ export default function AIPanel({
                 display: 'flex', alignItems: 'center',
                 padding: '4px 8px 8px', gap: 5,
               }}>
-                {/* + button */}
-                <button
-                  onClick={() => setPlusOpen(p => !p)}
-                  title="Actions"
-                  className="aip-icon-btn"
-                  style={{
-                    width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                    color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </button>
+                {/* + button (avec menu ancré) */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    onClick={() => setPlusOpen(p => !p)}
+                    title="Actions"
+                    className="aip-icon-btn"
+                    style={{
+                      width: 28, height: 28, borderRadius: 6,
+                      color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
+                  {/* Plus menu — ancré au bouton + */}
+                  {plusOpen && (
+                    <PlusMenu
+                      onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
+                      onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
+                      onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
+                      onClose={() => setPlusOpen(false)}
+                      onCamera={() => cameraRef.current?.click()}
+                      onFiles={() => filesRef.current?.click()}
+                    />
+                  )}
+                </div>
 
                 {/* Police */}
                 <FontPicker current={chatFontFamily} onChange={setChatFontFamily} />

@@ -11731,8 +11731,8 @@ function HistoryDrawer({
     return (
       <div style={{
         width: 190, flexShrink: 0,
-        borderRight: '0.5px solid var(--ai-border)',
-        background: 'var(--ai-bg)',
+        borderRight: '1px solid var(--border-mid)',
+        background: 'var(--bg-alt)',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}>
@@ -11750,8 +11750,8 @@ function HistoryDrawer({
       />
       <div style={{
         position: 'absolute', top: 0, left: 0, bottom: 0,
-        width: 260, background: 'var(--ai-bg)',
-        borderRight: '1px solid var(--ai-border)',
+        width: 260, background: 'var(--bg-alt)',
+        borderRight: '1px solid var(--border-mid)',
         zIndex: 26, display: 'flex', flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.16)',
       }}>
@@ -19007,31 +19007,18 @@ export default function AIPanel({
           transform-origin: center center;
         }
 
-        /* CSS variables */
+        /* CSS variables — héritées du thème global (jour/nuit automatique) */
         .aip-root {
-          --ai-bg:          #ffffff;
-          --ai-bg2:         #f9fafb;
-          --ai-border:      rgba(0,0,0,0.07);
-          --ai-text:        #0d1117;
-          --ai-mid:         rgba(13,17,23,0.55);
-          --ai-dim:         rgba(13,17,23,0.35);
-          --ai-accent:      #00c8e0;
-          --ai-accent-dim:  rgba(0,200,224,0.10);
-          --ai-accent-soft: rgba(0,200,224,0.05);
-          --ai-accent-line: rgba(0,200,224,0.40);
-          --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
-        }
-        html.dark .aip-root {
-          --ai-bg:          #13161e;
-          --ai-bg2:         #0f121a;
-          --ai-border:      rgba(255,255,255,0.08);
-          --ai-text:        #eef2f7;
-          --ai-mid:         rgba(238,242,247,0.58);
-          --ai-dim:         rgba(238,242,247,0.33);
+          --ai-bg:          var(--bg-card);
+          --ai-bg2:         var(--bg-alt);
+          --ai-border:      var(--border);
+          --ai-text:        var(--text);
+          --ai-mid:         var(--text-mid);
+          --ai-dim:         var(--text-dim);
           --ai-accent:      #00c8e0;
           --ai-accent-dim:  rgba(0,200,224,0.12);
-          --ai-accent-soft: rgba(0,200,224,0.07);
-          --ai-accent-line: rgba(0,200,224,0.45);
+          --ai-accent-soft: rgba(0,200,224,0.06);
+          --ai-accent-line: rgba(0,200,224,0.40);
           --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
         }
 
@@ -19156,23 +19143,21 @@ export default function AIPanel({
           padding: 0 16px 16px !important;
         }
 
-        /* B2 — Input wrap: Claude-style rounded box */
+        /* B2 — Input wrap: boîte avec présence visuelle (thème global) */
         .aip-input-wrap {
-          border-radius: 24px !important;
-          background: #F4F4F5 !important;
-          border: 1px solid transparent !important;
-          box-shadow: none !important;
-        }
-        html.dark .aip-input-wrap {
-          background: #2A2A2E !important;
+          border-radius: 14px !important;
+          background: var(--bg-card) !important;
+          border: 1.5px solid var(--border-mid) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+          transition: border-color 200ms, box-shadow 200ms !important;
         }
         .aip-input-wrap:focus-within {
-          border-color: #D1D5DB !important;
-          box-shadow: none !important;
+          border-color: var(--primary) !important;
+          box-shadow: 0 0 0 3px rgba(0,200,224,0.12) !important;
         }
         html.dark .aip-input-wrap:focus-within {
-          border-color: #4A4A4E !important;
-          box-shadow: none !important;
+          border-color: var(--primary) !important;
+          box-shadow: 0 0 0 3px rgba(0,200,224,0.12) !important;
         }
 
         /* B4 — 3-dot bounce thinking animation */
@@ -19475,7 +19460,7 @@ export default function AIPanel({
                 }}>
                   Bonjour, bon {mounted ? getGreeting() : 'matin'} !
                 </p>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 28px' }}>
+                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 28px' }}>
                   Comment puis-je t'aider aujourd'hui ?
                 </p>
 
@@ -19492,7 +19477,7 @@ export default function AIPanel({
                   }}
                 >
                   <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
                     textTransform: 'uppercase', color: 'var(--ai-dim)',
                   }}>
                     Actions rapides
@@ -19531,21 +19516,26 @@ export default function AIPanel({
                           disabled={loading}
                           style={{
                             display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                            gap: 10, padding: '11px 14px', borderRadius: 10,
-                            border: '1px solid var(--ai-border)',
-                            background: 'var(--ai-bg2)',
+                            gap: 10, padding: '12px 14px', borderRadius: 12,
+                            border: '1px solid var(--border-mid)',
+                            background: 'var(--bg-card)',
+                            boxShadow: 'var(--shadow-card)',
                             cursor: loading ? 'not-allowed' : 'pointer',
                             textAlign: 'left', width: '100%',
                             opacity: loading ? 0.5 : 1,
-                            transition: 'border-color 0.12s, background 0.12s',
+                            transition: 'box-shadow 0.18s, border-color 0.18s, transform 0.18s',
                           }}
                           onMouseEnter={e => { if (!loading) {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = mcfg.color + '50'
-                            ;(e.currentTarget as HTMLButtonElement).style.background = mcfg.colorBg
+                            const el = e.currentTarget as HTMLButtonElement
+                            el.style.borderColor = 'var(--primary)'
+                            el.style.boxShadow = '0 4px 16px rgba(0,200,224,0.10)'
+                            el.style.transform = 'translateY(-1px)'
                           }}}
                           onMouseLeave={e => {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'
-                            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)'
+                            const el = e.currentTarget as HTMLButtonElement
+                            el.style.borderColor = 'var(--border-mid)'
+                            el.style.boxShadow = 'var(--shadow-card)'
+                            el.style.transform = 'translateY(0)'
                           }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>

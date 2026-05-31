@@ -3336,12 +3336,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     <>
       <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
 
-        {/* ── CARTE HERO ── */}
+        {/* ── CARTE HERO — position:fixed garantit pleine largeur viewport ── */}
         <div style={{
-          position: 'sticky', top: 0,
-          height: 'calc(55vh - 60px)',
-          width: '100vw', left: 0, margin: 0,
-          zIndex: 1, overflow: 'hidden',
+          position: 'fixed',
+          top: 0, left: 0, right: 0,
+          height: '52vh',
+          width: '100%',
+          zIndex: 10,
         }}>
           {polylinePoints && polylinePoints.length >= 2 ? (
             <ActivityMapCard
@@ -3380,9 +3381,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
         <div
           data-bottom-sheet=""
           style={{
-            position: 'relative', zIndex: 2,
+            marginTop: '52vh',
+            position: 'relative', zIndex: 20,
             borderRadius: '20px 20px 0 0',
-            marginTop: '-20px',
             paddingBottom: 120,
             animation: 'slideUpSheet 0.45s cubic-bezier(0.32,0.72,0,1) both',
           }}

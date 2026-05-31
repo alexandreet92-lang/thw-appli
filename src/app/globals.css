@@ -524,8 +524,6 @@ button:active { transform: scale(0.97); }
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --info-bg:           #020617;
-    --info-border:       #1e293b;
     --zone-good-bg:      rgba(20, 83, 45, 0.35);
     --zone-good-border:  #166534;
     --zone-med-bg:       rgba(120, 53, 15, 0.35);

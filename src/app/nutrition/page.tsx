@@ -1139,9 +1139,9 @@ export default function NutritionPage() {
         </div>
       )}
 
-      <div style={{ padding: '16px 16px 0' }}>
+      <div className="px-4 md:px-8 pt-4 md:pt-6" style={{ paddingBottom: 0 }}>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 1 — Bilan du jour                             */}
@@ -1256,7 +1256,7 @@ export default function NutritionPage() {
 
         </div>{/* end xl:grid-cols-2 */}
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 3 — Plan nutritionnel                         */}

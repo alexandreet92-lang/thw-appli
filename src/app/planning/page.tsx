@@ -11388,7 +11388,7 @@ export default function PlanningPage() {
   }
 
   return (
-    <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
+    <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6">
       <PageHelp config={PLANNING_ONBOARDING} show={show} onDismiss={dismiss} />
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>

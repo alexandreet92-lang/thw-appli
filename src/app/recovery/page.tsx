@@ -721,7 +721,7 @@ export default function RecoveryPage() {
   }
 
   return (
-    <div className="max-w-screen-2xl mx-auto" style={{ padding:'24px 28px' }}>
+    <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6">
       <PageHelp config={RECOVERY_ONBOARDING} show={show} onDismiss={dismiss} />
 
       {/* Header page */}
@@ -819,7 +819,7 @@ export default function RecoveryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SectionSleep sleep={todayData.sleep}/>
         <SectionTrends data={todayData}/>
       </div>

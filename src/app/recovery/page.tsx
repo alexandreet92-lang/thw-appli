@@ -753,7 +753,7 @@ export default function RecoveryPage() {
         </div>
       </div>
 
-      <SectionToday    data={todayData} onCheckIn={() => setShowCheckIn(true)} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>
+      <SectionToday data={todayData} onCheckIn={() => setShowCheckIn(true)} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>
 
       {/* ── Résultat analyse IA ─────────────────────────── */}
       {aiError && (
@@ -819,8 +819,10 @@ export default function RecoveryPage() {
         </div>
       )}
 
-      <SectionSleep    sleep={todayData.sleep}/>
-      <SectionTrends   data={todayData}/>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SectionSleep sleep={todayData.sleep}/>
+        <SectionTrends data={todayData}/>
+      </div>
       <SectionDataSources/>
 
       {showCheckIn && (

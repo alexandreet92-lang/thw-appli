@@ -1256,6 +1256,8 @@ export default function NutritionPage() {
 
         </div>{/* end xl:grid-cols-2 */}
 
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 3 — Plan nutritionnel                         */}
         {/* ══════════════════════════════════════════════════════ */}
@@ -1508,6 +1510,8 @@ export default function NutritionPage() {
             </div>
           )}
         </div>
+
+        </div>{/* end sections 3+4 grid */}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 5 — Historique et graphiques                  */}

@@ -2807,6 +2807,13 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 
   const [selectedBloc, setSelectedBloc] = useState<number | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
+  const [isDesktopPlan, setIsDesktopPlan] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDesktopPlan(window.innerWidth >= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Dimensions SVG
   const PERIOD_W = 400, PERIOD_H = 26
@@ -3072,34 +3079,44 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                 {/* ── Détail semaine cliquée ── */}
                 {selBar && (() => {
                   const accentCol = safeWeekTypeText(selBar.type)
-                  return (
-                    <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30` }}>
+                  const inner = (
+                    <div style={{ padding: isDesktopPlan ? '20px 24px' : '10px 12px', borderRadius: isDesktopPlan ? 12 : 8, background: `${accentCol}0d`, border: `1px solid ${accentCol}30`, minWidth: isDesktopPlan ? 600 : undefined }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: accentCol }}>S{selBar.weekNum} — {selBar.type}</span>
+                        <span style={{ fontSize: isDesktopPlan ? 14 : 12, fontWeight: 700, color: accentCol }}>S{selBar.weekNum} — {selBar.type}</span>
                         <button onClick={() => setSelectedWeek(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
                       </div>
-                      {selBar.theme && <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>{selBar.theme}</p>}
-                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: selBar.sportStats.length > 0 ? 10 : 0 }}>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                      {selBar.theme && <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '0 0 10px', fontStyle: 'italic' }}>{selBar.theme}</p>}
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: selBar.sportStats.length > 0 ? 12 : 0 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                           Volume <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(selBar.volume_h * 60))}</strong>
                         </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                           Séances <strong style={{ color: 'var(--text)' }}>{selBar.seanceCount}</strong>
                         </span>
                       </div>
                       {selBar.sportStats.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isDesktopPlan ? 'repeat(auto-fit, minmax(160px,1fr))' : '1fr', gap: 6 }}>
                           {selBar.sportStats.map(({ sport, count, mins }) => (
                             <div key={sport} style={{ display: 'grid', gridTemplateColumns: '70px 22px 44px', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: sportColor(sport), textTransform: 'capitalize' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'right' as const }}>{count}×</span>
-                              <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: sportColor(sport), textTransform: 'capitalize' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right' as const }}>{count}×</span>
+                              <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   )
+                  if (isDesktopPlan) {
+                    return (
+                      <div onClick={() => setSelectedWeek(null)} style={{ position: 'fixed' as const, inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                        <div onClick={e => e.stopPropagation()}>
+                          {inner}
+                        </div>
+                      </div>
+                    )
+                  }
+                  return <div style={{ marginTop: 10 }}>{inner}</div>
                 })()}
               </ChartSection>
             )

@@ -5,20 +5,20 @@ import L from 'leaflet'
 
 const PARIS: [number, number] = [48.8566, 2.3522]
 
-const KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
-const ATTRIBUTION = '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+const ATTRIBUTION = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 
 const TILES = {
   std: {
-    url: `https://api.maptiler.com/maps/outdoor-v2/256/{z}/{x}/{y}.png?key=${KEY}`,
+    url: `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
     overlay: null as string | null,
   },
   sat: {
-    url: `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${KEY}`,
+    url: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
     overlay: null as string | null,
   },
   hyb: {
-    url: `https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=${KEY}`,
+    url: `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
     overlay: null as string | null,
   },
 }
@@ -142,8 +142,8 @@ export default function MapBackground({ trackPoints, currentPosition, activeRout
         attributionControl={false}
         style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer url={tile.url} tileSize={256} maxZoom={19} attribution={ATTRIBUTION} />
-        {tile.overlay && <TileLayer url={tile.overlay} tileSize={256} maxZoom={19} attribution={ATTRIBUTION} />}
+        <TileLayer url={tile.url} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTRIBUTION} />
+        {tile.overlay && <TileLayer url={tile.overlay} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTRIBUTION} />}
         {position && <Marker position={position} icon={gpsIcon} />}
         <FlyToPosition position={position} />
         {trackPoints && trackPoints.length > 1 && <TrackPolyline points={trackPoints} />}

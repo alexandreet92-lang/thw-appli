@@ -5264,12 +5264,12 @@ function GPSMapInner({ trace, accent, hoveredKm, elevationProfile }: {
       mapInstanceRef.current = map
 
       // Layers
-      const mtKey = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
-      const mtAttr = '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
-      const mtOpts = { maxZoom: 20, tileSize: 512, zoomOffset: -1, attribution: mtAttr }
-      const osmLayer = L.tileLayer(`https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${mtKey}`, mtOpts)
-      const satLayer = L.tileLayer(`https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${mtKey}`, mtOpts)
-      const hybridLayer = L.tileLayer(`https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${mtKey}`, mtOpts)
+      const mbToken = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+      const mbAttr = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      const mbOpts = { maxZoom: 20, tileSize: 512, zoomOffset: -1, attribution: mbAttr }
+      const osmLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, mbOpts)
+      const satLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, mbOpts)
+      const hybridLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, mbOpts)
       osmLayer.addTo(map)
       L.control.layers({ 'Standard': osmLayer, 'Satellite': satLayer, 'Hybride': hybridLayer }, {}, { position: 'topright', collapsed: false }).addTo(map)
 

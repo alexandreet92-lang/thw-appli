@@ -35,10 +35,10 @@ export default function SessionTraceMap({ points, isDark = false }: Props) {
       })
       mapRef.current = map
 
-      const key = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
+      const token = process.env.NEXT_PUBLIC_MAPBOX ?? ''
       L.tileLayer(
-        `https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${key}`,
-        { maxZoom: 20, maxNativeZoom: 18, tileSize: 512, zoomOffset: -1, attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>' }
+        `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${token}`,
+        { maxZoom: 20, tileSize: 512, zoomOffset: -1, attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
       ).addTo(map)
 
       const polyline = L.polyline(latlngs, { color: '#06B6D4', weight: 3, opacity: 0.9 })

@@ -12,12 +12,12 @@ import RouteSaveForm from './RouteSaveForm'
 import RouteLibrary from './RouteLibrary'
 import SegmentSaveForm from '../segments/SegmentSaveForm'
 
-const KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
-const ATTR = 'MapTiler | OpenStreetMap'
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+const ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 const TILES = {
-  std: `https://api.maptiler.com/maps/outdoor-v2/256/{z}/{x}/{y}.png?key=${KEY}`,
-  sat: `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${KEY}`,
-  hyb: `https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=${KEY}`,
+  std: `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
+  sat: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
+  hyb: `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
 }
 type Layer = keyof typeof TILES
 
@@ -179,7 +179,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'DM Sans, sans-serif', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <MapContainer center={[48.8566, 2.3522]} zoom={13} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
-        <TileLayer url={TILES[layer]} tileSize={256} maxZoom={19} attribution={ATTR} />
+        <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTR} />
         <MapClickHandler onAdd={addWaypoint} />
         <MapReady mapRef={mapRef} />
         <GeolocateOnMount onPosition={setUserPosition} />

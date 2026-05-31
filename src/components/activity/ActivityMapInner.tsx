@@ -6,12 +6,12 @@ import { useEffect } from 'react'
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const KEY         = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
-const ATTRIBUTION = '<a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+const TOKEN       = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+const ATTRIBUTION = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 const TILES = {
-  std: `https://api.maptiler.com/maps/outdoor-v2/256/{z}/{x}/{y}.png?key=${KEY}`,
-  sat: `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${KEY}`,
-  hyb: `https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=${KEY}`,
+  std: `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
+  sat: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
+  hyb: `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`,
 }
 
 interface LatLng { lat: number; lng: number }
@@ -84,7 +84,7 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
         attributionControl={false}
         style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer url={TILES[layer]} tileSize={512} detectRetina={true} maxZoom={19} attribution={ATTRIBUTION} />
+        <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTRIBUTION} />
 
         {points.length > 1 && (
           <>

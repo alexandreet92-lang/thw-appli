@@ -19925,7 +19925,7 @@ export default function AIPanel({
                           width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                           background: 'rgba(6,182,212,0.12)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          marginTop: 2,
+                          alignSelf: 'flex-start', marginTop: 4,
                         }}>
                           <Zap size={14} color="#06B6D4" />
                         </div>
@@ -19965,10 +19965,11 @@ export default function AIPanel({
                         return (
                           <div style={{
                             flex: 1, minWidth: 0,
-                            background: 'var(--bg-card)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '4px 18px 18px 18px',
-                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: 0,
+                            boxShadow: 'none',
+                            padding: 0,
                             fontSize: 14, lineHeight: 1.65,
                             color: 'var(--text)',
                             wordBreak: 'break-word',

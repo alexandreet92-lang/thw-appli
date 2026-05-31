@@ -18765,7 +18765,8 @@ export default function AIPanel({
 
         /* Focus : shadow du conteneur input */
         .aip-input-wrap:focus-within {
-          box-shadow: 0 0 0 1.5px rgba(37,99,235,0.25), 0 2px 8px rgba(0,0,0,0.06) !important;
+          border-color: var(--ai-accent) !important;
+          box-shadow: 0 0 0 3px var(--ai-accent-dim) !important;
         }
 
         /* Messages scroll */
@@ -18897,10 +18898,10 @@ export default function AIPanel({
                 </p>
 
                 {/* Chips de suggestions */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 32, width: '100%', maxWidth: 380 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 28, width: '100%', maxWidth: 420 }}>
                   {[
                     'Analyse ma dernière séance',
-                    'Crée un plan d\'entraînement semaine',
+                    'Crée un plan d\'entraînement',
                     'Comment améliorer mon FTP ?',
                     'Évalue ma charge d\'entraînement',
                   ].map((chip, i) => (
@@ -18916,19 +18917,28 @@ export default function AIPanel({
                         background: 'var(--ai-bg2)',
                         border: '1px solid var(--ai-border)',
                         borderRadius: 12,
-                        padding: '12px 14px',
+                        padding: '11px 15px',
                         fontSize: 13,
                         color: 'var(--ai-mid)',
                         cursor: activeAgent === 'networks' ? 'not-allowed' : 'pointer',
                         textAlign: 'left' as const,
                         lineHeight: 1.4,
                         opacity: activeAgent === 'networks' ? 0.4 : 1,
-                        transition: 'border-color 200ms, background 200ms',
-                        animation: `ai_slidein 0.3s ease ${0.1 + i * 0.08}s both`,
+                        transition: 'border-color 180ms, background 180ms',
+                        animation: `fadeUp 0.4s ease-out ${i * 0.15}s both`,
                         fontFamily: 'DM Sans, sans-serif',
                       }}
-                      onMouseEnter={e => { if (activeAgent !== 'networks') (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)' }}
+                      onMouseEnter={e => {
+                        if (activeAgent === 'networks') return
+                        const el = e.currentTarget as HTMLButtonElement
+                        el.style.borderColor = 'var(--ai-accent)'
+                        el.style.color = 'var(--ai-text)'
+                      }}
+                      onMouseLeave={e => {
+                        const el = e.currentTarget as HTMLButtonElement
+                        el.style.borderColor = 'var(--ai-border)'
+                        el.style.color = 'var(--ai-mid)'
+                      }}
                     >
                       {chip}
                     </button>
@@ -19372,7 +19382,7 @@ export default function AIPanel({
               className="aip-input-wrap max-w-[760px] mx-auto rounded-2xl"
               style={{
                 transition: 'box-shadow 0.15s, border-color 0.2s',
-                background: 'var(--ai-bg2)',
+                background: 'var(--input-bg)',
                 border: '1.5px solid var(--ai-border)',
               }}
             >
@@ -19491,10 +19501,13 @@ export default function AIPanel({
                 <button
                   onClick={() => setPlusOpen(p => !p)}
                   title="Actions"
-                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
-                             bg-[#F2F2F2] dark:bg-[#2A2A2A]
-                             hover:bg-[#E8E8E8] dark:hover:bg-[#333]
-                             text-[#555] dark:text-[#999] transition-colors"
+                  style={{
+                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)',
+                    color: 'var(--ai-dim)', cursor: 'pointer',
+                    transition: 'background 150ms',
+                  }}
                 >
                   <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                     <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -19505,9 +19518,10 @@ export default function AIPanel({
                 <button
                   onClick={() => setActiveAgent('training')}
                   style={{
-                    height: 32, padding: '0 14px',
-                    borderRadius: 20, border: activeAgent === 'training' ? '1px solid #06B6D4' : '1px solid var(--ai-border)',
-                    background: activeAgent === 'training' ? 'rgba(6,182,212,0.12)' : 'transparent',
+                    padding: '5px 14px',
+                    borderRadius: 20,
+                    border: activeAgent === 'training' ? '1px solid #06B6D4' : '1px solid var(--ai-border)',
+                    background: activeAgent === 'training' ? 'rgba(6,182,212,0.12)' : 'var(--ai-bg)',
                     color: activeAgent === 'training' ? '#06B6D4' : 'var(--ai-dim)',
                     fontWeight: activeAgent === 'training' ? 600 : 400,
                     fontSize: 13, cursor: 'pointer', flexShrink: 0,
@@ -19520,27 +19534,27 @@ export default function AIPanel({
                   </svg>
                   Training
                 </button>
-                <div title="Bientôt disponible" style={{ position: 'relative', flexShrink: 0 }}>
-                  <button
-                    disabled
-                    style={{
-                      height: 32, padding: '0 14px',
-                      borderRadius: 20, border: '1px solid var(--ai-border)',
-                      background: 'transparent',
-                      color: 'var(--ai-dim)',
-                      fontWeight: 400, fontSize: 13,
-                      cursor: 'not-allowed', opacity: 0.45,
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      fontFamily: 'DM Sans, sans-serif',
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <path d="M2 12h20M12 2c-2.7 3.2-4 6.3-4 10s1.3 6.8 4 10M12 2c2.7 3.2 4 6.3 4 10s-1.3 6.8-4 10"/>
-                    </svg>
-                    Networks
-                  </button>
-                </div>
+                <button
+                  disabled
+                  title="Bientôt disponible"
+                  style={{
+                    padding: '5px 14px',
+                    borderRadius: 20,
+                    border: '1px solid var(--ai-border)',
+                    background: 'var(--ai-bg)',
+                    color: 'var(--ai-dim)',
+                    fontWeight: 400, fontSize: 13,
+                    cursor: 'not-allowed', opacity: 0.45, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M2 12h20M12 2c-2.7 3.2-4 6.3-4 10s1.3 6.8 4 10M12 2c2.7 3.2 4 6.3 4 10s-1.3 6.8-4 10"/>
+                  </svg>
+                  Networks
+                </button>
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />

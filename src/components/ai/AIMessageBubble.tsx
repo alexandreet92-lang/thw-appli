@@ -17,30 +17,32 @@ interface Props {
 export default function AIMessageBubble({ role, isStreaming, accentColor = '#06B6D4', children }: Props) {
   if (role === 'user') {
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, animation: 'ai_msg_in 0.25s ease-out both' }}>
-        <div style={{
-          maxWidth: '70%',
-          background: accentColor,
-          borderRadius: '18px 18px 4px 18px',
-          padding: '10px 16px',
-          fontSize: 14,
-          lineHeight: 1.5,
-          color: '#ffffff',
-          fontFamily: 'DM Sans, sans-serif',
-        }}>
-          {children}
-        </div>
+      <div style={{
+        maxWidth: '70%',
+        background: accentColor,
+        borderRadius: '18px 18px 4px 18px',
+        padding: '10px 16px',
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: '#ffffff',
+        fontFamily: 'DM Sans, sans-serif',
+        alignSelf: 'flex-end',
+        marginLeft: 'auto',
+        marginBottom: 4,
+        animation: 'ai_msg_in 0.25s ease-out both',
+      }}>
+        {children}
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', gap: 10, marginBottom: 4, alignItems: 'flex-start', animation: 'ai_msg_in 0.25s ease-out both' }}>
+    <div style={{ display: 'flex', gap: 10, marginBottom: 4, alignItems: 'flex-start', animation: 'ai_msg_in 0.25s ease-out both', maxWidth: '80%' }}>
       {/* Avatar */}
       <div style={{
-        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-        background: `rgba(6,182,212,0.15)`,
-        border: `1px solid rgba(6,182,212,0.25)`,
+        width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--ai-accent-dim)',
+        border: '1px solid var(--ai-accent-line)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginTop: 2,
         animation: isStreaming ? 'ai_pulse 1.4s ease-in-out infinite' : 'none',
@@ -48,7 +50,7 @@ export default function AIMessageBubble({ role, isStreaming, accentColor = '#06B
         {ZAP_ICON}
       </div>
       <div style={{
-        flex: 1, minWidth: 0,
+        minWidth: 0,
         background: 'var(--ai-bg2)',
         border: '1px solid var(--ai-border)',
         borderRadius: '4px 18px 18px 18px',

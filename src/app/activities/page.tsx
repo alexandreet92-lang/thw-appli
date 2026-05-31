@@ -182,9 +182,9 @@ function fmtDur(s: number | null | undefined): string {
   const h   = Math.floor(s / 3600)
   const m   = Math.floor((s % 3600) / 60)
   const sec = Math.floor(s % 60)
-  if (h > 0) return `${h}h${String(m).padStart(2, '0')}`
-  if (sec > 0) return `${m}min${String(sec).padStart(2, '0')}`
-  return `${m}min`
+  if (h > 0) return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+  if (m > 0) return sec > 0 ? `${m}'${String(sec).padStart(2, '0')}` : `${m}'`
+  return `${sec}s`
 }
 
 function fmtDist(m: number | null | undefined): string {
@@ -819,6 +819,17 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   }, [sessionMmpTable, N])
 
   const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
+  const mmpContainerRef = useRef<HTMLDivElement>(null)
+  const [mmpMousePos,   setMmpMousePos] = useState<{ x: number; y: number } | null>(null)
+
+  function handleMmpMove(e: React.MouseEvent) {
+    if (mmpContainerRef.current) {
+      const r = mmpContainerRef.current.getBoundingClientRect()
+      setMmpMousePos({ x: e.clientX - r.left, y: e.clientY - r.top })
+    }
+    onMove(e)
+  }
+  function handleMmpLeave() { setMmpMousePos(null); onLeave() }
 
   const W = 1000, H = 220, pad = 10
   void pad
@@ -882,10 +893,10 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
         </div>
       )}
 
-      <div style={{ position: 'relative', cursor: 'crosshair', paddingLeft: 32 }}>
+      <div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', paddingLeft: 32 }}>
         <svg ref={svgRef} viewBox={`-32 0 ${W + 32} ${H}`} style={{ width: '100%', height: H, display: 'block', overflow: 'visible' }}
           preserveAspectRatio="none"
-          onMouseMove={onMove} onMouseLeave={onLeave}
+          onMouseMove={handleMmpMove} onMouseLeave={handleMmpLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <defs>
             <linearGradient id="mmpFill" x1="0" y1="0" x2="0" y2="1">
@@ -943,7 +954,40 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
           {idx !== null && (
             <circle cx={logX(DURATIONS[idx])} cy={yOf(mmp[idx])} r="4" fill="#5b6fff"/>
           )}
+          {idx !== null && prMmp && prMmp[idx] > 0 && (
+            <circle cx={logX(DURATIONS[idx])} cy={yOf(prMmp[idx])} r="3.5" fill="#EF4444" opacity="0.8"/>
+          )}
         </svg>
+
+        {/* MMP tooltip */}
+        {idx !== null && mmpMousePos && (
+          <div style={{
+            position: 'absolute',
+            left: mmpMousePos.x > 300 ? mmpMousePos.x - 155 : mmpMousePos.x + 14,
+            top: Math.max(4, mmpMousePos.y - 72),
+            background: 'var(--bg)',
+            border: `1px solid ${T.border}`,
+            borderRadius: 8,
+            padding: '8px 12px',
+            fontSize: 12,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
+            pointerEvents: 'none',
+            zIndex: 20,
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4, fontFamily: T.fontMono }}>
+              {fmtDuration(DURATIONS[idx])}
+            </div>
+            <div style={{ color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>
+              {mmp[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
+            </div>
+            {prMmp && prMmp[idx] > 0 && (
+              <div style={{ color: '#EF4444', fontFamily: T.fontMono, marginTop: 2 }}>
+                {prMmp[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* X axis labels */}
@@ -1228,13 +1272,16 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
         {idx !== null && decoupMousePos && (
           <div data-chart-tooltip="" style={{
             position: 'absolute',
-            left: Math.min(decoupMousePos.x + 12, 999),
+            left: decoupMousePos.x > 400 ? decoupMousePos.x - 150 : decoupMousePos.x + 12,
             top: Math.max(0, decoupMousePos.y - 80),
+            background: T.surface,
+            border: `1px solid ${T.border}`,
             borderRadius: 8,
             padding: '6px 10px',
             pointerEvents: 'none',
             zIndex: 20,
             whiteSpace: 'nowrap',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
           }}>
             {/* Temps */}
             {time && time[idx] != null && (
@@ -1359,7 +1406,7 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
   const maxCum = Math.max(...cumulative, 1)
   const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, bpmRange.length)
 
-  const W = 1000, H = 100, pad = 4
+  const W = 1000, H = 200, pad = 4
   const pts = cumulative.map((v, i) => {
     const x = (i / (bpmRange.length - 1)) * W
     const y = H - pad - (v / maxCum) * (H - pad * 2)
@@ -4217,41 +4264,17 @@ conseil pour la prochaine séance similaire.`
           )
         })()}
 
-        {/* ── DISTRIBUTION DE PUISSANCE ── */}
-        {isBike && a.streams?.watts && a.streams.watts.length > 120 && (
-          <div style={{ marginBottom: 32, paddingTop: 24 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-              Distribution de puissance
-            </div>
-            <PowerDistribution
-              watts={a.streams.watts}
-              ftp={a.ftp_at_time}
-            />
-          </div>
-        )}
-
-        {/* ── EFFICACITÉ AÉROBIE ── */}
-        {isBike && a.streams?.watts && a.streams?.heartrate && a.streams.watts.length > 400 && (
-          <div style={{ marginBottom: 32, paddingTop: 24 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-              Efficacité aérobie
-            </div>
-            <AerobicEfficiency
-              watts={a.streams.watts}
-              heartrate={a.streams.heartrate}
-              time={a.streams.time}
-            />
-          </div>
-        )}
-
         {/* ── GRAPHIQUES D'ANALYSE AVANCÉE ── */}
         {a.streams && (() => {
           const s = a.streams
           const maxHrEst = estimateMaxHr(profile.birth_date)
+          const showDec      = isBike && !!s.watts && !!s.heartrate && s.watts.length > 120
+          const showHrCum    = (isBike || isRun) && !!s.heartrate && s.heartrate.length > 60
+          const showDistrib  = isBike && !!s.watts && s.watts.length > 120
+          const showAerobicE = isBike && !!s.watts && !!s.heartrate && s.watts.length > 400
           return (
             <>
+              {/* MMP / GAP */}
               {isBike && s.watts && s.watts.length > 60 && (
                 <PowerCurveChart
                   watts={s.watts}
@@ -4259,54 +4282,78 @@ conseil pour la prochaine séance similaire.`
                   activityDurationS={a.moving_time_s ?? s.watts.length}
                 />
               )}
-              {isRun && s.velocity && s.altitude && s.distance &&
-               s.velocity.length > 60 && (
+              {isRun && s.velocity && s.altitude && s.distance && s.velocity.length > 60 && (
                 <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
               )}
-              {/* ── PARTIE 7 : Découplage | Durée cumulée côte à côte ── */}
-              {(() => {
-                const showDec   = isBike && !!s.watts && !!s.heartrate && s.watts.length > 120
-                const showHrCum = (isBike || isRun) && !!s.heartrate && s.heartrate.length > 60
-                if (!showDec && !showHrCum) return null
-                return (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: showDec ? 12 : 20 }}>
-                      {showDec && (
-                        <DecouplingChart
-                          watts={s.watts!}
-                          heartrate={s.heartrate!}
-                          decouplingPct={decoupling}
-                          altitude={s.altitude}
-                          temp={s.temp}
-                          time={s.time}
-                        />
-                      )}
-                      {showHrCum && (
-                        <HrCumulativeChart heartrate={s.heartrate!} maxHrEst={maxHrEst} />
-                      )}
-                    </div>
-                    {showDec && (
-                      <div style={{ marginBottom: 20 }}>
-                        <button
-                          onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
-                            ? decoupAI.run(buildDecouplingPrompt())
-                            : undefined}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 14px', borderRadius: 20,
-                            background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
-                            border: 'none', color: 'white',
-                            fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                          }}
-                        >
-                          <Sparkles size={14} /> Analyser avec l&apos;IA
-                        </button>
-                        <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
+
+              {/* A — DÉCOUPLAGE P/FC — pleine largeur */}
+              {showDec && (
+                <div style={{ marginBottom: 32, paddingTop: 8 }}>
+                  <DecouplingChart
+                    watts={s.watts!}
+                    heartrate={s.heartrate!}
+                    decouplingPct={decoupling}
+                    altitude={s.altitude}
+                    temp={s.temp}
+                    time={s.time}
+                  />
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
+                        ? decoupAI.run(buildDecouplingPrompt())
+                        : undefined}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 14px', borderRadius: 20,
+                        background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
+                        border: 'none', color: 'white',
+                        fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                      }}
+                    >
+                      <Sparkles size={14} /> Analyser avec l&apos;IA
+                    </button>
+                    <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
+                  </div>
+                </div>
+              )}
+
+              {/* B — DISTRIBUTION + DURÉE CUMULÉE — 2 colonnes */}
+              {(showDistrib || showHrCum) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
+                  {showDistrib && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+                        textTransform: 'uppercase', marginBottom: 12, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+                        Distribution de puissance
                       </div>
-                    )}
-                  </>
-                )
-              })()}
+                      <PowerDistribution
+                        watts={s.watts!}
+                        ftp={a.ftp_at_time}
+                      />
+                    </div>
+                  )}
+                  {showHrCum && (
+                    <div>
+                      <HrCumulativeChart heartrate={s.heartrate!} maxHrEst={maxHrEst} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* C — EFFICACITÉ AÉROBIE — pleine largeur */}
+              {showAerobicE && (
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+                    textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+                    Efficacité aérobie
+                  </div>
+                  <AerobicEfficiency
+                    watts={s.watts!}
+                    heartrate={s.heartrate!}
+                    time={s.time}
+                  />
+                </div>
+              )}
             </>
           )
         })()}

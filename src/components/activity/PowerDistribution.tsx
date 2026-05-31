@@ -108,10 +108,10 @@ export function PowerDistribution({ watts, ftp }: Props) {
       </div>
 
       {/* Histogram */}
-      <div style={{ overflowY: 'auto', maxHeight: 420 }}>
+      <div style={{ overflowY: 'auto', maxHeight: 420, minHeight: 280 }}>
         <svg
           viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-          style={{ width: '100%', height: Math.min(SVG_H, 420), display: 'block' }}
+          style={{ width: '100%', height: Math.max(280, Math.min(SVG_H, 420)), display: 'block' }}
           preserveAspectRatio="xMinYMin meet"
         >
           {binsDesc.map((bin, i) => {

@@ -18692,37 +18692,22 @@ export default function AIPanel({
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* CSS variables — palette reduite Claude.ai style */
+        /* CSS variables — héritées du thème global (jour/nuit automatique) */
         .aip-root {
-          --ai-bg:          #ffffff;
-          --ai-bg2:         #F7F7F7;
-          --ai-border:      rgba(0,0,0,0.06);
-          --ai-text:        #0A0A0A;
-          --ai-mid:         #8C8C8C;
-          --ai-dim:         #8C8C8C;
+          --ai-bg:          var(--bg);
+          --ai-bg2:         var(--bg-card);
+          --ai-border:      var(--border);
+          --ai-text:        var(--text);
+          --ai-mid:         var(--text-mid);
+          --ai-dim:         var(--text-dim);
           --ai-accent:      #2563EB;
           --ai-accent-dim:  rgba(37,99,235,0.10);
           --ai-accent-soft: rgba(37,99,235,0.06);
           --ai-accent-line: rgba(37,99,235,0.40);
           --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
           /* Quick actions sheet vars */
-          --aiq-bg:          #ffffff;
-          --aiq-sidebar-bg:  #F7F7F7;
-        }
-        html.dark .aip-root {
-          --ai-bg:          #0A0A0A;
-          --ai-bg2:         #141414;
-          --ai-border:      rgba(255,255,255,0.07);
-          --ai-text:        #FAFAFA;
-          --ai-mid:         #8C8C8C;
-          --ai-dim:         #8C8C8C;
-          --ai-accent:      #2563EB;
-          --ai-accent-dim:  rgba(37,99,235,0.15);
-          --ai-accent-soft: rgba(37,99,235,0.08);
-          --ai-accent-line: rgba(37,99,235,0.45);
-          --ai-gradient:    linear-gradient(135deg,#06B6D4,#2563EB);
-          --aiq-bg:          #0A0A0A;
-          --aiq-sidebar-bg:  #1A1A1A;
+          --aiq-bg:          var(--bg);
+          --aiq-sidebar-bg:  var(--bg-alt);
         }
 
         /* Panneau */
@@ -19311,8 +19296,8 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           <div
-            className="px-4 pt-2 pb-6 bg-white dark:bg-[#0A0A0A]"
-            style={{ flexShrink: 0, position: 'relative' }}
+            className="px-4 pt-2 pb-6"
+            style={{ flexShrink: 0, position: 'relative', background: 'var(--ai-bg)' }}
           >
             {/* Quick actions sheet */}
             <QuickActionsSheet
@@ -19337,12 +19322,13 @@ export default function AIPanel({
 
             {/* ── Conteneur principal de saisie ── */}
             <div
-              className="aip-input-wrap max-w-[680px] mx-auto
-                         bg-white dark:bg-[#1E1E1E]
-                         rounded-2xl
-                         border border-[#E8E8E8] dark:border-[#2A2A2A]
+              className="aip-input-wrap max-w-[680px] mx-auto rounded-2xl
                          shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
-              style={{ transition: 'box-shadow 0.15s' }}
+              style={{
+                transition: 'box-shadow 0.15s',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--ai-border)',
+              }}
             >
 
               {/* Citation de texte sélectionné */}
@@ -19445,13 +19431,12 @@ export default function AIPanel({
                   ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
                   : 'Pose ta question…'}
                 rows={1}
-                className="w-full px-4 pt-4 pb-2 bg-transparent resize-none
+                className="aip-textarea w-full px-4 pt-4 pb-2 bg-transparent resize-none
                            text-[15px] leading-relaxed
-                           text-[#0A0A0A] dark:text-white
-                           placeholder:text-[#BABABA] dark:placeholder:text-[#555]
                            focus:outline-none
                            min-h-[56px] max-h-[180px] overflow-y-auto
                            border-0 font-[DM_Sans,sans-serif]"
+                style={{ color: 'var(--ai-text)' }}
               />
 
               {/* Ligne basse : + · agent · [spacer] · micro · envoyer */}
@@ -19490,7 +19475,7 @@ export default function AIPanel({
                     alt=""
                     style={{ objectFit: 'contain' }}
                   />
-                  <span className="text-[12px] font-medium text-[#0A0A0A] dark:text-white">
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ai-text)' }}>
                     {model === 'zeus' ? 'Networks' : 'Training'}
                   </span>
                 </button>

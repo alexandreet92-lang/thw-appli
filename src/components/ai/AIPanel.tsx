@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Image as ImageIcon, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 
 // ── Colonnes activities — source de vérité unique ──────────────
@@ -11147,62 +11147,6 @@ function fileToAttachment(file: File): Promise<AttachedFile> {
 // PLUS MENU
 // ══════════════════════════════════════════════════════════════
 
-interface PlusItem {
-  label: string
-  prompt?: string
-  enrichedId?: string
-  flow?: FlowId
-}
-interface PlusCat {
-  label: string
-  items: PlusItem[]
-}
-
-const PLUS_CATS: PlusCat[] = [
-  {
-    label: 'Entraînement',
-    items: [
-      { label: 'Créer une séance', flow: 'sessionbuilder' as FlowId },
-      { label: 'Training Analyse', flow: 'analyze_training' as FlowId },
-      { label: 'Analyser ma semaine', flow: 'analyser_semaine' as FlowId },
-    ],
-  },
-  {
-    label: 'Compétition / Courses',
-    items: [
-      { label: 'Stratégie de course', flow: 'strategie_course' as FlowId },
-    ],
-  },
-  {
-    label: 'Nutrition',
-    items: [
-      { label: 'Créer un plan nutritionnel', flow: 'nutrition' },
-      { label: 'Recharge glucidique', flow: 'recharge' },
-    ],
-  },
-  {
-    label: 'Récupération',
-    items: [
-      { label: 'Analyser ma récupération', flow: 'analyser_recuperation' as FlowId },
-      { label: 'Conseils sommeil', flow: 'conseils_sommeil' as FlowId },
-    ],
-  },
-  {
-    label: 'Performance',
-    items: [
-      { label: 'Analyser ma progression', flow: 'analyser_progression' as FlowId },
-      { label: 'Analyser un test', flow: 'analyzetest' },
-      { label: 'Estimer mes zones', flow: 'estimer_zones' as FlowId },
-    ],
-  },
-  {
-    label: 'Application',
-    items: [
-      { label: 'Comprendre l\'application', flow: 'app_guide' as FlowId },
-    ],
-  },
-]
-
 // ── FontPicker — sélecteur de police inline dans la barre de saisie ──────────
 
 const FONT_PICKER_OPTIONS = [
@@ -11290,6 +11234,35 @@ function FontPicker({ current, onChange }: { current: string; onChange: (family:
   )
 }
 
+type MenuScreen = 'main' | 'actions' | 'connecteurs' | 'competences'
+
+interface ConnectorDef {
+  id: string
+  name: string
+  logo: string
+  connected: boolean
+}
+const PLUS_CONNECTORS: ConnectorDef[] = [
+  { id: 'strava', name: 'Strava',        logo: '/logos/apps/strava.png',            connected: true  },
+  { id: 'polar',  name: 'Polar',         logo: '/logos/apps/polar.png',             connected: true  },
+  { id: 'garmin', name: 'Garmin',        logo: '/logos/apps/garmin.svg',            connected: false },
+  { id: 'sheets', name: 'Google Sheets', logo: '/logos/apps/google-sheets-logo.svg', connected: false },
+  { id: 'notion', name: 'Notion',        logo: '/logos/apps/notion-logo.png',       connected: false },
+]
+
+function actionIcon(flow: FlowId | undefined): React.ReactNode {
+  const sz = 15
+  switch (flow) {
+    case 'training_plan':     return <Dumbbell size={sz} color="var(--ai-mid)" />
+    case 'weakpoints':        return <Target size={sz} color="var(--ai-mid)" />
+    case 'nutrition':         return <Apple size={sz} color="var(--ai-mid)" />
+    case 'app_guide':         return <HelpCircle size={sz} color="var(--ai-mid)" />
+    case 'analyze_training':  return <Activity size={sz} color="var(--ai-mid)" />
+    case 'strategie_course':  return <MapIcon size={sz} color="var(--ai-mid)" />
+    default:                  return <Zap size={sz} color="var(--ai-mid)" />
+  }
+}
+
 function PlusMenu({
   onPrepare,
   onEnriched,
@@ -11309,10 +11282,10 @@ function PlusMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
+  const [animating, setAnimating] = useState(false)
 
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768)
-  }, [])
+  useEffect(() => { setIsMobile(window.innerWidth < 768) }, [])
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -11322,142 +11295,210 @@ function PlusMenu({
     return () => document.removeEventListener('mousedown', h)
   }, [onClose])
 
-  // Cartes d'attachement — adaptées au thème
-  const ATTACH_CARDS: { label: string; icon: React.ReactNode; onClick: () => void }[] = [
-    {
-      label: 'Caméra',
-      onClick: () => { onClose(); setTimeout(onCamera, 80) },
-      icon: (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-          <circle cx="12" cy="13" r="4"/>
-        </svg>
-      ),
-    },
-    {
-      label: 'Photos',
-      onClick: () => { onClose(); setTimeout(onPhotos, 80) },
-      icon: (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <circle cx="8.5" cy="8.5" r="1.5"/>
-          <path d="M21 15l-5-5L5 21"/>
-        </svg>
-      ),
-    },
-    {
-      label: 'Fichiers',
-      onClick: () => { onClose(); setTimeout(onFiles, 80) },
-      icon: (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <path d="M14 2v6h6M12 12v6M9 15h6"/>
-        </svg>
-      ),
-    },
-  ]
+  function goTo(screen: MenuScreen) {
+    if (animating) return
+    setAnimating(true)
+    setActiveScreen(screen)
+    setTimeout(() => setAnimating(false), 220)
+  }
+  function goBack() {
+    if (animating) return
+    setAnimating(true)
+    setActiveScreen('main')
+    setTimeout(() => setAnimating(false), 200)
+  }
 
-  const visibleCards = ATTACH_CARDS.filter(card => isMobile || card.label !== 'Caméra')
+  // ── Styles partagés ──
+  const attachBtnStyle: React.CSSProperties = {
+    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+    padding: '10px 6px', borderRadius: 10,
+    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+    fontSize: 11, color: 'var(--text-mid)', cursor: 'pointer',
+    fontFamily: 'DM Sans,sans-serif', transition: 'background 150ms',
+  }
+  const navItemStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    width: '100%', padding: '9px 10px', borderRadius: 10,
+    border: '0.5px solid var(--border)', marginBottom: 5,
+    background: 'transparent', cursor: 'pointer', textAlign: 'left',
+    transition: 'background 150ms', fontFamily: 'DM Sans,sans-serif',
+  }
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, letterSpacing: '1px',
+    textTransform: 'uppercase' as const, color: 'var(--text-dim)',
+    margin: '0 0 8px', padding: '0 2px',
+  }
+  const subHeaderStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+  }
+
+  function hoverOn(e: React.MouseEvent)  { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }
+  function hoverOff(e: React.MouseEvent) { (e.currentTarget as HTMLElement).style.background = 'transparent' }
 
   return (
     <div ref={ref} style={{
-      position: 'absolute', bottom: '100%', left: 0, right: 0,
-      background: 'var(--ai-bg)',
-      border: '1px solid var(--ai-border)',
-      borderRadius: '14px 14px 0 0',
-      boxShadow: '0 -12px 40px rgba(0,0,0,0.22)',
+      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, right: 0,
+      maxWidth: 680, margin: '0 auto',
+      background: 'var(--bg-card)',
+      border: '0.5px solid var(--border-mid)',
+      borderRadius: 14,
+      boxShadow: 'var(--shadow)',
       zIndex: 30,
-      maxHeight: '72vh',
-      overflowY: 'auto',
-      padding: '0 0 8px',
-      animation: 'ai_slidein 0.18s ease-out',
+      maxHeight: '72vh', overflow: 'hidden',
+      animation: 'aip_menu_up 0.2s ease-out',
     }}>
-      {/* Handle */}
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 14px' }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ai-border)' }} />
-      </div>
 
-      {/* ── Grille Joindre ── */}
-      <div style={{ padding: '0 14px 16px' }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 4px 10px' }}>
-          Joindre
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: visibleCards.length === 2 ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 10 }}>
-          {visibleCards.map(card => (
+      {/* ════ ÉCRAN PRINCIPAL ════ */}
+      {activeScreen === 'main' && (
+        <div style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto' }}>
+          {/* JOINDRE */}
+          <p style={labelStyle}>Joindre</p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <button style={attachBtnStyle} onClick={() => { onClose(); setTimeout(onPhotos, 80) }}
+              onMouseEnter={hoverOn} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }}>
+              <ImageIcon size={18} color="var(--text-mid)" />
+              Photos
+            </button>
+            <button style={attachBtnStyle} onClick={() => { onClose(); setTimeout(onFiles, 80) }}
+              onMouseEnter={hoverOn} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }}>
+              <Paperclip size={18} color="var(--text-mid)" />
+              Fichiers
+            </button>
+            {isMobile && (
+              <button style={{ ...attachBtnStyle, borderStyle: 'dashed', opacity: 0.5 }} onClick={() => { onClose(); setTimeout(onCamera, 80) }}>
+                <Camera size={18} color="var(--text-mid)" />
+                Caméra
+              </button>
+            )}
+          </div>
+
+          {/* Items navigables */}
+          <button style={navItemStyle} onClick={() => goTo('actions')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Zap size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: 'var(--text)' }}>Actions rapides</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Séance, analyse, stratégie…</div>
+            </div>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+
+          <button style={navItemStyle} onClick={() => goTo('connecteurs')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Plug size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: 'var(--text)' }}>Connecteurs</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Strava, Polar, Garmin…</div>
+            </div>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+
+          <button style={{ ...navItemStyle, marginBottom: 0 }} onClick={() => goTo('competences')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+            <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: 'var(--text)' }}>Compétences</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Former tes agents</div>
+            </div>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+        </div>
+      )}
+
+      {/* ════ SOUS-ÉCRAN : ACTIONS RAPIDES ════ */}
+      {activeScreen === 'actions' && (
+        <div key="actions" style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto', animation: 'aip_slide_in_right 0.22s ease-out' }}>
+          <div style={subHeaderStyle}>
+            <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+              <ArrowLeft size={14} color="var(--text-mid)" />
+            </button>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Actions rapides</span>
+          </div>
+          {QUICK_ACTIONS.map((qa, i) => (
             <button
-              key={card.label}
-              onClick={card.onClick}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: 10, padding: '18px 8px',
-                borderRadius: 16,
-                background: 'var(--ai-bg2)',
-                border: '1px solid var(--ai-border)',
-                cursor: 'pointer',
-                color: 'var(--ai-text)',
-                backdropFilter: 'blur(8px)',
-                transition: 'transform 0.1s, opacity 0.1s',
+              key={i}
+              onClick={() => {
+                onClose()
+                if (qa.flow) onFlow(qa.flow)
+                else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
+                else if (qa.prompt) onPrepare(qa.label, qa.prompt)
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-              onMouseDown={e  => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.94)' }}
-              onMouseUp={e    => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '8px 10px', borderRadius: 10,
+                border: '0.5px solid var(--border)', marginBottom: 4,
+                background: 'transparent', cursor: 'pointer', textAlign: 'left',
+                fontSize: 12, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif',
+                transition: 'background 150ms',
+              }}
+              onMouseEnter={hoverOn} onMouseLeave={hoverOff}
             >
-              {card.icon}
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)', letterSpacing: '0.01em' }}>
-                {card.label}
+              <span style={{ flexShrink: 0, display: 'flex' }}>{actionIcon(qa.flow)}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)', border: '0.5px solid var(--border)', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
+                {MODEL_CONFIGS[qa.model].name}
               </span>
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Séparateur */}
-      <div style={{ height: 1, background: 'var(--ai-border)', margin: '0 14px 8px' }} />
-
-      {/* ── Liste actions ── */}
-      {PLUS_CATS.map((cat, ci) => (
-        <div key={ci}>
-          <div style={{
-            padding: '4px 18px 6px',
-            fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-            textTransform: 'uppercase', color: 'var(--ai-dim)',
-          }}>
-            {cat.label}
-          </div>
-          {cat.items.map((item, ii) => (
-            <button
-              key={ii}
-              onClick={() => {
-                onClose()
-                if (item.flow) onFlow(item.flow)
-                else if (item.enrichedId) onEnriched(item.enrichedId, item.label)
-                else if (item.prompt) onPrepare(item.label, item.prompt)
-              }}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%', padding: '9px 18px',
-                border: 'none', background: 'transparent',
-                cursor: 'pointer', textAlign: 'left',
-                fontFamily: 'DM Sans,sans-serif', fontSize: 13,
-                color: 'var(--ai-text)',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-            >
-              <span>{item.label}</span>
-              {item.flow && (
-                <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: 'rgba(91,111,255,0.12)', color: '#5b6fff', fontWeight: 700, letterSpacing: '0.04em' }}>
-                  GUIDE
-                </span>
-              )}
+      {/* ════ SOUS-ÉCRAN : CONNECTEURS ════ */}
+      {activeScreen === 'connecteurs' && (
+        <div key="connecteurs" style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto', animation: 'aip_slide_in_right 0.22s ease-out' }}>
+          <div style={subHeaderStyle}>
+            <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+              <ArrowLeft size={14} color="var(--text-mid)" />
             </button>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Connecteurs</span>
+          </div>
+          {PLUS_CONNECTORS.map(c => (
+            <div key={c.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 10px', borderRadius: 10,
+              border: '0.5px solid var(--border)', marginBottom: 4,
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={c.logo} alt={c.name} width={20} height={20} style={{ borderRadius: 5, objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
+              <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text)' }}>{c.name}</span>
+              {c.connected ? (
+                <>
+                  <div style={{
+                    width: 28, height: 15, borderRadius: 8, background: '#06B6D4', position: 'relative', flexShrink: 0,
+                    animation: 'aip_toggle_pulse 0.3s ease-out',
+                  }}>
+                    <div style={{ position: 'absolute', top: 2, right: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 500, flexShrink: 0 }}>Connecté</span>
+                </>
+              ) : (
+                <>
+                  <div style={{ width: 28, height: 15, borderRadius: 8, background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
+                    <div style={{ position: 'absolute', top: 2, left: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
+                  </div>
+                  <a href="/connections" style={{ fontSize: 10, color: '#06B6D4', border: '0.5px solid #06B6D4', borderRadius: 4, padding: '2px 6px', marginLeft: 6, textDecoration: 'none', flexShrink: 0 }}>
+                    Connecter →
+                  </a>
+                </>
+              )}
+            </div>
           ))}
-          {ci < PLUS_CATS.length - 1 && (
-            <div style={{ margin: '6px 18px', borderTop: '1px solid var(--ai-border)' }} />
-          )}
         </div>
-      ))}
+      )}
+
+      {/* ════ SOUS-ÉCRAN : COMPÉTENCES ════ */}
+      {activeScreen === 'competences' && (
+        <div key="competences" style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto', animation: 'aip_slide_in_right 0.22s ease-out' }}>
+          <div style={subHeaderStyle}>
+            <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+              <ArrowLeft size={14} color="var(--text-mid)" />
+            </button>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Compétences</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+            <Brain size={28} color="var(--text-dim)" />
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '12px 0 2px' }}>Aucune compétence ajoutée</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Bientôt disponible</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -11585,7 +11626,7 @@ function HistoryDrawer({
           onMouseEnter={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06B6D4', flexShrink: 0 }} />
+          <Zap size={15} color="var(--text-mid)" style={{ flexShrink: 0 }} />
           Training
         </button>
         <div
@@ -11598,7 +11639,7 @@ function HistoryDrawer({
             opacity: 0.38, cursor: 'not-allowed', pointerEvents: 'none',
           }}
         >
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EC4899', flexShrink: 0 }} />
+          <Globe size={15} color="var(--text-mid)" style={{ flexShrink: 0 }} />
           Networks
         </div>
       </div>
@@ -19025,6 +19066,19 @@ export default function AIPanel({
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }
+        }
+        @keyframes aip_menu_up {
+          from { opacity:0; transform:translateY(8px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        @keyframes aip_slide_in_right {
+          from { opacity:0; transform:translateX(20px); }
+          to   { opacity:1; transform:translateX(0); }
+        }
+        @keyframes aip_toggle_pulse {
+          0% { transform:scale(1); }
+          50% { transform:scale(1.1); }
+          100% { transform:scale(1); }
         }
         @keyframes ai_empty_logo {
           from { opacity:0; transform:scale(0.9); }

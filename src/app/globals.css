@@ -50,6 +50,9 @@
 
   /* ── Safe area ───────────────────────────────── */
   --safe-b: env(safe-area-inset-bottom, 0px);
+
+  /* ── Header mobile ───────────────────────────── */
+  --header-height: 56px;
 }
 
 :root, .light {
@@ -297,6 +300,7 @@ button:active { transform: scale(0.97); }
 @media (min-width: 768px) {
   .mobile-tab-bar { display: none !important; }
 }
+
 
 /* ── Toast animations ───────────────────────────────────────────── */
 @keyframes toast-in {

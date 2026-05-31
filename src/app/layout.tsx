@@ -62,8 +62,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Sidebar />
             <main style={{
               width: '100%',
-              height: 'calc(100vh - 56px)',
-              marginTop: '56px',
+              height: 'calc(100vh - var(--header-height))',
+              marginTop: 'var(--header-height)',
               overflowY: 'auto',
               overflowX: 'hidden',
               position: 'relative',

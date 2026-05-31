@@ -11264,6 +11264,9 @@ function actionIcon(flow: FlowId | undefined): React.ReactNode {
     case 'analyser_recuperation': return <Activity size={sz} color="var(--ai-mid)" />
     case 'conseils_sommeil':  return <Brain size={sz} color="var(--ai-mid)" />
     case 'analyzetest':       return <Search size={sz} color="var(--ai-mid)" />
+    case 'recharge':          return <Apple size={sz} color="var(--ai-mid)" />
+    case 'analyser_progression': return <Activity size={sz} color="var(--ai-mid)" />
+    case 'estimer_zones':     return <Target size={sz} color="var(--ai-mid)" />
     default:                  return <Zap size={sz} color="var(--ai-mid)" />
   }
 }
@@ -11925,6 +11928,24 @@ const QUICK_ACTIONS: QuickAction[] = [
     sub: 'Interprétation d\'un test de performance',
     model: 'athena',
     flow: 'analyzetest' as FlowId,
+  },
+  {
+    label: 'Recharge glucidique',
+    sub: 'Plan de recharge avant compétition',
+    model: 'athena',
+    flow: 'recharge' as FlowId,
+  },
+  {
+    label: 'Analyser ma progression',
+    sub: 'Évolution de tes performances dans le temps',
+    model: 'athena',
+    flow: 'analyser_progression' as FlowId,
+  },
+  {
+    label: 'Estimer mes zones',
+    sub: 'Calcul de tes zones d\'intensité',
+    model: 'athena',
+    flow: 'estimer_zones' as FlowId,
   },
 ]
 

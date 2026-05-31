@@ -777,8 +777,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     [watts]
   )
 
-  // PR curve (chart background) + year + alltime records for the table
-  const [prMmp,        setPrMmp]        = useState<number[] | null>(null)
+  // Records: personal_records table (same source as Performance page)
   const [yearMmp,      setYearMmp]      = useState<number[] | null>(null)
   const [allTimeMmp,   setAllTimeMmp]   = useState<number[] | null>(null)
   const [recordFilter, setRecordFilter] = useState<'year' | 'alltime'>('alltime')
@@ -786,57 +785,62 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
 
   useEffect(() => {
     setPrLoading(true)
-    const since24m  = new Date(Date.now() - 24 * 30 * 86_400_000).toISOString()
     const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
-
-    type MmpRow = { id: string; streams: StreamData | null }
     type RecRow = { distance_label: string; performance: string; achieved_at: string }
 
-    // PR curve (visuelle, 14 points) — calculée depuis les streams 24 mois
-    const streamsFetch = createClient()
-      .from('activities')
-      .select('id, streams')
-      .in('sport_type', ['bike', 'virtual_bike'])
-      .not('streams', 'is', null)
-      .gte('started_at', since24m)
-
-    // Records tableau — même source que page Performance
-    const recsFetch = createClient()
+    createClient()
       .from('personal_records')
       .select('distance_label, performance, achieved_at')
       .eq('sport', 'bike')
       .order('achieved_at', { ascending: false })
-
-    Promise.all([streamsFetch, recsFetch]).then(([streamsRes, recsRes]) => {
-      // prMmp : courbe de référence sur le graphique (24 mois)
-      const rows = (streamsRes.data ?? []) as MmpRow[]
-      const prBest = DURATIONS.map(() => 0)
-      for (const row of rows) {
-        if (row.id === activityId) continue
-        const s = row.streams
-        if (!s?.watts?.length) continue
-        if (Math.max(...s.watts) > 1200) continue
-        computeMmpCurve(s.watts, DURATIONS).forEach((v, i) => { if (v > prBest[i]) prBest[i] = v })
-      }
-      setPrMmp(prBest.some(v => v > 0) ? prBest : null)
-
-      // yearMmp / allTimeMmp : tableau de comparaison depuis personal_records
-      const recs = (recsRes.data ?? []) as RecRow[]
-      const yearBest    = MMP_TABLE_DURATIONS.map(() => 0)
-      const allBest     = MMP_TABLE_DURATIONS.map(() => 0)
-      for (const rec of recs) {
-        const idx = BIKE_DUR_TO_IDX[rec.distance_label]
-        if (idx === undefined) continue
-        const w = parseInt(rec.performance) || 0
-        if (w <= 0) continue
-        if (w > allBest[idx]) allBest[idx] = w
-        if (rec.achieved_at >= yearStart && w > yearBest[idx]) yearBest[idx] = w
-      }
-      setYearMmp(yearBest)
-      setAllTimeMmp(allBest)
-      setPrLoading(false)
-    }).catch(() => setPrLoading(false))
+      .then(({ data }) => {
+        const recs = (data ?? []) as RecRow[]
+        const yearBest = MMP_TABLE_DURATIONS.map(() => 0)
+        const allBest  = MMP_TABLE_DURATIONS.map(() => 0)
+        for (const rec of recs) {
+          const idx = BIKE_DUR_TO_IDX[rec.distance_label]
+          if (idx === undefined) continue
+          const w = parseInt(rec.performance) || 0
+          if (w <= 0) continue
+          if (w > allBest[idx]) allBest[idx] = w
+          if (rec.achieved_at >= yearStart && w > yearBest[idx]) yearBest[idx] = w
+        }
+        setYearMmp(yearBest)
+        setAllTimeMmp(allBest)
+        setPrLoading(false)
+      }).catch(() => setPrLoading(false))
   }, [activityId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Red curve: built from personal_records, follows recordFilter toggle
+  const recordCurve = useMemo((): number[] | null => {
+    const rec = recordFilter === 'year' ? yearMmp : allTimeMmp
+    if (!rec || !rec.some(v => v > 0)) return null
+    const curve = DURATIONS.map(d => {
+      const ti = MMP_TABLE_DURATIONS.indexOf(d)
+      if (ti >= 0) return rec[ti] > 0 ? rec[ti] : 0
+      // Linear interpolation for durations not in MMP_TABLE_DURATIONS (e.g. 14400s = 4h)
+      for (let i = 0; i < MMP_TABLE_DURATIONS.length - 1; i++) {
+        if (MMP_TABLE_DURATIONS[i] <= d && MMP_TABLE_DURATIONS[i + 1] >= d) {
+          const lo = rec[i], hi = rec[i + 1]
+          if (lo > 0 && hi > 0) {
+            const t = (d - MMP_TABLE_DURATIONS[i]) / (MMP_TABLE_DURATIONS[i + 1] - MMP_TABLE_DURATIONS[i])
+            return Math.round(lo * (1 - t) + hi * t)
+          }
+          return lo > 0 ? lo : hi > 0 ? hi : 0
+        }
+      }
+      return 0
+    })
+    return curve.some(v => v > 0) ? curve : null
+  }, [recordFilter, yearMmp, allTimeMmp]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stars: indices where this session beats the record
+  const recordStars = useMemo(() =>
+    recordCurve
+      ? DURATIONS.map((_, i) => i).filter(i => recordCurve[i] > 0 && mmp[i] >= recordCurve[i])
+      : [],
+    [recordCurve, mmp] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   // Key moment markers (5' 20' 30' 45' 1h) — only if duration in range
   const keyMoments = useMemo(() => {
@@ -873,7 +877,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     return ((Math.log10(d) - logMin) / (logMax - logMin)) * W
   }
 
-  const allVals = [...mmp, ...(prMmp ?? [])]
+  const allVals = [...mmp, ...(recordCurve ?? [])]
   const maxYWatts = Math.ceil(Math.max(...allVals.filter(v => v > 0), 200) / 200) * 200
 
   function yOf(v: number): number {
@@ -892,7 +896,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   }
 
   const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
-  const prPaths = prMmp ? buildCurvePaths(prMmp) : null
+  const recPaths = recordCurve ? buildCurvePaths(recordCurve) : null
 
   const cursorX = pct !== null ? pct * W : null
   const avgW = watts.reduce((a, b) => a + b, 0) / N
@@ -919,8 +923,13 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
         <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[idx]} W · {fmtDuration(DURATIONS[idx])}</span>
           <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[idx] / avgW).toFixed(2)}× moy.</span>
-          {prMmp && prMmp[idx] > 0 && (
-            <span style={{ fontSize: 10, color: '#EF4444', fontFamily: T.fontMono }}>Record 24m: {prMmp[idx]} W</span>
+          {recordCurve && recordCurve[idx] > 0 && (
+            <span style={{ fontSize: 10, color: '#EF4444', fontFamily: T.fontMono }}>
+              Record: {recordCurve[idx]} W
+            </span>
+          )}
+          {recordStars.includes(idx) && (
+            <span style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700 }}>★ Record !</span>
           )}
         </div>
       )}
@@ -948,11 +957,11 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             )
           })}
 
-          {/* PR curve (background) */}
-          {prPaths && (
+          {/* Record curve (from personal_records, follows filter toggle) */}
+          {recPaths && (
             <>
-              <path d={prPaths.fill} fill="rgba(239,68,68,0.05)"/>
-              <path d={prPaths.line} fill="none" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="5,3" strokeLinejoin="round"/>
+              <path d={recPaths.fill} fill="rgba(239,68,68,0.05)"/>
+              <path d={recPaths.line} fill="none" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="5,3" strokeLinejoin="round"/>
             </>
           )}
 
@@ -980,14 +989,20 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             )
           })}
 
+          {/* Stars where session beats record */}
+          {recordStars.map(i => (
+            <text key={i} x={logX(DURATIONS[i])} y={yOf(mmp[i]) - 6}
+              textAnchor="middle" fontSize="13" fill="#F59E0B">★</text>
+          ))}
+
           {cursorX !== null && (
             <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
           {idx !== null && (
             <circle cx={logX(DURATIONS[idx])} cy={yOf(mmp[idx])} r="4" fill="#5b6fff"/>
           )}
-          {idx !== null && prMmp && prMmp[idx] > 0 && (
-            <circle cx={logX(DURATIONS[idx])} cy={yOf(prMmp[idx])} r="3.5" fill="#EF4444" opacity="0.8"/>
+          {idx !== null && recordCurve && recordCurve[idx] > 0 && (
+            <circle cx={logX(DURATIONS[idx])} cy={yOf(recordCurve[idx])} r="3.5" fill="#EF4444" opacity="0.8"/>
           )}
         </svg>
 
@@ -1013,10 +1028,13 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             <div style={{ color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>
               {mmp[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
             </div>
-            {prMmp && prMmp[idx] > 0 && (
+            {recordCurve && recordCurve[idx] > 0 && (
               <div style={{ color: '#EF4444', fontFamily: T.fontMono, marginTop: 2 }}>
-                {prMmp[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
+                {recordCurve[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
               </div>
+            )}
+            {recordStars.includes(idx) && (
+              <div style={{ color: '#F59E0B', fontWeight: 700, marginTop: 3 }}>★ Nouveau record !</div>
             )}
           </div>
         )}
@@ -1039,9 +1057,17 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
           <span style={{ width: 12, height: 2, background: '#5b6fff', display: 'inline-block', borderRadius: 1 }}/>Cette séance
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#EF4444', display: 'inline-block', borderRadius: 1 }}/>Record 24 mois
-        </div>
+        {recordCurve && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
+            <span style={{ width: 12, height: 2, background: '#EF4444', display: 'inline-block', borderRadius: 1 }}/>
+            {recordFilter === 'year' ? 'Record cette année' : 'Record all time'}
+          </div>
+        )}
+        {recordStars.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#F59E0B', fontWeight: 600 }}>
+            ★ {recordStars.length} record{recordStars.length > 1 ? 's' : ''} battu{recordStars.length > 1 ? 's' : ''}
+          </div>
+        )}
       </div>
 
       {/* Records vs Session table */}
@@ -1636,6 +1662,28 @@ function buildCumDist(pts: LatLngPoint[]): number[] {
 // ─────────────────────────────────────────────────────────────
 // SYNC CHARTS (crosshair, HR zone coloring, laps)
 // ─────────────────────────────────────────────────────────────
+type BestWindow = { durationS: number; label: string; startIdx: number; endIdx: number; avgW: number; color: string }
+
+function computeBestWindows(rawWatts: number[], N: number): BestWindow[] {
+  const WINDOWS = [
+    { durationS: 300,  label: "5'",  color: 'rgba(239,68,68,0.15)'  },
+    { durationS: 1200, label: "20'", color: 'rgba(249,115,22,0.15)' },
+    { durationS: 3600, label: "1h",  color: 'rgba(6,182,212,0.15)'  },
+  ]
+  return WINDOWS.filter(w => w.durationS <= N).map(w => {
+    const len = w.durationS
+    let sum = 0
+    for (let i = 0; i < len && i < N; i++) sum += rawWatts[i]
+    let bestAvg = sum / Math.min(len, N), bestStart = 0
+    for (let i = len; i < N; i++) {
+      sum += rawWatts[i] - rawWatts[i - len]
+      const a = sum / len
+      if (a > bestAvg) { bestAvg = a; bestStart = i - len + 1 }
+    }
+    return { ...w, startIdx: bestStart, endIdx: Math.min(N - 1, bestStart + len - 1), avgW: Math.round(bestAvg) }
+  })
+}
+
 function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, onHoverGps }: {
   activity: Activity
   hrZones?: ParsedZone[]
@@ -1662,6 +1710,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const [dragStartPct, setDragStartPct] = useState<number | null>(null)
   const [selectedLap, setSelectedLap]   = useState<number | null>(null)
   const [showSelModal, setShowSelModal]  = useState(false)
+  const [hoveredWin, setHoveredWin]     = useState<BestWindow | null>(null)
   const containerRef   = useRef<HTMLDivElement>(null)
   const tracksAreaRef  = useRef<HTMLDivElement>(null)
   const handleMoveRef  = useRef<(clientX: number, clientY: number) => void>(() => {})
@@ -1671,6 +1720,12 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     () => polylinePoints && polylinePoints.length > 1 ? buildCumDist(polylinePoints) : null,
     [polylinePoints],
   )
+
+  // Best effort windows (5', 20', 1h) sur la courbe de puissance
+  const bestWindows = useMemo<BestWindow[]>(() => {
+    if (!isBike || !s.watts || s.watts.length < 60) return []
+    return computeBestWindows(s.watts, N)
+  }, [s.watts, N, isBike]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cursor = cursorPct !== null ? Math.min(N-1, Math.max(0, Math.round(cursorPct * (N-1)))) : null
 
@@ -1700,6 +1755,11 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         const gps = findGpsAtDistance(distM, polylinePoints, polyCumDist)
         onHoverGps?.(gps)
       }
+    }
+    // Détection meilleure fenêtre sous le curseur
+    if (bestWindows.length > 0) {
+      const hit = bestWindows.find(w => pct >= w.startIdx / (N-1) && pct <= w.endIdx / (N-1))
+      setHoveredWin(hit ?? null)
     }
   }
 
@@ -2050,6 +2110,16 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
                       )
                     })()}
 
+                    {/* Best effort windows (Puissance track only) */}
+                    {track.label === 'Puissance' && bestWindows.map(win => {
+                      const wx1 = (win.startIdx / (N-1)) * 1000
+                      const wx2 = (win.endIdx   / (N-1)) * 1000
+                      return (
+                        <rect key={win.label} x={wx1} y={0} width={Math.max(1, wx2-wx1)} height={track.H}
+                          fill={win.color} />
+                      )
+                    })}
+
                     {/* Other tracks */}
                     {!track.isHr && (
                       <>
@@ -2099,6 +2169,40 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Best window tooltip */}
+        {hoveredWin && mousePos && !selection && (
+          <div style={{
+            position: 'absolute',
+            left: (cursorPct ?? 0) > 0.75 ? mousePos.x - 175 : mousePos.x + 12,
+            top: Math.max(4, mousePos.y - 56),
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 8,
+            padding: '7px 11px',
+            pointerEvents: 'none',
+            zIndex: 210,
+            boxShadow: '0 3px 10px rgba(0,0,0,0.12)',
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 2 }}>
+              Meilleur {hoveredWin.label} : {hoveredWin.avgW} W
+            </div>
+            <div style={{ fontSize: 11, color: T.textSub }}>
+              {(() => {
+                const s0 = time[hoveredWin.startIdx] - time[0]
+                const s1 = time[hoveredWin.endIdx]   - time[0]
+                const fmt = (s: number) => {
+                  const m = Math.floor(s / 60), sec = s % 60
+                  if (m < 60) return `${m}'${String(sec).padStart(2,'0')}`
+                  const h = Math.floor(m/60), rm = m%60
+                  return `${h}h${String(rm).padStart(2,'0')}`
+                }
+                return `${fmt(s0)} – ${fmt(s1)}`
+              })()}
+            </div>
           </div>
         )}
       </div>

@@ -1624,46 +1624,46 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const tracks: Track[] = ([
     alt ? {
       label: 'Altitude', data: alt, color: '#94A3B8', fill: 'rgba(148,163,184,0.15)',
-      unit: 'm', H: 64, isAlt: true,
+      unit: 'm', H: 77, isAlt: true,
       formatY: (v: number) => `${Math.round(v)} m`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     hr ? {
       label: 'FC', data: hr, color: '#F87171', fill: 'rgba(248,113,113,0.10)',
-      unit: 'bpm', H: 64, isHr: true,
+      unit: 'bpm', H: 77, isHr: true,
       formatY: (v: number) => `${Math.round(v)} bpm`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     isBike && watts ? {
       label: 'Puissance', data: watts, color: '#818CF8', fill: 'rgba(129,140,248,0.10)',
-      unit: 'W', H: 72,
+      unit: 'W', H: 86,
       formatY: (v: number) => `${Math.round(v)} W`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     isRun && velocity ? {
       label: 'Allure', data: velocity.map(v => v > 0 ? (1000/v) : 0),
       color: '#f97316', fill: 'rgba(249,115,22,0.10)',
-      unit: 's/km', H: 72, invertY: true,
+      unit: 's/km', H: 86, invertY: true,
       formatY: (v: number) => fmtPace(v),
       formatVal: (v: number) => fmtPace(v),
     } : null,
     // ── courbe vitesse (avant cadence) ──
     speedKmh ? {
       label: 'Vitesse', data: speedKmh, color: '#60A5FA', fill: 'rgba(96,165,250,0.10)',
-      unit: 'km/h', H: 48,
+      unit: 'km/h', H: 58,
       formatY: (v: number) => `${v.toFixed(1)} km/h`,
       formatVal: (v: number) => v.toFixed(1),
     } : null,
     cadence ? {
       label: 'Cadence', data: cadence, color: '#F472B6', fill: 'rgba(244,114,182,0.10)',
-      unit: 'rpm', H: 48,
+      unit: 'rpm', H: 58,
       formatY: (v: number) => `${Math.round(v)} rpm`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     // streams.temp sera disponible après l'ajout de 'temp' dans STREAM_KEYS (voir PROMPT_TEMP_STREAM)
     (isBike || isRun) && temp ? {
       label: 'Température', data: temp, color: '#6EE7B7', fill: 'rgba(110,231,183,0.10)',
-      unit: '°C', H: 48,
+      unit: '°C', H: 58,
       formatY: (v: number) => `${Math.round(v)} °C`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
@@ -3653,102 +3653,47 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     /* ══════════════════════════════════════════
        DESKTOP — layout existant inchangé
     ══════════════════════════════════════════ */
-    <div style={{ background: T.surface, borderRadius: T.radius, boxShadow: T.shadowCard }}>
-      <div style={{ padding: '20px 22px' }}>
+    <div style={{ background: 'var(--bg)', color: 'var(--text)' }}>
 
-        {/* ── HERO + MAP (flex desktop) ── */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
-
-          {/* LEFT — Hero + 5 data blocks */}
-          <div style={{ flex: mapExpanded ? '1 1 100%' : '0 0 65%', minWidth: 0, overflow: 'hidden' }}>
-
-            {/* ── HERO ── */}
-            <div style={{ marginBottom: 24 }}>
-              {/* Sport + Title + Date row */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                  background: col + '18', border: `2px solid ${col}40`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <div style={{ width: 18, height: 18, borderRadius: 4, background: col }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {a.title}
-                  </h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '18', padding: '2px 9px', borderRadius: 20, fontFamily: T.fontDisplay }}>
-                      {SPORT_LABEL[a.sport_type]}
-                    </span>
-                    <span style={{ fontSize: 12, color: T.textMuted, fontFamily: T.fontBody }}>{fmtDate(a.started_at)}</span>
-                    {a.is_race && <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 9px', borderRadius: 20 }}>Compétition</span>}
-                    {a.trainer && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>Intérieur</span>}
-                    {a.gear_name && <span style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: '2px 9px', borderRadius: 20, border: `1px solid ${T.border}` }}>{a.gear_name}</span>}
-                  </div>
-                </div>
-                {/* Bouton supprimer */}
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  style={{
-                    flexShrink: 0,
-                    background: 'none',
-                    border: '1px solid #EF4444',
-                    color: '#EF4444',
-                    borderRadius: 8,
-                    padding: '6px 12px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Supprimer
-                </button>
-              </div>
-
-              {/* KPI strip desktop */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {[
-                  { label: 'Distance',   value: (!isGym && a.distance_m) ? fmtDist(a.distance_m) : null },
-                  { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-                  { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                  { label: isBike ? 'Watts moy.' : (isRun ? 'Allure moy.' : null),
-                    value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null) : (isRun && paceS ? fmtPace(paceS) : null) },
-                  { label: 'TSS',        value: a.tss ? Math.round(Number(a.tss)).toString() : null },
-                ].filter(k => k.label && k.value).map(k => (
-                  <div key={k.label!} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 16px', border: `1px solid ${T.border}`, textAlign: 'center', minWidth: 80 }}>
-                    <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700, marginBottom: 4 }}>{k.label}</div>
-                    <div style={{ fontSize: 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay, lineHeight: 1 }}>{k.value}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── 5 DATA BLOCKS ── */}
-            {dataBlocks}
-
-          </div>
-          {/* END LEFT column */}
-
-          {/* RIGHT — carte GPS (desktop uniquement, masquée quand expanded) */}
-          {!mapExpanded && (
-            <div style={{ flex: '0 0 35%', minWidth: 0 }}>
-              <ActivityMapCard
-                activity={a as unknown as Record<string, unknown>}
-                isMobile={false}
-                expanded={false}
-                onToggle={() => setMapExpanded(true)}
-                hoverGps={hoverGps}
-              />
-            </div>
-          )}
-
+      {/* ── PARTIE 2 : Header bar ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 24px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg)',
+        flexWrap: 'nowrap',
+      }}>
+        <button onClick={onClose} style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: 13, color: '#06B6D4', padding: 0, flexShrink: 0,
+        }}>
+          <ChevronLeft size={16} /> Retour
+        </button>
+        <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <ActivityTitle activityId={a.id} initialName={a.title} />
         </div>
-        {/* END flex container HERO + MAP */}
+        <span style={{ fontSize: 12, background: col + '18', color: col, padding: '2px 8px', borderRadius: 20, flexShrink: 0, fontWeight: 600 }}>
+          {SPORT_LABEL[a.sport_type]}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {fmtDate(a.started_at)}
+          {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 20 }}>Compétition</span>}
+        </span>
+        <div style={{ flex: 1 }} />
+        <button onClick={() => setShowDeleteConfirm(true)} style={{
+          fontSize: 12, color: '#EF4444', border: '1px solid #EF4444',
+          borderRadius: 5, padding: '3px 10px', background: 'none', cursor: 'pointer', flexShrink: 0,
+        }}>
+          Supprimer
+        </button>
+      </div>
 
-        {/* ── CARTE GPS EXPANDED (desktop uniquement, full-width) ── */}
-        {mapExpanded && (
-          <div style={{ marginBottom: 20 }}>
+      <div style={{ padding: '20px 24px' }}>
+
+        {/* ── PARTIE 3 : Hero row (carte | stats) ── */}
+        {mapExpanded ? (
+          <div style={{ height: 400, borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
               isMobile={false}
@@ -3757,7 +3702,184 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               hoverGps={hoverGps}
             />
           </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            {/* Carte */}
+            <div style={{ height: 280, borderRadius: 10, overflow: 'hidden' }}>
+              <ActivityMapCard
+                activity={a as unknown as Record<string, unknown>}
+                isMobile={false}
+                expanded={false}
+                onToggle={() => setMapExpanded(true)}
+                hoverGps={hoverGps}
+              />
+            </div>
+            {/* Stats + Analyse */}
+            <div>
+              {(() => {
+                const km = !isGym && a.distance_m ? (Number(a.distance_m)/1000).toFixed(2) : null
+                const avgSpeedKmh = a.avg_speed_ms
+                  ? (Number(a.avg_speed_ms)*3.6).toFixed(1)
+                  : (paceS && paceS > 0) ? (3600/paceS).toFixed(1) : null
+                const STATS_MAIN = [
+                  { label: 'Distance',  value: km ? `${km} km` : '—' },
+                  { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+                  { label: 'Vitesse',   value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
+                  { label: isBike ? 'Watts moy.' : 'Allure',
+                    value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—') : (paceS ? fmtPace(paceS) : '—'),
+                    color: isBike ? '#818CF8' : undefined },
+                  { label: 'D+',        value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
+                  { label: 'TSS',       value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#F97316' },
+                ]
+                return (
+                  <>
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1,
+                      background: 'var(--border)', border: '1px solid var(--border)',
+                      borderRadius: 10, overflow: 'hidden', marginBottom: 10,
+                    }}>
+                      {STATS_MAIN.map(s => (
+                        <div key={s.label} style={{ background: 'var(--bg)', padding: '10px 12px' }}>
+                          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--text-muted)', marginBottom: 3 }}>{s.label}</div>
+                          <div style={{ fontSize: 20, fontWeight: 500, color: s.color ?? 'var(--text)' }}>{s.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {decoupling !== null && (
+                      <div style={{
+                        background: decoupling < 5 ? 'var(--zone-good-bg)' : decoupling < 10 ? 'var(--zone-med-bg)' : 'var(--zone-bad-bg)',
+                        border: `1px solid ${decoupling < 5 ? 'var(--zone-good-border)' : decoupling < 10 ? 'var(--zone-med-border)' : 'var(--zone-bad-border)'}`,
+                        borderRadius: 7, padding: '8px 12px',
+                        display: 'flex', gap: 8, alignItems: 'center',
+                      }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: decoupling < 5 ? '#10B981' : decoupling < 10 ? '#F59E0B' : '#EF4444', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: 'var(--text-body)' }}>
+                          {decoupling < 5 ? 'Bonne résistance aérobie' : decoupling < 10 ? 'Légère dérive cardiaque' : 'Dérive cardiaque élevée'} — découplage {decoupling.toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+          </div>
         )}
+
+        {/* ── PARTIE 4 : Données détaillées — 4 colonnes ── */}
+        <div style={{ background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, padding: '16px 20px' }}>
+
+            {/* ── PUISSANCE (bike) / EFFORT (run/gym) ── */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#818CF8', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #818CF825' }}>
+                {isBike ? 'Puissance' : 'Effort'}
+              </div>
+              {(isBike ? [
+                { label: 'Watts norm.',  value: computedNp ? `${computedNp} W` : null },
+                { label: 'Watts max',    value: maxWatts ? `${maxWatts} W` : null },
+                { label: 'W/kg',         value: wkgMoy ? `${wkgMoy} W/kg` : null },
+                { label: 'Roue libre',   value: freewheelPowerPct ? `${freewheelPowerPct}%` : null },
+                { label: 'Cadence moy.', value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} rpm` : null },
+                { label: 'Cadence max',  value: maxCad ? `${maxCad} rpm` : null },
+              ] : [
+                { label: 'Durée',        value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+                { label: 'Allure moy.',  value: paceS ? fmtPace(paceS) : null },
+                { label: 'Cadence moy.', value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} spm` : null },
+                { label: 'Cadence max',  value: maxCad ? `${maxCad} spm` : null },
+                { label: 'Distance',     value: a.distance_m ? fmtDist(a.distance_m) : null },
+              ] as { label: string; value: string | null }[]).filter(r => r.value != null).map(r => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
+                  <span style={{ fontWeight: 500, color: 'var(--text)' }}>{r.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── CARDIO ── */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#EF4444', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #EF444425' }}>
+                Cardio
+              </div>
+              {(() => {
+                const maxHrVal = a.max_hr ?? maxHrStream
+                const maxHrEst = estimateMaxHr(profile.birth_date)
+                const maxHrPct = maxHrVal && maxHrEst ? Math.round((maxHrVal / maxHrEst) * 100) : null
+                return (
+                  <>
+                    {maxHrVal != null && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>FC max</span>
+                        <span style={{ fontWeight: 500, color: 'var(--text)' }}>{maxHrVal} bpm{maxHrPct ? <span style={{ color: 'var(--text-muted)', fontSize: 11 }}> ({maxHrPct}%)</span> : null}</span>
+                      </div>
+                    )}
+                    {decoupling !== null && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Découplage P/FC</span>
+                        <span style={{ fontWeight: 500, color: decoupling < 5 ? '#10B981' : 'var(--text)' }}>{decoupling.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {z2DurationS != null && z2DurationS > 30 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Durée Z2</span>
+                        <span style={{ fontWeight: 500, color: '#06B6D4' }}>{fmtDur(z2DurationS)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Ressenti</span>
+                      {localSensation != null
+                        ? <span style={{ fontWeight: 500, color: 'var(--text)' }}>{localSensation}/5</span>
+                        : <button onClick={() => setShowRpeModal(true)} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Saisir</button>
+                      }
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+
+            {/* ── TERRAIN ── */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#10B981', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #10B98125' }}>
+                Terrain
+              </div>
+              {[
+                { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                { label: 'Alt. max',   value: maxAlt ? `${maxAlt} m` : null },
+                { label: 'Alt. moy.',  value: avgAlt ? `${avgAlt} m` : null },
+                { label: 'Distance',   value: a.distance_m ? fmtDist(a.distance_m) : null },
+              ].filter(r => r.value != null).map(r => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
+                  <span style={{ fontWeight: 500, color: 'var(--text)' }}>{r.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── CONDITIONS ── */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#F97316', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #F9731625' }}>
+                Conditions
+              </div>
+              {(() => {
+                const tempAvg = a.avg_temp_c != null
+                  ? Math.round(Number(a.avg_temp_c))
+                  : (a.streams?.temp?.length ? Math.round(a.streams.temp.reduce((s, v) => s + v, 0) / a.streams.temp.length) : null)
+                return ([
+                  { label: 'Temp. moy.',  value: tempAvg != null ? `${tempAvg} °C` : null,                        color: undefined },
+                  { label: 'Temp. max',   value: maxTempStream ? `${maxTempStream} °C` : null,                     color: maxTempStream && maxTempStream > 32 ? '#EF4444' : undefined },
+                  { label: 'Calories',    value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null,     color: undefined },
+                  { label: 'TSS',         value: a.tss ? Math.round(Number(a.tss)).toString() : null,              color: '#F97316' as string | undefined },
+                  { label: 'TRIMP',       value: a.trimp ? Math.round(Number(a.trimp)).toString() : null,          color: undefined },
+                ] as { label: string; value: string | null; color?: string }[]).filter(r => r.value != null).map(r => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
+                    <span style={{ fontWeight: 500, color: r.color ?? 'var(--text)' }}>{r.value}</span>
+                  </div>
+                ))
+              })()}
+            </div>
+
+          </div>
+        </div>
 
         {/* ── COURBES ── */}
         {a.streams && (
@@ -3786,7 +3908,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
               textTransform: 'uppercase', marginBottom: 10, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Zones
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
                 <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
               )}
@@ -3867,19 +3989,29 @@ function ActivityDetail({ a, onClose, zones, profile }: {
                s.velocity.length > 60 && (
                 <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
               )}
-              {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
-                <DecouplingChart
-                  watts={s.watts}
-                  heartrate={s.heartrate}
-                  decouplingPct={decoupling}
-                  altitude={s.altitude}
-                  temp={s.temp}
-                  time={s.time}
-                />
-              )}
-              {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
-                <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
-              )}
+              {/* ── PARTIE 7 : Découplage | Durée cumulée côte à côte ── */}
+              {(() => {
+                const showDec   = isBike && !!s.watts && !!s.heartrate && s.watts.length > 120
+                const showHrCum = (isBike || isRun) && !!s.heartrate && s.heartrate.length > 60
+                if (!showDec && !showHrCum) return null
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                    {showDec && (
+                      <DecouplingChart
+                        watts={s.watts!}
+                        heartrate={s.heartrate!}
+                        decouplingPct={decoupling}
+                        altitude={s.altitude}
+                        temp={s.temp}
+                        time={s.time}
+                      />
+                    )}
+                    {showHrCum && (
+                      <HrCumulativeChart heartrate={s.heartrate!} maxHrEst={maxHrEst} />
+                    )}
+                  </div>
+                )
+              })()}
             </>
           )
         })()}
@@ -4804,23 +4936,25 @@ function TrainingPageInner() {
           padding: '12px 16px',
           borderBottom: '1px solid var(--border)',
         }}>
-          {/* Gauche : dropdown de section animé */}
+          {/* Gauche : dropdown de section animé (mobile uniquement) */}
           <div ref={sectionDropdownRef} style={{ position: 'relative' }}>
+            {isMobile ? (
             <button
               onClick={() => setSectionOpen(v => !v)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{active.label}</span>
-              {!isMobile && (
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{active.desc}</span>
-              )}
               <svg width="12" height="12" viewBox="0 0 12 12"
                 style={{ transform: sectionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 250ms ease', flexShrink: 0 }}
               >
                 <path d="M2 4l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
               </svg>
             </button>
-            {/* Menu déroulant animé */}
+            ) : (
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{active.label}</span>
+            )}
+            {/* Menu déroulant animé — mobile uniquement */}
+            {isMobile && (
             <div style={{
               position: 'absolute', top: 'calc(100% + 8px)', left: 0, minWidth: 220, zIndex: 200,
               backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -4846,6 +4980,7 @@ function TrainingPageInner() {
                 </button>
               ))}
             </div>
+            )}
           </div>
 
           {/* Droite : statuts de sync + boutons */}
@@ -4910,95 +5045,95 @@ function TrainingPageInner() {
 
       <div style={{ display: 'flex', maxWidth: 1400, margin: '0 auto', position: 'relative' }}>
 
-        {/* ── SIDEBAR (desktop) ── */}
+        {/* ── SIDEBAR (desktop) — overlay drawer ── */}
         {!isMobile && (
           <>
-            {/* Collapsible wrapper */}
-            <div style={{
-              width: sidebarOpen ? T.sidebarW : 0,
-              minWidth: sidebarOpen ? T.sidebarW : 0,
-              overflow: 'hidden',
-              transition: 'width 250ms ease, min-width 250ms ease',
-              flexShrink: 0,
+            {/* Backdrop transparent pour fermer au clic extérieur */}
+            {sidebarOpen && (
+              <div
+                onClick={() => setSidebarOpen(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 98 }}
+              />
+            )}
+            <aside style={{
+              position: 'fixed',
+              top: 0, left: 0,
+              height: '100vh',
+              width: 260,
+              zIndex: 100,
+              background: 'var(--nav-bg)',
+              borderRight: '1px solid var(--border)',
+              transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 280ms cubic-bezier(0.32,0.72,0,1)',
+              overflowY: 'auto',
+              padding: '72px 12px 20px',
             }}>
-              <aside style={{
-                width: T.sidebarW,
-                background: T.sidebar, borderRight: `1px solid ${T.border}`,
-                padding: '20px 12px',
-                position: 'sticky', top: T.topH, height: `calc(100vh - ${T.topH}px)`,
-                overflowY: 'auto',
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, paddingLeft: 10, marginBottom: 10, fontFamily: T.fontDisplay }}>
-                  NAVIGATION
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, paddingLeft: 10, marginBottom: 10, fontFamily: T.fontDisplay }}>
+                NAVIGATION
+              </div>
+              {NAV.map(n => {
+                const isActive = n.id === section
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => { setSection(n.id); setSidebarOpen(false) }}
+                    style={{
+                      width: '100%', textAlign: 'left', border: 'none',
+                      borderRadius: T.radiusSm, padding: '10px 12px', cursor: 'pointer', marginBottom: 3,
+                      background: isActive ? T.accentBg : 'transparent',
+                      borderLeft: `3px solid ${isActive ? T.accent : 'transparent'}`,
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
+                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? T.accent : T.text, fontFamily: T.fontDisplay }}>
+                      {n.label}
+                    </div>
+                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: T.fontBody }}>{n.desc}</div>
+                  </button>
+                )
+              })}
+
+              {/* Résumé */}
+              {!loading && activities.length > 0 && (
+                <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, paddingLeft: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, marginBottom: 10, fontFamily: T.fontDisplay }}>RÉSUMÉ</div>
+                  {[
+                    { label: 'Total',         value: activities.length },
+                    { label: 'Cette semaine', value: activities.filter(a => isoWeek(new Date(a.started_at)) === isoWeek(new Date())).length },
+                    { label: 'Compétitions',  value: activities.filter(a => a.is_race).length },
+                  ].map(s => (
+                    <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
+                      <span style={{ color: T.textSub, fontFamily: T.fontBody }}>{s.label}</span>
+                      <span style={{ color: T.text, fontWeight: 700, fontFamily: T.fontMono }}>{s.value}</span>
+                    </div>
+                  ))}
                 </div>
-                {NAV.map(n => {
-                  const isActive = n.id === section
-                  return (
-                    <button
-                      key={n.id}
-                      onClick={() => setSection(n.id)}
-                      style={{
-                        width: '100%', textAlign: 'left', border: 'none',
-                        borderRadius: T.radiusSm, padding: '10px 12px', cursor: 'pointer', marginBottom: 3,
-                        background: isActive ? T.accentBg : 'transparent',
-                        borderLeft: `3px solid ${isActive ? T.accent : 'transparent'}`,
-                        transition: 'background 0.12s',
-                      }}
-                      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
-                      onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? T.accent : T.text, fontFamily: T.fontDisplay }}>
-                        {n.label}
-                      </div>
-                      <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: T.fontBody }}>{n.desc}</div>
-                    </button>
-                  )
-                })}
+              )}
 
-                {/* Sidebar summary */}
-                {!loading && activities.length > 0 && (
-                  <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, paddingLeft: 10 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, marginBottom: 10, fontFamily: T.fontDisplay }}>RÉSUMÉ</div>
-                    {[
-                      { label: 'Total',         value: activities.length },
-                      { label: 'Cette semaine', value: activities.filter(a => isoWeek(new Date(a.started_at)) === isoWeek(new Date())).length },
-                      { label: 'Compétitions',  value: activities.filter(a => a.is_race).length },
-                    ].map(s => (
-                      <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-                        <span style={{ color: T.textSub, fontFamily: T.fontBody }}>{s.label}</span>
-                        <span style={{ color: T.text, fontWeight: 700, fontFamily: T.fontMono }}>{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </aside>
-            </div>
-
-            {/* Toggle button */}
-            <button
-              onClick={() => setSidebarOpen(o => !o)}
-              style={{
-                position: 'absolute',
-                left: sidebarOpen ? T.sidebarW - 8 : 0,
-                top: 16,
-                zIndex: 10,
-                width: 20,
-                height: 40,
-                backgroundColor: 'var(--info-bg)',
-                border: '1px solid var(--info-border)',
-                borderRadius: '0 6px 6px 0',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'left 250ms ease',
-                color: 'var(--text-muted)',
-                fontSize: 10,
-                padding: 0,
-              }}
-            >
-              {sidebarOpen ? '‹' : '›'}
-            </button>
+              {/* Pull-tab bord droit */}
+              <button
+                onClick={() => setSidebarOpen(o => !o)}
+                style={{
+                  position: 'absolute',
+                  top: '50%', right: -16,
+                  transform: 'translateY(-50%)',
+                  width: 16, height: 48,
+                  background: 'var(--nav-bg)',
+                  border: '1px solid var(--border)',
+                  borderLeft: 'none',
+                  borderRadius: '0 6px 6px 0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  fontSize: 10, padding: 0,
+                  zIndex: 1,
+                }}
+              >
+                {sidebarOpen ? '‹' : '⋮'}
+              </button>
+            </aside>
           </>
         )}
 

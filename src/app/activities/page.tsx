@@ -856,7 +856,8 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
       .filter(m => m.watts > 0)
   }, [sessionMmpTable, N])
 
-  const { idx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
+  const { idx: _rawIdx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
+  void _rawIdx
   const mmpContainerRef = useRef<HTMLDivElement>(null)
   const [mmpMousePos,   setMmpMousePos] = useState<{ x: number; y: number } | null>(null)
 
@@ -869,14 +870,12 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   }
   function handleMmpLeave() { setMmpMousePos(null); onLeave() }
 
-  const W = 1000, H = 220, pad = 10
-  void pad
+  const W = 1000, H = 220
 
-  // Log10 scale helpers
-  const logMin = Math.log10(DURATIONS[0])
-  const logMax = Math.log10(DURATIONS[DURATIONS.length - 1])
+  // Log scale: minSec=5, maxSec=activity duration (comme TrainingPeaks / intervals.icu)
+  const actMax = Math.max(activityDurationS, DURATIONS.length > 0 ? DURATIONS[DURATIONS.length - 1] : 5, 5)
   function logX(d: number): number {
-    return ((Math.log10(d) - logMin) / (logMax - logMin)) * W
+    return (Math.log(d) - Math.log(5)) / (Math.log(actMax) - Math.log(5)) * W
   }
 
   const allVals = [...mmp, ...(recordCurve ?? [])]
@@ -900,7 +899,23 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
   const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
   const recPaths = recordCurve ? buildCurvePaths(recordCurve) : null
 
-  const cursorX = pct !== null ? pct * W : null
+  // Log-aware hit detection: find nearest DURATION to cursor position in log space
+  const logIdx = useMemo((): number | null => {
+    if (pct === null || DURATIONS.length === 0) return null
+    // SVG viewBox is "-32 0 {W+32} {H}", so svgX = -32 + pct*(W+32)
+    const svgX = -32 + pct * (W + 32)
+    const xClamped = Math.max(0, Math.min(W, svgX))
+    const dCursor = 5 * Math.exp(xClamped / W * Math.log(actMax / 5))
+    let best = 0, bestDist = Infinity
+    DURATIONS.forEach((d, i) => {
+      const dist = Math.abs(Math.log(d) - Math.log(dCursor))
+      if (dist < bestDist) { bestDist = dist; best = i }
+    })
+    return best
+  }, [pct]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // cursorX in SVG coords: linear follow of mouse (visual feedback)
+  const cursorX = pct !== null ? (-32 + pct * (W + 32)) : null
   const avgW = watts.reduce((a, b) => a + b, 0) / N
 
   function fmtDuration(s: number): string {
@@ -921,16 +936,16 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
       </div>
 
       {/* Hover bar */}
-      {idx !== null && (
+      {logIdx !== null && (
         <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[idx]} W · {fmtDuration(DURATIONS[idx])}</span>
-          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[idx] / avgW).toFixed(2)}× moy.</span>
-          {recordCurve && recordCurve[idx] > 0 && (
+          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[logIdx!]} W · {fmtDuration(DURATIONS[logIdx!])}</span>
+          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[logIdx!] / avgW).toFixed(2)}× moy.</span>
+          {recordCurve && recordCurve[logIdx!] > 0 && (
             <span style={{ fontSize: 10, color: '#EF4444', fontFamily: T.fontMono }}>
-              Record: {recordCurve[idx]} W
+              Record: {recordCurve[logIdx!]} W
             </span>
           )}
-          {recordStars.includes(idx) && (
+          {recordStars.includes(logIdx!) && (
             <span style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700 }}>★ Record !</span>
           )}
         </div>
@@ -997,19 +1012,32 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
               textAnchor="middle" fontSize="13" fill="#F59E0B">★</text>
           ))}
 
+          {/* X axis labels in SVG — aligned with curve points, no HTML div offset issues */}
+          {DURATIONS.map((d, i) => {
+            const x = logX(d)
+            // Avoid crowding: show label only if enough horizontal room from neighbors
+            if (i > 0 && logX(DURATIONS[i-1]) > x - 28) return null
+            return (
+              <text key={d} x={x} y={H + 14} textAnchor="middle"
+                fontSize="8" fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
+                {LABELS[i]}
+              </text>
+            )
+          })}
+
           {cursorX !== null && (
             <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
           )}
-          {idx !== null && (
-            <circle cx={logX(DURATIONS[idx])} cy={yOf(mmp[idx])} r="4" fill="#5b6fff"/>
+          {logIdx !== null && (
+            <circle cx={logX(DURATIONS[logIdx])} cy={yOf(mmp[logIdx])} r="4" fill="#5b6fff"/>
           )}
-          {idx !== null && recordCurve && recordCurve[idx] > 0 && (
-            <circle cx={logX(DURATIONS[idx])} cy={yOf(recordCurve[idx])} r="3.5" fill="#EF4444" opacity="0.8"/>
+          {logIdx !== null && recordCurve && recordCurve[logIdx] > 0 && (
+            <circle cx={logX(DURATIONS[logIdx])} cy={yOf(recordCurve[logIdx])} r="3.5" fill="#EF4444" opacity="0.8"/>
           )}
         </svg>
 
         {/* MMP tooltip */}
-        {idx !== null && mmpMousePos && (
+        {logIdx !== null && mmpMousePos && (
           <div style={{
             position: 'absolute',
             left: mmpMousePos.x > 300 ? mmpMousePos.x - 155 : mmpMousePos.x + 14,
@@ -1025,33 +1053,21 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             whiteSpace: 'nowrap',
           }}>
             <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4, fontFamily: T.fontMono }}>
-              {fmtDuration(DURATIONS[idx])}
+              {fmtDuration(DURATIONS[logIdx])}
             </div>
             <div style={{ color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>
-              {mmp[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
+              {mmp[logIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
             </div>
-            {recordCurve && recordCurve[idx] > 0 && (
+            {recordCurve && recordCurve[logIdx] > 0 && (
               <div style={{ color: '#EF4444', fontFamily: T.fontMono, marginTop: 2 }}>
-                {recordCurve[idx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
+                {recordCurve[logIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
               </div>
             )}
-            {recordStars.includes(idx) && (
+            {recordStars.includes(logIdx) && (
               <div style={{ color: '#F59E0B', fontWeight: 700, marginTop: 3 }}>★ Nouveau record !</div>
             )}
           </div>
         )}
-      </div>
-
-      {/* X axis labels */}
-      <div style={{ position: 'relative', height: 16, marginTop: 2 }}>
-        {DURATIONS.map((d, i) => (
-          <span key={d} style={{
-            position: 'absolute',
-            left: `${(logX(d) / W) * 100}%`,
-            transform: 'translateX(-50%)',
-            fontSize: 9, color: T.textMuted, fontFamily: T.fontMono, whiteSpace: 'nowrap',
-          }}>{LABELS[i]}</span>
-        ))}
       </div>
 
       {/* Legend */}

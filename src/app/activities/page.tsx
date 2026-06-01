@@ -2351,10 +2351,11 @@ function ZoneTableWithHR({ zones, timesS, hrZones, hrTimesZ }: {
   zones: ParsedZone[]; timesS: number[]
   hrZones?: ParsedZone[]; hrTimesZ?: number[]
 }) {
+  const isMobile = useWindowWidth() < 768
   const totalS = timesS.reduce((a, b) => a + b, 0)
   const totalH = (hrTimesZ ?? []).reduce((a, b) => a + b, 0)
   const hasHr  = !!totalH && !!hrZones && !!hrTimesZ
-  const cols = hasHr ? '1fr 1fr' : '1fr'
+  const cols = hasHr && !isMobile ? '1fr 1fr' : '1fr'
   const renderTable = (zns: ParsedZone[], tms: number[], total: number) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {zns.map((z, i) => {
@@ -2406,6 +2407,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
   hrTimesZ: number[]
 }) {
   const [activeSport, setActiveSport] = useState<string>('')
+  const isMobile = useWindowWidth() < 768
 
   const sportsPresent = useMemo(() => {
     const s = new Set<string>(inRange.map(a => a.sport_type === 'virtual_bike' ? 'bike' : (a.sport_type as string)))
@@ -2487,10 +2489,14 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
   const pillColor = SPORT_PILL_COLOR[sport] ?? T.accent
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, overflowX: 'hidden' }}>
 
       {/* Sport pills */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div className={isMobile ? 'comp-chips-scroll' : undefined} style={{
+        display: 'flex', gap: 6,
+        flexWrap: isMobile ? 'nowrap' : 'wrap',
+        overflowX: isMobile ? 'auto' : 'visible',
+      }}>
         {sportsPresent.map(sp => {
           const active = sp === sport
           const c = SPORT_PILL_COLOR[sp] ?? T.accent
@@ -2500,7 +2506,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
               cursor: 'pointer', border: `1px solid ${active ? c : T.border}`,
               background: active ? c : T.bgAlt,
               color: active ? '#fff' : T.textMuted,
-              transition: 'all 0.15s',
+              transition: 'all 0.15s', flexShrink: 0, whiteSpace: 'nowrap',
             }}>
               {SPORT_PILL_LABEL[sp] ?? sp}
             </button>
@@ -2511,7 +2517,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Run ── */}
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             {avgPace != null && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
             {avgHr   != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
             {avgRunCad != null && <StatCard label="Cadence moy." value={`${avgRunCad} spm`} />}
@@ -2552,7 +2558,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Trail ── */}
       {sport === 'trail_run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             <StatCard label="Séances" value={sportActs.length.toString()} />
             <StatCard label="Distance tot." value={fmtDist(totalDist)} />
             {totalElevUp > 0 && <StatCard label="D+ total" value={`${Math.round(totalElevUp)} m`} />}
@@ -2576,7 +2582,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Bike ── */}
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             {avgWatts   != null && <StatCard label="Watts moy." value={`${avgWatts} W`} />}
             {avgNp      != null && <StatCard label="NP moy." value={`${avgNp} W`} />}
             {avgIf      != null && <StatCard label="IF moy." value={avgIf} />}
@@ -2612,7 +2618,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Swim ── */}
       {sport === 'swim' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             <StatCard label="Séances" value={sportActs.length.toString()} />
             <StatCard label="Distance tot." value={fmtDist(totalDist)} />
             <StatCard label="Temps tot." value={fmtDur(totalTime)} />
@@ -2638,7 +2644,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Gym ── */}
       {sport === 'gym' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             <StatCard label="Séances" value={sportActs.length.toString()} />
             <StatCard label="Temps tot." value={fmtDur(totalTime)} />
             {avgCal != null && <StatCard label="Calories moy." value={`${avgCal} kcal`} />}
@@ -2652,7 +2658,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Hyrox ── */}
       {sport === 'hyrox' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             <StatCard label="Séances" value={sportActs.length.toString()} />
             {totalTime > 0 && <StatCard label="Temps moy." value={fmtDur(Math.round(totalTime / sportActs.length))} />}
             {totalDist > 0 && <StatCard label="Distance tot." value={fmtDist(totalDist)} />}
@@ -2678,7 +2684,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {/* ── Rowing ── */}
       {sport === 'rowing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
             <StatCard label="Séances" value={sportActs.length.toString()} />
             <StatCard label="Distance tot." value={fmtDist(totalDist)} />
             <StatCard label="Temps tot." value={fmtDur(totalTime)} />
@@ -2898,6 +2904,8 @@ function SectionDonnees({ activities, zones, profile }: {
   const [pmcHoverIdx, setPmcHoverIdx] = useState<number | null>(null)
   const pmcSvgRef = useRef<SVGSVGElement>(null)
   const [heatHover, setHeatHover] = useState<{ date: string; tss: number; title: string } | null>(null)
+  const width = useWindowWidth()
+  const isMobile = width < 768
 
   useEffect(() => {
     const start = new Date(); start.setDate(start.getDate() - 400)
@@ -2909,6 +2917,32 @@ function SectionDonnees({ activities, zones, profile }: {
 
   const displayDays = numWeeks(filter) * 7
   const pmcSeries = useMemo(() => computePMCSeries(pmcActs, displayDays), [pmcActs, displayDays])
+
+  // PMC tactile : listener natif {passive:false} (la ligne verticale + tooltip
+  // suivent le doigt sans scroller la page). Re-bind quand le SVG apparaît.
+  useEffect(() => {
+    const svg = pmcSvgRef.current
+    const len = pmcSeries.length
+    if (!svg || len < 2) return
+    const move = (e: TouchEvent) => {
+      const t = e.touches[0]
+      if (!t) return
+      const rect = svg.getBoundingClientRect()
+      const pct = (t.clientX - rect.left) / rect.width
+      const idx = Math.round(pct * (len - 1))
+      setPmcHoverIdx(Math.max(0, Math.min(len - 1, idx)))
+      e.preventDefault()
+    }
+    const end = () => setPmcHoverIdx(null)
+    svg.addEventListener('touchstart', move, { passive: false })
+    svg.addEventListener('touchmove', move, { passive: false })
+    svg.addEventListener('touchend', end)
+    return () => {
+      svg.removeEventListener('touchstart', move)
+      svg.removeEventListener('touchmove', move)
+      svg.removeEventListener('touchend', end)
+    }
+  }, [pmcSeries.length])
 
   const prevCutoff = useMemo(() => {
     if (!cutoff) return null
@@ -3062,11 +3096,20 @@ function SectionDonnees({ activities, zones, profile }: {
   const arcFilled = tsbPct * arcTotal
 
   return (
-    <div>
+    <div style={{ overflowX: 'hidden' }}>
       {/* ── SECTION 0: Button bar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex', gap: isMobile ? 10 : 6, marginBottom: 20,
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        flexWrap: isMobile ? 'nowrap' : 'wrap',
+      }}>
         {/* Time filter pills */}
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+        <div className={isMobile ? 'comp-chips-scroll' : undefined} style={{
+          display: 'flex', gap: 5,
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          overflowX: isMobile ? 'auto' : 'visible',
+        }}>
           {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{
               background: filter === f ? 'var(--text)' : 'var(--bg)',
@@ -3074,15 +3117,16 @@ function SectionDonnees({ activities, zones, profile }: {
               border: `1px solid ${filter === f ? 'var(--text)' : 'var(--border)'}`,
               borderRadius: 20, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
               fontWeight: filter === f ? 600 : 400, transition: 'all 0.15s',
+              flexShrink: 0, whiteSpace: 'nowrap',
             }}>
               {TIME_FILTER_LABEL[f]}
             </button>
           ))}
         </div>
-        {/* Divider */}
-        <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 6px', flexShrink: 0 }} />
+        {/* Divider — masqué sur mobile (les tabs passent en dessous) */}
+        {!isMobile && <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 6px', flexShrink: 0 }} />}
         {/* Tab pills */}
-        <div style={{ display: 'flex', gap: 5 }}>
+        <div style={{ display: 'flex', gap: 5, width: isMobile ? '100%' : undefined }}>
           {(['general', 'specific'] as const).map(tab => (
             <button key={tab} onClick={() => setDataTab(tab)} style={{
               background: dataTab === tab ? 'var(--text)' : 'var(--bg)',
@@ -3090,6 +3134,7 @@ function SectionDonnees({ activities, zones, profile }: {
               border: `1px solid ${dataTab === tab ? 'var(--text)' : 'var(--border)'}`,
               borderRadius: 20, padding: '4px 14px', fontSize: 12, cursor: 'pointer',
               fontWeight: dataTab === tab ? 600 : 400, transition: 'all 0.15s',
+              flex: isMobile ? 1 : undefined,
             }}>
               {tab === 'general' ? 'Général' : 'Spécifique'}
             </button>
@@ -3191,7 +3236,7 @@ function SectionDonnees({ activities, zones, profile }: {
           {dbMetrics.loading
             ? <SkeletonFitnessCards />
             : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 16 }}>
               {/* LEFT: Forme du jour (TSB arc) */}
               <div style={{
                 background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
@@ -3387,7 +3432,7 @@ function SectionDonnees({ activities, zones, profile }: {
               { label: 'RPE Moyen',  curr: rpeVals.length ? avg(rpeVals) : 0, prev: prevMeanRpe, fmt: (v: number) => v ? `${v.toFixed(1)}/10` : '—' },
             ]
             return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
                 {stats.map(({ label, curr, prev, fmt }) => {
                   const tr = trendOf(curr, prev)
                   return (
@@ -3406,7 +3451,7 @@ function SectionDonnees({ activities, zones, profile }: {
           })()}
 
           {/* ── SECTION 4: Volume + Polarisation ────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 16 }}>
 
             {/* LEFT: Volume hebdo */}
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
@@ -3565,7 +3610,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 if (row === 7) { row = 0; col++ }
               }
               const numCols = col + (row > 0 ? 1 : 0)
-              const CELL = 12, GAP = 2, LABEL_H = 20
+              const CELL = isMobile ? 10 : 12, GAP = 2, LABEL_H = 20
               const svgW = numCols * (CELL + GAP)
               const svgH = 7 * (CELL + GAP) + LABEL_H
               const tssColor = (tssVal: number) => {
@@ -3639,7 +3684,7 @@ function SectionDonnees({ activities, zones, profile }: {
           </div>
 
           {/* ── SECTION 6: Zones (3 colonnes) ───────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
             {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
               <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
                 <SectionTitle>Zones puissance — Vélo</SectionTitle>

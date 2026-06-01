@@ -12,9 +12,11 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
+import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -11311,12 +11313,43 @@ function PlusMenu({
   onFiles:    () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   const [isMobile, setIsMobile] = useState(false)
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
   const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('entrainement')
+  const [compCount, setCompCount] = useState<number | null>(null)
+  const [compLimit, setCompLimit] = useState(3)
 
   useEffect(() => { setIsMobile(window.innerWidth < 768) }, [])
+
+  // Comptage léger des compétences actives + limite du plan
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { count } = await sb
+          .from('user_competences')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('active', true)
+        const { data: sub } = await sb
+          .from('user_subscriptions')
+          .select('tier')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (!alive) return
+        const tier = (sub as { tier?: string } | null)?.tier
+        setCompLimit(tier === 'pro' ? 7 : tier === 'expert' ? 20 : 3)
+        setCompCount(count ?? 0)
+      } catch { /* silencieux */ }
+    })()
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -11402,11 +11435,25 @@ function PlusMenu({
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
           </button>
 
-          {/* 6. Compétences */}
-          <button style={rowStyle} onClick={() => goTo('competences')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-            <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1 }}>Compétences</span>
-            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          {/* 6. Compétences → page dédiée */}
+          <button
+            style={{ ...rowStyle, alignItems: 'flex-start' }}
+            onClick={() => { onClose(); router.push('/competences') }}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span>Compétences</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                {compCount === null
+                  ? 'Personnaliser le coach'
+                  : compCount === 0
+                    ? 'Aucune compétence active'
+                    : `${compCount} / ${compLimit} active${compCount > 1 ? 's' : ''}`}
+              </span>
+            </span>
+            <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0, marginTop: 4 }} />
           </button>
 
           <div style={sepStyle} />
@@ -20317,6 +20364,9 @@ export default function AIPanel({
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileSelected} />
+
+            {/* ── Compétences actives (Training uniquement) ── */}
+            <ActiveCompetencesBadge />
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{

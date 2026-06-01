@@ -29,6 +29,7 @@ import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
+import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -299,7 +300,17 @@ export async function POST(req: NextRequest) {
     aiRules: chatBody.aiRules ?? [],
   })
   const client = getAnthropicClient()
-  const systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
+  let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
+
+  // ── Compétences actives — uniquement agent Training (agentId 'central') ──
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    try {
+      const competencesBlock = await getActiveCompetencesPrompt(userId)
+      if (competencesBlock) systemWithTools = `${systemWithTools}\n\n${competencesBlock}`
+    } catch (e) {
+      console.error('[coach-stream] competences injection failed:', e)
+    }
+  }
 
   const response = await client.messages.create({
     model,

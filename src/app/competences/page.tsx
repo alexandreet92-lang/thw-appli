@@ -3,7 +3,8 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Plus, Menu } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Menu, Lock } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { createClient } from '@/lib/supabase/client'
 import type { CategorieCompetence, CompetenceWithUserState } from '@/types/competences'
@@ -19,6 +20,7 @@ import { SPORTS_ORDER, SPORT_LABELS, sportIcon, type SportFilter, type Competenc
 
 export default function CompetencesPage() {
   useTheme()
+  const router = useRouter()
   const { competences, setCompetences, loading, reload } = useCompetences()
   const { checkLimit, detectConflicts, toggleCompetence } = useUserCompetences()
 
@@ -30,6 +32,7 @@ export default function CompetencesPage() {
   const [notice, setNotice]                 = useState<string | null>(null)
   const [detail, setDetail]                 = useState<CompetenceWithUserState | null>(null)
   const [conflictState, setConflictState]   = useState<{ target: CompetenceWithUserState; blocker: CompetenceWithUserState } | null>(null)
+  const [limitModal, setLimitModal]         = useState(false)
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768)
@@ -78,9 +81,9 @@ export default function CompetencesPage() {
     const currentlyActive = c.user_state?.active ?? false
 
     if (!currentlyActive) {
-      // Vérifier la limite
+      // Vérifier la limite → modal dédié
       if (!limit.can_activate_more) {
-        setNotice(`Limite atteinte : ${limit.limit} compétences actives (plan ${limit.planLabel}).`)
+        setLimitModal(true)
         return
       }
       // Vérifier les conflits → proposer de désactiver l'autre
@@ -168,6 +171,51 @@ export default function CompetencesPage() {
           onSave={handleSaveDetail}
           onDelete={handleDeleteDetail}
         />
+      )}
+      {limitModal && (
+        <div
+          onClick={() => setLimitModal(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: 420, width: '100%', background: 'var(--bg-card)',
+              border: '0.5px solid var(--border-mid)', borderRadius: 16,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)', padding: '22px 22px 18px',
+              display: 'flex', flexDirection: 'column', gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(6,182,212,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Lock size={18} color="#06B6D4" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Limite atteinte</h3>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-mid)' }}>
+                  Plan {limit.planLabel} · {limit.limit} compétence{limit.limit > 1 ? 's' : ''} active{limit.limit > 1 ? 's' : ''} maximum
+                </p>
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
+              Désactive une compétence active pour en ajouter une autre, ou passe à un plan supérieur pour en activer davantage.
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+              <button
+                onClick={() => { setActiveTab('actives'); setLimitModal(false) }}
+                style={{ flex: 1, fontSize: 12.5, background: 'transparent', color: 'var(--text)', border: '0.5px solid var(--border-mid)', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+              >
+                Voir les compétences actives
+              </button>
+              <button
+                onClick={() => router.push('/settings/subscription')}
+                style={{ flex: 1, fontSize: 12.5, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+              >
+                Découvrir les plans
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {conflictState && (
         <div style={{

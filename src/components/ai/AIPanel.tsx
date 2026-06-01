@@ -17,6 +17,8 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
+import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
+import TopupEmailModal from '@/components/topup/TopupEmailModal'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -18222,6 +18224,7 @@ export default function AIPanel({
   const [fullscr,     setFullscr]     = useState(false)
   const [histOpen,    setHistOpen]    = useState(false)
   const [plusOpen,    setPlusOpen]    = useState(false)
+  const [topupOpen,   setTopupOpen]   = useState(false)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
@@ -19079,6 +19082,23 @@ export default function AIPanel({
         setConvs(prev => prev.map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, quotaErrMsg], updatedAt: Date.now() } : c
         ))
+        setLoading(false)
+        return
+      }
+
+      // ── 402 Limite de tokens atteinte ──────────────────────────
+      if (res.status === 402) {
+        let tokMsg = '⚠️ **Limite de tokens atteinte.** Recharge pour continuer.'
+        try {
+          const td = await res.json() as { error?: string }
+          if (td.error) tokMsg = `⚠️ **Limite atteinte** — ${td.error}`
+        } catch { /* fallback */ }
+        tokMsg += '\n\n👉 Clique sur la jauge (à gauche du micro) pour acheter des tokens.'
+        const tokErrMsg: AIMsg = { id: genId(), role: 'assistant', content: tokMsg, ts: Date.now() }
+        setConvs(prev => prev.map(c =>
+          c.id === cid ? { ...c, msgs: [...c.msgs, tokErrMsg], updatedAt: Date.now() } : c
+        ))
+        setTopupOpen(true)
         setLoading(false)
         return
       }
@@ -20561,6 +20581,9 @@ export default function AIPanel({
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
+                {/* Jauge tokens — à gauche du micro */}
+                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} />
+
                 {/* Mic button — B3 (hidden if not supported) */}
                 {speechSupported && !loading && (
                   <button
@@ -20635,6 +20658,9 @@ export default function AIPanel({
         {/* /body */}
         </div>
       </div>
+
+      {/* ── Modal d'achat de tokens ───────────────────────── */}
+      <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />
 
       {/* ── Popup sélection de texte ──────────────────────── */}
       {selPopup && (

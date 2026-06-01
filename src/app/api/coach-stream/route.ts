@@ -30,6 +30,7 @@ import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
+import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -312,6 +313,23 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──
+  try {
+    const tl = await getUserTokenLimits(userId)
+    const estimate = Math.ceil((JSON.stringify(anthropicMessages).length + systemWithTools.length) / 4)
+    const remainingRolling = tl.rolling_6h.limit - tl.rolling_6h.used
+    const remainingTotal = (tl.monthly.limit - tl.monthly.used) + tl.bonus_tokens
+    if (estimate > remainingRolling) {
+      const hours = Math.max(1, Math.ceil((new Date(tl.rolling_6h.resets_at).getTime() - Date.now()) / 3_600_000))
+      return new Response(JSON.stringify({ error: `Limite de 6h atteinte. Réinitialisation dans ${hours}h.` }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+    }
+    if (estimate > remainingTotal) {
+      return new Response(JSON.stringify({ error: 'Limite hebdomadaire de tokens atteinte. Recharge pour continuer.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+    }
+  } catch (e) {
+    console.error('[coach-stream] token pre-check failed (fail-open):', e)
+  }
+
   const response = await client.messages.create({
     model,
     max_tokens: maxTokens,
@@ -320,6 +338,14 @@ export async function POST(req: NextRequest) {
     tools: coachTools,
     tool_choice: { type: 'auto' },
   })
+
+  // ── Enregistrement de la consommation réelle (best-effort) ──
+  try {
+    const total = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0)
+    if (total > 0) void recordTokenUsage(userId, total, { model })
+  } catch (e) {
+    console.error('[coach-stream] recordTokenUsage failed:', e)
+  }
 
   console.log('[coach-stream] chat response — stop_reason:', response.stop_reason,
     '— blocks:', response.content.length,
